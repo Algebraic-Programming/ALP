@@ -20,6 +20,7 @@ namespace grb {
 
 		struct PregelData {
 			bool &active;
+			bool &voteToHalt;
 			const size_t &num_vertices;
 			const size_t &outdegree;
 			const size_t &indegree;
@@ -41,6 +42,9 @@ namespace grb {
 
 				/** Which vertices are still active */
 				grb::Vector< bool > activeVertices;
+
+				/** Which vertices voted to halt */
+				grb::Vector< bool > haltVotes;
 
 				/** Pre-computed outdegrees. */
 				grb::Vector< size_t > outdegrees;
@@ -67,8 +71,8 @@ namespace grb {
 					if( grb::set( outdegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise outdegrees" );
 					}
-					if( grb::vxm< grb::descriptors::in_place >(
-						outdegrees, ones, graph, patternRing
+					if( grb::mxv< grb::descriptors::in_place | grb::descriptors::transpose_matrix >(
+						outdegrees, graph, ones, patternRing
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute outdegrees" );
 					}
@@ -93,6 +97,7 @@ namespace grb {
 					n( _m ),
 					graph( _m, _n ),
 					activeVertices( _n ),
+					haltVotes( _n ),
 					outdegrees( _n ),
 					indegrees( _n )
 				{
@@ -173,17 +178,20 @@ namespace grb {
 						grb::identities::logical_false
 					> orMonoid;
 
+					grb::Monoid< bool, bool, bool,
+						grb::operators::logical_and,
+						grb::identities::logical_true
+					> andMonoid;
+
 					grb::Semiring<
-						bool,
 						IncomingMessageType,
+						bool,
 						IncomingMessageType,
 						OutgoingMessageType,
 						Combiner,
-						//grb::operators::right_assign_if_left,
-						grb::operators::right_assign,
+						grb::operators::left_assign_if,
 						CombinerIdentity,
-						//grb::identities::logical_true
-						grb::identities::zero
+						grb::identities::logical_true
 					> ring;
 
 					// set initial round ID
@@ -191,6 +199,11 @@ namespace grb {
 
 					// activate all vertices
 					grb::RC ret = grb::set( activeVertices, true );
+
+					// initialise halt votes to all-false
+					if( ret == SUCCESS ) {
+						ret = grb::set( haltVotes, false );
+					}
 
 					// set default incoming message
 					if( ret == SUCCESS && grb::nnz(in) < n ) {
@@ -207,15 +220,8 @@ namespace grb {
 						ret = grb::set( out, ring.template getZero< OutgoingMessageType >() );
 					}
 
-					// check if there are active vertices
-					bool thereAreActiveVertices = false;
-					if( ret == SUCCESS ) {
-						ret = grb::foldl(
-							thereAreActiveVertices,
-							activeVertices,
-							orMonoid
-						);
-					}
+					// by construction, we start out with all vertices active
+					bool thereAreActiveVertices = true;
 
 					// return if initialisation failed
 					if( ret != SUCCESS ) { return ret; }
@@ -236,6 +242,7 @@ namespace grb {
 								// create Pregel struct
 								PregelData pregel = {
 									activeVertices[ i ],
+									haltVotes[ i ],
 									n,
 									outdegrees[ i ],
 									indegrees[ i ],
@@ -257,13 +264,31 @@ namespace grb {
 									std::cout << "Vertex " << i << " sends out message " << out[ i ] << "\n";
 #endif
 								}
-							}, x, activeVertices, in, out, outdegrees
+							}, x, activeVertices, in, out, outdegrees, haltVotes
 						);
+
+						// increment counter
+						(void) ++step;
+
+						// check if everyone voted to halt
+						bool halt = true;
+						if( ret == SUCCESS ) {
+							ret = grb::foldl( halt, haltVotes, andMonoid );
+							if( halt ) { break; }
+						}
+
+						// reset halt votes
+						if( ret == SUCCESS ) {
+							ret = grb::set(
+								haltVotes,
+								false
+							);
+						}
+
 						// reset incoming buffer
 						if( ret == SUCCESS ) {
 							ret = grb::set(
 								in,
-								//activeVertices,
 								ring.template getZero< IncomingMessageType >()
 							);
 						}
@@ -284,10 +309,11 @@ namespace grb {
 								orMonoid
 							);
 						}
-						(void) ++step;
 					}
 
-					std::cout << "Info: Pregel exits after " << step << " steps with error code " << ret << " ( " << grb::toString(ret) << " )\n";
+					if( grb::spmd<>::pid() == 0 ) {
+						std::cout << "Info: Pregel exits after " << step << " steps with error code " << ret << " ( " << grb::toString(ret) << " )\n";
+					}
 
 					// done
 					return ret;
