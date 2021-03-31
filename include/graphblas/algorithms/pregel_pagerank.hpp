@@ -17,40 +17,71 @@ namespace grb {
 
 		namespace pregel {
 
-			struct PageRankData {
-				const double alpha = 0.85;
-				const double tolerance = 0.001;
-			};
+			template< typename IOType >
+			struct PageRank {
 
-			void pageRank(
-				double &current_score,
-				const double &incoming_message,
-				double &outgoing_message,
-				const PageRankData &parameters,
-				grb::interfaces::PregelData &pregel
-			) {
-				if( pregel.round == 0 ) {
-					current_score = 1 /
-						static_cast< double >(
-							pregel.num_vertices
-						);
-				}
-				if( pregel.round > 0 ) {
-					const double old_score = current_score;
-					current_score = (1-parameters.alpha) +
-						parameters.alpha * incoming_message;
-					if( fabs(current_score-old_score) <
-						parameters.tolerance
-					) {
-						pregel.active = false;
+				struct Data {
+					IOType alpha = 0.85;
+					IOType tolerance = 0.001;
+				};
+
+				static void program(
+					IOType &current_score,
+					const IOType &incoming_message,
+					IOType &outgoing_message,
+					const Data &parameters,
+					grb::interfaces::PregelData &pregel
+				) {
+					if( pregel.round == 0 ) {
+						current_score = 1 /
+							static_cast< double >(
+								pregel.num_vertices
+							);
+					}
+					if( pregel.round > 0 ) {
+						const double old_score = current_score;
+						current_score = (1-parameters.alpha) +
+							parameters.alpha * incoming_message;
+						if( fabs(current_score-old_score) <
+							parameters.tolerance
+						) {
+							pregel.active = false;
+						}
+					}
+					if( pregel.outdegree > 0 ) {
+						outgoing_message =
+							current_score /
+							static_cast< double >(pregel.outdegree);
 					}
 				}
-				if( pregel.outdegree > 0 ) {
-					outgoing_message =
-						current_score /
-						static_cast< double >(pregel.outdegree);
+
+				template< typename PregelType >
+				static grb::RC execute(
+					grb::interfaces::Pregel< PregelType > &pregel,
+					grb::Vector< IOType > &scores,
+					const Data &parameters = Data(),
+					const size_t max_steps = 1000
+				) {
+					const size_t n = pregel.num_vertices();
+					if( grb::size( scores ) != n ) {
+						return MISMATCH;
+					}
+
+					grb::Vector< IOType > in( n );
+					grb::Vector< IOType > out( n );
+
+					return pregel.execute(
+						scores,
+						in, out,
+						program,
+						parameters,
+						grb::operators::add< double >(),
+						grb::identities::zero(),
+						max_steps
+					);
 				}
-			}
+
+			};
 
 		} //end namespace `grb::algorithms::pregel'
 
