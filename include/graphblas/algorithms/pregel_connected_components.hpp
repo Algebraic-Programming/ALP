@@ -33,7 +33,6 @@ namespace grb {
 						if( pregel.indegree == 0 ) {
 							pregel.voteToHalt = true;
 						} else if( current_max_ID < incoming_message ) {
-std::cout << "I found a larger ID, going from " << current_max_ID << " to " << incoming_message << "!\n";
 							current_max_ID = incoming_message;
 						} else {
 							pregel.voteToHalt = true;
