@@ -1,0 +1,45 @@
+
+ALP/GraphBLAS
+Copyright 2021 Huawei Technologies Co., Ltd.
+
+This project is maintained by the Computing Systems Laboratory, Huawei Zurich
+Research Center, Switzerland. This distribution is licensed under the terms and
+conditions of the Apache 2.0 license; see the LICENSE file for more details.
+
+The following is a list of contributors to ALP/GraphBLAS. At the time the
+contributions were made, all below contributors were employed by or outsourced
+to Huawei Technologies Co., Ltd. or one of its subsidiaries:
+
+ - A. N. Yzelman, Huawei Technologies France SASU; 2016-2020.
+                  Huawei Technologies Switzerland AG; 2020-current.
+
+ - Jonathan M. Nash, Huawei Technologies France SASU; 2017.
+
+ - Daniel Di Nardo, Huawei Technologies France SASU; 2017.
+
+ - Antoine Petitet, Huawei Technologies France SASU; 2017.
+
+ - Aristeidis Mastoras, Huawei Technologies Switzerland AG; 2020-current.
+
+ - Alberto Scolari, Huawei Technologies Switzerland AG; 2021-current.
+
+ - Verner Vlacic, Huawei Technologies Switzerland AG; 2021-current.
+
+ - Dan Iorga, Huawei Technologies Switzerland AG; 2021.
+
+ - Auke Booij, Huawei Technologies Switzerland AG; 2021.
+
+The experimental banshee backend has been developed in collaboration with
+Prof. Luca Benini at ETH Zuerich and his group. In particular this backend
+is with great thanks due to Dan, Paul Scheffler, Fabian Schuiki, and Samuel
+Riedel.
+
+The distributed-memory 1D backend additionally would not have been possible
+without Wijnand J. Suijlen (Huawei Technologies France SASU) whom we'd like
+to acknowledge specially. His feedback and the joint work on the Lightweight
+Parallel Foundations (LPF) communication layer has helped shape our API's
+support for distributed-memory parallelism.
+
+We also acknowledge our lab director, Bill McColl, for his keen insights
+and support this project has, and indeed continues to, benefit from.
+

@@ -1,0 +1,175 @@
+#!/bin/bash
+
+#
+#   Copyright 2021 Huawei Technologies Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+check_cmd() {
+	if ! command -v ${1} &> /dev/null
+	then
+		echo "not found!"
+		exit
+	else
+		echo `command -v ${1}`
+	fi
+}
+
+check() {
+	printf "Checking for C compiler..."
+	if [[ -z "${CC}" ]]; then
+		CC=cc
+	fi
+	check_cmd "${CC}"
+	printf "Checking for C++ compiler..."
+	if [[ -z "${CXX}" ]]; then
+		CXX=g++
+	fi
+	check_cmd "${CXX}"
+}
+
+check_lpf() {
+	check
+	printf "Checking for lpfcc..."
+	check_cmd "$1lpfcc"
+	printf "Checking for lpfcxx..."
+	check_cmd "$1lpfcxx"
+	printf "Checking for lpfrun..."
+	check_cmd "$1lpfrun"
+}
+
+reference=yes
+banshee=no
+lpf=yes
+show=no
+deps=../deps
+FLAGS=$''
+LPF_INSTALL_PATH=
+for arg in "$@"
+do
+	case "$arg" in
+	-h|--help)	echo "Usage: ./configure --prefix=<path> [--with-lpf=<path>]\
+ [--with-deps=<path>] [--no-lpf] [--no-reference] [--no-banshee]"
+			echo " "
+			echo "Required arguments:"
+			echo "  --prefix=<path/to/install/directory/>"
+			echo " "
+			echo "Optional arguments:"
+			echo "  --with-lpf=<path/>             - where LPF is installed"
+			echo "  --deps=<path/to/dependencies/> - where dependencies are located"
+			echo "  --no-reference                 - disables the reference and reference_omp backends"
+			echo "  --no-banshee                   - disables the banshee backend"
+			echo "  --no-lpf                       - disables all backends that depend on LPF"
+			echo " "
+			echo "Notes:"
+			echo "  - If the install directory does not exist, it will be created."
+			echo "  - If --with-lpf is omitted, LPF is assumed to be in the system"
+			echo "    path."
+			echo "  - The --prefix path is mandatory. No make targets will execute"
+			echo "    without configuring this path first."
+			echo "  - This ./configure script is re-entrant and will simply overwrite"
+			echo "    *all* previous setting, but will not clean up anything. For best"
+		        echo "    results, execute ./configure only once on a clean source directory."
+			echo "  - Any dependencies will be installed in the given prefix path."
+			echo "  - The default dependencies path is ../deps"
+			exit
+			;;
+	--prefix=*)	prefix="`echo "${arg}" | cut -d'=' -f2-`"
+			;;
+	--with-lpf=*)
+			LPF_INSTALL_PATH="`echo "${arg}" | cut -d'=' -f2-`"
+			lpf=yes
+			;;
+	--deps=*)       deps="`echo "${arg}" | cut -d'=' -f2-`"
+			;;
+	--no-lpf)
+			FLAGS+=$'NO_LPF=true\n'
+			lpf=no
+			;;
+	--no-banshee)
+			FLAGS+=$'NO_BANSHEE=true\n'
+			banshee=no
+			;;
+	--no-reference)
+			FLAGS+=$'NO_REFERENCE=true\n'
+			reference=no
+			;;
+	--show)
+			show=yes
+			;;
+	*)		echo "Warning: ignoring argument $arg".
+	esac
+done
+
+if [ -z "${prefix}" ] || [ "${prefix}" = " " ]; then
+	echo "Error: empty install prefix (${prefix}). The --prefix=</install/path/> option is mandatory."
+	exit 1;
+fi
+
+if [ ! -d "${prefix}" ]; then
+	echo "Warning: install directory will be created when output is written there (either on \`make install' or on installing a pre-packaged dependency).";
+	DIRNAME=`dirname "${prefix}"`
+	if [ ! -d "${DIRNAME}" ]; then
+		echo "Error: parent directory of target installation path does not exist.";
+		exit 1;
+	fi
+	BASENAME=`basename "${prefix}"`
+	DIRNAME=`readlink -e ${DIRNAME}`
+	ABSOLUTE_PREFIX="${DIRNAME}/${BASENAME}"
+else
+	ABSOLUTE_PREFIX=`readlink -e ${prefix}`
+	echo "Warning: any pre-existing data in ${ABSOLUTE_PREFIX} may be overwritten."
+fi
+
+if [ ! -d "${deps}" ]; then
+	echo "Warning: dependencies path does not exist. Targets for installing dependencies will fail to build.
+"
+	ABSOLUTE_DEPS=`pwd`/${deps}
+else
+	ABSOLUTE_DEPS=`readlink -e ${deps}`
+fi
+
+if [ x$lpf = xno ]; then
+	check
+elif [ x$LPF_INSTALL_PATH = x ]; then
+	check_lpf
+else
+	if [ ! -d "${LPF_INSTALL_PATH}" ]; then
+		echo "Given LPF installation directory does not exist!"
+		exit;
+	fi
+	check_lpf "${LPF_INSTALL_PATH}/bin/"
+	ABSOLUTE_LPF_INSTALL_PATH=`readlink -e ${LPF_INSTALL_PATH}`
+fi
+
+FLAGS+=CC=${CC}$'\n'
+FLAGS+=CXX=${CXX}$'\n'
+
+if [ x$show = xyes ]; then
+	echo
+	echo "flags.mk contents: ${FLAGS}"
+	echo "paths.mk contents:"
+	echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}"
+	echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}"
+	echo "DEP_SRC_DIR=${ABSOLUTE_DEPS}"
+	echo
+else
+	echo "${FLAGS}" > flags.mk
+	echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}" > paths.mk
+	echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}" >> paths.mk
+	echo "DEP_SRC_DIR=${ABSOLUTE_DEPS}" >> paths.mk
+fi
+
+echo "Configure done."
+
