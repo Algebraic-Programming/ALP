@@ -210,15 +210,16 @@ namespace ROPTLIB {
                     grb::Matrix< double > Wphiu( n, n );
                     grb::resize( Wphiu, grb::nnz( W ) );
                     grb::Vector< double > vec( n );
-
+                    
                     grb::set( Wphiu, W );
                     grb::eWiseLambda( [&Wphiu, &l, this ]( const size_t i, const size_t j, double &v ) {
                         v = v * phi_p( (*(this->Columns[ l ]))[ i ] - (*(this->Columns[ l ]))[ j ] );
                     }, Wphiu );
 
+                    
+
                     grb::set( vec, 0 );
                     grb::vxm( vec, ones, Wphiu, reals_ring );
-
                     double powsum = pPowSum( l );
                     double factor = summandEvalNum( l ) / ( 2*powsum );
 

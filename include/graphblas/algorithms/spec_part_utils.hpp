@@ -34,6 +34,26 @@ namespace grb {
         return std::pow(ret,1/p);
     }
 
+    template <typename IOType, typename pType>
+
+    IOType p_norm_to_p(
+        Vector<IOType> x,
+        const pType &p,
+        const grb::Monoid<
+				grb::operators::add< IOType >,
+				grb::identities::zero
+			> &mono_add
+        ) { //Can we somehow use the Vector buffer instead of copying?
+        eWiseMap([&p](const IOType u){
+            return std::pow(std::abs(u),p);
+        }, x );
+
+        IOType ret = static_cast<IOType>(0);
+        grb::foldl(ret,x,mono_add);
+
+        return ret;
+    }
+
     namespace algorithms{
 
         namespace spec_part_utils{

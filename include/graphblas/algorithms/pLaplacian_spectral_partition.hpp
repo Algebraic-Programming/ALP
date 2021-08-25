@@ -96,13 +96,24 @@ namespace grb
             IOType residual, p; //accuracy residual, and Laplacian parameter p
 
             //auxiliary variables for the computation of the gradient
-            Vector<IOType> aux_1(m), aux_2(n), aux_3(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
+            //Vector<IOType> aux_1(m), aux_2(n), aux_3(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
+            //IOType aux_4, aux_5;                                  // x^T phi_p(x), x^T A^T phi_p(Ax)
+            //set(grad, 0);                                         //to ensure grad is a dense vector
+            //set(aux_1,0);
+            //set(aux_2,0);
+            //set(aux_3,0);
+            //set(aux_4,0);
+
+            Vector<IOType> aux_1(m), aux_2(n), aux_3(n),aux_6(n),aux_7(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
             IOType aux_4, aux_5;                                  // x^T phi_p(x), x^T A^T phi_p(Ax)
-            set(grad, 0);                                         //to ensure grad is a dense vector
-            set(aux_1,0);
-            set(aux_2,0);
-            set(aux_3,0);
-            set(aux_4,0);
+            IOType pnorm_x;
+            //set(grad, 0);                                         //to ensure grad is a dense vector
+            //set(aux_3,0);
+            //set(aux_2,0);
+            //set(aux_1,0);
+            // set(aux_4,0);
+            //set(aux_6,0);
+            //set(aux_7,0);
 
             //external loop, evolving p
             do
@@ -141,11 +152,23 @@ namespace grb
                     grb::dot(aux_4, x, aux_2, reals_ring);
 
                     grb::dot(aux_5, x, aux_3, reals_ring);
-
+                    //pnorm_x = p_norm_to_p(x,p);
+                    //eWiseLambda([&aux_6, &x, &p] (const size_t i, const size_t j) {
+                    //    aux_6[j] = spec_part_utils::phi_p(x[i]-x[j]);
+                    //}, x, aux_6);
+                    //eWiseLambda([&aux_7, &x, &p] (const size_t i, const size_t j) {
+                    //    aux_7[j] = std::pow(std::abs(x[i]-x[j]),p);
+                    //}, x, aux_7);
+                    //grb::mxv(aux_1, A, aux_6, reals_ring); // W * phi_p(u_i - u_j)
+                    //grb::mxv(aux_3, A, aux_7, reals_ring); // W * |u_i - u_j|^p
+                    
                     eWiseLambda([&grad, &aux_2, &aux_3, &aux_4, &aux_5, &p](const size_t i)
                                 { grad[i] = p * (aux_3[i] / aux_4 - (aux_5 / (aux_4 * aux_4)) * aux_2[i]); },
                                 grad, aux_2, aux_3);
-
+                               
+                    //eWiseLambda([&grad, &aux_1, &aux_2, &aux_3, &aux_5,&aux_7, &p, &pnorm_x] (const size_t i) {
+                    //    grad[i] = (p / pnorm_x) * (aux_3[i] - 0.5 * aux_2[i] * aux_7[i] / pnorm_x);
+                    //}, grad, aux_1, aux_2, aux_3, aux_7);
                     //LATER DO LINE SEARCH, NOW ONLY GRADIENT DESCENT
 
                     IOType alpha = 0.1; //GRADIENT DESCENT PARAMETER
