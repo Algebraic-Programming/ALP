@@ -22,12 +22,12 @@
 #ifndef _H_GRB_BANSHEE_INTERNAL_OPERATORS
 #define _H_GRB_BANSHEE_INTERNAL_OPERATORS
 
+#include <snrt.h>
+
 #include <graphblas/base/internalops.hpp>
 #include <graphblas/config.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/utils.hpp>
-
-#include "snrt.h"
 
 namespace grb {
 
@@ -714,7 +714,6 @@ namespace grb {
 					snrt_ssr_read( SNRT_SSR_DM1, SNRT_SSR_1D, y );
 					snrt_ssr_enable();
 
-					printf( "Hello from here\n" );
 					// direct application for remainder
 					for( int i = 0; i < n; i++ ) {
 						OP::apply( x[ i ], y[ i ], z[ i ] );

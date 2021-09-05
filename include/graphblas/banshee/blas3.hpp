@@ -47,8 +47,9 @@
 
 #include <type_traits> //for std::enable_if
 
-#include "graphblas/matrix.hpp"
-#include "graphblas/utils/MatrixVectorIterator.hpp"
+#include <graphblas/utils/MatrixVectorIterator.hpp>
+
+#include "matrix.hpp"
 
 namespace grb {
 
@@ -324,8 +325,11 @@ namespace grb {
 
 	namespace internal {
 
-		template< Descriptor descr = descriptors::no_operation, bool matrix_is_void, typename OutputType, typename InputType1, typename InputType2, typename InputType3 >
-		RC matrix_zip_generic( Matrix< OutputType, banshee > & A, const Vector< InputType1, banshee > & x, const Vector< InputType2, banshee > & y, const Vector< InputType3, banshee > & z ) {
+		template< Descriptor descr = descriptors::no_operation, bool matrix_is_void, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
+		RC matrix_zip_generic( Matrix< OutputType, banshee > & A,
+			const Vector< InputType1, banshee, Coords > & x,
+			const Vector< InputType2, banshee, Coords > & y,
+			const Vector< InputType3, banshee, Coords > & z ) {
 			auto x_it = x.cbegin();
 			auto y_it = y.cbegin();
 			auto z_it = z.cbegin();
@@ -495,8 +499,8 @@ namespace grb {
 		}
 	} // namespace internal
 
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3 >
-	RC zip( Matrix< OutputType, banshee > & A, const Vector< InputType1, banshee > & x, const Vector< InputType2, banshee > & y, const Vector< InputType3, banshee > & z ) {
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
+	RC zip( Matrix< OutputType, banshee > & A, const Vector< InputType1, banshee, Coords > & x, const Vector< InputType2, banshee, Coords > & y, const Vector< InputType3, banshee, Coords > & z ) {
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
 			"grb::zip (two vectors to matrix) called using non-integral left-hand "
 			"vector elements" );
@@ -529,8 +533,8 @@ namespace grb {
 		return internal::matrix_zip_generic< descr, false >( A, x, y, z );
 	}
 
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2 >
-	RC zip( Matrix< void, banshee > & A, const Vector< InputType1, banshee > & x, const Vector< InputType2, banshee > & y ) {
+	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords >
+	RC zip( Matrix< void, banshee > & A, const Vector< InputType1, banshee, Coords > & x, const Vector< InputType2, banshee, Coords > & y ) {
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
 			"grb::zip (two vectors to void matrix) called using non-integral "
 			"left-hand vector elements" );
@@ -559,10 +563,10 @@ namespace grb {
 	 * a multiplication of a column vector with a row vector
 	 *
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename OutputType, class Operator >
+	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords, typename OutputType, class Operator >
 	RC outerProduct( Matrix< OutputType, banshee > & A,
-		const Vector< InputType1, banshee > & u,
-		const Vector< InputType2, banshee > & v,
+		const Vector< InputType1, banshee, Coords > & u,
+		const Vector< InputType2, banshee, Coords > & v,
 		const Operator & mul = Operator(),
 		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
 			void >::type * const = NULL ) {

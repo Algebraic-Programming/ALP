@@ -26,15 +26,15 @@
 #if ! defined _H_GRB_BANSHEE_BLAS2
 #define _H_GRB_BANSHEE_BLAS2
 
-#include "graphblas/banshee/compressed_storage.hpp"
-#include "graphblas/banshee/coordinates.hpp"
-#include "graphblas/banshee/vector.hpp"
-#include "graphblas/blas0.hpp"
-#include "graphblas/descriptors.hpp"
-#include "graphblas/internalops.hpp"
-#include "graphblas/matrix.hpp"
-#include "graphblas/ops.hpp"
-#include "graphblas/vector.hpp"
+#include <graphblas/blas0.hpp>
+#include <graphblas/descriptors.hpp>
+#include <graphblas/internalops.hpp>
+#include <graphblas/ops.hpp>
+
+#include "compressed_storage.hpp"
+#include "coordinates.hpp"
+#include "matrix.hpp"
+#include "vector.hpp"
 
 #ifdef _DEBUG
 #include "graphblas/spmd.hpp"
@@ -139,20 +139,21 @@ namespace grb {
 			typename InputType2,
 			typename InputType3,
 			typename InputType4,
+			typename Coords,
 			typename RowColType,
 			typename NonzeroType >
 		inline void vxm_inner_kernel_gather( RC & rc,
 			internal::Coordinates< banshee >::Update & local_update,
-			Vector< IOType, banshee > & destination_vector,
+			Vector< IOType, banshee, Coords > & destination_vector,
 			IOType & destination_element,
 			const size_t & destination_index,
-			const Vector< InputType1, banshee > & source_vector,
+			const Vector< InputType1, banshee, Coords > & source_vector,
 			const InputType1 * __restrict__ const & source,
 			const size_t & source_range,
 			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > & matrix,
-			const Vector< InputType3, banshee > & mask_vector,
+			const Vector< InputType3, banshee, Coords > & mask_vector,
 			const InputType3 * __restrict__ const & mask,
-			const Vector< InputType4, banshee > & source_mask_vector,
+			const Vector< InputType4, banshee, Coords > & source_mask_vector,
 			const InputType4 * __restrict__ const & source_mask,
 			const AdditiveMonoid & add,
 			const Multiplication & mul,
@@ -449,18 +450,19 @@ namespace grb {
 			typename InputType1,
 			typename InputType2,
 			typename InputType3,
+			typename Coords,
 			typename RowColType,
 			typename NonzeroType >
 		inline void vxm_inner_kernel_scatter( RC & rc,
 			internal::Coordinates< banshee >::Update & local_update,
-			Vector< IOType, banshee > & destination_vector,
+			Vector< IOType, banshee, Coords > & destination_vector,
 			IOType * __restrict__ const & destination,
 			const size_t & destination_range,
-			const Vector< InputType1, banshee > & source_vector,
+			const Vector< InputType1, banshee, Coords > & source_vector,
 			const InputType1 * __restrict__ const & source,
 			const size_t & source_index,
 			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > & matrix,
-			const Vector< InputType3, banshee > & mask_vector,
+			const Vector< InputType3, banshee, Coords > & mask_vector,
 			const InputType3 * __restrict__ const & mask,
 			const AdditiveMonoid & add,
 			const Multiplication & mul,
@@ -635,11 +637,12 @@ namespace grb {
 			typename InputType1,
 			typename InputType2,
 			typename InputType3,
-			typename InputType4 >
-		RC vxm_generic( Vector< IOType, banshee > & u,
-			const Vector< InputType3, banshee > & mask,
-			const Vector< InputType1, banshee > & v,
-			const Vector< InputType4, banshee > & v_mask,
+			typename InputType4,
+			typename Coords >
+		RC vxm_generic( Vector< IOType, banshee, Coords > & u,
+			const Vector< InputType3, banshee, Coords > & mask,
+			const Vector< InputType1, banshee, Coords > & v,
+			const Vector< InputType4, banshee, Coords > & v_mask,
 			const Matrix< InputType2, banshee > & A,
 			const AdditiveMonoid & add,
 			const Multiplication & mul,
@@ -1065,29 +1068,36 @@ namespace grb {
 	}
 
 	/** \internal Delegates to fully masked variant */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
-		const Vector< InputType1, banshee > & v,
+	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Matrix< InputType2, banshee > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, banshee > empty_mask( 0 );
+		const Vector< bool, banshee, Coords > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
 	}
 
 	/** \internal Delegates to fully masked variant */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename InputType3 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
-		const Vector< InputType1, banshee > & v,
+	template< Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid,
+		class MultiplicativeOperator,
+		typename IOType,
+		typename InputType1,
+		typename InputType2,
+		typename InputType3,
+		typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Matrix< InputType2, banshee > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const grb::Vector< bool, banshee > empty_mask( 0 );
+		const grb::Vector< bool, banshee, Coords > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
 	}
 
@@ -1100,11 +1110,12 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename InputType4 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
-		const Vector< InputType1, banshee > & v,
-		const Vector< InputType4, banshee > & v_mask,
+		typename InputType4,
+		typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
+		const Vector< InputType1, banshee, Coords > & v,
+		const Vector< InputType4, banshee, Coords > & v_mask,
 		const Matrix< InputType2, banshee > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
@@ -1174,27 +1185,32 @@ namespace grb {
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType = typename Ring::D4, typename InputType1 = typename Ring::D1, typename InputType2 = typename Ring::D2 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType1, banshee > & v,
+	template< Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType = typename Ring::D4,
+		typename InputType1 = typename Ring::D1,
+		typename InputType2 = typename Ring::D2,
+		typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Matrix< InputType2, banshee > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, banshee > empty_mask( 0 );
+		const Vector< bool, banshee, Coords > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType1, banshee > & v,
+	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Matrix< InputType2, banshee > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const grb::Vector< bool, banshee > empty_mask( 0 );
+		const grb::Vector< bool, banshee, Coords > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
 	}
 
@@ -1204,14 +1220,15 @@ namespace grb {
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename InputType3 = bool >
-	RC mxv( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
+		typename InputType3 = bool,
+		typename Coords >
+	RC mxv( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
 		const Matrix< InputType2, banshee > & A,
-		const Vector< InputType1, banshee > & v,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, banshee > empty_mask( 0 );
+		const Vector< bool, banshee, Coords > empty_mask( 0 );
 		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
 	}
 
@@ -1224,12 +1241,13 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename InputType4 >
-	RC mxv( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
+		typename InputType4,
+		typename Coords >
+	RC mxv( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
 		const Matrix< InputType2, banshee > & A,
-		const Vector< InputType1, banshee > & v,
-		const Vector< InputType4, banshee > & v_mask,
+		const Vector< InputType1, banshee, Coords > & v,
+		const Vector< InputType4, banshee, Coords > & v_mask,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		if( descr & descriptors::transpose_matrix ) {
@@ -1368,27 +1386,32 @@ namespace grb {
 	/**
 	 * \internal Delegates to fully masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType = typename Ring::D4, typename InputType1 = typename Ring::D1, typename InputType2 = typename Ring::D2 >
-	RC mxv( Vector< IOType, banshee > & u,
+	template< Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType = typename Ring::D4,
+		typename InputType1 = typename Ring::D1,
+		typename InputType2 = typename Ring::D2,
+		typename Coords >
+	RC mxv( Vector< IOType, banshee, Coords > & u,
 		const Matrix< InputType2, banshee > & A,
-		const Vector< InputType1, banshee > & v,
+		const Vector< InputType1, banshee, Coords > & v,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool > empty_mask( 0 );
+		const Vector< bool, banshee, Coords > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2 >
-	RC mxv( Vector< IOType, banshee > & u,
+	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
+	RC mxv( Vector< IOType, banshee, Coords > & u,
 		const Matrix< InputType2, banshee > & A,
-		const Vector< InputType1, banshee > & v,
+		const Vector< InputType1, banshee, Coords > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const grb::Vector< bool, banshee > empty_mask( 0 );
+		const grb::Vector< bool, banshee, Coords > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
 	}
 
@@ -1404,11 +1427,12 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename InputType4 >
-	RC vxm( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
-		const Vector< InputType1, banshee > & v,
-		const Vector< InputType4, banshee > & v_mask,
+		typename InputType4,
+		typename Coords >
+	RC vxm( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
+		const Vector< InputType1, banshee, Coords > & v,
+		const Vector< InputType4, banshee, Coords > & v_mask,
 		const Matrix< InputType2, banshee > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
@@ -1493,12 +1517,13 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename InputType4 >
-	RC mxv( Vector< IOType, banshee > & u,
-		const Vector< InputType3, banshee > & mask,
+		typename InputType4,
+		typename Coords >
+	RC mxv( Vector< IOType, banshee, Coords > & u,
+		const Vector< InputType3, banshee, Coords > & mask,
 		const Matrix< InputType2, banshee > & A,
-		const Vector< InputType1, banshee > & v,
-		const Vector< InputType4, banshee > & v_mask,
+		const Vector< InputType1, banshee, Coords > & v,
+		const Vector< InputType4, banshee, Coords > & v_mask,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
@@ -1679,8 +1704,8 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< typename Func, typename DataType1, typename DataType2, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, banshee > & A, const Vector< DataType2, banshee > x, Args... args ) {
+	template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
+	RC eWiseLambda( const Func f, const Matrix< DataType1, banshee > & A, const Vector< DataType2, banshee, Coords > x, Args... args ) {
 		// do size checking
 		if( ! ( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
 			return MISMATCH;

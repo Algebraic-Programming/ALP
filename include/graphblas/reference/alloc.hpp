@@ -25,6 +25,10 @@
 
 #include <iostream>
 
+#include <graphblas/base/alloc.hpp>
+
+#include "config.hpp"
+
 namespace grb {
 	namespace utils {
 		namespace internal {

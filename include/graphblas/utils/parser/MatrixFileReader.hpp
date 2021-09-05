@@ -28,9 +28,9 @@
 #include <string>
 #include <type_traits>
 
-#include "graphblas/utils/parser/MatrixFileIterator.hpp"
-#include "graphblas/utils/parser/MatrixFileProperties.hpp"
-#include "graphblas/utils/parser/MatrixFileReaderBase.hpp"
+#include "MatrixFileIterator.hpp"
+#include "MatrixFileProperties.hpp"
+#include "MatrixFileReaderBase.hpp"
 
 namespace grb {
 	namespace utils {

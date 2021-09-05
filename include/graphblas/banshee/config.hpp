@@ -27,7 +27,7 @@
 #ifndef _H_GRB_BANSHEE_CONFIG
 #define _H_GRB_BANSHEE_CONFIG
 
-#include "graphblas/config.hpp"
+#include <graphblas/config.hpp>
 
 namespace grb {
 

@@ -157,7 +157,7 @@ bin/tests/automatic_launch_scaling_openmp
 
 LIBRARIES=lib/sequential/libgraphblas.a lib/sequential/libgraphblas.so lib/sequential/libgraphblas.so.${VERSION}
 
-CLEAN_OBJS=${GRAPHBLAS_OBJS} ${GRAPHBLAS_SHARED_OBJS}
+CLEAN_OBJS+=${GRAPHBLAS_OBJS} ${GRAPHBLAS_SHARED_OBJS}
 
 BSPCPP11=echo DISABLED:
 BSPRUN=echo DISABLED:

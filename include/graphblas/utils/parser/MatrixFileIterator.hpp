@@ -37,15 +37,16 @@
 
 #include <assert.h>
 
-#include "graphblas/config.hpp"
-#include "graphblas/iomode.hpp"
-#include "graphblas/spmd.hpp"
-#include "graphblas/utils/config.hpp"
-#include "graphblas/utils/hpparser.h"
-#include "graphblas/utils/parser/MatrixFileProperties.hpp"
+#include <graphblas/config.hpp>
+#include <graphblas/iomode.hpp>
+#include <graphblas/spmd.hpp>
+#include <graphblas/utils/config.hpp>
+#include <graphblas/utils/hpparser.h>
+
+#include "MatrixFileProperties.hpp"
 
 #ifdef _GRB_WITH_OMP
-#include "graphblas/omp/config.hpp"
+#include <graphblas/omp/config.hpp>
 #endif
 
 namespace grb {

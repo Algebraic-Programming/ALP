@@ -22,6 +22,8 @@
 #ifndef _H_GRB_BANSHEE_DELETERS
 #define _H_GRB_BANSHEE_DELETERS
 
+#include <graphblas/utils/autodeleter.hpp>
+
 namespace grb {
 
 	namespace utils {

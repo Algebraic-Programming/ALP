@@ -20,8 +20,8 @@
  * @date 13th of September, 2017
  */
 
-#ifndef _H_GRB_UTILS_ALLOC
-#define _H_GRB_UTILS_ALLOC
+#ifndef _H_GRB_BASE_ALLOC
+#define _H_GRB_BASE_ALLOC
 
 #include <stdlib.h> //posix_memalign
 
@@ -29,32 +29,58 @@
 
 #include <assert.h>
 
-#include <graphblas/base/alloc.hpp>
-#include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
+
+#ifndef _GRB_NO_LIBNUMA
+#include <numa.h> //numa_alloc_interleaved
+#endif
+
+#ifndef _GRB_NO_STDIO
+#include <iostream> //std::err
+#endif
 
 namespace grb {
 	namespace utils {
 		namespace internal {
 
-			// template< enum Backend implementation = config::default_backend >
-			// class Allocator;
+			template< enum Backend implementation >
+			class AllocatorFunctions {
+			private:
+				/** Disable instantiation. */
+				AllocatorFunctions() {}
+
+			public:
+				template< typename T, typename... Targs >
+				static RC alloc( size_t &, T * __restrict__ &, const size_t, const bool, utils::AutoDeleter< T > &, Targs &&... ) {
+#ifndef _GRB_NO_STDIO
+					std::cerr << "Error: backend " << implementation << " did not define an allocation mechanism!" << std::endl;
+#endif
+					return PANIC;
+				}
+
+				static void postAlloc( const RC, const size_t, const std::string, const std::string ) {
+#ifndef _GRB_NO_STDIO
+					std::cerr << "Error: backend " << implementation << " did not define an allocation mechanism!" << std::endl;
+#endif
+				}
+			};
+
+			template< enum Backend implementation >
+			class Allocator {
+			private:
+				/** Disable instantiation. */
+				Allocator() {}
+
+			public:
+				/** Forward to the given backend's allocation functions. */
+				typedef internal::AllocatorFunctions< implementation > functions;
+			};
 
 		} // namespace internal
 	}     // namespace utils
 } // namespace grb
-
-// include available allocator implementations:
-#ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/alloc.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/alloc.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/alloc.hpp"
-#endif
 
 // define user API:
 namespace grb {
@@ -67,12 +93,13 @@ namespace grb {
 		 *
 		 * @see grb::utils::alloc.
 		 */
-		/*
-		template< typename T >
-		inline RC alloc( const std::string prefix, const std::string postfix, T * __restrict__ & pointer, const size_t size, const bool shared, utils::AutoDeleter< T > & deleter ) {
-		    return alloc< T, config::default_backend >( prefix, postfix, pointer, size, shared, deleter );
+		template< typename T, enum Backend implementation >
+		RC alloc( const std::string prefix, const std::string postfix, T * __restrict__ & pointer, const size_t size, const bool shared, utils::AutoDeleter< T, implementation > & deleter ) {
+			size_t allocd = 0;
+			const RC ret = internal::Allocator< implementation >::functions::alloc( allocd, pointer, size, shared, deleter );
+			internal::Allocator< implementation >::functions::postAlloc( ret, allocd, prefix, postfix );
+			return ret;
 		}
-		*/
 
 		/**
 		 * Allocate a bunch of memory areas in one go.
@@ -134,15 +161,21 @@ namespace grb {
 		 * @returns PANIC      When any other non-mitigable failure was found during
 		 *                     allocation.
 		 */
-
-		/*
-		template< typename T, typename... Targs >
-		inline RC alloc( const std::string prefix, const std::string postfix, T * __restrict__ & pointer, const size_t size, const bool shared, utils::AutoDeleter< T > & deleter, Targs &&... args ) {
-		    return alloc< T, config::default_backend, Targs... >( prefix, postfix, pointer, size, shared, deleter );
+		template< typename T, enum Backend implementation, typename... Targs >
+		RC alloc( const std::string prefix,
+			const std::string postfix,
+			T * __restrict__ & pointer,
+			const size_t size,
+			const bool shared,
+			utils::AutoDeleter< T, implementation > & deleter,
+			Targs &&... args ) {
+			size_t allocd = 0;
+			const RC ret = internal::Allocator< implementation >::functions::alloc( allocd, pointer, size, shared, deleter, std::forward< Targs >( args )... );
+			internal::Allocator< implementation >::functions::postAlloc( ret, allocd, prefix, postfix );
+			return ret;
 		}
-		*/
 
 	} // namespace utils
 } // namespace grb
 
-#endif
+#endif // _H_GRB_BASE_ALLOC

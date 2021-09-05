@@ -29,10 +29,13 @@
 
 #include <assert.h>
 
-#include "graphblas/backends.hpp"
-#include "graphblas/banshee/forward.hpp"
-#include "graphblas/config.hpp"
-#include "graphblas/descriptors.hpp"
+#include <graphblas/backends.hpp>
+#include <graphblas/base/coordinates.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/descriptors.hpp>
+#include <graphblas/utils.hpp>
+
+#include "alloc.hpp"
 
 namespace grb {
 
@@ -768,7 +771,8 @@ namespace grb {
 			template< Descriptor descr, typename T >
 			inline bool mask( const size_t i, const T * const val ) const noexcept {
 				assert( i < _cap );
-				return utils::interpretMask< descr >( assigned( i ), val );
+				bool is_assigned { assigned( i ) };
+				return utils::interpretMask< descr >( is_assigned, val, 0 );
 			}
 
 			/**

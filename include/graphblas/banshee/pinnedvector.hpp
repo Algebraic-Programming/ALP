@@ -27,9 +27,11 @@
 #if ! defined _H_GRB_BANSHEE_PINNEDVECTOR
 #define _H_GRB_BANSHEE_PINNEDVECTOR
 
-#include <graphblas/banshee/coordinates.hpp>
 #include <graphblas/base/pinnedvector.hpp>
 #include <graphblas/utils/autodeleter.hpp>
+
+#include "coordinates.hpp"
+#include "vector.hpp"
 
 namespace grb {
 
@@ -61,7 +63,8 @@ namespace grb {
 		PinnedVector() : _buffered_values( NULL ) {}
 
 		/** No implementation notes. */
-		PinnedVector( const Vector< IOType, banshee > & x, IOMode mode ) :
+		template< typename Coords >
+		PinnedVector( const Vector< IOType, banshee, Coords > & x, IOMode mode ) :
 			_raw_deleter( x._raw_deleter ), _assigned_deleter( x._assigned_deleter ), _buffered_values( x._raw ), _buffered_mask( x._coordinates ) {
 			(void)mode; // sequential and parallel IO mode are equivalent for this implementation.
 		}

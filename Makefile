@@ -26,7 +26,7 @@ MY_DIR=$(CURDIR)/
 
 #version info
 MAJORVERSION=0
-MINORVERSION=1
+MINORVERSION=2
 BUGVERSION=0
 VERSION=${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}
 
@@ -67,6 +67,7 @@ include/graphblas/tags.hpp \
 include/graphblas/type_traits.hpp \
 include/graphblas/utils.hpp \
 include/graphblas/vector.hpp \
+include/graphblas/base/alloc.hpp \
 include/graphblas/base/vector.hpp \
 include/graphblas/base/internalops.hpp \
 include/graphblas/base/io.hpp \
@@ -155,6 +156,8 @@ endif
 CPP11=${CXX} -std=c++11
 C89=${CC} -std=c89
 C99=${CC} -std=c99
+
+CLEAN_OBJS=${TEST_UTILS_OBJS}
 
 ifndef NO_REFERENCE
  include reference.mk

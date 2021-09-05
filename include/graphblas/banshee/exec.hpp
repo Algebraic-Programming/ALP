@@ -22,11 +22,6 @@
 #if ! defined _H_GRB_BANSHEE_EXEC
 #define _H_GRB_BANSHEE_EXEC
 
-// this file contains partial template specialisations and should be included from the header containing the base definition
-#ifndef _H_GRB_EXEC
-#error "This file should be included from the header containing the base class definition of grb::Launcher"
-#endif
-
 #include <graphblas/backends.hpp>
 #include <graphblas/base/exec.hpp>
 #include <graphblas/init.hpp>

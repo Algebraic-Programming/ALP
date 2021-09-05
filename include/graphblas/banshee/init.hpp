@@ -22,7 +22,7 @@
 #if ! defined _H_GRB_BANSHEE_INIT
 #define _H_GRB_BANSHEE_INIT
 
-#include "graphblas/init.hpp"
+#include <graphblas/base/init.hpp>
 
 namespace grb {
 

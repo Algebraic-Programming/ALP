@@ -401,7 +401,7 @@ namespace grb {
 	 * @see grb::buildMatrix.
 	 *
 	 * This function has only been implemented for descriptors::no_duplicates.
-	 * 
+	 *
 	 * @see grb::buildMatrixUnique calls this function when
 	 *                             grb::descriptors::no_duplicates is passed.
 	 *

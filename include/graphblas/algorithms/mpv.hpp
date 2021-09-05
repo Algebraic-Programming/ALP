@@ -25,7 +25,6 @@
 
 #include <graphblas.hpp>
 
-
 namespace grb {
 	namespace algorithms {
 

@@ -28,20 +28,20 @@
 
 #include <numeric> //std::accumulate
 
-#include "graphblas/backends.hpp"
-#include "graphblas/banshee/blas1.hpp"
-#include "graphblas/banshee/blas2.hpp"
-#include "graphblas/banshee/compressed_storage.hpp"
-#include "graphblas/config.hpp"
-#include "graphblas/matrix.hpp"
-#include "graphblas/ops.hpp"
-#include "graphblas/rc.hpp"
-#include "graphblas/type_traits.hpp"
-#include "graphblas/utils/autodeleter.hpp"
-#include "graphblas/utils/pattern.hpp" //for help with dealing with pattern matrix input
+#include <graphblas/backends.hpp>
+#include <graphblas/base/matrix.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/ops.hpp>
+#include <graphblas/rc.hpp>
+#include <graphblas/type_traits.hpp>
+#include <graphblas/utils/autodeleter.hpp>
+#include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
 									   //#include <sstream> //std::stringstream
-
 #include <assert.h>
+
+#include "blas1.hpp"
+#include "blas2.hpp"
+#include "compressed_storage.hpp"
 
 namespace grb {
 
@@ -60,6 +60,64 @@ namespace grb {
 		void setCurrentNonzeroes( grb::Matrix< D, banshee > & A, const size_t nnz ) noexcept {
 			A.nz = nnz;
 		}
+
+		template< Descriptor,
+			bool,
+			bool,
+			bool,
+			bool,
+			template< typename >
+			class One,
+			typename IOType,
+			class AdditiveMonoid,
+			class Multiplication,
+			typename InputType1,
+			typename InputType2,
+			typename InputType3,
+			typename Coords,
+			typename RowColType,
+			typename NonzeroType >
+		void vxm_inner_kernel_scatter( RC & rc,
+			internal::Coordinates< banshee >::Update &,
+			Vector< IOType, banshee, Coords > &,
+			IOType * __restrict__ const &,
+			const size_t &,
+			const Vector< InputType1, banshee, Coords > &,
+			const InputType1 * __restrict__ const &,
+			const size_t &,
+			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &,
+			const Vector< InputType3, banshee, Coords > &,
+			const InputType3 * __restrict__ const &,
+			const AdditiveMonoid &,
+			const Multiplication &,
+			const std::function< size_t( size_t ) > &,
+			const std::function< size_t( size_t ) > & );
+
+		template< Descriptor,
+			bool,
+			bool,
+			bool,
+			template< typename >
+			class One,
+			class AdditiveMonoid,
+			class Multiplication,
+			typename IOType,
+			typename InputType1,
+			typename InputType2,
+			typename InputType3,
+			typename InputType4,
+			typename Coords >
+		RC vxm_generic( Vector< IOType, banshee, Coords > &,
+			const Vector< InputType3, banshee, Coords > &,
+			const Vector< InputType1, banshee, Coords > &,
+			const Vector< InputType4, banshee, Coords > &,
+			const Matrix< InputType2, banshee > &,
+			const AdditiveMonoid &,
+			const Multiplication &,
+			const std::function< size_t( size_t ) > &,
+			const std::function< size_t( size_t ) > &,
+			const std::function< size_t( size_t ) > &,
+			const std::function< size_t( size_t ) > & );
 	} // namespace internal
 
 	/**
@@ -98,28 +156,61 @@ namespace grb {
 		template< typename Func, typename DataType >
 		friend RC eWiseLambda( const Func, const Matrix< DataType, banshee > & );
 
-		template< bool, bool, bool, bool, bool, bool, Descriptor, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename RowColType, typename NonzeroType >
+		// template< bool, bool, bool, bool, bool, bool, Descriptor, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename RowColType, typename
+		// NonzeroType >
+		template< Descriptor,
+			bool,
+			bool,
+			bool,
+			bool,
+			template< typename >
+			class One,
+			typename IOType,
+			class AdditiveMonoid,
+			class Multiplication,
+			typename InputType1,
+			typename InputType2,
+			typename InputType3,
+			typename Coords,
+			typename RowColType,
+			typename NonzeroType >
 		friend void internal::vxm_inner_kernel_scatter( RC &,
 			internal::Coordinates< banshee >::Update &,
-			Vector< IOType, banshee > &,
-			IOType * __restrict__ const,
-			const Vector< InputType1, banshee > &,
-			const InputType1 * __restrict__ const,
-			const size_t,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > *,
-			const Vector< InputType3, banshee > &,
-			const InputType3 * __restrict__ const,
-			const Ring &,
-			const std::function< size_t( size_t ) >,
-			const std::function< size_t( size_t ) > );
+			Vector< IOType, banshee, Coords > &,
+			IOType * __restrict__ const &,
+			const size_t &,
+			const Vector< InputType1, banshee, Coords > &,
+			const InputType1 * __restrict__ const &,
+			const size_t &,
+			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &,
+			const Vector< InputType3, banshee, Coords > &,
+			const InputType3 * __restrict__ const &,
+			const AdditiveMonoid &,
+			const Multiplication &,
+			const std::function< size_t( size_t ) > &,
+			const std::function< size_t( size_t ) > & );
 
-		template< Descriptor, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename Operator, typename InputType3 >
-		friend RC internal::vxm_generic( Vector< IOType, banshee > &,
-			const Vector< InputType3, banshee > &,
-			const Operator &,
-			const Vector< InputType1, banshee > &,
+		template< Descriptor,
+			bool,
+			bool,
+			bool,
+			template< typename >
+			class One,
+			class AdditiveMonoid,
+			class Multiplication,
+			typename IOType,
+			typename InputType1,
+			typename InputType2,
+			typename InputType3,
+			typename InputType4,
+			typename Coords >
+		friend RC vxm_generic( Vector< IOType, banshee, Coords > &,
+			const Vector< InputType3, banshee, Coords > &,
+			const Vector< InputType1, banshee, Coords > &,
+			const Vector< InputType4, banshee, Coords > &,
 			const Matrix< InputType2, banshee > &,
-			const Ring &,
+			const AdditiveMonoid &,
+			const Multiplication &,
 			const std::function< size_t( size_t ) > &,
 			const std::function< size_t( size_t ) > &,
 			const std::function< size_t( size_t ) > &,

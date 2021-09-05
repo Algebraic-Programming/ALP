@@ -122,7 +122,8 @@ namespace grb {
 			//         on the original matrix P
 
 			// make diagonals equal its inverse
-			ret = ret ? ret : eWiseLambda(
+			ret = ret ? ret :
+                        eWiseLambda(
 							[ &diagonals ]( const size_t i ) {
 								diagonals[ i ] = 1.0 / diagonals[ i ];
 							},
@@ -165,7 +166,8 @@ namespace grb {
 				// maintain the solution function in domain {0,1}
 				// clamps the first l labelled nodes
 				// can use the masked variant of vector assign when available ?
-				ret = ret ? ret : eWiseLambda(
+				ret = ret ? ret :
+                            eWiseLambda(
 								[ &fNext, &diagonals, &l ]( const size_t i ) {
 									fNext[ i ] = ( fNext[ i ] * diagonals[ i ] < 0.5 ? 0 : 1 );
 								},

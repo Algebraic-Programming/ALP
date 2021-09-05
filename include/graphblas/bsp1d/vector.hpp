@@ -662,8 +662,9 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "Issuing allgather on assigned array from offset " << _offset * sizeof( bool ) << " length " << _local_n << ". P = " << data.P << "\n";
 #endif
-			const lpf_err_t rc = data.P == 1 ? LPF_SUCCESS :
-				internal::allgather( _assigned_slot, _offset * sizeof( bool ), _assigned_slot, _offset * sizeof( bool ), _local_n * sizeof( bool ), _n * sizeof( bool ) );
+			const lpf_err_t rc = data.P == 1 ?
+                LPF_SUCCESS :
+                internal::allgather( _assigned_slot, _offset * sizeof( bool ), _assigned_slot, _offset * sizeof( bool ), _local_n * sizeof( bool ), _n * sizeof( bool ) );
 
 			// if succeeded...
 			if( rc == LPF_SUCCESS ) {

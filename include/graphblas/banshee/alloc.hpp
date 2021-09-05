@@ -23,9 +23,9 @@
 #ifndef _H_GRB_ALLOC_BANSHEE
 #define _H_GRB_ALLOC_BANSHEE
 
-#include "graphblas/utils/autodeleter.hpp"
+#include <snrt.h>
 
-#include "snrt.h"
+#include <graphblas/base/alloc.hpp>
 
 namespace grb {
 	namespace utils {
@@ -168,10 +168,10 @@ namespace grb {
 namespace grb {
 	namespace utils {
 		template< typename T, typename... Targs >
-		RC alloc( T * __restrict__ & pointer, const size_t size, const bool shared, utils::AutoDeleter< T > & deleter, Targs &&... args ) {
+		RC alloc( T * __restrict__ & pointer, const size_t size, const bool shared, utils::AutoDeleter< T, banshee > & deleter, Targs &&... args ) {
 			size_t allocd = 0;
 
-			const RC ret = internal::Allocator<>::functions::alloc( allocd, pointer, size, shared, deleter, std::forward< Targs >( args )... );
+			const RC ret = internal::Allocator< banshee >::functions::alloc( allocd, pointer, size, shared, deleter, std::forward< Targs >( args )... );
 			return ret;
 		}
 

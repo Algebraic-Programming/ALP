@@ -32,7 +32,7 @@
 
 #include <sys/stat.h> //C-style stat, used to check file existance
 
-#include "graphblas/utils/parser/MatrixFileProperties.hpp"
+#include "MatrixFileProperties.hpp"
 
 namespace grb {
 	namespace utils {

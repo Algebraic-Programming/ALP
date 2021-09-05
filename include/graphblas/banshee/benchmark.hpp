@@ -28,11 +28,11 @@
 #error "This file should be included from the header containing the base class definition of grb::Benchmarker"
 #endif
 
-#include "graphblas/banshee/exec.hpp"
-#include "graphblas/benchmark.hpp"
-#include "graphblas/exec.hpp"
-#include "graphblas/rc.hpp"
+#include <graphblas/banshee/exec.hpp>
 #include <graphblas/base/benchmark.hpp>
+#include <graphblas/benchmark.hpp>
+#include <graphblas/exec.hpp>
+#include <graphblas/rc.hpp>
 
 namespace grb {
 

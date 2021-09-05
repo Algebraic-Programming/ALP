@@ -23,8 +23,8 @@
 #ifndef _H_GRB_BANSHEE_DISTRIBUTION
 #define _H_GRB_BANSHEE_DISTRIBUTION
 
-#include "graphblas/config.hpp"
-#include "graphblas/distribution.hpp"
+#include <graphblas/config.hpp>
+#include <graphblas/distribution.hpp>
 
 namespace grb {
 

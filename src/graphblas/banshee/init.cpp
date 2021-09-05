@@ -22,8 +22,6 @@
 
 #include "graphblas/banshee/init.hpp"
 
-#include "graphblas/utils/alloc.hpp"
-
 template<>
 grb::RC grb::init< grb::banshee >( const size_t s, const size_t P, void * const data ) {
 	// we don't use any implementation-specific init data

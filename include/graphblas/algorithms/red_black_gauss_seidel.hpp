@@ -86,7 +86,8 @@ namespace grb {
 				// Replace below with masked calls:
 				// x[mask] = r[mask] - smoother_temp[mask] + x[mask] .* diagonal[mask]
 				// x[mask] = x[maks] ./ diagonal[mask]
-				ret = ret ? ret : grb::eWiseLambda(
+				ret = ret ? ret :
+                            grb::eWiseLambda(
 								[ &x, &r, &smoother_temp, &color_mask, &A_diagonal ]( const size_t i ) {
 									// if the mask was properly initialized, the check on the mask value is unnecessary;
 					                // nonetheless, it is left not to violate the semantics of RBGS in case also the false values

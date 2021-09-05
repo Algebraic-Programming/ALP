@@ -53,24 +53,27 @@ reference=yes
 banshee=no
 lpf=yes
 show=no
-deps=../deps
 FLAGS=$''
 LPF_INSTALL_PATH=
+BANSHEE_PATH=
+SNITCH_PATH=
+
 for arg in "$@"
 do
 	case "$arg" in
 	-h|--help)	echo "Usage: ./configure --prefix=<path> [--with-lpf=<path>]\
- [--with-deps=<path>] [--no-lpf] [--no-reference] [--no-banshee]"
+ [--with-banshee=<path>] [--no-lpf] [--no-reference] [--no-banshee]"
 			echo " "
 			echo "Required arguments:"
 			echo "  --prefix=<path/to/install/directory/>"
 			echo " "
 			echo "Optional arguments:"
 			echo "  --with-lpf=<path/>             - where LPF is installed"
-			echo "  --deps=<path/to/dependencies/> - where dependencies are located"
 			echo "  --no-reference                 - disables the reference and reference_omp backends"
-			echo "  --no-banshee                   - disables the banshee backend"
 			echo "  --no-lpf                       - disables all backends that depend on LPF"
+			echo "  --no-banshee                   - disables the banshee backend"
+			echo "  --with-banshee=<path/>         - path to the the tools to compile the banshee backend"
+			echo "  --with-snitch=<path/>          - path to the tools for Snitch support within the banshee backend"
 			echo " "
 			echo "Notes:"
 			echo "  - If the install directory does not exist, it will be created."
@@ -80,9 +83,7 @@ do
 			echo "    without configuring this path first."
 			echo "  - This ./configure script is re-entrant and will simply overwrite"
 			echo "    *all* previous setting, but will not clean up anything. For best"
-		        echo "    results, execute ./configure only once on a clean source directory."
-			echo "  - Any dependencies will be installed in the given prefix path."
-			echo "  - The default dependencies path is ../deps"
+		    echo "    results, execute ./configure only once on a clean source directory."
 			exit
 			;;
 	--prefix=*)	prefix="`echo "${arg}" | cut -d'=' -f2-`"
@@ -91,8 +92,6 @@ do
 			LPF_INSTALL_PATH="`echo "${arg}" | cut -d'=' -f2-`"
 			lpf=yes
 			;;
-	--deps=*)       deps="`echo "${arg}" | cut -d'=' -f2-`"
-			;;
 	--no-lpf)
 			FLAGS+=$'NO_LPF=true\n'
 			lpf=no
@@ -100,6 +99,14 @@ do
 	--no-banshee)
 			FLAGS+=$'NO_BANSHEE=true\n'
 			banshee=no
+			;;
+	--with-banshee=*)
+			BANSHEE_PATH="`echo "${arg}" | cut -d'=' -f2-`"
+			banshee=yes
+			;;
+	--with-snitch=*)
+			SNITCH_PATH="`echo "${arg}" | cut -d'=' -f2-`"
+			banshee=yes
 			;;
 	--no-reference)
 			FLAGS+=$'NO_REFERENCE=true\n'
@@ -117,6 +124,29 @@ if [ -z "${prefix}" ] || [ "${prefix}" = " " ]; then
 	exit 1;
 fi
 
+if [[ "${banshee}" != "no" ]]; then
+	if [[ -z "${BANSHEE_PATH}" || -z "${SNITCH_PATH}" ]]; then
+		echo "Error: please provide values to both '--with-banshee' and '--with-snitch' arguments"
+		exit 1
+	fi
+	if [[ ! -d "${BANSHEE_PATH}" ]]; then
+		echo "Error: ${BANSHEE_PATH} is not a valid path"
+		exit 1
+	fi
+	if [[ ! -d "${SNITCH_PATH}" ]]; then
+		echo "Error: ${SNITCH_PATH} is not a valid path"
+		exit 1
+	fi
+	# remove possible trailing '/'
+	BANSHEE_PATH=$(cd ${BANSHEE_PATH} && pwd)
+	SNITCH_PATH=$(cd ${SNITCH_PATH} && pwd)
+else
+	FLAGS+=$'NO_BANSHEE=true\n'
+	# blank the variables
+	BANSHEE_PATH=
+	SNITCH_PATH=
+fi
+
 if [ ! -d "${prefix}" ]; then
 	echo "Warning: install directory will be created when output is written there (either on \`make install' or on installing a pre-packaged dependency).";
 	DIRNAME=`dirname "${prefix}"`
@@ -130,14 +160,6 @@ if [ ! -d "${prefix}" ]; then
 else
 	ABSOLUTE_PREFIX=`readlink -e ${prefix}`
 	echo "Warning: any pre-existing data in ${ABSOLUTE_PREFIX} may be overwritten."
-fi
-
-if [ ! -d "${deps}" ]; then
-	echo "Warning: dependencies path does not exist. Targets for installing dependencies will fail to build.
-"
-	ABSOLUTE_DEPS=`pwd`/${deps}
-else
-	ABSOLUTE_DEPS=`readlink -e ${deps}`
 fi
 
 if [ x$lpf = xno ]; then
@@ -162,13 +184,15 @@ if [ x$show = xyes ]; then
 	echo "paths.mk contents:"
 	echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}"
 	echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}"
-	echo "DEP_SRC_DIR=${ABSOLUTE_DEPS}"
+	echo "BANSHEE_PATH=${BANSHEE_PATH}"
+	echo "SNITCH_PATH=${SNITCH_PATH}"
 	echo
 else
 	echo "${FLAGS}" > flags.mk
 	echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}" > paths.mk
 	echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}" >> paths.mk
-	echo "DEP_SRC_DIR=${ABSOLUTE_DEPS}" >> paths.mk
+	echo "BANSHEE_PATH=${BANSHEE_PATH}" >> paths.mk
+	echo "SNITCH_PATH=${SNITCH_PATH}" >> paths.mk
 fi
 
 echo "Configure done."

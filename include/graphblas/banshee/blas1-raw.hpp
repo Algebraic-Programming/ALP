@@ -23,9 +23,10 @@
 #if ! defined _H_GRB_BANSHEE_BLAS1_RAW || defined _H_GRB_BANSHEE_OMP_BLAS1_RAW
 #define _H_GRB_BANSHEE_BLAS1_RAW
 
-#include "graphblas/banshee/coordinates.hpp"
-#include "graphblas/banshee/vector.hpp"
-#include "graphblas/config.hpp"
+#include <graphblas/config.hpp>
+
+#include "coordinates.hpp"
+#include "vector.hpp"
 
 #ifdef _H_GRB_BANSHEE_OMP_BLAS1_RAW
 #include <omp.h>

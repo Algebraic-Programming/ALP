@@ -97,11 +97,11 @@ namespace grb {
 		 */
 		template< Descriptor descr = descriptors::no_operation, typename IOType, typename NonzeroT >
 		RC simple_pagerank( Vector< IOType > & pr,
-			const Matrix< NonzeroT > & L,     // PageRank input and output
-			Vector< IOType > & pr_next,       // Three buffers
+			const Matrix< NonzeroT > & L, // PageRank input and output
+			Vector< IOType > & pr_next,   // Three buffers
 			Vector< IOType > & pr_nextnext,
 			Vector< IOType > & row_sum,
-			const IOType alpha = 0.85,        // PageRank parameters
+			const IOType alpha = 0.85, // PageRank parameters
 			const IOType conv = 0.0000001,
 			const size_t max = 1000,          // Power method arguments
 			size_t * const iterations = NULL, // Optional algo call stats

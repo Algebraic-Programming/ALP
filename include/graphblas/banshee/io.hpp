@@ -22,10 +22,11 @@
 #if ! defined _H_GRB_BANSHEE_IO
 #define _H_GRB_BANSHEE_IO
 
-#include "graphblas/banshee/coordinates.hpp"
-#include "graphblas/banshee/vector.hpp"
-#include "graphblas/io.hpp"
-#include "graphblas/utils/SynchronizedNonzeroIterator.hpp"
+#include <graphblas/io.hpp>
+#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+
+#include "coordinates.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -170,8 +171,8 @@ namespace grb {
 	 * Not supported.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, banshee > & x, fwd_iterator start, const fwd_iterator end, const IOMode mode, const Dup & dup = Dup() ) {
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > & x, fwd_iterator start, const fwd_iterator end, const IOMode mode, const Dup & dup ) {
 		// static sanity check
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, decltype( *std::declval< fwd_iterator >() ) >::value ), "grb::buildVector (banshee implementation)",
 			"Input iterator does not match output vector type while no_casting "
@@ -190,6 +191,11 @@ namespace grb {
 
 		// do delegate
 		return x.template build< descr >( dup, start_pos, end, start );
+	}
+
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > & x, fwd_iterator start, const fwd_iterator end, const IOMode mode ) {
+		return buildVector( x, start, end, mode, Dup() );
 	}
 
 	/**
@@ -368,14 +374,14 @@ namespace grb {
 	 *      the user processes.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator1, typename fwd_iterator2, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, banshee > & x,
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator1, typename fwd_iterator2, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > & x,
 		fwd_iterator1 ind_start,
 		const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start,
 		const fwd_iterator2 val_end,
 		const IOMode mode,
-		const Dup & dup = Dup() ) {
+		const Dup & dup ) {
 		// static sanity check
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
 							std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value ),
@@ -393,6 +399,11 @@ namespace grb {
 
 		// call the private member function that provides this functionality
 		return x.template build< descr >( dup, ind_start, ind_end, val_start, val_end );
+	}
+
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator1, typename fwd_iterator2, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > & x, fwd_iterator1 ind_start, const fwd_iterator1 ind_end, fwd_iterator2 val_start, const fwd_iterator2 val_end, const IOMode mode ) {
+		return buildVector( x, ind_start, ind_end, val_start, val_end, mode, Dup() );
 	}
 
 	/*

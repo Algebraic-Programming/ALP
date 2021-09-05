@@ -7287,7 +7287,7 @@ RC foldl( IOType & x,
 }
 
 /**
- * TODO internal issue #195 
+ * TODO internal issue #195
  */
 template< Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords >
 RC zip( Vector< std::pair< T, U >, reference, Coords > & z,
@@ -7320,7 +7320,7 @@ RC zip( Vector< std::pair< T, U >, reference, Coords > & z,
 }
 
 /**
- * TODO internal issue #195 
+ * TODO internal issue #195
  */
 template< Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords >
 RC unzip( Vector< T, reference, Coords > & x,

@@ -32,22 +32,24 @@
 #include <assert.h>
 #include <errno.h>
 
-#include "graphblas/backends.hpp"
-#include "graphblas/banshee/compressed_storage.hpp"
-#include "graphblas/banshee/coordinates.hpp"
-#include "graphblas/blas0.hpp"
-#include "graphblas/config.hpp"
-#include "graphblas/descriptors.hpp"
-#include "graphblas/distribution.hpp"
-#include "graphblas/forward.hpp"
-#include "graphblas/iomode.hpp"
-#include "graphblas/ops.hpp"
-#include "graphblas/rc.hpp"
-#include "graphblas/spmd.hpp"
-#include "graphblas/type_traits.hpp"
-#include "graphblas/utils/alloc.hpp"
-#include "graphblas/utils/autodeleter.hpp"
-#include "graphblas/vector.hpp"
+#include <graphblas/backends.hpp>
+#include <graphblas/base/matrix.hpp>
+#include <graphblas/base/pinnedvector.hpp>
+#include <graphblas/base/vector.hpp>
+#include <graphblas/blas0.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/descriptors.hpp>
+#include <graphblas/distribution.hpp>
+#include <graphblas/iomode.hpp>
+#include <graphblas/ops.hpp>
+#include <graphblas/rc.hpp>
+#include <graphblas/spmd.hpp>
+#include <graphblas/type_traits.hpp>
+#include <graphblas/utils/alloc.hpp>
+#include <graphblas/utils/autodeleter.hpp>
+
+#include "compressed_storage.hpp"
+#include "coordinates.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -134,6 +136,20 @@ namespace grb {
 
 	} // namespace internal
 
+	template< typename D, typename Coords >
+	class Vector< D, BSP1D, Coords >;
+
+	template< typename D >
+	class Matrix< D, banshee >;
+	template< typename IOType >
+	class PinnedVector< IOType, banshee >;
+
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > &, fwd_iterator, const fwd_iterator, const IOMode, const Dup & );
+
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename Coords, typename fwd_iterator1, typename fwd_iterator2, class Dup = operators::right_assign< InputType > >
+	RC buildVector( Vector< InputType, banshee, Coords > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
+
 	/**
 	 * The banshee implementation of a GraphBLAS vector.
 	 *
@@ -154,23 +170,23 @@ namespace grb {
 		     `Getter' friends
 		   ********************* */
 
-		friend MyCoordinates & internal::getCoordinates<>( Vector< D, banshee > & x ) noexcept;
+		friend MyCoordinates & internal::getCoordinates<>( Vector< D, banshee, MyCoordinates > & x ) noexcept;
 
-		friend const MyCoordinates & internal::getCoordinates<>( const Vector< D, banshee > & x ) noexcept;
+		friend const MyCoordinates & internal::getCoordinates<>( const Vector< D, banshee, MyCoordinates > & x ) noexcept;
 
-		friend D * internal::getRaw<>( Vector< D, banshee > & x ) noexcept;
+		friend D * internal::getRaw<>( Vector< D, banshee, MyCoordinates > & x ) noexcept;
 
-		friend const D * internal::getRaw<>( const Vector< D, banshee > & x ) noexcept;
+		friend const D * internal::getRaw<>( const Vector< D, banshee, MyCoordinates > & x ) noexcept;
 
 		/* *********************
 		        IO friends
 		   ********************* */
 
-		template< Descriptor, typename InputType, typename fwd_iterator, class Dup >
-		friend RC buildVector( Vector< InputType, banshee > &, fwd_iterator, const fwd_iterator, const IOMode, const Dup & );
+		template< Descriptor, typename InputType, typename Coords, typename fwd_iterator, class Dup >
+		friend RC buildVector( Vector< InputType, banshee, Coords > &, fwd_iterator, const fwd_iterator, const IOMode, const Dup & );
 
-		template< Descriptor descr, typename InputType, typename fwd_iterator1, typename fwd_iterator2, class Dup >
-		friend RC buildVector( Vector< InputType, banshee > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
+		template< Descriptor descr, typename InputType, typename Coords, typename fwd_iterator1, typename fwd_iterator2, class Dup >
+		friend RC buildVector( Vector< InputType, banshee, Coords > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
 
 		friend class PinnedVector< D, banshee >;
 
@@ -179,8 +195,7 @@ namespace grb {
 		/* *********************
 		 Auxiliary backend friends
 		   ********************* */
-
-		friend class Vector< D, BSP1D >;
+		friend class Vector< D, BSP1D, MyCoordinates >;
 
 	private:
 		/** Pointer to the raw underlying array. */
@@ -392,11 +407,11 @@ namespace grb {
 
 			// Vector should be able to call ConstIterator's private constructor;
 			// no-one else is allowed to.
-			friend class Vector< D, banshee >;
+			friend class Vector< D, banshee, MyCoordinates >;
 
 		private:
 			/** Handle to the container to iterate on. */
-			const Vector< D, banshee > * container;
+			const Vector< D, banshee, MyCoordinates > * container;
 
 			/** The current iterator value. */
 			std::pair< size_t, D > value;
@@ -430,7 +445,7 @@ namespace grb {
 			 * given container. If it is equal, this iterator will be set to its end
 			 * position.
 			 */
-			ConstIterator( const Vector< D, banshee > & in, size_t initial = 0, size_t processID = 0, size_t numProcesses = 1 ) noexcept :
+			ConstIterator( const Vector< D, banshee, MyCoordinates > & in, size_t initial = 0, size_t processID = 0, size_t numProcesses = 1 ) noexcept :
 				container( &in ), position( initial ), s( processID ), P( numProcesses ) {
 				// make sure the initial value is valid;
 				// if not, go to the next valid value:
@@ -582,7 +597,7 @@ namespace grb {
 		 * @throws runtime_error If the call to grb::set fails, the error code is
 		 *                       caught and thrown.
 		 */
-		Vector( const Vector< D, banshee > & x ) {
+		Vector( const Vector< D, banshee, MyCoordinates > & x ) {
 			initialize( NULL, NULL, false, NULL, size( x ) );
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
@@ -594,7 +609,7 @@ namespace grb {
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		Vector( Vector< D, banshee > && x ) noexcept {
+		Vector( Vector< D, banshee, MyCoordinates > && x ) noexcept {
 			// copy and move
 			_raw = x._raw;
 			_coordinates = std::move( x._coordinates );
@@ -607,7 +622,7 @@ namespace grb {
 		}
 
 		/** Assign-from-temporary. */
-		Vector< D, banshee > & operator=( Vector< D, banshee > && x ) noexcept {
+		Vector< D, banshee, MyCoordinates > & operator=( Vector< D, banshee, MyCoordinates > && x ) noexcept {
 			_raw = x._raw;
 			_coordinates = std::move( x._coordinates );
 			_raw_deleter = std::move( x._raw_deleter );
@@ -675,7 +690,7 @@ namespace grb {
 			typename ind_iterator = const size_t * __restrict__,
 			typename nnz_iterator = const D * __restrict__,
 			class Dup = operators::right_assign< D, typename nnz_iterator::value_type, D > >
-		RC build( const Vector< mask_type > mask,
+		RC build( const Vector< mask_type, banshee, MyCoordinates > & mask,
 			const Accum & accum,
 			const ind_iterator ind_start,
 			const ind_iterator ind_end,
@@ -730,7 +745,7 @@ namespace grb {
 		 * @see Vector for the user-level specfication.
 		 */
 		template< Descriptor descr = descriptors::no_operation, class Accum = operators::right_assign< D, D, D >, typename T, typename mask_type = bool >
-		RC assign( const T val, const Vector< mask_type, banshee > mask, const Accum & accum = Accum() ) {
+		RC assign( const T val, const Vector< mask_type, banshee, MyCoordinates > mask, const Accum & accum = Accum() ) {
 			// sanity checks
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::left_type, T >::value ), "Vector::assign (3)",
 				"called with a value type that does not match the first domain of "
@@ -850,8 +865,8 @@ namespace grb {
 	};
 
 	// specialisation for GraphBLAS type_traits
-	template< typename D >
-	struct is_container< Vector< D, banshee > > {
+	template< typename D, typename C >
+	struct is_container< Vector< D, banshee, C > > {
 		/** A banshee vector is a GraphBLAS object. */
 		static const constexpr bool value = true;
 	};

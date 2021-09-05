@@ -95,12 +95,12 @@ void grbProgram( const size_t s, const size_t P, int & exit_status ) {
 	Vector< double > pr( n );
 	Vector< double > buf1( n ), buf2( n ), buf3( n );
 
-//#ifdef SIMPLE_PR_TEST
+	//#ifdef SIMPLE_PR_TEST
 	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3 );
-//#else
-//	rc = pagerank< descriptors::no_operation, Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >, operators::subtract< double >,
-//		operators::divide< double >, double, void >( pr, L, buf1, buf2, buf3 );
-//#endif
+	//#else
+	//	rc = pagerank< descriptors::no_operation, Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >, operators::subtract< double >,
+	//		operators::divide< double >, double, void >( pr, L, buf1, buf2, buf3 );
+	//#endif
 
 	// set error code
 	if( rc == FAILED ) {

@@ -25,10 +25,10 @@
 
 #include <type_traits>
 
-#include "graphblas/backends.hpp"
-#include "graphblas/descriptors.hpp"
-#include "graphblas/forward.hpp"
-#include "graphblas/rc.hpp"
+#include <graphblas/backends.hpp>
+#include <graphblas/base/collectives.hpp>
+#include <graphblas/descriptors.hpp>
+#include <graphblas/rc.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -45,28 +45,7 @@
 		"* Possible fix 2 | Provide a value of the same type as the first "    \
 		"domain of the given operator.\n"                                      \
 		"* Possible fix 3 | Ensure the operator given to this call to " y " h" \
-		"as"                                                                   \
-		" a"                                                                   \
-		"ll"                                                                   \
-		" o"                                                                   \
-		"f "                                                                   \
-		"it"                                                                   \
-		"s "                                                                   \
-		"do"                                                                   \
-		"ma"                                                                   \
-		"in"                                                                   \
-		"s "                                                                   \
-		"eq"                                                                   \
-		"ua"                                                                   \
-		"l "                                                                   \
-		"to"                                                                   \
-		" e"                                                                   \
-		"ac"                                                                   \
-		"h "                                                                   \
-		"ot"                                                                   \
-		"he"                                                                   \
-		"r."                                                                   \
-		"\n"                                                                   \
+		"as all of its domains equal to each other.\n"                         \
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
@@ -93,7 +72,7 @@ namespace grb {
 		template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType >
 		static RC allreduce( IOType &, const Operator = Operator() ) {
 			// static checks
-			NO_CAST_ASSERT( ! ( descr & no_casting ) ||
+			NO_CAST_ASSERT( ! ( descr & descriptors::no_casting ) ||
 					( std::is_same< IOType, typename Operator::D1 >::value && std::is_same< IOType, typename Operator::D2 >::value && std::is_same< IOType, typename Operator::D3 >::value ),
 				"collectives::allreduce", "operator types do not match input type." );
 			// done
