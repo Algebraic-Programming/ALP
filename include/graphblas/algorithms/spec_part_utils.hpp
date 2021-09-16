@@ -76,9 +76,11 @@ namespace grb {
                 > &pattern_ring ) {
                 
                 Vector<IOType> diag_x(n), Ax(n);
-
+                grb::set(diag_x,0);
+                grb::set(Ax,0);
                 grb::eWiseApply( diag_x, diag, x, operators::mul<IOType>() ); //CHANGE TO apply ONCE ALBERT-JAN RENAMES eWiseApply
                 grb::mxv( Ax, A, x, pattern_ring );
+                
                 grb::eWiseApply( Lx, diag_x, Ax, operators::subtract<IOType>() );
 
                 return SUCCESS;
@@ -170,7 +172,7 @@ namespace grb {
                 to_subtract=to_subtract/n;
 
                 phi_p( x, p );
-                
+                // maybe here?!!
                 foldl( x, -to_subtract, mono_add );
 
                 phi_p( x, p/(p-1) );
@@ -227,6 +229,7 @@ namespace grb {
 
                     // W part
                     grb::clear( aux );
+                    grb::set(aux,0);
                     grb::vxm( aux, *(cluster_indic[ i ]), W, pattern_sum );
 
                     eWiseLambda( [ &cluster_indic, &aux, &i ] ( size_t j ){

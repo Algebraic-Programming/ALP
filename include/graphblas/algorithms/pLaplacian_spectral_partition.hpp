@@ -132,6 +132,7 @@ namespace grb
 
                     spec_part_utils::ratio_cheeger_cut(r_cheeg, par, A, m, n, integers_ring);
 
+
                     if (r_cheeg <= r_cheeg_min /*ratio Cheeger cut better than before*/
                         && std::fabs(2 * p_norm(par, (bool)1, integers_ring.getAdditiveMonoid()) / static_cast<IOType>(n) - 1) < b_max)
                     {                          //load balance constraint
@@ -355,7 +356,7 @@ namespace grb
 
             // place the optimiser into the rows of a graphblas matrix for kmeans classification
             const double *OptPtr = Optimizer.ObtainReadData();
-            // Optimizer = GrassInit;
+            Optimizer = GrassInit;
             std::cout << "-------------" << std::endl; 
             std::cout << "The final solution" << std::endl;
             std::cout << "-------------" << std::endl; 

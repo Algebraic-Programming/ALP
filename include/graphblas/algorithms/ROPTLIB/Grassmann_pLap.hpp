@@ -85,6 +85,7 @@ namespace ROPTLIB {
                 grb::Matrix< double > Wuu( n, n );
                 grb::resize( Wuu, grb::nnz( W ) );
                 grb::Vector< double > vec( n );
+                grb::set(vec,0);
                 double s = 0;
 
                 grb::set( Wuu, W );
@@ -226,7 +227,7 @@ namespace ROPTLIB {
                     grb::set( *(Res[ l ]), 0 );
                     grb::eWiseLambda( [ &vec, &powsum, &factor, &l, this ]( const size_t i ) {
                         (*(this->Res[ l ]))[ i ] =
-                            -( (this->p) / powsum ) *
+                            ( (this->p) / powsum ) *
                             ( vec[ i ] - factor * phi_p( (*(this->Columns[ l ]))[ i ] ) );
                     }, vec );
                 }
