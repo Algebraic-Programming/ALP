@@ -83,11 +83,6 @@ void matrixMarket2RowHyperGraph( Matrix< int > &A, int &num_edges, int &num_cols
 		}
 	}	
 
-	std::cout << "kir " << num_edges << std::endl;
-	std::cout << " e " << num_cols << std::endl;
-
-
-
 }
 
 void grbProgram( const struct input &data_in, struct output &out) {
@@ -95,9 +90,8 @@ void grbProgram( const struct input &data_in, struct output &out) {
 	int k = 2;
 	double c = 1.1;
     timer.reset();
-
+	// very hacky fix for now
 	std::string fileType = "hmetis";
-	//std::string fileType = "kinotrailer";
 
     if (data_in.filename[0] == '\0') {
         std::cerr << "no file name given as input." << std::endl;

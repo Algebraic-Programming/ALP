@@ -320,7 +320,6 @@ namespace grb {
 				if ( pair.second != 0 ) cursize += 1;
 
 			}
-			std::cout << "curr size is " << cursize << std::endl;
 			double maxsize = c * cursize/k;
 			
 			for( const std::pair< size_t, double > &pair : M ) {
@@ -619,13 +618,10 @@ namespace grb {
 			
 			// grb::buildMatrixUnique( W, converter.begin(), converter.end(), PARALLEL );
 			// grb::buildMatrixUnique(W, w_vals.begin(), w_vals.end(), SEQUENTIAL );
-			std::cout << "A rows: " << grb::nrows( A ) << " A cols: " << grb::ncols( A ) << std::endl;
-			std::cout << "W rows: " << grb::nrows( W ) << " W cols: " << grb::ncols( W ) << std::endl;
 
 			grb::buildMatrixUnique( W, &(I[0]), &(J[0]), &(V[0]), WV.size(), SEQUENTIAL );
 		
 	
-			std::cout << "here" << std::endl;
 
 			// RC diditfuckup = grb::mxm( Aw, W, A, standard_sr );
 			
