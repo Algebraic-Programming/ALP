@@ -51,58 +51,59 @@ namespace grb {
 					grb::identities::zero, 
 					grb::identities::one
 			    > standard_sr;
-			// std::vector<int> Ivec, Jvec;
-			// std::vector<double> Vvec;
+			std::vector<int> Ivec, Jvec;
+			std::vector<double> Vvec;
 			int n_vertices = grb::ncols(Aw);
-			// for( int i = 0; i < n_vertices; ++i) {
-			// 	Vector< IOType > col( n_vertices );
-			// 	if (i != i_max) {
-			// 		grb::setElement( col, 1, i );
-			// 	}
-			// 	if (i == v) {
-			// 		grb::setElement( col, 1, i_max );
-			// 	}
-			// 	Vector< IOType > vi( n_vertices );
-			// 	grb::mxv( vi, Aw, col, standard_sr );
-			// 	for ( const std::pair< size_t, IOType > &pair1 : vi ) {
-			// 		double val1 = pair1.second;
-			// 		if (val1 != 0) {
-			// 			int i1 = pair1.first;
-			// 			Ivec.push_back( i1 );
-			// 			Jvec.push_back( i );
-			// 			Vvec.push_back( val1 );
-			// 		}
-			// 	}
-			// }
-			std::vector<int> Ivec2, Jvec2;
-			std::vector<double> Vvec2;
-			for( int i = 0; i < n_vertices; ++i ) {
-				
-				if ( i != i_max ) {
-					Ivec2.push_back( i );
-					Jvec2.push_back( i );
-					Vvec2.push_back( 1 );
+			for( int i = 0; i < n_vertices; ++i) {
+				Vector< IOType > col( n_vertices );
+				if (i != i_max) {
+					grb::setElement( col, 1, i );
 				}
-				if ( i == v ) {
-					Ivec2.push_back( i_max );
-					Jvec2.push_back( i );
-					Vvec2.push_back( 1 );
+				if (i == v) {
+					grb::setElement( col, 1, i_max );
+				}
+				Vector< IOType > vi( n_vertices );
+				grb::mxv( vi, Aw, col, standard_sr );
+				for ( const std::pair< size_t, IOType > &pair1 : vi ) {
+					double val1 = pair1.second;
+					if (val1 != 0) {
+						int i1 = pair1.first;
+						Ivec.push_back( i1 );
+						Jvec.push_back( i );
+						Vvec.push_back( val1 );
+					}
 				}
 			}
+			// std::vector<int> Ivec2, Jvec2;
+			// std::vector<double> Vvec2;
+			// for( int i = 0; i < n_vertices; ++i ) {
+			// 	
+			// 	if ( i != i_max ) {
+			// 		Ivec2.push_back( i );
+			// 		Jvec2.push_back( i );
+			// 		Vvec2.push_back( 1 );
+			// 	}
+			// 	if ( i == v ) {
+			// 		Ivec2.push_back( i_max );
+			// 		Jvec2.push_back( i );
+			// 		Vvec2.push_back( 1 );
+			// 	}
+			// }
 
-			int* I2 = &Ivec2[0];
-			int* J2 = &Jvec2[0];
-			double* V2 = &Vvec2[0];
+			// int* I2 = &Ivec2[0];
+			// int* J2 = &Jvec2[0];
+			// double* V2 = &Vvec2[0];
 
-			// int* I = &Ivec[0];
-			// int* J = &Jvec[0];
-			// double* V = &Vvec[0];
-
-			Matrix< IOType > one_( n_vertices, n_vertices );
-			grb::resize( one_, Vvec2.size() );
-			grb::buildMatrixUnique( one_, &(I2[0]), &(J2[0]), &(V2[0]), Vvec2.size(), PARALLEL );
+			int* I = &Ivec[0];
+			int* J = &Jvec[0];
+			double* V = &Vvec[0];
+			grb::resize( Aw, Vvec.size());
+			grb::buildMatrixUnique( Aw, &(I[0]), &(J[0]), &(V[0]), Vvec.size(), SEQUENTIAL );
+			// Matrix< IOType > one_( n_vertices, n_vertices );
+			// grb::resize( one_, Vvec2.size() );
+			// grb::buildMatrixUnique( one_, &(I2[0]), &(J2[0]), &(V2[0]), Vvec2.size(), PARALLEL );
 			// Matrix< IOType > tmp( grb::nrows( Aw ), grb::ncols( Aw ) );
-			grb::mxm( Aw, Aw, one_, standard_sr );
+			// grb::mxm( Aw, Aw, one_, standard_sr );
 			
 			// grb::resize( tmp, Vvec.size() ) ;
 			// grb::buildMatrixUnique( tmp, &(I[0]), &(J[0]), &(V[0]), Vvec.size(), SEQUENTIAL );
@@ -135,7 +136,6 @@ namespace grb {
 			std::vector< int > Ivec;
 			std::vector< int > Jvec;
 			std::vector< int > Vvec;
-			std::cout << "sanity check n " << n << std::endl;
 			for ( int i = 0; i < n; ++i ) {
 				Ivec.push_back( i );
 				Jvec.push_back( i );
@@ -343,7 +343,7 @@ namespace grb {
 				// rc = grb::vxm(nvt, M, grb::operators::add< IOType, IOType, IOType >(), v, Aw, standard_sr);
 				// rc = grb::vxm( nvt, v, Aw, standard_sr );
 				rc = grb::vxm( nvt, M, v, Aw, standard_sr );
-				assert( v == grb::SUCCESS );
+				// assert( v == grb::SUCCESS );
 				for( const std::pair< size_t, double > &pairn : nvt ) {
 					const double val = pairn.second;
 					if ( val == 0 ) {
@@ -356,7 +356,7 @@ namespace grb {
 				Vector< pType > Ia( grb::ncols( Aw ) );
 				grb::set( Ia, 0 );
 				rc = grb::eWiseApply< grb::descriptors::dense > ( Ia, P, a, grb::operators::equal< pType, pType, pType >() );
-				assert( rc == grb::SUCCESS );
+				// assert( rc == grb::SUCCESS );
 				Vector< pType > internal( grb::ncols( Aw ));
 				grb::set( internal, 0 );
 				grb::Vector< pType > nv_helper( grb::size( nv ) );
@@ -364,7 +364,7 @@ namespace grb {
 				grb::set( nv_helper, nv );
 
 				rc = grb::eWiseApply( internal, nv_helper, Ia, nv, grb::operators::equal< pType, pType, pType >() );
-				assert( rc == grb::SUCCESS );
+				// assert( rc == grb::SUCCESS );
 
 				bool is_internal = true;
 
@@ -547,89 +547,16 @@ namespace grb {
 			// Vector< IOType > w( m );
 			Vector< pType > w( m );
 			grb::mxv( w, A, ones, standard_sr );
+			
 			Matrix< IOType > Aw( m, n );
 			
-
-			// A: int
-			// w: double
-			// Aw: double 
-			// convert A to double
-			// Matrix < IOType > W( m, m );
-			// Matrix < IOType > Aio( n, m );
-			// grb::set( Aio, A );
-			//grb::mxv(Aw, w, Aio, standard_sr);
-			// buildMatrix
-			// Matrix< IOType > W( m, m );
-			// auto converter = grb::utils::makeVectorToMatrixConverter< int, IOType >( w, []( const int & ind, const IOType & val ) {
-			// 		return std::make_pair( val, ind );
-			// 	} );
-			// 
-			// grb::buildMatrixUnique(W,converter.begin(), converter.end(), SEQUENTIAL);
-			// std::vector< int > Ivec, Jvec;
-			// std::vector< IOType > Vvec;
-			// for ( const std::pair< size_t, IOType > &pair : w ) {
-			// 	int i = pair.first;
-			// 	IOType val = pair.second;
-			// 	for ( int f = 0; f < m; ++f ) {
-			// 		Ivec.push_back( i );
-			// 		Jvec.push_back( f );
-			// 		Vvec.push_back( val );
-			// 	}
-			// }
-			// grb::resize(W,m*m);
-			// grb::buildMatrixUnique(W, &(Ivec[0]), &(Ivec[m-1]),&(Jvec[0]), &(Jvec[m-1]),&(Vvec[0]), &(Vvec[m-1]),SEQUENTIAL);
-			// grb::buildMatrixUnique( W, &(Ivec[0]), &(Jvec[0]), &(Vvec[0]), Vvec.size(), PARALLEL );
-			// for(const std::pair< std::pair< size_t, size_t >, double > &pair : A) {
-			// 	std::cout << "enenen" << pair.first.first << " " << pair.first.second << " " << pair.second << std::endl;
-			// }
-			// grb::mxm( Aw, W, A, standard_sr );	
-
-			// grb::mxm< grb::descriptors::dense >( Aw, A, W, standard_sr );
 			
-			int n_nets = grb::size( w );
-			Matrix< IOType > W( n_nets, n_nets );
-			std::vector< int > WI, WJ;
-			std::vector< IOType > WV;
-			Vector< IOType > w_vals( m );
-			int num_elem = 1;
-			for ( const std::pair< size_t, IOType > &pair : w ) {
-				int i = pair.first;
-				IOType val = pair.second;
-				val = ( val <= 1 ) ? 0 : 1 / ( val - 1 );
-				if (val !=  0 ) {
-					WJ.push_back( i );
-					WI.push_back( i );
-					WV.push_back( val );		
-					grb::setElement( w_vals, val, i );
-					num_elem++;
-				}
-			}
 			
-			int* I = &WI[0];
-			int* J = &WJ[0];
-			double* V = &WV[0];
-			grb::resize( W, WV.size() );
-			// auto converter = grb::utils::makeVectorToMatrixConverter< void, IOType >( w_vals, []( const std::pair< size_t, IOType > &pair ) {
-			// 	return std::make_pair( pair.first, pair.second );
-			// } );
-			// auto converter = grb::utils::makeVectorToMatrixConverter< void, IOType >( w_vals, []( const size_t &ind, const IOType &val ) {
-			// 	return std::make_pair( ind, val );
-			// });
 			
-			// grb::buildMatrixUnique( W, converter.begin(), converter.end(), PARALLEL );
-			// grb::buildMatrixUnique(W, w_vals.begin(), w_vals.end(), SEQUENTIAL );
-
-			grb::buildMatrixUnique( W, &(I[0]), &(J[0]), &(V[0]), WV.size(), SEQUENTIAL );
-		
-	
-
-			// RC diditfuckup = grb::mxm( Aw, W, A, standard_sr );
-			
+			// grb::buildMatrixUnique( W, &(I[0]), &(J[0]), &(V[0]), WV.size(), SEQUENTIAL );
+					
 			modified_mxm( Aw, w, A );
-			// for (const std::pair< std::pair< size_t, size_t >, double> &pair : Aw ) {
-			// 	std::cout << "i: " << pair.first.first << " j: " << pair.first.second << " v: " << pair.second << std::endl;
-			// }
-			// modified_mxm( Aw, w, A );
+	
 			std::vector< IOType > sizes( k );
 		
 			coarsening( Aw, M , T , k );
