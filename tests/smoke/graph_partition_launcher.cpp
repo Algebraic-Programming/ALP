@@ -201,7 +201,7 @@ void grbProgram(const struct input &data_in, struct output &out)
 int main(int argc, char **argv)
 {
 	std::cout << "@@@@  ================================ @@@ " << std::endl;
-	std::cout << "@@@@  Multiway p-spectral partitioning @@@ " << std::endl;
+	std::cout << "@@@@  Vanilla Spectral Clustering      @@@ " << std::endl;
 	std::cout << "@@@@  ================================ @@@ " << std::endl
 			  << std::endl;
 

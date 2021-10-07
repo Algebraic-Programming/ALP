@@ -21,7 +21,7 @@ namespace grb {
 			pType &r
 			) {
 			
-				const grb::Semiring<
+				grb::Semiring<
 				     grb::operators::add< pType >,
 					grb::operators::mul< pType >,
 					grb::identities::zero, 
@@ -45,7 +45,7 @@ namespace grb {
 			pType i_max
 		) {
 
-			const grb::Semiring<
+			grb::Semiring<
 				     grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
@@ -122,7 +122,7 @@ namespace grb {
 			size_t &N
 		) {
 			
-			const grb::Semiring<
+			grb::Semiring<
 				     grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
@@ -246,7 +246,7 @@ namespace grb {
 	RC modified_mxm( grb::Matrix< double > &Aw, grb::Vector< int > &w, grb::Matrix< int > &A) {
 	// Variables to build matrix Aw later
 	std::vector< int > Ivec, Jvec;
-	const grb::Semiring<
+	grb::Semiring<
 				     grb::operators::add< double >,
 					grb::operators::mul< double >,
 					grb::identities::zero, 
@@ -301,7 +301,7 @@ namespace grb {
 		) {
 
 			
-			const grb::Semiring<
+			grb::Semiring<
 				     grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
@@ -441,7 +441,7 @@ namespace grb {
 			Matrix< IOType > &Aw, 
 			Matrix< int > &Ts
 		) {
-			const grb::Semiring<
+			grb::Semiring<
 				     grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
@@ -488,7 +488,7 @@ namespace grb {
 		RC uncoarsening( Matrix< IOType > &Aw, Vector< pType > &M, Vector< pType > &P, std::vector< Matrix< pType >* > &T,
 		std::vector< IOType > &sizes
 		) {
-			const grb::Semiring<
+			grb::Semiring<
 				     grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
@@ -526,12 +526,13 @@ namespace grb {
 			const IOType &c
 		) {
 
-			const grb::Semiring<
+			 grb::Semiring<
 				    grb::operators::add< IOType >,
 					grb::operators::mul< IOType >,
 					grb::identities::zero, 
 					grb::identities::one
 			    > standard_sr;
+
 			Vector< pType > M( grb::ncols( A ) );
 			grb::set( M, 1 );
 			Vector< pType > P( grb::ncols( A ) );
@@ -546,7 +547,12 @@ namespace grb {
 			
 			// Vector< IOType > w( m );
 			Vector< pType > w( m );
-			grb::mxv( w, A, ones, standard_sr );
+			RC rc = grb::mxv( w, A, ones, standard_sr );
+			if (rc == SUCCESS) {
+				std::cout << "suc" << std::endl;
+			} else {
+				std::cout << "nosuc" << std::endl;
+			}
 			
 			Matrix< IOType > Aw( m, n );
 			
