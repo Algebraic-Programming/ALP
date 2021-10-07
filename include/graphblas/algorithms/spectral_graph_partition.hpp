@@ -5,8 +5,8 @@
 // Additions for eigenvalue initial computation
 #include <armadillo>
 
-#ifndef _H_GRB_PLAP_SPECPART
-#define _H_GRB_PLAP_SPECPART
+// #ifndef _H_GRB_PLAP_SPECPART
+// #define _H_GRB_PLAP_SPECPART
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/spec_part_utils.hpp>
@@ -35,10 +35,9 @@ namespace grb
             //const size_t cons_outer = 0.000001       //convergence tolerance for the external loop
         ) {
             // build graph Laplacian
+            int n = grb::nrows(A);
             Matrix<IOType> L(n,n);
-            Matrix<IOType> D(n,n);
-            grb::algorithms::spec_part_utils::get_degree_mat(D, A);
-            grb::algorithms::spec_part_utils::compute_Laplacian(L, A, D);
+            grb::algorithms::spec_part_utils::compute_Laplacian(L, A);
 
             // compute Eigendecomposition of Laplacian using Arma
             //      1. convert L to arma matrix
@@ -52,7 +51,7 @@ namespace grb
             }
 
             // 2. schön für dich, ich hab gehört du fährst mercedes
-            arma::Vec<IOType> eigen_vals(n);
+            arma::Col<IOType> eigen_vals(n);
             arma::Mat<IOType> eigen_vecs(n,n);
             arma::eig_sym(eigen_vals, eigen_vecs, arma_L);
 
@@ -79,8 +78,8 @@ namespace grb
 
 
             // use verners kmeans thing
-            Vector<size_t> x(n);
             Vector<std::pair<size_t, IOType>> clusters_and_distances(n);
+            double best_rcut = std::numeric_limits<double>::max();
 
             for (size_t i = 0; i < kmeans_reps; ++i)
             {
@@ -112,7 +111,6 @@ namespace grb
             std::cout << "===========" << std::endl;
             std::cout << "Statistics" << std::endl;
             std::cout << "===========" << std::endl;
-            std::cout << "Final p_value:" << final_p << std::endl;
             std::cout << "RCut value:"    << best_rcut << std::endl;
 
             for (size_t i = 0; i < k; ++i)

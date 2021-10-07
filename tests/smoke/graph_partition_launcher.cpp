@@ -2,7 +2,7 @@
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 #include <armadillo>
-#include <graphblas/algorithms/pLaplacian_spectral_partition.hpp>
+#include <graphblas/algorithms/spectral_graph_partition.hpp>
 #include <vector>
 #include <iostream>
 #include <fstream>

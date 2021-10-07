@@ -62,39 +62,42 @@ namespace grb {
 
             //applies the laplacian to a vector in the form y = Dx - Ax, where A is the adjacency matrix
 
-            RC get_degree_mat(Matrix<IOType> D, const Matrix<IOType> &A) {
+            RC compute_Laplacian(Matrix<IOType> &L, const Matrix<IOType> &A) {
                 int n = grb::nrows(A);
                 int counts[n];
                 std::vector<double> vals;
-                std::vector<int> I;
+                std::vector<int> I, J;
                 for(int i = 0; i < n; ++i) {
                     counts[i] = 0;
                 }
                 for(const std::pair< std::pair< size_t, size_t>, IOType > & pair : A) {
                     int i = pair.first.first;
-                    I.push_back(i);
-                
                     counts[i]++;
                 }
-                for(int i = 0; i < n; ++i) {
-                    vals.push_back(counts[i]);
+                for(const std::pair< std::pair< size_t, size_t>, IOType > & pair : A) {
+                    int i = pair.first.first;
+                    int j = pair.first.second;
+                    if(i==j) {
+                        vals.push_back(counts[i]-pair.second);
+                    } else {
+                        vals.push_back(-1*pair.second);
+                    }
+                    I.push_back(i);
+                    J.push_back(j);
                 }
+                // for(int i = 0; i < n; ++i) {
+                //     vals.push_back(counts[i]);
+                // }
                 int* I2 = &I[0];
+                int* J2 = &J[0];
 	            double* V2 = &vals[0];
-	            grb::resize( D, vals.size() );
-	            grb::buildMatrixUnique( D, &(I2[0]), &(I2[0]), &(V2[0]), vals.size(), SEQUENTIAL );
+	            grb::resize( L, vals.size() );
+	            grb::buildMatrixUnique( L, &(I2[0]), &(J2[0]), &(V2[0]), vals.size(), SEQUENTIAL );
 
                 return SUCCESS;
             }
-            RC compute_Laplacian(
-                Matrix<IOType> &L,
-                const Matrix<IOType> &A,
-                const Matrix<IOType> &diag,
 
-            ) {
-                grb::eWiseApply( L, diag, A, operators::subtract<IOType>());
-                return SUCCESS;
-            }
+            template <typename IOType>
             RC apply_Laplacian(
                 Vector<IOType> &Lx,
                 const Vector<IOType> &x,
