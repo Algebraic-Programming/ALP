@@ -78,12 +78,19 @@ namespace grb {
                     int i = pair.first.first;
                     int j = pair.first.second;
                     if(i==j) {
-                        vals.push_back(counts[i]-pair.second);
+                        vals.push_back(counts[i]);
+                        I.push_back(i);
+                        J.push_back(j);
                     } else {
-                        vals.push_back(-1*pair.second);
+                        vals.push_back(-1);
+                        I.push_back(i);
+                        J.push_back(j);
+
+                        vals.push_back(-1);
+                        I.push_back(j);
+                        J.push_back(i);
                     }
-                    I.push_back(i);
-                    J.push_back(j);
+                    
                 }
                 // for(int i = 0; i < n; ++i) {
                 //     vals.push_back(counts[i]);

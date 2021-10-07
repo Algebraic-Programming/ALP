@@ -42,31 +42,42 @@ namespace grb
             // compute Eigendecomposition of Laplacian using Arma
             //      1. convert L to arma matrix
 
-            arma::Mat<IOType> arma_L(n,n);
+            arma::Mat<IOType> arma_L(n,n, arma::fill::zeros);
             for(const std::pair<std::pair<size_t,size_t>,IOType> &p : L) {
                 int i = p.first.first;
                 int j = p.first.second;
                 IOType v = p.second;
-                arma_L[i,j] = v;
+                arma_L(i,j) = v;
             }
-
-            // 2. schön für dich, ich hab gehört du fährst mercedes
+            // for(int i = 0; i < n; ++i) {
+            //     std::cout << std::endl;
+            //     for(int j = 0; j < n; ++j) {
+            //         std::cout << arma_L(i,j) << " ";
+            //     }
+            // }
             arma::Col<IOType> eigen_vals(n);
             arma::Mat<IOType> eigen_vecs(n,n);
+
             arma::eig_sym(eigen_vals, eigen_vecs, arma_L);
 
             // Do k-means on them
             //      1. Convert Back to GraphBLAS
-
+            // std::cout << "k is " << k << std::endl;
             Matrix<IOType> EigenVecs(k,n);
             Matrix<IOType> K(k,k);
             std::vector<int> Ivec, Jvec;
             std::vector<IOType> Vvec;
+            // for(int i = 0; i < n; ++i) {
+            //     std::cout << std::endl;
+            //     for(int j = 0; j < n; ++j) {
+            //         std::cout << eigen_vecs[i,j] << " ";
+            //     }
+            // }
             for(int i = 0; i < k; ++i) {
                 for(int j = 0; j < n; ++j) {
                     Ivec.push_back(i);
                     Jvec.push_back(j);
-                    Vvec.push_back(eigen_vecs[i,j]);
+                    Vvec.push_back(eigen_vecs(i,j));
                 }
             }
 

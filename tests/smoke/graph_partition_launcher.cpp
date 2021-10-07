@@ -315,6 +315,13 @@ int main(int argc, char **argv)
 			in.rep = out.rep;
 		}
 		if( rc != SUCCESS ) {
+            }
+
+            int* I = &Ivec[0];
+            int* J = &Jvec[0];
+	        IOType* V = &Vvec[0];
+	        grb::resize( EigenVecs, Vvec.size() );
+	        grb::buildMatrixUnique( EigenVecs, &(I[0])
 			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
 			return 6;
 		}
