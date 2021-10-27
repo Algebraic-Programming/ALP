@@ -11,7 +11,6 @@
 #include <time.h>
 #include <inttypes.h>
 
-
 using namespace arma;
 using namespace grb;
 using namespace algorithms;
@@ -21,7 +20,7 @@ struct input
 	char filename[1024];
 	bool direct;
 	bool unweighted;
-	size_t num_clusters;	
+	size_t num_clusters;
 	//size_t rep;
 };
 
@@ -34,32 +33,37 @@ struct output
 	PinnedVector<size_t> pinnedVector;
 };
 
-// Extract the data as an Armadillo matrix Mat of type T, if there is no data the matrix will be empty
-  template<typename T>
-  arma::Mat<T> load_mat(std::ifstream &file, const std::string &keyword) {
- 	std::string line;
- 	std::stringstream ss;
- 	bool process_data = false;
- 	bool has_data = false;
- 	while (std::getline(file, line)) {
- 		if (line.find(keyword) != std::string::npos) {
- 			process_data = !process_data;
- 			if (process_data == false) break;
- 			continue;
- 		}
- 		if (process_data) {
- 			ss << line << '\n';
- 			has_data = true;
- 		}
- 	}
- 
- 	arma::Mat<T> val;
- 	if (has_data) {
- 		val.load(ss);
- 	}
- 	return val;
- }
+// Read the data as an Armadillo matrix Mat of type T, if there is no data the matrix will be empty
+template <typename T>
+arma::Mat<T> load_mat(std::ifstream &file, const std::string &keyword)
+{
+	std::string line;
+	std::stringstream ss;
+	bool process_data = false;
+	bool has_data = false;
+	while (std::getline(file, line))
+	{
+		if (line.find(keyword) != std::string::npos)
+		{
+			process_data = !process_data;
+			if (process_data == false)
+				break;
+			continue;
+		}
+		if (process_data)
+		{
+			ss << line << '\n';
+			has_data = true;
+		}
+	}
 
+	arma::Mat<T> val;
+	if (has_data)
+	{
+		val.load(ss);
+	}
+	return val;
+}
 
 void grbProgram(const struct input &data_in, struct output &out)
 {
@@ -86,7 +90,7 @@ void grbProgram(const struct input &data_in, struct output &out)
 		parser(data_in.filename, data_in.direct);
 	assert(parser.m() == parser.n());
 	const size_t n = parser.n();
-	out.times.io   = timer.time();
+	out.times.io = timer.time();
 	timer.reset();
 
 	//load into GraphBLAS
@@ -138,18 +142,21 @@ void grbProgram(const struct input &data_in, struct output &out)
 	timer.reset();
 
 	// Initialize parameters for the partitioner
-	int kmeans_iters = 30;      // kmeans iterations 
-	float final_p = 1.1;       // final value of p 
-	float factor_reduce = 0.7; // reduction factor for the value of p
+	int kmeans_iters = 30;	   // kmeans iterations
+	float final_p = 1.1;	   // final value of p
+	float factor_reduce = 0.9; // reduction factor for the value of p
 
-	// Load the eigenvecs from a txt file
-	std::ifstream file("datasets/V_Rect_5pt_4.txt");
-    arma::Mat<double> V = load_mat<double>(file, "V");
-    file.close();
+	// Load the arma-eigenvecs from a txt file (Debug file)
+	// std::ifstream file("datasets/V_Rect_5pt_4.txt");
+	// arma::Mat<double> V = load_mat<double>(file, "V");
+	// file.close();
 
-	// Call the Multiway p-spectral partitioner 
-	// rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
-	rc = grb::algorithms::pLaplacian_multi(x, W, V, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	// Call the Multiway p-spectral partitioner
+	// 1. Debugging Call: Initialize the problem with the arma eigenvectors found by Matlab 
+	// rc = grb::algorithms::pLaplacian_multi(x, W, V, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	// 2. Normal Call: Random Initial guess, and computation of the eigenvecs at p = 2 with grb+ROPTLIB
+	rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	
 
 	double single_time = timer.time();
 

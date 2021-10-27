@@ -14,19 +14,18 @@
 #include "Others/randgen.h"
 #include <graphblas/algorithms/ROPTLIB/Grassmann_pLap.hpp>
 #include <graphblas/algorithms/kmeans.hpp>
-//#include </home/pasadakis/dkm/include/dkm_parallel.hpp>
-//#include </home/pasadakis/dkm/include/dkm.hpp>
-//#include </home/pasadakis/dkm/include/dkm_utils.hpp>
 
-
-
-
+// Add the dkm (kmeans) library as header only
+// #include </home/pasadakis/dkm/include/dkm_parallel.hpp>
+// #include </home/pasadakis/dkm/include/dkm.hpp>
+// #include </home/pasadakis/dkm/include/dkm_utils.hpp>
 
 //blame ROPTLIB for this abomination
 #undef Vector
 
 #include <iostream>
 #include <time.h>
+
 using namespace arma;
 using namespace grb;
 using namespace algorithms;
@@ -96,24 +95,9 @@ namespace grb
             IOType residual, p; //accuracy residual, and Laplacian parameter p
 
             //auxiliary variables for the computation of the gradient
-            //Vector<IOType> aux_1(m), aux_2(n), aux_3(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
-            //IOType aux_4, aux_5;                                  // x^T phi_p(x), x^T A^T phi_p(Ax)
-            //set(grad, 0);                                         //to ensure grad is a dense vector
-            //set(aux_1,0);
-            //set(aux_2,0);
-            //set(aux_3,0);
-            //set(aux_4,0);
-
-            Vector<IOType> aux_1(m), aux_2(n), aux_3(n),aux_6(n),aux_7(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
+            Vector<IOType> aux_1(m), aux_2(n), aux_3(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
             IOType aux_4, aux_5;                                  // x^T phi_p(x), x^T A^T phi_p(Ax)
-            IOType pnorm_x;
-            //set(grad, 0);                                         //to ensure grad is a dense vector
-            //set(aux_3,0);
-            //set(aux_2,0);
-            //set(aux_1,0);
-            // set(aux_4,0);
-            //set(aux_6,0);
-            //set(aux_7,0);
+            set(grad, 0);                                         //to ensure grad is a dense vector
 
             //external loop, evolving p
             do
@@ -132,7 +116,6 @@ namespace grb
 
                     spec_part_utils::ratio_cheeger_cut(r_cheeg, par, A, m, n, integers_ring);
 
-
                     if (r_cheeg <= r_cheeg_min /*ratio Cheeger cut better than before*/
                         && std::fabs(2 * p_norm(par, (bool)1, integers_ring.getAdditiveMonoid()) / static_cast<IOType>(n) - 1) < b_max)
                     {                          //load balance constraint
@@ -142,34 +125,24 @@ namespace grb
 
                     //compute auxiliary variables for the gradient
 
+                    grb::set(aux_1, 0);
                     grb::mxv(aux_1, A, x, reals_ring);
                     spec_part_utils::phi_p(aux_1, p);
 
                     grb::set(aux_2, x);
                     spec_part_utils::phi_p(aux_2, p);
 
+                    grb::set(aux_3, 0);
                     grb::mxv<grb::descriptors::transpose_matrix>(aux_3, A, aux_1, reals_ring);
 
                     grb::dot(aux_4, x, aux_2, reals_ring);
 
                     grb::dot(aux_5, x, aux_3, reals_ring);
-                    //pnorm_x = p_norm_to_p(x,p);
-                    //eWiseLambda([&aux_6, &x, &p] (const size_t i, const size_t j) {
-                    //    aux_6[j] = spec_part_utils::phi_p(x[i]-x[j]);
-                    //}, x, aux_6);
-                    //eWiseLambda([&aux_7, &x, &p] (const size_t i, const size_t j) {
-                    //    aux_7[j] = std::pow(std::abs(x[i]-x[j]),p);
-                    //}, x, aux_7);
-                    //grb::mxv(aux_1, A, aux_6, reals_ring); // W * phi_p(u_i - u_j)
-                    //grb::mxv(aux_3, A, aux_7, reals_ring); // W * |u_i - u_j|^p
-                    
+
                     eWiseLambda([&grad, &aux_2, &aux_3, &aux_4, &aux_5, &p](const size_t i)
                                 { grad[i] = p * (aux_3[i] / aux_4 - (aux_5 / (aux_4 * aux_4)) * aux_2[i]); },
                                 grad, aux_2, aux_3);
-                               
-                    //eWiseLambda([&grad, &aux_1, &aux_2, &aux_3, &aux_5,&aux_7, &p, &pnorm_x] (const size_t i) {
-                    //    grad[i] = (p / pnorm_x) * (aux_3[i] - 0.5 * aux_2[i] * aux_7[i] / pnorm_x);
-                    //}, grad, aux_1, aux_2, aux_3, aux_7);
+
                     //LATER DO LINE SEARCH, NOW ONLY GRADIENT DESCENT
 
                     IOType alpha = 0.1; //GRADIENT DESCENT PARAMETER
@@ -216,16 +189,14 @@ namespace grb
         } //end RC pLaplacian_bisection
 
         RC pLaplacian_multi(
-            Vector<size_t> &x,            //vectors corresponding to the final clusters
-            const Matrix<double> &W,      // adjacency matrix
-            arma::Mat<double> &V,         // eigenvecs matrix
-            const size_t k,               // number of clusters
-            const double final_p = 2,       //Final value of p
-            const double factor = 0.9,    //Factor for the reduction of p
-            const size_t kmeans_reps = 30 // repetitions of kmeans clustering                        
-            // const arma::Mat<double> &V       
-            //const double conv_inner=0.00000001,        //convergence tolerance for the internal loop
-            //const size_t cons_outer = 0.000001       //convergence tolerance for the external loop
+            Vector<size_t> &x,       //vectors corresponding to the final clusters
+            const Matrix<double> &W, // adjacency matrix
+            // arma::Mat<double> &V,         // eigenvecs arma matrix (Debug only)
+            const size_t k,                      // number of clusters
+            const double final_p = 1.1,          //Final value of p
+            const double factor = 0.9,           //Factor for the reduction of p
+            const size_t kmeans_ortho_reps = 30, // repetitions of kmeans clustering with orthogonal initialisation
+            const size_t kmeans_kpp_reps = 30    // repetitions of kmeans clustering with k++ initialisation
         )
         {
 
@@ -238,7 +209,7 @@ namespace grb
             }
 
             size_t iter = 0; //iteration count
-            double p    = 1.8; //Initialize p value
+            double p = 2;    //Initialize p value
 
             // matrix to contain final p-eigenvectors for classification using kmeans
             Matrix<double> X(k, n);
@@ -248,53 +219,70 @@ namespace grb
             Vector<std::pair<size_t, double>> clusters_and_distances(n);
 
             // Define the Grassmann manifold
-            ROPTLIB::Grassmann Domain(n, k);
-            // ROPTLIB::Grassmann TEMP(n, k);
+            ROPTLIB::Stiefel Domain(n, k);
 
-            double* V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
-
-            // ARMA eigenvecs
-            std::cout << "-------------" << std::endl;
-            std::cout << "|The ARMA eigenvecs|" << std::endl;   
-            V.brief_print("Eigenvectors of the graph Laplacian");
-            std::cout << "-------------" << std::endl;
-        
-
-            // genrandseed(time(NULL));
-            // ROPTLIB::Variable GrassInit = Domain.RandominManifold(); // Random initial guess for the 
-            // std::cout << "----------------------" << std::endl;    
-            // std::cout << "Random Initial Guess" << std::endl;    
-            // std::cout << GrassInit << std::endl;      
-            // std::cout << "----------------------" << std::endl;    
+            // ARMA eigenvecs for initial guess (debug only)
+            // double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
+            // std::cout << "-------------" << std::endl;
+            // std::cout << "|The ARMA eigenvecs|" << std::endl;
+            // V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
+            // std::cout << "-------------" << std::endl;
+            // ROPTLIB::Variable GrassInit(n, k);
+            // double *temp = GrassInit.ObtainWriteEntireData();
+            // for (int i = 0; i < n * k; i++)
+            // {
+            //     temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
+            // }
+            // std::cout << "ARMA Initial Guess" << std::endl;
+            // std::cout << "-------------" << std::endl;
+            // std::cout << GrassInit << std::endl;
             // std::cin.get();
 
-            ROPTLIB::Variable GrassInit(n , k);
-            double *temp = GrassInit.ObtainWriteEntireData();
-            for (int i = 0; i < n*k; i++)
-            {
-                temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
-            }
-            std::cout << "ARMA Initial Guess" << std::endl;
-            std::cout << "-------------" << std::endl;    
-            std::cout << GrassInit << std::endl;            
-            std::cin.get();
-            // std::cin.get();         
+            // generate sparse matrix
+            // sp_mat A = sprandu<sp_mat>(100, 100, 0.1);
+            // sp_mat B = A.t()*A;
+
+            // B.brief_print("input matrix A");
+            // vec eigval;
+            // mat eigvec;
+
+            // eigs_opts opts;
+            // opts.maxiter = 1000;
+            // opts.tol     = 1e-5;
+
+            // // find the k smallest eigvals/eigvecs
+            // eigs_sym(eigval, eigvec, B, k, "sm", opts);
+            // eigval.brief_print("Eigvals");
+            // eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
+            // std::cout << eigval << std::endl;
+
+            // Random initial guess for the eigenvectors on the Grassmann manifold
+            genrandseed(time(NULL));
+            ROPTLIB::Variable GrassInit = Domain.RandominManifold(); // Random initial guess for the
+            std::cout << "----------------------" << std::endl;
+            std::cout << "Random Initial Guess on Manifold" << std::endl;
+            std::cout << GrassInit << std::endl;
+            std::cout << "----------------------" << std::endl;
+            // std::cin.get();
 
             // ROPTLIB variable for the solution vector
             ROPTLIB::Variable Optimizer;
-            // ROPTLIB solver used                          
+            // ROPTLIB solver used
             ROPTLIB::RNewton *RNewtonSolver;
 
+            // Initialize timers
             grb::utils::Timer timer;
             double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0;
 
+            p = p / factor;
             do
             {
+                p = std::max(factor * p, final_p);
                 ++iter;
 
-                std::cout << "#######################################" << std::endl;            
-                std::cout << "#             Solving at p = " << p << "   #" << std::endl;            
-                std::cout << "#######################################" << std::endl;            
+                std::cout << "#######################################" << std::endl;
+                std::cout << "#             Solving at p = " << p << "   #" << std::endl;
+                std::cout << "#######################################" << std::endl;
 
                 timer.reset();
 
@@ -309,10 +297,8 @@ namespace grb
 
                 if (iter == 1)
                     RNewtonSolver = new ROPTLIB::RNewton(&Prob, &GrassInit);
-                 else
+                else
                     RNewtonSolver = new ROPTLIB::RNewton(&Prob, &Optimizer);
-                
-
 
                 // can provide custom line search rule by setting LineSearch_LS to LSSM_INPUTFUN
                 // RNewtonSolver->LinesearchInput = &LinesearchInput;
@@ -321,17 +307,24 @@ namespace grb
                 // custom stopping criterion
                 //RNewtonSolver->StopPtr = &StoppingCriterion;
 
-                RNewtonSolver->Verbose        = ROPTLIB::ITERRESULT;
-                RNewtonSolver->LineSearch_LS  = ROPTLIB::LSSM_ARMIJO;
-                RNewtonSolver->OutputGap      = 10;
-                RNewtonSolver->Max_Iteration  = 20;
-                RNewtonSolver->Minstepsize    = 1e-10;
-                RNewtonSolver->Max_Inner_Iter = 100;
-                RNewtonSolver->Tolerance      = 1e-6;
+                RNewtonSolver->Verbose = ROPTLIB::ITERRESULT;
+                RNewtonSolver->LineSearch_LS = ROPTLIB::LSSM_ARMIJO;
+                RNewtonSolver->OutputGap = 10;
+                if (p == 2)
+                {
+                    RNewtonSolver->Max_Iteration = 100;
+                }
+                else
+                {
+                    RNewtonSolver->Max_Iteration = 20;
+                }
+                RNewtonSolver->Minstepsize = 1e-10;
+                RNewtonSolver->Max_Inner_Iter = 1000;
+                RNewtonSolver->Tolerance = 1e-6;
                 // RNewtonSolver->Stop_Criterion = 1;
                 RNewtonSolver->CheckParams();
                 RNewtonSolver->Run();
-                
+
                 // ROPTLIB variable for the solution vector
                 Optimizer = RNewtonSolver->GetXopt();
                 // Check the actions of gradient and Hessian
@@ -339,8 +332,8 @@ namespace grb
 
                 delete RNewtonSolver;
 
-                io_time      += Prob.getIOtime();
-                grb_time     += Prob.getGRBtime();
+                io_time += Prob.getIOtime();
+                grb_time += Prob.getGRBtime();
                 grbropt_time += timer.time();
 
                 //const double * OPtr = Optimizer.ObtainReadData();
@@ -349,54 +342,59 @@ namespace grb
                 //    std::cout << OPtr[ i ] << " ";
                 //}
 
-                p = 1 + factor * (p - 1);
+                // std::cout << "----------------------" << std::endl;
+                // std::cout << "solution at p:" << p << std::endl;
+                // std::cout << Optimizer << std::endl;
+                // std::cout << "----------------------" << std::endl;
+                // std::cin.get();
+
+                //  Strategy to reduce the value of p
+                // p = 1 + factor * (p - 1);
+
             } while (p > final_p);
 
             timer.reset();
 
             // place the optimiser into the rows of a graphblas matrix for kmeans classification
             const double *OptPtr = Optimizer.ObtainReadData();
-            Optimizer = GrassInit;
-            std::cout << "-------------" << std::endl; 
+            std::cout << "-------------" << std::endl;
             std::cout << "The final solution" << std::endl;
-            std::cout << "-------------" << std::endl; 
-            std::cout << Optimizer - GrassInit << std::endl;
-            std::cout << "-------------" << std::endl;            
+            std::cout << "-------------" << std::endl;
+            std::cout << Optimizer << std::endl;
+            std::cout << "-------------" << std::endl;
             std::cin.get();
-            
 
-            /* Print the pointer values
-            std::cout << "@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-            for (int i = 0; i < 10; i++)
-            {
-                std::cout << OptPtr[i] << std::endl;
-            }
-            std::cout << "@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-            std::cin.get(); */
-            
-            /* ---- KMEANS TEST 
-            auto data         = dkm::load_csv<float, 4>("/home/pasadakis/dkm/build/iris.data.csv");
-            auto cluster_data = dkm::kmeans_lloyd_parallel(data, k);
+            // Print the first 10 pointer values (Debug only)
+            // std::cout << "Print the pointer values" << std::endl;
+            // for (int i = 0; i < 10; i++)
+            // {
+            //     std::cout << OptPtr[i] << std::endl;
+            // }
+            // std::cout << "@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+            // std::cin.get();
+            //
 
-            std::cout << "Means:" << std::endl;
-            for (const auto& mean : std::get<0>(cluster_data)) {
-                std::cout << "\t(" << mean[0] << "," << mean[1] << ")" << std::endl;
-            }
-            std::cout << "\nCluster labels:" << std::endl;
-            std::cout << "\tPoint:";
-            for (const auto& point : data) {
-                std::stringstream value;
-                value << "(" << point[0] << "," << point[1] << ")";
-                std::cout << std::setw(14) << value.str();
-            }
-            std::cout << std::endl;
-            std::cout << "\tLabel:";
-            for (const auto& label : std::get<1>(cluster_data)) {
-                std::cout << std::setw(14) << label;
-            }
-            std::cout << std::endl;
-            KMEANS TEST END ---- */
+            // ---- KMEANS TEST (Debug only)
+            // auto data         = dkm::load_csv<float, 4>("/home/pasadakis/dkm/build/iris.data.csv");
+            // std::vector<std::array<float, 4>> data{
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684},
+            //     {18.789, 19.684, 18.789, 19.684}};
+            // dkm::clustering_parameters<float> parameters(3);
+            // parameters.set_random_seed(1991);
 
+            // std::cout << typeid(data).name() << std::endl;
+            // auto cluster_data = dkm::kmeans_lloyd_parallel(data, k);
+            // std::cout << typeid(cluster_data).name() << endl;
+            // std::cin.get();
+            // KMEANS TEST END
 
             // classify using the graphblas kmeans implementation
             grb::resize(X, n * k);
@@ -405,9 +403,9 @@ namespace grb
             size_t *I = new size_t[n * k];
             size_t *J = new size_t[n * k];
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-#endif
+            // #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+            // #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
+            // #endif
             for (size_t i = 0; i < n * k; ++i)
             {
                 I[i] = i / n;
@@ -420,13 +418,22 @@ namespace grb
             timer.reset();
 
             double best_rcut = std::numeric_limits<double>::max();
-            for (size_t i = 0; i < 1; ++i)
+            for (size_t i = 0; i < kmeans_ortho_reps + kmeans_kpp_reps; ++i)
             {
 
                 grb::clear(K);
-                grb::algorithms::kpp_initialisation(K, X);
+
+                if (i < kmeans_ortho_reps)
+                {
+                    grb::algorithms::korth_initialisation(K, X);
+                }
+                else
+                {
+                    grb::algorithms::kpp_initialisation(K, X);
+                }
+
                 grb::algorithms::kmeans_iteration(K, clusters_and_distances, X);
-                //grb::algorithms::localsearchpp(K, clusters_and_distances, X);
+
                 double rcut = 0;
                 grb::Vector<size_t> x_temp(n);
                 for (const auto &pair : clusters_and_distances)
@@ -454,13 +461,12 @@ namespace grb
             std::cout << "Statistics" << std::endl;
             std::cout << "===========" << std::endl;
             std::cout << "Final p_value:" << final_p << std::endl;
-            std::cout << "RCut value:"    << best_rcut << std::endl;
+            std::cout << "RCut value:" << best_rcut << std::endl;
 
             for (size_t i = 0; i < k; ++i)
             {
                 std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << std::endl;
             }
-
 
             std::cout << "io time (msec) = " << io_time << std::endl;
             std::cout << "grb time (msec) = " << grb_time << std::endl;
