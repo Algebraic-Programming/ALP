@@ -3,12 +3,11 @@
 
 #include <random>
 #include <graphblas.hpp>
-#include <graphblas/algorithms/spec_part_utils.hpp>
+//#include <graphblas/algorithms/spec_part_utils.hpp>
 
 #include <set>
 
 using namespace grb;
-using namespace algorithms;
 
 // Gabriel's code refactored for the new GraphBLAS version
 namespace grb {

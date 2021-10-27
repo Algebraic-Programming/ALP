@@ -264,7 +264,7 @@ namespace grb {
 			ret = ret ? ret : grb::resize( X_norm, grb::nnz( X ) );
 			ret = ret ? ret : grb::set( X_norm, X );
 			ret = ret ? ret : grb::eWiseLambda( [ &X_norm, &euc_sp_mul ]( const size_t i, const size_t j, double &v ){
-				euc_sp_mul.apply( v, v, v );
+				grb::apply( v, v, v, euc_sp_mul );
 			}, X_norm );
 
 			ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( colnorms, n_ones, X_norm, pattern_sum );
@@ -275,18 +275,18 @@ namespace grb {
 
 
 			// compute outer product of column norms with m_ones
-			ret = ret ? ret : grb::outerProduct(
+			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, colnorms, m_ones,
 				operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC
 			);	
-			ret = ret ? ret : grb::outerProduct(
+			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, colnorms, m_ones,
 				operators::left_assign_if< IOType, bool, IOType >()
 			);
 
 			// divide columns of X by norms to get X_norm
 			ret = ret ? ret : grb::clear( X_norm );
-			ret = ret ? ret : grb::mxm_elementwise(
+			ret = ret ? ret : grb::eWiseApply(
 				X_norm, colnorms_outer_m_ones, X,
 				operators::divide_reverse< IOType, IOType, IOType >()
 			);

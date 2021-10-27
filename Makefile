@@ -109,11 +109,17 @@ include/graphblas/algorithms/label.hpp \
 include/graphblas/algorithms/kmeans.hpp \
 include/graphblas/algorithms/hpcg_data.hpp \
 include/graphblas/algorithms/simple_pagerank.hpp \
+include/graphblas/algorithms/spec_part_utils.hpp \
 include/graphblas/algorithms/cosine_similarity.hpp \
 include/graphblas/algorithms/conjugate_gradient.hpp \
 include/graphblas/algorithms/multigrid_v_cycle.hpp \
 include/graphblas/algorithms/sparse_nn_single_inference.hpp \
-include/graphblas/algorithms/red_black_gauss_seidel.hpp
+include/graphblas/algorithms/gnn_single_inference.hpp \
+include/graphblas/algorithms/multilevel_partition.hpp \
+include/graphblas/algorithms/red_black_gauss_seidel.hpp \
+include/graphblas/algorithms/spectral_graph_partition.hpp \
+include/graphblas/algorithms/ROPTLIB/Grassmann_pLap.hpp \
+include/graphblas/algorithms/pLaplacian_spectral_partition.hpp
 
 #include environment-dependent info
 include paths.mk
@@ -152,6 +158,7 @@ install-dirs:
 	mkdir "${GRB_INSTALL_PATH}/include/graphblas/reference" || true
 	mkdir "${GRB_INSTALL_PATH}/include/graphblas/banshee" || true
 	mkdir "${GRB_INSTALL_PATH}/include/graphblas/algorithms" || true
+	mkdir "${GRB_INSTALL_PATH}/include/graphblas/algorithms/ROPTLIB" || true
 	mkdir "${GRB_INSTALL_PATH}/include/graphblas/utils" || true
 	mkdir "${GRB_INSTALL_PATH}/include/graphblas/utils/parser" || true
 
