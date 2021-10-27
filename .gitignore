@@ -5,3 +5,6 @@ doxygen.log
 /lib/
 flags.mk
 paths.mk
+/build/
+/install/
+/3rd/

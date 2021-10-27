@@ -322,7 +322,6 @@ namespace grb {
 
 			// divide columns of X by norms to get X_norm
 			ret = ret ? ret : grb::clear( X_norm );
-
 			ret = ret ? ret : grb::eWiseApply(
 				X_norm, colnorms_outer_m_ones, X,
 				operators::divide_reverse< IOType, IOType, IOType >()
