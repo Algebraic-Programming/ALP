@@ -309,6 +309,7 @@ namespace grb {
 				colnorms[i] = std::sqrt( colnorms[i] );
 			}, colnorms );
 
+
 			// compute outer product of column norms with m_ones
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
@@ -338,25 +339,21 @@ namespace grb {
 			for ( size_t l = 0; l < k; ++l ) {
 
 				ret = ret ? ret : grb::clear( col_select );
-
 				ret = ret ? ret : grb::clear( selected );
-
 				ret = ret ? ret : grb::clear( selected_innerprods );
-
+				
 				// add last selected index i to selected_indices 
-				ret = ret ? ret : grb::setElement( selected_indices, i, l );
-
+				ret = ret ? ret : grb::setElement( selected_indices, i , l );
+				
 				// extract column i from X_norm
 				ret = ret ? ret : grb::setElement( col_select, true, i );
-
 				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( selected, col_select, X_norm, pattern_sum );
-
+				
 				// compute inner products of column i with other columns of X_norm
 				ret = ret ? ret : grb::vxm( selected_innerprods, selected, X_norm, euc_sp );
-
 				ret = ret ? ret : grb::eWiseLambda( [&selected_innerprods]( const size_t i ){
-					selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
-				}, selected_innerprods );
+										selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
+									}, selected_innerprods );
 
 				// update maximum inner products of all points to the already selected ones
 				ret = ret ? ret : grb::foldl( max_innerprods, selected_innerprods, max_monoid );
