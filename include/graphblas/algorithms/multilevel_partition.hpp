@@ -548,12 +548,7 @@ namespace grb {
 			// Vector< IOType > w( m );
 			Vector< pType > w( m );
 			RC rc = grb::mxv( w, A, ones, standard_sr );
-			if (rc == SUCCESS) {
-				std::cout << "suc" << std::endl;
-			} else {
-				std::cout << "nosuc" << std::endl;
-			}
-			
+
 			Matrix< IOType > Aw( m, n );
 			
 			

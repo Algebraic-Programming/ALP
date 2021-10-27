@@ -305,7 +305,6 @@ int main(int argc, char **argv) {
 
 	rc = launcher.exec(&grbProgram, in, out, true);
 	grob_time += timer.time();
-	std::cout << "It took " << grob_time << " goddamn time" << std::endl;
 	if (rc != SUCCESS)
 	{
 		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
