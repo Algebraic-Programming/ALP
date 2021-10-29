@@ -22,8 +22,9 @@ struct input
 	char filename[1024];
 	bool direct;
 	bool unweighted;
-	size_t num_clusters;	
 	//size_t rep;
+	unsigned int k; // number of parts to compute
+	double eps;     // maximum allowed load imbalance
 };
 
 struct output
@@ -36,8 +37,9 @@ struct output
 };
 
 // written by Gabriel
-void hM2grbM( std::ifstream& infile, int rows, int cols,
-						std::vector< int > &Ivec, std::vector< int > &Jvec, std::vector< int > &Vvec) {
+void hM2grbM( std::ifstream& infile, size_t rows, size_t cols,
+	std::vector< size_t > &Ivec, std::vector< size_t > &Jvec, std::vector< unsigned int > &Vvec
+) {
 	// Transform a hypergraph in hMETIS format into row-net incidence matrix as a grb::Matrix
 	std::string line;	
 
@@ -87,42 +89,38 @@ void matrixMarket2RowHyperGraph( Matrix< int > &A, int &num_edges, int &num_cols
 }
 
 void grbProgram( const struct input &data_in, struct output &out) {
-    grb::utils::Timer timer;
-	int k = 2;
-	double c = 1.1;
-    timer.reset();
+	grb::utils::Timer timer;
+	const double c = 1.0 + data_in.eps;
+	timer.reset();
 	// very hacky fix for now
 	std::string fileType = "hmetis";
 
-    if (data_in.filename[0] == '\0') {
-        std::cerr << "no file name given as input." << std::endl;
-        out.error_code = ILLEGAL;
-        return;
-    }
+	if (data_in.filename[0] == '\0') {
+		std::cerr << "no file name given as input." << std::endl;
+		out.error_code = ILLEGAL;
+		return;
+	}
 	out.error_code = 0;
-    std::ifstream myfile;
-    out.times.io = timer.time();
-    timer.reset();
+	std::ifstream myfile;
+	out.times.io = timer.time();
+	timer.reset();
 	int cols, rows, nnz;
 
-	std::vector< int > Ivec, Jvec, Vvec;
-    if ( fileType == "hmetis" ) {
+	std::vector< size_t > Ivec, Jvec;
+       	std::vector< unsigned int > Vvec;
+	if ( fileType == "hmetis" ) {
 		myfile.open(data_in.filename);
-    	std::string line;
-    	std::getline(myfile, line);
+		std::string line;
+		std::getline(myfile, line);
 		std::stringstream numbers(line);
 		
 		numbers >> rows >> cols;
 		
-
-    	hM2grbM( myfile, rows, cols, Ivec, Jvec, Vvec );
-
-
+		hM2grbM( myfile, rows, cols, Ivec, Jvec, Vvec );
 	} else {
 		std::ifstream file( data_in.filename );
 		std::string line;
 		int count = 0;
-		// int frows, cols;
 		while(std::getline(file, line)) {
 			std::istringstream iss(line);
 			int r, c, v;
@@ -141,48 +139,26 @@ void grbProgram( const struct input &data_in, struct output &out) {
 			count++;
 		}
 		
-		//int row, col;
-		//double val;
-		//std::vector< int > Ivec2, Jvec2, Vvec2;
-
-		
-		// matrixMarket2Grb( myfile, rows, cols, nnz, Ivec, Jvec, Vvec );
 		myfile.close();
-		// Matrix< int > A2( frows, fcols );
-		// int* I2 = &Ivec2[0];
-		// int* V2 = &Vvec2[0];
-		// int* J2 = &Jvec2[0];
-		// grb::resize( A2, Vvec2.size() );
-		// grb::buildMatrixUnique( A2 , &(I2[0]), &(J2[0]), &(V2[0]), Vvec2.size(), PARALLEL );
-		// matrixMarket2RowHyperGraph( A2, rows, cols, Ivec, Jvec, Vvec );
-
 	}
 	std::cout << rows << std::endl;
-	Matrix< int > A( rows, cols );
-	int* I = &Ivec[0];
-	int* V = &Vvec[0];
-	int* J = &Jvec[0];
+	Matrix< unsigned int > A( rows, cols );
+	size_t * const I = &Ivec[0];
+	size_t * const J = &Jvec[0];
+	unsigned int * const V = &Vvec[0];
 	grb::resize( A, Vvec.size() );
 	grb::buildMatrixUnique( A , &(I[0]), &(J[0]), &(V[0]), Vvec.size(), PARALLEL );
 
-	// for( const std::pair< std::pair< size_t, size_t >, int > &pair : A ) {
-	// 	std::cout << "kire : " << pair.first.first << std::endl;
-	// 	std::cout << "asbe : " << pair.first.second << std::endl;
-	// 	std::cout << "ssss : " << pair.second << std::endl;
-	// }
-    // myfile.close();
-
 	out.times.preamble = timer.time();
 
+	RC rc = SUCCESS;
 
-    RC rc = SUCCESS;
 
+	timer.reset();
 
-    timer.reset();
-
-    // initialize hgraph partitioner
-    rc = grb::algorithms::partition(A, k, c);
-    double single_time = timer.time();
+	// initialize hgraph partitioner
+	rc = grb::algorithms::partition( A, data_in.k, c );
+	double single_time = timer.time();
 
 	if (rc != SUCCESS)
 	{
@@ -224,28 +200,25 @@ void grbProgram( const struct input &data_in, struct output &out) {
 
 	//done
 	return;
-
 }
 
 
 int main(int argc, char **argv) {
-    std::cout << "@@@@  =======================  @@@ " << std::endl;
+	std::cout << "@@@@  =======================  @@@ " << std::endl;
 	std::cout << "@@@@  Multilevel partitioning @@@ " << std::endl;
 	std::cout << "@@@@  ======================= @@@ " << std::endl
 			  << std::endl;
 
 	//sanity check
-	if (argc < 5 || argc > 6)
+	if (argc < 5 || argc > 7)
 	{
-		std::cout << "Usage: " << argv[0] << " <dataset> <direct/indirect> <weighted/unweighted> <out_filename> <num_clusters> " << std::endl;
+		std::cout << "Usage: " << argv[0] << " <dataset> <direct/indirect> <weighted/unweighted> <out_filename> <num_clusters> <epsilon>" << std::endl;
 		std::cout << " -------------------------------------------------------------------------------- " << std::endl;
-		//std::cout << "Usage: " << argv[0] << " <dataset> <direct/indirect> (inner iterations) (outer iterations)\n";
 		std::cout << "INPUT" << std::endl;
 		std::cout << "Mandatory: <dataset>, <direct/indirect>, <weighted/unweighted>, and <out_filename> are mandatory arguments" << std::endl;
 		std::cout << "Optional : <num_clusters> integer >= 2. Default value is 2." << std::endl;
+		std::cout << "           <epsilon> double > 0, the maximum relative load imbalance. Default value is 0.1." << std::endl;
 		std::cout << " -------------------------------------------------------------------------------- " << std::endl;
-		//std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". If set to zero, the program will select a number of iterations approximately required to take at least one second to complete.\n";
-		//std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0." << std::endl;
 		return 0;
 	}
 
@@ -286,13 +259,23 @@ int main(int argc, char **argv) {
 	in.filename[1023] = '\0';
 
 	char *end = NULL;
-	if (argc >= 5)
+	in.k = 2;
+	if (argc >= 6)
 	{
-		in.num_clusters = strtoumax(argv[5], &end, 10);
+		in.k = strtoumax(argv[5], &end, 10);
 		if (argv[5] == end)
 		{
 			std::cerr << "Could not parse argument " << argv[5] << " for number of clusters." << std::endl;
 			return 102;
+		}
+	}
+
+	in.eps = 0.1;
+	if( argc >= 7 ) {
+		in.eps = strtod( argv[6], &end );
+		if( end == argv[6] ) {
+			std::cerr << "Could not parse argument " << argv[6] << " for maximum relative load imbalance." << std::endl;
+			return 103;
 		}
 	}
 

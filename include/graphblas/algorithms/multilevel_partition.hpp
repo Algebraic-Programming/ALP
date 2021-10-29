@@ -127,14 +127,14 @@ namespace grb {
 					grb::identities::zero, 
 					grb::identities::one
 			    > standard_sr;
-			int n = grb::ncols( Aw );
-			int m = grb::nrows( Aw );
+			size_t n = grb::ncols( Aw );
+			size_t m = grb::nrows( Aw );
 
 			T.push_back( new Matrix< pType > ( n,n ) );
 
-			std::vector< int > Ivec;
-			std::vector< int > Jvec;
-			std::vector< int > Vvec;
+			std::vector< size_t > Ivec;
+			std::vector< size_t > Jvec;
+			std::vector< unsigned int > Vvec;
 			for ( int i = 0; i < n; ++i ) {
 				Ivec.push_back( i );
 				Jvec.push_back( i );
@@ -152,39 +152,33 @@ namespace grb {
 				std::default_random_engine random_generator( seed_uniform );
 				std::uniform_int_distribution< size_t > uniform( 0, n - 1 );
 
-				int r;
-				int z;
+				pType r, z;
 				do {
 					r = uniform( random_generator ); 
 					m_zero( z, Mtmp, r );
 				
 				} while(!z);
-				int v_i = r;
-				grb::Vector< int > v_pos( n );
+				pType v_i = r;
+				grb::Vector< size_t > v_pos( n );
 				grb::setElement( v_pos, 1, v_i );
-				Vector< int > v( m );
+				Vector< size_t > v( m );
 				grb::mxv( v, Aw, v_pos, standard_sr );
 				
-				Vector< int > edgew( n );
-				// grb::mxv< grb::descriptors::transpose_matrix >( edgew, Mtmp, standard_sr.getAdditiveMonoid(), Aw, v, standard_sr);
+				Vector< pType > edgew( n );
 				grb::mxv< grb::descriptors::transpose_matrix >( edgew, Mtmp, Aw, v, standard_sr );
 
-				int max = 0, i_max = -1;
-				// i_max = -1
-				for ( const std::pair< size_t, double > &pair: edgew ) {
-					const double val = pair.second;
-					if ( val >= max && pair.first != v_i ) {
-						max = val;
+				pType max = 0, i_max = -1;
+				for ( const std::pair< size_t, pType > &pair: edgew ) {
+					if ( pair.second >= max && pair.first != v_i ) {
+						max = pair.second;
 						i_max = pair.first;
 					}
 				}
 
 				update_weight_matrix( Aw, v_i, i_max );
-				// if (i_max != -1) {
 				Ivec.push_back( i_max );
 				Jvec.push_back( v_i );
 				Vvec.push_back( 1 );
-				//}
 				grb::setElement( M, 0, i_max );
 				grb::setElement( Mtmp, 0, i_max );
 				grb::setElement( Mtmp, 0, v_i );
@@ -193,9 +187,9 @@ namespace grb {
 
 			}
 
-			int* I = &Ivec[0];
-			int* J = &Jvec[0];
-			int* V = &Vvec[0];
+			size_t * I = &Ivec[0];
+			size_t * J = &Jvec[0];
+			unsigned int * V = &Vvec[0];
 			grb::resize( *(T.back()), Vvec.size() );
 
 			grb::buildMatrixUnique( *(T.back()), &(I[0]), &(J[0]), &(V[0]), Vvec.size(), SEQUENTIAL );
@@ -242,15 +236,16 @@ namespace grb {
 		}
 
 
-	RC modified_mxm( grb::Matrix< double > &Aw, grb::Vector< int > &w, grb::Matrix< int > &A) {
+	template< typename IOType, typename pType >
+	RC modified_mxm( grb::Matrix< IOType > &Aw, grb::Vector< pType > &w, grb::Matrix< pType > &A) {
 	// Variables to build matrix Aw later
-	std::vector< int > Ivec, Jvec;
+	std::vector< size_t > Ivec, Jvec;
 	grb::Semiring<
-				     grb::operators::add< double >,
-					grb::operators::mul< double >,
-					grb::identities::zero, 
-					grb::identities::one
-			    > standard_sr;
+		grb::operators::add< double >,
+		grb::operators::mul< double >,
+		grb::identities::zero, 
+		grb::identities::one
+	> standard_sr;
 	std::vector< double > Vvec;
 	int n_nets = grb::size( w );
 	// build the w vectors
@@ -279,8 +274,8 @@ namespace grb {
 	}
 
 	// Build matrix Aw from matrix variables
-	int* I = &Ivec[0];
-	int* J = &Jvec[0];
+	size_t * I = &Ivec[0];
+	size_t * J = &Jvec[0];
 	double* V = &Vvec[0];
 	grb::resize( Aw, Vvec.size() );
 	grb::buildMatrixUnique( Aw, &(I[0]), &(J[0]), &(V[0]), Vvec.size(), SEQUENTIAL );
@@ -435,10 +430,10 @@ namespace grb {
 
 
 
-		template< typename IOType >
+		template< typename IOType, typename pType >
 		RC uncoarsen_weight_matrix(
 			Matrix< IOType > &Aw, 
-			Matrix< int > &Ts
+			Matrix< pType > &Ts
 		) {
 			grb::Semiring<
 				     grb::operators::add< IOType >,
@@ -446,7 +441,7 @@ namespace grb {
 					grb::identities::zero, 
 					grb::identities::one
 			    > standard_sr;
-			std::vector< int > Ivec, Jvec;
+			std::vector< size_t > Ivec, Jvec;
 			std::vector< IOType > Vvec;
 
 			size_t n = grb::ncols( Ts );
@@ -472,9 +467,9 @@ namespace grb {
 				}
 			}
 
-			int* I = &Ivec[0];
-			int* J = &Jvec[0];
-			double* V = &Vvec[0];
+			size_t * const I = &Ivec[0];
+			size_t * const J = &Jvec[0];
+			double * const V = &Vvec[0];
 			grb::resize( Aw, Vvec.size() );
 			grb::buildMatrixUnique( Aw, &(I[0]), &(J[0]), &(V[0]), Vvec.size(), SEQUENTIAL );
 
@@ -485,7 +480,7 @@ namespace grb {
 
 		template< typename IOType, typename pType > 
 		RC uncoarsening( Matrix< IOType > &Aw, Vector< pType > &M, Vector< pType > &P, std::vector< Matrix< pType >* > &T,
-		std::vector< IOType > &sizes
+		std::vector< IOType > &sizes, const pType k, const double c
 		) {
 			grb::Semiring<
 				     grb::operators::add< IOType >,
@@ -504,13 +499,14 @@ namespace grb {
 				grb::set( P, P_temp );
 				uncoarsen_weight_matrix( Aw, *(T[s]) );
 			}
-			const double c = 1.1;
-			const int k = 2;
 			
+#ifdef _DEBUG
+			std::cout << "Uncoarsening: \n";
 			for( const std::pair< size_t, double > &pair : P ) {
-				std::cout << "P[" << pair.first << "] = " << pair.second << std::endl;
+				std::cout << "\t P[ " << pair.first << " ] = " << pair.second << std::endl;
 
 			}
+#endif
 			// nothing is written to P i think 
 			uncoarsening_step( Aw, M, P, sizes, c, k );
 
@@ -521,8 +517,8 @@ namespace grb {
 		template< typename IOType, typename pType >
 		RC partition(
 			Matrix< pType > &A, 
-			const pType &k,
-			const IOType &c
+			const pType k,
+			const IOType c
 		) {
 
 			 grb::Semiring<
@@ -537,24 +533,18 @@ namespace grb {
 			Vector< pType > P( grb::ncols( A ) );
 			grb::set( P, 0 );
 
-			std::vector< Matrix< int >* > T;
-			int n = grb::ncols( A );
-			int m = grb::nrows( A );
+			std::vector< Matrix< pType >* > T;
+			size_t n = grb::ncols( A );
+			size_t m = grb::nrows( A );
 			
 			Vector< IOType > ones( n );
 			grb::set( ones, 1 );
 			
-			// Vector< IOType > w( m );
 			Vector< pType > w( m );
 			RC rc = grb::mxv( w, A, ones, standard_sr );
 
 			Matrix< IOType > Aw( m, n );
 			
-			
-			
-			
-			// grb::buildMatrixUnique( W, &(I[0]), &(J[0]), &(V[0]), WV.size(), SEQUENTIAL );
-					
 			modified_mxm( Aw, w, A );
 	
 			std::vector< IOType > sizes( k );
@@ -562,11 +552,10 @@ namespace grb {
 			coarsening( Aw, M , T , k );
 
 			initial_partition( M, P, k, sizes );
-			uncoarsening( Aw, M , P , T, sizes );
+			uncoarsening( Aw, M , P , T, sizes, k, c );
 
-			
 			for( const std::pair< size_t, IOType > &pair : P ) {
-				std::cout << "P[" << pair.first << "] = " << pair.second << std::endl;
+				std::cout << "P[ " << pair.first << " ] = " << pair.second << std::endl;
 			}
 
 			return SUCCESS;
