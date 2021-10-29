@@ -59,6 +59,17 @@ void grbProgram( const void *, const size_t in_size, grb::RC &ret ) {
 	ERR( ret, grb::algorithms::kmeans_iteration( K, classes_and_centroids, X ) );
 
 #ifdef _DEBUG
+	std::cout << "\ttesting kmeans with kpp initialisation\n "; 
+	for( const auto &pair : classes_and_centroids ) {
+		std::cout << "\tpoint " << pair.first << "\tcluster " << pair.second.first << "\tsquared distance " << pair.second.second << "\n";
+	}
+#endif
+
+	ERR( ret, grb::algorithms::korth_initialisation( K, X ) );
+	ERR( ret, grb::algorithms::kmeans_iteration( K, classes_and_centroids, X ) );
+
+#ifdef _DEBUG
+	std::cout << "\ttesting kmeans with korth initialisation\n "; 
 	for( const auto &pair : classes_and_centroids ) {
 		std::cout << "\tpoint " << pair.first << "\tcluster " << pair.second.first << "\tsquared distance " << pair.second.second << "\n";
 	}

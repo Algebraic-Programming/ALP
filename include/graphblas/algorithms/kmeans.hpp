@@ -269,6 +269,8 @@ namespace grb {
 			
 			ret = ret ? ret : grb::eWiseLambda( [ &X_norm, &euc_sp_mul ]( const size_t i, const size_t j, double &v ){
 				grb::apply( v, v, v, euc_sp_mul );
+				(void) i;
+				(void) j;
 			}, X_norm );
 			
 // < grb::descriptors::transpose_matrix >
