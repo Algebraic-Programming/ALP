@@ -119,7 +119,8 @@ include/graphblas/algorithms/multilevel_partition.hpp \
 include/graphblas/algorithms/red_black_gauss_seidel.hpp \
 include/graphblas/algorithms/spectral_graph_partition.hpp \
 include/graphblas/algorithms/ROPTLIB/Grassmann_pLap.hpp \
-include/graphblas/algorithms/pLaplacian_spectral_partition.hpp
+include/graphblas/algorithms/pLaplacian_spectral_partition.hpp \
+include/graphblas/algorithms/pLaplacian_poweriter_partition.hpp
 
 #include environment-dependent info
 include paths.mk
