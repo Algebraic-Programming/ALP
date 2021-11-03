@@ -463,9 +463,11 @@ namespace grb {
                     ret = ret ? ret : grb::foldl( w_old, 1/norm, reals_ring.getMultiplicativeOperator() );
                     ret = ret ? ret : grb::set( w_compare, w_old );
 
-                    size_t l = 0;
+                    //size_t l = 0;
                     iter = 0;
                     //C = C_base;
+
+                    // this choice of C seems to work for unweighted matrices, weighted TBD
                     C = maxdeg * (p-1) * std::pow( conv * norm_sols, p - 2);
                     do {
                         // hit w_old with C*Id - pLaplacian to get w
@@ -482,8 +484,8 @@ namespace grb {
                         }, w_old, w );
 
                         // reorthogonalise w.r.t. seen vectors
-                        //for ( size_t l = 0; l < j; ++l ) {
-                        if ( j > 0 ) { 
+                        for ( size_t l = 0; l < j; ++l ) {
+                        //if ( j > 0 ) { 
                             IOType innerprod;
                             ret = ret ? ret : grb::dot< descriptors::dense >( innerprod, w, *Eigs[ l ], reals_ring );
                             ret = ret ? ret : eWiseLambda( [ &w, &Eigs, &innerprod, &l ]( size_t i ){
@@ -502,16 +504,16 @@ namespace grb {
                         ret = ret ? ret : grb::set( w_old, w );
 
                         //they will enter a cycle of length j, update residual with this distance
-                        if ( l == 0 ) {
+                        //if ( l == 0 ) {
                             //residual_old = residual;
                             residual = 0;
                             ret = ret ? ret : grb::dot( residual, w, w_compare, max_monoid, grb::operators::abs_diff< IOType >() );
                             ret = ret ? ret : grb::set( w_compare, w );
                             //std::cout << "p = " << p  << " j = " << j << " residual = " << residual << " C = " << C << std::endl;
-                        }
+                        //}
 
                         // update l and C ( if converging slowly )
-                        if ( j > 0 ) l = ( l + 1 ) %  j;
+                        //if ( j > 0 ) l = ( l + 1 ) %  j;
                         ++iter;
                         if ( iter > C_iter ) {
                             C*=C_factor;

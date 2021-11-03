@@ -103,7 +103,7 @@ namespace grb
                 //CURRENTLY C IS AUTOMATIC
                 //double C = 1000;
                 // convexification number, should be at least the operator norm of the gradient of the laplacian
-                double precision = ( p > final_p || p == 2) ? 1e-4 : 1e-4;
+                double precision = ( p == final_p || p == 2) ? 1e-6 : 1e-6;
                 ret = ret ? ret : spec_part_utils::PowerIter( A, p, Eigs, precision );
     
                 grb_time += timer.time();
@@ -131,7 +131,10 @@ namespace grb
                 J[i] = i % n;
                 V[i] = (*Eigs[ I[i] ])[ J[i] ];
                 std::cout << V[i] << ", ";
-                if ( J[i] == 0 ) std::cout << std::endl << std::endl;
+                //if ( J[i] == 0 ) {
+                //    std::cout << std::endl << std::endl;
+                //    std::cin.get();
+                //}
             }
 
             grb::buildMatrixUnique( X, I, J, V, n * k, PARALLEL );

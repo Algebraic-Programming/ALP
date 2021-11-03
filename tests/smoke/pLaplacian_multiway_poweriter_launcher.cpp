@@ -102,8 +102,8 @@ void grbProgram(const struct input &data_in, struct output &out)
 	timer.reset();
 
 	// Initialize parameters for the partitioner
-	int kmeans_iters_ortho = 60;	// kortho iterations
-	int kmeans_iters_kpp = 30;	   	// k++ iterations
+	int kmeans_iters_ortho = 300;	// kortho iterations
+	int kmeans_iters_kpp = 50;	   	// k++ iterations
 	float final_p = 1.05;	   // final value of p
 	float factor_reduce = 0.97; // reduction factor for the value of p
 
