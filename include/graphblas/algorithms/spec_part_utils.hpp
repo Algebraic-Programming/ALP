@@ -297,17 +297,128 @@ namespace grb {
                 return SUCCESS;
             }
 
+            /*  
+            *   identify current incidence matrix from hyperincidence
+            *
+            */
+
+            template < typename IOType >
+            RC HyperToIncid(    Matrix< IOType > &A, //resulting incidence matrix
+                                const Matrix< IOType > &A_hyper, //hypergraph matrix,
+                                const Vector< IOType > &x //at which vector
+            ) { 
+                // define index-value type
+                typedef std::pair< size_t, IOType > indexIOType;
+
+                // // argmin monoid
+                Monoid<
+                        grb::operators::argmin< size_t, IOType >,
+                        grb::identities::infinity
+                    > argmin_monoid;
+
+                // // argmax monoid
+                Monoid<
+                        grb::operators::argmax< size_t, IOType >,
+                        grb::identities::negative_infinity
+                    > argmax_monoid;
+
+                // check sizes make sense
+                size_t m = grb::nrows( A_hyper );
+                size_t n = grb::ncols( A_hyper );
+
+                if (    grb::nrows( A ) != m ||
+                        grb::ncols( A ) != n ||
+                        grb::size( x ) != n ) {
+                    return MISMATCH;
+                }
+
+                // running error code
+                RC ret = SUCCESS;
+
+                // add labels to x
+                Vector< size_t > labels( n );
+                ret = ret ? ret : grb::set< grb::descriptors::use_index >( labels, 0 );
+
+
+                // FIX THIS
+                // declare vector of selected vertices
+                Vector< indexIOType > max_selected( m ), min_selected( m );
+                for ( size_t i = 0; i < m; ++i ) {
+                    ret = ret ? ret : grb::setElement( max_selected, std::pair< size_t, IOType >( 0, -std::numeric_limits< IOType >::max() ), i );
+                    ret = ret ? ret : grb::setElement( min_selected, std::pair< size_t, IOType >( 0, std::numeric_limits< IOType >::max() ), i );
+                }
+                //ret = ret ? ret : grb::set< descriptors::no_casting >( max_selected, std::pair< size_t, IOType >( (size_t)0, std::numeric_limits< IOType >::min() ) );
+                //ret = ret ? ret : grb::set< descriptors::no_casting >( min_selected, std::pair< size_t, IOType >( (size_t)0, std::numeric_limits< IOType >::max() ) );
+
+                // compute vector of selected max and min indices
+                // first set A_{ij} to x_j
+                ret = ret ? ret : grb::set( A, A_hyper );
+                ret = ret ? ret : grb::eWiseLambda(
+                    [ &A, &x ]( const size_t i, const size_t j, IOType &v ) {
+                        v = x[ j ];
+                    }, A );
+                // compute max_selected
+                ret = ret ? ret : vxm< descriptors::transpose_matrix >(
+					max_selected, labels, A, argmax_monoid,
+					operators::zip< size_t, IOType >()
+				);
+                // compute min_selected
+                ret = ret ? ret : vxm< descriptors::transpose_matrix >(
+					min_selected, labels, A, argmin_monoid,
+					operators::zip< size_t, IOType >()
+				);
+
+                // compute incidence matrix
+                ret = ret ? ret : grb::set( A, A_hyper );
+                ret = ret ? ret : grb::eWiseLambda(
+                    [ &A, &max_selected, &min_selected ]( const size_t i, const size_t j, IOType &v ) {
+                        v *=   ( static_cast< int >( j == (max_selected[i]).first )
+                              - static_cast< int >( j == (min_selected[i]).first ) );
+                    }, A );
+
+                // Semiring< 
+                //     grb::operators::add< double >,
+                //     grb::operators::mul< double >,
+                //     grb::identities::zero,
+                //     grb::identities::one
+                // > reals_ring;
+
+                // for ( const auto &pair : max_selected ) {
+                //     std::cout << "i = " << pair.first <<  " max_selected[i] = " << pair.second.first << " " << pair.second.second << std::endl;
+                // }
+
+                // for ( const auto &pair : min_selected ) {
+                //     std::cout << "i = " << pair.first <<  " max_selected[i] = " << pair.second.first << " " << pair.second.second << std::endl;
+                // }
+
+                // for ( size_t i = 0; i < m; ++i ){
+                //     grb::Vector< double > v( m ), u( n );
+                //     grb::setElement( v, 1.0, i );
+                //     grb::vxm( u, v, A, reals_ring );
+                //     for ( const auto &pair : u ) {
+                //         std::cout << "i = " << i <<  " j = " << pair.first << " v = " << pair.second << std::endl;
+                //     }
+                // }
+                // std::cin.get();
+
+                return ret;
+            }
+
             RC RCutAdj( double &rcut,
-                const Matrix< double > &A,
+                const Matrix< double > &A_hyper,
                 const Vector< size_t > &x,
+                std::vector< double >  &cluster_cuts,
                 const size_t k
             ) {
-                size_t n = grb::ncols( A );
-                size_t m = grb::nrows( A );
+                size_t n = grb::ncols( A_hyper );
+                size_t m = grb::nrows( A_hyper );
 
                 if ( grb::size( x ) != n ) {
                     return MISMATCH;
                 }
+
+                // incidence matrix derived from A_hyper
+                Matrix< double > A( m, n );
 
                 Semiring< 
                     grb::operators::add< double >,
@@ -327,11 +438,14 @@ namespace grb {
                 std::vector< grb::Vector< double > * > cluster_indic( k );
                 for ( size_t i = 0; i < k; ++i ) {
                     cluster_indic[ i ] = new grb::Vector< double >( n );
+                    grb::set( *(cluster_indic[ i ]), 0 );
                 }
 
                 // parallelise this once we have random-access iterators
+                std::vector< size_t > sizes( k, 0 );
                 for ( const auto &pair : x ) {
                     grb::setElement( *(cluster_indic[ pair.second ]), 1.0, pair.first );
+                    ++sizes[ pair.second ];
                 }
 
                 rcut = 0;
@@ -341,12 +455,14 @@ namespace grb {
                     double to_add = 0;
 
                     // in case of an empty cluster
-                    if ( grb::nnz( *(cluster_indic[ i ]) ) == 0) {
+                    if ( sizes[ i ] == 0) {
                         rcut = std::numeric_limits< double >::max();
                         return SUCCESS;
                     }
 
-                    // W part
+                    // A part
+                    HyperToIncid( A, A_hyper, *(cluster_indic[ i ]) );
+
                     grb::clear( aux );
                     grb::set( aux, 0 );
                     grb::mxv( aux, A, *(cluster_indic[ i ]), reals_ring );
@@ -357,22 +473,25 @@ namespace grb {
 
                     grb::foldl( to_add, aux, reals_ring.getAdditiveMonoid() );
 
-                    rcut += to_add /grb::nnz( *(cluster_indic[ i ]) );
+                    rcut += to_add /sizes[ i ];
+
+                    cluster_cuts[ i ] = to_add /sizes[ i ];
                 }
 
                 return SUCCESS;
             }
 
             /*  
-            * power iteration to obtain top k orthogonal eigenvectors (with largest eigenvalues) 
+            *   power iteration to obtain top k orthogonal eigenvectors (with largest eigenvalues) 
+            *
             */
             template < typename IOType >
-            RC PowerIter( const Matrix< IOType > &A, //incidence matrix
+            RC PowerIter( const Matrix< IOType > &A_hyper, //hyper-incidence matrix
                           double p,
                           std::vector< grb::Vector< IOType >* > &Eigs,          //contains the initial guess for the k eigenvectors
                                                                                 //  and the final k eigenvectors, should be nonzero
-                          const IOType conv = 1e-8,        // convergence tolerance
-                          double C = 20             // constant for offsetting the pLaplacian
+                          std::vector< double > &Cj,             // constant for offsetting the pLaplacian
+                          const IOType conv = 1e-8        // convergence tolerance
                           )
             {
                 //nothing to do
@@ -382,8 +501,8 @@ namespace grb {
 
                 // check sizes make sense
                 size_t k = Eigs.size();
-                size_t n = grb::ncols( A );
-                size_t m = grb::nrows( A );
+                size_t n = grb::ncols( A_hyper );
+                size_t m = grb::nrows( A_hyper );
                 for ( size_t i = 1; i < k; ++i ) {
                     if ( grb::size(*Eigs[i]) != n ) {
                         return MISMATCH;
@@ -391,7 +510,7 @@ namespace grb {
                 }
 
                 //declare the real numbers
-                grb::Semiring<
+                Semiring<
                         grb::operators::add< IOType >,
                         grb::operators::mul< IOType >,
                         grb::identities::zero,
@@ -407,10 +526,13 @@ namespace grb {
                 // declare pattern sum ring
                 Semiring< 
                         grb::operators::add< IOType >,
-                        grb::operators::right_assign_if< IOType, bool, IOType >,
+                        grb::operators::right_assign_if< IOType, IOType, IOType >,
                         grb::identities::zero,
                         grb::identities::logical_true
                     > pattern_sum;
+
+                // declare derived incidence matrix
+                Matrix< IOType > A( m, n ); 
 
                 //define the 2-norm
                 const auto eucNorm = [ &n, &reals_ring ]( double &out, grb::Vector< double > &in ) {
@@ -438,49 +560,62 @@ namespace grb {
 
                 // working scalars
                 IOType residual, residual_old, norm;
+                
 
                 // number of iterations before increasing C
                 size_t iter = 0;
                 size_t C_iter = 500;
-                //double C_base = C;
-                double C_factor = 1.01;
+                double C_factor = 1.05;
                 double norm_sols = 1; //minimum supnorm of all solutions, used for relative error 
 
+                
+
                 // determine the maximum degree of the graph
-                // COULD BE COMPUTED OUTSIDE OF PowerITer
-                size_t maxdeg;
-                grb::Vector< IOType > ones( m ), degs( n );
-                ret = ret ? ret : grb::set( ones, 1 );
-                ret = ret ? ret : grb::vxm( degs, ones, A, pattern_sum );
-                ret = ret ? ret : grb::foldl( maxdeg, degs, max_monoid );
-                //std::cout << " maxdeg = "<< maxdeg << std::endl;
+                // COULD BE COMPUTED OUTSIDE OF PowerIter
+
+                //C = maxdeg * (p-1) * std::pow( conv * norm_sols, p - 2);
+                //std::vector< double > Cj( k, C );
+
 
                 for ( size_t j = 0; j < k; j++ ) {
 
                     // load initial guess into w_old and w_compare and normalise
                     ret = ret ? ret : grb::set( w_old, *Eigs[ j ] );
-                    ret = ret ? ret : eucNorm( norm, w_old );
+                    ret = ret ? ret : infNorm( norm, w_old );
                     ret = ret ? ret : grb::foldl( w_old, 1/norm, reals_ring.getMultiplicativeOperator() );
                     ret = ret ? ret : grb::set( w_compare, w_old );
 
-                    //size_t l = 0;
+                    size_t l = 0;
                     iter = 0;
-                    //C = C_base;
 
                     // this choice of C seems to work for unweighted matrices, weighted TBD
-                    C = maxdeg * (p-1) * std::pow( conv * norm_sols, p - 2);
+                    //C = maxdeg * (p-1) * std::pow( conv * norm_sols, p - 2);
+
+                    // create history vector
+                    size_t history_length = 500;
+                    std::vector< IOType > residual_history( history_length, 1 );
+                    //double history_oscillation = 0.01;
+                    IOType history_average = 1, history_average_old = 1;
+                    double minimum_tolerance = conv;
+
                     do {
                         // hit w_old with C*Id - pLaplacian to get w
                         ret = ret ? ret : grb::set( temp, w_old );
                         ret = ret ? ret : spec_part_utils::phi_p( temp, p/(p-1) );
                         ret = ret ? ret : grb::set( temp2, 0 );
+
+                        //compute A from A_hyper
+                        ret = ret ? ret : grb::clear( A );
+                        ret = ret ? ret : HyperToIncid( A, A_hyper, temp );
+
+                        // continue computing C*Id - pLaplacian
                         ret = ret ? ret : grb::mxv( temp2, A, temp, reals_ring );
                         ret = ret ? ret : spec_part_utils::phi_p( temp2, p );
                         ret = ret ? ret : grb::set( w, 0 );
                         ret = ret ? ret : grb::vxm( w, temp2, A, reals_ring );
                         
-                        ret = ret ? ret : eWiseLambda( [ &w, &w_old, &C ]( size_t i ) {
-                            w[ i ] = C*w_old [ i ] - w[ i ];
+                        ret = ret ? ret : eWiseLambda( [ &w, &w_old, &Cj, &j ]( size_t i ) {
+                            w[ i ] =   Cj[ j ]*w_old [ i ] - w[ i ];
                         }, w_old, w );
 
                         // reorthogonalise w.r.t. seen vectors
@@ -488,12 +623,13 @@ namespace grb {
                         //if ( j > 0 ) { 
                             IOType innerprod;
                             ret = ret ? ret : grb::dot< descriptors::dense >( innerprod, w, *Eigs[ l ], reals_ring );
+                            //innerprod /= ( out_norms[ l ] * out_norms[ l ] );
                             ret = ret ? ret : eWiseLambda( [ &w, &Eigs, &innerprod, &l ]( size_t i ){
                                 w[ i ] -= innerprod * (*Eigs[ l ])[ i ];
                             }, w, *Eigs[ l ] );
                         }
 
-                        // normalise
+                        // normalise w.r.t. euclidean norm
                         ret = ret ? ret : eucNorm( norm, w );
                         ret = ret ? ret : grb::foldl( w, 1/norm, reals_ring.getMultiplicativeOperator() );
                         
@@ -505,33 +641,46 @@ namespace grb {
 
                         //they will enter a cycle of length j, update residual with this distance
                         //if ( l == 0 ) {
-                            //residual_old = residual;
+                            residual_old = residual;
                             residual = 0;
                             ret = ret ? ret : grb::dot( residual, w, w_compare, max_monoid, grb::operators::abs_diff< IOType >() );
+                            
+                            // history_average_old = history_average;
+                            // history_average = history_average + ( residual - residual_history[ iter % history_length ] ) / history_length;
+                            // residual_history[ iter % history_length ] = residual;
+                            
                             ret = ret ? ret : grb::set( w_compare, w );
+
+                            //std::cout << "p = " << p  << " j = " << j << " residual = " << residual << " history_average = " << history_average << " C[j] = " << Cj[j] << " iter= "<< iter << std::endl;
                             //std::cout << "p = " << p  << " j = " << j << " residual = " << residual << " C = " << C << std::endl;
                         //}
 
+                        // if ( history_average >= history_average_old ) {
+                        //     Cj[ j ]*=C_factor;
+                        // }
+
                         // update l and C ( if converging slowly )
-                        //if ( j > 0 ) l = ( l + 1 ) %  j;
-                        ++iter;
-                        if ( iter > C_iter ) {
-                            C*=C_factor;
-                            iter = 0;
-                        }
+                         //if ( j > 0 ) l = ( l + 1 ) %  j;
+                         ++iter;
+                         if ( iter > C_iter ) {
+                             Cj[ j ]*=C_factor;
+                             iter = 0;
+                         }
                     
                     } while ( ret==SUCCESS && residual > conv * norm_sols );
 
-                    std::cout << "final C = " << C << std::endl;
+                    std::cout << "final C[ "  <<  j << " ] = " << Cj[ j ] << std::endl;
                     
                     // write w to *Eigs[ j ]
                     ret = ret ? ret : grb::set( *Eigs[ j ], w );
 
-                    // apply "postprocessing" map to *Eigs[ j ] and normalise
+                    // apply "postprocessing" map to *Eigs[ j ] and normalise w.r.t. euclidean norm
                     //ret = ret ? ret : spec_part_utils::phi_p( *Eigs[ j ], p/(p-1) );
+
                     ret = ret ? ret : eucNorm( norm, *Eigs[ j ] );
                     ret = ret ? ret : grb::foldl( *Eigs[ j ], 1/norm, reals_ring.getMultiplicativeOperator() );
-                    ret = ret ? ret : eucNorm( norm, *Eigs[ j ] );
+                    
+                    //ret = ret ? ret : eucNorm( norm, *Eigs[ j ] );
                     //std::cout << "norm of evector = " << norm  << std::endl;
                     //std::cin.get(); 
                 }

@@ -24,7 +24,7 @@ namespace grb
 
         RC pLaplacian_poweriter(
             Vector< size_t > &x,       //vectors corresponding to the final clusters
-            const Matrix< double > &A, // incidence matrix
+            const Matrix< double > &A_hyper, // hyper-incidence matrix
             const size_t k,                      // number of clusters
             const double final_p = 1.1,          //Final value of p
             const double factor = 0.9,           //Factor for the reduction of p
@@ -42,9 +42,15 @@ namespace grb
                         grb::identities::one>
                     reals_ring;
 
+            // declare the max monoid for computing maximum degree
+            Monoid<
+                    grb::operators::max< double >,
+                    grb::identities::negative_infinity
+                > max_monoid;
+
             //get number of vertices and edges
-            const size_t m = nrows( A );
-            const size_t n = ncols( A );
+            const size_t m = nrows( A_hyper );
+            const size_t n = ncols( A_hyper );
 
             if (size(x) != n)
             {
@@ -63,6 +69,7 @@ namespace grb
             Matrix< double > K(k, k);
             // vector to contain final cluster labels and distances to the cluster centroids
             Vector< std::pair< size_t, double > > clusters_and_distances(n);
+            std::vector< double > cluster_cuts_temp( k ), cluster_cuts( k );
 
             // set up data structure of eigenvectors and initialise it by standard normal random entries
             std::vector< grb::Vector< double >* > Eigs( k );
@@ -85,6 +92,20 @@ namespace grb
             double grb_time = 0, kmeans_time = 0;
 
             p = p / factor;
+
+            // maxdegree
+            double maxdeg = 0;
+            grb::Vector< double > ones_m( m ), degs( n );
+            ret = ret ? ret : grb::set( ones_m, 1 );
+            ret = ret ? ret : grb::vxm( degs, ones_m, A_hyper, reals_ring );
+            ret = ret ? ret : grb::foldl( maxdeg, degs, max_monoid );
+
+            std::cout << maxdeg << std::endl;
+            std::cin.get();
+
+            // vector of C's for every eigenvector
+            std::vector< double > Cj( k, maxdeg );
+
             do
             {
                 p = std::max(factor * p, final_p);
@@ -101,10 +122,10 @@ namespace grb
                 std::cout << "Running the power method with p = " << p << std::endl;
 
                 //CURRENTLY C IS AUTOMATIC
-                //double C = 1000;
+                //double C;
                 // convexification number, should be at least the operator norm of the gradient of the laplacian
-                double precision = ( p == final_p || p == 2) ? 1e-6 : 1e-6;
-                ret = ret ? ret : spec_part_utils::PowerIter( A, p, Eigs, precision );
+                double precision = ( p == final_p || p == 2) ? 1e-8 : 1e-5;
+                ret = ret ? ret : spec_part_utils::PowerIter( A_hyper, p, Eigs, Cj, precision );
     
                 grb_time += timer.time();
 
@@ -130,11 +151,11 @@ namespace grb
                 I[i] = i / n;
                 J[i] = i % n;
                 V[i] = (*Eigs[ I[i] ])[ J[i] ];
-                std::cout << V[i] << ", ";
-                //if ( J[i] == 0 ) {
-                //    std::cout << std::endl << std::endl;
-                //    std::cin.get();
-                //}
+                if ( J[i] < 1000 ) std::cout << V[i] << ", ";
+                if ( J[i] == n-1 ) {
+                    std::cout << std::endl << std::endl;
+                    std::cin.get();
+                }
             }
 
             grb::buildMatrixUnique( X, I, J, V, n * k, PARALLEL );
@@ -167,7 +188,7 @@ namespace grb
                 }
 
                 // compute the ratio cut
-                grb::algorithms::spec_part_utils::RCutAdj(rcut, A, x_temp, k);
+                grb::algorithms::spec_part_utils::RCutAdj(rcut, A_hyper, x_temp, cluster_cuts_temp, k);
                 //std::cout << "rcut = " << rcut << std::endl;
 
                 // rcut could be zero in the degenerate case of only one cluster being populated
@@ -175,6 +196,7 @@ namespace grb
                 {
                     best_rcut = rcut;
                     grb::set(x, x_temp);
+                    cluster_cuts = cluster_cuts_temp;
                 }
             }
             kmeans_time += timer.time();
@@ -192,7 +214,7 @@ namespace grb
 
             for (size_t i = 0; i < k; ++i)
             {
-                std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << std::endl;
+                std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << ", cut = "<< cluster_cuts[i] << std::endl;
             }
 
             std::cout << "grb time (msec) = " << grb_time << std::endl;

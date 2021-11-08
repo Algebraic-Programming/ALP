@@ -60,9 +60,9 @@ void grbProgram(const struct input &data_in, struct output &out)
 	timer.reset();
 
 	//load into GraphBLAS
-	Matrix<double> A( m, n );
+	Matrix<double> A_hyper( m, n );
 	{
-		const RC rc = buildMatrixUnique( A, parser.begin(SEQUENTIAL), parser.end(SEQUENTIAL), SEQUENTIAL );
+		const RC rc = buildMatrixUnique( A_hyper, parser.begin(SEQUENTIAL), parser.end(SEQUENTIAL), SEQUENTIAL );
 		if (rc != SUCCESS)
 		{
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed (" << toString(rc) << ")." << std::endl;
@@ -74,7 +74,7 @@ void grbProgram(const struct input &data_in, struct output &out)
 	//check number of nonzeroes
 	try
 	{
-		const size_t global_nnz = nnz( A );
+		const size_t global_nnz = nnz( A_hyper );
 		const size_t parser_nnz = parser.nz();
 		if (global_nnz != parser_nnz)
 		{
@@ -85,7 +85,13 @@ void grbProgram(const struct input &data_in, struct output &out)
 	}
 	catch (const std::runtime_error &)
 	{
-		std::cout << "Info: nonzero check skipped as the number of nonzeroes cannot be derived from the matrix file header. The grb::Matrix reports " << nnz(A) << " nonzeroes.\n";
+		std::cout << "Info: nonzero check skipped as the number of nonzeroes cannot be derived from the matrix file header. The grb::Matrix reports " << nnz(A_hyper) << " nonzeroes.\n";
+	}
+
+	//if the input is unweighted, the weights of W need to be set to 1
+	if (data_in.unweighted)
+	{
+		grb::set( A_hyper, A_hyper, 1.0);
 	}
 
 	//labels vector
@@ -102,13 +108,13 @@ void grbProgram(const struct input &data_in, struct output &out)
 	timer.reset();
 
 	// Initialize parameters for the partitioner
-	int kmeans_iters_ortho = 300;	// kortho iterations
+	int kmeans_iters_ortho = 200;	// kortho iterations
 	int kmeans_iters_kpp = 50;	   	// k++ iterations
 	float final_p = 1.05;	   // final value of p
 	float factor_reduce = 0.97; // reduction factor for the value of p
 
 	// Call the Multiway p-spectral partitioner
-	rc = grb::algorithms::pLaplacian_poweriter( x, A, data_in.num_clusters, final_p, factor_reduce, kmeans_iters_ortho, kmeans_iters_kpp );
+	rc = grb::algorithms::pLaplacian_poweriter( x, A_hyper, data_in.num_clusters, final_p, factor_reduce, kmeans_iters_ortho, kmeans_iters_kpp );
 	
 
 	double single_time = timer.time();
