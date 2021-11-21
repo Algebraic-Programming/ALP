@@ -169,8 +169,8 @@ namespace grb {
 	 *     provided \a ring.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
-	 * Performance guarantees vary depending on whether a mask was provided, and on
+	 * \par Performance semantics
+	 * Performance semantics vary depending on whether a mask was provided, and on
 	 * whether the input vector is sparse or dense. If the input vector \f$ v \f$
 	 * is sparse, let \f$ J \f$ be its set of assigned indices. If a non-trivial
 	 * mask \f$ \mathit{mask} \f$ is given, let \f$ I \f$ be the set of indices for
@@ -248,13 +248,9 @@ namespace grb {
 		const Ring & ring,
 		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::mxv "
-					 "(output-masked)\n";
-#else
-		printf( "Selected backend does not implement grb::mxv "
-				"(output-masked)\n" );
-#endif
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::mxv (output-masked)\n";
+ #endif
 #endif
 		(void)u;
 		(void)mask;
@@ -293,9 +289,9 @@ namespace grb {
 	 * Left-handed sparse matrix times vector multiplication, \f$ u = vA \f$.
 	 *
 	 * If \a descr does not have #grb::descriptors::transpose_matrix defined, the
-	 * semantics and performance guarantees of this function are exactly that of
+	 * semantics and performance semantics of this function are exactly that of
 	 * grb::mxv with the #grb::descriptors::transpose_matrix set.
-	 * In the other case, the semantics and performance guarantees of this function
+	 * In the other case, the functional and performance semantics of this function
 	 * are exactly that of grb::mxv without the #grb::descriptors::transpose_matrix
 	 * set.
 	 *
@@ -316,13 +312,9 @@ namespace grb {
 		const Ring & ring,
 		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::vxm "
-					 "(output-masked)\n";
-#else
-		printf( "Selected backend does not implement grb::vxm "
-				"(output-masked)\n" );
-#endif
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+ #endif
 #endif
 		(void)u;
 		(void)mask;
@@ -350,11 +342,9 @@ namespace grb {
 		const Ring & ring,
 		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+  #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::vxm\n";
-#else
-		printf( "Selected backend does not implement grb::vxm\n" );
-#endif
+ #endif
 #endif
 		(void)u;
 		(void)v;
@@ -385,6 +375,11 @@ namespace grb {
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement vxm (doubly-masked)\n";
+ #endif
+#endif
 		(void)u;
 		(void)mask;
 		(void)v;
@@ -417,6 +412,11 @@ namespace grb {
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement mxv (doubly-masked)\n";
+ #endif
+#endif
 		(void)u;
 		(void)mask;
 		(void)A;
@@ -472,6 +472,11 @@ namespace grb {
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement vxm (unmasked)\n";
+ #endif
+#endif
 		(void)u;
 		(void)v;
 		(void)A;
@@ -500,13 +505,9 @@ namespace grb {
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * = NULL ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::vxm "
-					 "(output-masked)\n";
-#else
-		printf( "Selected backend does not implement grb::vxm "
-				"(output-masked)\n" );
-#endif
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+ #endif
 #endif
 		(void)u;
 		(void)mask;
@@ -534,6 +535,11 @@ namespace grb {
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::mxv (unmasked)\n";
+ #endif
+#endif
 		(void)u;
 		(void)A;
 		(void)v;
@@ -636,8 +642,9 @@ namespace grb {
 	template< typename Func, typename DataType, Backend implementation = config::default_backend, typename... Args >
 	RC eWiseLambda( const Func f, const Matrix< DataType, implementation > & A, Args... /*args*/ ) {
 #ifdef _DEBUG
-		std::cout << "Warning: calling base implementation of eWiseLambda (on "
-					 "matrices) directly.\n";
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::eWiseLambda (matrices)\n";
+ #endif
 #endif
 		(void)f;
 		(void)A;

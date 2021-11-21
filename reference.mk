@@ -103,6 +103,8 @@ bin/tests/swapVector_reference \
 bin/tests/swapVector_reference_omp \
 bin/tests/moveVector_reference \
 bin/tests/moveVector_reference_omp \
+bin/tests/moveMatrix_reference \
+bin/tests/moveMatrix_reference_omp \
 bin/tests/stdVector_reference \
 bin/tests/stdVector_reference_omp \
 bin/tests/RBGaussSeidel_reference \
@@ -127,8 +129,8 @@ bin/tests/argmax_reference \
 bin/tests/argmax_reference_omp \
 bin/tests/automatic_launch_conjugate_gradient_reference \
 bin/tests/automatic_launch_conjugate_gradient_reference_omp \
-bin/tests/automatic_launch_gnn_single_inference_reference \
-bin/tests/automatic_launch_gnn_single_inference_reference_omp \
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_reference \
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_reference_omp \
 bin/tests/hpcg_reference \
 bin/tests/hpcg_reference_omp \
 bin/tests/matrixIterator_reference \
@@ -138,7 +140,13 @@ bin/tests/matrixSet_reference_omp \
 bin/tests/eWiseMatrix_reference \
 bin/tests/eWiseMatrix_reference_omp \
 bin/tests/kmeans_unit_reference \
-bin/tests/kmeans_unit_reference_omp
+bin/tests/kmeans_unit_reference_omp \
+bin/tests/spy_reference \
+bin/tests/spy_reference_omp \
+bin/tests/dense_spmv_debug_reference \
+bin/tests/dense_spmv_debug_reference_omp \
+bin/tests/dense_spmv_reference \
+bin/tests/dense_spmv_reference_omp
 
 KNNTESTS=bin/tests/automatic_launch_knn_serial \
 bin/tests/automatic_launch_knn_openmp
@@ -340,6 +348,12 @@ bin/tests/moveVector_reference_omp: tests/moveVector.cpp ${GRAPHBLAS_INCLUDES} l
 bin/tests/moveVector_reference: tests/moveVector.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
 
+bin/tests/moveMatrix_reference_omp: tests/moveMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/moveMatrix_reference: tests/moveMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
+
 bin/tests/stdVector_reference_omp: tests/stdVector.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
 
@@ -442,10 +456,10 @@ bin/tests/automatic_launch_conjugate_gradient_reference: tests/launcher/conjugat
 bin/tests/automatic_launch_conjugate_gradient_reference_omp: tests/launcher/conjugate_gradient.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${OMPFLAGS} ${PERFLAGS} $< -o $@ ${SEQ_LFLAGS}
 
-bin/tests/automatic_launch_gnn_single_inference_reference: tests/launcher/gnn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_reference: tests/launcher/graphchallenge_nn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PERFLAGS} $< -o $@ ${SEQ_LFLAGS}
 
-bin/tests/automatic_launch_gnn_single_inference_reference_omp: tests/launcher/gnn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_reference_omp: tests/launcher/graphchallenge_nn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${OMPFLAGS} ${PERFLAGS} $< -o $@ ${SEQ_LFLAGS}
 
 bin/tests/matrixSet_reference: tests/matrixSet.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
@@ -459,4 +473,22 @@ bin/tests/eWiseMatrix_reference: tests/eWiseMatrix.cpp ${GRAPHBLAS_INCLUDES} lib
 
 bin/tests/eWiseMatrix_reference_omp: tests/eWiseMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
 	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} $< -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/spy_reference: tests/spy.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/spy_reference_omp: tests/spy.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} "$<" -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/dense_spmv_debug_reference: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} $< -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/dense_spmv_debug_reference_omp: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} $< -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/dense_spmv_reference: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${PERFLAGS} $< -o "$@" ${SEQ_LFLAGS}
+
+bin/tests/dense_spmv_reference_omp: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/sequential/libgraphblas.a | dirtree
+	${CPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${ITFLAGS} ${CFLAGS} ${OMPFLAGS} ${PERFLAGS} $< -o "$@" ${SEQ_LFLAGS}
 

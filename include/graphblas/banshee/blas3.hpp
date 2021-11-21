@@ -218,7 +218,7 @@ namespace grb {
 	 * @return grb::SUCCESS This function cannot fail.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -# This function consitutes \f$ \mathcal{O}(m+n) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory

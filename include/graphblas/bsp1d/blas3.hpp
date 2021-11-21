@@ -59,6 +59,26 @@ namespace grb {
 		return ret;
 	}
 
+	/** \internal Simply delegates to process-local backend */
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class MulMonoid >
+	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
+		const Matrix< InputType1, BSP1D > &A,
+		const Matrix< InputType2, BSP1D > &B,
+		const MulMonoid &mul = MulMonoid(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< MulMonoid >::value, void >::type * const = NULL ) {
+		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), mul );
+	}
+
+	/** \internal Simply delegates to process-local backend */
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Operator >
+	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
+		const Matrix< InputType1, BSP1D > &A,
+		const Matrix< InputType2, BSP1D > &B,
+		const Operator &op = Operator(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value, void >::type * const = NULL ) {
+		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), op );
+	}
+
 } // namespace grb
 
 #endif

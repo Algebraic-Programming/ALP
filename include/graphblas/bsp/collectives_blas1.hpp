@@ -66,7 +66,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -186,7 +186,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -303,7 +303,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -416,7 +416,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ in.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -556,7 +556,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -674,7 +674,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -796,7 +796,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -919,7 +919,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: allgather (N < P*P)
+		 * \par Performance semantics: allgather (N < P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ N*Operator \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -927,7 +927,7 @@ namespace grb {
 		 * \endparblock
 		 *
 		 * \parblock
-		 * \par Performance guarantees: transpose, reduce and allgather (N >= P*P)
+		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ (N/P)*Operator \f$ ;
 		 * -# transferred bytes: \f$ 2(N/P) \f$ ;
@@ -1135,7 +1135,7 @@ namespace grb {
 		 *                       undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: allgather (N < P*P)
+		 * \par Performance semantics: allgather (N < P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ N*Operator \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -1143,7 +1143,7 @@ namespace grb {
 		 * \endparblock
 		 *
 		 * \parblock
-		 * \par Performance guarantees: transpose, reduce and allgather (N >= P*P)
+		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ (N/P)*Operator \f$ ;
 		 * -# transferred bytes: \f$ 2(N/P) \f$ ;
@@ -1151,7 +1151,7 @@ namespace grb {
 		 * \endparblock
 		 *
 		 * \parblock
-		 * \par Performance guarantees: two level tree
+		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 2(N/\sqrt{P})*Operator \f$ ;
 		 * -# transferred bytes: \f$ 2(N/\sqrt{P}) \f$ ;
@@ -1456,7 +1456,7 @@ namespace grb {
 		 *       its cost can be quantified.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: transpose, reduce and allgather (N >= P*P)
+		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{InputType}) \f$
 		 * -# local work: \f$ (N/P)*Operator \f$ ;
 		 * -# transferred bytes: \f$ P \f$ ;
@@ -1669,7 +1669,7 @@ namespace grb {
 		 *       its cost can be quantified.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: transpose, reduce and allgather (N >= P*P)
+		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{InputType}) \f$
 		 * -# local work: \f$ (N/P)*Operator \f$ ;
 		 * -# transferred bytes: \f$ P \f$ ;
@@ -1837,21 +1837,21 @@ namespace grb {
 		 *                      On output at non-root processes: the vector at root.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: serial
+		 * \par Performance semantics: serial
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ NP \f$ ;
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
-		 * \par Performance guarantees: two hase
+		 * \par Performance semantics: two hase
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2N \f$ ;
 		 * -# BSP cost: \f$ 2(Ng + l) \f$;
 		 * \endparblock
 		 *
-		 * \par Performance guarantees: two level tree
+		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;

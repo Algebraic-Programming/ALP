@@ -85,30 +85,44 @@ namespace grb {
 		 * @returns #ILLEGAL If \a skip is larger than \a K.
 		 * @returns #SUCCESS When the operation completed successfully.
 		 *
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 *   -# \f$ \Theta(nK) \f$ data movement
 		 *   -# \f$ \mathit{nnz}(\mathit{mask}) \f$ applications of \a acc
 		 *   -# No dynamic memory allocations or other system calls
 		 *   -# \f$ \Theta(K) \f$ streams
 		 */
-		template< Descriptor descr = descriptors::no_operation, bool no_skip = false, typename IOType, typename Coords, typename InputType, typename MaskType, class Accumulator >
+		template<
+			Descriptor descr = descriptors::no_operation, bool no_skip = false,
+			typename IOType, typename Coords, typename InputType, typename MaskType,
+			class Accumulator
+		>
 		RC foldl_from_raw_matrix_to_vector( Vector< IOType, reference, Coords > & x,
 			const InputType * __restrict__ const to_fold,
 			const MaskType * __restrict__ const mask,
 			const size_t n,
 			const size_t K,
 			const size_t skip,
-			const Accumulator & acc ) {
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Accumulator::D1 >::value ), "grb::foldl_from_raw_matrix_to_vector",
+			const Accumulator & acc
+		) {
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+				std::is_same< IOType, typename Accumulator::D1 >::value ),
+				"grb::foldl_from_raw_matrix_to_vector",
 				"called with a grb::Vector type that does not match the given "
 				"accumulator's left domain." );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Accumulator::D2 >::value ), "grb::foldl_from_raw_matrix_to_vector",
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+				std::is_same< InputType, typename Accumulator::D2 >::value ),
+				"grb::foldl_from_raw_matrix_to_vector",
 				"called with a matrix type that does not match the given "
 				"accumulator's right domain." );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Accumulator::D3 >::value ), "grb::foldl_from_raw_matrix_to_vector",
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+				std::is_same< IOType, typename Accumulator::D3 >::value ),
+				"grb::foldl_from_raw_matrix_to_vector",
 				"called with a grb::Vector type that does not match the given "
 				"accumulator's output domain." );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::foldl_from_raw_matrix_to_vector", "called with a non-bool mask type." );
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+				std::is_same< bool, MaskType >::value ),
+				"grb::foldl_from_raw_matrix_to_vector",
+				"called with a non-bool mask type." );
 			auto & coordinates = internal::getCoordinates( x );
 			IOType * __restrict__ const raw = internal::getRaw( x );
 			const size_t local_n = coordinates.size();
@@ -136,8 +150,10 @@ namespace grb {
 			if( n == 0 ) {
 				return SUCCESS;
 			}
+
 #ifdef _DEBUG
-			std::cout << "Performing foldl_from_raw_matrix_to_vector. Vector @ " << &x << ". Initial coordinate contents: " << coordinates.nonzeroes() << " / " << coordinates.size() << "\n";
+			std::cout << "Performing foldl_from_raw_matrix_to_vector. Vector @ " << &x << ". Initial coordinate contents: " << coordinates.nonzeroes() << " / " << coordinates.size() <<
+			             ". n, K, skip read " << n << ", " << K << ", " << skip << "\n";
 #endif
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
@@ -145,88 +161,45 @@ namespace grb {
 			{
 				size_t asyncAssigns = 0;
 				const size_t asyncJoinWhen = coordinates.maxAsyncAssigns();
-#endif
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-				const auto P = omp_get_num_threads();
-				const auto s = omp_get_thread_num();
+				assert( asyncJoinWhen > 0 );
 				internal::Coordinates< reference >::Update local_update = coordinates.EMPTY_UPDATE();
+				size_t start, end;
+				grb::config::OMP::localRange( start, end, 0, local_n );
 #else
-			const unsigned int P = 1;
-			const unsigned int s = 0;
+				const size_t start = 0;
+				const size_t end = local_n;
 #endif
-				const size_t blocksize = local_n / P + ( ( local_n % P == 0 ) ? 0 : 1 );
-				const size_t start = s * blocksize;
-				size_t end = start + blocksize;
-				if( end > local_n ) {
-					end = local_n;
-				}
 				assert( start <= end );
 				assert( end <= local_n );
-#ifdef _DEBUG
-				std::cout << "foldl_from_raw_matrix_to_vector, processing " << K << " columns in the range of " << start << " to " << end << "\n";
-#endif
 				for( size_t i = start; i < end; ++i ) {
 					for( size_t k = 0; k < K; ++k ) {
-						if( ! no_skip && k == skip ) {
-#ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-							#pragma omp critical
-#endif
-							std::cout << "foldl_from_raw_matrix_to_vector, skipping the "
-										 "folding of the column "
-									  << k << " since it equals the skip parameter!\n";
-#endif
-							continue;
-						}
+						if( ! no_skip && k == skip ) { continue; }
 						const size_t src_i = k * local_n + i;
 						if( mask[ src_i ] ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-							if( ! coordinates.asyncAssign( i, local_update ) ) {
-								(void)++asyncAssigns;
-#else
-						if( coordinates.assign( i ) ) {
-#endif
-#ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-								#pragma omp critical
-#endif
-								std::cout << "foldl_from_raw_matrix_to_vector, i = " << i << ", foldl( " << raw[ i ] << ", " << to_fold[ src_i ] << ");\n";
-#endif
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1_RAW
+							if( coordinates.assign( i ) ) {
 								foldl< descr >( raw[ i ], to_fold[ src_i ], acc );
 							} else {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-#ifdef _DEBUG
-								#pragma omp critical
-								std::cout << "foldl_from_raw_matrix_to_vector, i = " << i << ", raw[i] used to be " << raw[ i ] << " but will now be set to " << to_fold[ src_i ]
-										  << ". Local update back is " << local_update[ local_update[ 0 ] ] << ", _assigned at that entry reads "
-										  << coordinates.assigned( local_update[ local_update[ 0 ] ] ) << "\n";
-#endif
-#endif
 								raw[ i ] = to_fold[ src_i ];
 							}
-						}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-						if( asyncAssigns == asyncJoinWhen ) {
-							const bool updateWasEmpty = coordinates.joinUpdate( local_update );
-#ifndef NDEBUG
-							assert( ! updateWasEmpty );
 #else
-							(void)updateWasEmpty;
+							if( coordinates.asyncAssign( i, local_update ) ) {
+								foldl< descr >( raw[ i ], to_fold[ src_i ], acc );
+							} else {
+								raw[ i ] = to_fold[ src_i ];
+								(void) ++asyncAssigns;
+								if( asyncAssigns == asyncJoinWhen ) {
+									(void) coordinates.joinUpdate( local_update );
+									asyncAssigns = 0;
+								}
+							}
 #endif
-							asyncAssigns = 0;
 						}
-#endif
 					}
 				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
-				// wait on all other threads
 				while( ! coordinates.joinUpdate( local_update ) ) {}
-			}
-#endif
-#ifdef _DEBUG
-			std::cout << "foldl_from_raw_matrix_to_vector complete, new "
-						 "coordinate contents: "
-					  << coordinates.nonzeroes() << " / " << coordinates.size() << "\n";
+			} // end pragma omp parallel
 #endif
 			return SUCCESS;
 		}

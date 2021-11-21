@@ -47,6 +47,10 @@ namespace grb {
 		class Compressed_Storage {
 
 		private:
+
+			/** Point to our own type */
+			typedef Compressed_Storage< D, IND, SIZE > self_type;
+
 			/**
 			 * Resets all arrays to NULL.
 			 *
@@ -54,9 +58,9 @@ namespace grb {
 			 * care or memory leaks may occur.
 			 */
 			void clear() {
-				values = NULL;
-				row_index = NULL;
-				col_start = NULL;
+				values = nullptr;
+				row_index = nullptr;
+				col_start = nullptr;
 			}
 
 		public:
@@ -68,6 +72,18 @@ namespace grb {
 
 			/** The column start indices. */
 			SIZE * __restrict__ col_start;
+
+		private:
+
+			/** Implements a move from another instance */
+			void moveFromOther( self_type &other ) {
+				row_index = other.row_index;
+				col_start = other.col_start;
+				values = other.values;
+				other.clear();
+			}
+
+		public:
 
 			/** The matrix nonzero iterator class. */
 			template< class ActiveDistribution >
@@ -129,14 +145,14 @@ namespace grb {
 				}
 
 				/** Non-trivial constructor. */
-				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
+				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const size_t _nz, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
 					values( _storage.values ), row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ), m( _m ), n( _n ), s( _s ), P( _P ) {
 #ifdef _DEBUG
 					std::cout << "Compressed_Storage::Const_Iterator "
 								 "constructor called, with storage "
 							  << ( &_storage ) << ", m " << _m << ", n " << _n << ", and end " << end << ".\n";
 #endif
-					if( end ) {
+					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 						row = m;
 						return;
 					}
@@ -290,9 +306,14 @@ namespace grb {
 			explicit Compressed_Storage( const Compressed_Storage< D, IND, SIZE > & other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {}
 
 			/** Move constructor. */
-			Compressed_Storage( Compressed_Storage< D, IND, SIZE > && other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {
-				// the values are now owned by this container, so no memory leak when clear is called
-				other.clear();
+			Compressed_Storage( Compressed_Storage< D, IND, SIZE > &&other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {
+				moveFromOther( other );
+			}
+
+			/** Assign from temporary. */
+			self_type& operator=( self_type &&other ) {
+				moveFromOther( other );
+				return *this;
 			}
 
 			/**
@@ -388,14 +409,13 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "CompressedStorage::copyFrom (cast) called with "
 							 "range "
-						  << start << "--" << end << "\n";
+						  << start << "--" << end;
+				if( use_id ) {
+					std::cout << ". The identity " << (*id) << " will be used.\n";
+				} else {
+					std::cout << ". No identity will be used.\n";
+				}
 #endif
-				static_assert( ! std::is_same< InputType, void >::value,
-					"grb::set cannot interpret an input pattern matrix without a "
-					"semiring or a monoid. This interpretation is needed for "
-					"writing the non-pattern matrix output. Possible solutions: 1) "
-					"use a (monoid-based) foldl / foldr, 2) use a masked set, or "
-					"3) change the output of grb::set to a pattern matrix also." );
 				assert( start <= end );
 				size_t k = start;
 				if( k < nz ) {
@@ -405,7 +425,7 @@ namespace grb {
 						if( use_id ) {
 							values[ k ] = *id;
 						} else {
-							values[ k ] = static_cast< D >( other.values[ k ] );
+							values[ k ] = other.getValue( k, *id );
 						}
 					}
 					k = 0;
@@ -443,7 +463,12 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "CompressedStorage::copyFrom (no-cast) called "
 							 "with range "
-						  << start << "--" << end << "\n";
+						  << start << "--" << end;
+				if( use_id ) {
+					std::cout << ". The identity " << (*id) << " will be used.\n";
+				} else {
+					std::cout << ". No identity will be used.\n";
+				}
 #endif
 				size_t k = start;
 				if( k < nz ) {
@@ -599,6 +624,20 @@ namespace grb {
 			/** The column start indices. */
 			SIZE * __restrict__ col_start;
 
+		private:
+
+			/** Point to our own type */
+			typedef Compressed_Storage< void, IND, SIZE > self_type;
+
+			/** Implements a move from another instance */
+			void moveFromOther( self_type &other ) {
+				row_index = other.row_index;
+				col_start = other.col_start;
+				other.clear();
+			}
+
+		public:
+
 			/** The matrix nonzero iterator class. */
 			template< class ActiveDistribution >
 			class ConstIterator : public std::iterator< std::forward_iterator_tag, std::pair< const size_t, const size_t > > {
@@ -662,13 +701,13 @@ namespace grb {
 				}
 
 				/** Non-trivial constructor. */
-				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
+				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const size_t _nz, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
 					row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ), m( _m ), n( _n ), s( _s ), P( _P ) {
 #ifdef _DEBUG
 					std::cout << "Iterator constructor (pattern "
 								 "specialisation) called\n";
 #endif
-					if( end ) {
+					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 						row = m;
 						return;
 					}
@@ -790,9 +829,14 @@ namespace grb {
 			explicit Compressed_Storage( const Compressed_Storage< void, IND, SIZE > & other ) : row_index( other.row_index ), col_start( other.col_start ) {}
 
 			/** Move constructor. */
-			Compressed_Storage( Compressed_Storage< void, IND, SIZE > && other ) : row_index( other.row_index ), col_start( other.col_start ) {
-				// the values are now owned by this container, so no memory leak when clear is called
-				other.clear();
+			Compressed_Storage< void, IND, SIZE >( self_type &&other ) {
+				moveFromOther( other );
+			}
+
+			/** Assign from temporary. */
+			self_type& operator=( self_type &&other ) {
+				moveFromOther( other );
+				return *this;
 			}
 
 			/**
@@ -802,8 +846,8 @@ namespace grb {
 			 * care or memory leaks may occur.
 			 */
 			void clear() {
-				row_index = NULL;
-				col_start = NULL;
+				row_index = nullptr;
+				col_start = nullptr;
 			}
 
 			/**

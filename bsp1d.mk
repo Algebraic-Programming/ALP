@@ -83,6 +83,8 @@ bin/tests/swapVector_bsp1d \
 bin/tests/swapVector_hybrid \
 bin/tests/moveVector_bsp1d \
 bin/tests/moveVector_hybrid \
+bin/tests/moveMatrix_bsp1d \
+bin/tests/moveMatrix_hybrid \
 bin/tests/stdVector_bsp1d \
 bin/tests/stdVector_hybrid \
 bin/tests/RBGaussSeidel_bsp1d \
@@ -113,10 +115,14 @@ bin/tests/matrixSet_bsp1d \
 bin/tests/matrixSet_hybrid \
 bin/tests/eWiseMatrix_bsp1d \
 bin/tests/eWiseMatrix_hybrid \
-bin/tests/automatic_launch_gnn_single_inference_bsp1d \
-bin/tests/automatic_launch_gnn_single_inference_hybrid \
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_bsp1d \
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_hybrid \
 bin/tests/automatic_launch_conjugate_gradient_bsp1d \
-bin/tests/automatic_launch_conjugate_gradient_hybrid
+bin/tests/automatic_launch_conjugate_gradient_hybrid \
+bin/tests/dense_spmv_debug_bsp1d \
+bin/tests/dense_spmv_debug_hybrid \
+bin/tests/dense_spmv_bsp1d \
+bin/tests/dense_spmv_hybrid
 #TODO internal issue #9:
 #bin/tests/vmxa_bsp1d \
 #bin/tests/vmx_bsp1d \
@@ -337,6 +343,12 @@ bin/tests/moveVector_bsp1d: tests/moveVector.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/
 bin/tests/moveVector_hybrid: tests/moveVector.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} "$<" -o "$@" ${HYB_LFLAGS}
 
+bin/tests/moveMatrix_bsp1d: tests/moveMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PARFLAGS} "$<" -o "$@" ${PAR_LFLAGS}
+
+bin/tests/moveMatrix_hybrid: tests/moveMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} "$<" -o "$@" ${HYB_LFLAGS}
+
 bin/tests/stdVector_bsp1d: tests/stdVector.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PARFLAGS} "$<" -o "$@" ${PAR_LFLAGS}
 
@@ -415,10 +427,10 @@ bin/tests/automatic_launch_conjugate_gradient_bsp1d: tests/launcher/conjugate_gr
 bin/tests/automatic_launch_conjugate_gradient_hybrid: tests/launcher/conjugate_gradient.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} ${PERFLAGS} $< -o $@ ${HYB_LFLAGS}
 
-bin/tests/automatic_launch_gnn_single_inference_bsp1d: tests/launcher/gnn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_bsp1d: tests/launcher/graphchallenge_nn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PARFLAGS} ${PERFLAGS} $< -o $@ ${PAR_LFLAGS}
 
-bin/tests/automatic_launch_gnn_single_inference_hybrid: tests/launcher/gnn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
+bin/tests/automatic_launch_graphchallenge_nn_single_inference_hybrid: tests/launcher/graphchallenge_nn_single_inference.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} ${PERFLAGS} $< -o $@ ${HYB_LFLAGS}
 
 bin/tests/matrixIterator_bsp1d: tests/matrixIterator.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
@@ -438,4 +450,16 @@ bin/tests/eWiseMatrix_bsp1d: tests/eWiseMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/spm
 
 bin/tests/eWiseMatrix_hybrid: tests/eWiseMatrix.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
 	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} "$<" -o "$@" ${HYB_LFLAGS}
+
+bin/tests/dense_spmv_debug_bsp1d: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PARFLAGS} "$<" -o "$@" ${PAR_LFLAGS}
+
+bin/tests/dense_spmv_debug_hybrid: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} "$<" -o "$@" ${HYB_LFLAGS}
+
+bin/tests/dense_spmv_bsp1d: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/spmd/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${PARFLAGS} ${PERFLAGS} "$<" -o "$@" ${PAR_LFLAGS}
+
+bin/tests/dense_spmv_hybrid: tests/dense_spmv.cpp ${GRAPHBLAS_INCLUDES} lib/hybrid/libgraphblas.a | dirtree
+	${LPFCPP11} ${CFLAGS} ${WFLAGS} ${IFLAGS} ${HYBRIDFLAGS} ${PERFLAGS} "$<" -o "$@" ${HYB_LFLAGS}
 

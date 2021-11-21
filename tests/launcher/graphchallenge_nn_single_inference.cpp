@@ -21,7 +21,7 @@
 
 #include <inttypes.h>
 
-#include <graphblas/algorithms/gnn_single_inference.hpp>
+#include <graphblas/algorithms/sparse_nn_single_inference.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
@@ -36,6 +36,8 @@ struct input {
 	char dataset_path[ MAX_LEN + 1 ];
 	size_t neurons;
 	size_t layers;
+	bool thresholded;
+	double threshold;
 	size_t input_vector_offset;
 	bool direct;
 	size_t rep;
@@ -82,28 +84,27 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	strcpy( input_vector_path, data_in.dataset_path );
 	strcat( input_vector_path, "/MNIST-HPEC" );
 
-	double biases[ data_in.layers ];
+	std::vector< double > biases;
 
 	if( data_in.neurons == 1024 ) {
 		for( size_t i = 0; i < data_in.layers; i++ ) {
-			biases[ i ] = -0.30;
+			biases.push_back( -0.30 );
 		}
 	} else if( data_in.neurons == 4096 ) {
 		for( size_t i = 0; i < data_in.layers; i++ ) {
-			biases[ i ] = -0.35;
+			biases.push_back( -0.35 );
 		}
 	} else if( data_in.neurons == 16384 ) {
 		for( size_t i = 0; i < data_in.layers; i++ ) {
-			biases[ i ] = -0.40;
+			biases.push_back( -0.40 );
 		}
 	} else if( data_in.neurons == 65536 ) {
 		for( size_t i = 0; i < data_in.layers; i++ ) {
-			biases[ i ] = -0.45;
+			biases.push_back( -0.45 );
 		}
 	} else {
 		std::cerr << "Failure: the number of neurons does not correspond to a "
-					 "known dataset"
-				  << std::endl;
+			"known dataset" << std::endl;
 		return;
 	}
 
@@ -111,7 +112,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	out.times.io = timer.time();
 	timer.reset();
 
-	Matrix< double > ** L = new Matrix< double > *[ data_in.layers ];
+	std::vector< grb::Matrix< double > > L;
 
 	for( size_t i = 0; i < data_in.layers; i++ ) {
 
@@ -122,28 +123,31 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 		// create local parser
 		grb::utils::MatrixFileReader< double,
-			std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-			parser( filename.c_str(), data_in.direct );
+			std::conditional<
+				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+				grb::config::RowIndexType, grb::config::ColIndexType
+			>::type
+		> parser( filename.c_str(), data_in.direct );
 		assert( parser.m() == parser.n() );
 		assert( data_in.neurons == parser.n() );
 		n = parser.n();
 
 		// load into GraphBLAS
-		L[ i ] = new Matrix< double >( n, n );
+		L.push_back( grb::Matrix< double >( n, n ) );
+
 		{
-			const RC rc = buildMatrixUnique( *( L[ i ] ), parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
-			//			const RC rc = buildMatrixUnique( *L[i], parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
+			const RC rc = buildMatrixUnique( L[ i ], parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
+			//			const RC rc = buildMatrixUnique( L[ i ], parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
 			if( rc != SUCCESS ) {
-				std::cerr << "Failure: call to buildMatrixUnique did not "
-							 "succeed ("
-						  << toString( rc ) << ")." << std::endl;
+				std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
+					<< toString( rc ) << ")." << std::endl;
 				return;
 			}
 		}
 
 		// check number of nonzeroes
 		try {
-			const size_t global_nnz = nnz( *( L[ i ] ) );
+			const size_t global_nnz = nnz( L[ i ] );
 			const size_t parser_nnz = parser.nz();
 			if( global_nnz != parser_nnz ) {
 				std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal parser nnz (" << parser_nnz << ")." << std::endl;
@@ -151,9 +155,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 			}
 		} catch( const std::runtime_error & ) {
 			std::cout << "Info: nonzero check skipped as the number of "
-						 "nonzeroes cannot be derived from the matrix file "
-						 "header. The grb::Matrix reports "
-					  << nnz( *( L[ i ] ) ) << "nonzeroes.\n";
+				"nonzeroes cannot be derived from the matrix file "
+				"header. The grb::Matrix reports " << nnz( L[ i ] )
+				<< "nonzeroes.\n";
 		}
 	}
 
@@ -170,7 +174,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	n = parser.n();
 
 	// load into GraphBLAS
-	Matrix< double > Lvin( n, n );
+	grb::Matrix< double > Lvin( n, n );
 	{
 		const RC rc = buildMatrixUnique( Lvin, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
 		//		const RC rc = buildMatrixUnique( Lvin, parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
@@ -186,21 +190,32 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// parser and then apply the vxm operation on the matrix and on a vector of ones
 	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > realRing;
 
-	set( temp, 1 );
-	grb::vxm( vin, temp, Lvin, realRing );
+	RC rc = SUCCESS;
+
+	rc = grb::set( temp, 1.0 );
+	assert( rc == SUCCESS );
+
+	rc = rc ? rc : grb::clear(vin);
+	assert( rc == SUCCESS );
+
+	rc = rc ? rc : grb::vxm( vin, temp, Lvin, realRing );
+	assert( rc == SUCCESS );
 
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = gnn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+		if( data_in.thresholded ) {
+			rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.threshold, data_in.layers, temp );
+		} else {
+			rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+		}
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to conjugate_gradient did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to sparse_nn_single_inference did not succeed (" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == SUCCESS ) {
@@ -213,7 +228,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
 		if( rc == SUCCESS ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold gnn_single_inference completed within " << out.iterations
+				std::cout << "Info: cold sparse_nn_single_inference completed within " << out.iterations
 						  << " iterations. Last computed residual is \" << "
 							 "out.residual << \". Time taken was "
 						  << single_time << " ms. Deduced inner repetitions parameter of " << out.rep << " to take 1 second or more per inner benchmark.\n";
@@ -225,7 +240,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
-				rc = gnn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+				if( data_in.thresholded ) {
+					rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.threshold, data_in.layers, temp );
+				} else {
+					rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+				}
 			}
 		}
 		time_taken = timer.time();
@@ -236,7 +255,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 #ifndef NDEBUG
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " GNN Single Inference calls (hot start): " << out.times.useful << ". Error code is " << out.error_code << std::endl;
+			std::cout << "Time taken for a " << out.rep << " Sparse Neural Network Single Inference calls (hot start): " << out.times.useful << ". Error code is " << out.error_code << std::endl;
 		}
 #endif
 	}
@@ -257,13 +276,6 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// output
 	out.pinnedVector = PinnedVector< double >( vout, SEQUENTIAL );
 
-	// free memory
-	for( size_t i = 0; i < data_in.layers; i++ ) {
-		delete L[ i ];
-	}
-
-	delete[] L;
-
 	// finish timing
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
@@ -274,12 +286,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 6 || argc > 8 ) {
+	if( argc < 8 || argc > 10 ) {
 		std::cout << "Usage: " << argv[ 0 ]
-				  << " <dataset path> <neurons> <layers> <input vector offset> "
+				  << " <dataset path> <neurons> <layers> <input vector offset> <thresholded: 0 (false) or 1 (true)> <threshold>"
 					 "<direct/indirect> (inner iterations) (outer "
 					 "iterations)\n";
-		std::cout << "<dataset path> <neurons> <layers> <input vector offset> "
+		std::cout << "<dataset path> <neurons> <layers> <input vector offset> <thresholded: 0 (false) or 1 (true)> <threshold>"
 					 "and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner()
 				  << ". If set to zero, the program will select a number of "
@@ -311,8 +323,21 @@ int main( int argc, char ** argv ) {
 	// get the offset of the input vector
 	in.input_vector_offset = atoi( argv[ 4 ] );
 
+	// get the threshold if any defined
+	if ( atoi( argv[ 5 ] ) == 0 ) {
+		in.thresholded = false;
+	} else if ( atoi( argv[ 5 ] ) == 1 ) {
+		in.thresholded = true;
+
+		// if a threshold is used, read its value
+		in.threshold = atof( argv[ 6 ] );
+	} else {
+		std::cerr << "Could not parse argument " << argv[ 5 ] << " for the usage of a threshold (accepted values are 0 and 1)." << std::endl;
+		return 2;
+	}
+
 	// get direct or indirect addressing
-	if( strncmp( argv[ 5 ], "direct", 6 ) == 0 ) {
+	if( strncmp( argv[ 7 ], "direct", 8 ) == 0 ) {
 		in.direct = true;
 	} else {
 		in.direct = false;
@@ -321,20 +346,20 @@ int main( int argc, char ** argv ) {
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
 	char * end = NULL;
-	if( argc >= 7 ) {
-		in.rep = strtoumax( argv[ 6 ], &end, 10 );
-		if( argv[ 6 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 6 ] << " for number of inner experiment repititions." << std::endl;
-			return 2;
+	if( argc >= 9 ) {
+		in.rep = strtoumax( argv[ 8 ], &end, 10 );
+		if( argv[ 8 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 8 ] << " for number of inner experiment repititions." << std::endl;
+			return 3;
 		}
 	}
 
 	// get outer number of iterations
 	size_t outer = grb::config::BENCHMARKING::outer();
-	if( argc >= 8 ) {
-		outer = strtoumax( argv[ 7 ], &end, 10 );
-		if( argv[ 7 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 7 ] << " for number of outer experiment repititions." << std::endl;
+	if( argc >= 10 ) {
+		outer = strtoumax( argv[ 9 ], &end, 10 );
+		if( argv[ 9 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 9 ] << " for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
 	}

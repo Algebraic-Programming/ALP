@@ -43,7 +43,14 @@ namespace grb {
 			template< typename U, typename V >
 			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
 
+		private:
+
+			/** In case we are reading pattern matrices, which value to substitute for nonzeroes. */
+			const T patternValue;
+
+
 		public:
+
 			/**
 			 * Constructs a matrix reader using minimal information.
 			 *
@@ -55,12 +62,17 @@ namespace grb {
 			 *                     Default value is \a true.
 			 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
 			 *                         the row map should equal the column map.
+			 * @param[in] patternValueSub (Optional) Which value to substitute for nonzeroes when reading in from a pattern
+			 *                            matrix.
+			 *
+			 * Defaults for \a direct and \a symmetricmap are <tt>true</tt>.
+			 * Default for \a patternValueSub is <tt>static_cast< T >(1)</tt>
 			 *
 			 * @throws std::runtime_error If the given file does not exist.
 			 *
 			 * \note Auto-detecting the correct value for \a pattern only can happen successfully in case of MatrixMarket.
 			 */
-			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true ) {
+			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true, const T patternValueSub = 1 ) : patternValue( patternValueSub ) {
 				internal::MatrixFileProperties & properties = this->properties;
 				// set properties
 				properties._fn = filename;
@@ -199,14 +211,14 @@ namespace grb {
 			internal::MatrixFileIterator< S, T > cbegin(
 				const IOMode mode = SEQUENTIAL,
 				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter );
+				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, patternValue, false );
 			}
 
 			/** Matching end iterator to cbegin(). */
 			internal::MatrixFileIterator< S, T > cend(
 				const IOMode mode = SEQUENTIAL,
 				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, true );
+				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, patternValue, true );
 			}
 		};
 

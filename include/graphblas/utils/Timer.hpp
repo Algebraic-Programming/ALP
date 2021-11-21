@@ -24,6 +24,7 @@
 #define _H_GRB_TIMER
 
 #include <time.h> //clock_gettime, CLOCK_MONOTONIC, struct timespec
+#include <assert.h>
 
 namespace grb {
 	namespace utils {

@@ -143,7 +143,7 @@ namespace grb {
 	 * @return grb::SUCCESS A call to this function never fails.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *      -# This call comprises \f$ \Theta(1) \f$ work. The constant factor
 	 *         depends on the cost of evaluating the operator.
 	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
@@ -230,7 +230,7 @@ namespace grb {
 	 * @return grb::SUCCESS A call to this function never fails.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *      -# This call comprises \f$ \Theta(1) \f$ work. The constant factor
 	 *         depends on the cost of evaluating the operator.
 	 *      -# This call will not allocate any new dynamic memory.
@@ -322,7 +322,7 @@ namespace grb {
 	 * @return grb::SUCCESS A call to this function never fails.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *      -# This call comprises \f$ \Theta(1) \f$ work. The constant factor
 	 *         depends on the cost of evaluating the operator.
 	 *      -# This call will not allocate any new dynamic memory.
@@ -404,11 +404,18 @@ namespace grb {
 			static_assert( use_index || std::is_convertible< D, OutputType >::value, "Cannot convert to the requested output type" );
 
 		public:
-			static OutputType get( const D * __restrict__ const x, const std::function< size_t( size_t ) > & src_local_to_global, const size_t index ) noexcept {
+			static OutputType getFromArray( const D * __restrict__ const x, const std::function< size_t( size_t ) > & src_local_to_global, const size_t index ) noexcept {
 				if( use_index ) {
 					return static_cast< OutputType >( src_local_to_global( index ) );
 				} else {
 					return static_cast< OutputType >( x[ index ] );
+				}
+			}
+			static OutputType getFromScalar( const D &x, const size_t index ) noexcept {
+				if( use_index ) {
+					return static_cast< OutputType >( index );
+				} else {
+					return static_cast< OutputType >( x );
 				}
 			}
 		};
@@ -420,8 +427,11 @@ namespace grb {
 			static_assert( std::is_convertible< D, OutputType >::value, "Cannot convert input to the given output type" );
 
 		public:
-			static OutputType get( const D * __restrict__ const x, const std::function< size_t( size_t ) > &, const size_t index ) noexcept {
+			static OutputType getFromArray( const D * __restrict__ const x, const std::function< size_t( size_t ) > &, const size_t index ) noexcept {
 				return static_cast< OutputType >( x[ index ] );
+			}
+			static OutputType getFromScalar( const D &x, const size_t ) noexcept {
+				return static_cast< OutputType >( x );
 			}
 		};
 

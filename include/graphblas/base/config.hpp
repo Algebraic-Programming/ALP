@@ -156,6 +156,12 @@ namespace grb {
 		/** Memory defaults. */
 		class MEMORY {
 		public:
+
+			/** The private L1 data cache size, in bytes. */
+			static constexpr size_t l1_cache_size() {
+				return 32768;
+			}
+
 			/** What is considered a lot of memory, in 2-log of bytes. */
 			static constexpr size_t big_memory() {
 				return 31;

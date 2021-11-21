@@ -173,10 +173,11 @@ namespace grb {
 								  << l_col << " )\n";
 #endif
 						if( ! coors.assign( l_col ) ) {
+							valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
 							(void)grb::apply( valbuf[ l_col ], A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() ),
 								B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
 						} else {
-							OutputType temp;
+							OutputType temp = monoid.template getIdentity< OutputType >();
 							(void)grb::apply( temp, A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() ),
 								B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
 							(void)grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
@@ -224,7 +225,7 @@ namespace grb {
 	 * @return grb::SUCCESS This function cannot fail.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -# This function consitutes \f$ \mathcal{O}(m+n) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
@@ -261,9 +262,6 @@ namespace grb {
 			NO_CAST_ASSERT(
 				( ! ( descr & descriptors::no_casting ) || ( ! A_is_mask && std::is_same< InputType1, OutputType >::value ) ), "internal::grb::set", "called with non-matching value types" );
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || ( A_is_mask && std::is_same< InputType2, OutputType >::value ) ), "internal::grb::set", "Called with non-matching value types" );
-			static_assert( ! A_is_mask || ! std::is_same< OutputType, void >::value,
-				"internal::grb::set (masked set to value): cannot have a pattern "
-				"matrix as output" );
 
 			// run-time checks
 			const size_t m = nrows( A );
@@ -336,6 +334,12 @@ namespace grb {
 
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType >
 	RC set( Matrix< OutputType, reference > & C, const Matrix< InputType, reference > & A ) noexcept {
+		static_assert( std::is_same< OutputType, void >::value || ! std::is_same< InputType, void >::value,
+			"grb::set cannot interpret an input pattern matrix without a "
+			"semiring or a monoid. This interpretation is needed for "
+			"writing the non-pattern matrix output. Possible solutions: 1) "
+			"use a (monoid-based) foldl / foldr, 2) use a masked set, or "
+			"3) change the output of grb::set to a pattern matrix also." );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-matrix, reference)" << std::endl;
 #endif
@@ -348,6 +352,9 @@ namespace grb {
 
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2 >
 	RC set( Matrix< OutputType, reference > & C, const Matrix< InputType1, reference > & A, const InputType2 & val ) noexcept {
+		static_assert( ! std::is_same< OutputType, void >::value,
+			"internal::grb::set (masked set to value): cannot have a pattern "
+			"matrix as output" );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)" << std::endl;
 #endif
@@ -760,9 +767,13 @@ namespace grb {
 			const Matrix< InputType2, reference > & B,
 			const Operator & oper,
 			const MulMonoid & mulMonoid = MulMonoid(),
-			const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-					grb::is_operator< Operator >::value,
-				void >::type * const = NULL ) {
+			const typename std::enable_if<
+				! grb::is_object< OutputType >::value &&
+				! grb::is_object< InputType1 >::value &&
+				! grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value,
+			void >::type * const = NULL
+		) {
 			static_assert( allow_void || ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
 				"grb::internal::eWiseApply_matrix_generic: the non-monoid version of "
 				"elementwise mxm can only be used if neither of the input matrices "
@@ -792,6 +803,29 @@ namespace grb {
 			const auto & B_raw = ( ! trans_right ) ? internal::getCRS( B ) : internal::getCCS( B );
 			auto & C_raw = internal::getCRS( C );
 			auto & CCS_raw = internal::getCCS( C );
+
+#ifdef _DEBUG
+			std::cout << "\t\t A offset array = { ";
+			for( size_t i = 0; i <= m_A; ++i ) {
+				std::cout << A_raw.col_start[ i ] << " ";
+			}
+			std::cout << "}\n";
+			for( size_t i = 0; i < m_A; ++i ) {
+				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					std::cout << "\t\t ( " << i << ", " << A_raw.row_index[ k ] << " ) = " << A_raw.values[ k ] << "\n";
+				}
+			}
+			std::cout << "\t\t B offset array = { ";
+			for( size_t j = 0; j <= m_B; ++j ) {
+				std::cout << B_raw.col_start[ j ] << " ";
+			}
+			std::cout << "}\n";
+			for( size_t j = 0; j < m_B; ++j ) {
+				for( size_t k = B_raw.col_start[ j ]; k < B_raw.col_start[ j + 1 ]; ++k ) {
+					std::cout << "\t\t ( " << B_raw.row_index[ k ] << ", " << j << " ) = " << B_raw.values[ k ] << "\n";
+				}
+			}
+#endif
 
 			// memory allocations
 			// TODO internal issue #199
@@ -873,11 +907,14 @@ namespace grb {
 						coors2.assign( l_col );
 						(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
 #ifdef _DEBUG
-						std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ) << " to yield C( " << i << ", " << l_col
-								  << " ), \n";
+						std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ) <<
+							" to yield C( " << i << ", " << l_col << " ), ";
 #endif
 					}
 				}
+#ifdef _DEBUG
+				std::cout << "\n";
+#endif
 				for( size_t k = 0; k < coors2.nonzeroes(); ++k ) {
 					assert( nzc < old_nzc );
 					const size_t j = coors2.index( k );
@@ -964,7 +1001,7 @@ namespace grb {
 	RC eWiseApply( Matrix< OutputType, reference > & C,
 		const Matrix< InputType1, reference > & A,
 		const Matrix< InputType2, reference > & B,
-		const Operator & mulOp,
+		const Operator & mulOp = Operator(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value,
 			void >::type * const = NULL ) {
 		// static checks

@@ -65,6 +65,15 @@ namespace grb {
 			}
 
 			/**
+			 * @returns The thread ID in the current OpenMP parallel section.
+			 *
+			 * This function must be called from a parallel context.
+			 */
+			static inline size_t current_thread_ID() {
+				return static_cast< size_t >( omp_get_thread_num() );
+			}
+
+			/**
 			 * Partitions a range across all available #threads. Elements of the range
 			 * are assigned in blocks of a given block size.
 			 *
@@ -83,6 +92,7 @@ namespace grb {
 				local_start = start + t * blocks_per_thread * block_size;
 				local_end = local_start + blocks_per_thread * block_size;
 #ifdef _DEBUG
+				#pragma omp critical
 				std::cout << "\t\tThread " << t << " gets range " << local_start << "--" << local_end << " from global range " << start << "--" << end << ". The local range will be capped at " << end
 						  << ".\n";
 #endif

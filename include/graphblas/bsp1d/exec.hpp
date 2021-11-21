@@ -64,8 +64,8 @@ void _grb_exec_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 		lpf_err_t brc = lpf_collectives_init( ctx, s, P, 0, 0, 0, &coll );
 		assert( brc == LPF_SUCCESS );
 
-		// we need input fields from root
-		brc = lpf_resize_message_queue( ctx, P - 1 );
+		// we need input fields from root, prepare for broadcast
+		brc = lpf_resize_message_queue( ctx, 2*(P-1) ); // two-phase broadcast may get up to P-1 messages and send up to P-1 messages per process
 		assert( brc == LPF_SUCCESS );
 		brc = lpf_resize_memory_register( ctx, 2 );
 		assert( brc == LPF_SUCCESS );

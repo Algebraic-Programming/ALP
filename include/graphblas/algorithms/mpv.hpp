@@ -50,7 +50,7 @@ namespace grb {
 		 *                  multiplicative monoids to be used.
 		 *
 		 * \parblock
-		 * \par Performance guarantees
+		 * \par Performance semantics
 		 *      -# This call takes \f$ k\Theta(\mathit{nz}) + \mathcal{O}(m+n)\f$
 		 *         work, where \f$ nz \f$ equals the number of nonzeroes in the
 		 *         matrix, and \f$ m, n \f$ the dimensions of the matrix.

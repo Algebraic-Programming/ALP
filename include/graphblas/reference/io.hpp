@@ -147,7 +147,7 @@ namespace grb {
 	 *                       becomes undefined.
 	 *
 	 * \parblock
-	 * \par Performance guarantees (IOMode::sequential).
+	 * \par Performance semantics:
 	 * A call to this function
 	 *   -# comprises \f$ \mathcal{O}( n ) \f$ work <em>per user process</em>,
 	 *      where \a n is the vector size.
@@ -166,16 +166,19 @@ namespace grb {
 	 *      elements, this function may make system calls at any of the user
 	 *      processes.
 	 * \endparblock
-	 *
-	 * \parblock
-	 * \par Performance guarantees (IOMode::parallel).
-	 * Not supported.
-	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator, typename Coords, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, reference, Coords > & x, fwd_iterator start, const fwd_iterator end, const IOMode mode, const Dup & dup = Dup() ) {
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator, typename Coords,
+		class Dup = operators::right_assign< InputType >
+	>
+	RC buildVector( Vector< InputType, reference, Coords > & x,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode, const Dup & dup = Dup()
+	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, decltype( *std::declval< fwd_iterator >() ) >::value ), "grb::buildVector (reference implementation)",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< InputType, decltype( *std::declval< fwd_iterator >() ) >::value ),
+			"grb::buildVector (reference implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set" );
 
@@ -325,62 +328,40 @@ namespace grb {
 	 *                       becomes undefined.
 	 *
 	 * \parblock
-	 * \par Performance guarantees (IOMode::sequential).
+	 * \par Performance semantics
 	 * A call to this function
-	 *   -# comprises \f$ \mathcal{O}( n ) \f$ work <em>per user process</em>,
-	 *      where \a n is the vector size.
+	 *   -# comprises \f$ \mathcal{O}( n ) \f$ work, where \a n is the number of
+	 *      elements the given iterator pairs point to.
 	 *   -# results in at most
 	 *         \f$ n ( \mathit{sizeof}( T ) \mathit{sizeof}( U ) \f$
 	 *      bytes of data movement, where \a T and \a U are the underlying data
 	 *      types of each of the input iterators, <em>per user process</em>.
 	 *   -# Results in at most \f$   n \mathit{sizeof}( \mathit{InputType} ) +
 	 *                             2 n \mathit{sizeof}( \mathit{bool} ) \f$
-	 *      bytes of data movement that may be distributed over multiple user
-	 *      processes.
+	 *      bytes of data movement.
 	 *   -# if the capacity of this vector is not large enough to hold \a n
 	 *      elements, a call to this function may allocate
 	 *         \f$ \mathcal{O}( n ) \f$
-	 *      new bytes of memory which \em may be distributed over multiple user
-	 *      processes.
-	 *   -# if the capacity of this vector is not large enough to hold \a n
-	 *      elements, this function may make system calls at any of the user
-	 *      processes.
-	 * \endparblock
-	 *
-	 * \parblock
-	 * \par Performance guarantees (IOMode::parallel).
-	 * A call to this function
-	 *   -# comprises \f$ \mathcal{O}( n ) \f$ work where \a n is the vector size.
-	 *      Unlike with IOMode::sequential, this work may be distributed over the
-	 *      multiple user processes.
-	 *   -# results in at most \f$   n \mathit{sizeof}( T ) +
-	 *                               n \mathit{sizeof}( U ) +
-	 *                               n \mathit{sizeof}( \mathit{InputType} ) +
-	 *                             2 n \mathit{sizeof}( \mathit{bool} ) \f$
-	 *      bytes of data movement, where \a T and \a U are the underlying data
-	 *      types of the input iterators. All of these may be distributed over
-	 *      multiple user processes.
-	 *   -# if the capacity of this vector is not large enough to hold \a n
-	 *      elements, a call to this function may allocate
-	 *         \f$ \mathcal{O}( n ) \f$
-	 *      new bytes of memory which \em may be distributed over multiple user
-	 *      processes.
-	 *   -# if the capacity of this vector is not large enough to hold \a n
-	 *      elements, a call to this function may result in system calls at any of
-	 *      the user processes.
+	 *      new bytes of memory.
+	 *   -# no new dynamic memory shall be allocated.
+	 *   -# no system calls shall be made.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator1, typename fwd_iterator2, typename Coords, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, reference, Coords > & x,
-		fwd_iterator1 ind_start,
-		const fwd_iterator1 ind_end,
-		fwd_iterator2 val_start,
-		const fwd_iterator2 val_end,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
+		typename Coords, class Dup = operators::right_assign< InputType >
+	>
+	RC buildVector( Vector< InputType, reference, Coords > &x,
+		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
+		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode,
-		const Dup & dup = Dup() ) {
+		const Dup &dup = Dup()
+	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
-							std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value ),
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
+			std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value ),
 			"grb::buildVector (reference implementation)",
 			"At least one input iterator has incompatible value types while "
 			"no_casting descriptor was set" );

@@ -208,7 +208,7 @@ namespace grb {
 	 * \note This function cannot fail.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      This function
 	 *        -# contains \f$ \mathcal{O}(n) \f$ work,
 	 *        -# will not allocate new dynamic memory,
@@ -238,7 +238,7 @@ namespace grb {
 	 * @return The size of the vector \a x.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *  -# consists of \f$ \Theta(1) \f$ work;
 	 *  -# moves \f$ \Theta(1) \f$ bytes of memory;
@@ -263,7 +263,7 @@ namespace grb {
 	 * @return The number of nonzeroes in \a x.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(1) \f$ work;
 	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
@@ -289,38 +289,25 @@ namespace grb {
 	}
 
 	/**
-	 * Sets all elements of a vector to the given value. This makes the given
-	 * vector completely dense.
+	 * Sets all elements of a vector to the given value. Can be masked.
 	 *
-	 * This code is functionally equivalent to both
+	 * This function is functionally equivalent to
 	 * \code
 	 * grb::operators::right_assign< DataType > op;
 	 * return foldl< descr >( x, val, op );
-	 * \endcode
-	 * and
+	 * \endcode,
 	 * \code
 	 * grb::operators::left_assign< DataType > op;
 	 * return foldr< descr >( val, x, op );
-	 * \endcode
-	 *
-	 * Their performance semantics also match.
+	 * \endcode, and the following pseudocode
+	 * \code
+	 * for( size_t i = 0; i < size(x); ++i ) {
+	 *     if( mask(i) ) { setElement( x, i, val ); }
+	 * \endcode.
 	 *
 	 * @tparam descr    The descriptor used for this operation.
 	 * @tparam DataType The type of each element in the given vector.
 	 * @tparam T        The type of the given value.
-	 *
-	 * @param[in,out] x The vector of which every element is to be set to equal
-	 *                  \a val. If the capacity of this vector is insufficient to
-	 *                  hold \a n values, where \a n is the size of this vector,
-	 *                  then the below performance guarantees will not be met.
-	 * @param[in]   val The value to set each element of \a x equal to.
-	 *
-	 * @returns SUCCESS       When the call completes successfully.
-	 * @returns OUT_OF_MEMORY If the capacity of \a x was insufficient to hold a
-	 *                        completely dense vector and not enough memory could
-	 *                        be allocated to remedy this. When this error code
-	 *                        is returned, the state of the program shall be as
-	 *                        though the call to this function had never occurred.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
@@ -328,11 +315,17 @@ namespace grb {
 	 *   -# grb::descriptors::no_casting
 	 * \endparblock
 	 *
+	 * @param[in,out] x The vector of which every element is to be set to equal
+	 *                  \a val.
+	 * @param[in]   val The value to set each element of \a x equal to.
+	 *
+	 * @returns SUCCESS       When the call completes successfully.
+	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(n) \f$ work;
 	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
@@ -340,18 +333,23 @@ namespace grb {
 	 *   -# shall not make any system calls.
 	 * \endparblock
 	 *
-	 * \warning If the capacity of \a x was insufficient to store a dense vector
-	 *          then a call to this function may make the appropriate system calls
-	 *          to allocate \f$ \Theta( n \mathit{sizeof}(DataType) ) \f$ bytes of
-	 *          memory.
-	 *
 	 * @see grb::foldl.
 	 * @see grb::foldr.
 	 * @see grb::operators::left_assign.
 	 * @see grb::operators::right_assign.
+	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename T, typename Coords >
-	RC set( Vector< DataType, reference, Coords > & x, const T val, const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename T,
+		typename Coords
+	>
+	RC set( Vector< DataType, reference, Coords > & x, const T val,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value,
+		void >::type * const = NULL
+	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
@@ -364,32 +362,13 @@ namespace grb {
 		internal::getCoordinates( x ).assignAll();
 		DataType * const raw = internal::getRaw( x );
 		const size_t n = internal::getCoordinates( x ).size();
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		// do set in parallel
-		{
-			if( descr & descriptors::use_index ) {
-				#pragma omp parallel for schedule( static )
-				for( size_t i = 0; i < n; ++i ) {
-					raw[ i ] = static_cast< DataType >( i );
-				}
-			} else {
-				#pragma omp parallel for schedule( static )
-				for( size_t i = 0; i < n; ++i ) {
-					raw[ i ] = toCopy;
-				}
-			}
-		}
-#else
-		if( descr & descriptors::use_index ) {
-			for( size_t i = 0; i < n; ++i ) {
-				raw[ i ] = static_cast< DataType >( i );
-			}
-		} else {
-			for( size_t i = 0; i < n; ++i ) {
-				raw[ i ] = toCopy;
-			}
-		}
+		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
+		for( size_t i = 0; i < n; ++ i ) {
+			raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::getFromScalar( toCopy, i );
+		}
 		// sanity check
 		assert( internal::getCoordinates( x ).nonzeroes() == internal::getCoordinates( x ).size() );
 
@@ -398,13 +377,68 @@ namespace grb {
 	}
 
 	/**
-	 * Set vector to value. Masked version.
+	 * Sets all elements of a vector to the given value. Masked variant.
+	 *
+	 * This function is functionally equivalent to
+	 * \code
+	 * grb::operators::right_assign< DataType > op;
+	 * return foldl< descr >( x, mask, val, op );
+	 * \endcode,
+	 * \code
+	 * grb::operators::left_assign< DataType > op;
+	 * return foldr< descr >( val, x, mask, op );
+	 * \endcode, and the following pseudocode
+	 * \code
+	 * for( size_t i = 0; i < size(x); ++i ) {
+	 *     if( mask(i) ) { setElement( x, i, val ); }
+	 * \endcode.
+	 *
+	 * @tparam descr    The descriptor used for this operation.
+	 * @tparam DataType The type of each element in the given vector.
+	 * @tparam T        The type of the given value.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *   -# grb::descriptors::invert_mask
+	 *   -# grb::descriptors::structural_mask
+	 * \endparblock
+	 *
+	 * @param[in,out] x The vector of which every element is to be set to equal
+	 *                  \a val.
+	 * @param[in]   val The value to set each element of \a x equal to.
+	 *
+	 * @returns SUCCESS       When the call completes successfully.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
+	 *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
+	 * above shall be interpreted as \f$ size( m ) \f$ instead.
+	 * \endparblock
+	 *
+	 * @see grb::foldl.
+	 * @see grb::foldr.
+	 * @see grb::operators::left_assign.
+	 * @see grb::operators::right_assign.
+	 * @see grb::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename MaskType, typename T, typename Coords >
 	RC set( Vector< DataType, reference, Coords > & x,
 		const Vector< MaskType, reference, Coords > & m,
 		const T val,
 		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+#ifdef _DEBUG
+		std::cout << "In grb::set (vector-to-value, masked)\n";
+#endif
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
 			"called with a value type that does not match that of the given "
@@ -428,6 +462,7 @@ namespace grb {
 		auto & coors = internal::getCoordinates( x );
 		const auto & m_coors = internal::getCoordinates( m );
 		auto m_p = internal::getRaw( m );
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 		#pragma omp parallel
 		{
@@ -435,12 +470,20 @@ namespace grb {
 			const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
 			size_t asyncAssigns = 0;
 #endif
-			const size_t n = ( descr & descriptors::invert_mask ) ? coors.size() : m_coors.nonzeroes();
+			const bool loop_over_vector_length = ( descr & descriptors::invert_mask ) || ( 4 * m_coors.nonzeroes() > 3 * m_coors.size() );
+#ifdef _DEBUG
+			if( loop_over_vector_length ) {
+				std::cout << "\t using loop of size n (the vector length)\n";
+			} else {
+				std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
+			}
+#endif
+			const size_t n = loop_over_vector_length ? coors.size() : m_coors.nonzeroes();
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value()) nowait
 #endif
-			for( size_t i = 0; i < n; ++i ) {
-				const size_t index = ( descr & descriptors::invert_mask ) ? i : m_coors.index( i );
+			for( size_t k = 0; k < n; ++k ) {
+				const size_t index = loop_over_vector_length ? k : m_coors.index( k );
 				if( ! m_coors.template mask< descr >( index, m_p ) ) {
 					continue;
 				}
@@ -453,18 +496,15 @@ namespace grb {
 					asyncAssigns = 0;
 				}
 #else
-			(void)coors.assign( index );
+				(void)coors.assign( index );
 #endif
-				if( descr & descriptors::use_index ) {
-					raw[ index ] = static_cast< DataType >( index );
-				} else {
-					raw[ index ] = toCopy;
-				}
+				raw[ index ] = internal::ValueOrIndex< descr, DataType, DataType >::getFromScalar( toCopy, index );
 			}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			while( ! coors.joinUpdate( localUpdate ) ) {}
 		} // end pragma omp parallel
 #endif
+
 		// done
 		return SUCCESS;
 	}
@@ -491,12 +531,6 @@ namespace grb {
 	 * @return grb::SUCCESS   Upon successful execution of this operation.
 	 * @return grb::MISMATCH  If \a i is greater or equal than the dimension of
 	 *                        \a x.
-	 * @returns OUT_OF_MEMORY If the capacity of \a x was insufficient to add the
-	 *                        new value \a val at index \a i, \em and not enough
-	 *                        memory could be allocated to remedy this. When this
-	 *                        error code is returned, the state of the program
-	 *                        shall be as though the call to this function had
-	 *                        never occurred.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
@@ -508,19 +542,13 @@ namespace grb {
 	 * match \a DataType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(1) \f$ work;
 	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
 	 *   -# does not allocate nor free any dynamic memory;
 	 *   -# shall not make any system calls.
 	 * \endparblock
-	 *
-	 * \warning If the capacity of \a x was insufficient to store a dense vector
-	 *          then a call to this function may make the appropriate system calls
-	 *          to allocate \f$ \Theta( n \mathit{sizeof}(DataType) ) \f$ bytes of
-	 *          memory, where \a n is the new size of the vector \a x. This will
-	 *          cause additional memory movement and work complexity as well.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename T, typename Coords >
 	RC setElement( Vector< DataType, reference, Coords > & x,
@@ -551,9 +579,24 @@ namespace grb {
 
 	/**
 	 * Sets the content of a given vector \a x to be equal to that of
-	 * another given vector \a y.
+	 * another given vector \a y. Can be masked.
 	 *
-	 * The vector \a x may not equal \a y or undefined behaviour will occur.
+	 * This operation is functionally equivalent to
+	 * \code
+	 * grb::operators::right_assign< T > op;
+	 * grb::foldl( x, y, op );
+	 * \endcode,
+	 * \code
+	 * grb::operators::left_assign < T > op;
+	 * grb::foldr( y, x, op );
+	 * \endcode, as well as the following pseudocode
+	 * \code
+	 * for( each nonzero in y ) {
+	 *    setElement( x, nonzero.index, nonzero.value );
+	 * }
+	 * \endcode.
+	 *
+	 * The vector \a x may not equal \a y.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
@@ -561,28 +604,30 @@ namespace grb {
 	 *   -# grb::descriptors::no_casting
 	 * \endparblock
 	 *
+	 * @tparam descr The descriptor of the operation.
+	 * @tparam OutputType The type of each element in the output vector.
+	 * @tparam InputType  The type of each element in the input vector.
+	 *
+	 * @param[in,out] x The vector to be set.
+	 * @param[in]     y The source vector.
+	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
-	 *   -# consists of \f$ \mathcal{O}(n) \f$ work;
-	 *   -# moves \f$ \mathcal{O}(n) \f$ bytes of memory;
+	 *   -# consists of \f$ \Theta(n) \f$ work;
+	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
 	 *   -# does not allocate nor free any dynamic memory;
 	 *   -# shall not make any system calls.
-	 *
-	 * \note The use of big-Oh instead of big-Theta is intentional.
-	 *       Implementations that chose to emulate sparse vectors using dense
-	 *       storage are allowed, but clearly better performance can be attained.
 	 * \endparblock
 	 *
-	 * \warning If the capacity of \a x was insufficient to store a dense vector
-	 *          then a call to this function may make the appropriate system calls
-	 *          to allocate \f$ \Theta( n \mathit{sizeof}(DataType) ) \f$ bytes of
-	 *          memory.
-	 *
-	 * \todo This documentation is to be extended.
+	 * @see grb::foldl.
+	 * @see grb::foldr.
+	 * @see grb::operators::left_assign.
+	 * @see grb::operators::right_assign.
+	 * @see grb::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename Coords >
 	RC set( Vector< OutputType, reference, Coords > & x, const Vector< InputType, reference, Coords > & y ) {
@@ -661,9 +706,64 @@ namespace grb {
 	}
 
 	/**
-	 * Masked variant of grb::set (vector copy).
+	 * Sets the content of a given vector \a x to be equal to that of
+	 * another given vector \a y. Masked variant.
 	 *
-	 * @see grb::set
+	 * This operation is functionally equivalent to
+	 * \code
+	 * grb::operators::right_assign< T > op;
+	 * grb::foldl( x, mask, y, op );
+	 * \endcode,
+	 * \code
+	 * grb::operators::left_assign < T > op;
+	 * grb::foldr( y, x, mask, op );
+	 * \endcode, as well as the following pseudocode
+	 * \code
+	 * for( each nonzero in y ) {
+	 *    if( mask( nonzero.index ) ) {
+	 *        setElement( x, nonzero.index, nonzero.value );
+	 *    }
+	 * }
+	 * \endcode.
+	 *
+	 * The vector \a x may not equal \a y.
+	 *
+	 * @tparam descr The descriptor of the operation.
+	 * @tparam OutputType The type of each element in the output vector.
+	 * @tparam MaskType   The type of each element in the mask vector.
+	 * @tparam InputType  The type of each element in the input vector.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *   -# grb::descriptors::invert_mask
+	 *   -# grb::descriptors::structural_mask
+	 * \endparblock
+	 *
+	 * @param[in,out] x The vector to be set.
+	 * @param[in]  mask The output mask.
+	 * @param[in]     y The source vector.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
+	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
+	 * above shall be considered equal to \f$ nnz( y ) \f$.
+	 * \endparblock
+	 *
+	 * @see grb::foldl.
+	 * @see grb::foldr.
+	 * @see grb::operators::left_assign.
+	 * @see grb::operators::right_assign.
+	 * @see grb::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename Coords >
 	RC set( Vector< OutputType, reference, Coords > & x,
@@ -693,22 +793,19 @@ namespace grb {
 			return ILLEGAL;
 		}
 
-		// get relevant descriptors
-		constexpr const bool use_index = descr & descriptors::use_index;
-
 		// get length
-		const size_t n = internal::getCoordinates( y ).size();
+		const size_t size = internal::getCoordinates( y ).size();
 
 		// dynamic sanity checks
-		if( n != internal::getCoordinates( x ).size() ) {
+		if( size != internal::getCoordinates( x ).size() ) {
 			return MISMATCH;
 		}
-		if( internal::getCoordinates( mask ).size() != n ) {
+		if( size != internal::getCoordinates( mask ).size() ) {
 			return MISMATCH;
 		}
 
 		// catch trivial case
-		if( n == 0 ) {
+		if( size == 0 ) {
 			return SUCCESS;
 		}
 
@@ -717,35 +814,42 @@ namespace grb {
 
 		// handle non-trivial, fully masked vector copy
 		const auto & m_coors = internal::getCoordinates( mask );
+		const auto & y_coors = internal::getCoordinates( y );
+		auto & x_coors = internal::getCoordinates( x );
+
+		// choose optimal loop size
+		const bool loop_over_y = ( descr & descriptors::invert_mask ) || ( y_coors.nonzeroes() < m_coors.nonzeroes() );
+		const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 		// keeps track of updates of the sparsity pattern
 		#pragma omp parallel
 		{
 			// keeps track of nonzeroes that the mask ignores
-			internal::Coordinates< reference >::Update local_update = internal::getCoordinates( x ).EMPTY_UPDATE();
-			const size_t maxAsyncAssigns = internal::getCoordinates( x ).maxAsyncAssigns();
+			internal::Coordinates< reference >::Update local_update = x_coors.EMPTY_UPDATE();
+			const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
 			size_t asyncAssigns = 0;
 			RC local_rc = SUCCESS;
 			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-			for( size_t i = 0; i < internal::getCoordinates( y ).size(); ++i ) {
+			for( size_t k = 0; k < n; ++k ) {
+				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
 				// if not masked, continue
 				if( ! m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
 					continue;
 				}
 				// if source has nonzero
-				if( internal::getCoordinates( y ).assigned( i ) ) {
+				if( loop_over_y || y_coors.assigned( i ) ) {
 					// get value
 					if( ! out_is_void && ! in_is_void ) {
-						const InputType value = use_index ? static_cast< InputType >( i ) : internal::getRaw( y )[ i ];
-						internal::getRaw( x )[ i ] = value;
+						internal::getRaw( x )[ i ] = internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray( internal::getRaw( y ), [] (const size_t i) {return i;}, i );
 					}
 					// check if destination has nonzero
-					if( ! internal::getCoordinates( x ).asyncAssign( i, local_update ) ) {
+					if( ! x_coors.asyncAssign( i, local_update ) ) {
 						(void)++asyncAssigns;
 					}
 				}
 				if( asyncAssigns == maxAsyncAssigns ) {
-					const bool was_empty = internal::getCoordinates( x ).joinUpdate( local_update );
+					const bool was_empty = x_coors.joinUpdate( local_update );
 #ifdef NDEBUG
 					(void)was_empty;
 #else
@@ -754,26 +858,27 @@ namespace grb {
 					asyncAssigns = 0;
 				}
 			}
-			while( ! internal::getCoordinates( x ).joinUpdate( local_update ) ) {}
+			while( ! x_coors.joinUpdate( local_update ) ) {}
 			if( local_rc != SUCCESS ) {
 				ret = local_rc;
 			}
-		}
+		} // end omp parallel for
 #else
-		for( size_t i = 0; ret == SUCCESS && i < internal::getCoordinates( y ).size(); ++i ) {
+		for( size_t k = 0; k < n; ++k ) {
+			const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
 			if( ! m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
 				continue;
 			}
-			if( internal::getCoordinates( y ).assigned( i ) ) {
+			if( loop_over_y || internal::getCoordinates( y ).assigned( i ) ) {
 				if( ! out_is_void && ! in_is_void ) {
 					// get value
-					const InputType value = use_index ? static_cast< InputType >( i ) : internal::getRaw( y )[ i ];
-					(void)internal::getCoordinates( x ).assign( i );
-					internal::getRaw( x )[ i ] = value;
+					(void) x_coors.assign( i );
+					internal::getRaw( x )[ i ] = internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray( internal::getRaw( y ), [] (const size_t i) {return i;}, i ) ;
 				}
 			}
 		}
 #endif
+
 		// done
 		return ret;
 	}
@@ -1570,7 +1675,7 @@ namespace grb {
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -1649,7 +1754,7 @@ RC foldr( const Vector< InputType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -1770,7 +1875,7 @@ RC foldr( const InputType & alpha,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -1910,7 +2015,7 @@ RC foldr( const Vector< InputType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -2060,7 +2165,7 @@ RC foldr( const Vector< InputType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -2193,7 +2298,7 @@ RC foldl( Vector< IOType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -2323,7 +2428,7 @@ RC foldl( Vector< IOType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -2426,7 +2531,7 @@ RC foldl( Vector< IOType, reference, Coords > & x,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good
@@ -3518,9 +3623,7 @@ return SUCCESS;
  *
  * @param[in]   x   The left-hand input vector.
  * @param[in]  beta The right-hand input scalar.
- * @param[out]  z   The pre-allocated output vector. If the allocation is
- *                  insufficient, the performance guarantees shall not be
- *                  binding.
+ * @param[out]  z   The pre-allocated output vector.
  * @param[in]   op  The operator to use.
  *
  * @return grb::MISMATCH Whenever the dimensions of \a x and \a z do not
@@ -3530,7 +3633,7 @@ return SUCCESS;
  * @return grb::SUCCESS  On successful completion of this call.
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vectors \a x and \a z. The constant factor depends
  *         on the cost of evaluating the operator. A good implementation uses
@@ -3747,7 +3850,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
 	}
 
 	// check if we can dispatch to dense variant
-	if( ( descr && descriptors::dense ) || grb::nnz( y ) == n ) {
+	if( ( descr & descriptors::dense ) || grb::nnz( y ) == n ) {
 		return eWiseApply< descr >( z, alpha, y, monoid.getOperator() );
 	}
 
@@ -4014,9 +4117,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  *
  * @param[in]  alpha The left-hand scalar.
  * @param[in]   y    The right-hand input vector.
- * @param[out]  z    The pre-allocated output vector. If the allocation is
- *                   insufficient, the performance guarantees shall not be
- *                   binding.
+ * @param[out]  z    The pre-allocated output vector.
  * @param[in]   op   The operator to use.
  *
  * @return grb::MISMATCH Whenever the dimensions of \a y and \a z do not
@@ -4026,7 +4127,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  * @return grb::SUCCESS  On successful completion of this call.
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vectors \a y and \a z. The constant factor depends
  *         on the cost of evaluating the operator. A good implementation uses
@@ -4046,9 +4147,6 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  *         the input domains, the output domain, and the operator allow for
  *         this.
  * \endparblock
- *
- * \warning The above guarantees are only valid if the output parameter \a z
- *          has sufficient space reserved to store the output.
  */
 template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
 RC eWiseApply( Vector< OutputType, reference, Coords > & z,
@@ -4173,9 +4271,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  *
  * @param[in]  x  The left-hand input vector. May not equal \a y.
  * @param[in]  y  The right-hand input vector. May not equal \a x.
- * @param[out] z  The pre-allocated output vector. If the allocation is
- *                insufficient, the performance guarantees shall not be
- *                binding.
+ * @param[out] z  The pre-allocated output vector.
  * @param[in]  op The operator to use.
  *
  * @return grb::ILLEGAL  When \a x equals \a y.
@@ -4186,7 +4282,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  * @return grb::SUCCESS  On successful completion of this call.
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vectors \a x, \a y, and \a z. The constant factor
  *         depends on the cost of evaluating the operator. A good
@@ -4208,13 +4304,6 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  *         whenever the input domains, the output domain, and the operator
  *         used allow for this.
  * \endparblock
- *
- * \warning The above guarantees are only valid if the output parameter \a z
- *          has sufficient space reserved to store the output.
- *
- * \note In case of dense vectors, this is always guaranteed.
- *
- * \warning It shall be illegal to take pointers of this function.
  */
 template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
 RC eWiseApply( Vector< OutputType, reference, Coords > & z,
@@ -4393,7 +4482,7 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
  *         size of the vectors \a x, \a y, and \a z. The constant factor
  *         depends on the cost of evaluating the addition operator. A good
@@ -5869,7 +5958,7 @@ RC eWiseMulAdd( Vector< OutputType, reference, Coords > & z,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
  *         size of the vectors \a _a, \a _x, \a _y, and \a _z. The constant
  *         factor depends on the cost of evaluating the addition and
@@ -5989,7 +6078,7 @@ RC eWiseMulAdd( Vector< OutputType, reference, Coords > & _z,
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
  *         size of the vectors \a x, \a y, and \a z. The constant factor
  *         depends on the cost of evaluating the multiplication operator. A
@@ -6910,7 +6999,7 @@ namespace internal {
  * @return grb::SUCCESS  On successful completion of this call.
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
  *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
  *         \f$ p \f$ is the number of user processes. The constant factor
@@ -7168,7 +7257,7 @@ RC eWiseLambda( const Func f, const Vector< DataType, reference, Coords > & x ) 
  * \endparblock
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
  *         the size of the vector \a x. The constant factor depends on the
  *         cost of evaluating the underlying binary operator. A good

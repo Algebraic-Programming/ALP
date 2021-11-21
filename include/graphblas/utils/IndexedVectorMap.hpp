@@ -40,9 +40,9 @@ namespace grb {
 		/**
 		 * Represents a set of vectors with unique IDs.
 		 *
-		 * @tparam ValueType The element type of the vectors.
+		 * The IDs may be any string, and the vectors must have some fixed length.
 		 *
-		 * Currently only keys of type std::string are supported.
+		 * @tparam ValueType The element type of the vectors.
 		 */
 		template< typename ValueType >
 		class IndexedVectorMap {
@@ -125,7 +125,7 @@ namespace grb {
 			 * will have access to the dictionary. All other processes will only have
 			 * a (distributed) view of the associated vectors.
 			 *
-			 * \parblock Performance guarantees.
+			 * \parblock Performance semantics.
 			 *
 			 * This constructor scans the input file twice. When \a mode is
 			 * \a SEQUENTIAL or \a REPLICATED, no communication between the user
@@ -143,9 +143,10 @@ namespace grb {
 				const size_t P = grb::spmd<>::nprocs();
 				if( mode == SEQUENTIAL ) {
 					if( root_pid > P ) {
-						throw std::invalid_argument( "root PID must be in "
-													 "range of current number "
-													 "of user processes" );
+						throw std::invalid_argument(
+							"root PID must be in range of current number "
+							"of user processes"
+						);
 					}
 					root = root_pid;
 				}
@@ -159,9 +160,8 @@ namespace grb {
 				std::ifstream input;
 				input.open( filename );
 				if( ! input ) {
-					std::cerr << "distributedWordVector: cannot open "
-								 "wordvector file at "
-							  << filename << "\n";
+					std::cerr << "distributedWordVector: cannot open wordvector file at "
+						<< filename << "\n";
 				}
 
 				// build distributed word map. This is a sequential read by everyone involved.

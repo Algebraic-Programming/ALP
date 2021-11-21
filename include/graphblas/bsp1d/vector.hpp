@@ -286,6 +286,9 @@ namespace grb {
 		/** The blocksize of the block-cyclic distribution of this vector. */
 		static constexpr size_t _b = config::CACHE_LINE_SIZE::value();
 
+		/** Stores a map of which global vector offset starts at which process ID.*/
+		std::map< size_t, size_t > PIDmap;
+
 		/** Raw vector of size \a _n. */
 		D * _raw;
 
@@ -459,20 +462,16 @@ namespace grb {
 				char * new_assigned = NULL;
 
 				const size_t bufferSize = internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) + internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
-				const RC rc = grb::utils::alloc( "grb::Vector< T, BSP1D, C > "
-												 "(initialize)",
+				const RC rc = grb::utils::alloc( "grb::Vector< T, BSP1D, C > (initialize)",
 					sstream.str(), _raw, cap_in, true,
 					_raw_deleter,                                                                                            // allocate raw array
 					new_assigned, internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ), true, _assigned_deleter, // allocate assigned array
 					_buffer, bufferSize, true, _buffer_deleter );
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
-					throw std::runtime_error( "Out-of-memory during BSP1D "
-											  "Vector memory allocation" );
+					throw std::runtime_error( "Out-of-memory during BSP1D Vector memory allocation" );
 				} else if( rc != SUCCESS ) {
-					throw std::runtime_error( "Unhandled runtime error during "
-											  "BSP1D Vector memory "
-											  "allocation" );
+					throw std::runtime_error( "Unhandled runtime error during BSP1D Vector memory allocation" );
 				}
 				// all OK, so set and exit
 				_assigned = reinterpret_cast< bool * >( new_assigned );
@@ -512,24 +511,6 @@ namespace grb {
 					  << arraySize << " while the stack size is " << stackSize << " (in bytes). The value array size is " << _n * sizeof( D ) << " bytes.\n";
 #endif
 
-			// make sure we can cache all vector data inside the GraphBLAS buffer
-			// this is actually an over-estimation
-#ifdef _DEBUG
-			std::cout << "Ensuring buffer capacity for vector of global size " << _n << ", local size " << _local_n << ", and P = " << data.P << ". Context is " << data.context << std::endl;
-#endif
-			if( data.ensureBufferSize(
-					// combine preamble
-					4 * data.P * sizeof( size_t ) +
-					std::max(
-						// stack-based combine
-						2 * data.P * sizeof( size_t ) +                                                                          // buffer for alltoallv
-							( _n + 1 ) * ( 2 * sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ) ), // +1 is for padding
-			                                                                                                                     // array-based combine
-						_local_n * data.P * ( sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ) ) ) ) != SUCCESS ) {
-				throw std::runtime_error( "Error during resizing of global "
-										  "GraphBLAS buffer" );
-			}
-
 #ifndef NDEBUG
 			if( _n == 0 ) {
 				assert( _raw == NULL );
@@ -540,6 +521,25 @@ namespace grb {
 #endif
 
 			if( _n > 0 ) {
+				// make sure we can cache all vector data inside the GraphBLAS buffer
+				// this is actually an over-estimation
+#ifdef _DEBUG
+				std::cout << "Ensuring buffer capacity for vector of global size " << _n << ", local size " << _local_n << ", and P = " << data.P << ". Context is " << data.context << std::endl;
+#endif
+				if( data.ensureBufferSize(
+						// combine preamble
+						4 * data.P * sizeof( size_t ) +
+						std::max(
+							// stack-based combine
+							2 * data.P * sizeof( size_t ) +
+							// buffer for alltoallv
+							( _n + 1 ) * ( 2 * sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ) ), // +1 is for padding
+							// array-based combine
+							_local_n * data.P * ( sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ) )
+						) ) != SUCCESS ) {
+					throw std::runtime_error( "Error during resizing of global GraphBLAS buffer" );
+				}
+
 				// make sure we can take three additional memory slots
 				if( data.ensureMemslotAvailable( 3 ) != SUCCESS ) {
 					throw std::runtime_error( "Error during resizing of BSP "
@@ -601,10 +601,25 @@ namespace grb {
 
 				// activate registrations
 				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					throw std::runtime_error( "Could not activate new memory "
-											  "registrations" );
+					throw std::runtime_error( "Could not activate new memory registrations" );
 				}
 			}
+
+			//build PIDmap
+			{
+				size_t totalLength = 0;
+				for( size_t k = 0; k < data.P; ++k ) {
+					const size_t curLength = internal::Distribution< BSP1D >::global_length_to_local( _n, k, data.P );
+					if( curLength > 0 ) {
+						totalLength += curLength;
+						PIDmap[ totalLength ] = k;
+#ifdef _DEBUG
+						std::cout << "\t" << data.s << ": PIDmap[ " << totalLength << " ] = " << k << "\n";
+#endif
+					}
+				}
+			}
+
 		}
 
 		/** Updates the number of nonzeroes if and only if the nonzero count might have changed. */
@@ -713,7 +728,7 @@ namespace grb {
 		 * function synchronises this global view.
 		 *
 		 * \parblock
-		 * \par Performance guarantees
+		 * \par Performance semantics
 		 * This function incurs the BSP cost of two allgathers resulting in two
 		 * arrays of size \a _n, each consisting of
 		 *   -# elements of type \a D;
@@ -791,22 +806,6 @@ namespace grb {
 			size_t * global_nzs = NULL;
 			size_t min_global_nz = 0;
 			size_t max_global_nz = 0;
-			// TODO internal issue #196
-			std::map< size_t, size_t > PIDmap;
-			{
-				size_t totalLength = 0;
-				for( size_t k = 0; k < data.P; ++k ) {
-					const size_t curLength = internal::Distribution< BSP1D >::global_length_to_local( _n, k, data.P );
-					if( curLength > 0 ) {
-						totalLength += curLength;
-						PIDmap[ totalLength ] = k;
-#ifdef _DEBUG
-						std::cout << "\t" << s << ": PIDmap[ " << totalLength << " ] = " << k << "\n";
-#endif
-					}
-				}
-			}
-			// end TODO
 			if( ret == SUCCESS ) {
 				nzsk = data.template getBuffer< size_t >();
 				nzsk += P;

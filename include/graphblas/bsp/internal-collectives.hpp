@@ -54,7 +54,7 @@ namespace grb {
 		 * @param[in] root: The id of the root process.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ total \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -78,7 +78,7 @@ namespace grb {
 		 * @param[in] exclude_self: if false then a process will gather its source to its destination.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 *  -# Problem size N: \f$ total \f$
 		 *  -# local work: \f$ 0 \f$ ;
 		 *  -# transferred bytes: \f$ N \f$ ;
@@ -106,7 +106,7 @@ namespace grb {
 		 * \f$ 0 \f$ while the default for \a exclude_self is <tt>true</tt>.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * size \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -132,7 +132,7 @@ namespace grb {
 		 * <tt>true</tt>.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ \mathcal{O}(P\mathit{max\_h})\f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# h-relation: \f$ \max\{\sum\mathit{in}_i,\sum\mathit{out}_i\} \f$,

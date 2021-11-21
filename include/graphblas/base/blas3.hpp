@@ -70,6 +70,11 @@ namespace grb {
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Semiring, Backend backend >
 	RC mxm( Matrix< OutputType, backend > & C, const Matrix< InputType1, backend > & A, const Matrix< InputType2, backend > & B, const Semiring & ring = Semiring(), const PHASE & phase = NUMERICAL ) {
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::mxm (semiring version)\n";
+ #endif
+#endif
 		// this is the generic stub implementation
 		return UNSUPPORTED;
 	}
@@ -114,6 +119,11 @@ namespace grb {
 		(void)x;
 		(void)y;
 		(void)z;
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
+ #endif
+#endif
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
@@ -125,6 +135,11 @@ namespace grb {
 	RC zip( Matrix< void, backend > & A, const Vector< InputType1, backend, Coords > & x, const Vector< InputType2, backend, Coords > & y ) {
 		(void)x;
 		(void)y;
+#ifdef _DEBUG
+ #ifndef _GRB_NO_STDIO
+		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
+ #endif
+#endif
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}

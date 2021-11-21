@@ -39,51 +39,6 @@ namespace grb {
 	class spmd {
 
 	public:
-#if 0
-			typedef void * memslot_t;
-
-			/**
-			 * Registers a memory area for global communication. This is a collective
-			 * call. A call to this function is always followed by a matching call to
-			 * #deregister. A memory area is defined by a \a pointer and a \a size. Any
-			 * two calls to this function will never have an argument where its pointer
-			 * is within any other registered memory area, \em and will never make it so
-			 * that a previously registered pointer becomes embedded in its own registered
-			 * memory area.
-			 *
-			 * \warning If any of the above conditions are violated, undefined behaviour
-			 *          will occur.
-			 *
-			 * @param[in] pointer The start of the memory area to be registered. Must not
-			 *                    be within any previously registered (but not yet
-			 *                    deregistered) memory area.
-			 * @param[in] size    The size of the memory area to be registered. Must not
-			 *                    be such that any previously registered (but not yet de-
-			 *                    registered) memory area \a x becomes embedded in the
-			 *                    memory area defined by \a pointer and this \a size.
-			 *
-			 * @return The memory registry.
-			 *
-			 * A call to this function never fails.
-			 */
-			memslot_t create_slot( void * const pointer, const size_t size );
-	
-			/**
-			 * De-registers a memory area for global communication. This is a collective
-			 * call. The argument must match across all user processes. A call to this
-			 * function must follow exactly one corresponding call to #register.
-			 *
-			 * \warning Non-collective calls will result in undefined behaviour. A call
-			 *          using an invalid \a registration will of course also result in
-			 *          undefined behaviour.
-			 *
-			 * @param[in] registration The memory registration object obtained from
-			 *                         \a push_reg.
-			 *
-			 * A call to this function never fails.
-			 */
-			void destroy_slot( const memslot_t registration );
-#endif
 
 		/** @return The number of user processes in this GraphBLAS run. */
 		static inline size_t nprocs() noexcept {

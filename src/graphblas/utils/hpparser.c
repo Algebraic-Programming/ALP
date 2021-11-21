@@ -194,7 +194,7 @@ static int                               APL_TsklInit
    return( ( iept == 0 ? APL_SUCCESS : APL_ESYS ) );
 }
 
-static int                               APL_TsklSelf 
+static int                               APL_TsklSelf
 (
    const APL_Tskl_t               TSKL
 )
@@ -227,7 +227,7 @@ static int                               APL_TsklSelf
    return( -1 );
 }
 
-static int                               APL_TsklDrain 
+static int                               APL_TsklDrain
 (
    APL_Tskl_t                     TSKL,
    const int                      IERR
@@ -288,7 +288,7 @@ static int                               APL_TsklDrain
    return( APL_TSKL_ierr( TSKL ) );
 }
 
-static void *                            APL_TsklThread 
+static void *                            APL_TsklThread
 (
    void *                         TSKL
 )
@@ -338,7 +338,7 @@ static void *                            APL_TsklThread
       exit( 1 );
    }
 
-   return( NULL );            
+   return( NULL );
 }
 
 static int                               APL_TsklTidCmp
@@ -353,7 +353,7 @@ static int                               APL_TsklTidCmp
    return( ( a > b ? 1 : ( a < b ? -1 : 0 ) ) );
 }
 
-static int                               APL_TsklSort 
+static int                               APL_TsklSort
 (
    const APL_Tprd_t               TPRD
 )
@@ -373,7 +373,7 @@ static int                               APL_TsklSort
    return( APL_SUCCESS );
 }
 
-static int                               APL_TsklStart 
+static int                               APL_TsklStart
 (
    const APL_Tprd_t               TPRD
 )
@@ -451,7 +451,7 @@ static int                               APL_TsklStart
          {
             if( ++icor >= maxthreads ) icor = 0;
          } while( CPU_ISSET( icor, &cpuset ) == 0 );
-         
+
          CPU_ZERO( &threadset );
          CPU_SET( icor, &threadset );
          (void) pthread_setaffinity_np( thrd[ithr], sizeof( cpu_set_t ),
@@ -468,7 +468,7 @@ static int                               APL_TsklStart
    return( ( iept == 0 ? APL_SUCCESS : APL_ESYS ) );
 }
 
-static int                               APL_InstTsklSpawn 
+static int                               APL_InstTsklSpawn
 (
    const APL_Tprd_t               TPRD,
    APL_TskF_p *                   TFUN,
@@ -490,7 +490,7 @@ static int                               APL_InstTsklSpawn
       APL_TSKL_targ( tskl ) = TARG;
 
       if( ( iept = pthread_mutex_lock(   &(APL_TSKL_mutx( tskl )) ) ) != 0 )
-      { (void) fprintf( stderr, "mutex_lock %s\n", strerror( iept ) ); } 
+      { (void) fprintf( stderr, "mutex_lock %s\n", strerror( iept ) ); }
 
       if( iept == 0 )
       {
@@ -516,7 +516,7 @@ static int                               APL_InstTsklSpawn
    return( ierr );
 }
 
-static int                               APL_InstTsklJoin 
+static int                               APL_InstTsklJoin
 (
    const APL_Tprd_t               TPRD
 )
@@ -596,7 +596,7 @@ static int                               APL_InstTsklJoin
    return( ( iept == 0 ? APL_SUCCESS : APL_ESYS ) );
 }
 
-static int                               APL_TprdOpen 
+static int                               APL_TprdOpen
 (
    const char *                   FNAM,
    const int                      PRVP,
@@ -705,7 +705,7 @@ static int                               APL_TprdOpen
    return( APL_EIO );
 }
 
-static int                               APL_TprdSizeOf 
+static int                               APL_TprdSizeOf
 (
    const int                      PTHR,
    const ssize_t                  RDBS,
@@ -761,7 +761,7 @@ static int                               APL_TprdSizeOf
    ltpr    = ioff[9] + algn * (size_t)(pthr);
 
    IOFF[0] = ioff[0]; IOFF[1] = ioff[1]; IOFF[2] = ioff[2];
-   IOFF[3] = ioff[3]; IOFF[4] = ioff[4]; IOFF[5] = ioff[5]; 
+   IOFF[3] = ioff[3]; IOFF[4] = ioff[4]; IOFF[5] = ioff[5];
    IOFF[6] = ioff[6]; IOFF[7] = ioff[7]; IOFF[8] = ioff[8];
    IOFF[9] = ioff[9];
 
@@ -770,7 +770,7 @@ static int                               APL_TprdSizeOf
    return( APL_SUCCESS );
 }
 
-static int                               APL_TprdOffset 
+static int                               APL_TprdOffset
 (
    const int                      FDES,
    const off_t                    OFFB,
@@ -811,7 +811,7 @@ static int                               APL_TprdOffset
    return( APL_SUCCESS );
 }
 
-static int                               APL_TprdOpenThread 
+static int                               APL_TprdOpenThread
 (
    void *                         DATA
 )
@@ -833,7 +833,7 @@ static int                               APL_TprdOpenThread
    return( APL_SUCCESS );
 }
 
-static int                               APL_TprdFree 
+static int                               APL_TprdFree
 (
    APL_Tprd_t *                   TPRD
 )
@@ -890,7 +890,7 @@ static int                               APL_TprdCsumSort
    return( APL_SUCCESS );
 }
 
-static int                               APL_TprdNew 
+static int                               APL_TprdNew
 (
    int                            PSIZ,
    int                            PTHR,
@@ -1015,7 +1015,7 @@ static int                               APL_TprdNew
                "[%2d,%2d] toff = %12ld, tlen = %12ld, tend = %12ld\n",
                APL_TPRD_prnk( TPRD ), ithr, APL_TPRD_toff( tprd )[ithr],
                APL_TPRD_tlen( tprd )[ithr], APL_TPRD_toff( tprd )[ithr] +
-               APL_TPRD_tlen( tprd )[ithr] - 1 ); 
+               APL_TPRD_tlen( tprd )[ithr] - 1 );
          }
 #endif
       }
@@ -1169,14 +1169,14 @@ static int                               APL_TprdReadThread
 
       bcur++;
 
-      APL_TprdARGS_irow( DATA )[ipos] = irow; 
-      APL_TprdARGS_icol( DATA )[ipos] = icol; 
+      APL_TprdARGS_irow( DATA )[ipos] = irow;
+      APL_TprdARGS_icol( DATA )[ipos] = icol;
 
       ipos++;
    }
 
-   APL_TprdARGS_bcur( DATA )  = bcur; 
-   APL_TprdARGS_nedg( DATA ) -= nedg; 
+   APL_TprdARGS_bcur( DATA )  = bcur;
+   APL_TprdARGS_nedg( DATA ) -= nedg;
 
    return( lerr );
 }
@@ -1339,7 +1339,7 @@ static int                               APL_TprdAedgUpdate
             if( ntak == 0 ) break;
 
             ithr = ( jthr + kthr ) % pthr;
-                  
+
             if( ntak >= aedg[ithr*pthr + jthr] )
             {
                ntak       -= aedg[ithr*pthr + jthr];
@@ -1408,7 +1408,7 @@ int                               ReadEdge
             "[%2d,%2d] toff = %12ld, tlen = %12ld, tend = %12ld\n",
             APL_TPRD_prnk( TPRD ), ithr, APL_TPRD_toff( TPRD )[ithr],
             APL_TPRD_tlen( TPRD )[ithr], APL_TPRD_toff( TPRD )[ithr] +
-            APL_TPRD_tlen( TPRD )[ithr] - 1 ); 
+            APL_TPRD_tlen( TPRD )[ithr] - 1 );
       }
 #endif
 
@@ -1416,7 +1416,7 @@ int                               ReadEdge
 
       if( lerr == APL_SUCCESS )
       {
-         lerr = APL_TprdAedgInit( TPRD ); 
+         lerr = APL_TprdAedgInit( TPRD );
 
          for( nedg = 0, ithr = 0; ithr < pthr; ithr++ )
          { nedg += APL_TprdARGS_nedg( args[ithr] ); }
@@ -1509,7 +1509,7 @@ int                               main( int ARGC, char * * ARGV )
    rdbs = (ssize_t)(atoi( ARGV[3] ));    /* read block size per thread */
    eblk = (ssize_t)(atoi( ARGV[4] ));    /* read block size per thread */
 
-   irow = (size_t *) malloc( (size_t)(2) * eblk * sizeof( size_t ) ); 
+   irow = (size_t *) malloc( (size_t)(2) * eblk * sizeof( size_t ) );
 
    if( ( lerr = ( irow ? APL_SUCCESS : APL_ENOMEM ) ) == APL_SUCCESS )
    {
@@ -1522,10 +1522,10 @@ int                               main( int ARGC, char * * ARGV )
          {
             if( ARGV[6][0] == '0' ) {
                 lerr = ReadEdgeBegin( ARGV[5], rdbs, psiz, pthr, prnk,
-                                      NULL, NULL, NULL, &hdle ); 
+                                      NULL, NULL, NULL, &hdle );
             } else {
                 lerr = ReadEdgeBegin( ARGV[5], rdbs, psiz, pthr, prnk,
-                                      &nrow, &ncol, &nnnz, &hdle ); 
+                                      &nrow, &ncol, &nnnz, &hdle );
             }
          }
 

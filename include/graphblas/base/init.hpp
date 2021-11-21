@@ -91,7 +91,7 @@ namespace grb {
 	 *       undefined behaviour occurs. If \a implementation_data was invalid
 	 *       or corrupted, undefined behaviour occurs.
 	 *
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      None. Implementations are encouraged to specify the complexity of
 	 *      their implementation of this function in terms of \a P.
 	 *
@@ -168,7 +168,7 @@ namespace grb {
 	 *                 execution; in particular this means a new call to
 	 *                 grb::init() will not remedy the situaiton.
 	 *
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      None. Implementations are encouraged to specify the complexity of
 	 *      their implementation of this function in terms of the parameter
 	 *      \a P the matching call to grb::init() was called with.

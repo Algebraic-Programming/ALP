@@ -122,6 +122,9 @@ namespace grb {
 
 		// check for illegal at sibling processes
 		if( data.P > 1 && ( descr & descriptors::no_duplicates ) ) {
+#ifdef _DEBUG
+			std::cout << "\t global exit-check\n";
+#endif
 			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< grb::RC >() ) != SUCCESS ) {
 				return PANIC;
 			}
@@ -215,6 +218,9 @@ namespace grb {
 			RC rc = buildVector< descr >( internal::getLocal( x ), ind_it, index_cache.cend(), val_it, value_cache.cend(), SEQUENTIAL, dup );
 
 			if( data.P > 1 && ( descr & descriptors::no_duplicates ) ) {
+#ifdef _DEBUG
+				std::cout << "\t global exit check (2)\n";
+#endif
 				if( collectives< BSP1D >::allreduce( rc, grb::operators::any_or< grb::RC >() ) != SUCCESS ) {
 					return PANIC;
 				}

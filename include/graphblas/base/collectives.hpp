@@ -97,7 +97,7 @@ namespace grb {
 		 *  \endparblock
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ N*Operator \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -163,7 +163,7 @@ namespace grb {
 		 *       its cost can be quantified.
 		 *
 		 * \parblock
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ N*Operator \f$ ;
 		 * -# transferred bytes: \f$ N \f$ ;
@@ -208,21 +208,21 @@ namespace grb {
 		 *                 undefined state.
 		 *
 		 * \parblock
-		 * \par Performance guarantees: serial
+		 * \par Performance semantics: serial
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ NP \f$ ;
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
-		 * \par Performance guarantees: two phase
+		 * \par Performance semantics: two phase
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2N \f$ ;
 		 * -# BSP cost: \f$ 2(Ng + l) \f$;
 		 * \endparblock
 		 *
-		 * \par Performance guarantees: two level tree
+		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;
@@ -230,13 +230,18 @@ namespace grb {
 		 * \endparblock
 		 */
 		template< typename IOType >
-		static RC broadcast( IOType & inout, const size_t root = 0 ) {
+		static RC broadcast( IOType &inout, const size_t root = 0 ) {
 			(void)inout;
 			(void)root;
 			return PANIC;
 		}
 
-		/** TODO add documentation. */
+		/**
+		 * Broadcast on an array of \a IOType.
+		 *
+		 * The above documentation applies with \a size times <tt>sizeof(IOType)</tt>
+		 * substituted in.
+		 */
 		template< Descriptor descr = descriptors::no_operation, typename IOType >
 		static RC broadcast( IOType * inout, const size_t size, const size_t root = 0 ) {
 			(void)inout;

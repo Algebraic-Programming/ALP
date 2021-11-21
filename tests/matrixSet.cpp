@@ -45,6 +45,20 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	rc = grb::resize( A, 15 );
 	if( rc == SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
+		for( const auto & triplet : A ) {
+			if( triplet.first.first >= 10 || triplet.first.second >= 10 ) {
+				std::cerr << "\tunexpected entry at A( " << triplet.first.first << ", " << triplet.first.second << " ).\n";
+				rc = FAILED;
+			} else if( chk[ triplet.first.first ][ triplet.first.second ] != triplet.second ) {
+				std::cerr << "\tunexpected entry at A( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+				if( chk[ triplet.first.first ][ triplet.first.second ] == 0 ) {
+					std::cerr << ", expected no entry here.\n";
+				} else {
+					std::cerr << ", expected value " << chk[ triplet.first.first ][ triplet.first.second ] << ".\n";
+				}
+				rc = FAILED;
+			}
+		}
 	}
 	if( rc == SUCCESS ) {
 		rc = grb::resize( B, 15 );
@@ -70,15 +84,15 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( B ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( B ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements in B ( " << grb::nnz( B ) << " ), expected 15.\n";
 		rc = FAILED;
 	}
 	for( const auto & triplet : B ) {
 		if( triplet.first.first >= 10 || triplet.first.second >= 10 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ).\n";
+			std::cerr << "\tunexpected entry at B( " << triplet.first.first << ", " << triplet.first.second << " ).\n";
 			rc = FAILED;
 		} else if( chk[ triplet.first.first ][ triplet.first.second ] != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << "\tunexpected entry at B( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
 			if( chk[ triplet.first.first ][ triplet.first.second ] == 0 ) {
 				std::cerr << ", expected no entry here.\n";
 			} else {
@@ -98,12 +112,12 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( C ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( C ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements in C ( " << grb::nnz( C ) << " ), expected 15.\n";
 		rc = FAILED;
 	}
 	for( const auto & pair : C ) {
 		if( pair.first >= 10 || pair.second >= 10 || chk[ pair.first ][ pair.second ] == 0 ) {
-			std::cerr << "\t unexpected entry at ( " << pair.first << ", " << pair.second << " ).\n";
+			std::cerr << "\t unexpected entry at C( " << pair.first << ", " << pair.second << " ).\n";
 			rc = FAILED;
 		}
 	}
@@ -118,12 +132,12 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( D ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( D ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements in D ( " << grb::nnz( D ) << " ), expected 15.\n";
 		rc = FAILED;
 	}
 	for( const auto & pair : D ) {
 		if( pair.first >= 10 || pair.second >= 10 || chk[ pair.first ][ pair.second ] == 0 ) {
-			std::cerr << "\t unexpected entry at ( " << pair.first << ", " << pair.second << " ).\n";
+			std::cerr << "\t unexpected entry at D( " << pair.first << ", " << pair.second << " ).\n";
 			rc = FAILED;
 		}
 	}
@@ -138,15 +152,15 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( E ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( E ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements in E ( " << grb::nnz( E ) << " ), expected 15.\n";
 		rc = FAILED;
 	}
 	for( const auto & triplet : E ) {
 		if( triplet.first.first >= 10 || triplet.first.second >= 10 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			std::cerr << "\tunexpected entry at E( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
 		} else if( static_cast< unsigned int >( chk[ triplet.first.first ][ triplet.first.second ] ) != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << "\tunexpected entry at E( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
 			if( chk[ triplet.first.first ][ triplet.first.second ] == 0 ) {
 				std::cerr << ", expected no entry here.\n";
 			} else {

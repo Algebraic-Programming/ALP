@@ -126,37 +126,20 @@ namespace grb {
 					  << &( v._global ) << " with " << nnz( v._global ) << "/" << size( v._global ) << " nonzeroes and an output vector currently holding " << nnz( u._local ) << "/"
 					  << size( u._local ) << " nonzeroes...\n";
 #endif
-			if( ( descr & descriptors::transpose_matrix ) ) {
-				rc = internal::vxm_generic< descr & ~( descriptors::transpose_matrix ), output_masked, input_masked, left_handed, Ring::template One >(
-					u._local, u_mask._local, v._global, v_mask._global, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-					[ &offset ]( const size_t i ) {
-						return i + offset;
-					},
-					[ &offset ]( const size_t i ) {
-						return i - offset;
-					},
-					[]( const size_t i ) {
-						return i;
-					},
-					[]( const size_t i ) {
-						return i;
-					} );
-			} else {
-				rc = internal::vxm_generic< descr | descriptors::transpose_matrix, output_masked, input_masked, left_handed, Ring::template One >(
-					u._local, u_mask._local, v._global, v_mask._global, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-					[ &offset ]( const size_t i ) {
-						return i + offset;
-					},
-					[ &offset ]( const size_t i ) {
-						return i - offset;
-					},
-					[]( const size_t i ) {
-						return i;
-					},
-					[]( const size_t i ) {
-						return i;
-					} );
-			}
+			rc = internal::vxm_generic< descr ^ descriptors::transpose_matrix, output_masked, input_masked, left_handed, true, Ring::template One >(
+				u._local, u_mask._local, v._global, v_mask._global, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				[ &offset ]( const size_t i ) {
+					return i + offset;
+				},
+				[ &offset ]( const size_t i ) {
+					return i - offset;
+				},
+				[]( const size_t i ) {
+					return i;
+				},
+				[]( const size_t i ) {
+					return i;
+				} );
 
 #ifdef _DEBUG
 			std::cout << s << ": "
@@ -177,26 +160,23 @@ namespace grb {
 		}
 
 		template< Descriptor descr,
-			bool output_masked,
-			bool input_masked,
-			bool left_handed,
+			bool output_masked, bool input_masked, bool left_handed,
 			class Ring,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
 		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > & u,
 			const Vector< InputType3, BSP1D, Coords > & u_mask,
 			const Vector< InputType1, BSP1D, Coords > & v,
 			const Vector< InputType4, BSP1D, Coords > & v_mask,
 			const Matrix< InputType2, BSP1D > & A,
-			const Ring & ring ) {
+			const Ring & ring
+		) {
 			RC rc = SUCCESS;
 
 			// transpose must be handled on higher level
-			assert( ! ( descr & descriptors::transpose_matrix ) );
+			assert( !( descr & descriptors::transpose_matrix ) );
 
 			// dynamic sanity checks
 			if( u._n != A._n || v._n != A._m ) {
@@ -216,7 +196,7 @@ namespace grb {
 			std::cout << s << ": bsp1d_vxm called with " << descriptors::toString( descr ) << "\n";
 			std::cout << "\t" << s << ", unbuffered BSP1D vxm called\n";
 			std::cout << "\t" << s << ", bsp1d_vxm, global output vector currently contains " << internal::getCoordinates( u._global ).nonzeroes() << " / "
-					  << internal::getCoordinates( u._global ).size() << " nonzeroes. Nnz_is_dirty equals: " << u._nnz_is_dirty << ".\n";
+				  << internal::getCoordinates( u._global ).size() << " nonzeroes. Nnz_is_dirty equals: " << u._nnz_is_dirty << ".\n";
 			if( input_masked ) {
 				std::cout << "\t" << s << ", input mask has entries at";
 				for( size_t i = 0; i < internal::getCoordinates( v_mask._local ).nonzeroes(); ++i ) {
@@ -238,28 +218,30 @@ namespace grb {
 
 			const auto & local_coors = internal::getCoordinates( u._local );
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ", 0: calling process-local vxm using global output "
-						 "vector. Local output vector contains "
-					  << local_coors.nonzeroes() << " / " << local_coors.size() << ".\n";
+			std::cout << "\t" << s <<
+				", 0: calling process-local vxm using global output "
+				"vector. Local output vector contains " <<
+				local_coors.nonzeroes() << " / " << local_coors.size() << ".\n";
 #endif
 			// prepare global view of u for use. Only local values should be entries.
 			const size_t output_offset = internal::Distribution< BSP1D >::local_offset( u._n, data.s, data.P );
 			{
 				// assuming a `lazy' clear that does not clear value entries(!)
-				auto & global_coors = internal::getCoordinates( u._global );
+				auto &global_coors = internal::getCoordinates( u._global );
 				global_coors.template rebuildGlobalSparsity< false >( local_coors, output_offset );
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ", bsp1d_vxm: global output vector of the local "
-						 "vxm-to-be currently contains "
-					  << internal::getCoordinates( u._global ).nonzeroes() << " / " << internal::getCoordinates( u._global ).size() << " nonzeroes. This is the unbuffered variant.\n";
+			std::cout << "\t" << s <<
+				", bsp1d_vxm: global output vector of the local "
+				"vxm-to-be currently contains " <<
+				internal::getCoordinates( u._global ).nonzeroes() << " / " <<
+				internal::getCoordinates( u._global ).size() <<
+				" nonzeroes. This is the unbuffered variant.\n";
 #endif
 
 			// delegate to process-local vxm
-			internal::vxm_generic< descr, output_masked, input_masked, left_handed, Ring::template One >(
+			internal::vxm_generic< descr, output_masked, input_masked, left_handed, true, Ring::template One >(
 				u._global, u_mask._global, v._local, v_mask._local, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
 				[ &output_offset ]( const size_t i ) {
 					return i + output_offset;
@@ -274,10 +256,10 @@ namespace grb {
 					return i;
 				} );
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ", bsp1d_vxm: global output vector of the local vxm "
-						 "now contains "
-					  << internal::getCoordinates( u._global ).nonzeroes() << " / " << internal::getCoordinates( u._global ).size() << " nonzeroes.\n";
+			std::cout << "\t" << s <<
+				", bsp1d_vxm: global output vector of the local vxm " "now contains " <<
+				internal::getCoordinates( u._global ).nonzeroes() << " / " <<
+				internal::getCoordinates( u._global ).size() << " nonzeroes.\n";
 #endif
 
 #ifdef _DEBUG
@@ -340,12 +322,12 @@ namespace grb {
 		// get local number of nonzeroes
 		size_t ret = nnz( A._local );
 #ifdef _DEBUG
-		std::cout << "\tlocal number of nonzeroes: " << ret << std::endl;
+		std::cout << "\t local number of nonzeroes: " << ret << std::endl;
 #endif
 		// call allreduce on it
 		collectives< BSP1D >::allreduce< descriptors::no_casting, operators::add< size_t > >( ret );
 #ifdef _DEBUG
-		std::cout << "\tglobal number of nonzeroes: " << ret << std::endl;
+		std::cout << "\t global number of nonzeroes: " << ret << std::endl;
 #endif
 		// after allreduce, return sum of the local nonzeroes
 		return ret;

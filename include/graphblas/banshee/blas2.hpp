@@ -592,7 +592,7 @@ namespace grb {
 		 *          debug mode.
 		 *
 		 * \parblock
-		 * \par Performance guarantees
+		 * \par Performance semantics
 		 *      -# This call takes \f$ \Theta(\mathit{nz}) + \mathcal{O}(m+n)\f$
 		 *         work, where \f$ nz \f$ equals the number of nonzeroes in the
 		 *         matrix, and \f$ m, n \f$ the dimensions of the matrix.
@@ -618,12 +618,7 @@ namespace grb {
 		 *         CCS/CSC scheme achieves this tighter bound.)
 		 * \endparblock
 		 *
-		 * \warning This implementation forbids \a u to be equal to \a v.
-		 *
-		 * \warning This implementation forbids \a u to be equal to \a mask.
-		 *
-		 * \note This implementation has those restrictions since otherwise the
-		 *       above performance guarantees cannot be met.
+		 * \warning \a u may not be equal to \a mask.
 		 */
 		template< Descriptor descr,
 			bool masked,
@@ -649,7 +644,8 @@ namespace grb {
 			const std::function< size_t( size_t ) > & row_l2g,
 			const std::function< size_t( size_t ) > & row_g2l,
 			const std::function< size_t( size_t ) > & col_l2g,
-			const std::function< size_t( size_t ) > & col_g2l ) {
+			const std::function< size_t( size_t ) > & col_g2l
+		) {
 			// type sanity checking
 			NO_CAST_ASSERT(
 				( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || std::is_same< InputType3, bool >::value ), "vxm (any variant)", "Mask type is not boolean" );
@@ -977,7 +973,7 @@ namespace grb {
 	 * @returns The number of rows the current matrix contains.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
@@ -998,7 +994,7 @@ namespace grb {
 	 * @returns The number of columns the current matrix contains.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
@@ -1019,7 +1015,7 @@ namespace grb {
 	 * @returns The number of nonzeroes the current matrix contains.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
@@ -1051,7 +1047,7 @@ namespace grb {
 	 * @return SUCCESS  When a valid GraphBLAS matrix has been constructed.
 	 *
 	 * \parblock
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *        -$ This function consitutes \f$ \mathcal{O}(\mathit{nz} \f$ work.
 	 *        -# This function allocates \f$ \mathcal{O}(\mathit{nz}+m+n+1) \f$
 	 *           bytes of dynamic memory.

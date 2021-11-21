@@ -201,7 +201,7 @@ namespace grb {
 	 * \note This function cannot fail.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      This function
 	 *        -# contains \f$ \mathcal{O}(n) \f$ work,
 	 *        -# will not allocate new dynamic memory,
@@ -231,7 +231,7 @@ namespace grb {
 	 * @return The size of the vector \a x.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *  -# consists of \f$ \Theta(1) \f$ work;
 	 *  -# moves \f$ \Theta(1) \f$ bytes of memory;
@@ -256,7 +256,7 @@ namespace grb {
 	 * @return The number of nonzeroes in \a x.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(1) \f$ work;
 	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
@@ -303,9 +303,7 @@ namespace grb {
 	 * @tparam T        The type of the given value.
 	 *
 	 * @param[in,out] x The vector of which every element is to be set to equal
-	 *                  \a val. If the capacity of this vector is insufficient to
-	 *                  hold \a n values, where \a n is the size of this vector,
-	 *                  then the below performance guarantees will not be met.
+	 *                  \a val.
 	 * @param[in]   val The value to set each element of \a x equal to.
 	 *
 	 * @returns SUCCESS       When the call completes successfully.
@@ -325,7 +323,7 @@ namespace grb {
 	 * match \a DataType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(n) \f$ work;
 	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
@@ -344,7 +342,12 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename Coords, typename T >
-	RC set( Vector< DataType, banshee, Coords > & x, const T val, const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+	RC set(
+		Vector< DataType, banshee, Coords > & x, const T val,
+		const typename std::enable_if<
+			! grb::is_object< DataType >::value && ! grb::is_object< T >::value,
+		void >::type * const = NULL
+	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
@@ -412,7 +415,7 @@ namespace grb {
 	 * match \a DataType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \Theta(1) \f$ work;
 	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
@@ -465,7 +468,7 @@ namespace grb {
 	 * does not match \a OutputType, the code shall not compile.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 * A call to this function
 	 *   -# consists of \f$ \mathcal{O}(n) \f$ work;
 	 *   -# moves \f$ \mathcal{O}(n) \f$ bytes of memory;
@@ -1061,7 +1064,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1140,7 +1143,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1213,7 +1216,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1311,7 +1314,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1414,7 +1417,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1508,7 +1511,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1597,7 +1600,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1699,7 +1702,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good
@@ -1777,9 +1780,7 @@ namespace grb {
 	 *
 	 * @param[in]   x   The left-hand input vector.
 	 * @param[in]  beta The right-hand input scalar.
-	 * @param[out]  z   The pre-allocated output vector. If the allocation is
-	 *                  insufficient, the performance guarantees shall not be
-	 *                  binding.
+	 * @param[out]  z   The pre-allocated output vector.
 	 * @param[in]   op  The operator to use.
 	 *
 	 * @return grb::MISMATCH Whenever the dimensions of \a x and \a z do not
@@ -1789,7 +1790,7 @@ namespace grb {
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vectors \a x and \a z. The constant factor depends
 	 *         on the cost of evaluating the operator. A good implementation uses
@@ -1809,9 +1810,6 @@ namespace grb {
 	 *         the input domains, the output domain, and the operator allow for
 	 *         this.
 	 * \endparblock
-	 *
-	 * \warning The above guarantees are only valid if the output parameter \a z
-	 *          has sufficient space reserved to store the output.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename Coords, typename InputType2 >
 	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
@@ -2516,9 +2514,7 @@ namespace grb {
 	 *
 	 * @param[in]  alpha The left-hand scalar.
 	 * @param[in]   y    The right-hand input vector.
-	 * @param[out]  z    The pre-allocated output vector. If the allocation is
-	 *                   insufficient, the performance guarantees shall not be
-	 *                   binding.
+	 * @param[out]  z    The pre-allocated output vector.
 	 * @param[in]   op   The operator to use.
 	 *
 	 * @return grb::MISMATCH Whenever the dimensions of \a y and \a z do not
@@ -2528,7 +2524,7 @@ namespace grb {
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vectors \a y and \a z. The constant factor depends
 	 *         on the cost of evaluating the operator. A good implementation uses
@@ -2548,9 +2544,6 @@ namespace grb {
 	 *         the input domains, the output domain, and the operator allow for
 	 *         this.
 	 * \endparblock
-	 *
-	 * \warning The above guarantees are only valid if the output parameter \a z
-	 *          has sufficient space reserved to store the output.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
 	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
@@ -2657,9 +2650,7 @@ namespace grb {
 	 *
 	 * @param[in]  x  The left-hand input vector. May not equal \a y.
 	 * @param[in]  y  The right-hand input vector. May not equal \a x.
-	 * @param[out] z  The pre-allocated output vector. If the allocation is
-	 *                insufficient, the performance guarantees shall not be
-	 *                binding.
+	 * @param[out] z  The pre-allocated output vector.
 	 * @param[in]  op The operator to use.
 	 *
 	 * @return grb::ILLEGAL  When \a x equals \a y.
@@ -2670,7 +2661,7 @@ namespace grb {
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vectors \a x, \a y, and \a z. The constant factor
 	 *         depends on the cost of evaluating the operator. A good
@@ -2692,13 +2683,6 @@ namespace grb {
 	 *         whenever the input domains, the output domain, and the operator
 	 *         used allow for this.
 	 * \endparblock
-	 *
-	 * \warning The above guarantees are only valid if the output parameter \a z
-	 *          has sufficient space reserved to store the output.
-	 *
-	 * \note In case of dense vectors, this is always guaranteed.
-	 *
-	 * \warning It shall be illegal to take pointers of this function.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
 	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
@@ -2860,7 +2844,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
 	 *         size of the vectors \a x, \a y, and \a z. The constant factor
 	 *         depends on the cost of evaluating the addition operator. A good
@@ -3074,7 +3058,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
 	 *         size of the vectors \a x, \a y, and \a z. The constant factor
 	 *         depends on the cost of evaluating the multiplication operator. A
@@ -3617,7 +3601,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
 	 *         size of the vectors \a x, \a y, and \a z. The constant factor
 	 *         depends on the cost of evaluating the addition and multiplication
@@ -3747,7 +3731,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
 	 *         size of the vectors \a _a, \a _x, \a _y, and \a _z. The constant
 	 *         factor depends on the cost of evaluating the addition and
@@ -4008,7 +3992,7 @@ namespace grb {
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
 	 *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
 	 *         \f$ p \f$ is the number of user processes. The constant factor
@@ -4237,7 +4221,7 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
 	 *         the size of the vector \a x. The constant factor depends on the
 	 *         cost of evaluating the underlying binary operator. A good

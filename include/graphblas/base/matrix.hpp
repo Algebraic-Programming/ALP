@@ -147,7 +147,7 @@ typedef D value_type;
  * @return SUCCESS This function never fails.
  *
  * \parblock
- * \par Performance guarantees.
+ * \par Performance semantics.
  *        -# This constructor completes in \f$ \Theta(1) \f$ time.
  *        -# This constructor will not allocate any new dynamic memory.
  *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
@@ -170,7 +170,7 @@ Matrix( const size_t rows, const size_t columns ) {
  * @param other The matrix to copy.
  *
  * \parblock
- * \par Performance guarantees.
+ * \par Performance semantics.
  *      Allocates the same capacity as the \a other matrix, even if the
  *      actual number of nonzeroes contained in \a other is less.
  *        -# This constructor entails \f$ \Theta(\mathit{nz}) \f$ amount of
@@ -196,7 +196,7 @@ Matrix( const Matrix< D, implementation > & other ) {
  * @param[in] other The GraphBLAS matrix to move to this new instance.
  *
  * \parblock
- * \par Performance guarantees.
+ * \par Performance semantics.
  *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
  *        -# This constructor will not allocate any new dynamic memory.
  *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
@@ -212,7 +212,7 @@ Matrix( self_type && other ) {
  * Matrix destructor.
  *
  * \parblock
- * \par Performance guarantees.
+ * \par Performance semantics.
  *        -# This destructor entails \f$ \Theta(1) \f$ amount of work.
  *        -# This destructor will not perform any memory allocations.
  *        -# This destructor will use \f$ \mathcal{O}(1) \f$ extra bytes of
@@ -306,7 +306,7 @@ Matrix( self_type && other ) {
  * @return grb::SUCCESS  When the function completes successfully.
  *
  * \parblock
- * \par Performance guarantees.
+ * \par Performance semantics.
  *        -# This function contains
  *           \f$ \Theta(\mathit{nz}\log\mathit{nz})+\mathcal{O}(m+n)) \f$
  *           amount of work.
@@ -366,7 +366,7 @@ RC buildMatrix( const fwd_iterator1 I, const fwd_iterator2 J, const fwd_iterator
  *       returned by cend().
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *        -# This function contains \f$ \mathcal{O}(1) \f$ work.
  *        -# This function is allowed allocate dynamic memory.
  *        -# This function uses up to \f$ \mathcal{O}(1) \f$ more memory
@@ -401,7 +401,7 @@ const_iterator begin() const {}
  * @return An iterator at the end position of this container.
  *
  * \parblock
- * \par Performance guarantees
+ * \par Performance semantics
  *        -# This function contains \f$ \mathcal{O}(1) \f$ work.
  *        -# This function is not allowed allocate dynamic memory.
  *        -# This function uses up to \f$ \mathcal{O}(1) \f$ more memory

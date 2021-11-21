@@ -93,6 +93,9 @@ namespace grb {
 				/** A function to apply to convert input values on the fly. */
 				std::function< void( T & ) > converter;
 
+				/** In case we are reading from a pattern matrix, which value should substitute a nonzero. */
+				const T patternValue;
+
 				/** Strips comments and possible MatrixMarket header from input stream start. */
 				void preprocess() {
 					// check if first header indicates MatrixMarket
@@ -127,7 +130,9 @@ namespace grb {
 					// done
 				}
 
+
 			public:
+
 				// standard STL iterator typedefs
 				typedef std::ptrdiff_t difference_type;
 				typedef OutputType value_type;
@@ -141,9 +146,9 @@ namespace grb {
 				typedef T nonzero_value_type;
 
 				/** Base constructor, starts in begin position. */
-				MatrixFileIterator( MatrixFileProperties & prop, IOMode mode, const std::function< void( T & ) > valueConverter, const bool end = false ) :
+				MatrixFileIterator( MatrixFileProperties & prop, IOMode mode, const std::function< void( T & ) > valueConverter, const T& patternVal, const bool end = false ) :
 					buffer( NULL ), properties( prop ), infile( properties._fn ), spos(), pos( 0 ), ended( end ), started( ! end ), symmetricOut( prop._symmetric ? true : false ),
-					converter( valueConverter ) {
+					converter( valueConverter ), patternValue( patternVal ) {
 					if( mode != SEQUENTIAL ) {
 						throw std::runtime_error( "Only sequential IO is supported by this iterator at "
 												  "present, sorry." ); // internal issue #48
@@ -153,7 +158,7 @@ namespace grb {
 				/** Copy constructor. */
 				MatrixFileIterator( const MatrixFileIterator< S, T > & other ) :
 					buffer( NULL ), properties( other.properties ), infile( properties._fn ), spos( other.spos ), pos( other.pos ), ended( other.ended ), started( other.started ),
-					symmetricOut( other.symmetricOut ), converter( other.converter ) {
+					symmetricOut( other.symmetricOut ), converter( other.converter ), patternValue( other.patternValue ) {
 					// set latest stream position
 					(void)infile.seekg( spos );
 					// if buffer is nonempty
@@ -211,10 +216,7 @@ namespace grb {
 							// no, so allocate buffer
 							if( posix_memalign( (void **)&buffer, config::CACHE_LINE_SIZE::value(), buffer_size * sizeof( OutputType ) ) != 0 ) {
 								buffer = NULL;
-								throw std::runtime_error( "Error during "
-														  "allocation of "
-														  "internal iterator "
-														  "memory." );
+								throw std::runtime_error( "Error during allocation of internal iterator memory." );
 							}
 						}
 						// copy remote buffer contents
@@ -358,6 +360,7 @@ namespace grb {
 								// store (corrected) values
 								buffer[ i ].first.first = row;
 								buffer[ i ].first.second = col;
+								buffer[ i ].second = patternValue;
 							}
 						} else {
 							// non-pattern matrices

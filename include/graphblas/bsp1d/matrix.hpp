@@ -87,11 +87,22 @@ namespace grb {
 		/** The type of the sequential matrix implementation. */
 		typedef Matrix< D, _GRB_BSP1D_BACKEND > LocalMatrix;
 
-		/** The global row-wise dimension of this matrix. */
-		const size_t _m;
+		/** My own type. */
+		typedef Matrix< D, BSP1D > self_type;
 
-		/** The global column-wise dimension of this matrix. */
-		const size_t _n;
+		/**
+		 * The global row-wise dimension of this matrix.
+		 *
+		 * \internal Not declared const to allow for elegant move construction
+		 */
+		size_t _m;
+
+		/**
+		 * The global column-wise dimension of this matrix.
+		 *
+		 * \internal Not declared const to allow for elegant move construction
+		 */
+		size_t _n;
 
 		/** The actual matrix storage implementation. */
 		LocalMatrix _local;
@@ -99,16 +110,41 @@ namespace grb {
 		/** Internal constructor. */
 		Matrix( internal::BSP1D_Data & data, const size_t rows, const size_t columns ) :
 			_m( rows ), _n( columns ), _local( internal::Distribution< BSP1D >::global_length_to_local( rows, data.s, data.P ), columns ) {
-			if( data.ensureBufferSize( data.P * utils::SizeOf< D >::value // support all-reduce on type D
-					) != SUCCESS ) {
-				throw std::runtime_error( "Error during resizing of global "
-										  "GraphBLAS buffer" );
+			if( _m > 0 && _n > 0 ) {
+				// make sure we support an all-reduce on type D
+				if( data.ensureBufferSize( data.P * utils::SizeOf< D >::value ) != SUCCESS ) {
+					throw std::runtime_error( "Error during resizing of global GraphBLAS buffer" );
+				}
 			}
+		}
+
+		/** Implements move constructor and assign-from-temporary. */
+		void moveFromOther( self_type &&other ) {
+			// copy fields
+			_m = other._m;
+			_n = other._n;
+			_local = std::move( other._local );
+
+			// invalidate other
+			other._m = 0;
+			other._n = 0;
 		}
 
 	public:
 		/** Base constructor. */
 		Matrix( const size_t rows, const size_t columns ) : Matrix( internal::grb_BSP1D.load(), rows, columns ) {}
+
+		/** Move constructor. */
+		Matrix( self_type &&other ) noexcept : _m( other._m ), _n( other._n ), _local( std::move( other._local ) ) {
+			other._m = 0;
+			other._n = 0;
+		}
+
+		/** Assign-from-temporary. */
+		self_type& operator=( self_type &&other ) noexcept {
+			moveFromOther( std::forward< self_type >(other) );
+			return *this;
+		}
 
 		typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< internal::Distribution< BSP1D > > begin(
 			const IOMode mode = PARALLEL ) const {
@@ -154,3 +190,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_BSP1D_MATRIX'
+

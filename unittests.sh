@@ -202,6 +202,13 @@ for BACKEND in ${BACKENDS[@]}; do
 			grep 'Test OK' bin/tests/output/moveVector_${BACKEND}_${P}_${T} || echo "Test FAILED"
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing std::move on two vectors of doubles of"
+			echo "                                 size 100."
+			$runner bin/tests/moveMatrix_${BACKEND} 100 &> bin/tests/output/moveMatrix_${BACKEND}_${P}_${T}
+			head -1 bin/tests/output/moveMatrix_${BACKEND}_${P}_${T}
+			grep 'Test OK' bin/tests/output/moveMatrix_${BACKEND}_${P}_${T} || echo "Test FAILED"
+			echo " "
+
 			echo ">>>      [x]           [ ]       Testing std::vector of thirteen GraphBLAS"
 			echo "                                 vectors of unsigned chars of sizes 100 and 50."
 			$runner bin/tests/stdVector_${BACKEND} 100 &> bin/tests/output/stdVector_${BACKEND}_${P}_${T}
@@ -311,28 +318,123 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-
 			if [ -z ${GNN_DATASET_PATH} ]; then
 				export GNN_DATASET_PATH=GraphChallengeDataset
 			fi
 
-			echo ">>>      [x]           [ ]       Testing the GNN algorithm for the input (neurons=1024,"
-			echo "                                 layers=120, offset=294) taken from ${GNN_DATASET_PATH}."
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."
 			if [ -d ${GNN_DATASET_PATH} ]; then
-				$runner bin/tests/automatic_launch_gnn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 indirect 1 1 &> bin/tests/output/automatic_launch_gnn_single_inference_${BACKEND}_${P}_${T}
-				head -1 bin/tests/output/automatic_launch_gnn_single_inference_${BACKEND}_${P}_${T}
-				grep 'Test OK' bin/tests/output/automatic_launch_gnn_single_inference_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				$runner bin/tests/automatic_launch_graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 &> bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}
+				head -1 bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}
+				grep 'Test OK' bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T} || echo "Test FAILED"
 			else
 				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
 			fi
 			echo " "
-			
+
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and without using thresholding."
+			if [ -d ${GNN_DATASET_PATH} ]; then
+				$runner bin/tests/automatic_launch_graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 &> bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}
+				head -1 bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}
+				grep 'Test OK' bin/tests/output/automatic_launch_graphchallenge_nn_single_inference_${BACKEND}_${P}_${T} || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
+			fi
+			echo " "
+
+			if [ -f datasets/west0497.mtx ]; then
+				echo ">>>      [x]           [ ]       Testing the spmv (y=Ax) on west0497, using dense vectors, debug mode"
+				$runner bin/tests/dense_spmv_debug_${BACKEND} datasets/west0497.mtx direct 1 1 1 &> bin/tests/output/dense_spmv_debug_${BACKEND}_Ax_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_debug_${BACKEND}_Ax_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_debug_${BACKEND}_Ax_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=A^Tx) on west0497, using dense vectors, debug mode"
+				$runner bin/tests/dense_spmv_debug_${BACKEND} datasets/west0497.mtx direct 2 1 1 &> bin/tests/output/dense_spmv_debug_${BACKEND}_ATx_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_debug_${BACKEND}_ATx_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_debug_${BACKEND}_ATx_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=xA) on west0497, using dense vectors, debug mode"
+				$runner bin/tests/dense_spmv_debug_${BACKEND} datasets/west0497.mtx direct 3 1 1 &> bin/tests/output/dense_spmv_debug_${BACKEND}_xA_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_debug_${BACKEND}_xA_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_debug_${BACKEND}_xA_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=xA^T) on west0497, using dense vectors, debug mode"
+				$runner bin/tests/dense_spmv_debug_${BACKEND} datasets/west0497.mtx direct 4 1 1 &> bin/tests/output/dense_spmv_debug_${BACKEND}_xAT_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_debug_${BACKEND}_xAT_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_debug_${BACKEND}_xAT_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+				echo ">>>      [x]           [ ]       Testing the spmv (y=Ax) on west0497, using dense vectors"
+				$runner bin/tests/dense_spmv_${BACKEND} datasets/west0497.mtx direct 1 1 1 &> bin/tests/output/dense_spmv_${BACKEND}_Ax_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_${BACKEND}_Ax_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_${BACKEND}_Ax_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=A^Tx) on west0497, using dense vectors"
+				$runner bin/tests/dense_spmv_${BACKEND} datasets/west0497.mtx direct 2 1 1 &> bin/tests/output/dense_spmv_${BACKEND}_ATx_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_${BACKEND}_ATx_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_${BACKEND}_ATx_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=xA) on west0497, using dense vectors"
+				$runner bin/tests/dense_spmv_${BACKEND} datasets/west0497.mtx direct 3 1 1 &> bin/tests/output/dense_spmv_${BACKEND}_xA_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_${BACKEND}_xA_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_${BACKEND}_xA_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the spmv (y=xA^T) on west0497, using dense vectors"
+				$runner bin/tests/dense_spmv_${BACKEND} datasets/west0497.mtx direct 4 1 1 &> bin/tests/output/dense_spmv_${BACKEND}_xAT_${P}_${T}.log
+				head -1 bin/tests/output/dense_spmv_${BACKEND}_xAT_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/dense_spmv_${BACKEND}_xAT_${P}_${T}.log; then
+					echo 'Test OK'
+				else
+					echo 'Test FAILED'
+				fi
+				echo " "
+			else
+				echo "Test DISABLED: datasets/west0497.mtx was not found. To enabled, please provide the dataset."
+			fi
+
 			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 				echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
 				echo
 				continue
 			fi
-		
+
 			echo ">>>      [x]           [ ]       Testing the k-means algorithm"
 			$runner bin/tests/kmeans_unit_${BACKEND} &> bin/tests/output/kmeans_unit_${BACKEND}_${P}_${T}.log
 			head -1 bin/tests/output/kmeans_unit_${BACKEND}_${P}_${T}.log
@@ -350,17 +452,17 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo ">>>      [x]           [ ]       Testing BLAS1 functions on empty vectors"
 			echo " "
 			$runner bin/tests/emptyVector_${BACKEND} 2> bin/tests/output/emptyVector_${BACKEND}_${P}_${T}.err
-			
+
 			echo ">>>      [x]           [ ]       Testing vector times matrix using the normal (+,*)"
 			echo "                                 semiring over integers on a diagonal matrix"
 			echo " "
 			$runner bin/tests/vmx_${BACKEND} 2> bin/tests/output/vmx_${BACKEND}_${P}_${T}.err
-			
+
 			echo ">>>      [x]           [ ]       Testing vector times matrix using a (*,+) semiring over"
 			echo "                                 doubles on a diagonal matrix"
 			echo " "
 			$runner bin/tests/vmxa_${BACKEND} 2> bin/tests/output/vmxa_${BACKEND}_${P}_${T}.err
-		
+
 			echo ">>>      [x]           [ ]       Testing vector times matrix using the number (+,*)"
 			echo "                                 semiring over integers on a diagonal 15x15 matrix. Each"
 			echo "                                 of the 15 output elements are computed element-by-element"
@@ -368,7 +470,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 both the mask and the output vector sparse."
 			echo " "
 			$runner bin/tests/sparse_vxm_${BACKEND} 2> bin/tests/output/sparse_vxm_${BACKEND}_${P}_${T}.err
-		
+
 			echo ">>>      [x]           [ ]       Testing matrix times vector using the number (+,*)"
 			echo "                                 semiring over integers on a diagonal 15x15 matrix. Each"
 			echo "                                 of the 15 output elements are computed element-by-element"
@@ -378,7 +480,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 input vector shall be sparse."
 			echo " "
 			$runner bin/tests/sparse_mxv_${BACKEND} 2> bin/tests/output/sparse_mxv_${BACKEND}_${P}_${T}.err
-			
+
 			echo ">>>      [x]           [ ]       Testing vector times matrix using the number (+,*)"
 			echo "                                 semiring over integers on a diagonal 15x15 matrix. Each"
 			echo "                                 of the 15 output elements are computed, like the above"
@@ -388,7 +490,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 specifier is tested as well."
 			echo " "
 			$runner bin/tests/masked_vxm_${BACKEND} 2> bin/tests/output/masked_vxm_${BACKEND}_${P}_${T}.err
-			
+
 			echo ">>>      [x]           [ ]       Testing matrix times vector using the number (+,*)"
 			echo "                                 semiring over integers on a diagonal 15x15 matrix--"
 			echo "                                 apart from mxv instead of vxm, this is the same test"
@@ -408,7 +510,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide datasets/west0497.mtx"
 			fi
 			echo " "
-			
+
 			echo ">>>      [x]           [ ]       Testing matrix times dense vector using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"
 			echo "                                 elements ints. The input matrix is taken from west0497."
@@ -421,6 +523,34 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide datasets/west0497.mtx"
 			fi
 			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the spy algorithm on west0497"
+			if [ -f datasets/west0497.mtx ]; then
+				$runner bin/tests/spy_${BACKEND} datasets/west0497.mtx &> bin/tests/output/spy_${BACKEND}_${P}_${T}.log
+				head -1 bin/tests/output/spy_${BACKEND}_${P}_${T}.log
+				if grep -q 'Test OK' bin/tests/output/spy_${BACKEND}_${P}_${T}.log; then
+					if grep 'Spy matrix' bin/tests/output/spy_${BACKEND}_${P}_${T}.log | cut -d' ' -f9 | grep -q 315; then
+						echo 'Test OK'
+					else
+						echo 'Verification FAILED'
+						echo 'Test FAILED'
+					fi
+				else
+					echo 'Test FAILED'
+				fi
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide datasets/west0497.mtx"
+			fi
+			echo " "
+
+			#if [ "$BACKEND" = "reference_omp" ]; then
+			#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
+			#	echo
+			#	continue
+			#fi
+
+			#none here: all unit tests are operational for reference_omp
+
 		done
 	done
 
@@ -454,11 +584,11 @@ for BACKEND in ${BACKENDS[@]}; do
 		${LPFRUN} -np 1 bin/tests/automatic_launch_sparse_vxm 1000 4 1 1 &> bin/tests/output/automatic_launch_sparse_vxm.P1.1000.4
 		(grep -i "Test failed" bin/tests/output/automatic_launch_sparse_vxm.P1.1000.?) || (grep -i "Test OK" bin/tests/output/automatic_launch_sparse_vxm.P1.1000.?)
 		echo " "
-		
+
 		echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
 		echo " "
 		bin/tests/distribution_bsp1d
-			
+
 		echo ">>>      [x]           [ ]       Tests grb::Launcher on a dot-product of two vectors"
 		echo "                                 of size 100000 on two processes, BSP1D implementation."
 		echo "                                 The launcher is used in automatic mode. Launcher::exec"
@@ -467,7 +597,7 @@ for BACKEND in ${BACKENDS[@]}; do
 		${LPFRUN} -np 2 bin/tests/automatic_launch_bsp1d_dot &> bin/tests/output/automatic_launch_bsp1d_dot
 		head -1 bin/tests/output/automatic_launch_bsp1d_dot
 		tail -2 bin/tests/output/automatic_launch_bsp1d_dot
-			
+
 		echo ">>>      [x]           [ ]       Tests a manual call to bsp_hook via the LPF engine"
 		echo "                                 configured in bsp.mk. A manual run of this test opens"
 		echo "                                 additional testing possibilities and allows inspection"
@@ -483,7 +613,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_hw localhost 2 4 77770 &> bin/tests/output/manual_hook_hw.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_hw.1 && grep -q 'Test OK' bin/tests/output/manual_hook_hw.2 && grep -q 'Test OK' bin/tests/output/manual_hook_hw.3 && grep -q 'Test OK' bin/tests/output/manual_hook_hw.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test the grb::set"
 		echo "                                 function over an array of doubles of 100 elements"
@@ -495,7 +625,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_set localhost 2 3 77770 &> bin/tests/output/manual_hook_grb_set.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_set.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_set.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_set.0 && printf "Test OK.\n\n" ) || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test the grb::set"
 		echo "                                 function over an array of ints of 100 000 elements"
@@ -508,7 +638,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_dot localhost 2 4 77770 &> bin/tests/output/manual_hook_grb_dot.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_dot.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_dot.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_dot.3 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_dot.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test the grb::reduce"
 		echo "                                 function over an array of doubles"
@@ -521,7 +651,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_reduce localhost 2 4 77770 &> bin/tests/output/manual_hook_grb_reduce.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_reduce.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_reduce.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_reduce.3 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_reduce.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test blas0 grb::collectives"
 		echo " "
@@ -533,7 +663,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_collectives_blas0 localhost 2 4 77770 &> bin/tests/output/manual_hook_grb_collectives_blas0.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas0.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas0.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas0.3 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas0.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test blas1 grb::collectives"
 		echo " "
@@ -545,7 +675,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_collectives_blas1 localhost 2 4 77770 &> bin/tests/output/manual_hook_grb_collectives_blas1.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1.3 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Uses the same infrastructure to initialise the BSP1D"
 		echo "                                 implementation of the GraphBLAS and test blas1 grb::collectives"
 		echo " "
@@ -557,7 +687,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			${MANUALRUN} bin/tests/manual_hook_grb_collectives_blas1_raw localhost 2 4 77770 &> bin/tests/output/manual_hook_grb_collectives_blas1_raw.2 & \
 			wait"
 		(grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1_raw.1 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1_raw.2 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1_raw.3 && grep -q 'Test OK' bin/tests/output/manual_hook_grb_collectives_blas1_raw.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
-			
+
 		echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 		echo "                                 semiring where matrix elements are doubles and vector"
 		echo "                                 elements ints. The input matrix is taken from west0497."

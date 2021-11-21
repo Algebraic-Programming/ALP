@@ -55,6 +55,7 @@ namespace grb {
 		class Coordinates< reference > {
 
 		public:
+
 			/** The type of elements #saveFromStack returns. */
 			typedef typename config::VectorIndexType StackType;
 
@@ -65,6 +66,7 @@ namespace grb {
 			typedef bool ArrayType;
 
 		private:
+
 			/** Pointer to the underlying indexing array. */
 			bool * __restrict__ _assigned;
 
@@ -194,12 +196,11 @@ namespace grb {
 			static inline size_t parbufSize( const size_t n ) noexcept {
 				return config::IMPLEMENTATION< reference >::vectorBufferSize( n,
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						   config::OMP::threads()
+					   config::OMP::threads()
 #else
-						   1
+					   1
 #endif
-							   ) *
-					sizeof( StackType );
+				) * sizeof( StackType );
 			}
 
 			/**
@@ -496,83 +497,94 @@ namespace grb {
 			 * process only has ownership over that particular range.
 			 */
 			template< bool dense >
-			void rebuildGlobalSparsity( const Coordinates & localSparsity, const size_t offset ) noexcept {
+			void rebuildGlobalSparsity( const Coordinates &localSparsity, const size_t offset ) noexcept {
+#ifdef _DEBUG
+				std::cout << "rebuildGlobalSparsity called with ";
+				if( dense ) { std::cout << "a dense local coordinate structure "; }
+				else { std::cout << "a possibly sparse local coordinate structure "; }
+				std::cout << "at offset " << offset << "\n";
+#endif
 				assert( localSparsity._cap <= _cap );
 				// if dense, do a direct assign of our local structures
 				if( dense || localSparsity.isDense() ) {
+#ifdef _DEBUG
+					if( !dense ) { std::cout << "\t our possibly sparse local coordinates were found to be dense\n"; }
+#endif
 					assert( localSparsity._n == localSparsity._cap );
-					// if the containers are of equal size and the localSparsity is dense we have a trivial Theta(1) OP:
-					if( localSparsity._cap == _cap ) {
+					// if we are dense ourselves, just memset everything and set our stack ourselves
+					// this is a Theta(n) operation which touches exactly n data elements
+					if( isDense() ) {
+#ifdef _DEBUG
+						std::cout << "\t We are dense ourselves\n";
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						// is this not totally unnecessary if assuming our structure was cleared first,
+						// and isn't that always the case making this branch therefore dead code?
+						// internal issue #262
+						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+						for( size_t i = 0; i < offset; ++i ) {
+							_assigned[ i ] = 0;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+						for( size_t i = offset + localSparsity.size(); i < _cap; ++i ) {
+							_assigned[ i ] = 0;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+						for( size_t i = 0; i < localSparsity._cap; ++i ) {
+							assert( _assigned[ i + offset ] );
+							_stack[ i ] = i + offset;
+						}
 						_n = localSparsity._cap;
 						// done
 						return;
-					} else {
-						// if we are dense ourselves, just memset everything and set our stack ourselves
-						// this is a Theta(n) operation which touches exactly n data elements
-						if( isDense() ) {
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
-#endif
-							for( size_t i = 0; i < offset; ++i ) {
-								_assigned[ i ] = 0;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
-#endif
-							for( size_t i = offset + localSparsity.size(); i < _cap; ++i ) {
-								_assigned[ i ] = 0;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
-#endif
-							for( size_t i = 0; i < localSparsity._cap; ++i ) {
-								assert( _assigned[ i + offset ] );
-								_stack[ i ] = i + offset;
-							}
-							_n = localSparsity._cap;
-							// done
-							return;
-						}
 					}
 				}
 
+#ifdef _DEBUG
+				std::cout << "\t our local coordinates are sparse\n";
+#endif
 				// at this point we are either sparse or dense. When dense, localCoordinates cannot be dense;
 				// otherwise the above code would have kicked in. We handle this case first:
 				if( isDense() ) {
+#ifdef _DEBUG
+					std::cout << "\t our own coordinates were dense\n";
+#endif
 					// this is an O(n) loop. It touches n+n/p data elements.
 					// clear nonlocal elements
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
+					// is this not totally unnecessary if assuming our structure was cleared first,
+					// and isn't that always the case making this branch therefore dead code?
+					// internal issue #262
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 					for( size_t i = 0; i < offset; ++i ) {
 						_assigned[ i ] = 0;
 					}
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 					for( size_t i = offset + localSparsity.size(); i < _cap; ++i ) {
 						_assigned[ i ] = 0;
 					}
 				} else {
+#ifdef _DEBUG
+					std::cout << "\t our own sparsity structure was sparse\n";
+#endif
 					// we are sparse. Loop over our own nonzeroes and then use #_assigned to determine if
 					// they're still there. This is a Theta(nnz)-sized loop and touches 2nnz data elements.
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					#pragma omp parallel
-					{
-						const auto P = omp_get_num_threads();
-						const auto s = omp_get_thread_num();
-#else
-					const size_t P = 1;
-					const size_t s = 0;
 #endif
-						auto bs = _n / P + ( ( _n % P ) == 0 ? 0 : 1 );
-						auto start = s * bs;
-						auto end = start + bs > _n ? _n : start + bs;
+					{
+						size_t start = 0, end = _n;
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						config::OMP::localRange( start, end, 0, _n );
+#endif
 						size_t k = start;
 						while( k < end ) {
 							const StackType i = _stack[ k ];
@@ -591,23 +603,20 @@ namespace grb {
 							(void)++k;
 							// and continue the loop
 						}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					}
-#endif
 				}
 				// in both cases, we need to rebuild the stack. We copy it from localCoordinates:
+#ifdef _DEBUG
+				std::cout << "\t rebuilding stack\n";
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 				#pragma omp parallel
-				{
-					const auto P = omp_get_num_threads();
-					const auto s = omp_get_thread_num();
-#else
-				const size_t P = 1;
-				const size_t s = 0;
 #endif
-					const auto bs = localSparsity.nonzeroes() / P + ( ( localSparsity.nonzeroes() % P ) == 0 ? 0 : 1 );
-					const auto start = s * bs;
-					const auto end = start + bs > localSparsity.nonzeroes() ? localSparsity.nonzeroes() : start + bs;
+				{
+					size_t start = 0, end = localSparsity.nonzeroes();
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					config::OMP::localRange( start, end, 0, localSparsity.nonzeroes() );
+#endif
 					if( start < end ) {
 						size_t local_n = start;
 						for( ; local_n < end; ++local_n ) {
@@ -615,16 +624,16 @@ namespace grb {
 						}
 						assert( local_n == end );
 					}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 				}
-#endif
 				_n = localSparsity.nonzeroes();
 #ifdef _DEBUG
+				std::cout << "\t final debug-mode sanity check on output stack before exit...";
 				for( size_t i = 0; i < _n; ++i ) {
 					assert( _stack[ i ] < _cap );
 					assert( _assigned[ _stack[ i ] ] );
 					assert( _stack[ i ] == localSparsity.index( i ) + offset );
 				}
+				std::cout << "done\n";
 #endif
 				// done
 			}
@@ -856,6 +865,9 @@ namespace grb {
 
 				// catch trivial case
 				if( pfBuf[ T ] == 0 ) {
+#ifdef _DEBUG
+					std::cout << "\t " << t << ": No updates to perform. Exiting joinUpdate with TRUE\n";
+#endif
 					return true;
 				}
 

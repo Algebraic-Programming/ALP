@@ -332,7 +332,8 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 
 grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable( const size_t count ) {
 #ifdef _DEBUG
-	std::cout << s << ": current number of memslots reserved: " << lpf_regs << ". Number of regs taken: " << regs_taken << ". New slots requested: " << count << std::endl;
+	std::cout << s << ": call to ensureMemslotAvailable( " << count << " ) started. This must be a collective call with matching arguments.\n";
+	std::cout << "\t current number of memslots reserved: " << lpf_regs << ". Number of regs taken: " << regs_taken << ". New slots requested: " << count << std::endl;
 #endif
 	// dynamic sanity check
 	assert( lpf_regs > 0 );
@@ -368,8 +369,7 @@ grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable( const size_t count ) 
 		}
 	} else {
 #ifdef _DEBUG
-		std::cout << "I already had enough space for the requested number of "
-					 "memory slots\n";
+		std::cout << "I already had enough space for the requested number of memory slots\n";
 #endif
 	}
 	// done

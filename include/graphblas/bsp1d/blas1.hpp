@@ -254,6 +254,25 @@ namespace grb {
 		return ret;
 	}
 
+	/** \internal Requires sync on nonzero structure. */
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename Coords >
+	RC set( Vector< OutputType, BSP1D, Coords > & x, const Vector< MaskType, BSP1D, Coords > & mask, const InputType & y ) {
+		// sanity check
+		if( grb::size( mask ) != grb::size( x ) ) {
+			return MISMATCH;
+		}
+
+		// all OK, try to do assignment
+		const RC ret = set< descr >( internal::getLocal( x ), internal::getLocal( mask ), y );
+
+		if( ret == SUCCESS ) {
+			internal::signalLocalChange( x );
+		}
+
+		// done
+		return ret;
+	}
+
 	/** \internal No implementation notes. */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename Coords, typename IOType >
 	RC foldr( const Vector< InputType, BSP1D, Coords > & x,
@@ -288,9 +307,9 @@ namespace grb {
 		const Monoid & monoid,
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
-		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array "
-					 "has size "
-				  << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a mask of size " << size( mask ) << " with " << nnz( mask ) << " nonzeroes." << std::endl;
+		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array has size "
+				  << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a mask of size "
+				  << size( mask ) << " with " << nnz( mask ) << " nonzeroes." << std::endl;
 #endif
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
@@ -1403,7 +1422,7 @@ namespace grb {
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
-	 * \par Performance guarantees
+	 * \par Performance semantics
 	 *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
 	 *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
 	 *         \f$ p \f$ is the number of user processes. The constant factor
@@ -1436,7 +1455,7 @@ namespace grb {
 	 *
 	 * This function performs a local dot product and then calls
 	 * grb::collectives::allreduce(), and thus conforms to the bandwidth and
-	 * synchornisation guarantees.
+	 * synchornisation semantics defined above.
 	 */
 	template< Descriptor descr = grb::descriptors::no_operation, class AddMonoid, class AnyOp, typename OutputType, typename InputType1, typename InputType2, typename Coords >
 	RC dot( OutputType & z,

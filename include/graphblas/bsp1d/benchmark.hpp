@@ -63,7 +63,7 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	if( input.bcast_blob && P > 1 ) {
 		// init BSP & collectives
 		lpf_coll_t coll;
-		lpf_err_t brc = lpf_resize_message_queue( ctx, P - 1 );
+		lpf_err_t brc = lpf_resize_message_queue( ctx, 2*(P-1) );
 		assert( brc == LPF_SUCCESS );
 		brc = lpf_resize_memory_register( ctx, 2 );
 		assert( brc == LPF_SUCCESS );

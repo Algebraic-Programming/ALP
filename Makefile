@@ -26,7 +26,7 @@ MY_DIR=$(CURDIR)/
 
 #version info
 MAJORVERSION=0
-MINORVERSION=2
+MINORVERSION=3
 BUGVERSION=0
 VERSION=${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}
 
@@ -107,6 +107,7 @@ include/graphblas/utils/ndim_matrix_builders.hpp
 GRAPHBLAS_INCLUDES_ALGOS=\
 include/graphblas/algorithms/knn.hpp \
 include/graphblas/algorithms/mpv.hpp \
+include/graphblas/algorithms/spy.hpp \
 include/graphblas/algorithms/hpcg.hpp \
 include/graphblas/algorithms/label.hpp \
 include/graphblas/algorithms/kmeans.hpp \
@@ -115,7 +116,7 @@ include/graphblas/algorithms/simple_pagerank.hpp \
 include/graphblas/algorithms/cosine_similarity.hpp \
 include/graphblas/algorithms/conjugate_gradient.hpp \
 include/graphblas/algorithms/multigrid_v_cycle.hpp \
-include/graphblas/algorithms/gnn_single_inference.hpp \
+include/graphblas/algorithms/sparse_nn_single_inference.hpp \
 include/graphblas/algorithms/red_black_gauss_seidel.hpp
 
 SMOKETESTS=bin/tests/pagerank \
@@ -391,22 +392,22 @@ bin/tests/knn: ${KNNTESTS} | dirtree
 bin/tests/pagerank: ${PRTESTS} | dirtree
 
 # -------------------------------------------------------------------
-#  apps: label propagate
+#  apps: label propagation
 
 bin/tests/label: ${LABELTESTS} | dirtree
 
 # -------------------------------------------------------------------
-# graphBlas performance scaling 
+# kernels: level-2 performance scaling
 
 bin/tests/scaling: ${SCALETESTS} | dirtree
 
 # -------------------------------------------------------------------
-# graphBlas low-level kernels performance tests
+# kernels: level-1 performance tests
 
 bin/tests/kernels: bin/tests/fma bin/tests/reduce bin/tests/dot bin/tests/dot-openmp bin/tests/reduce-openmp bin/tests/fma-openmp | dirtree
 
 # -------------------------------------------------------------------
-# cleaning 
+# cleaning
 
 clean:
 	rm -r bin || true

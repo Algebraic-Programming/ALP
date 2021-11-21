@@ -86,7 +86,7 @@ namespace grb {
 		 * @returns #ILLEGAL If \a skip is larger than \a K.
 		 * @returns #SUCCESS When the operation completed successfully.
 		 *
-		 * \par Performance guarantees:
+		 * \par Performance semantics:
 		 *   -# \f$ \Theta(nK) \f$ data movement
 		 *   -# \f$ \mathit{nnz}(\mathit{mask}) \f$ applications of \a acc
 		 *   -# No dynamic memory allocations or other system calls

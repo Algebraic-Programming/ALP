@@ -44,7 +44,7 @@ namespace grb {
 			 * @tparam T The type a nonzero value iterator should return. Can be set to \a void in case the values are not of interest.
 			 * @tparam S (Optional) The type an nonzero index iterator should return. Default value: \a size_t.
 			 */
-			template< typename T, typename S = size_t >
+			template< typename T, typename S >
 			class MatrixFileReaderBase {
 
 			protected:
@@ -201,7 +201,9 @@ namespace grb {
 				/** Base construtor, does not initialise anything. */
 				MatrixFileReaderBase() {}
 
+
 			public:
+
 				/**
 				 * Constructs a matrix reader using maximal information.
 				 *

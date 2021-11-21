@@ -1,4 +1,3 @@
-
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -35,6 +34,7 @@
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/config.hpp>
+#include <graphblas/utils.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/reference/blas1.hpp>
@@ -294,11 +294,19 @@ namespace grb {
 		/** The Column Compressed Storage */
 		class internal::Compressed_Storage< D, grb::config::ColIndexType, grb::config::NonzeroIndexType > CCS;
 
-		/** The number of rows. */
-		const size_t m;
+		/**
+		 * The number of rows.
+		 *
+		 * \internal Not declared const to be able to implement move in an elegant way.
+		 */
+		size_t m;
 
-		/** The number of columns. */
-		const size_t n;
+		/**
+		 * The number of columns.
+		 *
+		 * \internal Not declared const to be able to implement move in an elegant way.
+		 */
+		size_t n;
 
 		/** The nonzero capacity (in elements). */
 		size_t cap;
@@ -322,6 +330,35 @@ namespace grb {
 		 * is controlled by the internal::Compressed_Storage class.
 		 */
 		utils::AutoDeleter< char > _deleter[ 6 ];
+
+		/** Implements a move. */
+		void moveFromOther( self_type &&other ) {
+			// move from other
+			CRS = std::move( other.CRS );
+			CCS = std::move( other.CCS );
+			m = other.m;
+			n = other.n;
+			cap = other.cap;
+			nz = other.nz;
+			for( unsigned int i = 0; i < 2; ++i ) {
+				coorArr[ i ] = other.coorArr[ i ];
+				coorBuf[ i ] = other.coorBuf[ i ];
+				valbuf[ i ] = other.valbuf[ i ];
+			}
+			for( unsigned int i = 0; i < 6; ++i ) {
+				_deleter[ i ] = std::move( other._deleter[ i ] );
+			}
+
+			// invalidate other fields
+			for( unsigned int i = 0; i < 2; ++i ) {
+				other.coorArr[ i ] = other.coorBuf[ i ] = nullptr;
+				other.valbuf[ i ] = nullptr;
+			}
+			other.m = 0;
+			other.n = 0;
+			other.cap = 0;
+			other.nz = 0;
+		}
 
 		/** @see Matrix::clear */
 		RC clear() {
@@ -629,10 +666,15 @@ namespace grb {
 				throw std::overflow_error( "Number of columns larger than "
 										   "configured ColIndexType maximum!" );
 			}
-			coorArr[ 0 ] = new char[ internal::Coordinates< reference >::arraySize( m ) ];
-			coorArr[ 1 ] = new char[ internal::Coordinates< reference >::arraySize( n ) ];
-			coorBuf[ 0 ] = new char[ internal::Coordinates< reference >::bufferSize( m ) ];
-			coorBuf[ 1 ] = new char[ internal::Coordinates< reference >::bufferSize( n ) ];
+			if( m > 0 && n > 0 ) {
+				coorArr[ 0 ] = new char[ internal::Coordinates< reference >::arraySize( m ) ];
+				coorArr[ 1 ] = new char[ internal::Coordinates< reference >::arraySize( n ) ];
+				coorBuf[ 0 ] = new char[ internal::Coordinates< reference >::bufferSize( m ) ];
+				coorBuf[ 1 ] = new char[ internal::Coordinates< reference >::bufferSize( n ) ];
+			} else {
+				coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
+				coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
+			}
 			size_t allocSize = m * internal::SizeOf< D >::value;
 			if( allocSize > 0 ) {
 				valbuf[ 0 ] = reinterpret_cast< D * >( new char[ allocSize ] );
@@ -645,11 +687,12 @@ namespace grb {
 			} else {
 				valbuf[ 1 ] = NULL;
 			}
+			constexpr size_t globalBufferUnitSize = sizeof(typename config::RowIndexType) + sizeof(typename config::ColIndexType) + grb::utils::SizeOf< D >::value;
+			static_assert( globalBufferUnitSize >= sizeof(typename config::NonzeroIndexType), "We hit here a configuration border case which the implementation does not handle at present. Please submit a bug report." );
 			const bool hasNULL = coorArr[ 0 ] == NULL || coorArr[ 1 ] == NULL || coorBuf[ 0 ] == NULL || coorBuf[ 1 ] == NULL ||
-				! internal::template ensureReferenceBufsize< typename config::NonzeroIndexType >( std::max( m, n ) + 1 );
-			if( hasNULL || ( allocCompressedStorage() != SUCCESS ) ) {
-				throw std::runtime_error( "Could not allocate memory during "
-										  "grb::Matrix construction" );
+				! internal::template ensureReferenceBufsize< char >( (std::max( m, n ) + 1) * globalBufferUnitSize );
+			if( m > 0 && n > 0 && (hasNULL || ( allocCompressedStorage() != SUCCESS )) ) {
+				throw std::runtime_error( "Could not allocate memory during grb::Matrix construction" );
 			}
 		}
 
@@ -681,35 +724,42 @@ namespace grb {
 		}
 
 		/** @see Matrix::Matrix( Matrix&& ). */
-		Matrix( self_type && other ) : CRS( other.CRS ), CCS( other.CCS ), m( other.m ), n( other.n ), cap( other.cap ) {
-			other.m = 0;
-			other.n = 0;
-			other.cap = 0;
-			other.nz = 0;
+		Matrix( self_type &&other ) noexcept {
+			moveFromOther( std::forward< self_type >(other) );
+		}
+
+		/** * Move from temporary. */
+		self_type& operator=( self_type &&other ) noexcept {
+			moveFromOther( std::forward< self_type >(other) );
+			return *this;
 		}
 
 		/** @see Matrix::~Matrix(). */
 		~Matrix() {
 #ifndef NDEBUG
-			if( CRS.row_index == NULL ) {
-				assert( CCS.row_index == NULL );
+			if( CRS.row_index == nullptr ) {
+				assert( CCS.row_index == nullptr );
 				assert( m == 0 || n == 0 || nz == 0 );
 				assert( cap == 0 );
 			}
 #endif
-			assert( coorArr[ 0 ] != NULL );
-			delete[] coorArr[ 0 ];
-			assert( coorArr[ 1 ] != NULL );
-			delete[] coorArr[ 1 ];
-			assert( coorBuf[ 0 ] != NULL );
-			delete[] coorBuf[ 0 ];
-			assert( coorBuf[ 1 ] != NULL );
-			delete[] coorBuf[ 1 ];
-			if( valbuf[ 0 ] != NULL ) {
-				delete[] reinterpret_cast< char * >( valbuf[ 0 ] );
+			if( coorArr[ 0 ] != nullptr ) {
+				delete [] coorArr[ 0 ];
 			}
-			if( valbuf[ 1 ] != NULL ) {
-				delete[] reinterpret_cast< char * >( valbuf[ 1 ] );
+			if( coorArr[ 1 ] != nullptr ) {
+				delete [] coorArr[ 1 ];
+			}
+			if( coorBuf[ 0 ] != nullptr ) {
+				delete [] coorBuf[ 0 ];
+			}
+			if( coorBuf[ 1 ] != nullptr ) {
+				delete [] coorBuf[ 1 ];
+			}
+			if( valbuf[ 0 ] != nullptr ) {
+				delete [] reinterpret_cast< char * >( valbuf[ 0 ] );
+			}
+			if( valbuf[ 1 ] != nullptr ) {
+				delete [] reinterpret_cast< char * >( valbuf[ 1 ] );
 			}
 		}
 
@@ -722,7 +772,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::Matrix<T,reference>::cbegin\n";
 #endif
-			return IteratorType( CRS, m, n, false, s, P );
+			return IteratorType( CRS, m, n, nz, false, s, P );
 		}
 
 		template< class ActiveDistribution = internal::Distribution< reference > >
@@ -731,7 +781,7 @@ namespace grb {
 			assert( mode == PARALLEL );
 			(void)mode;
 			typedef typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution > IteratorType;
-			return IteratorType( CRS, m, n, true, s, P );
+			return IteratorType( CRS, m, n, nz, true, s, P );
 		}
 
 		template< class ActiveDistribution = internal::Distribution< reference > >

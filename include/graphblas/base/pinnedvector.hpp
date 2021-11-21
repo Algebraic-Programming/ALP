@@ -96,7 +96,7 @@ namespace grb {
 		     * @param[in]  mode  The grb::IOMode. Optional; default is \a parallel.
 		     *
 		     * \parblock
-		     * \par Performance guarantees.
+		     * \par Performance semantics.
 		     *   -# This function moves up to \f$ \mathcal{O}(n) \f$ bytes of
 		     *      data.
 		     *   -# This function may allocate up to
@@ -135,7 +135,7 @@ namespace grb {
 	 *
 	 * Only the values stored local to this user process are returned.
 	 *
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
 	 *   -# This function does not allocate new memory blocks.
 	 *
@@ -164,7 +164,7 @@ namespace grb {
 	 * \a i, however, remains legal and returns the global index of a zero
 	 * element in the pinned vector.
 	 *
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
 	 *   -# This function does not allocate new memory blocks.
 	 *
@@ -178,7 +178,7 @@ namespace grb {
 	/**
 	 * @return The length of this vector, in number of elements.
 	 *
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
 	 *   -# This function does not allocate new memory blocks.
 	 *
@@ -204,7 +204,7 @@ namespace grb {
 	 * \note In particular, this means that if \a length returns 0, then this
 	 *       function must \em never be called.
 	 *
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
 	 *   -# This function does not allocate new memory blocks.
 	 *
@@ -227,7 +227,7 @@ namespace grb {
 	 * An instance of this class going out of scope will
 	 * automatically call this function.
 	 *
-	 * \par Performance guarantees.
+	 * \par Performance semantics.
 	 *   -# This function moves at most \f$ \mathcal{O}(n) \f$ bytes of data.
 	 *   -# This function may de-allocate a memory area of size \f$ \mathcal{O}(n) \f$.
 	 *

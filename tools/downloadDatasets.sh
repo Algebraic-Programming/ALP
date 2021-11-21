@@ -82,7 +82,7 @@ if [ "x$REPLY" = "xyes" ]; then
 	downloadSS "west0497" "https://suitesparse-collection-website.herokuapp.com/MM/HB/west0497.tar.gz"
 	downloadSS "gyro_m" "https://suitesparse-collection-website.herokuapp.com/MM/Oberwolfach/gyro_m.tar.gz"
 	downloadSS "dwt_59" "https://suitesparse-collection-website.herokuapp.com/MM/HB/dwt_59.tar.gz"
-	downloadSN "cit-HepTh" 
+	downloadSN "cit-HepTh"
 	downloadSN "facebook_combined"
 	exit 0
 else
