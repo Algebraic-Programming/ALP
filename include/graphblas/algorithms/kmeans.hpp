@@ -1,3 +1,24 @@
+
+/*
+ *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * @author Verner Vlacic
+ */
+
 #ifndef _H_GRB_KMEANS
 #define _H_GRB_KMEANS
 
@@ -19,9 +40,15 @@ namespace grb {
 		/**
 		 * a simple implementation of the k++ initialisation algorithm for kmeans
 		 * 
-		 * TODO more efficient implementation using Walker's alias method
+		 * @param[in,out] K k by m matrix containing the current k means as row vectors
+		 * @param[in]     X m by n matrix containing the n points to be classified as
+		 *                  column vectors
+		 * @param[in]    op coordinatewise distance operator, squared difference by
+		 *                  default
 		 *
-		 * TODO add documentation
+		 * \todo more efficient implementation using Walker's alias method
+		 *
+		 * \todo expand documentation
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
@@ -103,7 +130,7 @@ namespace grb {
 				ret = ret ? ret : grb::clear( selected );
 				ret = ret ? ret : grb::clear( selected_distances );
 	
-				ret = ret ? ret : grb::setElement( selected_indices, i , l );
+				ret = ret ? ret : grb::setElement( selected_indices, i, l );
 
 				ret = ret ? ret : grb::setElement( col_select, true, i );
 
@@ -319,7 +346,7 @@ namespace grb {
 			
 				
 				// add last selected index i to selected_indices 
-				ret = ret ? ret : grb::setElement( selected_indices, i , l );
+				ret = ret ? ret : grb::setElement( selected_indices, i, l );
 			
 				
 				// extract column i from X_norm
@@ -360,7 +387,7 @@ namespace grb {
 			auto converter = grb::utils::makeVectorToMatrixConverter< void, size_t >(
 				selected_indices,
 				[]( const size_t &ind, const size_t &val ) {
-					return std::make_pair( ind , val );
+					return std::make_pair( ind, val );
 				} );
 
 			ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
@@ -485,7 +512,7 @@ namespace grb {
 				auto converter = grb::utils::makeVectorToMatrixConverter< void, indexIOType >(
 				clusters_and_distances,
 				[]( const size_t &ind, const indexIOType &pair ) {
-					return std::make_pair( pair.first , ind );
+					return std::make_pair( pair.first, ind );
 				} );
 
 				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
