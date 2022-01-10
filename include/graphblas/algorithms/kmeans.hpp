@@ -66,7 +66,7 @@ namespace grb {
 				grb::operators::add< IOType >,
 				grb::identities::zero
 			> add_monoid;
-		
+
 			Monoid<
 				grb::operators::min< IOType >,
 				grb::identities::infinity
@@ -86,10 +86,10 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			//running error code
+			// running error code
 			RC ret = SUCCESS;
 
-			//get problem dimensions
+			// get problem dimensions
 			const size_t n = ncols( X );
 			const size_t m = nrows( X );
 			const size_t k = nrows( K );
@@ -98,7 +98,7 @@ namespace grb {
 			// centroids
 			Vector< size_t > selected_indices( k );
 
-			//declare column selection vector
+			// declare column selection vector
 			Vector< bool > col_select( n );
 
 			// declare selected point
@@ -129,13 +129,13 @@ namespace grb {
 				ret = grb::clear( col_select );
 				ret = ret ? ret : grb::clear( selected );
 				ret = ret ? ret : grb::clear( selected_distances );
-	
+
 				ret = ret ? ret : grb::setElement( selected_indices, i, l );
 
 				ret = ret ? ret : grb::setElement( col_select, true, i );
 
 				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( selected, col_select, X, pattern_sum );
-				
+
 				ret = ret ? ret : grb::vxm( selected_distances, selected, X, add_monoid, dist_op );
 
 				ret = ret ? ret : grb::foldl( min_distances, selected_distances, min_monoid );
@@ -171,7 +171,7 @@ namespace grb {
 
 			// create the matrix K by selecting the columns of X indexed by selected_indices
 
-			//declare pattern matrix
+			// declare pattern matrix
 			Matrix< void > M( k, n );
 			ret = ret ? ret : grb::resize( M, n );
 
@@ -214,7 +214,7 @@ namespace grb {
 			const Matrix< IOType > &X,          // mxn matrix containing the n points to be classified as column vectors
 			const EuclideanSpace euc_sp = EuclideanSpace() // coordinatewise distance operator, squared difference by default
 		) {
-			//declare algebraic structures
+			// declare algebraic structures
 
 			const auto &euc_sp_mul = euc_sp.getMultiplicativeOperator();
 
@@ -236,13 +236,16 @@ namespace grb {
 				grb::identities::logical_true
 			> pattern_sum;
 
-			//runtime sanity checks: the row dimension of X should match the column dimension of K
+			// runtime sanity checks: the row dimension of X should match the column dimension of K
 			if( ncols( K ) != nrows( X ) ) {
 				return MISMATCH;
 			}
 
+			// running error code
+			RC ret = SUCCESS;
+
 			// get problem dimensions
- 			const size_t n = ncols( X );
+			const size_t n = ncols( X );
 			const size_t m = nrows( X );
 			const size_t k = nrows( K );
 
@@ -255,7 +258,6 @@ namespace grb {
 			// std::cout << ret << "No 1" << std::endl;
 			ret = ret ? ret : grb::set( m_ones, true );
 			ret = ret ? ret : grb::set( k_ones, true );
-			
 
 			// X with normalised columns
 			Matrix< IOType > X_norm( m, n );
@@ -263,14 +265,14 @@ namespace grb {
 			// colnorms outer product with m_ones
 			Matrix< IOType > colnorms_outer_m_ones( m, n );
 
-			//declare vector of labels from 0 to n-1
+			// declare vector of labels from 0 to n-1
 			Vector< size_t > labels( n );
 			ret = ret ? ret : grb::set< grb::descriptors::use_index >( labels, 0 );
-			
+
 			// declare vector of indices of columns of X selected as the initial centroids
 			Vector< size_t > selected_indices( k );
 
-			//declare column selection vector
+			// declare column selection vector
 			Vector< bool > col_select( n );
 
 			// declare selected point
@@ -282,39 +284,36 @@ namespace grb {
 			// declare vector of maximum innerprods to all points selected so far
 			Vector< IOType > max_innerprods( n );
 			ret = ret ? ret : grb::set( max_innerprods, 0 );
-			
+
 			// declare the index-value pair of the final selected index
 			std::pair< size_t, IOType > selected_index;
 
 
 			//COMPUTATION
-			
+
 			// compute column norms
 			ret = ret ? ret : grb::resize( X_norm, grb::nnz( X ) );
-			
+
 			ret = ret ? ret : grb::set( X_norm, X );
-			
+
 			ret = ret ? ret : grb::eWiseLambda( [ &X_norm, &euc_sp_mul ]( const size_t i, const size_t j, double &v ){
 				grb::apply( v, v, v, euc_sp_mul );
 				(void) i;
 				(void) j;
 			}, X_norm );
-			
-// < grb::descriptors::transpose_matrix >
+
+			// < grb::descriptors::transpose_matrix > TODO is it correct this is disabled in the below?
 			ret = ret ? ret : grb::vxm( colnorms, m_ones, X_norm, pattern_sum );
-			
+
 			ret = ret ? ret : grb::eWiseLambda( [&colnorms]( const size_t i ){
 				colnorms[i] = std::sqrt( colnorms[i] );
 			}, colnorms );
-			
-
 
 			// compute outer product of column norms with m_ones
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
 				operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC
 			);	
-			
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
 				operators::left_assign_if< IOType, bool, IOType >()
@@ -322,7 +321,7 @@ namespace grb {
 
 			// divide columns of X by norms to get X_norm
 			ret = ret ? ret : grb::clear( X_norm );
-			
+
 			ret = ret ? ret : grb::eWiseApply(
 				X_norm, colnorms_outer_m_ones, X,
 				operators::divide_reverse< IOType, IOType, IOType >()
@@ -339,50 +338,43 @@ namespace grb {
 			for ( size_t l = 0; l < k; ++l ) {
 
 				ret = ret ? ret : grb::clear( col_select );
-			
+
 				ret = ret ? ret : grb::clear( selected );
-			
+
 				ret = ret ? ret : grb::clear( selected_innerprods );
-			
-				
+
 				// add last selected index i to selected_indices 
 				ret = ret ? ret : grb::setElement( selected_indices, i, l );
-			
-				
+
 				// extract column i from X_norm
 				ret = ret ? ret : grb::setElement( col_select, true, i );
-			
+
 				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( selected, col_select, X_norm, pattern_sum );
-			
-				
+
 				// compute inner products of column i with other columns of X_norm
 				ret = ret ? ret : grb::vxm( selected_innerprods, selected, X_norm, euc_sp );
-			
+
 				ret = ret ? ret : grb::eWiseLambda( [&selected_innerprods]( const size_t i ){
-										selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
-									}, selected_innerprods );
-			
+					selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
+				}, selected_innerprods );
 
 				// update maximum inner products of all points to the already selected ones
 				ret = ret ? ret : grb::foldl( max_innerprods, selected_innerprods, max_monoid );
-			
 
 				// find the minimum entry of max_innerprods and select the next index
 				ret = ret ? ret : grb::dot(
 					selected_index, labels, max_innerprods, argmin_monoid,
 					operators::zip< size_t, IOType >()
 				);
-			
 
 				i = selected_index.first;
 			}
 
 			// create the matrix K by selecting the columns of X indexed by selected_indices
 
-			//declare pattern matrix
+			// declare pattern matrix
 			Matrix< void > M( k, n );
 			ret = ret ? ret : grb::resize( M, n );
-			
 
 			auto converter = grb::utils::makeVectorToMatrixConverter< void, size_t >(
 				selected_indices,
@@ -419,7 +411,7 @@ namespace grb {
 			const size_t max_iter = 1000,                                  // maximum number of iterations
 			const Operator dist_op = Operator()                            // coordinatewise distance operator, squared difference by default
 		) {
-			//declare monoids and semirings
+			// declare monoids and semirings
 
 			typedef std::pair< size_t, IOType > indexIOType;
 
@@ -427,7 +419,7 @@ namespace grb {
 				grb::operators::add< IOType >,
 				grb::identities::zero
 			> add_monoid;
-		
+
 			Monoid<
 				grb::operators::argmin< size_t, IOType >,
 				grb::identities::infinity
@@ -453,7 +445,7 @@ namespace grb {
 				grb::identities::logical_true
 			> pattern_count;
 
-			//runtime sanity checks: the row dimension of X should match the column dimension of K
+			// runtime sanity checks: the row dimension of X should match the column dimension of K
 			if( ncols( K ) != nrows( X ) ) {
 				return MISMATCH;
 			}
@@ -461,18 +453,18 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			//running error code
+			// running error code
 			RC ret = SUCCESS;
 
-			//get problem dimensions
+			// get problem dimensions
 			const size_t n = ncols( X );
 			const size_t m = nrows( X );
 			const size_t k = nrows( K );
 
-			//declare distance matrix
+			// declare distance matrix
 			Matrix< IOType > Dist( k, n );
 
-			//declare and initialise labels vector and ones vectors
+			// declare and initialise labels vector and ones vectors
 			Vector< size_t > labels( k );
 			Vector< bool > n_ones( n ), m_ones( m );
 
@@ -480,18 +472,18 @@ namespace grb {
 			ret = ret ? ret : grb::set( n_ones, true );
 			ret = ret ? ret : grb::set( m_ones, true );
 
-			//declare pattern matrix
+			// declare pattern matrix
 			Matrix< void > M( k, n );
 			ret = ret ? ret : grb::resize( M, n );
 
-			//declare the sizes vector
+			// declare the sizes vector
 			Vector< size_t > sizes( k );
 
-			//declare auxiliary vectors and matrices
+			// declare auxiliary vectors and matrices
 			Matrix< IOType > K_aux( k, m );
 			Matrix< size_t > V_aux( k, m );
 
-			//control variables
+			// control variables
 			size_t iter = 0;
 			Vector< indexIOType > clusters_and_distances_prev( n );
 			bool converged;
@@ -546,13 +538,14 @@ namespace grb {
 				std::cout << "\tkmeans converged successfully after " << iter << " iterations." << std::endl;
 				return SUCCESS;
 			}
-			
+
 			std::cout << "\tkmeans finished with unexpected return code!" << std::endl;
 			return ret;
 		}
 
-	} //end ``algorithms'' namespace
+	} // end ``algorithms'' namespace
 
-} //end ``grb'' namespace
+} // end ``grb'' namespace
 
-#endif //end _H_GRB_KMEANS
+#endif // end _H_GRB_KMEANS
+
