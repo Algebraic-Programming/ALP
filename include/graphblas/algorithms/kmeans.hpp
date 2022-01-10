@@ -349,7 +349,7 @@ namespace grb {
 			
 				
 				// add last selected index i to selected_indices 
-				ret = ret ? ret : grb::setElement( selected_indices, i , l );
+				ret = ret ? ret : grb::setElement( selected_indices, i, l );
 			
 				
 				// extract column i from X_norm
