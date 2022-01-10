@@ -269,7 +269,7 @@ namespace grb {
 			// declare vector of labels from 0 to n-1
 			Vector< size_t > labels( n );
 			ret = ret ? ret : grb::set< grb::descriptors::use_index >( labels, 0 );
-			
+
 			// declare vector of indices of columns of X selected as the initial centroids
 			Vector< size_t > selected_indices( k );
 
@@ -285,7 +285,7 @@ namespace grb {
 			// declare vector of maximum innerprods to all points selected so far
 			Vector< IOType > max_innerprods( n );
 			ret = ret ? ret : grb::set( max_innerprods, 0 );
-			
+
 			// declare the index-value pair of the final selected index
 			std::pair< size_t, IOType > selected_index;
 
@@ -317,7 +317,6 @@ namespace grb {
 				colnorms_outer_m_ones, m_ones, colnorms,
 				operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC
 			);	
-			
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
 				operators::left_assign_if< IOType, bool, IOType >()
@@ -325,7 +324,7 @@ namespace grb {
 
 			// divide columns of X by norms to get X_norm
 			ret = ret ? ret : grb::clear( X_norm );
-			
+
 			ret = ret ? ret : grb::eWiseApply(
 				X_norm, colnorms_outer_m_ones, X,
 				operators::divide_reverse< IOType, IOType, IOType >()
@@ -342,29 +341,25 @@ namespace grb {
 			for ( size_t l = 0; l < k; ++l ) {
 
 				ret = ret ? ret : grb::clear( col_select );
-			
+
 				ret = ret ? ret : grb::clear( selected );
-			
+
 				ret = ret ? ret : grb::clear( selected_innerprods );
-			
-				
+
 				// add last selected index i to selected_indices 
 				ret = ret ? ret : grb::setElement( selected_indices, i, l );
-			
-				
+
 				// extract column i from X_norm
 				ret = ret ? ret : grb::setElement( col_select, true, i );
-			
+
 				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( selected, col_select, X_norm, pattern_sum );
-			
-				
+
 				// compute inner products of column i with other columns of X_norm
 				ret = ret ? ret : grb::vxm( selected_innerprods, selected, X_norm, euc_sp );
-			
+
 				ret = ret ? ret : grb::eWiseLambda( [&selected_innerprods]( const size_t i ){
-										selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
-									}, selected_innerprods );
-			
+					selected_innerprods[ i ] = std::abs( selected_innerprods[ i ] );
+				}, selected_innerprods );
 
 				// update maximum inner products of all points to the already selected ones
 				ret = ret ? ret : grb::foldl( max_innerprods, selected_innerprods, max_monoid );
@@ -385,7 +380,6 @@ namespace grb {
 			// declare pattern matrix
 			Matrix< void > M( k, n );
 			ret = ret ? ret : grb::resize( M, n );
-			
 
 			auto converter = grb::utils::makeVectorToMatrixConverter< void, size_t >(
 				selected_indices,
@@ -554,9 +548,10 @@ namespace grb {
 			return ret;
 		}
 
-	} //end ``algorithms'' namespace
+	} // end ``algorithms'' namespace
 
 } // end ``grb'' namespace
 
-#endif //end _H_GRB_KMEANS
+#endif // end _H_GRB_KMEANS
 
+#endif //end _H_GRB_KMEANS
