@@ -71,7 +71,7 @@ print_help() {
 the location where LPF is installed"
 	echo "  --with-banshee=<path/>              - path to the the tools to compile the banshee backend"
 	echo "  --with-snitch=<path/>               - path to the tools for Snitch support within the banshee backend"
-	echo "  --without-dense                     - to compile without support for dense algebraic programming"
+	echo "  --no-dense                          - to compile without support for dense algebraic programming"
 	echo "  --no-reference                      - disables the reference and reference_omp backends"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
@@ -140,7 +140,7 @@ or assume default paths (--with-lpf)"
 			SNITCH_PATH="${arg#--with-snitch=}"
 			banshee=yes
 			;;
-	--without-dense)
+	--no-dense)
 			dense=no
 			;;
 	--no-reference)
