@@ -16,25 +16,26 @@
  */
 
 /*
- * @author Alberto Scolari
+ * @author A. N. Yzelman
+ * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_COORDINATES
-#define _H_GRB_COORDINATES
+#ifndef _H_GRB_DENSEREF_PROPERTIES
+#define _H_GRB_DENSEREF_PROPERTIES
 
-#include "base/config.hpp"
-#include "base/coordinates.hpp"
+#include <graphblas/base/properties.hpp>
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/coordinates.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- // #include <graphblas/bsp1d/coordinates.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/coordinates.hpp>
-#endif
+namespace grb {
 
-#endif // _H_GRB_COORDINATES
+	/** \internal No implementation notes. */
+	template<>
+	class Properties< reference_dense > {
+	public:
+		/** No implementation notes. */
+		constexpr static bool writableCaptured = true;
+	};
+
+} // namespace grb
+
+#endif // end `_H_GRB_DENSEREF_PROPERTIES''
 

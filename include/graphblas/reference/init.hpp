@@ -122,15 +122,15 @@ namespace grb {
 } // namespace grb
 
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_INIT
-#define _H_GRB_REFERENCE_OMP_INIT
-#define reference reference_omp
-#include <omp.h>
-
-#include "init.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_INIT
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_INIT
+  #define _H_GRB_REFERENCE_OMP_INIT
+  #define reference reference_omp
+  #include <omp.h>
+  #include "init.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_INIT
+ #endif
 #endif
 
 #endif //``end _H_GRB_REFERENCE_INIT''
+

@@ -116,6 +116,17 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
 endif()
 
+if( WITH_DENSE_BACKEND )
+	add_library( backend_reference_dense_headers INTERFACE )
+	target_link_libraries( backend_reference_dense_headers INTERFACE backend_headers_nodefs )
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/denseref"
+		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+	install( TARGETS backend_reference_dense_headers EXPORT GraphBLASTargets )
+	target_link_libraries( all_headers INTERFACE backend_reference_dense_headers )
+endif()
+
 if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/reference/"
 		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/reference"
@@ -185,5 +196,7 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
 	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/algorithms"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
+
+target_link_libraries( all_headers INTERFACE algorithms )
 
 install( TARGETS algorithms EXPORT GraphBLASTargets )

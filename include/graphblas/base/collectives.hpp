@@ -108,7 +108,7 @@ namespace grb {
 		static RC allreduce( IOType & inout, const Operator op = Operator() ) {
 			(void)inout;
 			(void)op;
-			return PANIC;
+			return UNSUPPORTED;
 		}
 
 		/**
@@ -175,7 +175,7 @@ namespace grb {
 			(void)inout;
 			(void)op;
 			(void)root;
-			return PANIC;
+			return UNSUPPORTED;
 		}
 
 		/**
@@ -233,7 +233,7 @@ namespace grb {
 		static RC broadcast( IOType &inout, const size_t root = 0 ) {
 			(void)inout;
 			(void)root;
-			return PANIC;
+			return UNSUPPORTED;
 		}
 
 		/**
@@ -247,7 +247,7 @@ namespace grb {
 			(void)inout;
 			(void)size;
 			(void)root;
-			return PANIC;
+			return UNSUPPORTED;
 		}
 
 	}; // end class ``collectives''
@@ -255,3 +255,4 @@ namespace grb {
 } // end namespace grb
 
 #endif // end _H_GRB_COLL_BASE
+

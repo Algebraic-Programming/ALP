@@ -17,16 +17,11 @@
 
 /*
  * @author A. N. Yzelman
- * @date 17th of April, 2017
+ * @date 14th of January 2022
  */
 
-#if ! defined _H_GRB_REFERENCE_EXEC || defined _H_GRB_REFERENCE_OMP_EXEC
-#define _H_GRB_REFERENCE_EXEC
-
-#include <graphblas/backends.hpp>
-#include <graphblas/base/exec.hpp>
-
-#include "init.hpp"
+#ifndef _H_GRB_DENSEREF_EXEC
+#define _H_GRB_DENSEREF_EXEC
 
 namespace grb {
 
@@ -34,23 +29,18 @@ namespace grb {
 	 * \internal No implementation notes.
 	 */
 	template< EXEC_MODE mode >
-	class Launcher< mode, reference > {
+	class Launcher< mode, reference_dense > {
 
 		public:
 
-			/**
-			 * \internal This implementation only accepts a single user process. It
-			 *           ignores \a hostname and \a port.
-			 */
-			Launcher( const size_t process_id = 0,            // user process ID
-				const size_t nprocs = 1,                  // total number of user processes
-				const std::string hostname = "localhost", // one of the user process hostnames
-				const std::string port = "0"              // a free port at hostname
+			/** \internal No implementation notes. */
+			Launcher( const size_t process_id = 0,
+				const size_t nprocs = 0,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
 			) {
-				// ignore hostname and port
-				(void)hostname;
-				(void)port;
-				// sanity checks
+				(void) hostname;
+				(void) port;
 				if( nprocs != 1 ) {
 					throw std::invalid_argument( "Total number of user processes must be"
 						"exactly one when using the reference implementation." );
@@ -113,18 +103,7 @@ namespace grb {
 
 	};
 
-} // namespace grb
+} // end namespace ``grb''
 
-// parse this unit again for OpenMP support
-#ifdef _GRB_WITH_OMP
- #ifndef _H_GRB_REFERENCE_OMP_EXEC
-  #define _H_GRB_REFERENCE_OMP_EXEC
-  #define reference reference_omp
-  #include "graphblas/reference/exec.hpp"
-  #undef reference
-  #undef _H_GRB_REFERENCE_OMP_EXEC
- #endif
-#endif
-
-#endif // end ``_H_GRB_REFERENCE_EXEC''
+#endif // end ``_H_GRB_DENSEREF_EXEC''
 

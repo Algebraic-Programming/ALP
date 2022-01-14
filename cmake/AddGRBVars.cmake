@@ -31,6 +31,7 @@ set( REFERENCE_BACKEND_DEFAULT_NAME "backend_reference" )
 set( REFERENCE_OMP_BACKEND_DEFAULT_NAME "backend_reference_omp" )
 set( BSP1D_BACKEND_DEFAULT_NAME "backend_bsp1d" )
 set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
+set( DENSE_BACKEND_DEFAULT_NAME "backend_reference_dense" )
 
 
 ### COMPILER DEFINITIONS FOR HEADERS INCLUSION AND FOR BACKEND SELECTION
@@ -39,6 +40,7 @@ set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
 set( REFERENCE_INCLUDE_DEFS "_GRB_WITH_REFERENCE" )
 set( REFERENCE_OMP_INCLUDE_DEFS "_GRB_WITH_OMP" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
+set( DENSE_INCLUDE_DEFS "_GRB_WITH_DENSEREF" )
 
 # compiler definitions to select a backend
 set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
@@ -52,12 +54,13 @@ set( HYBRID_SELECTION_DEFS
 		"_GRB_BSP1D_BACKEND=reference_omp"
 		"_GRB_COORDINATES_BACKEND=reference_omp"
 )
+set( DENSE_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
 
 # definition to set if not depending on libnuma
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
 
 ### **ALL** BACKENDS, EVEN IF NOT ENABLED BY USER
-set( ALL_BACKENDS "reference" "reference_omp" "bsp1d" "hybrid" )
+set( ALL_BACKENDS "reference" "reference_omp" "bsp1d" "hybrid" "reference_dense" )
 
 
 # list of user-enabled backends, for tests and wrapper scripts (do not change!)
@@ -67,12 +70,16 @@ set( AVAILABLE_BACKENDS "" )
 # backends that are enabled by the user: append as in the following
 
 # shared memory backends
-if ( WITH_REFERENCE_BACKEND )
+if( WITH_REFERENCE_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "reference" )
 endif()
 
 if( WITH_OMP_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "reference_omp" )
+endif()
+
+if( WITH_DENSE_BACKEND )
+	list( APPEND AVAILABLE_BACKENDS "reference_dense" )
 endif()
 
 # distributed memory backends
@@ -85,3 +92,4 @@ if( WITH_HYBRID_BACKEND )
 endif()
 
 # add your own here!
+

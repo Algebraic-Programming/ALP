@@ -29,13 +29,14 @@
 
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/vector.hpp>
+ #include <graphblas/reference/vector.hpp>
+ #include <graphblas/denseref/vector.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/vector.hpp>
+ #include <graphblas/bsp1d/vector.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/vector.hpp>
+ #include <graphblas/banshee/vector.hpp>
 #endif
 
 // specify default only if requested during compilation
@@ -47,3 +48,4 @@ namespace grb {
 #endif
 
 #endif
+

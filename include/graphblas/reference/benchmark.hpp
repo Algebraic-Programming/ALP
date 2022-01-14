@@ -34,17 +34,33 @@ namespace grb {
 	class Benchmarker< mode, reference > : protected Launcher< mode, reference >, protected internal::BenchmarkerBase {
 
 	public:
-		Benchmarker( size_t process_id = 0,     // user process ID
-			size_t nprocs = 1,                  // total number of user processes
-			std::string hostname = "localhost", // one of the user process hostnames
-			std::string port = "0"              // a free port at hostname
-			) :
-			Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
 
+		/**
+		 * @param[in] process_id User process ID
+		 * @param[in] nprocs     Total number of user processes
+		 * @param[in] hostname   One of the user process hostnames
+		 * @param[in] port       A free port at the host indicated by \a hostname
+		 *
+		 * The arguments \a nprocs, \a hostname, and \a port must be equal across all
+		 * \a nprocs calls to this function.
+		 *
+		 * \internal Relies on #grb::Launcher.
+		 */
+		Benchmarker( size_t process_id = 0,
+			size_t nprocs = 1,
+			std::string hostname = "localhost",
+			std::string port = "0"
+		) : Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
+
+		/** \internal No implementation notes */
 		template< typename U >
-		RC
-		exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const size_t inner, const size_t outer, const bool broadcast = false )
-			const {
+		RC exec(
+			void ( *grb_program )( const void *, const size_t, U & ),
+			const void * data_in, const size_t in_size,
+			U &data_out,
+			const size_t inner, const size_t outer,
+			const bool broadcast = false
+		) const {
 			(void)broadcast; // value doesn't matter for a single user process
 			// initialise GraphBLAS
 			RC ret = init();
@@ -63,12 +79,14 @@ namespace grb {
 
 		/** No implementation notes. */
 		template< typename T, typename U >
-		RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-			const T & data_in,
-			U & data_out, // input & output data
+		RC exec(
+			void ( *grb_program )( const T &, U & ),
+			const T &data_in,
+			U &data_out,
 			const size_t inner,
 			const size_t outer,
-			const bool broadcast = false ) {
+			const bool broadcast = false
+		) {
 			(void)broadcast; // value doesn't matter for a single user process
 			// initialise GraphBLAS
 			RC ret = init();
@@ -90,19 +108,21 @@ namespace grb {
 		static RC finalize() {
 			return Launcher< mode, reference >::finalize();
 		}
+
 	};
 
 } // namespace grb
 
 // parse this unit again for OpenMP support
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_BENCH
-#define _H_GRB_REFERENCE_OMP_BENCH
-#define reference reference_omp
-#include "benchmark.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_BENCH
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_BENCH
+  #define _H_GRB_REFERENCE_OMP_BENCH
+  #define reference reference_omp
+  #include "benchmark.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_BENCH
+ #endif
 #endif
 
 #endif // end ``_H_GRB_REFERENCE_BENCH''
+
