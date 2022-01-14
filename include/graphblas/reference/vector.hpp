@@ -260,18 +260,17 @@ namespace grb {
 			char * assigned = NULL;
 			char * buffer = NULL;
 			// now allocate in one go
-			const RC rc = grb::utils::alloc( "grb::Vector< T, reference, "
-											 "MyCoordinates > (constructor)",
-				"", _raw, cap_in, true, _raw_deleter, // values array
-				assigned, MyCoordinates::arraySize( cap_in ), true, _assigned_deleter, buffer, MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter );
+			const RC rc = grb::utils::alloc( "grb::Vector< T, reference, MyCoordinates > (constructor)", "",
+				_raw, cap_in, true, _raw_deleter, // values array
+				assigned, MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
+				buffer, MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
+			);
 
 			// catch errors
 			if( rc == OUTOFMEM ) {
-				throw std::runtime_error( "Out-of-memory during reference "
-										  "Vector memory allocation" );
+				throw std::runtime_error( "Out-of-memory during reference Vector memory allocation" );
 			} else if( rc != SUCCESS ) {
-				throw std::runtime_error( "Unhandled runtime error from Vector "
-										  "memory allocation" );
+				throw std::runtime_error( "Unhandled runtime error from Vector memory allocation" );
 			}
 
 			// assign to _coordinates struct
@@ -381,7 +380,7 @@ namespace grb {
 		 *
 		 * @see Vector::lambda_reference for the user-level specification.
 		 */
-		typedef D & lambda_reference;
+		typedef D &lambda_reference;
 
 		/**
 		 * A standard iterator for the Vector< D, reference, MyCoordinates > class.
@@ -608,7 +607,7 @@ namespace grb {
 		 * @throws runtime_error If the call to grb::set fails, the error code is
 		 *                       caught and thrown.
 		 */
-		Vector( const Vector< D, reference, MyCoordinates > & x ) {
+		Vector( const Vector< D, reference, MyCoordinates > &x ) {
 			initialize( NULL, NULL, false, NULL, size( x ) );
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
@@ -620,7 +619,7 @@ namespace grb {
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		Vector( Vector< D, reference, MyCoordinates > && x ) noexcept {
+		Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
 			// copy and move
 			_raw = x._raw;
 			_coordinates = std::move( x._coordinates );

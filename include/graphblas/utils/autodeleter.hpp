@@ -147,13 +147,13 @@ namespace grb {
 			 *
 			 * @throws std::bad_alloc If the system cannot allocate enough memory.
 			 */
-			AutoDeleter( const AutoDeleter< T > & other ) : _shPtr( other._shPtr ) {}
+			AutoDeleter( const AutoDeleter< T > &other ) : _shPtr( other._shPtr ) {}
 
 			/**
 			 * Creates an AutoDeleter from a temporary instance by stealing its
 			 * resources.
 			 */
-			AutoDeleter( AutoDeleter< T > && other ) noexcept {
+			AutoDeleter( AutoDeleter< T > &&other ) noexcept {
 				_shPtr = std::move( other._shPtr );
 			}
 
@@ -165,7 +165,7 @@ namespace grb {
 			/**
 			 * Relies on std::move. Equals-operator only works on temporary RHS.
 			 */
-			AutoDeleter< T > & operator=( AutoDeleter< T > && other ) {
+			AutoDeleter< T > & operator=( AutoDeleter< T > &&other ) {
 				_shPtr = std::move( other._shPtr );
 				return *this;
 			}
@@ -173,7 +173,7 @@ namespace grb {
 			/**
 			 * Relies on copying the underlying shared pointer.
 			 */
-			AutoDeleter< T > & operator=( const AutoDeleter< T > & other ) {
+			AutoDeleter< T > & operator=( const AutoDeleter< T > &other ) {
 				_shPtr = other._shPtr;
 				return *this;
 			}
@@ -185,7 +185,8 @@ namespace grb {
 
 // include specialised DeleterFunctions
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/deleters.hpp"
+ #include "graphblas/banshee/deleters.hpp"
 #endif
 
 #endif
+
