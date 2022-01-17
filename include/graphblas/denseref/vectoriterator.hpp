@@ -206,13 +206,16 @@ namespace grb {
 					return ConstDenserefVectorIterator< T, spmd_backend >( data, pos, n, s, P );
 				}
 
-				ConstDenserefVectorIterator< T, spmd_backend > operator-( const ConstDenserefVectorIterator< T, spmd_backend > &other ) noexcept {
+				ptrdiff_t operator-( const ConstDenserefVectorIterator< T, spmd_backend > &other ) noexcept {
 					assert( data == other.data );
 					assert( pos >= other.pos );
 					assert( n == other.n );
 					assert( s == other.s ); assert( P == other.P );
-					const size_t newPos = pos >= other.pos ? pos - other.pos : n;
-					return ConstDenserefVectorIterator< T, spmd_backend >( data, pos, n, s, P );
+					if( pos >= other.pos ) {
+						return static_cast< ptrdiff_t >( pos - other.pos );
+					} else {
+						return -static_cast< ptrdiff_t >( other.pos - pos );
+					}
 				}
 
 		};
