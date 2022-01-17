@@ -66,6 +66,9 @@ namespace grb {
 			/** Deleter corresponding to #data. */
 			utils::AutoDeleter< T > data_deleter;
 
+			/** Whether the container presently is empty (uninitialized). */
+			bool empty;
+
 
 		public:
 
@@ -80,7 +83,7 @@ namespace grb {
 			 *
 			 * \internal Allocates a single array of size \a length.
 			 */
-			Vector( const size_t length ) : n( length ) {
+			Vector( const size_t length ) : n( length ), empty( true ) {
 				const RC rc = grb::utils::alloc(
 					"grb::Vector< T, reference_dense > (constructor)", "",
 					data, length, true, data_deleter
@@ -97,7 +100,8 @@ namespace grb {
 
 			/** \internal Makes a deep copy of \a other. */
 			Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n ) {
-				const RC rc = set( *this, other );
+				empty = true;
+				const RC rc = set( *this, other ); // note: empty will be set to false as part of this call
 				if( rc != SUCCESS ) {
 					throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
 				}
@@ -107,23 +111,28 @@ namespace grb {
 			Vector( Vector< T, reference_dense, void > &&other ) {
 				n = other.n; other.n = 0;
 				data = other.data; other.data = 0;
+				data_deleter = std::move( other.data_deleter );
+				empty = other.empty; other.empty = true;
 			}
 
 			/** \internal No implementation notes. */
 			~Vector() {
 				n = 0;
+				empty = true;
 				// free of data will be handled by #data_deleter
 			}
 
 			/** \internal No implementation notes. */
 			lambda_reference operator[]( const size_t i ) noexcept {
 				assert( i < n );
+				assert( !empty );
 				return data[ i ];
 			}
 
 			/** \internal No implementation notes. */
 			const lambda_reference operator[]( const size_t i ) const noexcept {
 				assert( i < n );
+				assert( !empty );
 				return data[ i ];
 			}
 	};
