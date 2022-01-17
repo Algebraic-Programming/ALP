@@ -68,8 +68,8 @@ namespace grb {
 			/** Deleter corresponding to #data. */
 			utils::AutoDeleter< T > data_deleter;
 
-			/** Whether the container presently is empty (uninitialized). */
-			bool empty;
+			/** Whether the container presently is uninitialized. */
+			bool initialized;
 
 
 		public:
@@ -88,7 +88,7 @@ namespace grb {
 			 *
 			 * \internal Allocates a single array of size \a length.
 			 */
-			Vector( const size_t length ) : n( length ), empty( true ) {
+			Vector( const size_t length ) : n( length ), initialized( false ) {
 				const RC rc = grb::utils::alloc(
 					"grb::Vector< T, reference_dense > (constructor)", "",
 					data, length, true, data_deleter
@@ -105,8 +105,8 @@ namespace grb {
 
 			/** \internal Makes a deep copy of \a other. */
 			Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n ) {
-				empty = true;
-				const RC rc = set( *this, other ); // note: empty will be set to false as part of this call
+				initialized = false;
+				const RC rc = set( *this, other ); // note: initialized will be set as part of this call
 				if( rc != SUCCESS ) {
 					throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
 				}
@@ -117,33 +117,35 @@ namespace grb {
 				n = other.n; other.n = 0;
 				data = other.data; other.data = 0;
 				data_deleter = std::move( other.data_deleter );
-				empty = other.empty; other.empty = true;
+				initialized = other.initialized; other.initialized = false;
 			}
 
 			/** \internal No implementation notes. */
 			~Vector() {
 				n = 0;
-				empty = true;
+				initialized = false;
 				// free of data will be handled by #data_deleter
 			}
 
 			/** \internal No implementation notes. */
 			lambda_reference operator[]( const size_t i ) noexcept {
 				assert( i < n );
-				assert( !empty );
+				assert( initialized );
 				return data[ i ];
 			}
 
 			/** \internal No implementation notes. */
 			const lambda_reference operator[]( const size_t i ) const noexcept {
 				assert( i < n );
-				assert( !empty );
+				assert( initialized );
 				return data[ i ];
 			}
 
 			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
 			const_iterator cbegin() const noexcept {
-				return const_iterator( data, n, false );
+				return initialized ?
+					const_iterator( data, n, false ) :
+					const_iterator( nullptr, 0, false );
 			}
 
 			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
@@ -153,7 +155,9 @@ namespace grb {
 
 			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
 			const_iterator cend() const noexcept {
-				return const_iterator( data, n, true );
+				return initialized ?
+					const_iterator( data, n, true ) :
+					const_iterator( nullptr, 0, true );
 			}
 
 			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
