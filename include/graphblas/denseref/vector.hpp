@@ -27,6 +27,8 @@
 #include <graphblas/utils/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
+#include <graphblas/denseref/vectoriterator.hpp>
+
 #include <stdexcept>
 
 #include <assert.h>
@@ -77,6 +79,9 @@ namespace grb {
 
 			/** The return type of #operator[](). */
 			typedef T& lambda_reference;
+
+			/** The iterator type. */
+			typedef typename internal::ConstDenserefVectorIterator< T, reference_dense > const_iterator;
 
 			/**
 			 * @param[in] length The requested vector length.
@@ -135,8 +140,30 @@ namespace grb {
 				assert( !empty );
 				return data[ i ];
 			}
+
+			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			const_iterator cbegin() const noexcept {
+				return const_iterator( data, n, false );
+			}
+
+			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			const_iterator begin() const noexcept {
+				return cbegin();
+			}
+
+			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			const_iterator cend() const noexcept {
+				return const_iterator( data, n, true );
+			}
+
+			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			const_iterator end() const noexcept {
+				return cend();
+			}
+
 	};
 
+	/** Identifies any reference_dense vector as an ALP vector. */
 	template< typename T >
 	struct is_container< Vector< T, reference_dense, void > > {
 		/** A reference_vector is an ALP object. */
