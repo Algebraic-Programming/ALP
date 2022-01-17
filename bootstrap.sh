@@ -294,6 +294,8 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 	if [[ "${dense}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_DENSE_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_DENSE_BACKEND=ON"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"
