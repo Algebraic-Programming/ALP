@@ -30,6 +30,10 @@
 
 #include <graphblas/base/config.hpp>
 
+#ifndef NDEBUG
+ #include <cmath>
+#endif
+
 namespace grb {
 	namespace config {
 
@@ -37,10 +41,27 @@ namespace grb {
 		class OMP {
 
 		public:
+
+			/**
+			 * @returns The minimum loop size before a parallel-for is recommended.
+			 *
+			 * This function can be called from a sequential or parallel context.
+			 *
+			 * Use this to guard OpenMP parallel sections within performance-critical
+			 * code sections.
+			 */
+			static size_t minLoopSize() {
+				assert( std::ceil(std::log2(config::CACHE_LINE_SIZE::value())) <= 4*sizeof(size_t) );
+				const size_t cacheLineSize = config::CACHE_LINE_SIZE::value();
+				return cacheLineSize * cacheLineSize;
+			}
+
 			/**
 			 * @returns The number of threads reported by OpenMP.
 			 *
 			 * This function must be called from a sequential context.
+			 *
+			 * \warning Do not call from performance-critical sections.
 			 */
 			static size_t threads() {
 				size_t ret;
@@ -78,10 +99,40 @@ namespace grb {
 			 * are assigned in blocks of a given block size.
 			 *
 			 * This function must be called from a parallel context.
+			 *
+			 * @param[out] local_start Where this thread's local range starts
+			 * @param[out] local_end   Where this thread's range ends (exclusive)
+			 * @param[in]  start       The lowest index of the global range (inclusive)
+			 * @param[in]  end         The lowest index that is out of the global range
+			 *
+			 * The caller must ensure that \a end >= \a start.
+			 *
+			 * \note This function may return an empty range, i.e., \a local_start >=
+			 *       \a local_end.
+			 *
+			 * Optional arguments:
+			 *
+			 * @param[in] block_size Local ranges should be a multiple of this value
+			 * @param[in] t          The thread ID
+			 * @param[in] T          The total number of threads
+			 *
+			 * The parameters \a t and \a T are by default determined automatically.
+			 *
+			 * The parameter \a block_size by default equals
+			 * #config::CACHE_LINE_SIZE::value().
+			 *
+			 * \note The number of elements in the returned local range may not be a
+			 *       multiple of \a block_size if and only if the number of elements
+			 *       in the global range is not a multiple of \a block_size. In this
+			 *       case, only one thread may have a number of local elements that
+			 *       is not a multiple of \a block_size.
 			 */
-			static inline void localRange( size_t & local_start, size_t & local_end, const size_t start, const size_t end, const size_t block_size = config::CACHE_LINE_SIZE::value() ) {
-				const size_t T = current_threads();
-				const size_t t = static_cast< size_t >( omp_get_thread_num() );
+			static inline void localRange( size_t &local_start, size_t &local_end,
+				const size_t start, const size_t end,
+				const size_t block_size = config::CACHE_LINE_SIZE::value(),
+				const size_t t = static_cast< size_t >( omp_get_thread_num() ),
+				const size_t T = current_threads()
+			) {
 				assert( start <= end );
 				assert( block_size > 0 );
 				assert( T > 0 );
@@ -93,8 +144,8 @@ namespace grb {
 				local_end = local_start + blocks_per_thread * block_size;
 #ifdef _DEBUG
 				#pragma omp critical
-				std::cout << "\t\tThread " << t << " gets range " << local_start << "--" << local_end << " from global range " << start << "--" << end << ". The local range will be capped at " << end
-						  << ".\n";
+				std::cout << "\t\tThread " << t << " gets range " << local_start << "--" << local_end << " from global range "
+					<< start << "--" << end << ". The local range will be capped at " << end << ".\n";
 #endif
 				if( local_end > end ) {
 					local_end = end;
@@ -107,7 +158,10 @@ namespace grb {
 				assert( local_start <= local_end );
 			}
 		};
+
 	} // namespace config
+
 } // namespace grb
 
 #endif
+

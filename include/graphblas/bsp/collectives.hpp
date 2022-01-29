@@ -99,7 +99,7 @@ namespace grb {
 		 * if the internal buffer was not sufficiently large.
 		 */
 		template< Descriptor descr = descriptors::no_operation, typename Operator, typename IOType >
-		static RC allreduce( IOType & inout, const Operator & op = Operator() ) {
+		static RC allreduce( IOType &inout, const Operator &op = Operator() ) {
 			// this is the serial algorithm only
 			// TODO internal issue #19
 #ifdef _DEBUG
@@ -109,14 +109,18 @@ namespace grb {
 #endif
 
 			// static sanity check
-			NO_CAST_ASSERT_BLAS0( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Operator::D1 >::value || std::is_same< IOType, typename Operator::D2 >::value ||
-									  std::is_same< IOType, typename Operator::D3 >::value ),
+			NO_CAST_ASSERT_BLAS0( ( !( descr & descriptors::no_casting ) ||
+					std::is_same< IOType, typename Operator::D1 >::value ||
+					std::is_same< IOType, typename Operator::D2 >::value ||
+					std::is_same< IOType, typename Operator::D3 >::value
+				),
 				"grb::collectives::allreduce",
 				"Incompatible given value type and operator domains while "
-				"no_casting descriptor was set" );
+				"no_casting descriptor was set"
+			);
 
 			// we need access to LPF context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// catch trivial case early
 			if( data.P == 1 ) {
@@ -126,11 +130,22 @@ namespace grb {
 			// we need to register inout
 			lpf_memslot_t inout_slot = LPF_INVALID_MEMSLOT;
 			if( data.ensureMemslotAvailable() != grb::SUCCESS ) {
-				assert( false );
+#ifndef NDEBUG
+				const bool could_not_ensure_enough_memory_slots_available = false;
+				assert( could_not_ensure_enough_memory_slots_available );
+#endif
 				return PANIC;
 			}
-			if( lpf_register_local( data.context, &inout, sizeof( IOType ), &inout_slot ) != LPF_SUCCESS ) {
-				assert( false );
+			if( lpf_register_local( data.context,
+					&inout,
+					sizeof( IOType ),
+					&inout_slot
+				) != LPF_SUCCESS
+			) {
+#ifndef NDEBUG
+				const bool lpf_register_returned_error = false;
+				assert( lpf_register_returned_error );
+#endif
 				return PANIC;
 			} else {
 				data.signalMemslotTaken();
@@ -138,14 +153,26 @@ namespace grb {
 
 			// allgather inout values
 			// note: buffer size check is done by the below function
-			if( internal::allgather( inout_slot, 0, data.slot, data.s * sizeof( IOType ), sizeof( IOType ), data.P * sizeof( IOType ), true ) != grb::SUCCESS ) {
-				assert( false );
+			if( internal::allgather(
+				inout_slot, 0,
+				data.slot, data.s * sizeof( IOType ),
+				sizeof( IOType ),
+				data.P * sizeof( IOType ),
+				true
+			) != grb::SUCCESS ) {
+#ifndef NDEBUG
+				const bool allgather_returned_error = false;
+				assert( allgather_returned_error );
+#endif
 				return PANIC;
 			}
 
 			// deregister
 			if( lpf_deregister( data.context, inout_slot ) != LPF_SUCCESS ) {
-				assert( false );
+#ifndef NDEBUG
+				const bool lpf_deregister_returned_error = false;
+				assert( lpf_deregister_returned_error );
+#endif
 				return PANIC;
 			} else {
 				data.signalMemslotReleased();

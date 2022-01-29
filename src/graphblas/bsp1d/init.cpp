@@ -24,14 +24,20 @@
 //#define _DEBUG
 //#undef NDEBUG
 
-#include "graphblas/init.hpp"
+//DO NOT REMOVE THIS HEADER!!! needed for 'finalize< _GRB_BSP1D_BACKEND >();'
+#include <graphblas/init.hpp>
 
-#include "graphblas/bsp/config.hpp"
+
+#include <graphblas/bsp/config.hpp>
+#include <graphblas/utils/ThreadLocalStorage.hpp>
+#include <graphblas/bsp1d/init.hpp>
 
 grb::utils::ThreadLocalStorage< grb::internal::BSP1D_Data > grb::internal::grb_BSP1D;
 
 template<>
-grb::RC grb::init< grb::BSP1D >( const size_t s, const size_t P, const lpf_t ctx ) {
+grb::RC grb::init< grb::BSP1D >(
+	const size_t s, const size_t P, const lpf_t ctx
+) {
 	if( s == 0 ) {
 		std::cerr << "Info: grb::init (BSP1D) called using " << P << " user processes.\n";
 	}
@@ -42,17 +48,22 @@ grb::RC grb::init< grb::BSP1D >( const size_t s, const size_t P, const lpf_t ctx
 #ifdef _DEBUG
 	std::cout << s << ": retrieving thread-local store..." << std::endl;
 #endif
-	grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
+	grb::internal::BSP1D_Data &data = grb::internal::grb_BSP1D.load();
 #ifdef _DEBUG
 	std::cout << s << ": initializing thread-local store..." << std::endl;
 #endif
-	return data.initialize( ctx, static_cast< lpf_pid_t >( s ), static_cast< lpf_pid_t >( P ), grb::config::LPF::regs(), grb::config::LPF::maxh() );
+	return data.initialize( ctx,
+		static_cast< lpf_pid_t >(s),
+		static_cast< lpf_pid_t >(P),
+		grb::config::LPF::regs(),
+		grb::config::LPF::maxh()
+	);
 }
 
 template<>
 grb::RC grb::finalize< grb::BSP1D >() {
 	// try to retrieve local data and destroy it
-	grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
+	grb::internal::BSP1D_Data &data = grb::internal::grb_BSP1D.load();
 	const grb::RC ret1 = data.destroy();
 	// even if destroying local data failed, still try to destroy backend
 	const grb::RC ret2 = finalize< _GRB_BSP1D_BACKEND >();
@@ -63,7 +74,10 @@ grb::RC grb::finalize< grb::BSP1D >() {
 	return ret2;
 }
 
-grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _s, const lpf_pid_t _P, const size_t _regs, const size_t _maxh ) {
+grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context,
+	const lpf_pid_t _s, const lpf_pid_t _P,
+	const size_t _regs, const size_t _maxh
+) {
 	// required buffer for all-to-all on #messages, followed by a prefix-sum
 	// also dubs as the required buffer sufficient for all-reducing any
 	// standard raw data type. To guarantee all-reducing user-defined types
@@ -150,10 +164,9 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 		return OUTOFMEM;
 	}
 #ifdef _DEBUG
-	std::cout << s
-			  << ": calling lpf_resize_memory_register, requesting a capacity "
-				 "of "
-			  << _regs << ". Context is " << context << std::endl;
+	std::cout << s << ": calling lpf_resize_memory_register, "
+		<< "requesting a capacity of " << _regs << ". "
+		<< "Context is " << context << std::endl;
 #endif
 	lpfrc = lpf_resize_memory_register( context, _regs );
 	if( lpfrc == LPF_ERR_OUT_OF_MEMORY ) {
@@ -180,7 +193,8 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 	// register the buffer for communication and activate it
 	lpfrc = lpf_register_global( context, buffer, buffer_size, &slot );
 #ifdef _DEBUG
-	std::cout << _s << ": address " << buffer << " (size " << buffer_size << ") binds to slot " << slot << "\n";
+	std::cout << _s << ": address " << buffer << " (size " << buffer_size << ") "
+		<< "binds to slot " << slot << "\n";
 #endif
 	if( lpfrc == LPF_SUCCESS ) {
 		lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );

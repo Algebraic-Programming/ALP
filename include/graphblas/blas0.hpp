@@ -165,26 +165,37 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when foldr and
 	 *      foldl successfully generate in-place code.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename InputType1, typename InputType2, typename OutputType >
-	static enum RC apply( OutputType & out,
-		const InputType1 & x,
-		const InputType2 & y,
-		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
-			void >::type * = NULL ) {
+	template< Descriptor descr = descriptors::no_operation,
+		class OP,
+		typename InputType1, typename InputType2, typename OutputType
+	>
+	static enum RC apply( OutputType &out,
+		const InputType1 &x,
+		const InputType2 &y,
+		const OP &op = OP(),
+		const typename std::enable_if<
+			grb::is_operator< OP >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value,
+		void >::type * = NULL
+	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) ||
-							( std::is_same< InputType1, typename OP::D1 >::value && std::is_same< InputType2, typename OP::D2 >::value && std::is_same< OutputType, typename OP::D3 >::value ) ),
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || (
+				std::is_same< InputType1, typename OP::D1 >::value &&
+				std::is_same< InputType2, typename OP::D2 >::value &&
+				std::is_same< OutputType, typename OP::D3 >::value
+			) ),
 			"grb::apply (BLAS level 0)",
 			"Argument value types do not match operator domains while no_casting "
-			"descriptor was set" );
+			"descriptor was set"
+		);
 
 		// call apply
 		const typename OP::D1 left = static_cast< typename OP::D1 >( x );
 		const typename OP::D2 right = static_cast< typename OP::D2 >( y );
 		typename OP::D3 output = static_cast< typename OP::D3 >( out );
-		op.apply( left, right,
-			output ); // arguments are inverted, but OK: this is internal only
+		op.apply( left, right, output );
 		out = static_cast< OutputType >( output );
 
 		// done

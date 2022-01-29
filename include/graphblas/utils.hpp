@@ -23,11 +23,14 @@
 #ifndef _H_GRB_UTILITIES
 #define _H_GRB_UTILITIES
 
+#include <assert.h>
+
 #include <cmath>  //fabs
 #include <limits> //numeric_limits
 #include <type_traits>
 
 #include <graphblas/descriptors.hpp>
+
 
 namespace grb {
 
@@ -79,19 +82,19 @@ namespace grb {
 		 * @returns Whether a == b.
 		 */
 		template< typename T, typename U >
-		static bool equals( const T & a, const T & b, const U epsilons, typename std::enable_if< std::is_floating_point< T >::value >::type * = NULL
-
+		static bool equals( const T &a, const T &b, const U epsilons,
+			typename std::enable_if< std::is_floating_point< T >::value >::type * = NULL
 		) {
 			assert( epsilons >= 1 );
 
 			// if they are bit-wise equal, it's easy
 			if( a == b ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+ #ifndef _GRB_NO_STDIO
 				std::cout << "\t Bit-wise equal\n";
-#else
+ #else
 				printf( "\t Bit-wise equal\n" );
-#endif
+ #endif
 #endif
 				return true;
 			}
@@ -114,11 +117,11 @@ namespace grb {
 			// The same is true if a or b are zero.
 			if( a == 0 || b == 0 || absPlus < min ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+ #ifndef _GRB_NO_STDIO
 				std::cout << "\t Zero or close to zero difference\n";
-#else
+ #else
 				printf( "\t Zero or close to zero difference\n" );
-#endif
+ #endif
 #endif
 				return absDiff < eps * min;
 			}
@@ -128,36 +131,33 @@ namespace grb {
 			if( absA > absB ) {
 				if( absB > max - absA ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-					std::cout << "\t Normalising absolute difference by max "
-								 "(I)\n";
-#else
+ #ifndef _GRB_NO_STDIO
+					std::cout << "\t Normalising absolute difference by max (I)\n";
+ #else
 					printf( "\t Normalising absolute difference by max (I)\n" );
-#endif
+ #endif
 #endif
 					return absDiff / max < eps;
 				}
 			} else {
 				if( absA > max - absB ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-					std::cout << "\t Normalising absolute difference by max "
-								 "(II)\n";
-#else
-					printf( "\t Normalising absolute difference by max "
-							"(II)\n" );
-#endif
+ #ifndef _GRB_NO_STDIO
+					std::cout << "\t Normalising absolute difference by max (II)\n";
+ #else
+					printf( "\t Normalising absolute difference by max (II)\n" );
+ #endif
 #endif
 					return absDiff / max < eps;
 				}
 			}
 			// use of relative error should be safe
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+ #ifndef _GRB_NO_STDIO
 			std::cout << "\t Using relative error\n";
-#else
+ #else
 			printf( "\t Using relative error\n" );
-#endif
+ #endif
 #endif
 			return absDiff / absPlus < eps;
 		}
@@ -167,7 +167,7 @@ namespace grb {
 		 * return value is a constexpr. (This was fixed in C++14.)
 		 */
 		template< typename T >
-		constexpr const T & static_max( const T & a, const T & b ) {
+		constexpr const T & static_max( const T &a, const T &b ) {
 			return a > b ? a : b;
 		}
 

@@ -127,7 +127,7 @@ namespace grb {
 #define reference reference_omp
 #include <omp.h>
 
-#include "graphblas/reference/init.hpp"
+#include "init.hpp"
 #undef reference
 #undef _H_GRB_REFERENCE_OMP_INIT
 #endif

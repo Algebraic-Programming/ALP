@@ -1457,26 +1457,38 @@ namespace grb {
 	 * grb::collectives::allreduce(), and thus conforms to the bandwidth and
 	 * synchornisation semantics defined above.
 	 */
-	template< Descriptor descr = grb::descriptors::no_operation, class AddMonoid, class AnyOp, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC dot( OutputType & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const AddMonoid & addMonoid,
-		const AnyOp & anyOp,
-		const typename std::enable_if< ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value && grb::is_monoid< AddMonoid >::value &&
-				grb::is_operator< AnyOp >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = grb::descriptors::no_operation,
+		class AddMonoid, class AnyOp,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC dot( OutputType &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const AddMonoid &addMonoid,
+		const AnyOp &anyOp,
+		const typename std::enable_if< !grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value &&
+			grb::is_monoid< AddMonoid >::value &&
+			grb::is_operator< AnyOp >::value,
+		void >::type * const = nullptr
+	) {
 		// sanity check
 		if( size( y ) != size( x ) ) {
 			return MISMATCH;
 		}
 
-		// all OK, try to do assignment
-		RC ret = grb::dot< descr >( z, internal::getLocal( x ), internal::getLocal( y ), addMonoid, anyOp );
-		if( ret == SUCCESS ) {
-			ret = collectives< BSP1D >::allreduce( z, addMonoid.getOperator() );
-		}
+		// get field for out-of-place dot
+		OutputType oop = addMonoid.template getIdentity< OutputType >();
 
+		// all OK, try to do assignment
+		RC ret = grb::dot< descr >( oop, internal::getLocal( x ), internal::getLocal( y ), addMonoid, anyOp );
+		ret = ret ? ret : collectives< BSP1D >::allreduce( oop, addMonoid.getOperator() );
+
+		// fold out-of-place dot product into existing value and exit
+		ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
 		return ret;
 	}
 

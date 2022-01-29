@@ -66,18 +66,28 @@ namespace grb {
 		 * @tparam IOType   The value type of the label vector. This will
 		 *                  determine the precision of all computations this
 		 *                  algorithm performs.
-		 * @param[in] y     Vector holding the initial labels from a total set of \a n vertices.
 		 *
-		 * @param[in] W     Sparse symmetric matrix of size \a n*n, holding the weights between the n vertices.
+		 * @param[out] out The resulting labelled vector representing the n vertices.
 		 *
-		 * @param[in] n     The total number of vertices.
+		 * @param[in]  y   Vector holding the initial labels from a total set of \a n
+		 *                 vertices. The initial labels are assumed to correspond to
+		 *                 the vertices corresponding to the first \a l entries of
+		 *                 this vector. The labels must be either 0 ar 1.
 		 *
-		 * @param[in] l     The number of vertices with an initial label.
+		 * @param[in]  W   Sparse symmetric matrix of size \a n by \a n, holding the
+		 *                 weights between the n vertices. The weights must be
+		 *                 positive (larger than 0). The matrix may be defective while
+		 *                 the corresponding graph may not be connected.
 		 *
-		 * @param[in] out   The resulting labelled vector representing the n vertices.
+		 * @param[in]  n   The total number of vertices.
 		 *
-		 * @param[in] maxIterations The maximum number of iterations this algorithm may execute.
-		 *                          Optional. Default value: 1000.
+		 * @param[in]  l   The number of vertices with an initial label.
+		 *
+		 * @param[in] maxIterations The maximum number of iterations this algorithm
+		 *                          may execute. Optional. Default value: 1000.
+		 *
+		 * \note If the underlying graph is not connected then some components may
+		 *       be rendered immutable by this algorithm.
 		 *
 		 * @returns SUCCESS  If the computation converged within \a max iterations.
 		 * @returns MISMATCH If the dimensions of \a pr and \a L do not match, or if
@@ -94,9 +104,16 @@ namespace grb {
 		 *     accelerating the PageRank computation', ACM Press, 2003.
 		 */
 		template< typename IOType >
-		RC label( const Vector< IOType > & y, const Matrix< IOType > & W, size_t n, size_t l, Vector< IOType > & out, const size_t MaxIterations = 1000 ) {
+		RC label( Vector< IOType > &out,
+			const Vector< IOType > &y, const Matrix< IOType > &W,
+			const size_t n, const size_t l,
+			const size_t MaxIterations = 1000
+		) {
 			// label propagation vectors and matrices operate over the real domain
-			Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one > reals;
+			Semiring<
+				grb::operators::add< IOType >, grb::operators::mul< IOType >,
+				grb::identities::zero, grb::identities::one
+			> reals;
 			grb::operators::not_equal< IOType, IOType, bool > notEqualOp;
 			grb::Monoid< grb::operators::logical_or< bool >, grb::identities::logical_false > orMonoid;
 
@@ -105,10 +122,9 @@ namespace grb {
 			// compute the diagonal matrix D from the weight matrix W
 			// we represent D as a vector so we can use it to generate the probabilities matrix P
 			Vector< IOType > multiplier( n );
-			RC ret = set( multiplier, static_cast< IOType >( 1 ) ); // a vector of 1's
+			RC ret = set( multiplier, static_cast< IOType >(1) ); // a vector of 1's
 
 			Vector< IOType > diagonals( n );
-			assert( ret == SUCCESS );
 			ret = ret ? ret : mxv( diagonals, W, multiplier, reals ); // W*multiplier will sum each row
 #ifdef _DEBUG
 			printVector( diagonals, "diagonals matrix in vector form" );
@@ -122,12 +138,10 @@ namespace grb {
 			//         on the original matrix P
 
 			// make diagonals equal its inverse
-			ret = ret ? ret :
-                        eWiseLambda(
-							[ &diagonals ]( const size_t i ) {
-								diagonals[ i ] = 1.0 / diagonals[ i ];
-							},
-							diagonals );
+			ret = ret ? ret : eWiseLambda( [ &diagonals ]( const size_t i ) {
+					diagonals[ i ] = 1.0 / diagonals[ i ];
+				}, diagonals
+			);
 
 			// set up current and new solution functions
 			Vector< IOType > f( n );
@@ -156,7 +170,7 @@ namespace grb {
 				// fNext = P*f
 				printf( "*** PRE  f = %zd, fNext = %zd\n", nnz( f ), nnz( fNext ) );
 #endif
-				ret = mxv( fNext, W, f, reals );
+				ret = ret ? ret : mxv( fNext, W, f, reals );
 #ifdef _DEBUG
 				printf( "*** POST f = %zd, fNext = %zd\n", nnz( f ), nnz( fNext ) );
 				printVector( f, "Previous iteration solution" );
@@ -164,18 +178,16 @@ namespace grb {
 #endif
 
 				// maintain the solution function in domain {0,1}
-				// clamps the first l labelled nodes
 				// can use the masked variant of vector assign when available ?
-				ret = ret ? ret :
-                            eWiseLambda(
-								[ &fNext, &diagonals, &l ]( const size_t i ) {
-									fNext[ i ] = ( fNext[ i ] * diagonals[ i ] < 0.5 ? 0 : 1 );
-								},
-								fNext, diagonals );
+				ret = ret ? ret : eWiseLambda( [ &fNext, &diagonals, &l ]( const size_t i ) {
+						fNext[ i ] = ( fNext[ i ] * diagonals[ i ] < 0.5 ? 0 : 1 );
+					}, diagonals, fNext
+				);
 #ifdef _DEBUG
 				printVector( fNext, "New iteration solution after threshold cutoff" );
 				printf( "*** PRE  fNext = %zd, mask = %zd\n", nnz( fNext ), nnz( mask ) );
 #endif
+				// clamps the first l labelled nodes
 				ret = ret ? ret : set( fNext, mask, f );
 #ifdef _DEBUG
 				printf( "*** POST fNext = %zd\n", nnz( fNext ) );
@@ -192,6 +204,10 @@ namespace grb {
 #ifdef _DEBUG
 				printf( "*** POST f = %zd\n", nnz( f ) );
 #endif
+				// reset fNext and go into the next iteration
+				if( different ) {
+					ret = ret ? ret : clear( fNext );
+				}
 				(void)++iter;
 			}
 
@@ -212,3 +228,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_LABEL
+

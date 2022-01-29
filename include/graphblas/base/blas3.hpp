@@ -68,13 +68,27 @@ namespace grb {
 	 * @param[in] ring (Optional.) The semiring under which the computation should
 	 *                             proceed.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Semiring, Backend backend >
-	RC mxm( Matrix< OutputType, backend > & C, const Matrix< InputType1, backend > & A, const Matrix< InputType2, backend > & B, const Semiring & ring = Semiring(), const PHASE & phase = NUMERICAL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class Semiring,
+		Backend backend
+	>
+	RC mxm( Matrix< OutputType, backend > &C,
+		const Matrix< InputType1, backend > &A, const Matrix< InputType2, backend > &B,
+		const Semiring &ring = Semiring(),
+		const PHASE &phase = NUMERICAL
+	) {
 #ifdef _DEBUG
  #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::mxm (semiring version)\n";
  #endif
 #endif
+		(void)C;
+		(void)A;
+		(void)B;
+		(void)ring;
+		(void)phase;
 		// this is the generic stub implementation
 		return UNSUPPORTED;
 	}

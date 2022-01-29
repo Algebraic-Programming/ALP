@@ -92,17 +92,16 @@ namespace grb {
 		 *   -# \f$ \Theta(K) \f$ streams
 		 */
 		template<
-			Descriptor descr = descriptors::no_operation, bool no_skip = false,
+			Descriptor descr, bool no_skip,
 			typename IOType, typename Coords, typename InputType, typename MaskType,
 			class Accumulator
 		>
-		RC foldl_from_raw_matrix_to_vector( Vector< IOType, reference, Coords > & x,
+		RC foldl_from_raw_matrix_to_vector( Vector< IOType, reference, Coords > &x,
 			const InputType * __restrict__ const to_fold,
 			const MaskType * __restrict__ const mask,
-			const size_t n,
-			const size_t K,
+			const size_t n, const size_t K,
 			const size_t skip,
-			const Accumulator & acc
+			const Accumulator &acc
 		) {
 			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 				std::is_same< IOType, typename Accumulator::D1 >::value ),
@@ -123,27 +122,24 @@ namespace grb {
 				std::is_same< bool, MaskType >::value ),
 				"grb::foldl_from_raw_matrix_to_vector",
 				"called with a non-bool mask type." );
-			auto & coordinates = internal::getCoordinates( x );
+			auto &coordinates = internal::getCoordinates( x );
 			IOType * __restrict__ const raw = internal::getRaw( x );
 			const size_t local_n = coordinates.size();
 			if( n != local_n ) {
 #ifdef _DEBUG
-				std::cout << "Error in foldl_from_raw_matrix_to_vector: "
-							 "mismatching number of rows\n";
+				std::cout << "Error in foldl_from_raw_matrix_to_vector: mismatching number of rows\n";
 #endif
 				return MISMATCH;
 			}
 			if( K == 0 ) {
 #ifdef _DEBUG
-				std::cout << "Error in foldl_from_raw_matrix_to_vector: 0 "
-							 "columns given\n";
+				std::cout << "Error in foldl_from_raw_matrix_to_vector: 0 columns given\n";
 #endif
 				return ILLEGAL;
 			}
 			if( ! no_skip && skip > K ) {
 #ifdef _DEBUG
-				std::cout << "Error in foldl_from_raw_matrix_to_vector: "
-							 "invalid value for skip given\n";
+				std::cout << "Error in foldl_from_raw_matrix_to_vector: invalid value for skip given\n";
 #endif
 				return ILLEGAL;
 			}
@@ -152,8 +148,18 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
-			std::cout << "Performing foldl_from_raw_matrix_to_vector. Vector @ " << &x << ". Initial coordinate contents: " << coordinates.nonzeroes() << " / " << coordinates.size() <<
-			             ". n, K, skip read " << n << ", " << K << ", " << skip << "\n";
+			std::cout << "Performing foldl_from_raw_matrix_to_vector.\n"
+				<< "\t Initial coordinate contents: " << coordinates.nonzeroes() << " / " << coordinates.size() << ".\n"
+				<< "\t The raw matrix has size " << n << " by " << K << ".\n"
+				<< "\t The " << skip << "-th column of the raw matrix will be skipped.\n";
+			std::cout << "\t Contents of _local at function entry:\n";
+			for( size_t i = 0; i < local_n; ++i ) {
+				if( coordinates.assigned( i ) ) {
+					std::cout << "\t\t " << i << ", " << raw[ i ] << "\n";
+				} else {
+					std::cout << "\t\t " << i << ", no value here\n";
+				}
+			}
 #endif
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
@@ -172,10 +178,24 @@ namespace grb {
 				assert( start <= end );
 				assert( end <= local_n );
 				for( size_t i = start; i < end; ++i ) {
+#ifdef _DEBUG
+					std::cout << "\t Now processing row " << i << "\n";
+#endif
 					for( size_t k = 0; k < K; ++k ) {
-						if( ! no_skip && k == skip ) { continue; }
+						if( !no_skip && k == skip ) {
+#ifdef _DEBUG
+							std::cout << "\t " << k << "-th column is skipped\n";
+#endif
+							continue;
+						}
+#ifdef _DEBUG
+						std::cout << "\t Now processing column " << k << "\n";
+#endif
 						const size_t src_i = k * local_n + i;
 						if( mask[ src_i ] ) {
+#ifdef _DEBUG
+							std::cout << "\t Folding raw matrix nonzero at this position, which has value " << to_fold[ src_i ] << "\n";
+#endif
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1_RAW
 							if( coordinates.assign( i ) ) {
 								foldl< descr >( raw[ i ], to_fold[ src_i ], acc );
@@ -200,6 +220,17 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1_RAW
 				while( ! coordinates.joinUpdate( local_update ) ) {}
 			} // end pragma omp parallel
+#endif
+#ifdef _DEBUG
+			std::cout << "\t Exiting foldl_from_raw_matrix_to_vector with exit code SUCCESS\n";
+			std::cout << "\t\t Contents of _local at function exit:\n";
+			for( size_t i = 0; i < local_n; ++i ) {
+				if( coordinates.assigned( i ) ) {
+					std::cout << "\t\t " << i << ", " << raw[ i ] << "\n";
+				} else {
+					std::cout << "\t\t " << i << ", no value here\n";
+				}
+			}
 #endif
 			return SUCCESS;
 		}
@@ -228,35 +259,36 @@ namespace grb {
 		 *
 		 * @returns #SUCCESS  On successful completion of this function call.
 		 */
-		template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename Coords, typename IType >
-		RC foldl_from_raw_matrix_to_vector( Vector< IOType, reference, Coords > & x,
+		template< Descriptor descr,
+			class OP, typename IOType, typename IType,
+			typename Coords
+		>
+		RC foldl_from_raw_matrix_to_vector( Vector< IOType, reference, Coords > &x,
 			const IType * __restrict__ const to_fold,
-			const size_t n,
-			const size_t K,
+			const size_t n, const size_t K,
 			const size_t skip,
-			const OP & op ) noexcept {
+			const OP & op
+		) noexcept {
 			// take at least a number of elements so that no two threads operate on the same cache line
-			const constexpr size_t blocksize = config::SIMD_BLOCKSIZE< IOType >::value() > config::SIMD_BLOCKSIZE< IType >::value() ? config::SIMD_BLOCKSIZE< IOType >::value() :
-                                                                                                                                      config::SIMD_BLOCKSIZE< IType >::value();
+			const constexpr size_t blocksize =
+				config::SIMD_BLOCKSIZE< IOType >::value() > config::SIMD_BLOCKSIZE< IType >::value() ?
+					config::SIMD_BLOCKSIZE< IOType >::value() :
+					config::SIMD_BLOCKSIZE< IType >::value();
 
 			// static checks
 			static_assert( blocksize > 0,
-				"Config error: zero blocksize in call to "
-				"fold_from_raw_matrix_to_vector_generic!" );
+				"Config error: zero blocksize in call to fold_from_raw_matrix_to_vector_generic!"
+			);
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename OP::D1 >::value ), "grb::foldl_from_raw_matrix_to_vector",
-				"called with a grb::Vector type that does not match the given "
-				"operator's left domain." );
+				"called with a grb::Vector type that does not match the given operator's left domain." );
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IType, typename OP::D2 >::value ), "grb::foldl_from_raw_matrix_to_vector",
-				"called with a matrix type that does not match the given "
-				"operator's right domain." );
+				"called with a matrix type that does not match the given operator's right domain." );
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename OP::D3 >::value ), "grb::foldl_from_raw_matrix_to_vector",
-				"called with a grb::Vector type that does not match the given "
-				"accumulator's output domain." );
+				"called with a grb::Vector type that does not match the given accumulator's output domain." );
 
 #ifdef _DEBUG
-			std::cout << "foldl_from_raw_matrix_to_vector (unmasked) called "
-						 "with n = "
-					  << n << ", K = " << K << ", skip = " << skip << "\n";
+			std::cout << "foldl_from_raw_matrix_to_vector (unmasked) called with"
+				"n = " << n << ", K = " << K << ", skip = " << skip << "\n";
 #endif
 			// dyanmic checks
 			if( K == 0 ) {

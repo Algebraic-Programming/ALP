@@ -32,13 +32,13 @@
 #include <graphblas/backends.hpp>
 
 #ifndef _GRB_NO_STDIO
-#include <iostream> //std::cout
+ #include <iostream> //std::cout
 #endif
 
 // if the user did not define _GRB_BACKEND, set it to the default sequential
 // implementation
 #ifndef _GRB_BACKEND
-#define _GRB_BACKEND reference
+ #define _GRB_BACKEND reference
 #endif
 
 /**
@@ -218,7 +218,12 @@ namespace grb {
 				(void)printNewline;
 				return false;
 #else
-				constexpr size_t big = ( 1ul << big_memory() );
+				constexpr size_t big =
+ #ifdef _DEBUG
+					true;
+ #else
+					( 1ul << big_memory() );
+ #endif
 				if( size >= big ) {
 					std::cout << "Info: ";
 					std::cout << prefix << " ";

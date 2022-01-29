@@ -71,172 +71,205 @@ namespace grb {
 			/** \internal Dummy variable to ensure the spec can compile. */
 			static constexpr IOType dummy = IOType();
 
-		/** \internal Dummy variable to ensure the spec can compile. */
-		static constexpr bool false_mask = false;
+			/** \internal Dummy variable to ensure the spec can compile. */
+			static constexpr bool false_mask = false;
 
 		public :
 
 			/**
-		     * Pins a given \a vector to a single memory pointer. The pointer
-		     * shall remain valid as long as the lifetime of this instance.
-		     * The given \a vector must be in unpinned state or an exception
-		     * will be thrown.
-		     * Pinning may or may not require a memory copy, depending on the
-		     * GraphBLAS implementation. If it does not, then destroying this
-		     * instance or calling #free on this vector may or may not result
-		     * in memory deallocation, depending on whether the underlying
-		     * vector still exists or not.
-		     *
-		     * If one user process calls this constructor, \em all user
-		     * processes must do so-- this is a collective call. All member
-		     * functions as well as the default destructor are \em not
-		     * collective.
-		     *
-		     * @param[in] vector The vector to pin the memory of.
-		     * @param[in]  mode  The grb::IOMode. Optional; default is \a parallel.
-		     *
-		     * \parblock
-		     * \par Performance semantics.
-		     *   -# This function moves up to \f$ \mathcal{O}(n) \f$ bytes of
-		     *      data.
-		     *   -# This function may allocate up to
-		     *        \f$ n \mathit{sizeof}(IOType) \f$
-		     *      bytes of memory.
-		     *   -# If \a mode is grb::SEQUENTIAL, then communication costs of
-		     *      up to \f$ \mathcal{O}(gn+l\log(p)) \f$ will be incurred.
-		     * \endparblock
-		     *
-		     * \note A good implementation moves \f$ \Theta(1) \f$ of data and
-		     *       performs no new memory allocations.
-		     */
+			 * Pins a given \a vector to a single memory pointer. The pointer
+			 * shall remain valid as long as the lifetime of this instance.
+			 * The given \a vector must be in unpinned state or an exception
+			 * will be thrown.
+			 * Pinning may or may not require a memory copy, depending on the
+			 * GraphBLAS implementation. If it does not, then destroying this
+			 * instance or calling #free on this vector may or may not result
+			 * in memory deallocation, depending on whether the underlying
+			 * vector still exists or not.
+			 *
+			 * If one user process calls this constructor, \em all user
+			 * processes must do so-- this is a collective call. All member
+			 * functions as well as the default destructor are \em not
+			 * collective.
+			 *
+			 * @param[in] vector The vector to pin the memory of.
+			 * @param[in]  mode  The grb::IOMode.
+			 *
+			 * The \a mode argument is \em optional; its default is PARALLEL.
+			 *
+			 * \parblock
+			 * \par Performance semantics (#IOMode::SEQUENTIAL):
+			 *   -# This function contains \f$ \Theta(n) \f$ work, where
+			 *      \f$ n \f$ is the global length of \a vector.
+			 *   -# This function moves up to \f$ \mathcal{O}(n) \f$ bytes of
+			 *      data within its process.
+			 *   -# This function incurs an inter-process communication cost
+			 *      bounded by \f$ \mathcal{O}(ng+\log(p)l) \f$.
+			 *   -# This function may allocate \f$ \mathcal{O}(n) \f$ memory
+			 *      and (thus) incur system calls.
+			 * \endparblock
+			 *
+			 * \parblock
+			 * \par Performance semantics (#IOMode::PARALLEL):
+			 *   -# This function contains \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ data within its
+			 *      process.
+			 *   -# This function has no inter-process communication cost.
+			 *   -# This function performs no dynamic memory allocations
+			 *      and shall not make system calls.
+			 * \endparblock
+			 */
 			template< typename Coord >
-			PinnedVector( const Vector< IOType, implementation, Coord > & vector, const IOMode mode ) { (void)vector; (void)mode; }
+			PinnedVector(
+				const Vector< IOType, implementation, Coord > &vector,
+				const IOMode mode
+			) {
+				(void)vector;
+				(void)mode;
+			}
 
-	/**
-	 * @see free A destructor of PinnedVector shall always call free().
-	 */
-	~PinnedVector() {}
+			/**
+			 * Base constructor for this class.
+			 *
+			 * This corresponds to pinning an empty vector of zero size in PARALLEL mode.
+			 * A call to this function inherits the same performance semantics as
+			 * described above.
+			 *
+			 * Unlike the above, calling this constructor need not be a collective
+			 * operation.
+			 */
+			PinnedVector() {}
 
-	/**
-	 * Ensures this class can be used as a raw pointer.
-	 *
-	 * @return A reference to a vector element at local index \a i.
-	 *
-	 * Whether the reference corresponds to a properly initialised and meaningful
-	 * value, the output of the \a mask() function should be checked first.
-	 *
-	 * \note The only case in which \a mask() may safely never be evaluated is
-	 *       when the user is sure the output vector is dense.
-	 *
-	 * The vector contains \a length elements of type \a IOType, hence \a i must
-	 * be greater or equal to zero and strictly smaller than \a length(). The
-	 * global index of the returned element with the requested \a i is computed
-	 * via a function call to index().
-	 *
-	 * Only the values stored local to this user process are returned.
-	 *
-	 * \par Performance semantics.
-	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-	 *   -# This function does not allocate new memory blocks.
-	 *
-	 * This function cannot fail.
-	 */
-	inline IOType & operator[]( const size_t i ) noexcept {
-		(void)i;
-		return dummy;
-	}
+			/**
+			 * Destroying a pinned vector will only remove the underlying vector data if
+			 * and only if:
+			 *   1) the original grb::Vector has been destroyed;
+			 *   2) no other PinnedVector instance to the same vector exists.
+			 *
+			 * @see free A destructor of PinnedVector shall always call free().
+			 */
+			~PinnedVector() {}
 
-	/** @see operator[] This is the const version of the above operator[]. */
-	inline const IOType & operator[]( const size_t i ) const noexcept {
-		(void)i;
-		return dummy;
-	}
+			/**
+			 * Returns a requested nonzero of the pinned vector.
+			 *
+			 * @param[in] k The nonzero ID to return the value of.
+			 *
+			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
+			 * #length nonzeroes. Therefore, \a k must be less than #length.
+			 *
+			 * This function should only be called when #mask( \a k ) returns
+			 * <tt>true</tt>, or otherwise undefined behaviour occurs.
+			 *
+			 * @return If #mask( \a k ) is <tt>true</tt>, a reference to the \a k-th
+			 *         nonzero value.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
+			 */
+			inline IOType& operator[]( const size_t k ) noexcept {
+				(void)k;
+				return dummy;
+			}
 
-	/**
-	 * Whether the i-th local element from operator[]() contains a nonzero.
-	 *
-	 * @return \a true if operator[](i) contains a nonzero, \a false otherwise.
-	 *
-	 * Evaluating \a mask with index \a i returns \a true if and only if there is
-	 * a nonzero at the i-th element of operator[](). The index of that nonzero is
-	 * given by index(). If \a mask(i) evaluates \a false, the value of
-	 * operator[]( i ) will be undefined. Evaluating \a index at that position
-	 * \a i, however, remains legal and returns the global index of a zero
-	 * element in the pinned vector.
-	 *
-	 * \par Performance semantics.
-	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-	 *   -# This function does not allocate new memory blocks.
-	 *
-	 * This function cannot fail.
-	 */
-	const bool & mask( const size_t i ) const noexcept {
-		(void)i;
-		return false_mask;
-	}
+			/** @see operator[] This is the const version of the above operator[]. */
+			inline const IOType& operator[]( const size_t k ) const noexcept {
+				(void)k;
+				return dummy;
+			}
 
-	/**
-	 * @return The length of this vector, in number of elements.
-	 *
-	 * \par Performance semantics.
-	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-	 *   -# This function does not allocate new memory blocks.
-	 *
-	 * This function cannot fail.
-	 */
-	size_t length() const noexcept {
-		return 0;
-	}
+			/**
+			 * Whether the k-th nonzero from operator[]() contains a nonzero.
+			 *
+			 * @param[in] k The nonzero ID of which to return whether a value exists.
+			 *
+			 * The argument \a k must be smaller than #length.
+			 *
+			 * @return \a true if the requested nonzero exists, and \a false otherwise.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
+			 */
+			const bool& mask( const size_t k ) const noexcept {
+				(void)k;
+				return false_mask;
+			}
 
-	/**
-	 * Translates the given \a index into #pointer to the index of the global
-	 * pinned vector.
-	 *
-	 * \param[in] local_index A value strictly smaller than \a length().
-	 *
-	 * @return The global index corresponding to element \a local_index when
-	 *         accessing data from \a pointer.
-	 *
-	 * \warning If \a local_index is invalid, the returned value shall be
-	 *          undefined. No error will be thrown, nor will any other type of
-	 *          run-time sanity checking be performed.
-	 *
-	 * \note In particular, this means that if \a length returns 0, then this
-	 *       function must \em never be called.
-	 *
-	 * \par Performance semantics.
-	 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-	 *   -# This function does not allocate new memory blocks.
-	 *
-	 * This function cannot fail.
-	 */
-	size_t index( const size_t local_index ) const noexcept {
-		(void)local_index;
-		return 0;
-	}
+			/**
+			 * @return The length of this vector, in number of elements.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
+			 */
+			size_t length() const noexcept {
+				return 0;
+			}
 
-	/**
-	 * Releases any resources tied to this instance either
-	 *   1) back to GraphBLAS, or
-	 *   2) back to the system.
-	 * A subsequent call to any member function except #free will
-	 * cause undefined behaviour.
-	 *
-	 * \note This function may thus safely be called more than once.
-	 *
-	 * An instance of this class going out of scope will
-	 * automatically call this function.
-	 *
-	 * \par Performance semantics.
-	 *   -# This function moves at most \f$ \mathcal{O}(n) \f$ bytes of data.
-	 *   -# This function may de-allocate a memory area of size \f$ \mathcal{O}(n) \f$.
-	 *
-	 * This function never fails.
-	 */
-	void free() noexcept {}
+			/**
+			 * Translates the given nonzero ID \a k into a global index.
+			 *
+			 * \param[in] k The nonzero ID. Must be smaller than #length().
+			 *
+			 * \note If #length returns 0, then this function must \em never be called.
+			 *
+			 * @return The global index corresponding to the \a k-th nonzero.
+			 *
+			 * This function may be called even if #mask( \a k ) returns <tt>false</tt>.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
+			 */
+			size_t index( const size_t k ) const noexcept {
+				(void) k;
+				return 0;
+			}
 
-}; // namespace grb
+			/**
+			 * Releases any resources tied to this instance either
+			 *   1) back to ALP/GraphBLAS, or
+			 *   2) back to the system.
+			 * Case 1) will happen if the original vector still exists. Case 2) will
+			 * happen if and only if the original vector no longer exists while also
+			 * no other PinnedVector instances derived from that original vector no
+			 * longer exist.
+			 *
+			 * A subsequent call to any member function except #free will
+			 * cause undefined behaviour.
+			 *
+			 * \note This function may thus safely be called more than once.
+			 *
+			 * An instance of this class going out of scope will automatically call this
+			 * function.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs at most \f$ \mathcal{O}(n) \f$ work.
+			 *   -# This function moves at most \f$ \mathcal{O}(n) \f$ bytes of data
+			 *      within its process.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function may de-allocate memory areas of (combined) size
+			 *      \f$ \mathcal{O}(n) \f$.
+			 */
+			void free() noexcept {}
+
+	}; // namespace grb
 
 } // end namespace ``grb''
 
 #endif // end _H_GRB_BASE_PINNEDVECTOR
+

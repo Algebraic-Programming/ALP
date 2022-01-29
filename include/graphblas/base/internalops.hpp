@@ -23,6 +23,8 @@
 #ifndef _H_GRB_INTERNAL_OPERATORS_BASE
 #define _H_GRB_INTERNAL_OPERATORS_BASE
 
+#include <graphblas/utils/suppressions.h>
+
 #include <type_traits>
 #include <utility>
 
@@ -30,6 +32,7 @@
 #include <graphblas/utils.hpp>
 
 #include "config.hpp"
+
 
 namespace grb {
 
@@ -629,9 +632,17 @@ namespace grb {
 				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 * @param[out] c The output. Must be pre-allocated.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply( const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see internal issue 306 for rationale
 					*c = *a + *b;
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -640,6 +651,8 @@ namespace grb {
 				 * @param[in]     a Pointer to the left-hand side input data.
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
 				 */
 				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
 					*c += *a;
@@ -651,6 +664,8 @@ namespace grb {
 				 * @param[in,out] c Pointer to the left-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
 				 */
 				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
 					*c += *b;
@@ -677,10 +692,14 @@ namespace grb {
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class mul {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -710,17 +729,24 @@ namespace grb {
 				 */
 				static constexpr bool is_commutative = true;
 
-				static void test() {}
-
 				/**
 				 * Out-of-place application of the multiplication c = a * b.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 * @param[out] c The output. Must be pre-allocated.
+				 * @param[in]  a Pointer to the left-hand side input. Must be initialised.
+				 * @param[in]  b Pointer to the right-hand side input. Must be initialised.
+				 * @param[out] c Pointer to where to compute the output.
+				 *
+				 * \warning All pointers must be valid or UB occurs.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c
+				) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see internal issue 306 for rationale
 					*c = *a * *b;
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -1259,11 +1285,14 @@ namespace grb {
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
 				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see internal issue 306 for rationale
 					if( *a != *b ) {
 						*c = static_cast< OUT >( true );
 					} else {
 						*c = static_cast< OUT >( false );
 					}
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -3148,3 +3177,4 @@ namespace grb {
 } // namespace grb
 
 #endif // _H_GRB_INTERNAL_OPERATORS_BASE
+

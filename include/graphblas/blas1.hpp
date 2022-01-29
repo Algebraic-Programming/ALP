@@ -31,14 +31,16 @@
 #include "base/vector.hpp"
 
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/blas1.hpp>
+ #include <graphblas/reference/blas1.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/blas1.hpp>
+ #include <graphblas/banshee/blas1.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/blas1.hpp>
+ #include <graphblas/bsp1d/blas1.hpp>
 #endif
+
+// the remainder implements several backend-agnostic short-cuts
 
 #define NO_CAST_RING_ASSERT( x, y, z )                                             \
 	static_assert( x,                                                              \
@@ -65,12 +67,11 @@
 
 namespace grb {
 
-/** A standard vector to use for mask parameters. Indicates no mask shall be used.
-	class NO_MASK : public Vector< bool, config::default_backend > {
-	    public:
-	        NO_MASK() : Vector< bool, config::default_backend >(0) {}
-	};*/
-#define NO_MASK Vector< bool >( 0 )
+	/**
+	 * A standard vector to use for mask parameters. Indicates no mask shall be
+	 * used.
+	 */
+	#define NO_MASK Vector< bool >( 0 )
 
 	/**
 	 * Executes an arbitrary element-wise user-defined function \a f using any
@@ -239,8 +240,17 @@ namespace grb {
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func, typename DataType, Backend backend, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const Vector< DataType, backend, Coords > & x, Args... ) {
+	template<
+		typename Func,
+		typename DataType,
+		Backend backend,
+		typename Coords,
+		typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Vector< DataType, backend, Coords > & x, Args...
+	) {
 		(void)f;
 		(void)x;
 		return PANIC;
@@ -252,11 +262,20 @@ namespace grb {
 	 * Will use no mask and will set the accumulator to the given Monoid's
 	 * operator.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, Backend backend, typename Coords >
-	RC foldl( IOType & x,
-		const Vector< InputType, backend, Coords > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		Backend backend,
+		typename Coords
+	>
+	RC foldl( IOType &x,
+		const Vector< InputType, backend, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = NULL
+	) {
 		// create empty mask
 		Vector< bool, backend, Coords > mask( 0 );
 		// call regular reduce function
@@ -269,11 +288,19 @@ namespace grb {
 	 * Will use no mask and will set the accumulator to the given Monoid's
 	 * operator.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, Backend backend, typename Coords >
-	RC foldl( IOType & x,
-		const Vector< InputType, backend, Coords > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && grb::is_operator< OP >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP,
+		typename IOType, typename InputType,
+		Backend backend, typename Coords
+	>
+	RC foldl( IOType &x,
+		const Vector< InputType, backend, Coords > &y,
+		const OP &op = OP(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = NULL
+	) {
 		// create empty mask
 		Vector< bool, backend, Coords > mask( 0 );
 		// call regular reduce function
@@ -290,6 +317,18 @@ namespace grb {
 	 *
 	 * For return codes, exception behaviour, performance semantics, template
 	 * and non-template arguments, @see grb::dot.
+	 *
+	 * @param[out] x The 2-norm of \a y. The input value of \a x will be ignored.
+	 * @param[in]  y The vector to compute the norm of.
+	 * @param[in] ring The Semiring under which the 2-norm is to be computed.
+	 *
+	 * \warning This function computes \a x out-of-place. This is contrary to
+	 *          standard ALP/GraphBLAS functions that are always in-place.
+	 *
+	 * \warning A \a ring is not sufficient for computing a two-norm. This
+	 *          implementation assumes the standard <tt>sqrt</tt> function
+	 *          must be applied on the result of a dot-product of \a y with
+	 *          itself under the supplied semiring.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,

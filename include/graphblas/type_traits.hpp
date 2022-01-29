@@ -89,7 +89,10 @@ namespace grb {
 	template< typename T >
 	struct is_object {
 		/** A GraphBLAS object is either a container, a semiring, a monoid, or an operator. */
-		static const constexpr bool value = is_container< T >::value || is_semiring< T >::value || is_monoid< T >::value || is_operator< T >::value;
+		static const constexpr bool value = is_container< T >::value ||
+			is_semiring< T >::value ||
+			is_monoid< T >::value ||
+			is_operator< T >::value;
 	};
 
 	/**
@@ -122,6 +125,28 @@ namespace grb {
 			"semiring!" );
 		static const constexpr bool value = false;
 	};
+
+	namespace internal {
+
+		/**
+		 * Whether or not a given operator could translate to a no-op;
+		 * i.e., leave its outputs unmodified. This can be relevant
+		 * because it indicates situations where grb::apply could leave
+		 * the output uninitialised, which may well not be as intended.
+		 *
+		 * An example of an operator that non-trivially may result in a
+		 * no-op is grb::operators::left_assign_if. Such operators must
+		 * overload this internal type trait.
+		 */
+		template< typename OP >
+		struct maybe_noop {
+			static_assert( is_operator< OP >::value,
+				"Argument to internal::maybe_noop must be an operator."
+			);
+			static const constexpr bool value = false;
+		};
+
+	} // end namespace grb::internal
 
 } // namespace grb
 

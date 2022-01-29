@@ -19,7 +19,7 @@
  * @file multigrid_v_cycle.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
  * @brief This file contains the routines for multi-grid solution refinement, including the main routine
- * 			and those for coarsening and refinement of the tentative solution.
+ *        and those for coarsening and refinement of the tentative solution.
  * @date 2021-04-30
  */
 
@@ -43,7 +43,7 @@ namespace grb {
 
 			/**
 			 * @brief computes the coarser residual vector \p coarsening_data.r by coarsening
-			 * 			\p coarsening_data.Ax_finer - \p r_fine via \p coarsening_data.coarsening_matrix.
+			 *        \p coarsening_data.Ax_finer - \p r_fine via \p coarsening_data.coarsening_matrix.
 			 *
 			 * The coarsening information are stored inside \p coarsening_data.
 			 *
@@ -57,7 +57,7 @@ namespace grb {
 			 * @param[in] ring the ring to perform the operations on
 			 * @param[in] minus the \f$ - \f$ operator for vector subtractions
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 *                          unsuccessful operation otherwise
 			 */
 			template< typename IOType,
 				typename NonzeroType,
@@ -82,7 +82,7 @@ namespace grb {
 
 			/**
 			 * @brief computes the prolongation of the coarser solution \p coarsening_data.z and stores it into
-			 * 			\p x_fine.
+			 * \p x_fine.
 			 *
 			 * For prolongation, this function uses the matrix \p coarsening_data.coarsening_matrix by transposing it.
 			 *
@@ -94,7 +94,7 @@ namespace grb {
 			 * @param[in,out] coarsening_data information for coarsening
 			 * @param[in] ring the ring to perform the operations on
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 * unsuccessful operation otherwise
 			 */
 			template< typename IOType,
 				typename NonzeroType,
@@ -117,18 +117,18 @@ namespace grb {
 
 			/**
 			 * @brief Runs \p smoother_steps iteration of the Red-Black Gauss-Seidel smoother, with inputs and outputs stored
-			 * 			inside \p data.
+			 * inside \p data.
 			 *
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
 			 * @tparam Ring the ring of algebraic operators zero-values
 			 *
 			 * @param[in,out] data \ref system_data data structure with relevant inpus and outputs: system matrix, initial solution,
-			 * 					residual, system matrix colors, temporary vectors
+			 *                     residual, system matrix colors, temporary vectors
 			 * @param[in] smoother_steps how many smoothing steps to run
 			 * @param[in] ring the ring to perform the operations on
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 *                          unsuccessful operation otherwise
 			 */
 			template< typename IOType, typename NonzeroType, class Ring >
 			grb::RC run_smoother( system_data< IOType, NonzeroType > & data, const std::size_t smoother_steps, const Ring & ring ) {
@@ -146,11 +146,11 @@ namespace grb {
 			 *
 			 * A full multi-grid run goes through the following steps:
 			 * -# if \p presmoother_steps \f$ > 0 \f$, \p presmoother_steps of the Red-Black Gauss-Seidel smoother are run
-			 * 		to improve on the initial solution stored into \p data.z
+			 *    to improve on the initial solution stored into \p data.z
 			 * -# the coarsening of \f$ r - A*z \f$ is computed to find the coarser residual vector
 			 * -# a multi-grid run is recursively performed on the coarser system
 			 * -# the tentative solution from the coarser multi-grid run is prolonged and added to the current tentative solution
-			 * 		into \p data.z
+			 *    into \p data.z
 			 * -# this solution is further smoothed for \p postsmoother_steps steps
 			 *
 			 * If coarsening information is not available, the multi-grid run consists in a single smmothing run.
@@ -164,16 +164,16 @@ namespace grb {
 			 * @tparam Minus the minus operator for subtractions
 			 *
 			 * @param[in,out] data \ref multi_grid_data object storing the relevant data for the multi-grid run of the current
-			 * 			clevel
+			 *                     clevel
 			 * @param[in,out] coarsening_data pointer to information for the coarsening/refinement operations and for the
-			 * 			recursive multi-grid run on the coarsened system; if \c nullptr, no coarsening/refinement occurs
-			 * 			and only smoothing occurs on the current solution
+			 *                recursive multi-grid run on the coarsened system; if \c nullptr, no coarsening/refinement occurs
+			 *                and only smoothing occurs on the current solution
 			 * @param[in] presmoother_steps number of pre-smoother steps
 			 * @param[in] postsmoother_steps number of post-smoother steps
 			 * @param[in] ring the ring to perform the operations on
 			 * @param[in] minus the \f$ - \f$ operator for vector subtractions
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 *                          unsuccessful operation otherwise
 			 */
 			template< typename IOType, typename NonzeroType, class Ring, class Minus >
 			grb::RC multi_grid( system_data< IOType, NonzeroType > & data,

@@ -102,10 +102,9 @@ namespace grb {
 				}
 
 				if( ret == SUCCESS && normalize ) {
-					ret = grb::eWiseLambda( [&out] (const size_t, const size_t, IOType &v ) {
-						const auto old = v;
+					ret = grb::eWiseLambda( [] (const size_t, const size_t, IOType &v ) {
+						assert( v > 0 );
 						v = static_cast< IOType >( 1 ) / v;
-						if( v == 0 ) { std::cout << " 1 / " << old << " is 0!!\n"; }
 					}, out );
 				}
 

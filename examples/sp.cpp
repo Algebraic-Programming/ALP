@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-#include "graphblas.hpp"
+#include <graphblas.hpp>
 
 using namespace grb;
 

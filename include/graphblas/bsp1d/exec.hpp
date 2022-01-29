@@ -23,6 +23,7 @@
 #ifndef _H_GRB_BSP1D_EXEC
 #define _H_GRB_BSP1D_EXEC
 
+#include <lpf/collectives.h>
 #include <lpf/core.h>
 #include <lpf/mpi.h>
 #include <mpi.h>

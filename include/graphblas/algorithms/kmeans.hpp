@@ -25,7 +25,10 @@
 #include <chrono>
 #include <random>
 
+#include <assert.h>
+
 #include <graphblas.hpp>
+
 
 namespace grb {
 
@@ -44,17 +47,24 @@ namespace grb {
 		 *
 		 * \todo expand documentation
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename IOType = double, class Operator = operators::square_diff< IOType, IOType, IOType > >
-		RC kpp_initialisation( Matrix< IOType > & K, const Matrix< IOType > & X, const Operator dist_op = Operator() ) {
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename IOType = double,
+			class Operator = operators::square_diff< IOType, IOType, IOType >
+		>
+		RC kpp_initialisation( Matrix< IOType > &K, const Matrix< IOType > &X,
+			const Operator &dist_op = Operator()
+		) {
 			// declare monoids and semirings
-
 			Monoid< grb::operators::add< IOType >, grb::identities::zero > add_monoid;
-
 			Monoid< grb::operators::min< IOType >, grb::identities::infinity > min_monoid;
+			Semiring<
+				grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >,
+				grb::identities::zero, grb::identities::logical_true
+			> pattern_sum;
 
-			Semiring< grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >, grb::identities::zero, grb::identities::logical_true > pattern_sum;
-
-			// runtime sanity checks: the row dimension of X should match the column dimension of K
+			// runtime sanity checks: the row dimension of X should match the column
+			// dimension of K
 			if( ncols( K ) != nrows( X ) ) {
 				return MISMATCH;
 			}
@@ -67,7 +77,8 @@ namespace grb {
 			const size_t m = nrows( X );
 			const size_t k = nrows( K );
 
-			// declare vector of indices of columns of X selected as the initial centroids
+			// declare vector of indices of columns of X selected as the initial
+			// centroids
 			Vector< size_t > selected_indices( k );
 
 			// declare column selection vector
@@ -81,19 +92,24 @@ namespace grb {
 
 			// declare vector of minimum distances to all points selected so far
 			Vector< IOType > min_distances( n );
-			ret = ret ? ret : grb::set( min_distances, grb::identities::infinity< IOType >::value() );
+			ret = ret ? ret : grb::set( min_distances,
+				grb::identities::infinity< IOType >::value()
+			);
 
 			// generate first centroid by selecting a column of X uniformly at random
 
-			size_t seed_uniform = std::chrono::system_clock::now().time_since_epoch().count();
-			std::default_random_engine random_generator( seed_uniform );
-			std::uniform_int_distribution< size_t > uniform( 0, n - 1 );
+			size_t i;
+			{
+				const size_t seed_uniform =
+					std::chrono::system_clock::now().time_since_epoch().count();
+				std::default_random_engine random_generator( seed_uniform );
+				std::uniform_int_distribution< size_t > uniform( 0, n - 1 );
+				i = uniform( random_generator );
+			}
 
-			size_t i = uniform( random_generator );
+			for( size_t l = 0; ret == SUCCESS && l < k; ++l ) {
 
-			for( size_t l = 0; l < k; ++l ) {
-
-				ret = ret ? ret : grb::clear( col_select );
+				ret = grb::clear( col_select );
 				ret = ret ? ret : grb::clear( selected );
 				ret = ret ? ret : grb::clear( selected_distances );
 
@@ -109,22 +125,31 @@ namespace grb {
 
 				// TODO the remaining part of the loop should be replaced with the alias algorithm
 
-				IOType range;
+				IOType range = add_monoid.template getIdentity< IOType >();
 				ret = ret ? ret : grb::foldl( range, min_distances, add_monoid );
 
-				size_t seed = std::chrono::system_clock::now().time_since_epoch().count();
-				std::default_random_engine generator( seed );
-				std::uniform_real_distribution< double > uniform( 0, 1 );
+				double sample = -1;
+				if( ret == SUCCESS ) {
+					const size_t seed = std::chrono::system_clock::now().time_since_epoch().count();
+					std::default_random_engine generator( seed );
+					std::uniform_real_distribution< double > uniform( 0, 1 );
+					sample = uniform( generator );
+					ret = grb::collectives<>::broadcast( sample, 0 );
+				}
+				assert( sample >= 0 );
 
-				IOType * raw = internal::getRaw( selected_distances );
-				double sample = uniform( generator );
-				IOType running_sum = 0;
-				i = 0;
-
-				do {
-					running_sum += static_cast< double >( raw[ i ] ) / range;
-				} while( running_sum < sample && ++i < n );
-				i = ( i == n ) ? n - 1 : i;
+				// The following is not standard ALP/GraphBLAS and does not work for P>1
+				//    (TODO internal issue #320)
+				if( ret == SUCCESS ) {
+					assert( grb::spmd<>::nprocs() == 1 );
+					IOType * const raw = internal::getRaw( selected_distances );
+					IOType running_sum = 0;
+					i = 0;
+					do {
+						running_sum += static_cast< double >( raw[ i ] ) / range;
+					} while( running_sum < sample && ++i < n );
+					i = ( i == n ) ? n - 1 : i;
+				}
 			}
 
 			// create the matrix K by selecting the columns of X indexed by selected_indices
@@ -133,11 +158,14 @@ namespace grb {
 			Matrix< void > M( k, n );
 			ret = ret ? ret : grb::resize( M, n );
 
-			auto converter = grb::utils::makeVectorToMatrixConverter< void, size_t >( selected_indices, []( const size_t & ind, const size_t & val ) {
-				return std::make_pair( ind, val );
-			} );
-
-			ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+			if( ret == SUCCESS ) {
+				auto converter = grb::utils::makeVectorToMatrixConverter< void, size_t >(
+					selected_indices, [](const size_t &ind, const size_t &val ) {
+						return std::make_pair( ind, val );
+					}
+				);
+				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+			}
 
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, SYMBOLIC );
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
@@ -163,25 +191,42 @@ namespace grb {
 		 *
 		 * \todo expand documentation
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename IOType = double, class Operator = operators::square_diff< IOType, IOType, IOType > >
-		RC kmeans_iteration( Matrix< IOType > & K,
-			Vector< std::pair< size_t, IOType > > & clusters_and_distances,
-			const Matrix< IOType > & X,
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename IOType = double,
+			class Operator = operators::square_diff< IOType, IOType, IOType >
+		>
+		RC kmeans_iteration( Matrix< IOType > &K,
+			Vector< std::pair< size_t, IOType > > &clusters_and_distances,
+			const Matrix< IOType > &X,
 			const size_t max_iter = 1000,
-			const Operator dist_op = Operator() ) {
+			const Operator &dist_op = Operator()
+		) {
 			// declare monoids and semirings
 
 			typedef std::pair< size_t, IOType > indexIOType;
 
 			Monoid< grb::operators::add< IOType >, grb::identities::zero > add_monoid;
 
-			Monoid< grb::operators::argmin< size_t, IOType >, grb::identities::infinity > argmin_monoid;
+			Monoid<
+				grb::operators::argmin< size_t, IOType >,
+				grb::identities::infinity
+			> argmin_monoid;
 
-			Monoid< grb::operators::logical_and< bool >, grb::identities::logical_true > comparison_monoid;
+			Monoid<
+				grb::operators::logical_and< bool >,
+				grb::identities::logical_true
+			> comparison_monoid;
 
-			Semiring< grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >, grb::identities::zero, grb::identities::logical_true > pattern_sum;
+			Semiring<
+				grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >,
+				grb::identities::zero, grb::identities::logical_true
+			> pattern_sum;
 
-			Semiring< grb::operators::add< size_t >, grb::operators::right_assign_if< size_t, size_t, size_t >, grb::identities::zero, grb::identities::logical_true > pattern_count;
+			Semiring<
+				grb::operators::add< size_t >, grb::operators::right_assign_if< size_t, size_t, size_t >,
+				grb::identities::zero, grb::identities::logical_true
+			> pattern_count;
 
 			// runtime sanity checks: the row dimension of X should match the column dimension of K
 			if( ncols( K ) != nrows( X ) ) {
@@ -224,7 +269,7 @@ namespace grb {
 			// control variables
 			size_t iter = 0;
 			Vector< indexIOType > clusters_and_distances_prev( n );
-			bool converged = false;
+			bool converged;
 
 			do {
 				++iter;
@@ -250,11 +295,16 @@ namespace grb {
 				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC );
 				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >() );
 
+				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >(), SYMBOLIC );
 				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >() );
 
-				ret = ret ? ret : grb::dot( converged, clusters_and_distances_prev, clusters_and_distances, comparison_monoid, grb::operators::equal_first< indexIOType, indexIOType, bool >() );
+				converged = true;
+				ret = ret ? ret : grb::dot(
+					converged, clusters_and_distances_prev, clusters_and_distances,
+					comparison_monoid, grb::operators::equal_first< indexIOType, indexIOType, bool >()
+				);
 
-			} while( ret == SUCCESS && ! converged && iter < max_iter );
+			} while( ret == SUCCESS && !converged && iter < max_iter );
 
 			if( iter == max_iter ) {
 				std::cout << "\tkmeans reached maximum number of iterations!" << std::endl;

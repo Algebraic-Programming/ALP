@@ -77,7 +77,7 @@ namespace grb {
 		 * @tparam IOType   The type of the to-be reduced value.
 		 *
 		 * @param[in,out] inout On input:  the value at the calling process to be
-		 *     	                reduced. On output: the reduced value.
+		 *                      reduced. On output: the reduced value.
 		 * @param[in]      op   The associative operator to reduce by.
 		 *
 		 * \note If \op is commutative, the implementation free to employ a different

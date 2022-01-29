@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "graphblas/descriptors.hpp"
+#include <graphblas/descriptors.hpp>
 
 std::string grb::descriptors::toString( const grb::Descriptor descr ) {
 	std::ostringstream os;

@@ -40,8 +40,8 @@ namespace grb {
 	RC set( Matrix< DataType1, BSP1D > & out, const Matrix< DataType2, BSP1D > & in ) noexcept {
 		RC ret = grb::set< descr >( internal::getLocal( out ), internal::getLocal( in ) );
 		/*(void) collectives< BSP1D >::allreduce<
-		    descriptors::no_casting,
-		    operators::any_or< RC >
+			descriptors::no_casting,
+			operators::any_or< RC >
 		>( ret );*/ // <-- WARNING: if we allow ONCE as a mode for level-3 primitives,
 		            //              we need to be wary of local allocation errors
 		return ret;
@@ -52,8 +52,8 @@ namespace grb {
 	RC set( Matrix< DataType1, BSP1D > & out, const Matrix< DataType2, BSP1D > & mask, const DataType3 & val ) noexcept {
 		RC ret = grb::set< descr >( internal::getLocal( out ), internal::getLocal( mask ), val );
 		/*(void) collectives<>::allreduce<
-		    descriptors::no_casting,
-		    operators::any_or< RC >
+			descriptors::no_casting,
+			operators::any_or< RC >
 		>( ret );*/ // <-- WARNING: if we allow ONCE as a mode for level-3 primitives,
 		            //              we need to be wary of local allocation errors
 		return ret;
@@ -64,9 +64,15 @@ namespace grb {
 	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
 		const Matrix< InputType1, BSP1D > &A,
 		const Matrix< InputType2, BSP1D > &B,
-		const MulMonoid &mul = MulMonoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< MulMonoid >::value, void >::type * const = NULL ) {
-		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), mul );
+		const MulMonoid &mul,
+		const PHASE phase = NUMERICAL,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< MulMonoid >::value,
+		void >::type * const = NULL
+	) {
+		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), mul, phase );
 	}
 
 	/** \internal Simply delegates to process-local backend */
@@ -74,11 +80,18 @@ namespace grb {
 	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
 		const Matrix< InputType1, BSP1D > &A,
 		const Matrix< InputType2, BSP1D > &B,
-		const Operator &op = Operator(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value, void >::type * const = NULL ) {
-		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), op );
+		const Operator &op,
+		const PHASE phase = NUMERICAL,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value && !
+			grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value,
+		void >::type * const = NULL
+	) {
+		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), op, phase );
 	}
 
 } // namespace grb
 
 #endif
+

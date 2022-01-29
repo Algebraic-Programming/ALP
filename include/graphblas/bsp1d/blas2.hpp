@@ -216,7 +216,7 @@ namespace grb {
 				}
 			}
 
-			const auto & local_coors = internal::getCoordinates( u._local );
+			const auto &local_coors = internal::getCoordinates( u._local );
 #ifdef _DEBUG
 			std::cout << "\t" << s <<
 				", 0: calling process-local vxm using global output "
@@ -232,16 +232,18 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s <<
-				", bsp1d_vxm: global output vector of the local "
-				"vxm-to-be currently contains " <<
-				internal::getCoordinates( u._global ).nonzeroes() << " / " <<
-				internal::getCoordinates( u._global ).size() <<
-				" nonzeroes. This is the unbuffered variant.\n";
+			std::cout << "\t" << s << ", bsp1d_vxm: global output vector of the local vxm-to-be currently contains "
+				<< internal::getCoordinates( u._global ).nonzeroes() << " / "
+				<< internal::getCoordinates( u._global ).size() << " nonzeroes. "
+				<< "This is the unbuffered variant.\n";
 #endif
 
+			// even if the global operation is totally dense, the process-local vxm may generate sparse output
+			// thus construct a local descriptor that strips away any dense hint
+			constexpr Descriptor local_descr = descr & (~(descriptors::dense));
+
 			// delegate to process-local vxm
-			internal::vxm_generic< descr, output_masked, input_masked, left_handed, true, Ring::template One >(
+			internal::vxm_generic< local_descr, output_masked, input_masked, left_handed, true, Ring::template One >(
 				u._global, u_mask._global, v._local, v_mask._local, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
 				[ &output_offset ]( const size_t i ) {
 					return i + output_offset;

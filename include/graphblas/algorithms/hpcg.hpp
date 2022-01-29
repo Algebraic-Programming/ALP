@@ -19,7 +19,7 @@
  * @file hpcg.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
  * @brief File with the main routine to run a full HPCG simulation, comprising multi-grid runs
- * 			with Red-Black Gauss-Seidel smoothing.
+ *        with Red-Black Gauss-Seidel smoothing.
  * @date 2021-04-30
  */
 
@@ -72,20 +72,20 @@ namespace grb {
 		 * @tparam Minus the minus operator for subtractions
 		 *
 		 * @param[in,out] data \ref hpcg_data object storing inputs, outputs and temporary vectors used for the computation,
-		 * 			as long as the information for the recursive multi-grid runs
+		 *                     as long as the information for the recursive multi-grid runs
 		 * @param[in] with_preconditioning whether to use pre-conditioning, i.e. to perform multi-grid runs
 		 * @param[in] presmoother_steps number of pre-smoother steps, for multi-grid runs
 		 * @param[in] postsmoother_steps nomber of post-smoother steps, for multi-grid runs
 		 * @param[in] max_iterations maximum number if iterations the simulation may run for; once reached,
-		 * 			the simulation stops even if the residual norm is above \p tolerance
+		 *                           the simulation stops even if the residual norm is above \p tolerance
 		 * @param[in] tolerance the tolerance over the residual norm, i.e. the value of the residual norm to stop
-		 * 			the simulation at
+		 *                      the simulation at
 		 * @param[out] iterations numbers of iterations performed
 		 * @param[out] norm_residual norm of the final residual
 		 * @param[in] ring the ring to perform the operations on
 		 * @param[in] minus the \f$ - \f$ operator for vector subtractions
 		 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-		 * 			unsuccessful operation otherwise
+		 *                          unsuccessful operation otherwise
 		 */
 		template< typename IOType,
 			typename ResidualType,
@@ -93,25 +93,26 @@ namespace grb {
 			typename InputType,
 			class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one >,
 			class Minus = operators::subtract< IOType > >
-		grb::RC hpcg( hpcg_data< IOType, NonzeroType, InputType > & data,
+		grb::RC hpcg( hpcg_data< IOType, NonzeroType, InputType > &data,
 			bool with_preconditioning,
 			const size_t presmoother_steps,
 			const size_t postsmoother_steps,
 			const size_t max_iterations,
 			const ResidualType tolerance,
-			size_t & iterations,
-			ResidualType & norm_residual,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus() ) {
+			size_t &iterations,
+			ResidualType &norm_residual,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus()
+		) {
 			ResidualType alpha;
 
-			const grb::Matrix< NonzeroType > & A { data.A };
-			grb::Vector< IOType > & x { data.x };
-			const grb::Vector< InputType > & b { data.b };
-			grb::Vector< IOType > & r { data.r };  // residual vector
-			grb::Vector< IOType > & p { data.p };  // direction vector
-			grb::Vector< IOType > & Ap { data.u }; // temp vector
-			grb::Vector< IOType > & z { data.z };  // pre-conditioned residual vector
+			const grb::Matrix< NonzeroType > &A { data.A };
+			grb::Vector< IOType > &x { data.x };
+			const grb::Vector< InputType > &b { data.b };
+			grb::Vector< IOType > &r { data.r };  // residual vector
+			grb::Vector< IOType > &p { data.p };  // direction vector
+			grb::Vector< IOType > &Ap { data.u }; // temp vector
+			grb::Vector< IOType > &z { data.z };  // pre-conditioned residual vector
 			grb::RC ret { SUCCESS };
 
 			ret = ret ? ret : grb::set( Ap, 0 );
@@ -125,6 +126,7 @@ namespace grb {
 			ret = ret ? ret : grb::eWiseApply( r, b, Ap, minus ); // r = b - Ap;
 			assert( ret == SUCCESS );
 
+			norm_residual = ring.template getZero< ResidualType >();
 			ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // norm_residual = r' * r;
 			assert( ret == SUCCESS );
 
@@ -168,6 +170,7 @@ namespace grb {
 				} else {
 					old_r_dot_z = r_dot_z;
 
+					r_dot_z = ring.template getZero< ResidualType >();
 					ret = ret ? ret : grb::dot( r_dot_z, r, z, ring ); // r_dot_z = r' * z;
 					assert( ret == SUCCESS );
 
@@ -205,6 +208,7 @@ namespace grb {
 				DBG_print_norm( r, "end r" );
 #endif
 
+				norm_residual = static_cast< ResidualType >( 0.0 );
 				ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // residual = r' * r;
 				assert( ret == SUCCESS );
 

@@ -20,7 +20,7 @@
  * @date 13th of September 2017
  */
 
-#include "graphblas/bsp1d/config.hpp"
+#include <graphblas/bsp1d/config.hpp>
 
 using namespace grb;
 

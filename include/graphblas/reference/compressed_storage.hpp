@@ -397,8 +397,8 @@ namespace grb {
 			 *                  <tt>true</tt>.
 			 *
 			 * The copy range is 2nz + m + 1, i.e.,
-			 * 	-# 0 <= start <  2nz + m + 1
-			 * 	-# 0 <  end   <= 2nz + m + 1
+			 *   -# 0 <= start <  2nz + m + 1
+			 *   -# 0 <  end   <= 2nz + m + 1
 			 *
 			 * Concurrent calls to this function are allowed iff they consist of
 			 * disjoint ranges \a start and \a end. The copy is guaranteed to be
@@ -747,8 +747,8 @@ namespace grb {
 					m = std::move( other.m );
 					n = std::move( other.n );
 					row = std::move( other.row );
-					s = std::move( s );
-					P = std::move( P );
+					s = std::move( other.s );
+					P = std::move( other.P );
 				}
 
 				/** Whether two iterators compare equal. */

@@ -939,16 +939,15 @@ namespace grb {
 			typename Operator,
 			typename IOType
 #ifndef BLAS1_RAW
-			,
-			typename Coords
+			, typename Coords
 #endif
-			>
+		>
 		RC allcombine(
 #ifdef BLAS1_RAW
 			IOType * inout,
 			const size_t size,
 #else
-			Vector< IOType, reference, Coords > & inout,
+			Vector< IOType, reference, Coords > &inout,
 #endif
 			const Operator op ) {
 			// static sanity check

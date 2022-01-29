@@ -526,24 +526,41 @@ namespace grb {
 		static constexpr const bool value = is_operator< OP >::value && OP::is_commutative();
 	};
 
+	// internal type traits follow
+
+	namespace internal {
+
+		template< typename D1, typename D2, typename D3, enum Backend implementation >
+		struct maybe_noop< operators::left_assign_if< D1, D2, D3, implementation > > {
+			static const constexpr bool value = true;
+		};
+
+		template< typename D1, typename D2, typename D3, enum Backend implementation >
+		struct maybe_noop< operators::right_assign_if< D1, D2, D3, implementation > > {
+			static const constexpr bool value = true;
+		};
+
+	} // namespace grb::internal
+
 } // namespace grb
 
 #ifdef __DOXYGEN__
-/**
- * Macro that disables the definition of an operator<< overload for
- * instances of std::pair. This overload is only active when the _DEBUG
- * macro is defined, but may clash with user-defined overloads.
- */
-#define _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
+ /**
+  * Macro that disables the definition of an operator<< overload for
+  * instances of std::pair. This overload is only active when the _DEBUG
+  * macro is defined, but may clash with user-defined overloads.
+  */
+ #define _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
 #endif
 #ifdef _DEBUG
-#ifndef _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
-template< typename U, typename V >
-std::ostream & operator<<( std::ostream & out, const std::pair< U, V > & pair ) {
-	out << "( " << pair.first << ", " << pair.second << " )";
-	return out;
-}
-#endif
+ #ifndef _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
+	template< typename U, typename V >
+	std::ostream & operator<<( std::ostream & out, const std::pair< U, V > & pair ) {
+		out << "( " << pair.first << ", " << pair.second << " )";
+		return out;
+	}
+ #endif
 #endif
 
 #endif // end ``_H_GRB_OPERATORS''
+

@@ -54,9 +54,16 @@ namespace grb {
 		 * @returns #MISMATCH If \a source is not in range of \a A.
 		 */
 		template< Descriptor descr, typename OutputType, typename InputType >
-		RC knn( Vector< OutputType > & u, const Matrix< InputType > & A, const size_t source, const size_t k, Vector< bool > & buf1, Vector< bool > & buf2 ) {
+		RC knn(
+			Vector< OutputType > &u, const Matrix< InputType > &A,
+			const size_t source, const size_t k,
+			Vector< bool > &buf1, Vector< bool > &buf2
+		) {
 			// the nearest-neighbourhood ring
-			Semiring< operators::logical_or< bool >, operators::logical_and< bool >, identities::logical_false, identities::logical_true > ring;
+			Semiring<
+				operators::logical_or< bool >, operators::logical_and< bool >,
+				identities::logical_false, identities::logical_true
+			> ring;
 
 			// check input
 			if( nrows( A ) != ncols( A ) ) {
@@ -78,7 +85,7 @@ namespace grb {
 				clear( buf1 );
 			}
 #ifdef _DEBUG
-			std::cout << "grb::algorithms::knn called with source " << source << " and k " << k << ". In vector has size " << size( buffer ) << " and " << nnz( buffer ) << " nonzeroes.\n";
+			std::cout << "grb::algorithms::knn called with source " << source << " and k " << k << ".\n";
 #endif
 			RC ret = setElement( buf1, true, source );
 

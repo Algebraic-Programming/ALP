@@ -131,8 +131,21 @@ namespace grb {
 		}
 
 	public:
+
 		/** Base constructor. */
 		Matrix( const size_t rows, const size_t columns ) : Matrix( internal::grb_BSP1D.load(), rows, columns ) {}
+
+		/** Copy constructor */
+		Matrix( const Matrix< D, BSP1D > &other ) : Matrix( other._m, other._n ) {
+			if( resize( *this, nnz( other ) ) != SUCCESS ) {
+				throw std::runtime_error( "Error during resizing for matrix copy" );
+			}
+			if( nnz( other ) > 0 ) {
+				if( set( *this, other ) != SUCCESS ) {
+					throw std::runtime_error( "Could not copy matrix" );
+				}
+			}
+		}
 
 		/** Move constructor. */
 		Matrix( self_type &&other ) noexcept : _m( other._m ), _n( other._n ), _local( std::move( other._local ) ) {

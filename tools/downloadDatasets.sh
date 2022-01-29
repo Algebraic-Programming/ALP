@@ -37,6 +37,8 @@ downloadSN () {
 	fi
 }
 
+DATASETS_DIR="$(pwd)/datasets"
+
 echo "This script will download matrices from the SuiteSparse Matrix Collection [1], which"
 echo "is maintained by Tim Davis, Yifan Hu, and Scott Kolodziej. It also downloads one"
 echo "matrix from the SNAP collection maintained by Jure Leskovec [2]."
@@ -71,19 +73,24 @@ echo " "
 echo "Please take note of the attributions to SuiteSparse, west0497, and gyro_m. Please"
 echo "ensure the download you initiate is in line with applicable terms of use, laws, and"
 echo "regulations, and please use the script once and keep the datasets for future use."
-echo " "
+echo ""
+echo "On confirmation, the datasets will be downloaded to: ${DATASETS_DIR}"
+echo ""
 read -p "I have taken note and agree [yes/no] " -r
-echo " "
-if [ "x$REPLY" = "xyes" ]; then
-	if [ ! -d datasets ]; then
-		mkdir datasets || exit 1
+echo ""
+if [[ "$REPLY" = "yes" ]]; then
+	if [[ ! -d "${DATASETS_DIR}" ]]; then
+		mkdir "${DATASETS_DIR}" || exit 1
 	fi
-	cd datasets || exit 1
+	cd "${DATASETS_DIR}" || exit 1
 	downloadSS "west0497" "https://suitesparse-collection-website.herokuapp.com/MM/HB/west0497.tar.gz"
 	downloadSS "gyro_m" "https://suitesparse-collection-website.herokuapp.com/MM/Oberwolfach/gyro_m.tar.gz"
 	downloadSS "dwt_59" "https://suitesparse-collection-website.herokuapp.com/MM/HB/dwt_59.tar.gz"
 	downloadSN "cit-HepTh"
 	downloadSN "facebook_combined"
+	echo ""
+	echo "The datasets are available in: ${DATASETS_DIR}"
+	echo ""
 	exit 0
 else
 	echo "'yes' is required to continue."

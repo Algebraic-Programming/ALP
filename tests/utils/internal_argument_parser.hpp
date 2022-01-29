@@ -116,9 +116,19 @@ struct argument_parse_info {
 
 	argument_parse_info() = delete;
 
-	argument_parse_info( const argument_parse_info & o ) = default;
-
-	argument_parse_info & operator=( const argument_parse_info & ) = default;
+	/**
+	 * @brief Standard copy contructor.
+	 *
+	 * @param o original object
+	 */
+	argument_parse_info( const argument_parse_info & o ):
+		target(o.target),
+		parser(o.parser),
+		is_option(o.is_option),
+		default_value(o.default_value),
+		default_setter(o.default_setter),
+		default_printer(o.default_printer),
+		description(o.description) {}
 
 	/**
 	 * @brief Constructor from all the needed values.
@@ -167,15 +177,15 @@ struct argument_parse_info {
  * Example usage (excerpt from HPCG test):
  *
  * \code{.cpp}
- * 	parser.add_optional_argument("--nx", in.nx, PHYS_SYSTEM_SIZE_DEF,
- *  		"physical system size along x")
- *  	.add_optional_argument("--ny", in.ny, PHYS_SYSTEM_SIZE_DEF,
- *  		"physical system size along y")
- *  	.add_optional_argument("--nz", in.nz, PHYS_SYSTEM_SIZE_DEF,
- *  		"physical system size along z")
- *  	.add_option("--evaluation-run", in.evaluation_run, false,
- *  		"launch single run directly, without benchmrker (ignore repetitions)")
- *  	.add_option("--no-conditioning", in.no_conditioning, false, "do not apply pre/post-conditioning");
+ * parser.add_optional_argument("--nx", in.nx, PHYS_SYSTEM_SIZE_DEF,
+ *     "physical system size along x")
+ *   .add_optional_argument("--ny", in.ny, PHYS_SYSTEM_SIZE_DEF,
+ *     "physical system size along y")
+ *   .add_optional_argument("--nz", in.nz, PHYS_SYSTEM_SIZE_DEF,
+ *     "physical system size along z")
+ *   .add_option("--evaluation-run", in.evaluation_run, false,
+ *     "launch single run directly, without benchmrker (ignore repetitions)")
+ *   .add_option("--no-conditioning", in.no_conditioning, false, "do not apply pre/post-conditioning");
  *
  * parser.parse(argc, argv);
  * \endcode

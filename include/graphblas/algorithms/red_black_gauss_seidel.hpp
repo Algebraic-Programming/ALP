@@ -65,7 +65,7 @@ namespace grb {
 			 * @param[in] color_mask the mask of colors to filter the rows to smooth
 			 * @param[in] ring the ring to perform the operations on
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 *                          unsuccessful operation otherwise
 			 */
 			template< typename IOType, typename NonzeroType, class Ring >
 			grb::RC __rbgs_single_step( const grb::Matrix< NonzeroType > & A,
@@ -117,10 +117,10 @@ namespace grb {
 			 * @tparam Ring the ring of algebraic operators zero-values
 			 *
 			 * @param data \ref system_data data structure with relevant inpus and outputs: system matrix, initial solution,
-			 * 					residual, system matrix colors, temporary vectors
+			 *             residual, system matrix colors, temporary vectors
 			 * @param[in] ring the ring to perform the operations on
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-			 * 			unsuccessful operation otherwise
+			 *                          unsuccessful operation otherwise
 			 */
 			template< typename IOType, typename NonzeroType, class Ring >
 			grb::RC red_black_gauss_seidel( system_data< IOType, NonzeroType > & data, const Ring & ring ) {

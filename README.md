@@ -1,46 +1,65 @@
 <pre>
-  ________                    .__     
- /  _____/___________  ______ |  |__  
-/   \  __\_  __ \__  \ \____ \|  |  \ 
-\    \_\  \  | \// __ \|  |_> >   Y  \
- \______  /__|  (____  /   __/|___|  /
-        \/           \/|__|        \/ 
-   __________.____       _____    _________
-   \______   \    |     /  _  \  /   _____/
-    |    |  _/    |    /  /_\  \ \_____  \ 
-    |    |   \    |___/    |    \/        \
-    |______  /_______ \____|__  /_______  /
-           \/        \/       \/        \/ 
+   _____  .____   __________      /\   ________                    .__   __________.____       _____    _________
+  /  _  \ |    |  \______   \    / /  /  _____/___________  ______ |  |__\______   \    |     /  _  \  /   _____/
+ /  /_\  \|    |   |     ___/   / /  /   \  __\_  __ \__  \ \____ \|  |  \|    |  _/    |    /  /_\  \ \_____  \
+/    |    \    |___|    |      / /   \    \_\  \  | \// __ \|  |_> >   Y  \    |   \    |___/    |    \/        \
+\____|__  /_______ \____|     / /     \______  /__|  (____  /   __/|___|  /______  /_______ \____|__  /_______  /
+        \/        \/          \/             \/           \/|__|        \/       \/        \/       \/        \/
 </pre>
 
+<pre>
+  Copyright 2021 Huawei Technologies Co., Ltd.
 
-   Copyright 2021 Huawei Technologies Co., Ltd.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
 
-     http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+</pre>
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+## Table of Contents
 
+- [Requirements](#requirements)
+	- [Compilation](#compilation)
+	- [Linking and run-time](#linking-and-run-time)
+	- [Optionals](#optionals)
+- [Quick start](#quick-start)
+- [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
+	- [1. Running ALP/GraphBLAS as a standalone executable](#1-running-alpgraphblas-as-a-standalone-executable)
+		- [Implementation](#implementation)
+		- [Compilation](#compilation-1)
+		- [Linking](#linking)
+		- [Running](#running)
+		- [Threading](#threading)
+	- [2. Running parallel ALP/GraphBLAS programs from existing parallel contexts](#2-running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
+		- [Implementation](#implementation-1)
+		- [Running](#running-1)
+- [Debugging](#debugging)
+- [Development in ALP](#development-in-alp)
+- [Acknowledgements](#acknowledgements)
+- [Citing ALP/GraphBLAS](#citing-alpgraphblas)
 
 # Requirements
 
 ## Compilation
 
-To compile GraphBLAS, you need the following tools:
+To compile ALP/GraphBLAS, you need the following tools:
 
 1. A C++11-capable compiler such as GCC 4.8.2 or higher, with OpenMP support
 2. LibNUMA development headers
 3. POSIX threads development headers
+4. CMake (https://cmake.org/download/) version 3.13 or higher, with GNU Make
+(CMake's default build tool on UNIX systems) or the build tool of your choice
+(e.g., [Ninja](https://ninja-build.org))
 
 ## Linking and run-time
-The GraphBLAS libraries link aginst the following libraries:
+The ALP/GraphBLAS libraries link against the following libraries:
 
 1. LibNUMA: `-lnuma`
 2. Standard math library: `-lm`
@@ -48,214 +67,353 @@ The GraphBLAS libraries link aginst the following libraries:
 4. OpenMP: `-fopenmp` in the case of GCC
 
 ## Optionals
-Required for distributed-memory parallelism:
+Required for distributed-memory auto-parallelisation:
 
-* The Lightweight Parallel Foundations (LPF) communication layer, version 1 or higher, and its collectives library, and all LPF dependences.
+* The Lightweight Parallel Foundations (LPF) communication layer, version 1.0 or
+higher, its collectives library, and all its dependences
+(https://gitee.com/CSL-ALP/lpf).
 
-This dependendy applies to compilation, linking, and run-time dependences.
+This dependency applies to compilation, linking, and run-time dependences.
+
+Additionally, to generate the code documentation:
+
+* `doyxgen` reads code comments and generates the documentation
+* `graphviz` generates various diagrams for inheritance, call paths, etc.
+* `pdflatex` is required to build the PDF file out of the Latex generated
+documentation
 
 
 # Quick start
-Here are the basic steps to quickly compile and install GraphBLAS for shared memory machines (i.e. without distributed-memory support):
+The compilation and testing infrastructure is based on
+[CMake](https://cmake.org), which supports multiple tools for compilation.
+In the following, we use it to generate a building infrastructure based on GNU
+Makefile, which is CMake's default build tool on UNIX systems and is broadly
+available.
+However, the concepts described here apply very similarly to other compilation
+backends like `ninja`, which are becoming increasingly popular: instead of
+`make <target name>`, one can simply run, e.g., `ninja <target name>`.
 
-1. Issue `./configure --prefix=</path/to/install/dir> --no-lpf --no-banshee`
-     - note: use `--with-lpf=/path/to/lpf/installation/` instead of `--no-lpf` if you have LPF installed (and would like to use it).
-2. Issue `make -j` to compile the C++11 GraphBLAS library for shared memory.
-3. (*Optional*) To run all unit tests, several datasets must be made available. Please run the tools/downloadDatasets.sh script for
-     a) an overview of datasets required for the basic tests, as well as
-     b) the option to automatically download them.
-4. (*Optional*) Issue `make -j tests` to run functional and performance tests automatically. Please scan the output for any failed tests.
-5. (*Optional*) To make the GraphBLAS documentation, issue `make docs`. This generates both
-     a) PDF documentations in `docs/latex/refman.pdf`, and
-     b) HTML documentations in `docs/html/index.html`.
-6. Issue `make -j install` to install the GraphBLAS into your install directory configured during step 1.
-7. Issue `source </my/install/path>/bin/setenv` to make available the grbcxx and grbrun compiler wrapper and runner.
+Here are the basic steps to quickly compile and install ALP/GraphBLAS for shared
+memory machines (i.e. without distributed-memory support):
 
-Congratulations, you are now ready for developing and integrating GraphBLAS algorithms! Any feedback, question,
-problem reports are most welcome at
+1. Inside ALP/GraphBLAS root directory `<ALP/GraphBLAS root>` issue
+`./configure --prefix=</path/to/install/dir>` to generate the build
+infrastructure via CMake inside the `build` directory
+    - note: add `--with-lpf=/path/to/lpf/install/dir` if you have LPF installed
+and would like to use it.
+2. Enter the `build` directory with `cd build` and issue `make -j` to compile
+the C++11 ALP/GraphBLAS library for shared memory.
+3. (*Optional*) To later run all unit tests, several datasets must be made
+available. Please run the `<ALP/GraphBLAS root>/tools/downloadDatasets.sh`
+script for
 
-                        albertjan.yzelman@huawei.com
+    a. an overview of datasets required for the basic tests, as well as
+
+    b. the option to automatically download them.
+
+4. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
+generates both
+
+    a. PDF documentations in `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`,
+and
+
+    b. HTML documentations in `<ALP/GraphBLAS root>/docs/code/html/index.html`.
+
+5. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
+   tests. Please scan the output for any failed tests.
+6. (*Optional*) Issue `make -j perftests` to run an exhaustive set of unit
+   tests. Please scan the output for any failed tests.
+7. Issue `make -j install` to install ALP/GraphBLAS into your install directory
+configured during step 1.
+8. Issue `source </path/to/install/dir>/bin/setenv` to make available the
+`grbcxx` and `grbrun` compiler wrapper and runner.
+
+Congratulations, you are now ready for developing and integrating ALP/GraphBLAS
+algorithms! Any feedback, question, problem reports are most welcome at
+
+<div align="center">
+<a href="mailto:albertjan.yzelman@huawei.com">albertjan.yzelman@huawei.com</a>
+</div>
+<br />
+
+In-depth performance measurements may be obtained via the following additional
+and optional step:
+
+9. (*Optional*) To check in-depth performance of this ALP/GraphBLAS
+implementation, issue `make -j perftests`. This will run several algorithms in
+several ALP/GraphBLAS configurations. All output is captured in
+`<ALP/GraphBLAS root>/build/tests/performance/output`. A summary of benchmark
+results are found in the following locations:
+
+    a. `<ALP/GraphBLAS root>/build/tests/performance/output/benchmarks`.
+
+    b. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`.
 
 
- In-depth performance measurements may be obtained via the following additional and optional steps:
+# Overview of the main Makefile targets
 
-1. (*Optional*) To check in-depth performance of this GraphBLAS implementation, issue `make perftests`. This will run several algorithms in several GraphBLAS configurations. All output is captured in `bin/tests/output`, just as with `make tests`. A summary of the benchmark results is output to `bin/tests/output/benchmarks`.
+The following table lists the main build targets of interest:
 
-2. (*Optional*) Download the com-orkut dataset from the SNAP repository and copy it into the `datasets/` directory. Benchmarks on this dataset can be started via `make perftests` The output will be caught in `bin/tests/output/` and a summary of the results will be appended to `bin/tests/output/benchmarks`.
-
-
-# Overview of all Makefile targets
-
-The following table lists the main Makefile targets of interest for users: they allow to build, test and generate the documentation of the entire GraphBLAS code-base.
-
-| Target | Explanation |
+| Target                | Explanation |
 |----------------------:|---------------------------------------------------|
-| `libs` \[*default*\] | builds all required libraries in `libs/` |
-| `install` | this will copy `include/` and `lib/` to the install directory set by `./configure --prefix=<path>`. If configure was not called before, make install will not copy anyting and instead prints a warning |
-| `tests` | builds all test executables in `bin/tests/` and runs all tests. A summary is printed to `stdout`, full test output is retained in `bin/tests/output/` |
-| `unittests` | builds and runs only the unit tests from `make tests` |
-| `smoketests` | builds and runs only the smoke tests from `make tests` |
-| `perftests` |this will build several benchmark apps and run these on the various datasets found in the datasets/ directory. Full benchmark output is retained in `bin/tests/output`. A summary will be appended to `bin/tests/output/benchmarks` |
-| `docs` | builds all HTML GraphBLAS documentation in `docs/html/index.html`. It also generates LaTeX source files in `docs/latex`, which, if `pdflatex`, `graphviz`, and other standard tools are available, are compiled into a PDF found at `docs/latex/refman.pdf` |
-| `examples` | builds a couple of example GraphBLAS codes in `bin/examples/` |
-| `clean` | deletes all files the preceding make targets could have generated but retains all executables in `bin/`, as well as any compilation configurations found in `gcc-active.mk`. It also retains the compiled libraries in `lib/`. Note that this behaviour *includes* the deletion of test and benchmark output |
-| `veryclean` | as `clean`, but for *all* possible generated files, thus including `deps/`, executables, libraries, compilation configurations, etc. Any user modifications outside of `bin/` and deps/ are retained, however the resulting state may thus possibly *not* correspond to the original vanilla state of this distribution |
+| \[*default*\]         | builds the ALP/GraphBLAS libraries as well as     |
+|                       | examples programs in                              |
+|                       | `<ALP/GraphBLAS root>/build/examples/`            |
+| `install`             | this will copy the libraries, headers, and some   |
+|                       | convenience scripts to the install directory set  |
+|                       | by `./configure --prefix=<path>`                  |
+| `unittests`           | builds and runs all available unit tests          |
+| `smoketests`          | builds and runs all available smoke tests         |
+| `perftests`           | builds and runs all available performance tests   |
+| `tests`               | builds and runs all available unit, smoke, and    |
+|                       | performance tests                                 |
+| `docs`                | builds all HTML ALP/GraphBLAS documentation in    |
+|                       | `<ALP/GraphBLAS root>/docs/code/html/index.html`. |
+|                       | Also generates LaTeX source files in              |
+|                       | `<ALP/GraphBLAS root>/docs/code/latex`, which, if |
+|                       | `pdflatex`, `graphviz`, and other standard tools  |
+|                       | are available, are compiled into a PDF found at   |
+|                       | `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf` |
 
+For more information about the testing harness, please refer to the
+[related documentation](tests/Tests.md).
 
+For more information on how the build and test infrastructure operate, please
+refer to the [the related documentation](docs/Build_and_test_infra.md).
 
-# Deploying GraphBLAS codes
+There are several use cases in which ALP/GraphBLAS can be deployed and utilized,
+listed in the following. These assume that the user has installed ALP/GraphBLAS
+in a dedicated directory via `make install`.
 
-There are several use cases in which GraphBLAS can be deployed and utilized, listed in the following.
-
-## 1. Running GraphBLAS in parallel as a standalone executable
+## 1. Running ALP/GraphBLAS as a standalone executable
 
 ### Implementation
 
-We recommend the use of the `grb::Launcher< AUTOMATIC >` class for this use case since it abstracts away all LPF calls that would normally be required to start multiple processes via its exec member function. The  GraphBLAS program of interest must have the following signature: `void grb_program( const T& input_data, U& output_data )`. The types `T` and `U` can be any plain-old-data type, including structs -- these can be used to broadcast input data from the master process to all user processes (input_data) -- and for data to be sent back on exit of the parallel GraphBLAS program.
+The `grb::Launcher< AUTOMATIC >` class abstracts a group of user processes that
+should collaboratively execute any single ALP/GraphBLAS program. The
+ALP/GraphBLAS program of interest must have the following signature:
+`void grb_program( const T& input_data, U& output_data )`.
+The types `T` and `U` can be any plain-old-data (POD) type, including structs --
+these can be used to broadcast input data from the master process to all user
+processes (`input_data`) -- and for data to be sent back on exit of the parallel
+ALP/GraphBLAS program.
 
-The overhead of these two communication steps are linear in P as well as linear in the byte-size of `T` and `U`, and hence should be kept to a minimum. A recommended use of this mechanism is, e.g., to broadcast input data location (one or several `std::string`s containing paths) and to receive back an error code to check the status of the computation; any additional I/O should use the parallel I/O mechanisms GraphBLAS defines within the GraphBLAS program itself.
+The above sending-and-receiving across processes applies only to ALP/GraphBLAS
+implementations and backends that support or require multiple user processes;
+the sequential reference and shared-memory parallel reference_omp backends, for
+example, support only one user process.
+
+In case of multiple user processes, the overhead of the broadcasting of input
+data is linear in P as well as linear in the byte-size of `T`, and hence should
+be kept to a minimum. A recommended use of this mechanism is, e.g., to broadcast
+input data location; any additional I/O should use the parallel I/O mechanisms
+that ALP/GraphBLAS defines within the program itself.
+
+Implementations may require sending back the output data to the calling
+process, even if there is only one ALP/GraphBLAS user process. The data
+movement cost this incurs shall be linear to the byte size of `U`.
 
 ### Compilation
 
-The program must be compiled using the following flags:
+Note that our sequential reference backend auto-vectorises.
+For best results, please edit `include/graphblas/config.hpp` prior to
+compilation.
+Also note that both the shared-memory parallel reference_omp backend as well as
+the distributed-memory parallel bsp1d and hybrid backends rely on the same
+auto-vectorisation mechanism and would benefit of correct parameters present in
+the configuration file.
+
+The program may be compiled using the compiler wrapper `grbcxx` generated during
+installation; for more options on using ALP/GraphBLAS in external projects, you
+may read
+[How-To use ALP/GraphBLAS in your own project](docs/Use_ALPGraphBLAS_in_your_own_project.md).
+
+When using the LPF-enabled distributed-memory backend to ALP/GraphBLAS, for
+example, simply use
 
 ```bash
-    -D_GRB_WITH_LPF
-    -D_GRB_WITH_OMP
-    -D_GRB_WITH_REFERENCE
-    -D_GRB_BACKEND=BSP1D
-    -D_GRB_COORDINATES_BACKEND=reference
+grbcxx -b bsp1d
 ```
+as the compiler command.
+Use
 
-To ease the compilation process, the compiler wrapper `grbcxx` takes care of all compile-time dependences and macro definitions automatically. When using the LPF-enabled BSP1D backend to GraphBLAS, for example, simply use `grbcxx -b bsp1d` as the compiler command. Use `grbcxx -b bsp1d --show <your regular compilation command>` to show all flags that the wrapper passes on.
+```bash
+grbcxx -b bsp1d --show <your regular compilation command>
+```
+to show all flags that the wrapper passes on.
+
+This backend is also one example backend that is capable of spawning multiple
+ALP/GraphBLAS user processes. In contrast, compilation using
+
+```bash
+grbcxx -b reference
+```
+will produce a sequential binary based on the same ALP/GraphBLAS code instead.
 
 ### Linking
 
-The executable must be statically linked against `lib/spmd/libgraphblas.a` and dynamically against
-- `-lpthread`
-- `-lnuma`
-- `-lm`
+The executable must be statically linked against an ALP/GraphBLAS library that
+is different depending on the selected backend.
+The compiler wrapper `grbcxx` takes care of all link-time dependencies
+automatically.
+When using the LPF-enabled BSP1D backend to ALP/GraphBLAS, for example, simply
+use `grbcxx -b bsp1d` as the compiler/linker command.
+Use
 
-Any further dependences are determined by LPF; please see its documentation.
-
-To ease the linking process, the compiler wrapper `grbcxx` takes care of all link-time dependencies automatically. When using the LPF-enabled BSP1D backend to GraphBLAS, for example, simply use `grbcxx -b bsp1d` as the compiler/linker command. Use `grbcxx -b bsp1d --show <your regular compilation command>` to show all flags that the wrapper passes on.
+```bash
+grbcxx -b bsp1d --show <your regular compilation command>
+```
+to show all flags that the wrapper passes on.
 
 ### Running
 
-The resulting program has run-time dependencies that are taken care of by the LPF runner lpfrun or by the GraphBLAS runner grbrun. We recommend to use the latter: `grbrun -b bsp1d -np <#processes> </my/program>`.
+The resulting program has run-time dependencies that are taken care of by the
+LPF runner `lpfrun` or by the ALP/GraphBLAS runner `grbrun`.
+We recommend using the latter:
 
-Here, *<#processes>* is the number of requested processes.
+```bash
+grbrun -b hybrid -np <#processes> </path/to/my/program>
+```
+Here, `<#processes>` is the number of requested ALP/GraphBLAS user processes.
 
 ### Threading
 
-To employ threading in addition to distributed-memory parallelism, add the following flags during the compilation process:
+To employ threading in addition to distributed-memory parallelism, use the
+hybrid backend instead of the bsp1d backend.
 
-```bash
-    -D_GRB_BSP1D_BACKEND=reference_omp
-```
+To employ threading to use all available hyper-threads or cores on a single
+node, use the reference_omp backend.
 
-and replace `-D_GRB_COORDINATES_BACKEND=reference` by `-D_GRB_COORDINATES_BACKEND=reference_omp`.
+In both cases, make sure that during execution the `OMP_NUM_THREADS` and
+`OMP_PROC_BIND` environment variables are set appropriately on each node that
+executes an ALP/GraphBLAS user process.
 
-Alternatively, use the compiler wrapper via `grbcxx -b hybrid`.
+## 2. Running parallel ALP/GraphBLAS programs from existing parallel contexts
 
-During execution, make sure the `OMP_NUM_THREADS` and `OMP_PROC_BIND` environment variables are set appropriately on each node a user process runs on.
-
-## 2. Running parallel GraphBLAS programs from existing parallel contexts
-
-This, instead of automatically spawning a requested number of user processes, assumes a number of processes already exist and that we wish those processes to jointly execute a parallel GraphBLAS program.
+This, instead of automatically spawning a requested number of user processes,
+assumes a number of processes already exist and that we wish those processes to
+jointly execute a parallel ALP/GraphBLAS program.
 
 ### Implementation
 
-The binary that contains the GraphBLAS program to be executed in the above described way must define the following global symbol with the given value:
+The binary that contains the ALP/GraphBLAS program to be executed must define
+the following global symbol with the given value:
 
 ```c++
-       const int LPF_MPI_AUTO_INITIALIZE = 0
+const int LPF_MPI_AUTO_INITIALIZE = 0
 ```
 
-A program may then again be launced via the grb::Launcher, but in this case the MANUAL specialisation shoud be used instead. In this case its default constructor should not be used, and four arguments should be given instead:
+A program may then again be launched via the Launcher, but in this case the
+`MANUAL` template argument should be used instead.
+This specialisation disallows the use of a default constructor.
+Instead, construction requires four arguments as follows:
 
 ```c++
-    grb::Launcher< MANUAL > launcher( s, P, hostname, portname );
+grb::Launcher< MANUAL > launcher( s, P, hostname, portname )
 ```
 
-Here, P is the total number of processes that should jointly execute a parallel GraphBLAS program, while 0 <= s < P is a unique ID of this process amongst its P-1 siblings. s and P are of type `size_t`, i.e., unsigned integers. One of these processes must be selected as a connection broker prior to forming a group of GraphBLAS user processes, P-1 processes must first connect to a chosen process using TCP/IP connections to initialise. This choice must be made outside of GraphBLAS, prior to setting up the launcher; the hostname and portname are strings that must be equal across all processes.
+Here, `P` is the total number of processes that should jointly execute a
+parallel ALP/GraphBLAS program, while `0 <= s < P` is a unique ID of this
+process amongst its `P`-1 siblings.
+The types of `s` and `P` are `size_t`, i.e., unsigned integers.
+One of these processes must be selected as a connection broker prior to forming
+a group of ALP/GraphBLAS user processes.
+The remainder `P`-1 processes must first connect to the chosen broker using
+TCP/IP connections.
+This choice must be made outside of ALP/GraphBLAS, prior to setting up the
+launcher and materialises as the hostname and portname constructor arguments.
+These are strings, and must be equal across all processes.
 
-As before, and after the successful construction of a manual launcher instance, a parallel GraphBLAS program is launched via 
+As before, and after the successful construction of a manual launcher instance,
+a parallel ALP/GraphBLAS program is launched via
 
 ```c++
-    grb::Launcher< MANUAL >::exec( &grb_program, input, output ),
+grb::Launcher< MANUAL >::exec( &grb_program, input, output )
 ```
 
-in exactly the same way as described earlier with two useful differences:
-
-1. the input data struct is passed on from the original process to the GraphBLAS user process in a one-to-one fashion; i.e., no broadcast occurs. Since the original process and the GraphBLAS user process are, from an operating system point of view, in fact the same process, input no longer needs to be a plain-old-data type. Pointers, for example, are now perfectly valid to pass along.
-
-2. the same applies on output data; these are passed from the GraphBLAS user program to the original process in a one-to-one fashion as well.
+in exactly the same way as described earlier, though with two useful
+differences:
+  1. the input data struct is passed on from the original process to exactly one
+corresponding ALP/GraphBLAS user process; i.e., no broadcast occurs. Since the
+original process and the ALP/GraphBLAS user process are, from an operating
+system point of view, the same process, input no longer needs to be a
+plain-old-data type. Pointers, for example, are now perfectly valid to pass
+along.
+  2. the same applies on output data; these are passed from the ALP/GraphBLAS
+user process to a corresponding originating process in a one-to-one fashion as
+well.
 
 ### Running
 
-The pre-existing process must have been started using the LPF or GraphBLAS runner (i.e., using `lpfrun` or `grbrun -b <bsp1d/hybrid/...>` requesting *one* process only; e.g.,
+The pre-existing process must have been started using an external mechanism.
+This mechanism must include run-time dependence information that is normally
+passed by the ALP/GraphBLAS runner whenever a distributed-memory parallel
+backend is selected.
+
+If the external mechanism by which the original processes are started allows it,
+this is most easily effected by using the standard `grbcxx` launcher while
+requesting only *one* process only, e.g.,
 
 ```bash
-    grbrun -b hybrid -n 1 </your/executable>
+grbrun -b hybrid -n 1 </your/executable>
 ```
 
-This is only to ensure that the required run-time paths and libraries can be found when required, which is when the parallel GraphBLAS program is called. Setting the right library paths, opening the right libraries, or preloading them can of course also be done manually. To inspect the paths and libraries the runner makes available, simply pass `--show` to the command line.
-
-All other concerns such as compilation flags remain unchanged as per the above use case #1.
-
-## 3. Running GraphBLAS sequentially (single process)
-
-This is useful for debugging, working on small computations, or use of GraphBLAS within each thread of a larger (parallel) program.
-
-### Compiling
-
-Note that our sequential reference backend auto-vectorises. For best results, please edit `include/graphblas/config.hpp` prior to compilation.
-
-No special compilation flags are necessary to compile a single-process GraphBLAS program, save for those to enable the C++11 language. On most compilers this is achieved via
+If the external mechanism does not allow this, then please execute e.g.
 
 ```bash
-    -std=c++11
+grbrun -b hybrid -n 1 --show </any/executable>
 ```
 
-Again, the compiler wrapper `grbcxx` is recommended. Purely sequential (but vectorised) code is generated via `grbcxx -b reference`.
-
-### Linking
-
-The program must be statically linked against `lib/sequential/libgraphblas.a` and dynamically against `-lnuma`. Again, the use of `grbcxx` is recommended as it injects the right linker commands as required.
-
-### Running
-
-The generated executable can be run directly, or via `grbrun -b reference`.
+to inspect the run-time dependences and environment variables that must be made
+available, resp., set, as part of the external mechanism that spawns the
+original processes.
 
 
-## 4. Single-node shared-memory parallel GraphBLAS
+# Debugging
 
-### Compilation
+To debug an ALP/GraphBLAS program, please compile it using the sequential
+reference backend and use standard debugging tools such as `valgrind` and `gdb`.
 
-To use a single-process but multi-threaded GraphBLAS implementation that still auto-vectorises, simply add the following two compile flags:
-
-```bash
-    -D_GRB_BACKEND=reference_omp
-    -fopenmp
-```
-  
-Again, the compiler wrapper `grbcxx` is recommended. Single-node shared-memory parallel (and vectorised) code is generated via `grbcxx -b reference_omp`.
-
-When using the multi-threaded GraphBLAS backend, one can control the number of threads and their affinity through the standard OpenMP environment variables such as `OMP_NUM_THREADS` and `OMP_PROC_BIND`.
+If bugs appear in one backend but not another, it is likely you have found a bug
+in one of the backend implementations. Please send a minimum working example
+(MWE) that demonstrates the bug to the maintainers, in one of the following
+ways:
+  1. raise it as an issue at https://gitee.com/CSL-ALP/graphblas/
+  2. send the MWE to albertjan.yzelman@huawei.com
 
 
-# Developing GraphBLAS
+# Development in ALP
 
-To develop GraphBLAS, you should follow the principles and guidelines listed in the [Development guide](DEVELOPMENT.md)
+Your contributions to ALP/GraphBLAS would be most welcome. MRs can be
+contributed via gitee or any other git server the maintainers can access, or
+can be sent as an email; see above for the links.
 
+For the complete development documentation, you should start from the
+[docs/README file](docs/README.md) and the related
+[Development guide](docs/Development.md).
 
 
 # Acknowledgements
 
-The LPF communications layer was primarily authored by Wijnand Suijlen, without which the current GraphBLAS implementation would not look as it does now.
+The LPF communications layer was primarily authored by Wijnand Suijlen,
+without whom the current ALP/GraphBLAS would not be what it is now.
 
-The collectives library and its interface to the GraphBLAS is was primarily authored by Jonathan M. Nash.
+The collectives library and its interface to the ALP/GraphBLAS was primarily
+authored by Jonathan M. Nash.
+
+The testing infrastructure that performs smoke, unit, and performance testing of
+sequential, shared-memory parallel, and distributed-memory parallel backends was
+primarily developed by Daniel Di Nardo.
 
 For additional acknowledgements, please see the NOTICE file.
+
+# Citing ALP/GraphBLAS
+
+If you use ALP/GraphBLAS in your work, please consider citing the following
+papers, as appropriate:
+
+  - A C++ GraphBLAS: specification, implementation, parallelisation, and
+evaluation by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
+Pre-print. (Bibtex entry available at:
+http://albert-jan.yzelman.net/BIBs/yzelman20.bib)
 

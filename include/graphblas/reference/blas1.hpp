@@ -23,6 +23,8 @@
 #if ! defined _H_GRB_REFERENCE_BLAS1 || defined _H_GRB_REFERENCE_OMP_BLAS1
 #define _H_GRB_REFERENCE_BLAS1
 
+#include <graphblas/utils/suppressions.h>
+
 #include <iostream>    //for printing to stderr
 #include <type_traits> //for std::enable_if
 
@@ -38,7 +40,7 @@
 #include "vector.hpp"
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-#include <omp.h>
+ #include <omp.h>
 #endif
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -81,14 +83,20 @@
 		"********************************************************************" \
 		"******************************\n" );
 
+
 namespace grb {
 
 	namespace internal {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-		template< Descriptor descr, typename OutputType, typename IndexType, typename ValueType >
-		OutputType
-		setIndexOrValue( const IndexType & index, const ValueType & value, const typename std::enable_if< std::is_convertible< IndexType, OutputType >::value, void >::type * const = NULL ) {
+		template< Descriptor descr,
+			typename OutputType, typename IndexType, typename ValueType
+		>
+		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+			const typename std::enable_if<
+				std::is_convertible< IndexType, OutputType >::value,
+			void >::type * const = NULL
+		) {
 			if( descr & grb::descriptors::use_index ) {
 				return static_cast< OutputType >( index );
 			} else {
@@ -96,11 +104,16 @@ namespace grb {
 			}
 		}
 
-		template< Descriptor descr, typename OutputType, typename IndexType, typename ValueType >
-		OutputType
-		setIndexOrValue( const IndexType & index, const ValueType & value, const typename std::enable_if< ! std::is_convertible< IndexType, OutputType >::value, void >::type * const = NULL ) {
+		template< Descriptor descr,
+			typename OutputType, typename IndexType, typename ValueType
+		>
+		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+			const typename std::enable_if<
+				!std::is_convertible< IndexType, OutputType >::value,
+			void >::type * const = NULL
+		) {
 			(void)index;
-			static_assert( ! ( descr & grb::descriptors::use_index ),
+			static_assert( !( descr & grb::descriptors::use_index ),
 				"use_index descriptor passed while the index type cannot be cast "
 				"to the output type" );
 			return static_cast< OutputType >( value );
@@ -2826,19 +2839,31 @@ namespace internal {
  * \internal Implements generic eWiseApply that loops over input vector(s) to
  *           generate a (likely) sparse output.
  */
-template< bool masked, bool monoid, bool x_scalar, bool y_scalar, Descriptor descr, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2 >
+template< bool masked,
+	bool monoid,
+	bool x_scalar, bool y_scalar,
+	Descriptor descr, class OP,
+	typename OutputType, typename MaskType,
+	typename InputType1, typename InputType2
+>
 RC sparse_apply_generic( OutputType * const z_p,
-	Coordinates< reference > & z_coors,
+	Coordinates< reference > &z_coors,
 	const MaskType * const mask_p,
 	const Coordinates< reference > * const mask_coors,
 	const InputType1 * x_p,
 	const Coordinates< reference > * const x_coors,
 	const InputType2 * y_p,
 	const Coordinates< reference > * const y_coors,
-	const OP & op,
-	const size_t n ) {
+	const OP &op,
+	const size_t n
+) {
 #ifdef NDEBUG
 	(void)n;
+#endif
+#ifndef GRB_NO_NOOP_CHECKS
+	static_assert( !internal::maybe_noop< OP >::value, "Warning: you may be "
+		"generating an output vector with uninitialised values. Define "
+		"the GRB_NO_NOOP_CHECKS macro to disable this check.\n" );
 #endif
 	// assertions
 	assert( ! masked || mask_coors != NULL );
@@ -2859,6 +2884,7 @@ RC sparse_apply_generic( OutputType * const z_p,
 	const bool swap = ( x_scalar ? n : x_coors->nonzeroes() ) > ( y_scalar ? n : y_coors->nonzeroes() );
 	const Coordinates< reference > & loop_coors = swap ? *y_coors : *x_coors;
 	const Coordinates< reference > & chk_coors = swap ? *x_coors : *y_coors;
+
 #ifdef _DEBUG
 	std::cout << "\t\tfirst-phase loop of size " << loop_coors.size() << "\n";
 	if( x_scalar || y_scalar ) {
@@ -2902,8 +2928,8 @@ RC sparse_apply_generic( OutputType * const z_p,
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 		size_t k = 0;
 #else
-					// use dynamic schedule as the timings of gathers and scatters may vary significantly
-					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
+		// use dynamic schedule as the timings of gathers and scatters may vary significantly
+		#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 		for( size_t b = start; b < end; ++b ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -2920,7 +2946,7 @@ RC sparse_apply_generic( OutputType * const z_p,
 			}
 			// perform gathers
 			for( size_t i = 0; i < block_size; ++i ) {
-				if( ! masked || mask[ i ] ) {
+				if( !masked || mask[ i ] ) {
 					if( ! x_scalar ) {
 						x_b[ i ] = x_p[ offsets[ i ] ];
 					}
@@ -2929,7 +2955,7 @@ RC sparse_apply_generic( OutputType * const z_p,
 					} else {
 						y_m[ i ] = true;
 					}
-					if( ! y_scalar ) {
+					if( !y_scalar ) {
 						y_b[ i ] = y_p[ offsets[ i ] ];
 					}
 				} else {
@@ -2955,19 +2981,17 @@ RC sparse_apply_generic( OutputType * const z_p,
 			}
 			// part that may or may not be vectorised (can we do something about this??)
 			for( size_t i = 0; i < block_size; ++i ) {
-				if( ! masked || mask[ i ] ) {
+				if( !masked || mask[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 					(void)z_coors.assign( offsets[ i ] );
 #else
-								if( ! z_coors.asyncAssign( offsets[ i ], update ) ) {
-									(void)++asyncAssigns;
+					if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
+						(void) ++asyncAssigns;
 #ifdef _DEBUG
-									std::cout << "\t\t now made " << asyncAssigns
-											  << " calls to asyncAssign; added "
-												 "index "
-											  << offsets[ i ] << "\n";
+						std::cout << "\t\t now made " << asyncAssigns << " calls to asyncAssign; "
+							<< "added index " << offsets[ i ] << "\n";
 #endif
-								}
+					}
 #endif
 				}
 			}
@@ -2975,23 +2999,28 @@ RC sparse_apply_generic( OutputType * const z_p,
 			for( size_t i = 0; i < block_size; ++i ) {
 				if( ! masked || mask[ i ] ) {
 					if( monoid || y_m[ i ] ) {
-						z_p[ offsets[ i ] ] = z_b[ i ];
+						GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the only way the below could write
+						                                    // an uninitialised value is if the
+										    // static_assert at the top of this
+						z_p[ offsets[ i ] ] = z_b[ i ];     // function had triggered. See also
+						GRB_UTIL_RESTORE_WARNINGS           // internal issue #321.
 					}
 				}
 			}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			if( asyncAssigns > maxAsyncAssigns - block_size ) {
 #ifdef _DEBUG
-				std::cout << "\t\t " << omp_get_thread_num() << ": clearing local update at block " << b << ". It locally holds " << asyncAssigns << " entries. Update is at " << ( (void *)update )
-						  << "\n";
+				std::cout << "\t\t " << omp_get_thread_num() << ": clearing local update at block "
+					<< b << ". It locally holds " << asyncAssigns << " entries. "
+					<< "Update is at " << ( (void *)update ) << "\n";
 #endif
 #ifndef NDEBUG
 				const bool was_empty =
 #else
-				(void)
+					(void)
 #endif
 					z_coors.joinUpdate( update );
-				assert( ! was_empty );
+				assert( !was_empty );
 				asyncAssigns = 0;
 			}
 #endif
@@ -3168,7 +3197,11 @@ RC sparse_apply_generic( OutputType * const z_p,
 #ifdef _DEBUG
 							std::cout << "\t\t writing out " << z_b[ i ] << " to index " << offsets[ i ] << "\n";
 #endif
-							z_p[ offsets[ i ] ] = z_b[ i ];
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the only way the below could write
+							                                    // an uninitialised value is if the
+											    // static_assert at the top of this
+							z_p[ offsets[ i ] ] = z_b[ i ];     // function had triggered. See also
+							GRB_UTIL_RESTORE_WARNINGS           // internal issue #321.
 						}
 					}
 				}
@@ -3238,32 +3271,45 @@ RC sparse_apply_generic( OutputType * const z_p,
 	return SUCCESS;
 }
 
-template< bool left_scalar, bool right_scalar, bool left_sparse, bool right_sparse, Descriptor descr, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2 >
+template<
+	bool left_scalar, bool right_scalar, bool left_sparse, bool right_sparse,
+	Descriptor descr, class OP,
+	typename OutputType, typename MaskType,
+	typename InputType1, typename InputType2
+>
 RC masked_apply_generic( OutputType * const z_p,
-	Coordinates< reference > & z_coors,
+	Coordinates< reference > &z_coors,
 	const MaskType * const mask_p,
-	const Coordinates< reference > & mask_coors,
+	const Coordinates< reference > &mask_coors,
 	const InputType1 * const x_p,
 	const InputType2 * const y_p,
-	const OP & op,
+	const OP &op,
 	const size_t n,
 	const Coordinates< reference > * const left_coors = NULL,
 	const InputType1 * const left_identity = NULL,
 	const Coordinates< reference > * const right_coors = NULL,
-	const InputType2 * const right_identity = NULL ) {
+	const InputType2 * const right_identity = NULL
+) {
 #ifdef _DEBUG
-	std::cout << "In masked_apply_generic< " << left_scalar << ", " << right_scalar << ", " << left_sparse << ", " << right_sparse << ", " << descr << " > with vector size " << n << "\n";
+	std::cout << "In masked_apply_generic< " << left_scalar << ", "
+		<< right_scalar << ", " << left_sparse << ", " << right_sparse << ", "
+		<< descr << " > with vector size " << n << "\n";
 #endif
 	// assertions
-	static_assert( ! ( left_scalar && left_sparse ), "left_scalar and left_sparse cannot both be set!" );
-	static_assert( ! ( right_scalar && right_sparse ), "right_scalar and right_sparse cannot both be set!" );
-	assert( ! left_sparse || left_coors != NULL );
-	assert( ! left_sparse || left_identity != NULL );
-	assert( ! right_sparse || right_coors != NULL );
-	assert( ! right_sparse || right_identity != NULL );
+	static_assert( !( left_scalar && left_sparse ),
+		"left_scalar and left_sparse cannot both be set!"
+	);
+	static_assert( !( right_scalar && right_sparse ),
+		"right_scalar and right_sparse cannot both be set!"
+	);
+	assert( !left_sparse || left_coors != NULL );
+	assert( !left_sparse || left_identity != NULL );
+	assert( !right_sparse || right_coors != NULL );
+	assert( !right_sparse || right_identity != NULL );
 
 #ifdef _DEBUG
-	std::cout << "\tinternal::masked_apply_generic called with nnz(mask)=" << mask_coors.nonzeroes() << " and descriptor " << descr << "\n";
+	std::cout << "\tinternal::masked_apply_generic called with nnz(mask)="
+		<< mask_coors.nonzeroes() << " and descriptor " << descr << "\n";
 	if( mask_coors.nonzeroes() > 0 ) {
 		std::cout << "\t\tNonzero mask indices: " << mask_coors.index( 0 );
 		assert( mask_coors.assigned( mask_coors.index( 0 ) ) );
@@ -3282,7 +3328,8 @@ RC masked_apply_generic( OutputType * const z_p,
 	assert( unset == mask_coors.size() - mask_coors.nonzeroes() );
 #endif
 	// whether to use a Theta(n) or a Theta(nnz(mask)) loop
-	const bool bigLoop = mask_coors.nonzeroes() == n || ( descr & descriptors::invert_mask );
+	const bool bigLoop = mask_coors.nonzeroes() == n ||
+		( descr & descriptors::invert_mask );
 
 	// get block size
 	constexpr size_t size_t_block_size = config::SIMD_SIZE::value() / sizeof( size_t );
@@ -3299,291 +3346,292 @@ RC masked_apply_generic( OutputType * const z_p,
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 		size_t i = 0;
 #else
-						#pragma omp parallel
-						{
+		#pragma omp parallel
+		{
 #endif
-		constexpr const size_t block_size = op_block_size;
-		const size_t num_blocks = n / block_size;
-		const size_t start = 0;
-		const size_t end = num_blocks;
+			constexpr const size_t block_size = op_block_size;
+			const size_t num_blocks = n / block_size;
+			const size_t start = 0;
+			const size_t end = num_blocks;
 
-		// declare buffers that fit in a single SIMD register and initialise if needed
-		bool mask_b[ block_size ];
-		OutputType z_b[ block_size ];
-		InputType1 x_b[ block_size ];
-		InputType2 y_b[ block_size ];
-		for( size_t k = 0; k < block_size; ++k ) {
-			if( left_scalar ) {
-				x_b[ k ] = *x_p;
-			}
-			if( right_scalar ) {
-				y_b[ k ] = *y_p;
-			}
-		}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		auto update = z_coors.EMPTY_UPDATE();
-		size_t asyncAssigns = 0;
-		const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
-		assert( maxAsyncAssigns >= block_size );
-		#pragma omp for schedule( \
-		dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
-#endif
-		// vectorised code
-		for( size_t b = start; b < end; ++b ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			size_t i = start * block_size;
-#endif
+			// declare buffers that fit in a single SIMD register and initialise if needed
+			bool mask_b[ block_size ];
+			OutputType z_b[ block_size ];
+			InputType1 x_b[ block_size ];
+			InputType2 y_b[ block_size ];
 			for( size_t k = 0; k < block_size; ++k ) {
-				const size_t index = i + k;
-				assert( index < n );
-				mask_b[ k ] = mask_coors.template mask< descr >( index, mask_p );
+				if( left_scalar ) {
+					x_b[ k ] = *x_p;
+				}
+				if( right_scalar ) {
+					y_b[ k ] = *y_p;
+				}
 			}
-			// check for no output
-			if( left_sparse && right_sparse ) {
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			auto update = z_coors.EMPTY_UPDATE();
+			size_t asyncAssigns = 0;
+			const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
+			assert( maxAsyncAssigns >= block_size );
+			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
+#endif
+			// vectorised code
+			for( size_t b = start; b < end; ++b ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				size_t i = start * block_size;
+#endif
+				for( size_t k = 0; k < block_size; ++k ) {
+					const size_t index = i + k;
+					assert( index < n );
+					mask_b[ k ] = mask_coors.template mask< descr >( index, mask_p );
+				}
+				// check for no output
+				if( left_sparse && right_sparse ) {
+					for( size_t k = 0; k < block_size; ++k ) {
+						const size_t index = i + k;
+						assert( index < n );
+						if( mask_b[ k ] ) {
+							if( ! left_coors->assigned( index ) && ! right_coors->assigned( index ) ) {
+								mask_b[ k ] = false;
+							}
+						}
+					}
+				}
 				for( size_t k = 0; k < block_size; ++k ) {
 					const size_t index = i + k;
 					assert( index < n );
 					if( mask_b[ k ] ) {
-						if( ! left_coors->assigned( index ) && ! right_coors->assigned( index ) ) {
-							mask_b[ k ] = false;
+						if( ! left_scalar ) {
+							if( left_sparse && !left_coors->assigned( index ) ) {
+								x_b[ k ] = *left_identity;
+							} else {
+								x_b[ k ] = *( x_p + index );
+							}
+						}
+						if( !right_scalar ) {
+							if( right_sparse && !right_coors->assigned( i + k ) ) {
+								y_b[ k ] = *right_identity;
+							} else {
+								y_b[ k ] = *( y_p + index );
+							}
 						}
 					}
 				}
-			}
-			for( size_t k = 0; k < block_size; ++k ) {
-				const size_t index = i + k;
-				assert( index < n );
-				if( mask_b[ k ] ) {
-					if( ! left_scalar ) {
-						if( left_sparse && ! left_coors->assigned( index ) ) {
-							x_b[ k ] = *left_identity;
-						} else {
-							x_b[ k ] = *( x_p + index );
-						}
-					}
-					if( ! right_scalar ) {
-						if( right_sparse && ! right_coors->assigned( i + k ) ) {
-							y_b[ k ] = *right_identity;
-						} else {
-							y_b[ k ] = *( y_p + index );
-						}
+				for( size_t k = 0; k < block_size; ++k ) {
+					if( mask_b[ k ] ) {
+						apply( z_b[ k ], x_b[ k ], y_b[ k ], op );
 					}
 				}
-			}
-			for( size_t k = 0; k < block_size; ++k ) {
-				if( mask_b[ k ] ) {
-					apply( z_b[ k ], x_b[ k ], y_b[ k ], op );
-				}
-			}
-			for( size_t k = 0; k < block_size; ++k ) {
-				const size_t index = i + k;
-				assert( index < n );
-				if( mask_b[ k ] ) {
-					if( ! dense ) {
+				for( size_t k = 0; k < block_size; ++k ) {
+					const size_t index = i + k;
+					assert( index < n );
+					if( mask_b[ k ] ) {
+						if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-						if( ! z_coors.asyncAssign( index, update ) ) {
+							if( !z_coors.asyncAssign( index, update ) ) {
+								(void)++asyncAssigns;
+							}
+#else
+							(void)z_coors.assign( index );
+#endif
+						}
+						*( z_p + index ) = z_b[ k ];
+					}
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				if( asyncAssigns > maxAsyncAssigns - block_size ) {
+					(void)z_coors.joinUpdate( update );
+					asyncAssigns = 0;
+				}
+#endif
+				i += block_size;
+			}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp single nowait
+#endif
+			// scalar coda
+			for( size_t i = end * block_size; i < n; ++i ) {
+				if( mask_coors.template mask< descr >( i, mask_p ) ) {
+					if( !dense ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+						if( !z_coors.asyncAssign( i, update ) ) {
 							(void)++asyncAssigns;
 						}
+						if( asyncAssigns == maxAsyncAssigns ) {
+							(void)z_coors.joinUpdate( update );
+							asyncAssigns = 0;
+						}
 #else
-											(void)z_coors.assign( index );
+						(void)z_coors.assign( i );
 #endif
 					}
-					*( z_p + index ) = z_b[ k ];
+					const InputType1 * const x_e = left_scalar ? x_p :
+						( ( !left_sparse || left_coors->assigned( i ) ) ? x_p + i : left_identity );
+					const InputType2 * const y_e = right_scalar ? y_p :
+						( ( !right_sparse || right_coors->assigned( i ) ) ? y_p + i : right_identity );
+					OutputType * const z_e = z_p + i;
+					apply( *z_e, *x_e, *y_e, op );
 				}
 			}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			if( asyncAssigns > maxAsyncAssigns - block_size ) {
-				(void)z_coors.joinUpdate( update );
-				asyncAssigns = 0;
-			}
+			while( ! z_coors.joinUpdate( update ) ) {}
+		} // end pragma omp parallel
 #endif
-			i += block_size;
-		}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		#pragma omp single nowait
-#endif
-		// scalar coda
-		for( size_t i = end * block_size; i < n; ++i ) {
-			if( mask_coors.template mask< descr >( i, mask_p ) ) {
-				if( ! dense ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-					if( ! z_coors.asyncAssign( i, update ) ) {
-						(void)++asyncAssigns;
-					}
-					if( asyncAssigns == maxAsyncAssigns ) {
-						(void)z_coors.joinUpdate( update );
-						asyncAssigns = 0;
-					}
-#else
-										(void)z_coors.assign( i );
-#endif
-				}
-				const InputType1 * const x_e = left_scalar ? x_p : ( ( ! left_sparse || left_coors->assigned( i ) ) ? x_p + i : left_identity );
-				const InputType2 * const y_e = right_scalar ? y_p : ( ( ! right_sparse || right_coors->assigned( i ) ) ? y_p + i : right_identity );
-				OutputType * const z_e = z_p + i;
-				apply( *z_e, *x_e, *y_e, op );
-			}
-		}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		while( ! z_coors.joinUpdate( update ) ) {}
-	} // end pragma omp parallel
-#endif
-}
-else {
+	} else {
 #ifdef _DEBUG
-	std::cerr << "\t in smallLoop variant\n";
+		std::cerr << "\t in smallLoop variant\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-	#pragma omp parallel
-	{
+		#pragma omp parallel
+		{
 #endif
-		// declare buffers that fit in a single SIMD register and initialise if needed
-		constexpr const size_t block_size = size_t_block_size > 0 ? min_block_size : op_block_size;
-		bool mask_b[ block_size ];
-		OutputType z_b[ block_size ];
-		InputType1 x_b[ block_size ];
-		InputType2 y_b[ block_size ];
-		size_t indices[ block_size ];
-		for( size_t k = 0; k < block_size; ++k ) {
-			if( left_scalar ) {
-				x_b[ k ] = *x_p;
+			// declare buffers that fit in a single SIMD register and initialise if needed
+			constexpr const size_t block_size = size_t_block_size > 0 ? min_block_size : op_block_size;
+			bool mask_b[ block_size ];
+			OutputType z_b[ block_size ];
+			InputType1 x_b[ block_size ];
+			InputType2 y_b[ block_size ];
+			size_t indices[ block_size ];
+			for( size_t k = 0; k < block_size; ++k ) {
+				if( left_scalar ) {
+					x_b[ k ] = *x_p;
+				}
+				if( right_scalar ) {
+					y_b[ k ] = *y_p;
+				}
 			}
-			if( right_scalar ) {
-				y_b[ k ] = *y_p;
-			}
-		}
-		// loop over mask pattern
-		const size_t mask_nnz = mask_coors.nonzeroes();
-		const size_t num_blocks = mask_nnz / block_size;
-		const size_t start = 0;
-		const size_t end = num_blocks;
+
+			// loop over mask pattern
+			const size_t mask_nnz = mask_coors.nonzeroes();
+			const size_t num_blocks = mask_nnz / block_size;
+			const size_t start = 0;
+			const size_t end = num_blocks;
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-		size_t k = 0;
+			size_t k = 0;
 #else
-							auto update = z_coors.EMPTY_UPDATE();
-							size_t asyncAssigns = 0;
-							const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
-							assert( maxAsyncAssigns >= block_size );
-							#pragma omp for schedule( \
-		dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
+			auto update = z_coors.EMPTY_UPDATE();
+			size_t asyncAssigns = 0;
+			const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
+			assert( maxAsyncAssigns >= block_size );
+			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
 #endif
-		// vectorised code
-		for( size_t b = start; b < end; ++b ) {
+			// vectorised code
+			for( size_t b = start; b < end; ++b ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			size_t k = b * block_size;
-#ifdef _DEBUG
-			std::cout << "\t\t processing range " << k << "--" << ( k + block_size ) << "\n";
+				size_t k = b * block_size;
+ #ifdef _DEBUG
+				std::cout << "\t\t processing range " << k << "--" << ( k + block_size ) << "\n";
+ #endif
 #endif
-#endif
-			for( size_t t = 0; t < block_size; ++t ) {
-				indices[ t ] = mask_coors.index( k + t );
-			}
-			for( size_t t = 0; t < block_size; ++t ) {
-				mask_b[ t ] = mask_coors.template mask< descr >( indices[ t ], mask_p );
-			}
-			for( size_t t = 0; t < block_size; ++t ) {
-				if( mask_b[ t ] ) {
-					if( ! left_scalar ) {
-						if( left_sparse && ! left_coors->assigned( indices[ t ] ) ) {
-							x_b[ t ] = *left_identity;
-						} else {
-							x_b[ t ] = *( x_p + indices[ t ] );
-						}
-					}
-					if( ! right_scalar ) {
-						if( right_sparse && ! right_coors->assigned( indices[ t ] ) ) {
-							y_b[ t ] = *right_identity;
-						} else {
-							y_b[ t ] = *( y_p + indices[ t ] );
-						}
-					}
-				}
-			}
-			// check for no output
-			if( left_sparse && right_sparse ) {
 				for( size_t t = 0; t < block_size; ++t ) {
-					const size_t index = indices[ t ];
-					assert( index < n );
+					indices[ t ] = mask_coors.index( k + t );
+				}
+				for( size_t t = 0; t < block_size; ++t ) {
+					mask_b[ t ] = mask_coors.template mask< descr >( indices[ t ], mask_p );
+				}
+				for( size_t t = 0; t < block_size; ++t ) {
 					if( mask_b[ t ] ) {
-						if( ! left_coors->assigned( index ) && ! right_coors->assigned( index ) ) {
-							mask_b[ t ] = false;
+						if( !left_scalar ) {
+							if( left_sparse && !left_coors->assigned( indices[ t ] ) ) {
+								x_b[ t ] = *left_identity;
+							} else {
+								x_b[ t ] = *( x_p + indices[ t ] );
+							}
+						}
+						if( !right_scalar ) {
+							if( right_sparse && !right_coors->assigned( indices[ t ] ) ) {
+								y_b[ t ] = *right_identity;
+							} else {
+								y_b[ t ] = *( y_p + indices[ t ] );
+							}
 						}
 					}
 				}
-			}
-			for( size_t t = 0; t < block_size; ++t ) {
-				if( mask_b[ t ] ) {
-					apply( z_b[ t ], x_b[ t ], y_b[ t ], op );
+				// check for no output
+				if( left_sparse && right_sparse ) {
+					for( size_t t = 0; t < block_size; ++t ) {
+						const size_t index = indices[ t ];
+						assert( index < n );
+						if( mask_b[ t ] ) {
+							if( !left_coors->assigned( index ) && !right_coors->assigned( index ) ) {
+								mask_b[ t ] = false;
+							}
+						}
+					}
 				}
+				for( size_t t = 0; t < block_size; ++t ) {
+					if( mask_b[ t ] ) {
+						apply( z_b[ t ], x_b[ t ], y_b[ t ], op );
+					}
+				}
+				for( size_t t = 0; t < block_size; ++t ) {
+					if( mask_b[ t ] ) {
+						if( !dense ) {
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1
+							(void)z_coors.assign( indices[ t ] );
+#else
+							if( ! z_coors.asyncAssign( indices[ t ], update ) ) {
+								(void) ++asyncAssigns;
+#ifdef _DEBUG
+								std::cout << "\t\t now made " << asyncAssigns << " calls to asyncAssign; "
+									<< "added index " << indices[ t ] << "\n";
+#endif
+							}
+#endif
+						}
+						*( z_p + indices[ t ] ) = z_b[ t ];
+					}
+				}
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1
+				k += block_size;
+#else
+				if( asyncAssigns > maxAsyncAssigns - block_size ) {
+					(void)z_coors.joinUpdate( update );
+					asyncAssigns = 0;
+				}
+#endif
 			}
-			for( size_t t = 0; t < block_size; ++t ) {
-				if( mask_b[ t ] ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp single nowait
+#endif
+			// scalar coda
+			for( size_t k = end * block_size; k < mask_nnz; ++k ) {
+				const size_t i = mask_coors.index( k );
+				if( mask_coors.template mask< descr >( i, mask_p ) ) {
+					if( left_sparse && right_sparse ) {
+						if( ! left_coors->assigned( i ) && ! right_coors->assigned( i ) ) {
+							continue;
+						}
+					}
 					if( ! dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-						(void)z_coors.assign( indices[ t ] );
+						(void)z_coors.assign( i );
 #else
-											if( ! z_coors.asyncAssign( indices[ t ], update ) ) {
-												(void)++asyncAssigns;
-#ifdef _DEBUG
-												std::cout << "\t\t now made " << asyncAssigns
-														  << " calls to asyncAssign; added "
-															 "index "
-														  << indices[ t ] << "\n";
-#endif
-											}
+						if( ! z_coors.asyncAssign( i, update ) ) {
+							(void) ++asyncAssigns;
+						}
+						if( asyncAssigns == maxAsyncAssigns ) {
+							(void)z_coors.joinUpdate( update );
+							asyncAssigns = 0;
+						}
 #endif
 					}
-					*( z_p + indices[ t ] ) = z_b[ t ];
+					const InputType1 * const x_e = left_scalar ? x_p :
+						( ( !left_sparse || left_coors->assigned( i ) ) ? x_p + i : left_identity );
+					const InputType2 * const y_e = right_scalar ? y_p :
+						( ( !right_sparse || right_coors->assigned( i ) ) ? y_p + i : right_identity );
+					OutputType * const z_e = z_p + i;
+					apply( *z_e, *x_e, *y_e, op );
 				}
 			}
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-			k += block_size;
-#else
-								if( asyncAssigns > maxAsyncAssigns - block_size ) {
-									(void)z_coors.joinUpdate( update );
-									asyncAssigns = 0;
-								}
-#endif
-		}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		#pragma omp single nowait
+			while( ! z_coors.joinUpdate( update ) ) {}
+		} // end pragma omp parallel
 #endif
-		// scalar coda
-		for( size_t k = end * block_size; k < mask_nnz; ++k ) {
-			const size_t i = mask_coors.index( k );
-			if( mask_coors.template mask< descr >( i, mask_p ) ) {
-				if( left_sparse && right_sparse ) {
-					if( ! left_coors->assigned( i ) && ! right_coors->assigned( i ) ) {
-						continue;
-					}
-				}
-				if( ! dense ) {
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-					(void)z_coors.assign( i );
-#else
-										if( ! z_coors.asyncAssign( i, update ) ) {
-											(void)++asyncAssigns;
-										}
-										if( asyncAssigns == maxAsyncAssigns ) {
-											(void)z_coors.joinUpdate( update );
-											asyncAssigns = 0;
-										}
-#endif
-				}
-				const InputType1 * const x_e = left_scalar ? x_p : ( ( ! left_sparse || left_coors->assigned( i ) ) ? x_p + i : left_identity );
-				const InputType2 * const y_e = right_scalar ? y_p : ( ( ! right_sparse || right_coors->assigned( i ) ) ? y_p + i : right_identity );
-				OutputType * const z_e = z_p + i;
-				apply( *z_e, *x_e, *y_e, op );
-			}
-		}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		while( ! z_coors.joinUpdate( update ) ) {}
-	} // end pragma omp parallel
-#endif
+	}
+	return SUCCESS;
+
 }
-return SUCCESS;
-} // namespace grb
 
 } // end namespace ``grb::internal''
 
@@ -3815,8 +3863,8 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
 	OutputType * const z_p = internal::getRaw( z );
 	const InputType1 * const x_p = internal::getRaw( x );
 	const InputType2 * const y_p = internal::getRaw( y );
-	const auto & x_coors = internal::getCoordinates( x );
-	const auto & y_coors = internal::getCoordinates( y );
+	const auto &x_coors = internal::getCoordinates( x );
+	const auto &y_coors = internal::getCoordinates( y );
 	const auto op = monoid.getOperator();
 
 	// z will have an a-priori unknown sparsity structure
@@ -6796,12 +6844,18 @@ RC eWiseMulAdd( Vector< OutputType, reference, Coords > & z,
 namespace internal {
 
 	/** @see grb::dot */
-	template< Descriptor descr = descriptors::no_operation, class AddMonoid, class AnyOp, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC dot_generic( OutputType & z,
-		const Vector< InputType1, reference, Coords > & x,
-		const Vector< InputType2, reference, Coords > & y,
-		const AddMonoid & addMonoid = AddMonoid(),
-		const AnyOp & anyOp = AnyOp() ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AddMonoid, class AnyOp,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC dot_generic( OutputType &z,
+		const Vector< InputType1, reference, Coords > &x,
+		const Vector< InputType2, reference, Coords > &y,
+		const AddMonoid &addMonoid = AddMonoid(),
+		const AnyOp &anyOp = AnyOp()
+	) {
 		const size_t n = internal::getCoordinates( x ).size();
 		if( n != internal::getCoordinates( y ).size() ) {
 			return MISMATCH;
@@ -6824,7 +6878,7 @@ namespace internal {
 		size_t loopsize = n;
 		auto * coors_r_p = &( internal::getCoordinates( x ) );
 		auto * coors_q_p = &( internal::getCoordinates( y ) );
-		if( ! dense ) {
+		if( !dense ) {
 			if( nzx < nzy ) {
 				loopsize = nzx;
 			} else {
@@ -6832,8 +6886,8 @@ namespace internal {
 				std::swap( coors_r_p, coors_q_p );
 			}
 		}
-		auto & coors_r = *coors_r_p;
-		auto & coors_q = *coors_q_p;
+		auto &coors_r = *coors_r_p;
+		auto &coors_q = *coors_q_p;
 
 #ifdef _DEBUG
 		std::cout << "\t In dot_generic with loopsize " << loopsize << "\n";
@@ -6845,24 +6899,24 @@ namespace internal {
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, loopsize, AnyOp::blocksize );
 #else
-						const size_t start = 0;
-						const size_t end = loopsize;
+			const size_t start = 0;
+			const size_t end = loopsize;
 #endif
 			if( end > start ) {
 				// get raw alias
 				const InputType1 * __restrict__ a = internal::getRaw( x );
 				const InputType2 * __restrict__ b = internal::getRaw( y );
 
-				// overwrite z with first multiplicant
-				typename AddMonoid::D3 reduced;
+				// overwrite z with first multiplicant, if available-- otherwise, initialise
+				// to zero:
+				typename AddMonoid::D3 reduced =
+					addMonoid.template getIdentity< typename AddMonoid::D3 >();
 				if( dense ) {
 					apply( reduced, a[ end - 1 ], b[ end - 1 ], anyOp );
 				} else {
 					const size_t index = coors_r.index( end - 1 );
 					if( coors_q.assigned( index ) ) {
 						apply( reduced, a[ index ], b[ index ], anyOp );
-					} else {
-						reduced = addMonoid.template getIdentity< typename AddMonoid::D3 >();
 					}
 				}
 
@@ -6872,8 +6926,8 @@ namespace internal {
 					while( i + AnyOp::blocksize < end - 1 ) {
 						// declare buffers
 						static_assert( AnyOp::blocksize > 0,
-							"Configuration error: vectorisation blocksize set to "
-							"0!" );
+							"Configuration error: vectorisation blocksize set to 0!" );
+
 						typename AnyOp::D1 xx[ AnyOp::blocksize ];
 						typename AnyOp::D2 yy[ AnyOp::blocksize ];
 						typename AnyOp::D3 zz[ AnyOp::blocksize ];
@@ -6885,6 +6939,11 @@ namespace internal {
 						}
 
 						// perform element-wise multiplication
+						if( internal::maybe_noop< AnyOp >::value ) {
+							for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
+								zz[ k ] = addMonoid.template getIdentity< typename AnyOp::D3 >();
+							}
+						}
 						for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
 							apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
 						}
@@ -6902,8 +6961,7 @@ namespace internal {
 					while( i + AnyOp::blocksize < end - 1 ) {
 						// declare buffers
 						static_assert( AnyOp::blocksize > 0,
-							"Configuration error: vectorisation blocksize set to "
-							"0!" );
+							"Configuration error: vectorisation blocksize set to 0!" );
 						typename AnyOp::D1 xx[ AnyOp::blocksize ];
 						typename AnyOp::D2 yy[ AnyOp::blocksize ];
 						typename AnyOp::D3 zz[ AnyOp::blocksize ];
@@ -6925,15 +6983,25 @@ namespace internal {
 							}
 						}
 
-						// rewind
-						i -= AnyOp::blocksize;
-
 						// perform element-wise multiplication
-						for( size_t k = 0; k < AnyOp::blocksize; ++k, ++i ) {
-							if( mask[ k ] ) {
-								apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
-							} else {
+						if( internal::maybe_noop< AnyOp >::value ) {
+							// we are forced to first initialise zz before doing masked apply
+							for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
 								zz[ k ] = addMonoid.template getIdentity< typename AnyOp::D3 >();
+							}
+							for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
+								if( mask[ k ] ) {
+									apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
+								}
+							}
+						} else {
+							// if apply surely initialises zz, we could use a blend-like op
+							for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
+								if( mask[ k ] ) {
+									apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
+								} else {
+									zz[ k ] = addMonoid.template getIdentity< typename AnyOp::D3 >();
+								}
 							}
 						}
 
@@ -6947,7 +7015,7 @@ namespace internal {
 
 				// perform element-by-element updates for remainder (if any)
 				for( ; i < end - 1; ++i ) {
-					OutputType temp;
+					OutputType temp = addMonoid.template getIdentity< OutputType >();
 					const size_t index = coors_r.index( i );
 					if( dense || coors_q.assigned( index ) ) {
 						apply( temp, a[ index ], b[ index ], anyOp );
@@ -6960,7 +7028,7 @@ namespace internal {
 				#pragma omp critical
 				{ foldr( reduced, z, addMonoid.getOperator() ); }
 #else
-							z = static_cast< OutputType >( reduced );
+				z = static_cast< OutputType >( reduced );
 #endif
 			}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -6977,7 +7045,8 @@ namespace internal {
 } // namespace internal
 
 /**
- * Calculates the dot product, \f$ z = (x,y) \f$, under the given semiring.
+ * Calculates the dot product, \f$ \alpha = (x,y) \f$, under a given additive
+ * monoid and multiplicative operator.
  *
  * @tparam descr      The descriptor to be used (descriptors::no_operation
  *                    if left unspecified).
@@ -6986,11 +7055,19 @@ namespace internal {
  * @tparam InputType1 The input element type of the left-hand input vector.
  * @tparam InputType2 The input element type of the right-hand input vector.
  *
- * @param[out]  z  The output element \f$ \alpha \f$.
- * @param[in]   x  The left-hand input vector.
- * @param[in]   y  The right-hand input vector.
- * @param[in] ring The semiring to perform the dot-product under. If left
- *                 undefined, the default constructor of \a Ring will be used.
+ * @param[in,out]  z    The output element \f$ z + \alpha \f$.
+ * @param[in]      x    The left-hand input vector.
+ * @param[in]      y    The right-hand input vector.
+ * @param[in] addMonoid The additive monoid under which the reduction of the
+ *                      results of element-wise multiplications of \a x and
+ *                      \a y are performed.
+ * @param[in]   anyop   The multiplicative operator under which element-wise
+ *                      multiplications of \a x and \a y are performed. This can
+ *                      be any binary operator.
+ *
+ * By the definition that a dot-product operates under any additive monoid and
+ * any binary operator, it follows that a dot-product under any semiring can be
+ * trivially reduced to a call to this version instead.
  *
  * @return grb::MISMATCH When the dimensions of \a x and \a y do not match. All
  *                       input data containers are left untouched if this exit
@@ -7030,34 +7107,53 @@ namespace internal {
  * \par Valid descriptors
  *   -# grb::descriptors::no_operation
  *   -# grb::descriptors::no_casting
+ *   -# grb::descriptors::dense
  * \endparblock
+ *
+ * If the dense descriptor is set, this implementation returns grb::ILLEGAL if
+ * it was detected that either \a x or \a y was sparse. In this case, it shall
+ * otherwise be as though the call to this function had not occurred (no side
+ * effects).
+ *
+ * \note The standard, in contrast, only specifies undefined behaviour would
+ *       occur. This implementation goes beyond the standard by actually
+ *       specifying what will happen.
  */
-template< Descriptor descr = descriptors::no_operation, class AddMonoid, class AnyOp, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-RC dot( OutputType & z,
-	const Vector< InputType1, reference, Coords > & x,
-	const Vector< InputType2, reference, Coords > & y,
-	const AddMonoid & addMonoid = AddMonoid(),
-	const AnyOp & anyOp = AnyOp(),
-	const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< AddMonoid >::value &&
-			grb::is_operator< AnyOp >::value,
-		void >::type * const = NULL ) {
+template<
+	Descriptor descr = descriptors::no_operation,
+	class AddMonoid, class AnyOp,
+	typename OutputType, typename InputType1, typename InputType2,
+	typename Coords
+>
+RC dot( OutputType &z,
+	const Vector< InputType1, reference, Coords > &x,
+	const Vector< InputType2, reference, Coords > &y,
+	const AddMonoid &addMonoid = AddMonoid(),
+	const AnyOp &anyOp = AnyOp(),
+	const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		!grb::is_object< InputType1 >::value &&
+		!grb::is_object< InputType2 >::value &&
+		grb::is_monoid< AddMonoid >::value &&
+		grb::is_operator< AnyOp >::value,
+	void >::type * const = NULL
+) {
 	// static sanity checks
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "grb::dot",
 		"called with a left-hand vector value type that does not match the first "
 		"domain of the given multiplicative operator" );
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "grb::dot",
 		"called with a right-hand vector value type that does not match the second "
 		"domain of the given multiplicative operator" );
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "grb::dot",
 		"called with a multiplicative operator output domain that does not match "
 		"the first domain of the given additive operator" );
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "grb::dot",
 		"called with an output vector value type that does not match the second "
 		"domain of the given additive operator" );
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "grb::dot",
 		"called with an additive operator whose output domain does not match its "
 		"second input domain" );
-	NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "grb::dot",
+	NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "grb::dot",
 		"called with an output vector value type that does not match the third "
 		"domain of the given additive operator" );
 
@@ -7073,27 +7169,37 @@ RC dot( OutputType & z,
 
 	// catch trivial case
 	if( nnzx == 0 && nnzy == 0 ) {
-		z = addMonoid.template getIdentity< OutputType >();
 		return SUCCESS;
 	}
 
+	// dot will be computed out-of-place here. A separate field is needed because
+	// of possible multi-threaded computation of the dot.
+	OutputType oop = addMonoid.template getIdentity< OutputType >();
+
 	// if descriptor says nothing about being dense...
-	if( ! ( descr & descriptors::dense ) ) {
+	RC ret = SUCCESS;
+	if( !( descr & descriptors::dense ) ) {
 		// check if inputs are actually dense...
 		if( nnzx == n && nnzy == n ) {
-			// call implementation with the right descriptor
-			return internal::dot_generic< descr | descriptors::dense >( z, x, y, addMonoid, anyOp );
+			// call dense implementation
+			ret = internal::dot_generic< descr | descriptors::dense >( oop, x, y, addMonoid, anyOp );
+		} else {
+			// pass to sparse implementation
+			ret = internal::dot_generic< descr >( oop, x, y, addMonoid, anyOp );
 		}
 	} else {
 		// descriptor says dense, but if any of the vectors are actually sparse...
-		if( internal::getCoordinates( x ).nonzeroes() < n || internal::getCoordinates( y ).nonzeroes() < n ) {
-			// call implementation with corrected descriptor
-			return internal::dot_generic< descr & ~( descriptors::dense ) >( z, x, y, addMonoid, anyOp );
+		if( nnzx < n || nnzy < n ) {
+			return ILLEGAL;
+		} else {
+			// all OK, pass to dense implementation
+			ret = internal::dot_generic< descr >( oop, x, y, addMonoid, anyOp );
 		}
 	}
 
-	// all OK, pass to implementation
-	return internal::dot_generic< descr >( z, x, y, addMonoid, anyOp );
+	// fold out-of-place dot product into existing input, and exit
+	ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
+	return ret;
 }
 
 /** No implementation notes. */
@@ -7450,13 +7556,14 @@ RC unzip( Vector< T, reference, Coords > & x,
 
 // parse this unit again for OpenMP support
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-#define _H_GRB_REFERENCE_OMP_BLAS1
-#define reference reference_omp
-#include "graphblas/reference/blas1.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_BLAS1
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_BLAS1
+  #define _H_GRB_REFERENCE_OMP_BLAS1
+  #define reference reference_omp
+  #include "graphblas/reference/blas1.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_BLAS1
+ #endif
 #endif
 
 #endif // end `_H_GRB_REFERENCE_BLAS1'
+

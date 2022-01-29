@@ -34,24 +34,28 @@
 #include <graphblas/utils/autodeleter.hpp>
 
 #ifndef _GRB_NO_LIBNUMA
-#include <numa.h> //numa_alloc_interleaved
+ #include <numa.h> //numa_alloc_interleaved
 #endif
 
 #ifndef _GRB_NO_STDIO
-#include <iostream> //std::err
+ #include <iostream> //std::err
 #endif
 
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
 
 			template< enum Backend implementation >
 			class AllocatorFunctions {
+
 			private:
 				/** Disable instantiation. */
 				AllocatorFunctions() {}
 
 			public:
+
 				template< typename T, typename... Targs >
 				static RC alloc( size_t &, T * __restrict__ &, const size_t, const bool, utils::AutoDeleter< T > &, Targs &&... ) {
 #ifndef _GRB_NO_STDIO
@@ -79,11 +83,14 @@ namespace grb {
 			};
 
 		} // namespace internal
+
 	}     // namespace utils
+
 } // namespace grb
 
 // define user API:
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -162,20 +169,26 @@ namespace grb {
 		 *                     allocation.
 		 */
 		template< typename T, enum Backend implementation, typename... Targs >
-		RC alloc( const std::string prefix,
-			const std::string postfix,
-			T * __restrict__ & pointer,
-			const size_t size,
+		RC alloc( const std::string prefix, const std::string postfix,
+			T * __restrict__ &pointer, const size_t size,
 			const bool shared,
-			utils::AutoDeleter< T, implementation > & deleter,
-			Targs &&... args ) {
+			utils::AutoDeleter< T, implementation > &deleter,
+			Targs &&... args
+		) {
 			size_t allocd = 0;
-			const RC ret = internal::Allocator< implementation >::functions::alloc( allocd, pointer, size, shared, deleter, std::forward< Targs >( args )... );
-			internal::Allocator< implementation >::functions::postAlloc( ret, allocd, prefix, postfix );
+			const RC ret = internal::Allocator< implementation >::functions::alloc(
+				allocd, pointer, size, shared,
+				deleter, std::forward< Targs >( args )...
+			);
+			internal::Allocator< implementation >::functions::postAlloc(
+				ret, allocd, prefix, postfix
+			);
 			return ret;
 		}
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif // _H_GRB_BASE_ALLOC
+

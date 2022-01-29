@@ -1,3 +1,4 @@
+#!/bin/bash
 
 #
 #   Copyright 2021 Huawei Technologies Co., Ltd.
@@ -15,8 +16,12 @@
 # limitations under the License.
 #
 
+BACKENDS=(@AVAILABLE_BACKENDS_SPACED@)
+BACKENDRUNENV=(@BACKEND_RUNENV_SPACED@)
+BACKENDRUNNER=(@BACKEND_RUNNER_SPACED@)
+
 declare -a ARGS
-SHOW=
+SHOW="eval"
 BACKEND=${BACKENDS[0]}
 
 while [[ $# -gt 0 ]]; do

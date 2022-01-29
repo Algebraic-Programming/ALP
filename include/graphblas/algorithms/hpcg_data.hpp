@@ -33,8 +33,9 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * @brief basic data container for the HPCG algorithm, storing \b only the data in common between the full CG run
-		 * 			and the V-cycle multi-grid solver. Additional data are stored in inheriting daata structures.
+		 * @brief basic data container for the HPCG algorithm, storing \b only the
+		 * data in common between the full CG run and the V-cycle multi-grid solver.
+		 * Additional data are stored in inheriting daata structures.
 		 *
 		 * @tparam IOType type of values of the vectors for intermediate results
 		 * @tparam NonzeroType type of the values stored inside the system matrix #A
@@ -74,18 +75,18 @@ namespace grb {
 		/**
 		 * @brief Data container for all multi-grid inputs and outputs.
 		 *
-		 * @tparam IOType type of values of the vectors for intermediate results
-		 * @tparam NonzeroType type of the values stored inside the system matrix \p A
-		 * 			and the coarsening matrix #Ax_finer
+		 * @tparam IOType Type of values of the vectors for intermediate results
+		 * @tparam NonzeroType Type of the values stored inside the system matrix \p A
+		 *                     and the coarsening matrix #Ax_finer
 		 *
 		 * This data structure stores information for a full multi-grid V cycle, i.e.
 		 * - input and output vectors for solution, residual and temporary vectors
 		 * - coarsening information, in particular the #coarsening_matrix that
-		 * 		coarsens a larger system of size #finer_size to the current system
-		 * 		of size #system_size
+		 *   coarsens a larger system of size #finer_size to the current system
+		 *   of size #system_size
 		 * - the next level of coarsening, pointed to by #coarser_level, possibly being \c nullptr
-		 * 		if no further coarsening is desired; note that this information is automatically
-		 * destructud on object destruction (if any)
+		 *   if no further coarsening is desired; note that this information is automatically
+		 *   destructed on object destruction (if any)
 		 *
 		 * Vectors stored here refer to the \b coarsened system (with the exception of #Ax_finer),
 		 * thus having size #system_size; this also holds for the system matrix #A,
@@ -116,7 +117,7 @@ namespace grb {
 
 			/**
 			 * @brief Construct a new \c multi_grid_data_object by initializing internal data structures and setting
-			 * 			#coarser_level to \c nullptr.
+			 *        #coarser_level to \c nullptr.
 			 * @param[in] coarser_size size of the current system, i.e. size \b after coarsening
 			 * @param[in] _finer_size  size of the finer system, i.e. size of external objects \b before coarsening
 			 */
@@ -137,7 +138,7 @@ namespace grb {
 
 		/**
 		 * @brief Data stucture to store the data for a full HPCG run: system vectors and matrix,
-		 * 			coarsening information and temporary vectors.
+		 * coarsening information and temporary vectors.
 		 *
 		 * This data structures contains all the needed vectors and matrices to solve a linear system
 		 * \f$ A x = b \f$. As for \ref system_data, internal elements are built and their sizes properly initialized
@@ -165,7 +166,7 @@ namespace grb {
 
 			/**
 			 * @brief Construct a new \c hpcg_data object by building vectors and matrices and by setting
-			 * 	#coarser_level to \c nullptr (i.e. no coarser level is assumed).
+			 * #coarser_level to \c nullptr (i.e. no coarser level is assumed).
 			 *
 			 * @param[in] sys_size the size of the simulated system, i.e. of all the internal vectors and matrices
 			 */

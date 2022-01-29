@@ -32,39 +32,51 @@ grb::internal::commsPreamble( internal::BSP1D_Data & data, lpf_coll_t * coll, co
 #ifdef _DEBUG
 		std::cerr << "internal::commsPreamble, could not initialise lpf_coll_t!" << std::endl;
 #endif
-		assert( false );
+#ifndef NDEBUG
+		const bool could_not_initialize_lpf_collectives = false;
+		assert( could_not_initialize_lpf_collectives );
+#endif
 		return PANIC;
 	}
 	if( maxBufSize > 0 && data.checkBufferSize( maxBufSize ) != SUCCESS ) {
 #ifdef _DEBUG
 		std::cerr << "internal::commsPreamble, could not reserve buffer size "
-					 "of "
-				  << maxBufSize << "!" << std::endl;
+			<< "of " << maxBufSize << "!" << std::endl;
 #endif
-		assert( false );
+#ifndef NDEBUG
+		const bool insufficient_buffer_capacity_for_requested_pattern = false;
+		assert( insufficient_buffer_capacity_for_requested_pattern );
+#endif
 		return PANIC;
 	}
 	if( maxMessages > 0 && data.ensureMaxMessages( maxMessages ) != SUCCESS ) {
 #ifdef _DEBUG
 		std::cerr << "internal::commsPreamble, could not reserve max msg "
-					 "buffer size of "
-				  << maxMessages << "!" << std::endl;
+			<< "buffer size of " << maxMessages << "!" << std::endl;
 #endif
-		assert( false );
+#ifndef NDEBUG
+		const bool could_not_resize_lpf_message_buffer = false;
+		assert( could_not_resize_lpf_message_buffer );
+#endif
 		return PANIC;
 	}
-	if( ( localMemslot > 0 || globalMemslot > 0 ) && data.ensureMemslotAvailable( localMemslot + globalMemslot ) != SUCCESS ) {
+	if( (localMemslot > 0 || globalMemslot > 0) &&
+		data.ensureMemslotAvailable( localMemslot + globalMemslot ) != SUCCESS
+	) {
 #ifdef _DEBUG
-		std::cerr << "internal::commsPreamble, could not reserve " << localMemslot << " local memory slots!" << std::endl;
-		std::cerr << "internal::commsPreamble, could not reserve " << globalMemslot << " global memory slots!" << std::endl;
+		std::cerr << "internal::commsPreamble, could not reserve " << localMemslot
+			<< " local memory slots!" << std::endl;
+		std::cerr << "internal::commsPreamble, could not reserve " << globalMemslot
+			<< " global memory slots!" << std::endl;
 #endif
-		assert( false );
+#ifndef NDEBUG
+		const bool could_not_resize_lpf_memory_slot_capacity = false;
+		assert( could_not_resize_lpf_memory_slot_capacity );
+#endif
 		return PANIC;
 	}
 #ifdef _DEBUG
-	std::cout << "internal::commsPreamble, taking requested number of "
-				 "memslots..."
-			  << std::endl;
+	std::cout << "internal::commsPreamble, taking requested number of memslots..." << std::endl;
 #endif
 	if( localMemslot > 0 ) {
 		data.signalMemslotTaken( localMemslot );
@@ -78,7 +90,7 @@ grb::internal::commsPreamble( internal::BSP1D_Data & data, lpf_coll_t * coll, co
 	return SUCCESS;
 }
 
-grb::RC grb::internal::commsPostamble( internal::BSP1D_Data & data,
+grb::RC grb::internal::commsPostamble( internal::BSP1D_Data &data,
 	lpf_coll_t * const coll,
 	const size_t maxMessages,
 	const size_t maxBufSize,
@@ -142,19 +154,27 @@ grb::RC grb::internal::gather( const lpf_memslot_t src, const size_t src_offset,
 	return SUCCESS;
 }
 
-grb::RC grb::internal::allgather( const lpf_memslot_t src, const size_t src_offset, const lpf_memslot_t dst, const size_t dst_offset, const size_t size, const size_t total, const bool exclude_self ) {
+grb::RC grb::internal::allgather(
+	const lpf_memslot_t src, const size_t src_offset,
+	const lpf_memslot_t dst, const size_t dst_offset,
+	const size_t size, const size_t total,
+	const bool exclude_self
+) {
 	// sanity check
 	if( size > total ) {
 		return ILLEGAL;
 	}
 
 	// we need access to LPF context
-	internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+	internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 	// ensure we can support comms pattern: total
 	lpf_coll_t coll;
 	if( commsPreamble( data, &coll, data.P, total ) != SUCCESS ) {
-		assert( false );
+#ifndef NDEBUG
+		const bool commsPreamble_returned_error = false;
+		assert( commsPreamble_returned_error );
+#endif
 		return PANIC;
 	}
 
@@ -165,20 +185,35 @@ grb::RC grb::internal::allgather( const lpf_memslot_t src, const size_t src_offs
 			continue;
 		}
 		// put local data remotely
-		if( lpf_put( data.context, src, src_offset, i, dst, dst_offset, size, LPF_MSG_DEFAULT ) != LPF_SUCCESS ) {
-			assert( false );
+		if( lpf_put( data.context,
+				src, src_offset,
+				i, dst, dst_offset,
+				size,
+				LPF_MSG_DEFAULT
+			) != LPF_SUCCESS
+		) {
+#ifndef NDEBUG
+			const bool lpf_put_returned_error = false;
+			assert( lpf_put_returned_error );
+#endif
 			return PANIC;
 		}
 	}
 
 	// finish allgather
 	if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-		assert( false );
+#ifndef NDEBUG
+		const bool lpf_sync_returned_error = false;
+		assert( lpf_sync_returned_error );
+#endif
 		return PANIC;
 	}
 
 	if( commsPostamble( data, &coll, data.P, total ) != SUCCESS ) {
-		assert( false );
+#ifndef NDEBUG
+		const bool commsPostamble_returned_error = false;
+		assert( commsPostamble_returned_error );
+#endif
 		return PANIC;
 	}
 
@@ -190,8 +225,9 @@ grb::RC grb::internal::alltoall( const lpf_memslot_t src, const size_t src_offse
 	// we need access to LPF context
 	internal::BSP1D_Data & data = internal::grb_BSP1D.load();
 #ifdef _DEBUG
-	std::cout << data.s << ", calls alltoall with src slot " << src << ", offset " << src_offset << ", element size " << size << ", buffer (output) offset " << buffer_offset << ", and exclude_self "
-			  << exclude_self << "\n";
+	std::cout << data.s << ", calls alltoall with src slot " << src << ", offset " << src_offset
+		<< ", element size " << size << ", buffer (output) offset " << buffer_offset
+		<< ", and exclude_self " << exclude_self << "\n";
 #endif
 
 	// catch trivial case
@@ -200,9 +236,7 @@ grb::RC grb::internal::alltoall( const lpf_memslot_t src, const size_t src_offse
 	}
 
 	// make sure we can support comms pattern
-	lpf_coll_t coll;
 	const size_t nmsgs = exclude_self ? 2 * data.P - 2 : 2 * data.P;
-	assert( data.checkBufferSize( buffer_offset + data.P * size ) == grb::SUCCESS );
 	RC ret = data.ensureMaxMessages( nmsgs );
 
 	// get remote contributions
@@ -321,3 +355,4 @@ grb::RC grb::internal::alltoallv( const lpf_memslot_t src,
 	// done
 	return SUCCESS;
 }
+

@@ -927,9 +927,12 @@ static int                               APL_TprdNew
                        "[%2d, *] nrow = %12ld, ncol = %12ld, nnnz = %12ld\n",
                        PRNK, *NROW, *NCOL, *NNNZ );
    }
-   (void) fprintf( stdout,
+   if( lerr == APL_SUCCESS )
+   {
+       (void) fprintf( stdout,
                    "[%2d, *] offb = %12ld, fsiz = %12ld, offe = %12ld\n",
                    PRNK, offb, fsiz, offe );
+   }
    #endif
 
    if( lerr == APL_SUCCESS ) lerr = APL_TprdSizeOf( PTHR, RDBS, &ltpr, ioff );

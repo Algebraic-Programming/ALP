@@ -49,9 +49,16 @@ namespace grb {
 				AllocatorFunctions() {}
 
 			public:
-				/** Allocates a single chunk of memory. */
+				/**
+				 * Allocates a single chunk of memory.
+				 *
+				 * @param[in,out] allocd Running accumulation of memory that has been allocated.
+				 */
 				template< typename T >
-				static RC mode_alloc( T * __restrict__ & pointer, const size_t elements, const grb::config::ALLOC_MODE mode, utils::AutoDeleter< T > & deleter, size_t & allocd ) {
+				static RC mode_alloc( T * __restrict__ &pointer, const size_t elements,
+					const grb::config::ALLOC_MODE mode, utils::AutoDeleter< T > &deleter,
+					size_t &allocd
+				) {
 					// catch trivial case
 					if( elements == 0 ) {
 						pointer = NULL;

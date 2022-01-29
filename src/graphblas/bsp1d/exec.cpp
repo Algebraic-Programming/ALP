@@ -20,7 +20,7 @@
  * @date 17th of April, 2017
  */
 
-#include "graphblas/bsp1d/exec.hpp"
+#include <graphblas/bsp1d/exec.hpp>
 
 #ifdef _GRB_MANUAL
 const int LPF_MPIRMA_AUTO_INITIALIZE = 0;

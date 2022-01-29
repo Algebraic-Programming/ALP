@@ -386,16 +386,29 @@ namespace grb {
 		/**
 		 * A standard iterator for the Vector< D, reference, MyCoordinates > class.
 		 * @see Vector::const_iterator for the user-level specification.
+		 *
+		 * This iterator takes the following template argument that is useful when
+		 * iterating over containers that are distributed over multiple user
+		 * processes.
+		 *
+		 * @tparam spmd_backend Which backend controls the user processes.
 		 */
-		template< class ActiveDistribution >
-		class ConstIterator : public std::iterator< std::forward_iterator_tag, std::pair< const size_t, const D >, size_t > {
-
+		template< Backend spmd_backend = reference >
+		class ConstIterator : public std::iterator<
+			std::forward_iterator_tag,
+			std::pair< const size_t, const D >,
+			size_t
+		> {
 			// Vector should be able to call ConstIterator's private constructor;
 			// no-one else is allowed to.
 			friend class Vector< D, reference, MyCoordinates >;
 
 		private:
-			/** Handle to the container to iterate on. */
+
+			/** The currently active inter user process distribution. */
+			using ActiveDistribution = internal::Distribution< spmd_backend >;
+
+			/** Handle to the container to iterate over. */
 			const Vector< D, reference, MyCoordinates > * container;
 
 			/** The current iterator value. */
@@ -430,8 +443,13 @@ namespace grb {
 			 * given container. If it is equal, this iterator will be set to its end
 			 * position.
 			 */
-			ConstIterator( const Vector< D, reference, MyCoordinates > & in, size_t initial = 0, size_t processID = 0, size_t numProcesses = 1 ) noexcept :
-				container( &in ), position( initial ), s( processID ), P( numProcesses ) {
+			ConstIterator( const Vector< D, reference, MyCoordinates > &in,
+				size_t initial = 0,
+				size_t processID = 0, size_t numProcesses = 1
+			) noexcept :
+				container( &in ), position( initial ),
+				s( processID ), P( numProcesses )
+			{
 				// make sure the initial value is valid;
 				// if not, go to the next valid value:
 				if( container->_coordinates.isEmpty() ) {
@@ -483,21 +501,31 @@ namespace grb {
 			}
 
 		public:
+
 			/** Default constructor. */
-			ConstIterator() noexcept : container( NULL ), position( 0 ), max( 0 ), s( grb::spmd< reference >::pid() ), P( grb::spmd< reference >::nprocs() ) {}
+			ConstIterator() noexcept :
+				container( NULL ), position( 0 ), max( 0 ),
+				s( grb::spmd< spmd_backend >::pid() ),
+				P( grb::spmd< spmd_backend >::nprocs() )
+			{}
 
 			/** Copy constructor. */
-			ConstIterator( const ConstIterator & other ) noexcept : container( other.container ), value( other.value ), position( other.position ), max( other.max ), s( other.s ), P( other.P ) {}
+			ConstIterator( const ConstIterator &other ) noexcept :
+				container( other.container ),
+				value( other.value ), position( other.position ),
+				max( other.max ),
+				s( other.s ), P( other.P )
+			{}
 
 			/** Move constructor. */
-			ConstIterator( ConstIterator && other ) : container( other.container ), s( other.s ), P( other.P ) {
+			ConstIterator( ConstIterator &&other ) : container( other.container ), s( other.s ), P( other.P ) {
 				std::swap( value, other.value );
 				std::swap( position, other.position );
 				std::swap( max, other.max );
 			}
 
 			/** Copy assignment. */
-			ConstIterator & operator=( const ConstIterator & other ) noexcept {
+			ConstIterator& operator=( const ConstIterator &other ) noexcept {
 				container = other.container;
 				value = other.value;
 				position = other.position;
@@ -508,7 +536,7 @@ namespace grb {
 			}
 
 			/** Move assignment. */
-			ConstIterator & operator=( ConstIterator && other ) {
+			ConstIterator& operator=( ConstIterator &&other ) {
 				container = other.container;
 				std::swap( value, other.value );
 				std::swap( position, other.position );
@@ -522,7 +550,7 @@ namespace grb {
 			 * @see Vector::ConstIterator::operator==
 			 * @see equal().
 			 */
-			bool operator==( const ConstIterator & other ) const noexcept {
+			bool operator==( const ConstIterator &other ) const noexcept {
 				return equal( other );
 			}
 
@@ -530,8 +558,8 @@ namespace grb {
 			 * @see Vector::ConstIterator::operator!=
 			 * @returns The negation of equal().
 			 */
-			bool operator!=( const ConstIterator & other ) const noexcept {
-				return ! equal( other );
+			bool operator!=( const ConstIterator &other ) const noexcept {
+				return !equal( other );
 			}
 
 			/** @see Vector::ConstIterator::operator* */
@@ -539,7 +567,7 @@ namespace grb {
 				return value;
 			}
 
-			const std::pair< size_t, D > * operator->() const noexcept {
+			const std::pair< size_t, D >* operator->() const noexcept {
 				return &value;
 			}
 
@@ -555,7 +583,7 @@ namespace grb {
 		};
 
 		/** Our const iterator type. */
-		typedef ConstIterator< internal::Distribution< reference > > const_iterator;
+		typedef ConstIterator< reference > const_iterator;
 
 		/**
 		 * This constructor may throw exceptions.
@@ -630,36 +658,36 @@ namespace grb {
 		 * This function simply translates to <code>return cbegin();</code>.
 		 * @see Vector for the user-level specfication.
 		 */
-		template< class ActiveDistribution = internal::Distribution< reference > >
-		ConstIterator< ActiveDistribution > begin( const size_t s = 0, const size_t P = 1 ) const {
-			return cbegin< ActiveDistribution >( s, P );
+		template< Backend spmd_backend = reference >
+		ConstIterator< spmd_backend > begin( const size_t s = 0, const size_t P = 1 ) const {
+			return cbegin< spmd_backend >( s, P );
 		}
 
 		/**
 		 * This function simply translates to <code>return cend();</code>.
 		 * @see Vector for the user-level specfication.
 		 */
-		template< class ActiveDistribution = internal::Distribution< reference > >
-		ConstIterator< ActiveDistribution > end( const size_t s = 0, const size_t P = 1 ) const {
-			return cend< ActiveDistribution >( s, P );
+		template< Backend spmd_backend = reference >
+		ConstIterator< spmd_backend > end( const size_t s = 0, const size_t P = 1 ) const {
+			return cend< spmd_backend >( s, P );
 		}
 
 		/**
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		template< class ActiveDistribution = internal::Distribution< reference > >
-		ConstIterator< ActiveDistribution > cbegin( const size_t s = 0, const size_t P = 1 ) const {
-			return ConstIterator< ActiveDistribution >( *this, 0, s, P );
+		template< Backend spmd_backend = reference >
+		ConstIterator< spmd_backend > cbegin( const size_t s = 0, const size_t P = 1 ) const {
+			return ConstIterator< spmd_backend >( *this, 0, s, P );
 		}
 
 		/**
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		template< class ActiveDistribution = internal::Distribution< reference > >
-		ConstIterator< ActiveDistribution > cend( const size_t s = 0, const size_t P = 1 ) const {
-			return ConstIterator< ActiveDistribution >( *this, _coordinates.size(), s, P );
+		template< Backend spmd_backend = reference >
+		ConstIterator< spmd_backend > cend( const size_t s = 0, const size_t P = 1 ) const {
+			return ConstIterator< spmd_backend >( *this, _coordinates.size(), s, P );
 		}
 
 		/**

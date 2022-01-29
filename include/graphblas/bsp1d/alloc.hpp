@@ -26,22 +26,29 @@
 #include <graphblas/utils/alloc.hpp>
 
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
 
 			template<>
 			class Allocator< BSP1D > {
+
 			private:
 				/** Prevent initialisation. */
 				Allocator();
 
 			public:
+
 				/** Refer to the backend's allocation mechanism. */
 				typedef Allocator< _GRB_BSP1D_BACKEND >::functions functions;
 			};
 
 		} // namespace internal
-	}     // namespace utils
+
+	} // namespace utils
+
 } // namespace grb
 
 #endif
+

@@ -81,29 +81,45 @@ namespace grb {
 			A.nz = nnz;
 		}
 
+		/**
+		 * \internal
+		 *
+		 * Retrieves internal SPA buffers.
+		 *
+		 * @param[out] coorArr Pointer to the bitmask array
+		 * @param[out] coorBuf Pointer to the stack
+		 * @param[out] valBuf  Pointer to the value buffer
+		 * @param[in]    k     If 0, the row-wise SPA is returned
+		 *                     If 1, the column-wise SPA is returned
+		 *                     Any other value is not allowed
+		 * @param[in]    A     The matrix of which to return the associated SPA
+		 *                     data structures.
+		 *
+		 * @tparam InputType The type of the value buffer.
+		 *
+		 * \endinternal
+		 */
 		template< typename InputType >
-		void getMatrixBuffers( char *& coorArr, char *& coorBuf, InputType *& valbuf, const unsigned int k, const grb::Matrix< InputType, reference > & A ) noexcept {
+		void getMatrixBuffers(
+			char * &coorArr, char * &coorBuf, InputType * &valbuf,
+			const unsigned int k, const grb::Matrix< InputType, reference > &A
+		) noexcept {
 			coorArr = const_cast< char * >( A.coorArr[ k ] );
 			coorBuf = const_cast< char * >( A.coorBuf[ k ] );
 			valbuf = const_cast< InputType * >( A.valbuf[ k ] );
 		}
 
 		template< Descriptor descr,
-			bool input_dense,
-			bool output_dense,
+			bool input_dense, bool output_dense,
 			bool masked,
 			bool left_handed,
-			template< typename >
-			class One,
+			template< typename > class One,
 			typename IOType,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename RowColType,
-			typename NonzeroType,
-			typename Coords >
+			class AdditiveMonoid, class Multiplication,
+			typename InputType1, typename InputType2, typename InputType3,
+			typename RowColType, typename NonzeroType,
+			typename Coords
+		>
 		void vxm_inner_kernel_scatter( RC & rc,
 			Vector< IOType, reference, Coords > & destination_vector,
 			IOType * __restrict__ const & destination,
@@ -697,9 +713,15 @@ namespace grb {
 		}
 
 		/** @see Matrix::Matrix( const Matrix & ) */
-		template< typename InputType >
-		Matrix( const Matrix< InputType, reference > & other ) : Matrix( other.m, other.n, other.cap ) {
+		Matrix( const Matrix< D, reference > &other ) : Matrix( other.m, other.n ) {
+			if( grb::resize( *this, nnz( other ) ) != SUCCESS ) {
+				throw std::runtime_error( "Could not allocate memory during grb::Matrix copy-constructor" );
+			}
 			nz = other.nz;
+
+			// if empty, return; otherwise copy
+			if( nz == 0 ) { return; }
+
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 			#pragma omp parallel
 #endif

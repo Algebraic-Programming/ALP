@@ -40,6 +40,19 @@ namespace grb {
 
 		// allgather collective from library
 
+		/*
+		 * Ensure the destination buffer can hold at least this number of elements.
+		 *
+		 * It shall only be legal to call collectives that result in output not
+		 * exceeding what is initialised here; otherwise, use of said collectives
+		 * will result in UB.
+		 */
+		template< typename T >
+		RC initCollectivesBuffer( const size_t num_elements ) {
+			auto &data = internal::grb_BSP1D.load();
+			return data.ensureBufferSize( num_elements * sizeof( T ) );
+		}
+
 		/* Schedules a gather operation from memory slot src (with src_offset)
 		 * across each process, to memory slot dst (with offset dst_offset) on
 		 * the root process. The size of each message may vary across processes,
@@ -89,11 +102,18 @@ namespace grb {
 		 * @returns #ILLEGAL If \a size is larger than \a total
 		 * @returns #PANIC   If the underlying communication layer encounters an unrecoverable error.
 		 */
-		RC allgather( const lpf_memslot_t src, const size_t src_offset, const lpf_memslot_t dst, const size_t dst_offset, const size_t size, const size_t total, const bool exclude_self = true );
+		RC allgather(
+			const lpf_memslot_t src, const size_t src_offset,
+			const lpf_memslot_t dst, const size_t dst_offset,
+			const size_t size, const size_t total,
+			const bool exclude_self = true
+		);
 
-		/* Schedules an alltoall operation from memory slot src and offset src_offset
+		/**
+		 * \internal
+		 *
+		 * Schedules an alltoall operation from memory slot src and offset src_offset
 		 * across each process, to the BSP data buffer.
-		 * The supplied size and offset can vary across processes.
 		 *
 		 * @param[in] src: The source global memory slot.
 		 * @param[in] src_offset: The source memory slot offset.
@@ -102,16 +122,24 @@ namespace grb {
 		 *                           corresponds to the destination memory.
 		 * @param[in] exclude_self: Whether or not to copy local elements.
 		 *
+		 * The supplied \a size and \a buffer_offset can vary across processes.
+		 *
 		 * The last two elements are optional. The default for \a buffer_offset is
 		 * \f$ 0 \f$ while the default for \a exclude_self is <tt>true</tt>.
 		 *
 		 * \parblock
 		 * \par Performance semantics:
-		 * -# Problem size N: \f$ P * size \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
-		 * -# BSP cost: \f$ Ng + l \f$;
+		 * -# Problem size N: \f$ P * \max_s \mathit{size} \f$,
+		 *    with \f$ s \f$ the process IDs.
+		 * -# local work: \f$ 0 \f$
+		 * -# intra-process data movement: \a size if not \a exclude_self;
+		 *                                 0 otherwise.
+		 * -# inter-process data movement: \f$ N \f$
+		 * -# latencies: \f$ 1 \f$
+		 * -# BSP cost: \f$ Ng + l \f$
 		 * \endparblock
+		 *
+		 * \endinternal
 		 */
 		RC alltoall( const lpf_memslot_t src, const size_t src_offset, const size_t size, const size_t buffer_offset = 0, const bool exclude_self = true );
 

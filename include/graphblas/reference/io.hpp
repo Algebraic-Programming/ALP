@@ -267,7 +267,7 @@ namespace grb {
 	 *          characteristics are not. Please see the below for details.
 	 *
 	 * @tparam descr         The descriptor to be used (descriptors::no_operation
-	 * 			 if left unspecified).
+	 *                       if left unspecified).
 	 * @tparam Dup           The type of the operator used to resolve inputs to
 	 *                       pre-existing vector contents. The default Dup simply
 	 *                       overwrites pre-existing content.

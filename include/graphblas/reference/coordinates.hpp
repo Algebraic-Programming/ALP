@@ -38,8 +38,13 @@
 #include "config.hpp"
 
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-#include <omp.h>
+ #include <omp.h>
 #endif
+
+#if defined _DEBUG && ! defined NDEBUG
+ #include <set>
+#endif
+
 
 namespace grb {
 
@@ -306,10 +311,23 @@ namespace grb {
 			 * call to this function, the state shall become valid.
 			 */
 			void set( void * const arr, bool arr_initialized, void * const buf, const size_t dim ) noexcept {
-				//_assigned has no alignment issues...
+				// catch trivial case
+				if( arr == NULL || buf == NULL ) {
+					assert( arr == NULL );
+					assert( buf == NULL );
+					assert( dim == 0 );
+					_assigned = nullptr;
+					_stack = nullptr;
+					_buffer = nullptr;
+					_n = 0;
+					_cap = 0;
+					return;
+				}
+
+				// _assigned has no alignment issues, take directly from input buffer
 				assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
 				_assigned = static_cast< bool * >( arr );
-				//...but _stack does, handle it:
+				// ...but _stack does have potential alignment issues:
 				char * buf_raw = static_cast< char * >( buf );
 				constexpr const size_t size = sizeof( StackType );
 				const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
@@ -330,10 +348,9 @@ namespace grb {
 #endif
 				);
 				// and initialise _assigned (but only if necessary)
-				if( dim > 0 && ! arr_initialized ) {
+				if( dim > 0 && !arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		dynamic, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 					for( size_t i = 0; i < dim; ++i ) {
 						_assigned[ i ] = false;
@@ -474,6 +491,194 @@ namespace grb {
 					std::cout << "\tnew nonzero count: " << _n << "\n";
 #endif
 				} // end sparse version
+			}
+
+			/**
+			 * Rebuilds the #_assigned array using the contents of #_stack.
+			 *
+			 * \warning Assumes that #_assigned is never set to \a true whenever the
+			 * corresponding index does not appear in #_stack.
+			 *
+			 * This function should only be used after #_stack has been modified outside
+			 * of this class.
+			 *
+			 * This variant performs a copy of a packed array of nonzero values into
+			 * an unpacked array of nonzero values, on the fly.
+			 *
+			 * @tparam The nonzero type.
+			 *
+			 * @param[out] array_out An array of #_cap elements of nonzero values.
+			 * @param[in]  packed_in An array of \a new_nz elements of nonzero values.
+			 * @param[in]  new_nz    The number of nonzeroes in #_stack.
+			 */
+			template< typename DataType >
+			RC rebuildFromStack( DataType * const array_out, const DataType * const packed_in, const size_t new_nz ) {
+#ifdef _DEBUG
+				std::cout << "Entering Coordinates::rebuildFromStack (reference backend, non-void version). New stack count: " << new_nz << ".\n";
+				std::cout << "\t stack contents: ( ";
+				for( size_t k = 0; k < new_nz; ++k ) {
+					std::cout << _stack[ k ] << " ";
+				}
+				std::cout << ")\n";
+#endif
+				assert( array_out != nullptr );
+				assert( packed_in != nullptr );
+				_n = new_nz;
+#if defined _DEBUG && ! defined NDEBUG
+				{
+					// this is an extra and costly check only enabled with _DEBUG mode
+					std::set< size_t > indices;
+					for( size_t k = 0; k < _n; ++k ) {
+						indices.insert( _stack[ k ] );
+					}
+					for( size_t i = 0; i < _cap; ++i ) {
+						if( _assigned[ i ] ) {
+							assert( indices.find( i ) != indices.end() );
+						}
+					}
+				}
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+				for( size_t k = 0; k < _n; ++k ) {
+					const size_t i = _stack[ k ];
+#ifdef _DEBUG
+					std::cout << "\tProcessing global stack element " << k << " which has index " << i << "."
+						<< " _assigned[ index ] = " << _assigned[ i ] << " and value[ index ] will be set to " << packed_in[ k ] << ".\n";
+#endif
+					assert( i < _cap );
+					_assigned[ i ] = true;
+					array_out[ i ] = packed_in[ k ];
+				}
+				return SUCCESS;
+			}
+
+			/**
+			 * Rebuilds the #_assigned array using the contents of #_stack.
+			 *
+			 * \warning Assumes that #_assigned is never set to \a true whenever the
+			 * corresponding index does not appear in #_stack.
+			 *
+			 * This function should only be used after #_stack has been modified outside
+			 * of this class.
+			 *
+			 * This variant does not perform on the fly copies of packed into unpacked
+			 * nonzero arrays. It does, however, employ the same interface as the version
+			 * that does so as to simplify the life of callees.
+			 *
+			 * @param[in]  new_nz The number of nonzeroes in #_stack.
+			 */
+			RC rebuildFromStack( void * const, const void * const, const size_t new_nz ) {
+#if defined _DEBUG && ! defined NDEBUG
+				{
+					// this is an extra and costly check only enabled with _DEBUG mode
+					std::set< size_t > indices;
+					for( size_t k = 0; k < _n; ++k ) {
+						indices.insert( _stack[ k ] );
+					}
+					for( size_t i = 0; i < _cap; ++i ) {
+						if( _assigned[ i ] ) {
+							assert( indices.find( i ) != indices.end() );
+						}
+					}
+				}
+#endif
+				_n = new_nz;
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+				for( size_t k = 0; k < _n; ++k ) {
+					const size_t i = _stack[ k ];
+					assert( i < _cap );
+					_assigned[ i ] = true;
+				}
+				return SUCCESS;
+			}
+
+			/**
+			 * Packs nonzero indices and nonzero values into an external stack and
+			 * packed array, respectively.
+			 *
+			 * @tparam DataType The nonzero type.
+			 *
+			 * @param[out] stack_out  An array of length #_n that on output will be a
+			 *                        copy of #_stack.
+			 * @param[in]  offset     An offset to be applied to the entries of
+			 *                        \a stack_out.
+			 * @param[out] packed_out An array of length #_n that on output will contain
+			 *                        those nonzeroes corresponding to the indices in
+			 *                        \a stack_out, in matching order.
+			 * @param[in]  array_in   An array of size #_cap from which contains the
+			 *                        nonzero values pointed to by #_stack.
+			 */
+			template< typename DataType >
+			RC packValues( StackType * const stack_out, const size_t offset, DataType * const packed_out, const DataType * const array_in ) const {
+#ifdef _DEBUG
+				std::cout << "Called Coordinates::packValues (reference backend, non-void version)\n";
+#endif
+				assert( stack_out != nullptr );
+				assert( packed_out != nullptr );
+				assert( array_in != nullptr );
+				if( _n == _cap ) {
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+					for( size_t i = 0; i < _cap; ++i ) {
+						stack_out[ i ] = i + offset;
+						packed_out[ i ] = array_in[ i ];
+#ifdef _DEBUG
+						std::cout << "\t packing local index " << i << " into global index " << stack_out[ i ] << " with nonzero " << packed_out[ i ] << "\n";
+#endif
+					}
+				} else {
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+					for( size_t k = 0; k < _n; ++ k ) {
+						const size_t i = _stack[ k ];
+						assert( i < _cap );
+						stack_out[ k ] = i + offset;
+						packed_out[ k ] = array_in[ i ];
+#ifdef _DEBUG
+						std::cout << "\t packing local index " << i << " into global index " << stack_out[ k ] << " with nonzero " << packed_out[ k ] << "\n";
+#endif
+					}
+				}
+				return SUCCESS;
+			}
+
+			/**
+			 * Packs nonzero indices into an external stack.
+			 *
+			 * @param[out] stack_out An array of length #_n that on output will be a
+			 *                       copy of #_stack.
+			 * @param[in]  offset    An offset to be applied to the entries of
+			 *                       \a stack_out.
+			 *
+			 * The interface is the same as for the above variant to simplify the life
+			 * of callees.
+			 */
+			RC packValues( StackType * const stack_out, const size_t offset, void * const, const void * const ) const {
+				assert( stack_out != nullptr );
+				if( _n == _cap ) {
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+					for( size_t i = 0; i < _cap; ++i ) {
+						stack_out[ i ] = i + offset;
+					}
+				} else {
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#endif
+					for( size_t k = 0; k < _n; ++ k ) {
+						const size_t i = _stack[ k ];
+						assert( i < _cap );
+						stack_out[ k ] = i + offset;
+					}
+				}
+				return SUCCESS;
 			}
 
 			/**
@@ -688,8 +893,7 @@ namespace grb {
 					assert( ! maybe_invalid || _n <= _cap );
 					_n = _cap;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		dynamic, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
 					for( size_t i = 0; i < _n; ++i ) {
 						_assigned[ i ] = true;
@@ -1006,20 +1210,26 @@ namespace grb {
 			inline void clear() noexcept {
 				if( _n == _cap ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		static, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 					for( size_t i = 0; i < _cap; ++i ) {
 						_assigned[ i ] = false;
 					}
 				} else {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( \
-		dynamic, config::CACHE_LINE_SIZE::value() )
+					if( _n < config::OMP::minLoopSize() ) {
 #endif
-					for( size_t k = 0; k < _n; ++k ) {
-						_assigned[ _stack[ k ] ] = false;
+						for( size_t k = 0; k < _n; ++k ) {
+							_assigned[ _stack[ k ] ] = false;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					} else {
+						#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+						for( size_t k = 0; k < _n; ++k ) {
+							_assigned[ _stack[ k ] ] = false;
+						}
 					}
+#endif
 				}
 				_n = 0;
 			}
