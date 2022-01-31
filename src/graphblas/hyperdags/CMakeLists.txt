@@ -43,8 +43,8 @@ if( WITH_HYPERDAGS_BACKEND )
 		ARCHIEVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/hyperdags"
 	)
 	target_link_libraries( backend_hyperdags_static PRIVATE backend_flags )
-	target_link_libraries( backend_hyperdags_static PRIVATE backend_${WITH_HYPERDAGS_USING}_headers )
-	target_link_libraries( backend_hyperdags_static INTERFACE ${backend_hyperdags_headers} )
+	target_link_libraries( backend_hyperdags_static PUBLIC backend_${WITH_HYPERDAGS_USING}_headers )
+	target_link_libraries( backend_hyperdags_static PUBLIC ${backend_hyperdags_headers} )
 	target_compile_definitions( backend_hyperdags_static PUBLIC "${HYPERDAGS_SELECTION_DEFS}" )
 	install( TARGETS backend_hyperdags_static
 		EXPORT GraphBLASTargets
