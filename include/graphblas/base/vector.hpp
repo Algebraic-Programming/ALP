@@ -143,7 +143,7 @@ namespace grb {
 				public :
 
 					/** Standard equals operator. */
-					bool operator==( const const_iterator & other ) const {
+					bool operator==( const const_iterator &other ) const {
 						(void)other;
 						return false;
 					}
@@ -330,7 +330,10 @@ namespace grb {
 			 *       hence possibly causing its implicitly called constructor to
 			 *       allocate dynamic memory.
 			 */
-			const_iterator cbegin() const {}
+			const_iterator cbegin() const {
+				const_iterator ret;
+				return ret;
+			}
 
 			/**
 			 * Same as cbegin().
@@ -338,7 +341,11 @@ namespace grb {
 			 * is no overloaded version of this function that returns a non-const
 			 * iterator.
 			 */
-			const_iterator begin() const {}
+			const_iterator begin() const {
+				const_iterator ret;
+				return ret;
+			}
+
 			//@}
 
 			//@{
@@ -363,7 +370,10 @@ namespace grb {
 			 *       specification disallows the same to happen for the construction of
 			 *       an iterator in end position.
 			 */
-			const_iterator cend() const {}
+			const_iterator cend() const {
+				const_iterator ret;
+				return ret;
+			}
 
 			/**
 			 * Same as cend().
@@ -371,7 +381,10 @@ namespace grb {
 			 * is no overloaded version of this function that returns a non-const
 			 * iterator.
 			 */
-			const_iterator end() const {}
+			const_iterator end() const {
+				const_iterator ret;
+				return ret;
+			}
 			//@}
 
 			/**
