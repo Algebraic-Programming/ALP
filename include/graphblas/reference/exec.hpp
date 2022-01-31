@@ -39,7 +39,7 @@ namespace grb {
 
 	public:
 		/** This implementation only accepts a single user process. It ignores \a hostname and \a port. */
-		Launcher( const size_t process_id = 0,        // user process ID
+		Launcher( const size_t process_id = 0,            // user process ID
 			const size_t nprocs = 1,                  // total number of user processes
 			const std::string hostname = "localhost", // one of the user process hostnames
 			const std::string port = "0"              // a free port at hostname
@@ -65,10 +65,10 @@ namespace grb {
 
 		/** No implementation notes. */
 		template< typename U >
-		RC exec(
-			void ( *grb_program )( const void *, const size_t, U & ),
+		RC exec( void ( *grb_program )( const void *, const size_t, U & ),
 			const void * data_in, const size_t in_size,
-			U &data_out, const bool broadcast = false
+			U &data_out,
+			const bool broadcast = false
 		) const {
 			(void)broadcast; // value doesn't matter for a single user process
 			// intialise GraphBLAS
