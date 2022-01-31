@@ -608,7 +608,7 @@ namespace grb {
 		 * @throws runtime_error If the call to grb::set fails, the error code is
 		 *                       caught and thrown.
 		 */
-		Vector( const Vector< D, reference, MyCoordinates > & x ) {
+		Vector( const Vector< D, reference, MyCoordinates > &x ) {
 			initialize( NULL, NULL, false, NULL, size( x ) );
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
@@ -630,6 +630,13 @@ namespace grb {
 
 			// invalidate that which was not moved
 			x._raw = NULL;
+		}
+
+		/** Copy-constructor. */
+		Vector< D, reference, MyCoordinates > & operator=( const Vector< D, reference, MyCoordinates > &x ) noexcept {
+			Vector< D, reference, MyCoordinates > replace( x );
+			*this = std::move( replace );
+			return *this;
 		}
 
 		/** Assign-from-temporary. */

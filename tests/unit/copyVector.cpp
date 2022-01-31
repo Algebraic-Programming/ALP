@@ -29,22 +29,82 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		return;
 	}
+
+	// test copy constructor
 	try {
 		grb::Vector< double > copy( vector );
 		if( grb::nnz( copy ) != n ) {
-			std::cerr << "\tunexpected number of nonzeroes " << grb::nnz( copy ) << ", expected " << n << "\n";
+			std::cerr << "\t unexpected number of nonzeroes after copy-construction: "
+			       << grb::nnz( copy ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : copy ) {
+		for( const auto &pair : copy ) {
 			if( pair.second != 1.5 ) {
-				std::cerr << "\tunexpected value at entry ( " << pair.first << ", " << pair.second << " ), expected 1.5 as value\n";
+				std::cerr << "\t unexpected value at entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "after copy-construction; expected 1.5\n";
 				rc = FAILED;
 			}
 		}
 	} catch( ... ) {
-		std::cerr << "\tcopy FAILED\n";
+		std::cerr << "\t test copy constructor on vectors FAILED\n";
 		rc = FAILED;
 	}
+
+	// test copy assignment
+	grb::Vector< double > copy = vector;
+	if( grb::nnz( copy ) != n ) {
+		std::cerr << "\t unexpected number of nonzeroes after copy-assignment: "
+			<< grb::nnz( copy ) << ", expected " << n << "\n";
+		rc = FAILED;
+	}
+
+	for( const auto &pair : copy ) {
+		if( pair.second != 1.5 ) {
+			std::cerr << "\t unexpected value at entry "
+				<< "( " << pair.first << ", " << pair.second << " ) "
+				<< "after copy-assignment; expected 1.5\n";
+			rc = FAILED;
+		}
+	}
+
+	// test same thing for empty vectors
+	{
+		grb::Vector< char > empty( 0 );
+		try {
+			grb::Vector< char > emptyCopy( empty );
+			if( grb::size( emptyCopy ) != 0 ) {
+				std::cerr << "\t unexpected size after copy-constructing"
+					<< "an empty vector: "
+					<< grb::nnz( emptyCopy ) << "\n";
+				rc = FAILED;
+			}
+			if( grb::nnz( emptyCopy ) != 0 ) {
+				std::cerr << "\t unexpected number of nonzeroes after "
+					<< "copy-constructing an empty vector: "
+					<< grb::nnz( emptyCopy ) << "\n";
+				rc = FAILED;
+			}
+		} catch( ... ) {
+			std::cerr << "\t copy constructor on empty vectors FAILED\n";
+			rc = FAILED;
+		}
+		grb::Vector< char > emptyCopy = empty;
+		if( grb::size( emptyCopy ) != 0 ) {
+			std::cerr << "\t unexpected size after copy-assignment"
+				<< "an empty vector: "
+				<< grb::nnz( emptyCopy ) << "\n";
+			rc = FAILED;
+		}
+		if( grb::nnz( emptyCopy ) != 0 ) {
+			std::cerr << "\t unexpected number of nonzeroes after "
+				<< "copy-assigning an empty vector: "
+				<< grb::nnz( emptyCopy ) << "\n";
+			rc = FAILED;
+		}
+	}
+
+	// done
 	return;
 }
 
