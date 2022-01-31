@@ -83,6 +83,10 @@ if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
 	add_subdirectory( reference )
 endif()
 
+if( WITH_HYPERDAGS_BACKEND )
+	add_subdirectory( hyperdags )
+endif()
+
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	add_subdirectory( bsp1d )
 endif()

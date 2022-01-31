@@ -17,29 +17,22 @@
 
 /*
  * @author A. N. Yzelman
- * @date 24th of January, 2017
+ * @date 31st of January, 2022
  */
 
-#ifndef _H_GRB_INIT
-#define _H_GRB_INIT
-
-#include "backends.hpp"
-#include "base/init.hpp"
+#ifndef _H_GRB_HYPERDAGS_INIT
+#define _H_GRB_HYPERDAGS_INIT
 
 
-// include all implementations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/init.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/init.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/init.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/init.hpp"
-#endif
+namespace grb {
 
-#endif // end ``_H_GRB_INIT''
+	template<>
+	RC init< hyperdags >( const size_t, const size_t, void * const );
+
+	template<>
+	RC finalize< hyperdags >();
+
+} // end namespace grb
+
+#endif
 

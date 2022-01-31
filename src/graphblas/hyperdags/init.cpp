@@ -17,29 +17,21 @@
 
 /*
  * @author A. N. Yzelman
- * @date 24th of January, 2017
+ * @date 31st of January, 2022
  */
 
-#ifndef _H_GRB_INIT
-#define _H_GRB_INIT
-
-#include "backends.hpp"
-#include "base/init.hpp"
+#include <graphblas/init.hpp>
 
 
-// include all implementations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/init.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/init.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/init.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/init.hpp"
-#endif
+template<>
+grb::RC grb::init< grb::hyperdags >( const size_t s, const size_t P, void * const ) {
+	std::cerr << "Info: grb::init (hyperdags) called.\n";
+	return grb::init< grb::_GRB_WITH_HYPERDAGS_USING >( s, P, nullptr );
+}
 
-#endif // end ``_H_GRB_INIT''
+template<>
+grb::RC grb::finalize< grb::hyperdags >() {
+	std::cerr << "Info: grb::finalize (hyperdags) called.\n";
+	return grb::finalize< grb::_GRB_WITH_HYPERDAGS_USING >();
+}
 

@@ -23,6 +23,7 @@
 #
 assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS LPF_INCLUDE_DEFS
 	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
+	WITH_HYPERDAGS_BACKEND_HEADERS WITH_HYPERDAGS_BACKEND
 )
 assert_valid_variables( INCLUDE_INSTALL_DIR NO_NUMA_DEF )
 
@@ -104,7 +105,6 @@ install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
 
-
 if( WITH_REFERENCE_BACKEND_HEADERS )
 	add_library( backend_reference_headers INTERFACE )
 	target_link_libraries( backend_reference_headers INTERFACE backend_headers_nodefs )
@@ -149,6 +149,20 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	)
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/bsp1d/"
 		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/bsp1d"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+endif()
+
+if( WITH_HYPERDAGS_BACKEND_HEADERS )
+	add_library( backend_hyperdags_headers INTERFACE )
+	target_link_libraries( backend_hyperdags_headers INTERFACE backend_headers_nodefs )
+	target_compile_definitions( backend_hyperdags_headers INTERFACE "${HYPERDAGS_INCLUDE_DEFS}" )
+	install( TARGETS backend_hyperdags_headers EXPORT GraphBLASTargets )
+endif()
+
+if( WITH_HYPERDAGS_BACKEND )
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/hyperdags/"
+		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/reference"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
 endif()
