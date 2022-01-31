@@ -31,6 +31,9 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/vector.hpp>
 #endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/vector.hpp>
+#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/vector.hpp>
 #endif
