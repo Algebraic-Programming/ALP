@@ -127,7 +127,7 @@ add_grb_executables( matrixSet matrixSet.cpp
 )
 
 add_grb_executables( moveVector moveVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp hyperdags bsp1d hybrid
 )
 
 add_grb_executables( mul15i mul15i.cpp

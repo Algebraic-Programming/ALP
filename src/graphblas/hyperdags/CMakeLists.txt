@@ -44,7 +44,8 @@ if( WITH_HYPERDAGS_BACKEND )
 	)
 	target_link_libraries( backend_hyperdags_static PRIVATE backend_flags )
 	target_link_libraries( backend_hyperdags_static PUBLIC backend_${WITH_HYPERDAGS_USING}_headers )
-	target_link_libraries( backend_hyperdags_static PUBLIC ${backend_hyperdags_headers} )
+	target_link_libraries( backend_hyperdags_static PUBLIC backend_hyperdags_headers )
+	target_link_libraries( backend_hyperdags_static PRIVATE backend_${WITH_HYPERDAGS_USING}_static )
 	target_compile_definitions( backend_hyperdags_static PUBLIC "${HYPERDAGS_SELECTION_DEFS}" )
 	install( TARGETS backend_hyperdags_static
 		EXPORT GraphBLASTargets
@@ -60,7 +61,8 @@ if( WITH_HYPERDAGS_BACKEND )
 	)
 	target_link_libraries( backend_hyperdags_shared PRIVATE backend_flags )
 	target_link_libraries( backend_hyperdags_shared PRIVATE backend_${WITH_HYPERDAGS_USING}_headers )
-	target_link_libraries( backend_hyperdags_shared INTERFACE ${backend_hyperdags_headers} )
+	target_link_libraries( backend_hyperdags_shared INTERFACE backend_hyperdags_headers )
+	target_link_libraries( backend_hyperdags_shared PRIVATE backend_${WITH_HYPERDAGS_USING}_shared )
 	target_compile_definitions( backend_hyperdags_shared PUBLIC "${HYPERDAGS_SELECTION_DEFS}" )
 	install( TARGETS backend_hyperdags_shared
 		EXPORT GraphBLASTargets
