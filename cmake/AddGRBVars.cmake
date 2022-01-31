@@ -72,7 +72,7 @@ set( AVAILABLE_BACKENDS "" )
 # backends that are enabled by the user: append as in the following
 
 # shared memory backends
-if ( WITH_REFERENCE_BACKEND )
+if( WITH_REFERENCE_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "reference" )
 endif()
 

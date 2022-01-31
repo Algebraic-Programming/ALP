@@ -113,7 +113,7 @@ endif()
 # paths may have spaces, hence wrap them inside single quotes ''
 
 # shared memory backends
-if ( WITH_REFERENCE_BACKEND )
+if( WITH_REFERENCE_BACKEND )
 	addBackendWrapperGenOptions( "reference"
 		COMPILE_DEFINITIONS "${REFERENCE_SELECTION_DEFS}"
 		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
