@@ -169,6 +169,14 @@ if( WITH_HYBRID_BACKEND )
 	install( TARGETS backend_hybrid_headers EXPORT GraphBLASTargets )
 endif()
 
+if (WITH_MLIR_BACKEND) 
+  add_library( backend_mlir_headers INTERFACE )
+  target_link_libraries( backend_mlir_headers INTERFACE backend_headers_nodefs )
+  target_compile_definitions( backend_mlir_headers INTERFACE "${MLIR_INCLUDE_DEFS}" )
+  
+  install( TARGETS backend_mlir_headers EXPORT GraphBLASTargets )
+endif()
+
 # this target lists the algorithms implemented on top of the generic functionalities,
 # hence it depends only on backend_headers_nodefs
 add_library( algorithms INTERFACE )

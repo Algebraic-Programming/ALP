@@ -22,7 +22,7 @@
 #
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND WITH_BSP1D_BACKEND
-	WITH_HYBRID_BACKEND WITH_NUMA
+	WITH_HYBRID_BACKEND WITH_NUMA WITH_MLIR_BACKEND
 )
 
 ### STANDARD TARGET NAMES
@@ -31,6 +31,7 @@ set( REFERENCE_BACKEND_DEFAULT_NAME "backend_reference" )
 set( REFERENCE_OMP_BACKEND_DEFAULT_NAME "backend_reference_omp" )
 set( BSP1D_BACKEND_DEFAULT_NAME "backend_bsp1d" )
 set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
+set( MLIR_BACKEND_DEFAULT_NAME "backend_mlir" )
 
 
 ### COMPILER DEFINITIONS FOR HEADERS INCLUSION AND FOR BACKEND SELECTION
@@ -39,6 +40,7 @@ set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
 set( REFERENCE_INCLUDE_DEFS "_GRB_WITH_REFERENCE" )
 set( REFERENCE_OMP_INCLUDE_DEFS "_GRB_WITH_OMP" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
+set( MLIR_INCLUDE_DEFS "_GRB_WITH_MLIR" )
 
 # compiler definitions to select a backend
 set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
@@ -52,12 +54,13 @@ set( HYBRID_SELECTION_DEFS
 		"_GRB_BSP1D_BACKEND=reference_omp"
 		"_GRB_COORDINATES_BACKEND=reference_omp"
 )
+set( MLIR_SELECTION_DEFS "_GRB_BACKEND=mlir" )
 
 # definition to set if not depending on libnuma
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
 
 ### **ALL** BACKENDS, EVEN IF NOT ENABLED BY USER
-set( ALL_BACKENDS "reference" "reference_omp" "bsp1d" "hybrid" )
+set( ALL_BACKENDS "reference" "reference_omp" "bsp1d" "hybrid" "mlir" )
 
 
 # list of user-enabled backends, for tests and wrapper scripts (do not change!)
@@ -82,6 +85,10 @@ endif()
 
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "hybrid" )
+endif()
+
+if (WITH_MLIR_BACKEND)
+  list( APPEND AVAILABLE_BACKENDS "mlir" )
 endif()
 
 # add your own here!

@@ -227,6 +227,55 @@ add_grb_executables( vxm vxm.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+if (WITH_MLIR_BACKEND)
+  #find_package( LLVM REQUIRED CONFIG )
+  message( STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}" )
+  message( STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}" )
+
+  #find_package( MLIR REQUIRED CONFIG )
+  message( STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}" )
+  list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+  list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+  add_library (llvmpack INTERFACE)
+  
+  target_include_directories(llvmpack INTERFACE ${LLVM_INCLUDE_DIRS} )
+  target_include_directories(llvmpack INTERFACE ${MLIR_INCLUDE_DIRS} )
+
+  # Find the libraries that correspond to the LLVM components
+  # that we wish to use
+  llvm_map_components_to_libnames(LLVM_LIBS
+    core nativecodegen ExecutionEngine Support)
+  
+  # Link to LLVM and MLIR 
+  target_link_libraries (llvmpack INTERFACE
+    ${LLVM_LIBS}
+    MLIRSupport
+    MLIRIR
+    MLIRLLVMIR
+    MLIRSCFToStandard
+    MLIRStandardToLLVM
+    MLIRTargetLLVMIRImport
+    MLIRLLVMToLLVMIRTranslation
+    MLIRExecutionEngine
+    MLIRMemRefToLLVM
+    MLIRReconcileUnrealizedCasts
+    MLIRLinalgTransforms
+    test_utils
+  )
+
+  add_grb_executables( jit_mlir jit_mlir.cpp
+    BACKENDS mlir
+    ADDITIONAL_LINK_LIBRARIES llvmpack 
+  )
+
+  add_grb_executables( gemm_mlir gemm_mlir.cpp
+    BACKENDS mlir
+    ADDITIONAL_LINK_LIBRARIES llvmpack 
+  )
+
+endif()
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"

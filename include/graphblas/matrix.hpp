@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_BANSHEE
 #include <graphblas/banshee/matrix.hpp>
 #endif
+#ifdef _GRB_WITH_MLIR
+#include <graphblas/mlir/matrix.hpp>
+#endif
 
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND

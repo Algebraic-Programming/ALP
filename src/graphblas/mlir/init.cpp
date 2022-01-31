@@ -16,25 +16,30 @@
  */
 
 /*
- * @author: A. N. Yzelman
+ * @author A. N. Yzelman
+ * @date 2nd of February, 2017
  */
 
-#ifndef _H_GRB_BLAS3
-#define _H_GRB_BLAS3
+#include <graphblas/mlir/init.hpp>
 
-#include "base/blas3.hpp"
-#include "config.hpp"
-#include "phase.hpp"
+template<>
+grb::RC grb::init< grb::mlir >( const size_t s, const size_t P, void * const data ) {
+	// we don't use any implementation-specific init data
+	(void)data;
+	// print output
+	std::cerr << "Info: grb::init (mlir) called.\n";
+	// sanity checks
+	if( P > 1 ) {
+		return grb::UNSUPPORTED;
+	}
+	if( s > 0 ) {
+		return grb::PANIC;
+	}
+	// done
+	return grb::SUCCESS;
+}
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/blas3.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/blas3.hpp>
-#endif
-#ifdef _GRB_WITH_MLIR
-#include <graphblas/mlir/blas3.hpp>
-#endif
-
-#endif // end _H_GRB_BLAS3
+template<>
+grb::RC grb::finalize< grb::mlir >() {
+	return grb::SUCCESS;
+}

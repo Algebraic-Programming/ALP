@@ -65,10 +65,14 @@ install( TARGETS alp_utils_dynamic
 # target to compile all backend libraries
 add_custom_target( libs ALL )
 
+set( common_sources 
+  ${CMAKE_CURRENT_SOURCE_DIR}/descriptors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
+)
+
 # these sources are common to all backends, although some are in reference
 set( backend_reference_srcs
-	${CMAKE_CURRENT_SOURCE_DIR}/descriptors.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
+  ${common_sources}
 	${CMAKE_CURRENT_SOURCE_DIR}/reference/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/reference/config.cpp
 )
@@ -84,5 +88,9 @@ endif()
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	add_subdirectory( bsp1d )
+endif()
+
+if( WITH_MLIR_BACKEND )
+    add_subdirectory( mlir )
 endif()
 

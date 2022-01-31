@@ -138,8 +138,13 @@ namespace grb {
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
  #endif
 #endif
+// FIXME: Why the base does not implement a clear method??
+#if( _GRB_WITH_MLIR )
+		return SUCCESS;
+#else
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
+#endif
 	}
 
 	/**
@@ -154,8 +159,12 @@ namespace grb {
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
  #endif
 #endif
+#if( _GRB_WITH_MLIR )
+		return SUCCESS;
+#else
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
+#endif
 	}
 
 	/**

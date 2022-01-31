@@ -37,7 +37,7 @@ project( GraphBLAS
 	DESCRIPTION "The ultimate engine for sparse computation"
 	LANGUAGES CXX C
 )
-set( CMAKE_CXX_STANDARD 11 )
+set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 # install within the build directory by default (NOT to /usr/local or the likes)
@@ -53,6 +53,7 @@ option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
+option( WITH_MLIR_BACKEND "With MLIR" OFF)
 # the following options depend on LPF_INSTALL_PATH being set
 include(CMakeDependentOption)
 cmake_dependent_option( WITH_BSP1D_BACKEND "Build the BSP1D backend (needs \
@@ -118,7 +119,8 @@ endif()
 if( NOT WITH_REFERENCE_BACKEND AND
 	NOT WITH_OMP_BACKEND AND
 	NOT WITH_BSP1D_BACKEND AND
-	NOT WITH_HYBRID_BACKEND )
+	NOT WITH_HYBRID_BACKEND AND
+  NOT WITH_MLIR_BACKEND)
 	message( FATAL_ERROR "At least one backend should be enabled")
 endif()
 
@@ -151,6 +153,31 @@ if( WITH_NUMA )
 	find_package( Numa REQUIRED )
 endif( )
 
+if( WITH_MLIR_BACKEND )
+  find_package( LLVM REQUIRED CONFIG )
+  message( STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}" )
+  message( STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}" )
+
+  find_package( MLIR REQUIRED CONFIG )
+  message( STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}" )
+  message( STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}" )
+
+  list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+  list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+
+  message( STATUS "Include dir for LLVM: ${LLVM_INCLUDE_DIRS}" )
+  message( STATUS "Include dir for MLIR: ${MLIR_INCLUDE_DIRS}" )
+
+  include( TableGen )
+  include( AddLLVM )
+  include( AddMLIR )
+  include( HandleLLVMOptions )
+  include_directories( ${LLVM_INCLUDE_DIRS} )
+  include_directories( ${MLIR_INCLUDE_DIRS} )
+  include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+  include_directories( ${CMAKE_CURRENT_BINARY_DIR}/include )
+  add_definitions( ${LLVM_DEFINITIONS} )
+endif()
 
 ### CHECK DEPENDENCIES W.R.T. BACKENDS
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )

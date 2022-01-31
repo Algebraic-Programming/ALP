@@ -308,6 +308,24 @@ namespace grb {
 	}
 
 	/**
+	 * Provides a generic implementation of the dot computation on semirings by
+	 * translating it into a dot computation on an additive commutative monoid
+	 * with any multiplicative operator.
+	 *
+	 * For return codes, exception behaviour, performance semantics, template
+	 * and non-template arguments, @see grb::dot.
+	 */
+	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, Backend backend, typename Coords >
+	RC dot( IOType & x,
+		const Vector< InputType1, backend, Coords > & left,
+		const Vector< InputType2, backend, Coords > & right,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< IOType >::value && grb::is_semiring< Ring >::value,
+			void >::type * const = NULL ) {
+		return grb::dot< descr >( x, left, right, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+	}
+
+	/**
 	 * Provides a generic implementation of the 2-norm computation.
 	 *
 	 * Proceeds by computing a dot-product on itself and then taking the square
@@ -347,37 +365,6 @@ namespace grb {
 			x = sqrt( x );
 		}
 		return ret;
-	}
-
-	/**
-	 * Provides a generic implementation of the dot computation on semirings by
-	 * translating it into a dot computation on an additive commutative monoid
-	 * with any multiplicative operator.
-	 *
-	 * For return codes, exception behaviour, performance semantics, template
-	 * and non-template arguments, @see grb::dot.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		Backend backend, typename Coords
-	>
-	RC dot( IOType &x,
-		const Vector< InputType1, backend, Coords > &left,
-		const Vector< InputType2, backend, Coords > &right,
-		const Ring &ring = Ring(),
-		const typename std::enable_if<
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< IOType >::value &&
-			grb::is_semiring< Ring >::value,
-		void >::type * const = NULL
-	) {
-		return grb::dot< descr >( x,
-			left, right,
-			ring.getAdditiveMonoid(),
-			ring.getMultiplicativeOperator()
-		);
 	}
 
 } // namespace grb

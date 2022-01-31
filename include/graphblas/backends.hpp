@@ -151,7 +151,8 @@ namespace grb {
 		 *
 		 * Collaboration with ETH Zurich (ongoing).
 		 */
-		banshee_ssr
+		banshee_ssr,
+		mlir
 
 	};
 

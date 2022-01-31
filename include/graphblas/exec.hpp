@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_BANSHEE
 #include "graphblas/banshee/exec.hpp"
 #endif
+#ifdef _GRB_WITH_MLIR
+#include "graphblas/mlir/exec.hpp"
+#endif
 
 #ifdef _GRB_BACKEND
 namespace grb {

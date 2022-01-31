@@ -816,29 +816,6 @@ namespace grb {
 			auto &C_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-#ifdef _DEBUG
-			std::cout << "\t\t A offset array = { ";
-			for( size_t i = 0; i <= m_A; ++i ) {
-				std::cout << A_raw.col_start[ i ] << " ";
-			}
-			std::cout << "}\n";
-			for( size_t i = 0; i < m_A; ++i ) {
-				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << i << ", " << A_raw.row_index[ k ] << " ) = " << A_raw.values[ k ] << "\n";
-				}
-			}
-			std::cout << "\t\t B offset array = { ";
-			for( size_t j = 0; j <= m_B; ++j ) {
-				std::cout << B_raw.col_start[ j ] << " ";
-			}
-			std::cout << "}\n";
-			for( size_t j = 0; j < m_B; ++j ) {
-				for( size_t k = B_raw.col_start[ j ]; k < B_raw.col_start[ j + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << B_raw.row_index[ k ] << ", " << j << " ) = " << B_raw.values[ k ] << "\n";
-				}
-			}
-#endif
-
 			// retrieve buffers
 			char * arr1, * arr2, * arr3, * buf1, * buf2, * buf3;
 			arr1 = arr2 = buf1 = buf2 = nullptr;

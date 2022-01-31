@@ -96,6 +96,8 @@ backends like `ninja`, which are becoming increasingly popular: instead of
 Here are the basic steps to quickly compile and install ALP/GraphBLAS for shared
 memory machines (i.e. without distributed-memory support):
 
+0. For the MLIR backend: https://github.com/chelini/llvm-project.git (use the alp branch). Make
+sure the CMAKE will pick the path of the llvm repo above (when installed).
 1. Inside ALP/GraphBLAS root directory `<ALP/GraphBLAS root>` issue
 `./configure --prefix=</path/to/install/dir>` to generate the build
 infrastructure via CMake inside the `build` directory
