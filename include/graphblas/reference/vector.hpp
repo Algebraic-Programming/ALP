@@ -176,7 +176,9 @@ namespace grb {
 		 Auxiliary backend friends
 		   ********************* */
 #ifdef _GRB_WITH_LPF
-		friend class Vector< D, BSP1D, internal::DefaultCoordinates >;
+		friend class Vector< D, BSP1D, internal::Coordinates<
+			config::IMPLEMENTATION< BSP1D >::coordinatesBackend()
+		> >;
 #endif
 
 	private:

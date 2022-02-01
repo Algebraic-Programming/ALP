@@ -29,21 +29,30 @@
 
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/vector.hpp>
+ #include <graphblas/reference/vector.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/vector.hpp>
+ #include <graphblas/bsp1d/vector.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/vector.hpp>
+ #include <graphblas/banshee/vector.hpp>
 #endif
 
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND
 namespace grb {
-	template< typename D, Backend implementation = config::default_backend, typename C = internal::DefaultCoordinates >
+
+	template<
+		typename D,
+		Backend implementation = config::default_backend,
+		typename C = internal::Coordinates<
+			config::IMPLEMENTATION< config::default_backend >::coordinatesBackend()
+		>
+	>
 	class Vector;
+
 }
 #endif
 
-#endif
+#endif // end ``_H_GRB_VECTOR''
+

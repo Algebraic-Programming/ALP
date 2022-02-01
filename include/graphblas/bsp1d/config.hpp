@@ -34,8 +34,10 @@
 // if not defined, we set the backend of the BSP1D implementation to the
 // reference implementation
 #ifndef _GRB_BSP1D_BACKEND
-#define _GRB_BSP1D_BACKEND reference
+ #pragma message "_GRB_BSP1D_BACKEND was not set-- auto-selecting reference"
+ #define _GRB_BSP1D_BACKEND reference
 #endif
+
 
 namespace grb {
 
@@ -83,6 +85,14 @@ namespace grb {
 			 * alloc only if is running one process per compute node.
 			 */
 			static grb::config::ALLOC_MODE sharedAllocMode() noexcept;
+
+			/**
+			 * Select the coordinates backend of the selected process-local backend.
+			 */
+			static constexpr Backend coordinatesBackend() {
+				return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::coordinatesBackend();
+			}
+
 		};
 
 	} // namespace config
@@ -92,3 +102,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end ``_H_GRB_BSP1D_CONFIG''
+

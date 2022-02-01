@@ -27,16 +27,20 @@
 
 // include all active configurations
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/config.hpp"
+ #include "graphblas/reference/config.hpp"
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include "graphblas/hyperdags/config.hpp"
 #endif
 #ifdef _GRB_WITH_OMP
-#include "graphblas/omp/config.hpp"
+ #include "graphblas/omp/config.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/config.hpp"
+ #include "graphblas/bsp1d/config.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/config.hpp"
+ #include "graphblas/banshee/config.hpp"
 #endif
 
 #endif // end ``_H_GRB_CONFIG''
+

@@ -26,6 +26,7 @@
 
 #include "config.hpp"
 
+
 namespace grb {
 
 	namespace internal {
@@ -33,12 +34,9 @@ namespace grb {
 		template< enum Backend implementation >
 		class Coordinates;
 
-#ifndef _GRB_COORDINATES_BACKEND
-		typedef Coordinates< config::default_backend > DefaultCoordinates;
-#else
-		typedef Coordinates< _GRB_COORDINATES_BACKEND > DefaultCoordinates;
-#endif
 	} // namespace internal
+
 } // namespace grb
 
 #endif // _H_GRB_COORDINATES_BASE
+

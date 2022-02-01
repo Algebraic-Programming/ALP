@@ -34,87 +34,102 @@
 #include "coordinates.hpp"
 #include "vector.hpp"
 
+
 namespace grb {
 
 	/** No implementation notes. */
 	template< typename IOType >
 	class PinnedVector< IOType, reference > {
 
-	private:
-		/**
-		 * Tell the system to delete \a _buffered_values only when we had its last
-		 * reference.
-		 */
-		utils::AutoDeleter< IOType > _raw_deleter;
+		private:
 
-		/**
-		 * Tell the system to delete \a _buffered_mask only when we had its last
-		 * reference.
-		 */
-		utils::AutoDeleter< char > _assigned_deleter;
+			/**
+			 * Tell the system to delete \a _buffered_values only when we had its last
+			 * reference.
+			 */
+			utils::AutoDeleter< IOType > _raw_deleter;
 
-		/** A buffer of the local vector. */
-		IOType * _buffered_values;
+			/**
+			 * Tell the system to delete \a _buffered_mask only when we had its last
+			 * reference.
+			 */
+			utils::AutoDeleter< char > _assigned_deleter;
 
-		/** A buffer of the sparsity pattern of \a _buffered_values. */
-		internal::Coordinates< reference > _buffered_mask;
+			/** A buffer of the local vector. */
+			IOType * _buffered_values;
 
-	public:
-		/** No implementation notes. */
-		PinnedVector() : _buffered_values( NULL ) {}
+			/** A buffer of the sparsity pattern of \a _buffered_values. */
+			internal::Coordinates<
+				config::IMPLEMENTATION< reference >::coordinatesBackend()
+			> _buffered_mask;
 
-		/** No implementation notes. */
-		PinnedVector( const Vector< IOType, reference, internal::Coordinates< reference > > & x, IOMode mode ) :
-			_raw_deleter( x._raw_deleter ), _assigned_deleter( x._assigned_deleter ), _buffered_values( x._raw ), _buffered_mask( x._coordinates ) {
-			(void)mode; // sequential and parallel IO mode are equivalent for this implementation.
-		}
 
-		/** No implementation notes. */
-		IOType & operator[]( const size_t i ) noexcept {
-			return _buffered_values[ i ];
-		}
+		public:
 
-		/** No implementation notes. */
-		const IOType & operator[]( const size_t i ) const noexcept {
-			return _buffered_values[ i ];
-		}
+			/** No implementation notes. */
+			PinnedVector() : _buffered_values( NULL ) {}
 
-		/** No implementation notes. */
-		bool mask( const size_t i ) const noexcept {
-			return _buffered_mask.assigned( i );
-		}
+			/** No implementation notes. */
+			PinnedVector(
+				const Vector< IOType, reference, internal::Coordinates<
+					config::IMPLEMENTATION< reference >::coordinatesBackend()
+				> > &x,
+				IOMode mode
+			) :
+				_raw_deleter( x._raw_deleter ), _assigned_deleter( x._assigned_deleter ),
+				_buffered_values( x._raw ), _buffered_mask( x._coordinates )
+			{
+				(void)mode; // sequential and parallel IO mode are equivalent for this implementation.
+			}
 
-		/** No implementation notes. */
-		size_t length() const noexcept {
-			return _buffered_mask.size();
-		}
+			/** No implementation notes. */
+			IOType & operator[]( const size_t i ) noexcept {
+				return _buffered_values[ i ];
+			}
 
-		/** No implementation notes. */
-		size_t index( const size_t index ) const noexcept {
-			return index;
-		}
+			/** No implementation notes. */
+			const IOType & operator[]( const size_t i ) const noexcept {
+				return _buffered_values[ i ];
+			}
 
-		/**
-		 * Frees the underlying raw memory area iff the underlying vector was
-		 * destroyed. Otherwise set the underlying vector to unpinned state.
-		 */
-		void free() {
-			_raw_deleter.clear();
-			_assigned_deleter.clear();
-		}
+			/** No implementation notes. */
+			bool mask( const size_t i ) const noexcept {
+				return _buffered_mask.assigned( i );
+			}
+
+			/** No implementation notes. */
+			size_t length() const noexcept {
+				return _buffered_mask.size();
+			}
+
+			/** No implementation notes. */
+			size_t index( const size_t index ) const noexcept {
+				return index;
+			}
+
+			/**
+			 * Frees the underlying raw memory area iff the underlying vector was
+			 * destroyed. Otherwise set the underlying vector to unpinned state.
+			 */
+			void free() {
+				_raw_deleter.clear();
+				_assigned_deleter.clear();
+			}
+
 	};
 
 } // namespace grb
 
 // parse again for reference_omp backend
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_PINNEDVECTOR
-#define _H_GRB_REFERENCE_OMP_PINNEDVECTOR
-#define reference reference_omp
-#include "graphblas/reference/pinnedvector.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_PINNEDVECTOR
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_PINNEDVECTOR
+  #define _H_GRB_REFERENCE_OMP_PINNEDVECTOR
+  #define reference reference_omp
+  #include "graphblas/reference/pinnedvector.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_PINNEDVECTOR
+ #endif
 #endif
 
-#endif // end ``_H_GRB_REFERENCE_PINNEDVECTOR
+#endif // end ``_H_GRB_REFERENCE_PINNEDVECTOR''
+
