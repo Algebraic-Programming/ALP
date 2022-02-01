@@ -32,6 +32,7 @@ assert_defined_targets( backend_flags )
 
 set( backend_hyperdags_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/hyperdags.cpp
 )
 
 if( WITH_HYPERDAGS_BACKEND )

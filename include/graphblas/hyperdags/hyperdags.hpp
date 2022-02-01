@@ -23,13 +23,29 @@
 #ifndef _H_GRB_HYPERDAGS_STATE
 #define _H_GRB_HYPERDAGS_STATE
 
+#include <map>
+#include <set>
+#include <vector>
+#include <ostream>
+#include <type_traits>
+
+#include <assert.h>
+
+
 namespace grb {
 
 	namespace internal {
 
 		namespace hyperdags {
 
-			// 1: all source vertex definition
+			/** \internal The three vertex types in a HyperDAG */
+			enum VertexType {
+				SOURCE,
+				OPERATION,
+				OUTPUT
+			};
+
+			// 1: all source vertex definitions
 
 			/** \internal The types of source vertices that may be generated. */
 			enum SourceVertexType {
@@ -44,9 +60,9 @@ namespace grb {
 				 * \internal The source is a container with contents initialised by a call
 				 *           to set.
 				 */
-				SET;
+				SET
 
-			}
+			};
 
 			/** \internal A source vertex. */
 			class SourceVertex {
@@ -54,13 +70,13 @@ namespace grb {
 				private:
 
 					/** \internal The type of source */
-					const enum SourceVertexType type;
+					enum SourceVertexType type;
 
 					/** \internal The type-wise ID of the vertex */
-					const size_t local_id;
+					size_t local_id;
 
 					/** \internal The global ID of the vertex */
-					const size_t global_id;
+					size_t global_id;
 
 
 				public:
@@ -68,13 +84,13 @@ namespace grb {
 					SourceVertex(
 						const enum SourceVertexType,
 						const size_t, const size_t
-					);
+					) noexcept;
 
-					enum SourceVertexType getType();
+					enum SourceVertexType getType() const noexcept;
 
-					size_t getLocalID();
+					size_t getLocalID() const noexcept;
 
-					size_t getGlobalID();
+					size_t getGlobalID() const noexcept;
 
 			};
 
@@ -118,7 +134,7 @@ namespace grb {
 
 			/* TODO maybe not needed-- so far, only one output type
 			enum OutputVertexType {
-				CONTAINER;
+				CONTAINER
 			}*/
 
 			/** \internal An output vertex. */
@@ -135,11 +151,11 @@ namespace grb {
 
 				public:
 
-					OutputVertex( const size_t, const size_t );
+					OutputVertex( const size_t, const size_t ) noexcept;
 
-					size_t getLocalID();
+					size_t getLocalID() const noexcept;
 
-					size_t getGlobalID();
+					size_t getGlobalID() const noexcept;
 
 			};
 
@@ -152,7 +168,7 @@ namespace grb {
 
 				public:
 
-					OutputVertexGenerator();
+					OutputVertexGenerator() noexcept;
 
 					/**
 					 * \internal
@@ -172,7 +188,7 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					size_t size() const;
+					size_t size() const noexcept;
 
 			};
 
@@ -181,16 +197,16 @@ namespace grb {
 			/** \internal Which operation an OperationVertex encodes. */
 			enum OperationVertexType {
 
-				NNZ_VECTOR;
+				NNZ_VECTOR
 
-			}
+			};
 
 			/** \internal An operation vertex */
 			class OperationVertex {
 
 				private:
 
-					const enum OperationType type;
+					const enum OperationVertexType type;
 
 					const size_t local_id;
 
@@ -200,20 +216,20 @@ namespace grb {
 				public:
 
 					OperationVertex(
-						const enum OperationType,
+						const enum OperationVertexType,
 						const size_t, const size_t
-					);
+					) noexcept;
 
-					enum OperationType getType();
+					enum OperationVertexType getType() const noexcept;
 
-					size_t getLocalID();
+					size_t getLocalID() const noexcept;
 
-					size_t getGlobalID();
+					size_t getGlobalID() const noexcept;
 
 			};
 
 
-			class OperationVertexTranslator {
+			class OperationVertexGenerator {
 
 				private:
 
@@ -236,7 +252,7 @@ namespace grb {
 					 */
 					OperationVertex create(
 						const OperationVertexType type,
-						const void * const id
+						const size_t id
 					);
 
 					/**
@@ -270,7 +286,7 @@ namespace grb {
 
 				public:
 
-					Hypergraph();
+					Hypergraph() noexcept;
 
 					/**
 					 * \internal
@@ -290,16 +306,16 @@ namespace grb {
 					template< typename FwdIt >
 					void createHyperedge( FwdIt start, const FwdIt &end ) {
 						static_assert( std::is_unsigned<
-							typename std::iterator_traits< FwdIt >::value_type,
+							typename std::iterator_traits< FwdIt >::value_type
 						>::value, "Expected an iterator over positive integral values" );
 						std::set< size_t > toAdd;
 						assert( start != end );
 						for( ; start != end; ++start ) {
-							assert( *it < num_vertices );
+							assert( *start < num_vertices );
 							if( toAdd.find(
-								static_cast< size_t >( *it )
+								static_cast< size_t >( *start )
 							) == toAdd.end() ) {
-								toAdd.insert( *it );
+								toAdd.insert( *start );
 							}
 						}
 						hyperedges.push_back( std::move(toAdd) );
@@ -312,7 +328,9 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					size_t createVertex();
+					size_t createVertex() noexcept;
+
+					size_t numVertices() const noexcept;
 
 					/**
 					 * \internal
@@ -326,20 +344,11 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					void render( std::ostream &out ) {
-						const size_t net_num = 0;
-						for( const auto &net : hyperedges ) {
-							for( const auto &id : net ) {
-								out << net_num << " " << id << "\n";
-							}
-							(void) ++net_num;
-						}
-						out << std::flush;
-					}
+					void render( std::ostream &out ) const;
 
 			};
 
-			/** \internal Represents a finalised HyperDAG. */
+			/** \internal Represents a finalised HyperDAG */
 			class HyperDAG {
 
 				friend class HyperDAGGenerator;
@@ -348,11 +357,17 @@ namespace grb {
 
 					Hypergraph hypergraph;
 
-					const size_t num_sources;
+					size_t num_sources;
 
-					const size_t num_operations;
+					size_t num_operations;
 
-					const size_t num_outputs;
+					size_t num_outputs;
+
+					std::vector< SourceVertex > sourceVertices;
+
+					std::vector< OperationVertex > operationVertices;
+
+					std::vector< OutputVertex > outputVertices;
 
 					std::map< size_t, size_t > source_to_global_id;
 
@@ -364,11 +379,80 @@ namespace grb {
 
 					std::map< size_t, size_t > global_to_local_id;
 
+					template< typename SrcIt, typename OpIt, typename OutIt >
+					HyperDAG(
+						Hypergraph _hypergraph,
+						SrcIt src_start, const SrcIt &src_end,
+						OpIt op_start, const OpIt &op_end,
+						OutIt out_start, const OutIt &out_end
+					) : hypergraph( _hypergraph ),
+						num_sources( 0 ), num_operations( 0 ), num_outputs( 0 )
+					{
+						// static checks
+						static_assert( std::is_same< SourceVertex,
+								typename std::iterator_traits< SrcIt >::value_type
+							>::value,
+							"src_start must iterate over elements of type SourceVertex"
+						);
+						static_assert( std::is_same< OperationVertex,
+								typename std::iterator_traits< OpIt >::value_type
+							>::value,
+							"op_start must iterate over elements of type OperationVertex"
+						);
+						static_assert( std::is_same< OutputVertex,
+								typename std::iterator_traits< OutIt >::value_type
+							>::value,
+							"out_start must iterate over elements of type OutputVertex"
+						);
+
+						// first add sources
+						for( ; src_start != src_end; ++src_start ) {
+							const size_t local_id = src_start->getLocalID();
+							const size_t global_id = src_start->getGlobalID();
+							source_to_global_id[ local_id ] = global_id;
+							global_to_type[ global_id ] = SOURCE;
+							global_to_local_id[ global_id ] = local_id;
+							sourceVertices.push_back( *src_start );
+							(void) ++num_sources;
+						}
+
+						// second, add operations
+						for( ; op_start != op_end; ++op_start ) {
+							const size_t local_id = op_start->getLocalID();
+							const size_t global_id = op_start->getGlobalID();
+							operation_to_global_id[ local_id ] = global_id;
+							global_to_type[ global_id ] = OPERATION;
+							global_to_local_id[ global_id ] = local_id;
+							operationVertices.push_back( *op_start );
+							(void) ++num_operations;
+						}
+
+						// third, add outputs
+						for( ; out_start != out_end; ++out_start ) {
+							const size_t local_id = out_start->getLocalID();
+							const size_t global_id = out_start->getGlobalID();
+							output_to_global_id[ local_id ] = global_id;
+							global_to_type[ global_id ] = OUTPUT;
+							global_to_local_id[ global_id ] = local_id;
+							outputVertices.push_back( *out_start );
+							(void) ++num_outputs;
+						}
+
+						// final sanity check
+						assert( num_sources + num_operations + num_outputs == hypergraph.numVertices() );
+					}
+
 
 				public:
 
 					/** \internal @returns The hypergraph representation of the HyperDAG. */
-					const Hypergraph & get() const;
+					const Hypergraph & get() const noexcept;
+
+					size_t numSources() const noexcept;
+
+					size_t numOperations() const noexcept;
+
+					size_t numOutputs() const noexcept;
 
 			};
 
@@ -381,10 +465,10 @@ namespace grb {
 					Hypergraph hypergraph;
 
 					/** \internal Map of pointers to source vertices. */
-					std::map< void *, SourceVertex > sourceVertices;
+					std::map< const void *, SourceVertex > sourceVertices;
 
 					/** \internal Map of pointers to operation vertices. */
-					std::map< void *, OperationVertex > operationVertices;
+					std::map< const void *, OperationVertex > operationVertices;
 
 					// note: there is no map of OutputVertices because only at the point we
 					//       finalize to generate the final HyperDAG do we know for sure what
@@ -400,18 +484,18 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					std::map< void *, size_t > operationOrOutputVertices;
+					std::map< const void *, size_t > operationOrOutputVertices;
 
-					SourceVertexGenerator;
+					SourceVertexGenerator sourceGen;
 
-					OperationVertexGenerator;
+					OperationVertexGenerator operationGen;
 
 					// OutputVertexGenerator is a local field of #finalize()
 
 
 				public:
 
-					HyperDAGGenerator();
+					HyperDAGGenerator() noexcept;
 
 					/**
 					 * \internal
@@ -482,9 +566,12 @@ namespace grb {
 					 *
 					 * @returns The resulting HyperDAG.
 					 *
+					 * The current generator instance is left unmodified; this function takes
+					 * a snapshot of the current state, and allows its further extension.
+					 *
 					 * \endinternal
 					 */
-					HyperDAG finalize();
+					HyperDAG finalize() const;
 
 			};
 
