@@ -27,7 +27,11 @@
 #ifndef _H_GRB_HYPERDAGS_CONFIG
 #define _H_GRB_HYPERDAGS_CONFIG
 
-#include <graphblas/base/config.hpp>
+#include <graphblas/config.hpp>
+
+#ifndef _GRB_WITH_HYPERDAGS_USING
+ #error "_GRB_WITH_HYPERDAGS_USING must be defined"
+#endif
 
 
 namespace grb {
