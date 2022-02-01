@@ -142,7 +142,7 @@ endif()
 
 if( WITH_HYPERDAGS_BACKEND )
 	add_library( backend_hyperdags_headers INTERFACE )
-	target_link_libraries( backend_hyperdags_headers INTERFACE backend_headers_nodefs "backend_${WITH_HYPERDAGS_USING}_headers" )
+	target_link_libraries( backend_hyperdags_headers INTERFACE "backend_${WITH_HYPERDAGS_USING}_headers" )
 	target_compile_definitions( backend_hyperdags_headers INTERFACE "${HYPERDAGS_INCLUDE_DEFS}" )
 	install( TARGETS backend_hyperdags_headers EXPORT GraphBLASTargets )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/hyperdags/"

@@ -31,6 +31,7 @@ assert_valid_variables( BACKEND_LIBRARY_OUTPUT_NAME VERSION
 assert_defined_targets( backend_flags )
 
 set( backend_hyperdags_srcs
+	"${backend_${WITH_HYPERDAGS_USING}_srcs}"
 	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/hyperdags.cpp
 )
@@ -41,12 +42,10 @@ if( WITH_HYPERDAGS_BACKEND )
 	add_library( backend_hyperdags_static STATIC ${backend_hyperdags_srcs} )
 	set_target_properties( backend_hyperdags_static PROPERTIES
 		OUTPUT_NAME "${BACKEND_LIBRARY_OUTPUT_NAME}"
-		ARCHIEVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/hyperdags"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/hyperdags"
 	)
 	target_link_libraries( backend_hyperdags_static PRIVATE backend_flags )
-	target_link_libraries( backend_hyperdags_static PUBLIC backend_${WITH_HYPERDAGS_USING}_headers )
 	target_link_libraries( backend_hyperdags_static PUBLIC backend_hyperdags_headers )
-	target_link_libraries( backend_hyperdags_static PRIVATE backend_${WITH_HYPERDAGS_USING}_static )
 	target_compile_definitions( backend_hyperdags_static PUBLIC "${HYPERDAGS_SELECTION_DEFS}" )
 	install( TARGETS backend_hyperdags_static
 		EXPORT GraphBLASTargets
@@ -61,9 +60,7 @@ if( WITH_HYPERDAGS_BACKEND )
 		LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/hyperdags"
 	)
 	target_link_libraries( backend_hyperdags_shared PRIVATE backend_flags )
-	target_link_libraries( backend_hyperdags_shared PRIVATE backend_${WITH_HYPERDAGS_USING}_headers )
-	target_link_libraries( backend_hyperdags_shared INTERFACE backend_hyperdags_headers )
-	target_link_libraries( backend_hyperdags_shared PRIVATE backend_${WITH_HYPERDAGS_USING}_shared )
+	target_link_libraries( backend_hyperdags_shared PUBLIC backend_hyperdags_headers )
 	target_compile_definitions( backend_hyperdags_shared PUBLIC "${HYPERDAGS_SELECTION_DEFS}" )
 	install( TARGETS backend_hyperdags_shared
 		EXPORT GraphBLASTargets
