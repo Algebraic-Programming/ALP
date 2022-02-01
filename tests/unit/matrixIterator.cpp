@@ -62,6 +62,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	rc = rc ? rc : grb::buildMatrixUnique( D, I1, J1, 15, SEQUENTIAL );
 	if( rc != SUCCESS ) {
 		std::cerr << "\tinitialisation FAILED\n";
+		std::cerr << std::flush;
 		return;
 	}
 
@@ -84,6 +85,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\tsubtest 1 (diagonal 15 x 15 matrix) FAILED\n";
+		std::cerr << std::flush;
 		return;
 	}
 
@@ -107,6 +109,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 				std::cout << "( " << triple.first.first << ", " << triple.first.second << " ): " << triple.second << "\n";
 			}
 		}
+		std::cout << std::flush;
 #ifndef NDEBUG
 		const auto sync_rc = spmd<>::sync();
 		assert( sync_rc == SUCCESS );
@@ -131,6 +134,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\tsubtest 2 (general 15 x 15 matrix) FAILED\n";
+		std::cerr << std::flush;
 		return;
 	}
 
@@ -170,6 +174,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\tsubtest 3 (general " << n << " x " << n << " matrix) FAILED\n";
+		std::cerr << std::flush;
 		return;
 	}
 
@@ -189,6 +194,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\tsubtest 4 (diagonal pattern " << n << " x " << n << " matrix) FAILED\n";
+		std::cerr << std::flush;
 		return;
 	}
 }
@@ -221,8 +227,9 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): "
+			<< "an even integer, the test size."
+			<< std::endl;
 		return 1;
 	}
 
@@ -230,7 +237,7 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
 	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
+		std::cerr << "Launching test FAILED" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
