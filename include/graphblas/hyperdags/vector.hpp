@@ -31,19 +31,19 @@ namespace grb {
 	namespace internal {
 
 		namespace hyperdags {
-			typedef Coordinates<
+			typedef grb::internal::Coordinates<
 				grb::config::IMPLEMENTATION< grb::hyperdags >::coordinatesBackend()
 			> Coordinates;
 		}
 
 		template< typename T >
-		Vector< T, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & getVector(
-			Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &
+		Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > & getVector(
+			Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &
 		);
 
 		template< typename T >
-		const Vector< T, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & getVector(
-			const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
+		const Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > & getVector(
+			const Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &x
 		);
 
 	}
