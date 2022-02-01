@@ -195,6 +195,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
+add_grb_executables( dense_mxm dense_mxm.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_spmv dense_spmv.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
