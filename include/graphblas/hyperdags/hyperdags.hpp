@@ -27,6 +27,7 @@
 #include <set>
 #include <vector>
 #include <ostream>
+#include <iostream>
 #include <type_traits>
 
 #include <assert.h>
@@ -452,13 +453,20 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					std::map< const void *, size_t > operationOrOutputVertices;
+					std::map< const void *,
+						std::pair< size_t, OperationVertexType >
+					> operationOrOutputVertices;
 
 					SourceVertexGenerator sourceGen;
 
 					OperationVertexGenerator operationGen;
 
 					// OutputVertexGenerator is a local field of #finalize()
+
+					size_t addAnySource(
+						const SourceVertexType type,
+						const void * const pointer
+					);
 
 
 				public:
@@ -524,7 +532,85 @@ namespace grb {
 						const OperationVertexType type,
 						SrcIt src_start, const DstIt &src_end,
 						DstIt dst_start, const DstIt &dst_end
-					);
+					) {
+						static_assert( std::is_same< const void *,
+								typename std::iterator_traits< SrcIt >::value_type
+							>::value,
+							"Sources should be given as const void pointers"
+						);
+						static_assert( std::is_same< const void *,
+								typename std::iterator_traits< DstIt >::value_type
+							>::value,
+							"Destinations should be given as const void pointers"
+						);
+
+						// steps 1, 2, and 3
+						std::vector< std::vector< size_t > > hyperedges;
+						for( ; src_start != src_end; ++src_start ) {
+							std::vector< size_t > toPush;
+							// step 1
+							const auto &it = operationOrOutputVertices.find( *src_start );
+							if( it == operationOrOutputVertices.end() ) {
+								toPush.push_back( addAnySource( CONTAINER, *src_start ) );
+							} else {
+								// step 2
+								const auto &remove = operationVertices.find( it->first );
+								if( remove != operationVertices.end() ) {
+									operationVertices.erase( remove );
+								}
+								const size_t global_id = it->second.first;
+								const auto &operationVertex = operationGen.create(
+									it->second.second, global_id
+								);
+								operationVertices.insert( std::make_pair( it->first, operationVertex ) );
+								operationVec.push_back( operationVertex );
+								operationOrOutputVertices.erase( it );
+								toPush.push_back( global_id );
+							}
+							// step 3
+							hyperedges.push_back( toPush );
+						}
+
+						// step 4, 5, and 6
+						for( ; dst_start != dst_end; ++dst_start ) {
+							// step 4
+							{
+								const auto &it = sourceVertices.find( *dst_start );
+								if( it != sourceVertices.end() ) {
+									sourceVertices.erase( it );
+								}
+							}
+							{
+								const auto &it = operationVertices.find( *dst_start );
+								if( it != operationVertices.end() ) {
+									operationVertices.erase( it );
+								}
+							}
+							{
+								const auto &it = operationOrOutputVertices.find( *dst_start );
+								if( it != operationOrOutputVertices.end() ) {
+									std::cerr << "WARNING (hyperdags::addOperation): an unconsumed output "
+										<< "container was detected. This indicates the existance of "
+										<< "an ALP primitive whose output is never used.\n";
+									operationOrOutputVertices.erase( it );
+								}
+							}
+							// step 5
+							const size_t global_id = hypergraph.createVertex();
+							operationOrOutputVertices.insert( std::make_pair( *dst_start,
+								std::make_pair( global_id, type )
+							) );
+							// step 6
+							for( auto &hyperedge : hyperedges ) {
+								hyperedge.push_back( global_id );
+							}
+						}
+
+						// step 7
+						for( const auto &hyperedge : hyperedges ) {
+							hypergraph.createHyperedge( hyperedge.begin(), hyperedge.end() );
+						}
+					}
 
 					/**
 					 * \internal

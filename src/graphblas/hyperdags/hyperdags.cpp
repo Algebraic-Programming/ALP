@@ -225,6 +225,13 @@ void grb::internal::hyperdags::HyperDAGGenerator::addSource(
 	const void * const pointer
 ) {
 	assert( type != grb::internal::hyperdags::SourceVertexType::CONTAINER );
+	(void) addAnySource( type, pointer );
+}
+
+size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
+	const enum grb::internal::hyperdags::SourceVertexType type,
+	const void * const pointer
+) {
 	const auto &find = sourceVertices.find( pointer );
 	if( find != sourceVertices.end() ) {
 		sourceVertices.erase( find );
@@ -233,6 +240,7 @@ void grb::internal::hyperdags::HyperDAGGenerator::addSource(
 	const auto &sourceVertex = sourceGen.create( type, global_id );
 	sourceVertices.insert( std::make_pair( pointer, sourceVertex ) );
 	sourceVec.push_back( sourceVertex );
+	return global_id;
 }
 
 grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::finalize() const {
@@ -242,7 +250,8 @@ grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::
 	{
 		grb::internal::hyperdags::OutputVertexGenerator outputGen;
 		for( const auto &pair : operationOrOutputVertices ) {
-			grb::internal::hyperdags::OutputVertex toAdd = outputGen.create( pair.second );
+			grb::internal::hyperdags::OutputVertex toAdd =
+				outputGen.create( pair.second.first );
 			outputVec.push_back( toAdd );
 		}
 	}
