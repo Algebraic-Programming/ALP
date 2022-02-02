@@ -22,6 +22,16 @@
 
 #include <graphblas/init.hpp>
 
+#include <graphblas/hyperdags/hyperdags.hpp>
+
+
+namespace grb {
+	namespace internal {
+		namespace hyperdags {
+			HyperDAGGenerator generator;
+		}
+	}
+}
 
 template<>
 grb::RC grb::init< grb::hyperdags >( const size_t s, const size_t P, void * const ) {
@@ -32,6 +42,8 @@ grb::RC grb::init< grb::hyperdags >( const size_t s, const size_t P, void * cons
 template<>
 grb::RC grb::finalize< grb::hyperdags >() {
 	std::cerr << "Info: grb::finalize (hyperdags) called.\n";
+	std::cerr << "\t dumping HyperDAG to stdout" << std::endl;
+	grb::internal::hyperdags::generator.finalize().get().render( std::cout );
 	return grb::finalize< grb::_GRB_WITH_HYPERDAGS_USING >();
 }
 
