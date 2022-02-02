@@ -50,6 +50,7 @@ endif()
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
+option( WITH_DENSE_BACKEND "With Dense backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
