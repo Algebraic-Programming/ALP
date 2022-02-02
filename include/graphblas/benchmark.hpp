@@ -29,6 +29,8 @@
 // include specialisations
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/benchmark.hpp"
+#endif
+#ifdef _GRB_WITH_DENSE
  #include "graphblas/denseref/benchmark.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
