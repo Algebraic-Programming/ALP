@@ -5,3 +5,5 @@ doxygen.log
 /lib/
 flags.mk
 paths.mk
+/build*/
+.vscode/
