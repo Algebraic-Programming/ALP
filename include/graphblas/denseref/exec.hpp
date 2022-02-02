@@ -23,6 +23,10 @@
 #ifndef _H_GRB_DENSEREF_EXEC
 #define _H_GRB_DENSEREF_EXEC
 
+#include <graphblas/backends.hpp>
+#include <graphblas/base/exec.hpp>
+#include <graphblas/denseref/init.hpp>
+
 namespace grb {
 
 	/**
@@ -35,7 +39,7 @@ namespace grb {
 
 			/** \internal No implementation notes. */
 			Launcher( const size_t process_id = 0,
-				const size_t nprocs = 0,
+				const size_t nprocs = 1,
 				const std::string hostname = "localhost",
 				const std::string port = "0"
 			) {

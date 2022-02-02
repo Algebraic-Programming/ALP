@@ -29,9 +29,9 @@
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/spmd.hpp"
 #endif
-#ifdef _GRB_WITH_DENSE
- #include "graphblas/denseref/spmd.hpp"
-#endif
+// #ifdef _GRB_WITH_DENSE
+//  #include "graphblas/denseref/spmd.hpp"
+// #endif
 #ifdef _GRB_WITH_LPF
  #include "graphblas/bsp1d/spmd.hpp"
 #endif
