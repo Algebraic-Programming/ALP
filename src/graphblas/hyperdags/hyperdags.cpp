@@ -157,6 +157,51 @@ void grb::internal::hyperdags::Hypergraph::render(
 	out << std::flush;
 }
 
+grb::internal::hyperdags::HyperDAG::HyperDAG(
+	grb::internal::hyperdags::Hypergraph _hypergraph,
+	const std::vector< grb::internal::hyperdags::SourceVertex > &_srcVec,
+	const std::vector< grb::internal::hyperdags::OperationVertex > &_opVec,
+	const std::vector< grb::internal::hyperdags::OutputVertex > &_outVec
+) : hypergraph( _hypergraph ),
+	num_sources( 0 ), num_operations( 0 ), num_outputs( 0 ),
+	sourceVertices( _srcVec ),
+	operationVertices( _opVec ),
+	outputVertices( _outVec )
+{
+	// first add sources
+	for( const auto &src : sourceVertices ) {
+		const size_t local_id = src.getLocalID();
+		const size_t global_id = src.getGlobalID();
+		source_to_global_id[ local_id ] = global_id;
+		global_to_type[ global_id ] = SOURCE;
+		global_to_local_id[ global_id ] = local_id;
+		(void) ++num_sources;
+	}
+
+	// second, add operations
+	for( const auto &op : operationVertices ) {
+		const size_t local_id = op.getLocalID();
+		const size_t global_id = op.getGlobalID();
+		operation_to_global_id[ local_id ] = global_id;
+		global_to_type[ global_id ] = OPERATION;
+		global_to_local_id[ global_id ] = local_id;
+		(void) ++num_operations;
+	}
+
+	// third, add outputs
+	for( const auto &out : outputVertices ) {
+		const size_t local_id = out.getLocalID();
+		const size_t global_id = out.getGlobalID();
+		output_to_global_id[ local_id ] = global_id;
+		global_to_type[ global_id ] = OUTPUT;
+		global_to_local_id[ global_id ] = local_id;
+		(void) ++num_outputs;
+	}
+
+	// final sanity check
+	assert( num_sources + num_operations + num_outputs == hypergraph.numVertices() );
+}
+
 const grb::internal::hyperdags::Hypergraph & grb::internal::hyperdags::HyperDAG::get() const noexcept {
 	return hypergraph;
 }
@@ -187,26 +232,11 @@ void grb::internal::hyperdags::HyperDAGGenerator::addSource(
 	const size_t global_id = hypergraph.createVertex();
 	const auto &sourceVertex = sourceGen.create( type, global_id );
 	sourceVertices.insert( std::make_pair( pointer, sourceVertex ) );
+	sourceVec.push_back( sourceVertex );
 }
 
 grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::finalize() const {
-	std::vector< grb::internal::hyperdags::SourceVertex > sourceVec;
-	std::vector< grb::internal::hyperdags::OperationVertex > operationVec;
 	std::vector< grb::internal::hyperdags::OutputVertex > outputVec;
-
-	// generate sourceVertices
-	{
-		for( const auto &pair : sourceVertices ) {
-			sourceVec.push_back( pair.second );
-		}
-	}
-
-	// generate operationVertices
-	{
-		for( const auto &pair : operationVertices ) {
-			operationVec.push_back( pair.second );
-		}
-	}
 
 	// generate outputVertices
 	{
@@ -220,9 +250,7 @@ grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::
 	// generate HyperDAG
 	grb::internal::hyperdags::HyperDAG ret(
 		hypergraph,
-		sourceVec.begin(), sourceVec.end(),
-		operationVec.begin(), operationVec.end(),
-		outputVec.begin(), outputVec.end()
+		sourceVec, operationVec, outputVec
 	);
 
 	// done

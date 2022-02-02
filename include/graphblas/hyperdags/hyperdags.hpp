@@ -379,68 +379,12 @@ namespace grb {
 
 					std::map< size_t, size_t > global_to_local_id;
 
-					template< typename SrcIt, typename OpIt, typename OutIt >
 					HyperDAG(
 						Hypergraph _hypergraph,
-						SrcIt src_start, const SrcIt &src_end,
-						OpIt op_start, const OpIt &op_end,
-						OutIt out_start, const OutIt &out_end
-					) : hypergraph( _hypergraph ),
-						num_sources( 0 ), num_operations( 0 ), num_outputs( 0 )
-					{
-						// static checks
-						static_assert( std::is_same< SourceVertex,
-								typename std::iterator_traits< SrcIt >::value_type
-							>::value,
-							"src_start must iterate over elements of type SourceVertex"
-						);
-						static_assert( std::is_same< OperationVertex,
-								typename std::iterator_traits< OpIt >::value_type
-							>::value,
-							"op_start must iterate over elements of type OperationVertex"
-						);
-						static_assert( std::is_same< OutputVertex,
-								typename std::iterator_traits< OutIt >::value_type
-							>::value,
-							"out_start must iterate over elements of type OutputVertex"
-						);
-
-						// first add sources
-						for( ; src_start != src_end; ++src_start ) {
-							const size_t local_id = src_start->getLocalID();
-							const size_t global_id = src_start->getGlobalID();
-							source_to_global_id[ local_id ] = global_id;
-							global_to_type[ global_id ] = SOURCE;
-							global_to_local_id[ global_id ] = local_id;
-							sourceVertices.push_back( *src_start );
-							(void) ++num_sources;
-						}
-
-						// second, add operations
-						for( ; op_start != op_end; ++op_start ) {
-							const size_t local_id = op_start->getLocalID();
-							const size_t global_id = op_start->getGlobalID();
-							operation_to_global_id[ local_id ] = global_id;
-							global_to_type[ global_id ] = OPERATION;
-							global_to_local_id[ global_id ] = local_id;
-							operationVertices.push_back( *op_start );
-							(void) ++num_operations;
-						}
-
-						// third, add outputs
-						for( ; out_start != out_end; ++out_start ) {
-							const size_t local_id = out_start->getLocalID();
-							const size_t global_id = out_start->getGlobalID();
-							output_to_global_id[ local_id ] = global_id;
-							global_to_type[ global_id ] = OUTPUT;
-							global_to_local_id[ global_id ] = local_id;
-							outputVertices.push_back( *out_start );
-							(void) ++num_outputs;
-						}
-
-						// final sanity check
-						assert( num_sources + num_operations + num_outputs == hypergraph.numVertices() );
-					}
+						const std::vector< SourceVertex > &_srcVec,
+						const std::vector< OperationVertex > &_opVec,
+						const std::vector< OutputVertex > &_outVec
+					);
 
 
 				public:
@@ -464,6 +408,30 @@ namespace grb {
 					/** \internal The hypergraph under construction. */
 					Hypergraph hypergraph;
 
+					/**
+					 * \internal
+					 *
+					 * Once new source vertices are created, they are recorded here. This
+					 * storage differs from #sourceVertices in that the latter only keeps
+					 * track of currently active source vertices, and identifies them by
+					 * a pointer.
+					 *
+					 * \endinternal
+					 */
+					std::vector< SourceVertex > sourceVec;
+
+					/**
+					 * \internal
+					 *
+					 * Once new operation vertices are created, they are recorded here. This
+					 * storage differs from #operationVertices in that the latter only keeps
+					 * track of currently active source vertices, and identifies them by
+					 * a pointer.
+					 *
+					 * \endinternal
+					 */
+					std::vector< OperationVertex > operationVec;
+
 					/** \internal Map of pointers to source vertices. */
 					std::map< const void *, SourceVertex > sourceVertices;
 
@@ -472,7 +440,7 @@ namespace grb {
 
 					// note: there is no map of OutputVertices because only at the point we
 					//       finalize to generate the final HyperDAG do we know for sure what
-					//       the output vertices are
+					//       the output vertices are. The same applies to an `outputVec`.
 
 					/**
 					 * \internal
