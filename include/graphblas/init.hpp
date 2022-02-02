@@ -30,7 +30,7 @@
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/init.hpp"
 #endif
-#ifdef _GRB_WITH_DENSE
+#ifdef _GRB_WITH_DENSEREF
  #include "graphblas/denseref/init.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
