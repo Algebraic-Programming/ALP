@@ -31,7 +31,7 @@ set( REFERENCE_BACKEND_DEFAULT_NAME "backend_reference" )
 set( REFERENCE_OMP_BACKEND_DEFAULT_NAME "backend_reference_omp" )
 set( BSP1D_BACKEND_DEFAULT_NAME "backend_bsp1d" )
 set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
-set( DENSE_BACKEND_DEFAULT_NAME "backend_reference_dense" )
+set( DENSEREF_BACKEND_DEFAULT_NAME "backend_reference_dense" )
 
 
 ### COMPILER DEFINITIONS FOR HEADERS INCLUSION AND FOR BACKEND SELECTION
@@ -40,12 +40,12 @@ set( DENSE_BACKEND_DEFAULT_NAME "backend_reference_dense" )
 set( REFERENCE_INCLUDE_DEFS "_GRB_WITH_REFERENCE" )
 set( REFERENCE_OMP_INCLUDE_DEFS "_GRB_WITH_OMP" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
-set( DENSE_INCLUDE_DEFS "_GRB_WITH_DENSE" )
+set( DENSEREF_INCLUDE_DEFS "_GRB_WITH_DENSEREF" )
 
 # compiler definitions to select a backend
 set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
 set( REFERENCE_OMP_SELECTION_DEFS "_GRB_BACKEND=reference_omp" )
-set( DENSE_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
+set( DENSEREF_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
 set( BSP1D_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference"
@@ -77,7 +77,7 @@ if( WITH_OMP_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "reference_omp" )
 endif()
 
-if( WITH_DENSE_BACKEND )
+if( WITH_DENSEREF_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "reference_dense" )
 endif()
 

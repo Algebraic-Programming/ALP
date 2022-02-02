@@ -38,8 +38,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cout << "_GRB_WITH_REFERENCE defined\n";
 	#endif
 
-	#ifdef _GRB_WITH_DENSE
-		std::cout << "_GRB_WITH_DENSE defined\n";
+	#ifdef _GRB_WITH_DENSEREF
+		std::cout << "_GRB_WITH_DENSEREF defined\n";
 	#endif
 
 	rc = grb::SUCCESS;

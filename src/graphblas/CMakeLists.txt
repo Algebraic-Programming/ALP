@@ -83,7 +83,7 @@ if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
 	add_subdirectory( reference )
 endif()
 
-if( WITH_DENSE_BACKEND )
+if( WITH_DENSEREF_BACKEND )
 	add_subdirectory( denseref )
 endif()
 

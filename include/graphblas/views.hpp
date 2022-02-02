@@ -46,10 +46,9 @@ namespace grb {
 		template< typename OriginalType >
 		struct Transpose {
 
-			using applied_to = original_view;
-			using dims_retval_type = std::pair< size_t, size_t >
+			using applied_to = OriginalType;
 
-				static dims_retval_type dims( std::pair< size_t, size_t > dims_pair ) {
+			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.second, dims_pair.first );
 			}
 		};
