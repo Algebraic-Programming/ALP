@@ -33,6 +33,10 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
+#include <graphblas/storage.hpp>
+#include <graphblas/structures.hpp>
+#include <graphblas/utils.hpp>
+#include <graphblas/views.hpp>
 
 namespace grb {
 
@@ -428,6 +432,82 @@ const_iterator end() const {}
 //@}
 }
 ;
+
+/**
+ * An ALP structured matrix.
+ *
+ * This is an opaque data type for that implements the below functions.
+ *
+ * @tparam T The type of the matrix elements. \a T shall not be a GraphBLAS
+ *            type.
+ * @tparam Structure  One of the matrix structures in grb::structures.
+ * @tparam view  One of the matrix views in enum grb::Views. All static views except for
+ * 		   \a Views::original disable the possibility to instantiate a new container and only
+ * 		   allow the creation of a reference to an existing \a StructuredMatrix
+ * 		   (note that this could be view itself). A view could be instanciated into a separate container
+ * 		   than its original source by explicit copy.
+ * @tparam backend Allows multiple backends to implement different
+ *         versions of this data type.
+ *
+ * \note The presence of different combination of structures and views could produce many specialization
+ *       with lots of logic replication.
+ */
+template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+class StructuredMatrix {
+
+	size_t m, n;
+
+	/**
+	 * The container's data.
+	 * The geometry and access scheme are specified by a combination of
+	 * \a Structure, \a storage_scheme, \a m, and \a n.
+	 */
+	T * __restrict__ data;
+
+	/**
+	 * The container's storage scheme. \a storage_scheme is not exposed to the user as an option
+	 * but can defined by ALP at different points in the execution depending on the \a backend choice.
+	 * For example, if the container is associated to an I/O matrix, with a reference backend
+	 * it might be set to reflect the storage scheme of the user data as specified at buildMatrix.
+	 * If \a backend is set to \a mlir then the scheme could be fixed by the JIT compiler to effectively
+	 * support its optimization strategy.
+	 * At construction time and until the moment the scheme decision is made it may be set to
+	 * an appropriate default choice, e.g. if \a StorageSchemeType is \a storage::Dense then
+	 * \a storage::Dense::full could be used.
+	 */
+	StorageSchemeType storage_scheme;
+
+	/** Whether the container presently is initialized or not. */
+	bool initialized;
+
+	public :
+
+		/**
+	     * Usable only in case of an \a original view. Otherwise the view should only reference another view.
+	     */
+		StructuredMatrix( const size_t m, const size_t n );
+
+	/**
+	 * In case of non-original views should set up the container so to share the data of other.
+	 */
+	StructuredMatrix( const StructuredMatrix< T, Structure, StorageSchemeType, View, backend > & other );
+
+	/**
+	 * Usable only in case of an \a original view. Otherwise the view should only reference another view.
+	 */
+	StructuredMatrix( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > && other );
+
+	/**
+	 * When view is \a original data should be properly deallocated.
+	 */
+	~StructuredMatrix();
+};
+
+template< typename InputType, Backend backend >
+RC clear( Matrix< InputType, backend > & A ) noexcept {
+	// this is the generic stub implementation
+	return UNSUPPORTED;
+}
 
 } // end namespace ``grb''
 
