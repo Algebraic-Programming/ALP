@@ -17,7 +17,7 @@
 assert_valid_variables( BACKEND_LIBRARY_OUTPUT_NAME VERSION
 	DENSEREF_BACKEND_INSTALL_DIR INCLUDE_INSTALL_DIR
 	DENSEREF_BACKEND_DEFAULT_NAME
-	DENSEREF_SELECTION_DEFS #backend_reference_srcs
+	DENSEREF_SELECTION_DEFS 
 )
 
 # sources for dense reference backend
@@ -30,11 +30,8 @@ set( backend_reference_dense_srcs
 add_library( backend_reference_dense_static STATIC "${backend_reference_dense_srcs}" )
 
 target_link_libraries( backend_reference_dense_static PUBLIC backend_reference_dense_headers )
-# target_link_libraries( backend_reference_dense_static PRIVATE backend_common_utils )
 
 set_target_properties( backend_reference_dense_static PROPERTIES
-	POSITION_INDEPENDENT_CODE true
-	INTERFACE_POSITION_INDEPENDENT_CODE true
 	OUTPUT_NAME "${BACKEND_LIBRARY_OUTPUT_NAME}"
 )
 
@@ -42,15 +39,13 @@ set_target_properties( backend_reference_dense_static PROPERTIES
 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/reference_dense"
 )
 
-target_compile_options( backend_reference_dense_static PRIVATE "${BACKEND_COMPILE_OPTIONS}" )
-target_compile_definitions( backend_reference_dense_static PRIVATE "${BACKEND_COMPILE_DEFINITIONS}" )
-target_compile_definitions( backend_reference_dense_static INTERFACE "${DENSEREF_SELECTION_DEFS}" )
+target_compile_definitions( backend_reference_dense_static PUBLIC "${DENSEREF_SELECTION_DEFS}" )
+target_link_libraries( backend_reference_dense_static PRIVATE backend_flags )
 
 add_dependencies( libs backend_reference_dense_static )
 
 install( TARGETS backend_reference_dense_static
 	EXPORT GraphBLASTargets
-	# ARCHIVE DESTINATION "${REFERENCE_DENSE_BACKEND_INSTALL_DIR}"
 	ARCHIVE DESTINATION "${DENSEREF_BACKEND_INSTALL_DIR}"
 	)
 
