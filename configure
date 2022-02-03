@@ -257,9 +257,9 @@ if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]];then
 		CMAKE_OPTS+=" -DWITH_REFERENCE_BACKEND=OFF -DWITH_OMP_BACKEND=OFF"
 	fi
 	if [[ "${dense}" == "no" ]]; then
-		CMAKE_OPTS+=" -DWITH_DENSE_BACKEND=OFF"
+		CMAKE_OPTS+=" -DWITH_DENSEREF_BACKEND=OFF"
 	else
-		CMAKE_OPTS+=" -DWITH_DENSE_BACKEND=ON"
+		CMAKE_OPTS+=" -DWITH_DENSEREF_BACKEND=ON"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"
