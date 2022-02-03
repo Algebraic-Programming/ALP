@@ -21,7 +21,7 @@
  *       conceived and noteworthy enough to be recorded for future consideration.
  *       A static view represents a particular \em perspective on a container that
  *       can be defined at compile-time and that can always be applied to a container
- *       irrespective of features such as its dimensions.
+ *       irrespective of dynamic features such as its dimensions.
  */
 
 #ifndef _H_GRB_VIEWS
