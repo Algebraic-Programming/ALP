@@ -121,8 +121,16 @@ and
 
 5. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
-6. (*Optional*) Issue `make -j perftests` to run an exhaustive set of unit
+   If you do this with LPF enabled, and LPF was configured to use an MPI engine
+   (which is the default), and the MPI implementation used is _not_ MPICH, then
+   the default command lines the tests script uses are likely wrong. In this
+   case, please edit `tests/parse_env.sh` by searching for the MPI
+   implementation you used, and uncomment the lines directly below each
+   occurance.
+6. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
+   If you do this with LPF enabled, please edit `tests/parse_env.sh` if required
+   as described in step 5.
 7. Issue `make -j install` to install ALP/GraphBLAS into your install directory
 configured during step 1.
 8. Issue `source </path/to/install/dir>/bin/setenv` to make available the
@@ -148,6 +156,9 @@ results are found in the following locations:
     a. `<ALP/GraphBLAS root>/build/tests/performance/output/benchmarks`.
 
     b. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`.
+
+If you do this with LPF enabled, please note the remark described at step 5 and
+apply any necessary changes also to `tests/performance/performancetests.sh`.
 
 
 # Overview of the main Makefile targets
