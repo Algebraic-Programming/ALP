@@ -59,10 +59,12 @@ namespace grb {
 		*/
 		size_t n;
 
+		/** The matrix data. */
+		T *__restrict__ data;
+
 		/** Whether the container presently is uninitialized. */
 		bool initialized;
 
-		std::vector< T > container;
 	public:
 		/** @see Matrix::value_type */
 		typedef T value_type;
