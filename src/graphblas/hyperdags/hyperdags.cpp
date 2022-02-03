@@ -134,7 +134,7 @@ size_t grb::internal::hyperdags::OperationVertexGenerator::size() const {
 	return ret;
 }
 
-grb::internal::hyperdags::Hypergraph::Hypergraph() noexcept : num_vertices( 0 ) {}
+grb::internal::hyperdags::Hypergraph::Hypergraph() noexcept : num_vertices( 0 ), num_pins( 0 ) {}
 
 size_t grb::internal::hyperdags::Hypergraph::createVertex() noexcept {
 	return num_vertices++;
@@ -142,6 +142,14 @@ size_t grb::internal::hyperdags::Hypergraph::createVertex() noexcept {
 
 size_t grb::internal::hyperdags::Hypergraph::numVertices() const noexcept {
 	return num_vertices;
+}
+
+size_t grb::internal::hyperdags::Hypergraph::numHyperedges() const noexcept {
+	return hyperedges.size();
+}
+
+size_t grb::internal::hyperdags::Hypergraph::numPins() const noexcept {
+	return num_pins;
 }
 
 void grb::internal::hyperdags::Hypergraph::render(

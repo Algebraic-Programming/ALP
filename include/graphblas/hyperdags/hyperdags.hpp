@@ -284,6 +284,9 @@ namespace grb {
 					/** \internal All hyperedges in the hypergraph. */
 					std::vector< std::set< size_t > > hyperedges;
 
+					/** \internal The total number of pins in the hypergraph. */
+					size_t num_pins;
+
 
 				public:
 
@@ -317,6 +320,7 @@ namespace grb {
 								static_cast< size_t >( *start )
 							) == toAdd.end() ) {
 								toAdd.insert( *start );
+								(void) ++num_pins;
 							}
 						}
 						hyperedges.push_back( std::move(toAdd) );
@@ -332,6 +336,10 @@ namespace grb {
 					size_t createVertex() noexcept;
 
 					size_t numVertices() const noexcept;
+
+					size_t numHyperedges() const noexcept;
+
+					size_t numPins() const noexcept;
 
 					/**
 					 * \internal
