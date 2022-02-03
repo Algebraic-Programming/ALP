@@ -23,7 +23,9 @@
 #ifndef _H_GRB_HYPERDAGS_BLAS1
 #define _H_GRB_HYPERDAGS_BLAS1
 
-#include "vector.hpp"
+#include <graphblas/vector.hpp>
+
+#include <graphblas/hyperdags/init.hpp>
 
 
 namespace grb {
@@ -43,6 +45,10 @@ namespace grb {
 			!grb::is_object< T >::value,
 		void >::type * const = nullptr
 	) {
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SET,
+			&x
+		);
 		return set( internal::getVector( x ), val );
 	}
 

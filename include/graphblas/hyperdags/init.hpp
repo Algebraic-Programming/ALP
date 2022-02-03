@@ -23,8 +23,16 @@
 #ifndef _H_GRB_HYPERDAGS_INIT
 #define _H_GRB_HYPERDAGS_INIT
 
+#include <graphblas/hyperdags/hyperdags.hpp>
+
 
 namespace grb {
+
+	namespace internal {
+		namespace hyperdags {
+			extern HyperDAGGenerator generator;
+		}
+	}
 
 	template<>
 	RC init< hyperdags >( const size_t, const size_t, void * const );
