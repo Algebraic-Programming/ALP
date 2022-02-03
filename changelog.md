@@ -1,4 +1,13 @@
 
+Version 0.4.1
+=============
+
+ - The CG algorithm assumed out-of-place behaviour of grb::dot, while the
+   specification since v0.1 defines it to be in-place. Implementations of
+   grb::dot were erroneously out-of-place until v0.4, but the CG algorithm
+   was errouneously not updated. This hotfix rectifies this.
+
+
 Version 0.4.0
 =============
 
