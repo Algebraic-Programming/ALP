@@ -44,7 +44,7 @@ set_target_properties( backend_reference_dense_static PROPERTIES
 
 target_compile_options( backend_reference_dense_static PRIVATE "${BACKEND_COMPILE_OPTIONS}" )
 target_compile_definitions( backend_reference_dense_static PRIVATE "${BACKEND_COMPILE_DEFINITIONS}" )
-target_compile_definitions( backend_reference_dense_static PRIVATE "${DENSEREF_SELECTION_DEFS}" )
+target_compile_definitions( backend_reference_dense_static INTERFACE "${DENSEREF_SELECTION_DEFS}" )
 
 add_dependencies( libs backend_reference_dense_static )
 
