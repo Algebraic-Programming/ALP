@@ -433,21 +433,37 @@ const_iterator end() const {}
 }
 ;
 
+template< typename InputType, Backend backend >
+RC clear( Matrix< InputType, backend > & A ) noexcept {
+	// this is the generic stub implementation
+	return UNSUPPORTED;
+}
+
 /**
  * An ALP structured matrix.
  *
- * This is an opaque data type for that implements the below functions.
+ * This is an opaque data type for that implements the below functions. In essence it can be
+ * used to instantiate containers or references of containers. References may be matrices with
+ * their specific structure but do access data from a referenced StructuredMatrix, the latter being
+ * either a container or a reference itself.
  *
  * @tparam T The type of the matrix elements. \a T shall not be a GraphBLAS
  *            type.
  * @tparam Structure  One of the matrix structures in grb::structures.
- * @tparam view  One of the matrix views in enum grb::Views. All static views except for
- * 		   \a Views::original disable the possibility to instantiate a new container and only
- * 		   allow the creation of a reference to an existing \a StructuredMatrix
- * 		   (note that this could be view itself). A view could be instanciated into a separate container
- * 		   than its original source by explicit copy.
- * @tparam backend Allows multiple backends to implement different
- *         versions of this data type.
+ * @tparam StorageSchemeType Either \a enum \a storage::Dense or \a enum \a storage::Sparse.
+ * 		   A StructuredMatrix will be allowed to pick among the storage schemes within their specified
+ *         \a StorageSchemeType.
+ * @tparam view  One of the matrix views in \a grb::view.
+ * 		   All static views except for \a view::Identity cannot instantiate a new container and only
+ * 		   allow the creation of a reference to an existing \a StructuredMatrix.
+ * 		   \a view::identity<void> triggers the instatiation of an actual container for the StructuredMatrix.
+ * 		   A reference view could be instanciated into a separate container than its original source by explicit
+ *         copy into a container (e.g., via \a grb::set).
+ *         The \a View parameter should not be used directly by the user but can be set using
+ * 	       specific member types appropriately defined by each StructuredMatrix.
+ *         (See examples of StructuredMatrix definitions in denseref backend folder or the
+ *          \a dense_structured_matrix.cpp unit test).
+ * @tparam backend Allows multiple backends to implement different versions of this data type.
  *
  * \note The presence of different combination of structures and views could produce many specialization
  *       with lots of logic replication.
@@ -456,26 +472,6 @@ template< typename T, typename Structure, typename StorageSchemeType, typename V
 class StructuredMatrix {
 
 	size_t m, n;
-
-	/**
-	 * The container's data.
-	 * The geometry and access scheme are specified by a combination of
-	 * \a Structure, \a storage_scheme, \a m, and \a n.
-	 */
-	T * __restrict__ data;
-
-	/**
-	 * The container's storage scheme. \a storage_scheme is not exposed to the user as an option
-	 * but can defined by ALP at different points in the execution depending on the \a backend choice.
-	 * For example, if the container is associated to an I/O matrix, with a reference backend
-	 * it might be set to reflect the storage scheme of the user data as specified at buildMatrix.
-	 * If \a backend is set to \a mlir then the scheme could be fixed by the JIT compiler to effectively
-	 * support its optimization strategy.
-	 * At construction time and until the moment the scheme decision is made it may be set to
-	 * an appropriate default choice, e.g. if \a StorageSchemeType is \a storage::Dense then
-	 * \a storage::Dense::full could be used.
-	 */
-	StorageSchemeType storage_scheme;
 
 	/** Whether the container presently is initialized or not. */
 	bool initialized;
@@ -501,13 +497,12 @@ class StructuredMatrix {
 	 * When view is \a original data should be properly deallocated.
 	 */
 	~StructuredMatrix();
-};
+}; // class StructuredMatrix
 
-template< typename InputType, Backend backend >
-RC clear( Matrix< InputType, backend > & A ) noexcept {
-	// this is the generic stub implementation
-	return UNSUPPORTED;
-}
+template< typename T >
+struct is_structured_matrix : std::false_type {};
+template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+struct is_structured_matrix< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > > : std::true_type {};
 
 } // end namespace ``grb''
 

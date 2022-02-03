@@ -88,8 +88,12 @@ namespace grb {
 		/**
 		 * List of ALP matrix structures.
 		 */
+		struct General {
+			using inferred_structures = std::tuple< General >;
+		};
+
 		struct Square {
-			using inferred_structures = std::tuple< Square >;
+			using inferred_structures = structures::tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
 		};
 
 		struct Symmetric {
@@ -113,7 +117,7 @@ namespace grb {
 		};
 
 		struct FullRank {
-			using inferred_structures = std::tuple< FullRank >;
+			using inferred_structures = structures::tuple_cat< std::tuple< FullRank >, General::inferred_structures >::type;
 		};
 
 		struct NonSingular {
