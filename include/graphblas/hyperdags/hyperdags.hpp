@@ -200,6 +200,10 @@ namespace grb {
 
 				NNZ_VECTOR,
 
+				CLEAR_VECTOR,
+
+				SET_VECTOR_ELEMENT,
+
 				/** \internal The monoid-operator version, specifically */
 				DOT
 
@@ -328,7 +332,9 @@ namespace grb {
 							) == toAdd.end() ) {
 								toAdd.insert( *start );
 								(void) ++num_pins;
+#ifdef _DEBUG
 								std::cerr << *start << " ";
+#endif
 							} else {
 #ifdef _DEBUG
 								warn.push_back( *start );

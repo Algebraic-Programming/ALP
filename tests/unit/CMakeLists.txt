@@ -75,7 +75,7 @@ add_grb_executables( id id.cpp
 )
 
 add_grb_executables( dot dot.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( emptyVector emptyVector.cpp

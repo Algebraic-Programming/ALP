@@ -61,6 +61,43 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		typename DataType,
+		typename T, typename Coords
+	>
+	RC setElement( Vector< DataType, hyperdags, Coords > &x,
+		const T val,
+		const size_t i,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value,
+		void >::type * const = nullptr
+	) {
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_VECTOR_ELEMENT,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return setElement( internal::getVector( x ),
+			val, i
+		);
+	}
+
+	template< typename DataType, typename Coords >
+	RC clear( Vector< DataType, hyperdags, Coords > &x ) {
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::CLEAR_VECTOR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return clear( internal::getVector( x ) );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class AddMonoid, class AnyOp,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
