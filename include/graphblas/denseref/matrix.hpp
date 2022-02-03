@@ -38,9 +38,41 @@
 
 namespace grb {
 
+
+	template< typename T >
+	T * getRaw( Matrix< T, reference_dense > & ) noexcept;
+
+	template< typename T >
+	const T * getRaw( const Matrix< T, reference_dense > & ) noexcept;
+
+	template< typename T >
+	size_t nrows( const Matrix< T, reference_dense > & ) noexcept;
+
+	template< typename T >
+	size_t ncols( const Matrix< T, reference_dense > & ) noexcept;
+
 	/** \internal TODO */
 	template< typename T >
 	class Matrix< T, reference_dense > {
+
+		/* *********************
+		        BLAS2 friends
+		   ********************* */
+
+		template< typename DataType >
+		friend size_t nrows( const Matrix< DataType, reference_dense > & m ) noexcept;
+
+		template< typename DataType >
+		friend size_t ncols( const Matrix< DataType, reference_dense > & m ) noexcept;
+
+		/* *********************
+		     `Getter' friends
+		   ********************* */
+
+		friend T * getRaw<T>( Matrix< T, reference_dense > &) noexcept;
+
+		friend const T * getRaw<T>( const Matrix< T, reference_dense > & ) noexcept;
+
 	private:
 		/** Our own type. */
 		typedef Matrix< T, reference_dense > self_type;
@@ -103,6 +135,26 @@ namespace grb {
 		/** A reference_dense Matrix is a GraphBLAS object. */
 		static const constexpr bool value = true;
 	};
+
+	template< typename T >
+	T * getRaw( Matrix< T, reference_dense > &m ) noexcept {
+		return m.data;
+	}
+
+	template< typename T >
+	const T * getRaw( const Matrix< T, reference_dense > &m ) noexcept {
+		return m.data;
+	}
+
+	template< typename T >
+	size_t nrows( const Matrix< T, reference_dense > &m ) noexcept {
+		return m.m;
+	}
+
+	template< typename T >
+	size_t ncols( const Matrix< T, reference_dense > &m ) noexcept {
+		return m.n;
+	}
 
 } // end namespace ``grb''
 
