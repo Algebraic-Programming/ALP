@@ -23,6 +23,16 @@
 
 using namespace grb;
 
+void print_matrix( const grb::Matrix< double > & A) {
+	const double * Araw = grb::getRaw( A );
+	for( size_t row = 0; row < grb::nrows( A ); ++row ) {
+		for( size_t col = 0; col < grb::ncols( A ); ++col ) {
+			std::cout << Araw[row * grb::ncols( A ) + col] << " ";
+		}
+		std::cout << "\n";
+	}
+}
+
 void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
@@ -42,7 +52,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cout << "_GRB_WITH_DENSEREF defined\n";
 	#endif
 
-	rc = grb::SUCCESS;
+	std::cout << "Output matrix nrows = " << nrows( C ) << ", ncols = " << ncols( C ) << "\n";
+
+	rc = grb::mxm( C, A, B, ring );
+	print_matrix(C);
 
 }
 
