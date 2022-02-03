@@ -312,6 +312,10 @@ namespace grb {
 						static_assert( std::is_unsigned<
 							typename std::iterator_traits< FwdIt >::value_type
 						>::value, "Expected an iterator over positive integral values" );
+#ifdef _DEBUG
+						std::cerr << "in createHyperedge\n\t adding ( ";
+						std::vector< size_t > warn;
+#endif
 						std::set< size_t > toAdd;
 						assert( start != end );
 						for( ; start != end; ++start ) {
@@ -321,9 +325,22 @@ namespace grb {
 							) == toAdd.end() ) {
 								toAdd.insert( *start );
 								(void) ++num_pins;
+								std::cerr << *start << " ";
+							} else {
+#ifdef _DEBUG
+								warn.push_back( *start );
+#endif
 							}
 						}
 						hyperedges.push_back( std::move(toAdd) );
+#ifdef _DEBUG
+						std::cerr << " )\n";
+						std::cerr << "\t Warning: the following edges were multiply-defined: ( ";
+						for( const auto &id : warn ) {
+							std::cerr << id << " ";
+						}
+						std::cerr << ")\n\t exiting\n";
+#endif
 					}
 
 					/**
