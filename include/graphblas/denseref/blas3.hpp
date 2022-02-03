@@ -23,7 +23,106 @@
 #ifndef _H_GRB_DENSEREF_BLAS3
 #define _H_GRB_DENSEREF_BLAS3
 
+#include <type_traits> //for std::enable_if
+
+#include <graphblas/base/blas3.hpp>
+
+#include "io.hpp"
+#include "matrix.hpp"
+
 namespace grb {
+    namespace internal {
+
+		/**
+		 * \internal general mxm implementation that all mxm variants refer to
+		 */
+		template<
+			bool allow_void,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			class Operator, class Monoid
+		>
+		RC mxm_generic( Matrix< OutputType, reference_dense > &C,
+			const Matrix< InputType1, reference_dense > &A,
+			const Matrix< InputType2, reference_dense > &B,
+			const Operator &oper,
+			const Monoid &monoid,
+			const MulMonoid &mulMonoid,
+			const typename std::enable_if< !grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value && !
+				grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value &&
+				grb::is_monoid< Monoid >::value,
+			void >::type * const = NULL
+		) {
+            (void)oper;
+            (void)monoid;
+            (void)mulMonoid;
+			static_assert( allow_void ||
+				( !(
+					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
+				) ),
+				"grb::mxm_generic: the operator-monoid version of mxm cannot be "
+				"used if either of the input matrices is a pattern matrix (of type "
+				"void)"
+			);
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::mxm_generic (reference_dense, unmasked)\n";
+#endif
+
+			// run-time checks
+			const size_t m = grb::nrows( C );
+			const size_t n = grb::ncols( C );
+			const size_t m_A = grb::nrows( A );
+			const size_t k = grb::ncols( A );
+			const size_t k_B = grb::nrows( B );
+			const size_t n_B = grb::ncols( B );
+
+			if( m != m_A || k != k_B || n != n_B ) {
+				return MISMATCH;
+			}
+
+			const auto A_raw = grb::getRaw( A );
+			const auto B_raw = grb::getRaw( B );
+			auto C_raw = grb::getRaw( C );
+
+            std::cout << "Multiplying dense matrices.\n";
+
+            for( size_t row = 0; row < m; ++row ) {
+                for( size_t col = 0; col < n; ++col ) {
+                    C_raw[ row * k + col] = 0;
+                    for( size_t i = 0; i < k; ++ i ) {
+                        C_raw[ row * k + col] += A_raw[ row * k + i ] * B_raw[ i * n_B + col ];
+                    }
+                }
+            }
+
+            // internal::setInitialized( true );
+			// done
+			return SUCCESS;
+		}
+
+	} // namespace internal
+
+    /**
+	 * \internal grb::mxm, semiring version.
+	 * Dispatches to internal::mxm_generic
+	 */
+	template< typename OutputType, typename InputType1, typename InputType2, class Semiring >
+	RC mxm( Matrix< OutputType, reference_dense > & C,
+		const Matrix< InputType1, reference_dense > & A,
+		const Matrix< InputType2, reference_dense > & B,
+		const Semiring & ring = Semiring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
+			void >::type * const = NULL ) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::mxm (reference_dense, unmasked, semiring)\n";
+#endif
+
+		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
+	}
 
 } // end namespace ``grb''
 
