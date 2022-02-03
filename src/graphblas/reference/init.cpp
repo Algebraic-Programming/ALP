@@ -62,6 +62,7 @@ grb::RC grb::init< grb::reference >( const size_t s, const size_t P, void * cons
 
 template<>
 grb::RC grb::finalize< grb::reference >() {
+	std::cerr << "Info: grb::finalize (reference) called.\n";
 	if( internal::reference_bufsize > 0 ) {
 		delete[] internal::reference_buffer;
 		internal::reference_bufsize = 0;
@@ -93,6 +94,8 @@ grb::RC grb::init< grb::reference_omp >( const size_t s, const size_t P, void * 
 
 template<>
 grb::RC grb::finalize< grb::reference_omp >() {
+	std::cerr << "Info: grb::finalize (reference_omp) called.\n";
 	// use same finalization procedure as sequential implementation
 	return grb::finalize< grb::reference >();
 }
+

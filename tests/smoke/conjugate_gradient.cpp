@@ -344,7 +344,7 @@ int main( int argc, char ** argv ) {
 				std::cout << "Test FAILED\n";
 			}
 		} else {
-			std::cout << "Test OK.\n";
+			std::cout << "Test OK\n";
 		}
 	}
 	std::cout << std::endl;

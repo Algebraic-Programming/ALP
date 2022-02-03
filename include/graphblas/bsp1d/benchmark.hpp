@@ -56,8 +56,12 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	// construct default input type
 	T data_in_local;
 	// get input struct
-	assert( args.input_size == sizeof( struct grb::internal::packedBenchmarkerInput ) );
-	const struct grb::internal::packedBenchmarkerInput input = *static_cast< const struct grb::internal::packedBenchmarkerInput * >( args.input );
+	assert( args.input_size ==
+		sizeof( struct grb::internal::packedBenchmarkerInput ) );
+	const struct grb::internal::packedBenchmarkerInput input =
+		*static_cast< const struct grb::internal::packedBenchmarkerInput * >(
+			args.input
+		);
 
 	// get input data from PID 0
 	if( input.bcast_blob && P > 1 ) {
@@ -76,7 +80,8 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 		lpf_memslot_t global;
 		if( s == 0 ) {
 			assert( input.blob_size == sizeof( T ) );
-			brc = lpf_register_global( ctx, const_cast< void * >( input.blob ), input.blob_size, &global );
+			brc = lpf_register_global( ctx,
+				const_cast< void * >( input.blob ), input.blob_size, &global );
 		} else {
 			brc = lpf_register_global( ctx, &data_in_local, sizeof( T ), &global );
 		}
@@ -98,19 +103,25 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	}
 
 	// get input data
-	const T & data_in = input.bcast_blob ?
-        // then get unified view of input data after broadcast
-        ( s == 0 ? *static_cast< const T * >( input.blob ) : data_in_local ) :
-        // otherwise just copy from args_in if there is one (to catch automatic mode)
-        *static_cast< const T * >( input.blob );
+	const T &data_in = input.bcast_blob ?
+		// then get unified view of input data after broadcast
+		( s == 0 ?
+			*static_cast< const T * >( input.blob ) :
+			data_in_local
+		) :
+		// otherwise just copy from args_in if there is one (to catch automatic mode)
+		*static_cast< const T * >( input.blob );
 
 	// we need an output field
 	U data_out_local = U();
-	U & data_out = args.output_size == sizeof( U ) ? *static_cast< U * >( args.output ) : // if we were passed output area, use it
-                                                     data_out_local;                                                                   // otherwise use local empty output area
+	U &data_out = args.output_size == sizeof( U ) ?
+		*static_cast< U * >( args.output ) : // if we were passed output area, use it
+		data_out_local;                      // otherwise use local empty output area
 
 	// init graphblas
 	if( grb::init( s, P, ctx ) != grb::SUCCESS ) {
+		std::cerr << "Could not initialise ALP/GraphBLAS" << std::endl;
+		assert( false );
 		return; // note that there is no way to return error codes
 	}
 
@@ -125,20 +136,31 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	( *bench_program )( grb_program, data_in, data_out, input.inner, input.outer, s );
 
 	// close GraphBLAS context and done!
-	(void)grb::finalize();
+	if( grb::finalize() != grb::SUCCESS ) {
+		std::cerr << "Could not finalise ALP/GraphBLAS" << std::endl;
+		assert( false );
+		return;
+	}
 }
 
 /** Global internal function used to call lpf_hook with. */
 template< typename U >
-void _grb_bench_varin_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
+void _grb_bench_varin_spmd( lpf_t ctx,
+	lpf_pid_t s, lpf_pid_t P,
+	lpf_args_t args
+) {
 	assert( P > 0 );
 	assert( s < P );
 
 	// input data to grbProgram
-	void * data_in = NULL;
+	void * data_in = nullptr;
 	// get input struct
-	assert( args.input_size == sizeof( struct grb::internal::packedBenchmarkerInput ) );
-	const struct grb::internal::packedBenchmarkerInput input = *static_cast< const struct grb::internal::packedBenchmarkerInput * >( args.input );
+	assert( args.input_size ==
+		sizeof( struct grb::internal::packedBenchmarkerInput ) );
+	const struct grb::internal::packedBenchmarkerInput input =
+		*static_cast< const struct grb::internal::packedBenchmarkerInput * >(
+			args.input
+		);
 
 	// size of the data_in block
 	size_t size;
@@ -200,11 +222,15 @@ void _grb_bench_varin_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args
 
 	// we need an output field
 	U data_out_local = U();
-	U & data_out = args.output_size == sizeof( U ) ? *static_cast< U * >( args.output ) : data_out_local;
+	U &data_out = args.output_size == sizeof( U ) ?
+		*static_cast< U * >( args.output ) :
+		data_out_local;
 	// note: the above switch handily catches automatic mode
 
 	// init graphblas
 	if( grb::init( s, P, ctx ) != grb::SUCCESS ) {
+		std::cerr << "Could not initialise ALP/GraphBLAS" << std::endl;
+		assert( false );
 		return; // note that there is no way to return error codes
 	}
 
@@ -212,14 +238,21 @@ void _grb_bench_varin_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args
 	assert( args.f_size == 2 );
 	// assume we are performing benchmarks
 	typedef void ( *grb_func_t )( void *, size_t, U & );
-	typedef void ( *bench_func_t )( void ( *grb_program )( void *, size_t, U & ), void *, size_t, U &, size_t, size_t, lpf_pid_t );
-	bench_func_t bench_program = reinterpret_cast< bench_func_t >( args.f_symbols[ 0 ] );
+	typedef void ( *bench_func_t )( void ( *grb_program )( void *, size_t, U & ),
+		void *, size_t, U &, size_t, size_t, lpf_pid_t );
+	bench_func_t bench_program =
+		reinterpret_cast< bench_func_t >( args.f_symbols[ 0 ] );
 	grb_func_t grb_program = reinterpret_cast< grb_func_t >( args.f_symbols[ 1 ] );
 	// run benchmark
-	( *bench_program )( grb_program, (void *)data_in, size, data_out, input.inner, input.outer, s );
+	( *bench_program )( grb_program, (void *)data_in, size,
+		data_out, input.inner, input.outer, s );
 
 	// close GraphBLAS context and done!
-	(void)grb::finalize();
+	if( grb::finalize() != grb::SUCCESS ) {
+		std::cerr << "Could not finalise ALP/GraphBLAS" << std::endl;
+		assert( false );
+		return;
+	}
 }
 
 /** Global internal function used to call lpf_exec with. */
@@ -235,7 +268,9 @@ void _grb_bench_exec( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	if( P > 1 ) {
 		// init and use collectives to broadcast input
 		lpf_coll_t coll;
-		const size_t nmsgs = P + 1 > 2 * P - 3 ? P + 1 : 2 * P - 3; // see LPF collectives doc
+		const size_t nmsgs = P + 1 > 2 * P - 3 ?
+			P + 1 :
+			2 * P - 3; // see LPF collectives doc
 		lpf_err_t brc = lpf_resize_message_queue( ctx, nmsgs );
 		assert( brc == LPF_SUCCESS );
 		brc = lpf_resize_memory_register( ctx, 3 );
@@ -249,9 +284,11 @@ void _grb_bench_exec( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 		assert( brc == LPF_SUCCESS );
 		if( s == 0 ) {
 			assert( args.input_size == size );
-			brc = lpf_register_global( ctx, const_cast< void * >( args.input ), size, &source );
+			brc = lpf_register_global( ctx,
+				const_cast< void * >( args.input ), size, &source );
 		} else {
-			brc = lpf_register_global( ctx, const_cast< void * >( args.input ), 0, &source );
+			brc = lpf_register_global( ctx,
+				const_cast< void * >( args.input ), 0, &source );
 		}
 		assert( brc == LPF_SUCCESS );
 		brc = lpf_sync( ctx, LPF_SYNC_DEFAULT );
@@ -271,7 +308,7 @@ void _grb_bench_exec( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 
 	// non-root processes update args
 	if( s > 0 ) {
-		input.blob = NULL;
+		input.blob = nullptr;
 		input.blob_size = 0;
 		args.input = &input;
 		args.input_size = size;
@@ -289,182 +326,210 @@ void _grb_bench_exec( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 namespace grb {
 
 	template<>
-	class Benchmarker< FROM_MPI, BSP1D > : protected Launcher< FROM_MPI, BSP1D >, protected internal::BenchmarkerBase {
+	class Benchmarker< FROM_MPI, BSP1D > :
+		protected Launcher< FROM_MPI, BSP1D >, protected internal::BenchmarkerBase
+	{
 
-	public:
-		Benchmarker( const MPI_Comm comm = MPI_COMM_WORLD ) : Launcher< FROM_MPI, BSP1D >( comm ) {}
+		public:
 
-		template< typename U >
-		RC
-		exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const size_t inner, const size_t outer, const bool broadcast = false )
-			const {
-			// prepare packed input
-			struct internal::packedBenchmarkerInput input;
-			input.blob = data_in;
-			input.blob_size = in_size;
-			input.inner = inner;
-			input.outer = outer;
-			input.bcast_blob = broadcast;
+			Benchmarker( const MPI_Comm comm = MPI_COMM_WORLD ) : Launcher< FROM_MPI, BSP1D >( comm ) {}
 
-			// prepare args
-			lpf_func_t fargs[ 2 ];
-			lpf_args_t args;
-			fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< U > );
-			fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
-			args = { &input, sizeof( struct internal::packedBenchmarkerInput ), &data_out, sizeof( U ), fargs, 2 };
+			template< typename U >
+			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+				const void * data_in, const size_t in_size,
+				U &data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) const {
+				// prepare packed input
+				struct internal::packedBenchmarkerInput input;
+				input.blob = data_in;
+				input.blob_size = in_size;
+				input.inner = inner;
+				input.outer = outer;
+				input.bcast_blob = broadcast;
 
-			// do hook
-			const lpf_err_t spmdrc = lpf_hook( init, &(_grb_bench_varin_spmd< U >), args );
+				// prepare args
+				lpf_func_t fargs[ 2 ];
+				lpf_args_t args;
+				fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< U > );
+				fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
+				args = { &input, sizeof( struct internal::packedBenchmarkerInput ),
+					&data_out, sizeof( U ),
+					fargs, 2
+				};
 
-			// check error code
-			if( spmdrc != LPF_SUCCESS ) {
-				return PANIC;
+				// do hook
+				const lpf_err_t spmdrc = lpf_hook( init,
+					&(_grb_bench_varin_spmd< U >), args );
+
+				// check error code
+				if( spmdrc != LPF_SUCCESS ) {
+					return PANIC;
+				}
+
+				// done
+				return SUCCESS;
 			}
 
-			// done
-			return SUCCESS;
-		}
+			template< typename T, typename U >
+			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T & data_in, U &data_out,           // input & output data
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) {
+				// prepare packed input
+				struct internal::packedBenchmarkerInput input;
+				input.blob = data_in;
+				input.blob_size = sizeof( T );
+				input.inner = inner;
+				input.outer = outer;
+				input.bcast_blob = broadcast;
 
-		template< typename T, typename U >
-		RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-			const T & data_in,
-			U & data_out, // input & output data
-			const size_t inner,
-			const size_t outer,
-			const bool broadcast = false ) {
-			// prepare packed input
-			struct internal::packedBenchmarkerInput input;
-			input.blob = data_in;
-			input.blob_size = sizeof( T );
-			input.inner = inner;
-			input.outer = outer;
-			input.bcast_blob = broadcast;
+				// prepare args
+				lpf_func_t fargs[ 2 ];
+				lpf_args_t args;
+				fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< T, U > );
+				fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
+				args = { &data_in, sizeof( T ), &data_out, sizeof( U ), fargs, 2 };
 
-			// prepare args
-			lpf_func_t fargs[ 2 ];
-			lpf_args_t args;
-			fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< T, U > );
-			fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
-			args = { &data_in, sizeof( T ), &data_out, sizeof( U ), fargs, 2 };
+				// do hook
+				const lpf_err_t spmdrc = lpf_hook( init, &(_grb_bench_spmd< T, U >), args );
 
-			// do hook
-			const lpf_err_t spmdrc = lpf_hook( init, &(_grb_bench_spmd< T, U >), args );
+				// check error code
+				if( spmdrc != LPF_SUCCESS ) {
+					return PANIC;
+				}
 
-			// check error code
-			if( spmdrc != LPF_SUCCESS ) {
-				return PANIC;
+				// done
+				return SUCCESS;
 			}
 
-			// done
-			return SUCCESS;
-		}
-
-		/** This implementation needs to release MPI resources in manual mode. */
-		static enum RC finalize() {
-			// done
-			return Launcher< FROM_MPI, BSP1D >::finalize();
-		}
+			/** This implementation needs to release MPI resources in manual mode. */
+			static enum RC finalize() {
+				// done
+				return Launcher< FROM_MPI, BSP1D >::finalize();
+			}
 	};
 
 	template< enum EXEC_MODE mode >
-	class Benchmarker< mode, BSP1D > : protected Launcher< mode, BSP1D >, protected internal::BenchmarkerBase {
+	class Benchmarker< mode, BSP1D > :
+		protected Launcher< mode, BSP1D >, protected internal::BenchmarkerBase
+	{
 
-	public:
-		Benchmarker( const size_t process_id = 0,     // user process ID
-			const size_t nprocs = 1,                  // total number of user processes
-			const std::string hostname = "localhost", // one of the user process hostnames
-			const std::string port = "0",             // a free port at hostname
-			const bool is_mpi_inited = false ) :
-			Launcher< mode, BSP1D >( process_id, nprocs, hostname, port, is_mpi_inited ) {}
 
-		template< typename U >
-		enum RC
-		exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const size_t inner, const size_t outer, const bool broadcast = false )
-			const {
-			// prepare packed input
-			struct internal::packedBenchmarkerInput input;
-			input.blob = data_in;
-			input.blob_size = in_size;
-			input.inner = inner;
-			input.outer = outer;
-			input.bcast_blob = broadcast;
+		public:
 
-			// prepare args
-			lpf_func_t fargs[ 2 ];
-			lpf_args_t args;
-			fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< U > );
-			fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
-			args = { &input, sizeof( struct internal::packedBenchmarkerInput ), &data_out, sizeof( U ), fargs, 2 };
+			Benchmarker( const size_t process_id = 0,         // user process ID
+				const size_t nprocs = 1,                  // total number of user processes
+				const std::string hostname = "localhost", // one of the process' hostnames
+				const std::string port = "0",             // a free port at hostname
+				const bool is_mpi_inited = false
+			) : Launcher< mode, BSP1D >(
+				process_id, nprocs, hostname, port, is_mpi_inited
+			) {}
 
-			// launch
-			lpf_err_t spmdrc = LPF_SUCCESS;
-			if( mode == MANUAL ) {
-				// do hook
-				spmdrc = lpf_hook( init, &(_grb_bench_varin_spmd< U >), args );
-			} else {
-				assert( mode == AUTOMATIC );
-				// do exec
-				spmdrc = lpf_exec( LPF_ROOT, LPF_MAX_P, &(_grb_bench_exec< void, U, true >), args );
+			template< typename U >
+			enum RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+				const void * data_in, const size_t in_size,
+				U &data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) const {
+				// prepare packed input
+				struct internal::packedBenchmarkerInput input;
+				input.blob = data_in;
+				input.blob_size = in_size;
+				input.inner = inner;
+				input.outer = outer;
+				input.bcast_blob = broadcast;
+
+				// prepare args
+				lpf_func_t fargs[ 2 ];
+				lpf_args_t args;
+				fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< U > );
+				fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
+				args = { &input, sizeof( struct internal::packedBenchmarkerInput ),
+					&data_out, sizeof( U ),
+					fargs, 2
+				};
+
+				// launch
+				lpf_err_t spmdrc = LPF_SUCCESS;
+				if( mode == MANUAL ) {
+					// do hook
+					spmdrc = lpf_hook( init, &(_grb_bench_varin_spmd< U >), args );
+				} else {
+					assert( mode == AUTOMATIC );
+					// do exec
+					spmdrc = lpf_exec( LPF_ROOT, LPF_MAX_P,
+						&(_grb_bench_exec< void, U, true >), args );
+				}
+
+				// check error code
+				if( spmdrc != LPF_SUCCESS ) {
+					return PANIC;
+				}
+
+				// done
+				return SUCCESS;
 			}
 
-			// check error code
-			if( spmdrc != LPF_SUCCESS ) {
-				return PANIC;
+			/** No implementation notes. */
+			template< typename T, typename U >
+			enum RC exec(
+				void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T &data_in, U &data_out,           // input & output data
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) {
+				// prepare packed input
+				struct internal::packedBenchmarkerInput input;
+				input.blob = &data_in;
+				input.blob_size = sizeof( T );
+				input.inner = inner;
+				input.outer = outer;
+				input.bcast_blob = broadcast;
+
+				// prepare args
+				lpf_func_t fargs[ 2 ];
+				lpf_args_t args;
+				fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< T, U > );
+				fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
+				args = { &input, sizeof( struct internal::packedBenchmarkerInput ),
+					&data_out, sizeof( U ),
+					fargs, 2
+				};
+
+				// launch
+				lpf_err_t spmdrc = LPF_SUCCESS;
+				if( mode == MANUAL ) {
+					// do hook
+					spmdrc = lpf_hook( this->init, &(_grb_bench_spmd< T, U >), args );
+				} else {
+					assert( mode == AUTOMATIC );
+					// do exec
+					spmdrc = lpf_exec( LPF_ROOT, LPF_MAX_P,
+						&(_grb_bench_exec< T, U, false >), args );
+				}
+
+				// check error code
+				if( spmdrc != LPF_SUCCESS ) {
+					return PANIC;
+				}
+
+				// done
+				return SUCCESS;
 			}
 
-			// done
-			return SUCCESS;
-		}
-
-		/** No implementation notes. */
-		template< typename T, typename U >
-		enum RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-			const T & data_in,
-			U & data_out, // input & output data
-			const size_t inner,
-			const size_t outer,
-			const bool broadcast = false ) {
-			// prepare packed input
-			struct internal::packedBenchmarkerInput input;
-			input.blob = &data_in;
-			input.blob_size = sizeof( T );
-			input.inner = inner;
-			input.outer = outer;
-			input.bcast_blob = broadcast;
-
-			// prepare args
-			lpf_func_t fargs[ 2 ];
-			lpf_args_t args;
-			fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< T, U > );
-			fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
-			args = { &input, sizeof( struct internal::packedBenchmarkerInput ), &data_out, sizeof( U ), fargs, 2 };
-
-			// launch
-			lpf_err_t spmdrc = LPF_SUCCESS;
-			if( mode == MANUAL ) {
-				// do hook
-				spmdrc = lpf_hook( this->init, &(_grb_bench_spmd< T, U >), args );
-			} else {
-				assert( mode == AUTOMATIC );
-				// do exec
-				spmdrc = lpf_exec( LPF_ROOT, LPF_MAX_P, &(_grb_bench_exec< T, U, false >), args );
+			/** This implementation needs to release MPI resources in manual mode. */
+			static enum RC finalize() {
+				return Launcher< mode, BSP1D >::finalize();
 			}
 
-			// check error code
-			if( spmdrc != LPF_SUCCESS ) {
-				return PANIC;
-			}
-
-			// done
-			return SUCCESS;
-		}
-
-		/** This implementation needs to release MPI resources in manual mode. */
-		static enum RC finalize() {
-			return Launcher< mode, BSP1D >::finalize();
-		}
 	};
 
 } // namespace grb
 
 #endif // end ``_H_GRB_BSP1D_BENCH''
+
