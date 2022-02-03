@@ -103,7 +103,12 @@ namespace grb {
 
 		/** @see Matrix::Matrix() */
 		Matrix( const size_t rows, const size_t columns ): m( rows ), n( columns ), initialized( false ) {
-
+			// Temporary solution to initialize a matrix
+			// TODO: Use buildUnique
+			data = new T[ m * n ];
+			for( size_t i = 0; i <= m * n; ++i ){
+				data[i] = 1;
+			}
 		}
 
 		/** @see Matrix::Matrix( const Matrix & ) */
