@@ -156,7 +156,7 @@ void grb::internal::hyperdags::Hypergraph::render(
 	std::ostream &out
 ) const {
 	size_t net_num = 0;
-	for( const auto &net : hyperedges ) {
+	for( const std::set< size_t > &net : hyperedges ) {
 		for( const auto &id : net ) {
 			out << net_num << " " << id << "\n";
 		}
@@ -210,7 +210,7 @@ grb::internal::hyperdags::HyperDAG::HyperDAG(
 	assert( num_sources + num_operations + num_outputs == hypergraph.numVertices() );
 }
 
-const grb::internal::hyperdags::Hypergraph & grb::internal::hyperdags::HyperDAG::get() const noexcept {
+grb::internal::hyperdags::Hypergraph grb::internal::hyperdags::HyperDAG::get() const noexcept {
 	return hypergraph;
 }
 

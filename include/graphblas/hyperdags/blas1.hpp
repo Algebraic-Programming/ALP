@@ -32,6 +32,13 @@ namespace grb {
 
 	template< typename DataType, typename Coords >
 	size_t nnz( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 0 > destinations;
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::NNZ_VECTOR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
 		return nnz( internal::getVector( x ) );
 	}
 
@@ -50,6 +57,37 @@ namespace grb {
 			&x
 		);
 		return set( internal::getVector( x ), val );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AddMonoid, class AnyOp,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC dot( OutputType &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const AddMonoid &addMonoid = AddMonoid(),
+		const AnyOp &anyOp = AnyOp(),
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< AddMonoid >::value &&
+			grb::is_operator< AnyOp >::value,
+		void >::type * const = nullptr
+	) {
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 0 > destinations;
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::DOT,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return dot( z,
+			internal::getVector(x), internal::getVector(y),
+			addMonoid, anyOp
+		);
 	}
 
 } // end namespace grb

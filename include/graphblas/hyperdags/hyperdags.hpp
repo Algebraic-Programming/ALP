@@ -198,7 +198,10 @@ namespace grb {
 			/** \internal Which operation an OperationVertex encodes. */
 			enum OperationVertexType {
 
-				NNZ_VECTOR
+				NNZ_VECTOR,
+
+				/** \internal The monoid-operator version, specifically */
+				DOT
 
 			};
 
@@ -334,10 +337,12 @@ namespace grb {
 						}
 						hyperedges.push_back( std::move(toAdd) );
 #ifdef _DEBUG
-						std::cerr << " )\n";
-						std::cerr << "\t Warning: the following edges were multiply-defined: ( ";
-						for( const auto &id : warn ) {
-							std::cerr << id << " ";
+						std::cerr << ")\n";
+						if( warn.size() > 0 ) {
+							std::cerr << "\t Warning: the following edges were multiply-defined: ( ";
+							for( const auto &id : warn ) {
+								std::cerr << id << " ";
+							}
 						}
 						std::cerr << ")\n\t exiting\n";
 #endif
@@ -416,7 +421,7 @@ namespace grb {
 				public:
 
 					/** \internal @returns The hypergraph representation of the HyperDAG. */
-					const Hypergraph & get() const noexcept;
+					Hypergraph get() const noexcept;
 
 					size_t numSources() const noexcept;
 
