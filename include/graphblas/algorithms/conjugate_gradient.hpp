@@ -84,28 +84,39 @@ namespace grb {
 			typename ResidualType,
 			typename NonzeroType,
 			typename InputType,
-			class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one >,
+			class Ring = Semiring<
+				grb::operators::add< IOType >, grb::operators::mul< IOType >,
+				grb::identities::zero, grb::identities::one
+			>,
 			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType > >
-		grb::RC conjugate_gradient( grb::Vector< IOType > & x,
-			const grb::Matrix< NonzeroType > & A,
-			const grb::Vector< InputType > & b,
+			class Divide = operators::divide< IOType >
+		>
+		grb::RC conjugate_gradient( grb::Vector< IOType > &x,
+			const grb::Matrix< NonzeroType > &A,
+			const grb::Vector< InputType > &b,
 			const size_t max_iterations,
 			ResidualType tol,
-			size_t & iterations,
+			size_t &iterations,
 			ResidualType & residual,
-			grb::Vector< IOType > & r,
-			grb::Vector< IOType > & u,
-			grb::Vector< IOType > & temp,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide() ) {
+			grb::Vector< IOType > &r,
+			grb::Vector< IOType > &u,
+			grb::Vector< IOType > &temp,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
 			static_assert( std::is_floating_point< ResidualType >::value,
 				"Can only use the CG algorithm with floating-point residual "
 				"types." ); // unless some different norm were used: issue #89
 			static_assert(
-				! ( descr & descriptors::no_casting ) || ( std::is_same< IOType, ResidualType >::value && std::is_same< IOType, NonzeroType >::value && std::is_same< IOType, InputType >::value ),
-				"One or more of the provided containers have differing element types while the no-casting descriptor has been supplied" );
+				!( descr & descriptors::no_casting ) || (
+					std::is_same< IOType, ResidualType >::value &&
+					std::is_same< IOType, NonzeroType >::value &&
+					std::is_same< IOType, InputType >::value
+				), "One or more of the provided containers have differing element types "
+				"while the no-casting descriptor has been supplied"
+			);
+			const ResidualType zero = ring.template getZero< ResidualType >();
 
 			{
 				const size_t m = grb::nrows( A );
@@ -118,13 +129,16 @@ namespace grb {
 				}
 				if( m != n ) {
 #ifdef _DEBUG
-					std::cerr << "Warning: grb::algorithms::conjugate_gradient requires square input matrices, but a non-square input matrix was given instead.\n";
+					std::cerr << "Warning: grb::algorithms::conjugate_gradient requires "
+						<< "square input matrices, but a non-square input matrix was "
+						<< "given instead.\n";
 #endif
 					return ILLEGAL;
 				}
 				if( size( r ) != n || size( u ) != n || size( temp ) != n ) {
 #ifdef _DEBUG
-					std::cerr << "Error: provided temporary vectors are not of the correct length.\n";
+					std::cerr << "Error: provided temporary vectors are not of the correct "
+						<< "length.\n";
 #endif
 					return MISMATCH;
 				}
@@ -153,10 +167,12 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			// sigma = r' * r;
+			sigma = zero;
 			ret = ret ? ret : grb::dot( sigma, r, r, ring );
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;
+			bnorm = zero;
 			ret = ret ? ret : grb::dot( bnorm, b, b, ring );
 			assert( ret == SUCCESS );
 
@@ -176,6 +192,7 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// residual = u' * temp
+				residual = zero;
 				ret = ret ? ret : grb::dot( residual, temp, u, ring );
 				assert( ret == SUCCESS );
 
@@ -197,6 +214,7 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// residual = r' * r;
+				residual = zero;
 				ret = ret ? ret : grb::dot( residual, r, r, ring );
 				assert( ret == SUCCESS );
 
