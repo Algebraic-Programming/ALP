@@ -295,22 +295,30 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	const enum grb::internal::hyperdags::SourceVertexType type,
 	const void * const pointer
 ) {
+#ifdef _DEBUG
 	std::cerr << "\t entering HyperDAGGen::addAnySource for " << pointer << "\n";
+#endif
 	const auto &find = sourceVertices.find( pointer );
 	if( find != sourceVertices.end() ) {
+#ifdef _DEBUG
 		std::cerr << "\t\t entry already existed, removing it\n";
+#endif
 		sourceVertices.erase( find );
 	}
 	const size_t global_id = hypergraph.createVertex();
 	const auto &sourceVertex = sourceGen.create( type, global_id );
+#ifdef _DEBUG
 	std::cerr << "\t\t created a source vertex with global ID " << global_id
 		<< " and local ID " << sourceVertex.getLocalID() << "\n";
+#endif
 	assert( sourceVertex.getGlobalID() == global_id );
 	sourceVertices.insert( std::make_pair( pointer, sourceVertex ) );
 	sourceVec.push_back( sourceVertex );
+#ifdef _DEBUG
 	std::cerr << "\t\t sourceVertices and sourceVec sizes: "
 		<< sourceVertices.size() << ", resp., "
 		<< sourceVec.size() << "\n";
+#endif
 	return global_id;
 }
 

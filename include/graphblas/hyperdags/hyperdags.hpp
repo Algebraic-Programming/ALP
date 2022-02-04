@@ -618,15 +618,19 @@ namespace grb {
 							>::value,
 							"Destinations should be given as const void pointers"
 						);
+#ifdef _DEBUG
 						std::cerr << "In HyperDAGGen::addOperation( "
 							<< toString( type ) << ", ... )\n"
 							<< "\t sourceVertices size: " << sourceVertices.size() << "\n"
 							<< "\t sourceVec size: " << sourceVec.size() << "\n";
+#endif
 
 						// steps 1, 2, and 3
 						std::vector< std::vector< size_t > > hyperedges;
 						for( ; src_start != src_end; ++src_start ) {
+#ifdef _DEBUG
 							std::cerr << "\t processing source " << *src_start << "\n";
+#endif
 							std::vector< size_t > toPush;
 							// step 1
 							const auto &it = operationOrOutputVertices.find( *src_start );
@@ -634,21 +638,31 @@ namespace grb {
 								// step 2
 								const auto alreadySource = sourceVertices.find( *src_start );
 								if( alreadySource == sourceVertices.end() ) {
+#ifdef _DEBUG
 									std::cerr << "\t creating new entry in sourceVertices\n";
+#endif
 									toPush.push_back( addAnySource( CONTAINER, *src_start ) );
 								} else {
+#ifdef _DEBUG
 									std::cerr << "\t found source in sourceVertices\n";
+#endif
 									toPush.push_back( alreadySource->second.getGlobalID() );
 								}
 							} else {
+#ifdef _DEBUG
 								std::cerr << "\t found source in operationOrOutputVertices\n";
+#endif
 								// step 2
 								const auto &remove = operationVertices.find( it->first );
 								if( remove != operationVertices.end() ) {
+#ifdef _DEBUG
 									std::cerr << "\t found source in operationVertices; removing it\n";
+#endif
 									operationVertices.erase( remove );
 								}
+#ifdef _DEBUG
 								std::cerr << "\t creating new entry in operationOrOutputVertices\n";
+#endif
 								const size_t global_id = it->second.first;
 								const auto &operationVertex = operationGen.create(
 									it->second.second, global_id
@@ -665,21 +679,27 @@ namespace grb {
 
 						// step 4, 5, and 6
 						for( ; dst_start != dst_end; ++dst_start ) {
+#ifdef _DEBUG
 							std::cerr << "\t processing destination " << *dst_start << "\n";
+#endif
 							// step 4
 							{
 								const auto &it = sourceVertices.find( *dst_start );
 								if( it != sourceVertices.end() ) {
+#ifdef _DEBUG
 									std::cerr << "\t destination found in sources-- "
 										<< "removing it from there\n";
+#endif
 									sourceVertices.erase( it );
 								}
 							}
 							{
 								const auto &it = operationVertices.find( *dst_start );
 								if( it != operationVertices.end() ) {
+#ifdef _DEBUG
 									std::cerr << "\t destination found in operations-- "
 										<< "removing it from there\n";
+#endif
 									operationVertices.erase( it );
 								}
 							}
@@ -689,8 +709,10 @@ namespace grb {
 									std::cerr << "WARNING (hyperdags::addOperation): an unconsumed output "
 										<< "container was detected. This indicates the existance of "
 										<< "an ALP primitive whose output is never used.\n";
+#ifdef _DEBUG
 									std::cerr << "\t destination found in operationsOrOutput-- "
 										<< "removing it from there\n";
+#endif
 									operationOrOutputVertices.erase( it );
 								}
 							}
@@ -699,8 +721,10 @@ namespace grb {
 							operationOrOutputVertices.insert( std::make_pair( *dst_start,
 								std::make_pair( global_id, type )
 							) );
+#ifdef _DEBUG
 							std::cerr << "\t created a new operation vertex with global ID "
 								<< global_id << "\n";
+#endif
 							// step 6
 							for( auto &hyperedge : hyperedges ) {
 								hyperedge.push_back( global_id );
@@ -709,8 +733,10 @@ namespace grb {
 
 						// step 7
 						for( const auto &hyperedge : hyperedges ) {
+#ifdef _DEBUG
 							std::cerr << "\t storing a hyperedge of size "
 								<< hyperedge.size() << "\n";
+#endif
 							hypergraph.createHyperedge( hyperedge.begin(), hyperedge.end() );
 						}
 					}
