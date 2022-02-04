@@ -51,7 +51,7 @@ namespace grb {
 	namespace internal {
 
 		template< typename T >
-		bool & getInitialized( grb::Matrix< T, reference_dense > & A ) noexcept {
+		const bool & getInitialized( const grb::Matrix< T, reference_dense > & A ) noexcept {
 			return A.initialized;
 		}
 
@@ -91,7 +91,7 @@ namespace grb {
 		friend RC buildMatrix( Matrix< InputType, reference_dense > &, fwd_iterator, const fwd_iterator );
 
 		template< typename DataType >
-		friend bool & internal::getInitialized( grb::Matrix< DataType, reference_dense > & ) noexcept;
+		friend const bool & internal::getInitialized( const grb::Matrix< DataType, reference_dense > & ) noexcept;
 
 		template< typename DataType >
 		friend void internal::setInitialized( grb::Matrix< DataType, reference_dense > & , bool ) noexcept;
