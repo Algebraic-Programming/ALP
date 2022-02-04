@@ -31,7 +31,7 @@
 #include "matrix.hpp"
 
 namespace grb {
-    namespace internal {
+	namespace internal {
 
 		/**
 		 * \internal general mxm implementation that all mxm variants refer to
@@ -55,9 +55,9 @@ namespace grb {
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
-            (void)oper;
-            (void)monoid;
-            (void)mulMonoid;
+			(void)oper;
+			(void)monoid;
+			(void)mulMonoid;
 			static_assert( allow_void ||
 				( !(
 					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
@@ -87,25 +87,25 @@ namespace grb {
 			const auto B_raw = grb::getRaw( B );
 			auto C_raw = grb::getRaw( C );
 
-            std::cout << "Multiplying dense matrices.\n";
+			std::cout << "Multiplying dense matrices.\n";
 
-            for( size_t row = 0; row < m; ++row ) {
-                for( size_t col = 0; col < n; ++col ) {
-                    C_raw[ row * k + col] = 0;
-                    for( size_t i = 0; i < k; ++ i ) {
-                        C_raw[ row * k + col] += A_raw[ row * k + i ] * B_raw[ i * n_B + col ];
-                    }
-                }
-            }
+			for( size_t row = 0; row < m; ++row ) {
+				for( size_t col = 0; col < n; ++col ) {
+					C_raw[ row * k + col] = 0;
+					for( size_t i = 0; i < k; ++ i ) {
+						C_raw[ row * k + col] += A_raw[ row * k + i ] * B_raw[ i * n_B + col ];
+					}
+				}
+			}
 
-            // internal::setInitialized( true );
+			// internal::setInitialized( true );
 			// done
 			return SUCCESS;
 		}
 
 	} // namespace internal
 
-    /**
+	/**
 	 * \internal grb::mxm, semiring version.
 	 * Dispatches to internal::mxm_generic
 	 */
