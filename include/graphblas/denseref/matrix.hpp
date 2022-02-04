@@ -119,7 +119,8 @@ namespace grb {
 
 		/** @see Matrix::Matrix() */
 		Matrix( const size_t rows, const size_t columns ): m( rows ), n( columns ), initialized( false ) {
-
+			// TODO Implement allocation properly
+			data = new T[ m * n ];
 		}
 
 		/** @see Matrix::Matrix( const Matrix & ) */
