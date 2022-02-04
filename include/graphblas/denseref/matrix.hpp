@@ -23,6 +23,8 @@
 #ifndef _H_GRB_DENSEREF_MATRIX
 #define _H_GRB_DENSEREF_MATRIX
 
+#include <stdexcept>
+
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/config.hpp>
@@ -374,7 +376,7 @@ namespace grb {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense >;
-		using original_type = typename View::applied_to;
+		using target_type = typename View::applied_to;
 
 		/*********************
 		    Storage info friends
@@ -386,10 +388,10 @@ namespace grb {
 
 		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
 
-		original_type & ref;
+		target_type * ref;
 
 		std::pair< size_t, size_t > _dims() const {
-			return View::dims( dims( ref ) );
+			return View::dims( dims( *ref ) );
 		}
 
 	public:
@@ -400,7 +402,9 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( original_type & struct_mat ) : ref( struct_mat ) {}
+		StructuredMatrix( ) : ref( nullptr ) {}
+
+		StructuredMatrix( target_type & struct_mat ) : ref( &struct_mat ) {}
 
 	}; // StructuredMatrix General reference
 
@@ -409,7 +413,7 @@ namespace grb {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense >;
-		using original_type = typename View::applied_to;
+		using target_type = typename View::applied_to;
 		/*********************
 		    Storage info friends
 		******************** */
@@ -420,10 +424,10 @@ namespace grb {
 
 		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
 
-		original_type & ref;
+		target_type * ref;
 
 		std::pair< size_t, size_t > _dims() const {
-			return View::dims( dims( ref ) );
+			return View::dims( dims( *ref ) );
 		}
 
 	public:
@@ -434,7 +438,13 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( original_type & struct_mat ) : ref( struct_mat ) {}
+		StructuredMatrix( ) : ref( nullptr ) {}
+
+		StructuredMatrix( target_type & struct_mat ) : ref( & struct_mat ) {
+			if( nrows( struct_mat ) == ncols( struct_mat ) ) {
+				throw std::length_error( "Square StructuredMatrix reference to non-square target." );
+			}
+		}
 
 	}; // StructuredMatrix Square reference
 
