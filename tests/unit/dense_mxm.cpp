@@ -24,6 +24,10 @@
 using namespace grb;
 
 void print_matrix( const grb::Matrix< double > & A) {
+	if( ! grb::internal::getInitialized< double >( A ) ) {
+		std::cout << "Matrix is uninitialized, nothing to print.\n";
+		return;
+	}
 	const double * Araw = grb::getRaw( A );
 	for( size_t row = 0; row < grb::nrows( A ); ++row ) {
 		for( size_t col = 0; col < grb::ncols( A ); ++col ) {
@@ -41,6 +45,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::Matrix< double > A( n, n );
 	grb::Matrix< double > B( n, n );
 	grb::Matrix< double > C( n, n );
+	std::vector< double > A_data( n * n, 1 );
+	std::vector< double > B_data( n * n, 1 );
 
 	std::cout << "_GRB_BACKEND = " << _GRB_BACKEND << "\n";
 	
@@ -52,10 +58,23 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cout << "_GRB_WITH_DENSEREF defined\n";
 	#endif
 
+	// Initialize input matrices
+	rc = grb::buildMatrix< double, decltype( A_data )::const_iterator >( A, A_data.begin(), A_data.end() );
+	if( rc == SUCCESS ) {
+		rc = grb::buildMatrix< double, decltype( B_data )::const_iterator >( B, B_data.begin(), B_data.end() );
+	}
+	
+
 	std::cout << "Output matrix nrows = " << nrows( C ) << ", ncols = " << ncols( C ) << "\n";
 
-	rc = grb::mxm( C, A, B, ring );
-	print_matrix(C);
+	// Test printing of an uninitialized matrix
+	print_matrix( C );
+
+	if( rc == SUCCESS ) {
+		rc = grb::mxm( C, A, B, ring );
+	}
+
+	print_matrix( C );
 
 }
 
