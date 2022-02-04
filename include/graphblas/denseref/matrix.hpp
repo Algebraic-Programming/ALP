@@ -48,6 +48,19 @@ namespace grb {
 	template< typename T >
 	size_t ncols( const Matrix< T, reference_dense > & ) noexcept;
 
+	namespace internal {
+
+		template< typename T >
+		bool & getInitialized( grb::Matrix< T, reference_dense > & A ) noexcept {
+			return A.initialized;
+		}
+
+		template< typename T >
+		void setInitialized( grb::Matrix< T, reference_dense > & A, bool initialized ) noexcept {
+			A.initialized = initialized;
+		}
+	} // namespace internal
+
 	/** \internal TODO */
 	template< typename T >
 	class Matrix< T, reference_dense > {
@@ -69,6 +82,12 @@ namespace grb {
 		friend T * getRaw<T>( Matrix< T, reference_dense > &) noexcept;
 
 		friend const T * getRaw<T>( const Matrix< T, reference_dense > & ) noexcept;
+
+		template< typename DataType >
+		friend bool & internal::getInitialized( grb::Matrix< DataType, reference_dense > & ) noexcept;
+
+		template< typename DataType >
+		friend void internal::setInitialized( grb::Matrix< DataType, reference_dense > & , bool ) noexcept;
 
 	private:
 		/** Our own type. */
