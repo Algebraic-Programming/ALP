@@ -83,6 +83,13 @@ namespace grb {
 
 		friend const T * getRaw<T>( const Matrix< T, reference_dense > & ) noexcept;
 
+		/* ********************
+		        IO friends
+		   ******************** */
+
+		template< typename InputType, typename fwd_iterator >
+		friend RC buildMatrix( Matrix< InputType, reference_dense > &, fwd_iterator, const fwd_iterator );
+
 		template< typename DataType >
 		friend bool & internal::getInitialized( grb::Matrix< DataType, reference_dense > & ) noexcept;
 
@@ -112,6 +119,26 @@ namespace grb {
 
 		/** Whether the container presently is uninitialized. */
 		bool initialized;
+
+		/** @see Matrix::buildMatrixUnique */
+		template< typename fwd_iterator >
+		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end ) {
+			// detect trivial case
+			if ( _start == _end || m == 0 || n == 0) {
+				return SUCCESS;
+			}
+
+			// TODO: Add more sanity checks (e.g. overflow)
+
+			for( auto it = _start; it != _end; ++it ) {
+				data[ it - _start ] = *it;
+			}
+
+			initialized = true;
+
+			// done
+			return RC::SUCCESS;
+		}
 
 	public:
 		/** @see Matrix::value_type */
