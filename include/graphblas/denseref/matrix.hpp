@@ -24,6 +24,7 @@
 #define _H_GRB_DENSEREF_MATRIX
 
 #include <stdexcept>
+#include <memory>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
@@ -34,6 +35,10 @@
 #include <graphblas/utils.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 //#include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
+#include <graphblas/structures.hpp>
+#include <graphblas/storage.hpp>
+#include <graphblas/views.hpp>
+#include <graphblas/imf.hpp>
 
 namespace grb {
 
@@ -233,11 +238,10 @@ namespace grb {
 
 		using self_type = StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense >;
 
-		// Using a matrix for now just to get some test going. Need to implement alloc
-		// logic for this backend.
+		// Physical layout - TBD
 		// Matrix< T, reference_dense > A;
 
-		size_t m, n;
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
 
 		/**
 		 * A container's storage scheme. \a storage_scheme is not exposed to the user as an option
@@ -256,7 +260,7 @@ namespace grb {
 		bool initialized;
 
 		std::pair< size_t, size_t > _dims() const {
-			return std::make_pair( m, n );
+			return std::make_pair( imf_l->n, imf_r->n );
 		}
 
 	public:
@@ -267,7 +271,7 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, Structure, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using reference_t = identity_t;
 
-		StructuredMatrix( const size_t rows, const size_t cols ) : m( rows ), n( cols ), storage_scheme( storage::full ), initialized( false ) {}
+		StructuredMatrix( const size_t rows, const size_t cols ) : imf_l( std::make_shared< imf::Id >( rows ) ), imf_r( std::make_shared< imf::Id >( cols ) ), storage_scheme( storage::full ), initialized( false ) {}
 	}; // class StructuredMatrix
 
 	template< typename T >
@@ -286,11 +290,10 @@ namespace grb {
 
 		using self_type = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense >;
 
-		// Using a matrix for now just to get some test going. Need to implement alloc
-		// logic for this backend.
+		// Physical layout - TBD
 		// Matrix< T, reference_dense > A;
 
-		size_t m, n;
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
 
 		/**
 		 * The container's storage scheme.
@@ -301,7 +304,7 @@ namespace grb {
 		bool initialized;
 
 		std::pair< size_t, size_t > _dims() const {
-			return std::make_pair( m, n );
+			return std::make_pair( imf_l->n, imf_r->n );
 		}
 
 	public:
@@ -316,7 +319,7 @@ namespace grb {
 
 		using reference_t = identity_t;
 
-		StructuredMatrix( const size_t rows, const size_t cols ) : m( rows ), n( cols ), storage_scheme( storage::full ), initialized( false ) {}
+		StructuredMatrix( const size_t rows, const size_t cols ) : imf_l( std::make_shared< imf::Id >( rows ) ), imf_r( std::make_shared< imf::Id >( cols ) ), storage_scheme( storage::full ), initialized( false ) {}
 
 	}; // StructuredMatrix General, container
 
@@ -336,11 +339,10 @@ namespace grb {
 
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense >;
 
-		// Using a matrix for now just to get some test going. Need to implement alloc
-		// logic for this backend.
+		// Physical layout - TBD
 		// Matrix< T, reference_dense > A;
 
-		size_t m, n;
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
 
 		/**
 		 * The container's storage scheme.
@@ -351,7 +353,7 @@ namespace grb {
 		bool initialized;
 
 		std::pair< size_t, size_t > _dims() const {
-			return std::make_pair( m, n );
+			return std::make_pair( imf_l->n, imf_r->n );
 		}
 
 	public:
@@ -364,7 +366,7 @@ namespace grb {
 
 		using reference_t = identity_t;
 
-		StructuredMatrix( const size_t rows ) : m( rows ), n( rows ), storage_scheme( storage::full ), initialized( false ) {}
+		StructuredMatrix( const size_t rows ) : imf_l( std::make_shared< imf::Id >( rows ) ), imf_r( std::make_shared< imf::Id >( rows ) ), storage_scheme( storage::full ), initialized( false ) {}
 
 	}; // StructuredMatrix Square, container
 
@@ -390,8 +392,10 @@ namespace grb {
 
 		target_type * ref;
 
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
+
 		std::pair< size_t, size_t > _dims() const {
-			return View::dims( dims( *ref ) );
+			return std::make_pair( imf_l->n, imf_r->n );
 		}
 
 	public:
@@ -402,9 +406,15 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( ) : ref( nullptr ) {}
+		StructuredMatrix( ) : ref( nullptr ), imf_l( std::make_shared< imf::Id >( 0 ) ), imf_r( std::make_shared< imf::Id >( 0 ) ) {}
 
-		StructuredMatrix( target_type & struct_mat ) : ref( &struct_mat ) {}
+		StructuredMatrix( target_type & struct_mat ) : ref( &struct_mat ), imf_l( nullptr ), imf_r( nullptr ) {
+			
+			std::pair< size_t, size_t > _dims = View::dims( dims( *ref ) );
+			imf_l = std::make_shared< imf::Id >( _dims.first  );
+			imf_r = std::make_shared< imf::Id >( _dims.second );
+
+		}
 
 	}; // StructuredMatrix General reference
 
@@ -426,8 +436,10 @@ namespace grb {
 
 		target_type * ref;
 
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
+
 		std::pair< size_t, size_t > _dims() const {
-			return View::dims( dims( *ref ) );
+			return std::make_pair( imf_l->n, imf_r->n );
 		}
 
 	public:
@@ -438,12 +450,16 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( ) : ref( nullptr ) {}
+		// ref to empty matrix
+		StructuredMatrix( ) : ref( nullptr ), imf_l( std::make_shared< imf::Id >( 0 ) ), imf_r( std::make_shared< imf::Id >( 0 ) ) {}
 
-		StructuredMatrix( target_type & struct_mat ) : ref( & struct_mat ) {
-			if( nrows( struct_mat ) == ncols( struct_mat ) ) {
+		StructuredMatrix( target_type & struct_mat ) : ref( & struct_mat ), imf_l( nullptr ), imf_r( nullptr ) {
+			if( nrows( struct_mat ) != ncols( struct_mat ) ) {
 				throw std::length_error( "Square StructuredMatrix reference to non-square target." );
 			}
+			// No matter the view it has to be a square matrix
+			imf_l = std::make_shared< imf::Id >( nrows( struct_mat ) );
+			imf_r = std::make_shared< imf::Id >( nrows( struct_mat ) );
 		}
 
 	}; // StructuredMatrix Square reference
