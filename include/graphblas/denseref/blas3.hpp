@@ -99,7 +99,7 @@ namespace grb {
 					}
 				}
 			}
-			// internal::setInitialized( true );
+			grb::internal::setInitialized( C, true );
 			// done
 			return SUCCESS;
 		}
