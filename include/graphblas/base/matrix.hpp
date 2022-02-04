@@ -27,6 +27,7 @@
 
 #include <stddef.h>
 
+#include <type_traits>
 #include <utility>
 
 #include <graphblas/backends.hpp>
@@ -499,6 +500,9 @@ class StructuredMatrix {
 	~StructuredMatrix();
 }; // class StructuredMatrix
 
+/**
+ * Check if a type is a StructuredMatrix.
+ */
 template< typename T >
 struct is_structured_matrix : std::false_type {};
 template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
