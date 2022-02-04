@@ -91,13 +91,14 @@ namespace grb {
 
 			for( size_t row = 0; row < m; ++row ) {
 				for( size_t col = 0; col < n; ++col ) {
-					C_raw[ row * k + col] = 0;
+					C_raw[ row * k + col] = monoid.template getIdentity< OutputType >();
 					for( size_t i = 0; i < k; ++ i ) {
-						C_raw[ row * k + col] += A_raw[ row * k + i ] * B_raw[ i * n_B + col ];
+						OutputType temp = monoid.template getIdentity< OutputType >();
+						(void)grb::apply( temp, A_raw[ row * k + i ], B_raw[ i * n_B + col ], oper );
+						(void)grb::foldl( C_raw[ row * k + col], temp, monoid.getOperator() );
 					}
 				}
 			}
-
 			// internal::setInitialized( true );
 			// done
 			return SUCCESS;
