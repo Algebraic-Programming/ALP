@@ -43,9 +43,18 @@ template<>
 grb::RC grb::finalize< grb::hyperdags >() {
 	std::cerr << "Info: grb::finalize (hyperdags) called.\n";
 	std::cerr << "\t dumping HyperDAG to stdout" << std::endl;
+	const grb::internal::hyperdags::HyperDAG &hyperdag =
+		grb::internal::hyperdags::generator.finalize();
 	const grb::internal::hyperdags::Hypergraph &hypergraph =
-		grb::internal::hyperdags::generator.finalize().get();
+		hyperdag.get();
 	std::cout << "%%MatrixMarket matrix coordinate pattern general\n";
+	std::cout << "%\t Source vertices:\n";
+	for( auto it = hyperdag.sourcesBegin(); it != hyperdag.sourcesEnd(); ++it ) {
+		std::cout << "%\t\t " << it->getGlobalID() << ": "
+			<< grb::internal::hyperdags::toString( it->getType() ) << " "
+			<< "no. " << it->getLocalID()
+			<< "\n";
+	}
 	std::cout << hypergraph.numHyperedges() << " "
 		<< hypergraph.numVertices() << " "
 		<< hypergraph.numPins() << "\n";

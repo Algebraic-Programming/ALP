@@ -52,6 +52,13 @@ namespace grb {
 			enum SourceVertexType {
 
 				/**
+				 * \internal Scalars are always handled as a new source. We do not track
+				 * whether the same scalars are re-used, because we cannot reliably do so
+				 * (due to a lack of an alp::Scalar).
+				 */
+				SCALAR,
+
+				/**
 				 * \internal The source is a container with contents that are not generated
 				 *           by ALP.
 				 */
@@ -64,6 +71,18 @@ namespace grb {
 				SET
 
 			};
+
+			const constexpr size_t numSourceVertexTypes = 3;
+
+			const constexpr enum SourceVertexType
+				allSourceVertexTypes[ numSourceVertexTypes ] =
+			{
+				SCALAR,
+				CONTAINER,
+				SET
+			};
+
+			std::string toString( const enum SourceVertexType type ) noexcept;
 
 			/** \internal A source vertex. */
 			class SourceVertex {
@@ -208,6 +227,19 @@ namespace grb {
 				DOT
 
 			};
+
+			const constexpr size_t numOperationVertexTypes = 4;
+
+			const constexpr enum OperationVertexType
+				allOperationVertexTypes[ numOperationVertexTypes ] =
+			{
+				NNZ_VECTOR,
+				CLEAR_VECTOR,
+				SET_VECTOR_ELEMENT,
+				DOT
+			};
+
+			std::string toString( const enum OperationVertexType ) noexcept;
 
 			/** \internal An operation vertex */
 			class OperationVertex {
@@ -426,6 +458,7 @@ namespace grb {
 
 				public:
 
+
 					/** \internal @returns The hypergraph representation of the HyperDAG. */
 					Hypergraph get() const noexcept;
 
@@ -434,6 +467,10 @@ namespace grb {
 					size_t numOperations() const noexcept;
 
 					size_t numOutputs() const noexcept;
+
+					std::vector< SourceVertex >::const_iterator sourcesBegin() const;
+
+					std::vector< SourceVertex >::const_iterator sourcesEnd() const;
 
 			};
 
@@ -543,6 +580,8 @@ namespace grb {
 					 *       to #OperationVertex, and b) add them to #operationVertices.
 					 *    2. for remaining source pointers that are not in #sourceVertices,
 					 *       upgrade them to #SourceVertex and add them to #sourceVertices.
+					 *       Otherwise, if already a source, add it from #sourceVertices
+					 *       directly.
 					 *    3. for every source pointer k, build an hyperedge. Each hyperedge
 					 *       contains only one entry at this point, namely the global ID
 					 *       corresponding to each of the k source pointers.
@@ -579,21 +618,37 @@ namespace grb {
 							>::value,
 							"Destinations should be given as const void pointers"
 						);
+						std::cerr << "In HyperDAGGen::addOperation( "
+							<< toString( type ) << ", ... )\n"
+							<< "\t sourceVertices size: " << sourceVertices.size() << "\n"
+							<< "\t sourceVec size: " << sourceVec.size() << "\n";
 
 						// steps 1, 2, and 3
 						std::vector< std::vector< size_t > > hyperedges;
 						for( ; src_start != src_end; ++src_start ) {
+							std::cerr << "\t processing source " << *src_start << "\n";
 							std::vector< size_t > toPush;
 							// step 1
 							const auto &it = operationOrOutputVertices.find( *src_start );
 							if( it == operationOrOutputVertices.end() ) {
-								toPush.push_back( addAnySource( CONTAINER, *src_start ) );
+								// step 2
+								const auto alreadySource = sourceVertices.find( *src_start );
+								if( alreadySource == sourceVertices.end() ) {
+									std::cerr << "\t creating new entry in sourceVertices\n";
+									toPush.push_back( addAnySource( CONTAINER, *src_start ) );
+								} else {
+									std::cerr << "\t found source in sourceVertices\n";
+									toPush.push_back( alreadySource->second.getGlobalID() );
+								}
 							} else {
+								std::cerr << "\t found source in operationOrOutputVertices\n";
 								// step 2
 								const auto &remove = operationVertices.find( it->first );
 								if( remove != operationVertices.end() ) {
+									std::cerr << "\t found source in operationVertices; removing it\n";
 									operationVertices.erase( remove );
 								}
+								std::cerr << "\t creating new entry in operationOrOutputVertices\n";
 								const size_t global_id = it->second.first;
 								const auto &operationVertex = operationGen.create(
 									it->second.second, global_id
@@ -604,21 +659,27 @@ namespace grb {
 								toPush.push_back( global_id );
 							}
 							// step 3
+							assert( toPush.size() == 1 );
 							hyperedges.push_back( toPush );
 						}
 
 						// step 4, 5, and 6
 						for( ; dst_start != dst_end; ++dst_start ) {
+							std::cerr << "\t processing destination " << *dst_start << "\n";
 							// step 4
 							{
 								const auto &it = sourceVertices.find( *dst_start );
 								if( it != sourceVertices.end() ) {
+									std::cerr << "\t destination found in sources-- "
+										<< "removing it from there\n";
 									sourceVertices.erase( it );
 								}
 							}
 							{
 								const auto &it = operationVertices.find( *dst_start );
 								if( it != operationVertices.end() ) {
+									std::cerr << "\t destination found in operations-- "
+										<< "removing it from there\n";
 									operationVertices.erase( it );
 								}
 							}
@@ -628,6 +689,8 @@ namespace grb {
 									std::cerr << "WARNING (hyperdags::addOperation): an unconsumed output "
 										<< "container was detected. This indicates the existance of "
 										<< "an ALP primitive whose output is never used.\n";
+									std::cerr << "\t destination found in operationsOrOutput-- "
+										<< "removing it from there\n";
 									operationOrOutputVertices.erase( it );
 								}
 							}
@@ -636,6 +699,8 @@ namespace grb {
 							operationOrOutputVertices.insert( std::make_pair( *dst_start,
 								std::make_pair( global_id, type )
 							) );
+							std::cerr << "\t created a new operation vertex with global ID "
+								<< global_id << "\n";
 							// step 6
 							for( auto &hyperedge : hyperedges ) {
 								hyperedge.push_back( global_id );
@@ -644,6 +709,8 @@ namespace grb {
 
 						// step 7
 						for( const auto &hyperedge : hyperedges ) {
+							std::cerr << "\t storing a hyperedge of size "
+								<< hyperedge.size() << "\n";
 							hypergraph.createHyperedge( hyperedge.begin(), hyperedge.end() );
 						}
 					}

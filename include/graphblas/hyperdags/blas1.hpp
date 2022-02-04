@@ -72,7 +72,12 @@ namespace grb {
 			!grb::is_object< T >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 1 > sources{ &x };
+		// always force input scalar to be a new source
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&val
+		);
+		std::array< const void *, 2 > sources{ &x, &val };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_VECTOR_ELEMENT,
@@ -114,8 +119,13 @@ namespace grb {
 			grb::is_operator< AnyOp >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &x, &y };
-		std::array< const void *, 0 > destinations;
+		// always force input scalar to be a new source
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&z
+		);
+		std::array< const void *, 3 > sources{ &z, &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::DOT,
 			sources.begin(), sources.end(),

@@ -22,6 +22,47 @@
 
 #include <graphblas/hyperdags/hyperdags.hpp>
 
+std::string grb::internal::hyperdags::toString(
+	const enum SourceVertexType type
+) noexcept {
+	switch( type ) {
+
+		case SCALAR:
+			return "input scalar";
+
+		case CONTAINER:
+			return "user-initialised container";
+
+		case SET:
+			return "container initialised by a call to set";
+
+	}
+	assert( false );
+	return "unidentified source vertex type";
+}
+
+std::string grb::internal::hyperdags::toString(
+	const enum OperationVertexType type
+) noexcept {
+	switch( type ) {
+
+		case NNZ_VECTOR:
+			return "nnz (vector)";
+
+		case CLEAR_VECTOR:
+			return "clear (vector)";
+
+		case SET_VECTOR_ELEMENT:
+			return "setElement (vector)";
+
+		case DOT:
+			return "dot";
+
+	}
+	assert( false );
+	return "unknown operation";
+}
+
 grb::internal::hyperdags::SourceVertex::SourceVertex(
 	const enum grb::internal::hyperdags::SourceVertexType _type,
 	const size_t _local_id, const size_t _global_id
@@ -40,8 +81,9 @@ size_t grb::internal::hyperdags::SourceVertex::getGlobalID() const noexcept {
 }
 
 grb::internal::hyperdags::SourceVertexGenerator::SourceVertexGenerator() {
-	nextID[ grb::internal::hyperdags::SourceVertexType::CONTAINER ] = 0;
-	nextID[ grb::internal::hyperdags::SourceVertexType::SET ] = 0;
+	for( size_t i = 0; i < numSourceVertexTypes; ++i ) {
+		nextID[ allSourceVertexTypes[ i ] ] = 0;
+	}
 }
 
 grb::internal::hyperdags::SourceVertex grb::internal::hyperdags::SourceVertexGenerator::create(
@@ -112,10 +154,13 @@ size_t grb::internal::hyperdags::OperationVertex::getGlobalID() const noexcept {
 }
 
 grb::internal::hyperdags::OperationVertexGenerator::OperationVertexGenerator() {
-	nextID[ grb::internal::hyperdags::OperationVertexType::NNZ_VECTOR ] = 0;
+	for( size_t i = 0; i < numOperationVertexTypes; ++i ) {
+		nextID[ allOperationVertexTypes[ i ] ] = 0;
+	}
 }
 
-grb::internal::hyperdags::OperationVertex grb::internal::hyperdags::OperationVertexGenerator::create(
+grb::internal::hyperdags::OperationVertex
+grb::internal::hyperdags::OperationVertexGenerator::create(
 	const grb::internal::hyperdags::OperationVertexType type,
 	const size_t global_id
 ) {
@@ -226,6 +271,16 @@ size_t grb::internal::hyperdags::HyperDAG::numOutputs() const noexcept {
 	return num_outputs;
 }
 
+std::vector< grb::internal::hyperdags::SourceVertex >::const_iterator
+grb::internal::hyperdags::HyperDAG::sourcesBegin() const {
+	return sourceVertices.cbegin();
+}
+
+std::vector< grb::internal::hyperdags::SourceVertex >::const_iterator
+grb::internal::hyperdags::HyperDAG::sourcesEnd() const {
+	return sourceVertices.cend();
+}
+
 grb::internal::hyperdags::HyperDAGGenerator::HyperDAGGenerator() noexcept {}
 
 void grb::internal::hyperdags::HyperDAGGenerator::addSource(
@@ -240,14 +295,22 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	const enum grb::internal::hyperdags::SourceVertexType type,
 	const void * const pointer
 ) {
+	std::cerr << "\t entering HyperDAGGen::addAnySource for " << pointer << "\n";
 	const auto &find = sourceVertices.find( pointer );
 	if( find != sourceVertices.end() ) {
+		std::cerr << "\t\t entry already existed, removing it\n";
 		sourceVertices.erase( find );
 	}
 	const size_t global_id = hypergraph.createVertex();
 	const auto &sourceVertex = sourceGen.create( type, global_id );
+	std::cerr << "\t\t created a source vertex with global ID " << global_id
+		<< " and local ID " << sourceVertex.getLocalID() << "\n";
+	assert( sourceVertex.getGlobalID() == global_id );
 	sourceVertices.insert( std::make_pair( pointer, sourceVertex ) );
 	sourceVec.push_back( sourceVertex );
+	std::cerr << "\t\t sourceVertices and sourceVec sizes: "
+		<< sourceVertices.size() << ", resp., "
+		<< sourceVec.size() << "\n";
 	return global_id;
 }
 
