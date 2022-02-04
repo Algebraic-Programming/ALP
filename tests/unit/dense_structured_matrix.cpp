@@ -49,7 +49,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	decltype( A )::transpose_t At( A );
 	decltype( M )::transpose_t Mt( M );
 
-	decltype( M )::reference_t Mref( M );
+	grb::get_ref< decltype( M ) >::type Mref( M );
+	grb::get_ref< decltype( M ), grb::structures::Square >::type Sq_Mref( M );
+
+	grb::remove_ref< decltype( Mt ) >::type M1( n, n );
 
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
