@@ -30,6 +30,17 @@
 
 namespace grb {
 
+	/**
+	 * Collects all ALP matrix structures.
+	 * 
+	 * A matrix structure is characterized by having a member type \a inferred_structures.
+	 * \a inferred_structures is a tuple used to define a partial order over the 
+	 * structures based on their logical implication. So if having structure \f$B\f$ implies
+	 * also having structure \f$A\f$ than 
+	 * \code
+	 * is_same< B::inferred_structures, std::tuple<A, B> >::value == true
+	 * \endcode
+	 */
 	namespace structures {
 
 		template< typename... Tuples >
@@ -38,7 +49,7 @@ namespace grb {
 		};
 
 		/**
-		 * Check if a structure is part of a given tuple.
+		 * Check if a structure \a Structure is part of a given \a std::tuple \a Tuple.
 		 */
 		template< typename Structure, typename Tuple >
 		struct is_in;
@@ -85,9 +96,6 @@ namespace grb {
 			south_west
 		};
 
-		/**
-		 * List of ALP matrix structures.
-		 */
 		struct General {
 			using inferred_structures = std::tuple< General >;
 		};
