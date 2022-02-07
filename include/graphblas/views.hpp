@@ -22,6 +22,8 @@
  *       A static view represents a particular \em perspective on a container that
  *       can be defined at compile-time and that can always be applied to a container
  *       irrespective of dynamic features such as its dimensions.
+ * 		 A View provides information about the structured matrix it is applied to,
+ *       including its type (member type \a applied_to), or how read its dimensions.
  */
 
 #ifndef _H_GRB_VIEWS

@@ -17,7 +17,26 @@
 /**
  *
  * @file This file registers available index mapping functions (IMFs).
- *       IMFs are maps between integer intervals.
+ *       IMFs are maps between integer intervals and can be used to define
+ *       affine \em access transformations in the form of access matrices.
+ *       For example, an access matrix \f$G_f\in R^{N\times N}\f$ 
+ *       parametrized by the IMF \f$f\f$ such that
+ *       \f[G_f = \sum_{i=0}^{n-1} e_i^n\left(e_{f(i)}^N\right)^T\f]
+ *       could be used to access a group of $n\eN$ rows of matrix 
+ *       \f$A\in R^{N\times N}\f$
+ *       according to \f$f\f$ by multiplying \f$A\f$ by \f$G_f\f$ from the left:
+ *       \f[\tilde{A} = G_f\cdot A,\quad \tilde{A}\in R^{n\times N}\f]
+ *      
+ * \note In this draft we use integer maps. A symbolic version of them could be 
+ *       defined using external libraries such as the Integer Set Library (isl 
+ *       \link https://libisl.sourceforge.io/).
+ * 
+ * \note The idea of parametrized matrices to express matrix accesses at 
+ *       a higher level of mathematical abstractions is inspired by the 
+ *       SPIRAL literature (cite?). Similar although more general concepts 
+ *       also exist in the polyhedral compilation literature (e.g., access
+ *       relations, cite).
+ *       
  */
 
 #ifndef _H_GRB_IMF
@@ -41,9 +60,11 @@ namespace grb {
 
         /**
          * The identity IMF.  
-         * I =[0, n)
-         * Id = I -> I; i \mapsto i
+         * \f$I_n = [0, n)\f$
+         * \f$Id = I_n \rightarrow I_n; i \mapsto i\f$
          */
+
+
         class Id: public IMF {
 
             public:
@@ -56,9 +77,10 @@ namespace grb {
 
         /**
          * The strided IMF.  
-         * I_n =[0, n), I_N =[0, N)
-         * Strided_{b, s} = I_n -> I_N; i \mapsto b + s * i
+         * \f$I_n =[0, n), I_N =[0, N)\f$
+         * \f$Strided_{b, s} = I_n \rightarrow I_N; i \mapsto b + si\f$
          */
+
         class Strided: public IMF {
 
             public:
@@ -73,11 +95,12 @@ namespace grb {
         };
 
         /**
-         * A composition of two IMFs f\circ g = f(g(\cdot))
-         * I_gn =[0, n), I_fN =[0, m)
-         * I_fn =[0, m), I_fN =[0, N)
-         * Composed_{f, g} = I_gn -> I_fN; i \mapsto f( g( i ) )
+         * A composition of two IMFs.
+         * \f$I_{g,n} =[0, n), I_{g,N} =[0, N)\f$
+         * \f$I_{f,n} =[0, n), I_{f,N} =[0, N)\f$
+         * \f$Composed_{f, g} = I_{g,n} \rightarrow I_{f,N}; i \mapsto f( g( i ) )\f$
          */
+        
         class Composed: public IMF {
 
             public:
