@@ -20,6 +20,9 @@
  * @date 21st of February, 2017
  */
 
+#include <type_traits>
+#include <typeinfo>
+
 #ifndef _H_GRB_IO_BASE
 #define _H_GRB_IO_BASE
 
@@ -1363,6 +1366,7 @@ namespace grb {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
+  
 	template< Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
@@ -1378,13 +1382,21 @@ namespace grb {
 		const IOMode mode
 	) {
 		// derive synchronized iterator
-		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end );
-		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end,
-			V_end );
+		//first derive iterator access category in(3x random acc. it.) => out(random acc. it.)
+		typedef typename std::iterator_traits<fwd_iterator1>::iterator_category It1_cat ;
+		typedef typename std::iterator_traits<fwd_iterator2>::iterator_category It2_cat ;
+		typedef typename std::iterator_traits<fwd_iterator3>::iterator_category It3_cat ;
+		using  iterator_category = typename utils::common_it_tag<It1_cat,It2_cat,It3_cat>::it_tag;
+		//using  iterator_category=std::forward_iterator_tag;  //testing only
+		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end, iterator_category() );
+		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end, iterator_category() );
+
 
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
+
+
 
 	/**
 	 * Alias that transforms a set of pointers and an array length to the
@@ -1401,6 +1413,7 @@ namespace grb {
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
+	  
 		return buildMatrixUnique< descr >( A,
 			I, I + nz,
 			J, J + nz,
@@ -1426,7 +1439,6 @@ namespace grb {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
 		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
-
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1481,11 +1493,13 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		(void)A;
-		(void)start;
-		(void)end;
-		(void)mode;
-		return PANIC;
+
+	  return buildMatrixUnique< descr >( A, start, end, mode );
+		// (void)A;
+		// (void)start;
+		// (void)end;
+		// (void)mode;
+		// return PANIC;
 	}
 
 	/**
