@@ -24,11 +24,10 @@
 #define _H_GRB_MATRIX_BASE
 
 #include <iterator>
-
 #include <stddef.h>
-
 #include <type_traits>
 #include <utility>
+#include <memory>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/descriptors.hpp>
@@ -38,6 +37,7 @@
 #include <graphblas/structures.hpp>
 #include <graphblas/utils.hpp>
 #include <graphblas/views.hpp>
+#include <graphblas/imf.hpp>
 
 namespace grb {
 
@@ -441,67 +441,126 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 }
 
 /**
- * An ALP structured matrix.
+ * \brief An ALP structured matrix.
  *
- * This is an opaque data type for that implements the below functions. In essence it can be
- * used to instantiate containers or references of containers. References may be matrices with
- * their specific structure but do access data from a referenced StructuredMatrix, the latter being
- * either a container or a reference itself.
+ * This is an opaque data type for structured matrices. A structured matrix is 
+ * generalized over five parameters further described below: its data type, 
+ * its structure, whether it is stored using a dense or sparse storage scheme, 
+ * a static view and the backend for which it is implemented.
+ * At a high level of abstraction a structured matrix exposes a mathematical 
+ * \em logical layout which allows to express implementation-oblivious concepts 
+ * (e.g., the transpose of a symmetric matrix).
+ * At the lowest level, the logical layout maps to its physical counterpart via 
+ * a particular choice of a storage scheme within those exposed by the chosen 
+ * backend.
+ * 
+ * Views can be used to create logical \em perspectives on top of a container. 
+ * For example, I could decide to refer to the transpose of a matrix or to see 
+ * a for limited part of my program a square matrix as symmetric. 
+ * If a view can be expressed as concept invariant of specific runtime features,
+ * such views can be defined statically (for example I can always refer to the 
+ * transpose or the diagonal of a matrix irrespective of features such as its 
+ * size). Other may depend on features such as the size of a matrix
+ * and can be expressed as linear transformations via operations such as \a mxm 
+ * (e.g., gathering/scattering the rows/columns of a matrix or permuting them).
+ * Structured matrices defined as views on other matrices do not instantiate a
+ * new container but refer to the one used by their targets. (See the 
+ * documentation of StructuredMatrix for both scenarios within the \em denseref 
+ * backend folder).
  *
  * @tparam T The type of the matrix elements. \a T shall not be a GraphBLAS
  *            type.
- * @tparam Structure  One of the matrix structures in grb::structures.
- * @tparam StorageSchemeType Either \a enum \a storage::Dense or \a enum \a storage::Sparse.
- * 		   A StructuredMatrix will be allowed to pick among the storage schemes within their specified
- *         \a StorageSchemeType.
- * @tparam view  One of the matrix views in \a grb::view.
- * 		   All static views except for \a view::Identity cannot instantiate a new container and only
- * 		   allow the creation of a reference to an existing \a StructuredMatrix.
- * 		   \a view::identity<void> triggers the instatiation of an actual container for the StructuredMatrix.
- * 		   A reference view could be instanciated into a separate container than its original source by explicit
- *         copy into a container (e.g., via \a grb::set).
- *         The \a View parameter should not be used directly by the user but can be set using
- * 	       specific member types appropriately defined by each StructuredMatrix.
- *         (See examples of StructuredMatrix definitions in denseref backend folder or the
- *          \a dense_structured_matrix.cpp unit test).
- * @tparam backend Allows multiple backends to implement different versions of this data type.
+ * @tparam Structure  One of the matrix structures in \a grb::structures.
+ * @tparam StorageSchemeType Either \em enum \a storage::Dense or \em enum 
+ * 	       \a storage::Sparse.
+ * 		   A StructuredMatrix will be allowed to pick among the storage schemes 
+ *         within their specified \a StorageSchemeType.
+ * @tparam View  One of the matrix views in \a grb::view.
+ * 		   All static views except for \a view::Identity (via 
+ *         \a view::identity<void> cannot instantiate a new container and only 
+ *         allow to refer to an existing \a StructuredMatrix.  
+ *         The \a View parameter should not be used directly by the user but 
+ *         can be set using specific member types appropriately 
+ *         defined by each StructuredMatrix. (See examples of StructuredMatrix 
+ *         definitions within \a include/graphblas/denseref/matrix.hpp and the
+ *         \a dense_structured_matrix.cpp unit test).
+ * @tparam backend Allows multiple backends to implement different versions 
+ *         of this data type.
  *
- * \note The presence of different combination of structures and views could produce many specialization
- *       with lots of logic replication.
+ * \note The presence of different combination of structures and views could 
+ *       produce many specialization with lots of logic replication. We might
+ *       could use some degree of inheritence to limit this.
  */
 template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
 class StructuredMatrix {
 
-	size_t m, n;
 
-	/** Whether the container presently is initialized or not. */
+	/** 
+	 * Whether the container presently is initialized or not. 
+	 * We differentiate the concept of empty matrix (matrix of size \f$0\times 0\f$)
+	 * from the one of uninitialized (matrix of size \f$m\times n\f$ which was never set)
+	 * and that of zero matrix (matrix with all zero elements).
+	 * \note in sparse format a zero matrix result in an ampty data structure. Is this
+	 * used to refer to uninitialized matrix in ALP/GraphBLAS?
+	 **/
 	bool initialized;
+
+	/**
+	 * The two following members define the \em logical layout of a structured matrix:
+	 * Its structure and access relations. This is enabled only if the structured matrix
+	 * does not define a View on another matrix.
+	 */
+	using structure = Structure;
+	/**
+	 * A pair of pointers to index mapping functions (see imf.hpp) that express the
+	 * logical access to the structured matrix.
+	 */
+	std::shared_ptr<imf::IMF> imf_l, imf_r;
+
+	/**
+	 * When a structured matrix instanciate a \em container it defines a new \em physical
+	 * (concrete?) layout. This is characterized by an ALP container (aka a \a Matrix) and a 
+	 * storage scheme that defines a unique interpretation of its content.
+	 * The combination of the logical and physical layout of a structured matrix enables to
+	 * identify a precise mapping between an element in the structured matrix and a position
+	 * wihtin one or more 1/2D-arrays that store it.
+	 */
+    Matrix< T, reference_dense > * _container;
+
+	/**
+	 * A container's storage scheme. \a storage_scheme is not exposed to the user as an option
+	 * but can defined by ALP at different points in the execution depending on the \a backend choice.
+	 * For example, if the container is associated to an I/O matrix, with a reference backend
+	 * it might be set to reflect the storage scheme of the user data as specified at buildMatrix.
+	 * If \a backend is set to \a mlir then the scheme could be fixed by the JIT compiler to effectively
+	 * support its optimization strategy.
+	 * At construction time and until the moment the scheme decision is made it may be set to
+	 * an appropriate default choice, e.g. if \a StorageSchemeType is \a storage::Dense then
+	 * \a storage::Dense::full could be used.
+	 */
+	StorageSchemeType storage_scheme;
+
+	/**
+	 * When a structured matrix defines a View over another matrix, it contains a pointer
+	 * to the latter. Its type can be identified via the View parameter.
+	 */
+	using target_type = typename std::enable_if<! std::is_same<View, view::Identity<void> >::value, typename View::applied_to>::type;
+	target_type * ref;
 
 	public :
 
-		/**
-	     * Usable only in case of an \a original view. Otherwise the view should only reference another view.
-	     */
-		StructuredMatrix( const size_t m, const size_t n );
+	StructuredMatrix( const size_t m, const size_t n );
 
-	/**
-	 * In case of non-original views should set up the container so to share the data of other.
-	 */
 	StructuredMatrix( const StructuredMatrix< T, Structure, StorageSchemeType, View, backend > & other );
 
-	/**
-	 * Usable only in case of an \a original view. Otherwise the view should only reference another view.
-	 */
 	StructuredMatrix( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > && other );
 
-	/**
-	 * When view is \a original data should be properly deallocated.
-	 */
 	~StructuredMatrix();
+
 }; // class StructuredMatrix
 
 /**
- * Check if a type is a StructuredMatrix.
+ * Check if type \a T is a StructuredMatrix.
  */
 template< typename T >
 struct is_structured_matrix : std::false_type {};
