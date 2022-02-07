@@ -419,14 +419,56 @@ namespace grb {
 	 * Calls the other #buildMatrixUnique variant.
 	 * @see grb::buildMatrixUnique for the user-level specification.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator >
-	RC buildMatrixUnique( Matrix< InputType, reference > & A, fwd_iterator start, const fwd_iterator end, const IOMode mode ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator
+	>
+	RC buildMatrixUnique( Matrix< InputType, reference > &A,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode
+	) {
 		// parallel or sequential mode are equivalent for reference implementation
 		assert( mode == PARALLEL || mode == SEQUENTIAL );
 #ifdef NDEBUG
 		(void)mode;
 #endif
 		return A.template buildMatrixUnique< descr >( start, end );
+	}
+
+	/**
+	 * \internal
+	 *
+	 * Uses pointers to internal buffer areas that are guaranteed to exist
+	 * (except for empty vectors). The buffer areas reside in the internal
+	 * coordinates class.
+	 *
+	 * \endinternal
+	 */
+	template< typename InputType, typename Coords >
+	uintptr_t getID( const Vector< InputType, reference, Coords > &x ) {
+		assert( grb::size( x ) != 0 );
+		const uintptr_t ret = x._id;
+#ifdef _DEBUG
+		std::cerr << "In grb::getID (reference, vector).\n"
+			<< "\t returning deterministic ID " << ret << "\n";
+#endif
+		return ret;
+	}
+
+	/**
+	 * \internal
+	 *
+	 * Uses pointers to internal buffer areas that are guaranteed to exist
+	 * (except for empty matrices). The buffer areas reside in the internal
+	 * compressed_storage class.
+	 *
+	 * \endinternal
+	 */
+	template< typename InputType >
+	uintptr_t getID( const Matrix< InputType, reference > &A ) {
+		assert( nrows(A) > 0 );
+		assert( ncols(A) > 0 );
+		return A.id;
 	}
 
 	/** @} */
@@ -437,13 +479,14 @@ namespace grb {
 
 // parse again for reference_omp backend
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_IO
-#define _H_GRB_REFERENCE_OMP_IO
-#define reference reference_omp
-#include "graphblas/reference/io.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_IO
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_IO
+  #define _H_GRB_REFERENCE_OMP_IO
+  #define reference reference_omp
+  #include "graphblas/reference/io.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_IO
+ #endif
 #endif
 
 #endif // end ``_H_GRB_REFERENCE_IO
+

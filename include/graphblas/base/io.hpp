@@ -365,6 +365,88 @@ namespace grb {
 		return PANIC;
 	}
 
+	/**
+	 * Function that returns a unique ID for a given non-empty container.
+	 *
+	 * \note An empty container is either a vector of size 0 or a matrix with one
+	 *       of its dimensions equal to 0.
+	 *
+	 * The ID is unique across all currently valid container instances. If
+	 * \f$ n \f$ is the number of such valid instances, the returned ID
+	 * may \em not be strictly smaller than \f$ n \f$ -- i.e., implementations
+	 * are not required to maintain consecutive IDs (nor would this be possible
+	 * if IDs are to be reused).
+	 *
+	 * The use of <tt>uintptr_t</tt> to represent IDs guarantees that, at any time
+	 * during execution, there can never be more initialised containers than can be
+	 * assigned an ID. Therefore this specification demands that a call to this
+	 * function never fails.
+	 *
+	 * An ID, once given, may never change during the life-time of the given
+	 * container. I.e., multiple calls to this function using the same argument
+	 * must return the same ID.
+	 *
+	 * If the program calling this function is deterministic, then it must assign
+	 * the exact same IDs across different runs.
+	 *
+	 * If the backend supports multiple user processes, the IDs obtained for the
+	 * same containers but across different processes, may differ. However, across
+	 * the same run of a deterministic program, the IDs returned within any single
+	 * user process must, as per the preceding requirement, be the same across
+	 * different runs that are executed using the same number of user processes.
+	 *
+	 * @param[in] x A valid non-empty ALP container to retrieve a unique ID for.
+	 *
+	 * \note If \a x is invalid or empty then a call to this function results in
+	 *       undefined behaviour.
+	 *
+	 * @returns The unique ID corresponding to \a x.
+	 *
+	 * \warning The returned ID is not the same as a pointer to \a x, since, for
+	 *          example, two containers may be swapped via <tt>std::swap</tt>. In
+	 *          such a case, the IDs of the two containers are swapped also.
+	 *
+	 * \note Another example is when move semantics are invoked, e.g., when a
+	 *       temporary container is copied into another just before it would be
+	 *       destroyed. Via move semantics the remaining container is in fact not a
+	 *       copy of the temporary one, which would have caused their IDs to be
+	 *       different. Instead, the remaining container has taken over the
+	 *       ownership of the to-be destroyed one, retaining its ID.
+	 *
+	 * \note For the purposes of defining determinism of ALP programs, and perhaps
+	 *       superfluously, two program which only differ by one constructing a
+	 *       matrix instead of the other constructing a vector, are not considered
+	 *       to be the same program; i.e., implementations are allowed to assign
+	 *       vector IDs differently from matrix IDs.
+	 *       However, as per the guarantee in the preceding, implementations are
+	 *       not allowed to run out of IDs to assign by any use of such mechanism.
+	 */
+	template<
+		typename ElementType, typename Coords,
+		Backend implementation = config::default_backend
+	>
+	uintptr_t getID( const Vector< ElementType, implementation, Coords > &x ) {
+		const bool this_is_an_invalid_default_implementation = false;
+		assert( this_is_an_invalid_default_implementation );
+		return static_cast< uintptr_t >(-1);
+	}
+
+	/**
+	 * Specialisation of #getID for matrix containers. The same specification
+	 * applies.
+	 *
+	 * @see getID
+	 */
+	template<
+		typename ElementType,
+		Backend implementation = config::default_backend
+	>
+	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+		const bool this_is_an_invalid_default_implementation = false;
+		assert( this_is_an_invalid_default_implementation );
+		return static_cast< uintptr_t >(-1);
+	}
+
 	/** @} */
 
 } // namespace grb

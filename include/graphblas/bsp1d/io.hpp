@@ -243,15 +243,25 @@ namespace grb {
 	/**
 	 * TODO describe implementation details
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator >
-	RC buildMatrixUnique( Matrix< InputType, BSP1D > & A, fwd_iterator start, const fwd_iterator end, const IOMode mode ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, BSP1D > &A,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode
+	) {
 		typedef typename fwd_iterator::row_coordinate_type IType;
 		typedef typename fwd_iterator::column_coordinate_type JType;
 		typedef typename fwd_iterator::nonzero_value_type VType;
 
 		// static checks
-		NO_CAST_ASSERT( ! ( descr & descriptors::no_casting ) || ( std::is_same< InputType, VType >::value && std::is_integral< IType >::value && std::is_integral< JType >::value ),
-			"grb::buildMatrixUnique (BSP1D implementation)",
+		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+				std::is_same< InputType, VType >::value &&
+				std::is_integral< IType >::value &&
+				std::is_integral< JType >::value
+			), "grb::buildMatrixUnique (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set" );
 
@@ -267,9 +277,8 @@ namespace grb {
 		RC ret = clear( A );
 
 #ifdef _DEBUG
-		printf( "buildMatrixUnique is called from process %zd out of %zd "
-				"processes total.\n",
-			static_cast< size_t >( data.s ), static_cast< size_t >( data.P ) );
+		std::cout << "buildMatrixUnique is called from process " << data.s << " "
+			<< "out of " << data.P << " processes total.\n";
 #endif
 
 		// local cache, used to delegate to reference buildMatrixUnique
@@ -282,8 +291,10 @@ namespace grb {
 		// NOTE: this copies a lot of the above methodology
 
 #ifdef _DEBUG
-		const size_t my_offset = internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
-		std::cout << "Local column-wise offset at PID " << data.s << " is " << my_offset << "\n";
+		const size_t my_offset =
+			internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
+		std::cout << "Local column-wise offset at PID " << data.s << " is "
+			<< my_offset << "\n";
 #endif
 		// loop over all input
 		for( size_t k = 0; ret == SUCCESS && start != end; ++k, ++start ) {
@@ -298,43 +309,71 @@ namespace grb {
 
 			// compute process-local indices (even if remote, for code readability)
 			const size_t global_row_index = start.i();
-			const size_t row_pid = internal::Distribution< BSP1D >::global_index_to_process_id( global_row_index, A._m, data.P );
-			const size_t row_local_index = internal::Distribution< BSP1D >::global_index_to_local( global_row_index, A._m, data.P );
-
+			const size_t row_pid =
+				internal::Distribution< BSP1D >::global_index_to_process_id(
+					global_row_index, A._m, data.P
+				);
+			const size_t row_local_index =
+				internal::Distribution< BSP1D >::global_index_to_local(
+					global_row_index, A._m, data.P
+				);
 			const size_t global_col_index = start.j();
-			const size_t column_pid = internal::Distribution< BSP1D >::global_index_to_process_id( global_col_index, A._n, data.P );
-			const size_t column_local_index = internal::Distribution< BSP1D >::global_index_to_local( global_col_index, A._n, data.P );
-			const size_t column_offset = internal::Distribution< BSP1D >::local_offset( A._n, column_pid, data.P );
+			const size_t column_pid =
+				internal::Distribution< BSP1D >::global_index_to_process_id(
+					global_col_index, A._n, data.P
+				);
+			const size_t column_local_index =
+				internal::Distribution< BSP1D >::global_index_to_local(
+					global_col_index, A._n, data.P
+				);
+			const size_t column_offset =
+				internal::Distribution< BSP1D >::local_offset(
+					A._n, column_pid, data.P
+				);
 
 			// check if local
 			if( row_pid == data.s ) {
 				// push into cache
 				cache.push_back( *start );
 				// translate nonzero
-				utils::updateNonzeroCoordinates( cache[ cache.size() - 1 ], row_local_index, column_offset + column_local_index );
+				utils::updateNonzeroCoordinates(
+					cache[ cache.size() - 1 ],
+					row_local_index,
+					column_offset + column_local_index
+				);
 #ifdef _DEBUG
-				std::cout << "Translating nonzero at ( " << start.i() << ", " << start.j() << " ) to one at ( " << row_local_index << ", " << ( column_offset + column_local_index ) << " ) at PID "
-						  << row_pid << "\n";
+				std::cout << "Translating nonzero at ( " << start.i() << ", " << start.j()
+					<< " ) to one at ( " << row_local_index << ", "
+					<< ( column_offset + column_local_index ) << " ) at PID "
+					<< row_pid << "\n";
 #endif
 			} else if( mode == PARALLEL ) {
 #ifdef _DEBUG
-				std::cout << "Sending nonzero at ( " << start.i() << ", " << start.j() << " ) to PID " << row_pid << " at ( " << row_local_index << ", " << ( column_offset + column_local_index )
-						  << " )\n";
+				std::cout << "Sending nonzero at ( " << start.i() << ", " << start.j()
+					<< " ) to PID " << row_pid << " at ( " << row_local_index
+					<< ", " << ( column_offset + column_local_index ) << " )\n";
 #endif
 				// send original nonzero to remote owner
 				outgoing[ row_pid ].push_back( *start );
 				// translate nonzero here instead of at
 				// destination for brevity / code readibility
-				utils::updateNonzeroCoordinates( outgoing[ row_pid ][ outgoing[ row_pid ].size() - 1 ], row_local_index, column_offset + column_local_index );
+				utils::updateNonzeroCoordinates(
+					outgoing[ row_pid ][ outgoing[ row_pid ].size() - 1 ],
+					row_local_index, column_offset + column_local_index
+				);
 			} else {
 #ifdef _DEBUG
-				std::cout << "PID " << data.s << " ignores nonzero at ( " << start.i() << ", " << start.j() << " )\n";
+				std::cout << "PID " << data.s << " ignores nonzero at ( "
+					<< start.i() << ", " << start.j() << " )\n";
 #endif
 			}
 		}
 
 		// report on memory usage
-		(void)config::MEMORY::report( "grb::buildMatrixUnique", "has local cache of size", cache.size() * sizeof( typename fwd_iterator::value_type ) );
+		(void)config::MEMORY::report( "grb::buildMatrixUnique",
+			"has local cache of size",
+			cache.size() * sizeof( typename fwd_iterator::value_type )
+		);
 
 		if( mode == PARALLEL ) {
 			// declare memory slots
@@ -374,21 +413,30 @@ namespace grb {
 				}
 				// cache size into buffer
 				buffer_sizet[ k ] = outgoing[ k ].size();
-				outgoing_bytes += outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type );
+				outgoing_bytes += outgoing[ k ].size() *
+					sizeof( typename fwd_iterator::value_type );
 #ifdef _DEBUG
-				std::cout << "Process " << data.s << ", which has " << cache.size() << " local nonzeroes, sends " << buffer_sizet[ k ] << " nonzeroes to process " << k << "\n";
-				std::cout << data.s << ": lpf_put( ctx, " << data.slot << ", " << ( k * sizeof( size_t ) ) << ", " << k << ", " << data.slot << ", "
-						  << ( data.P * sizeof( size_t ) + data.s * sizeof( size_t ) ) << ", " << sizeof( size_t ) << ", LPF_MSG_DEFAULT );\n";
+				std::cout << "Process " << data.s << ", which has " << cache.size()
+					<< " local nonzeroes, sends " << buffer_sizet[ k ]
+					<< " nonzeroes to process " << k << "\n";
+				std::cout << data.s << ": lpf_put( ctx, " << data.slot << ", "
+					<< ( k * sizeof( size_t ) ) << ", " << k << ", " << data.slot << ", "
+					<< ( data.P * sizeof( size_t ) + data.s * sizeof( size_t ) ) << ", "
+					<< sizeof( size_t ) << ", LPF_MSG_DEFAULT );\n";
 #endif
 				// request RDMA
-				const lpf_err_t brc = lpf_put( data.context, data.slot, k * sizeof( size_t ), k, data.slot, data.P * sizeof( size_t ) + data.s * sizeof( size_t ), sizeof( size_t ), LPF_MSG_DEFAULT );
+				const lpf_err_t brc = lpf_put( data.context,
+					data.slot, k * sizeof( size_t ),
+					k, data.slot, data.P * sizeof( size_t ) + data.s * sizeof( size_t ),
+					sizeof( size_t ), LPF_MSG_DEFAULT
+				);
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
 			}
-			(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL "
-										  "mode)",
-				"has an outgoing cache of size", outgoing_bytes );
+			(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
+				"has an outgoing cache of size", outgoing_bytes
+			);
 			// wait for RDMA to finish
 			if( ret == SUCCESS ) {
 				const lpf_err_t brc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
@@ -403,8 +451,9 @@ namespace grb {
 				buffer_sizet[ k ] = buffer_sizet[ k - 1 ] + buffer_sizet[ data.P + k - 1 ];
 			}
 			// self-prefix is not used, update to reflect total number of local elements
-			if( data.s + 1 < data.P ) {                                                               // if data.s == data.P - 1 then the current number is already correct
-				buffer_sizet[ data.s ] = buffer_sizet[ data.P - 1 ] + buffer_sizet[ 2 * data.P - 1 ]; // otherwise overwrite with correct number
+			if( data.s + 1 < data.P ) {                                                  // if data.s == data.P - 1 then the current number is already correct
+				buffer_sizet[ data.s ] =
+					buffer_sizet[ data.P - 1 ] + buffer_sizet[ 2 * data.P - 1 ]; // otherwise overwrite with correct number
 			}
 			// communicate prefix
 			for( size_t k = 0; ret == SUCCESS && k < data.P; ++k ) {
@@ -413,13 +462,20 @@ namespace grb {
 					continue;
 				}
 #ifdef _DEBUG
-				std::cout << "Process " << data.s << ", which has " << cache.size() << " local nonzeroes, sends offset " << buffer_sizet[ k ] << " to process " << k << "\n";
-				std::cout << data.s << ": lpf_put( ctx, " << data.slot << ", " << ( k * sizeof( size_t ) ) << ", " << k << ", " << data.slot << ", "
-						  << ( 2 * data.P * sizeof( size_t ) + data.s * sizeof( size_t ) ) << ", " << sizeof( size_t ) << ", LPF_MSG_DEFAULT );\n";
+				std::cout << "Process " << data.s << ", which has " << cache.size()
+					<< " local nonzeroes, sends offset " << buffer_sizet[ k ]
+					<< " to process " << k << "\n";
+				std::cout << data.s << ": lpf_put( ctx, " << data.slot << ", "
+					<< ( k * sizeof( size_t ) ) << ", " << k << ", " << data.slot << ", "
+					<< ( 2 * data.P * sizeof( size_t ) + data.s * sizeof( size_t ) )
+					<< ", " << sizeof( size_t ) << ", LPF_MSG_DEFAULT );\n";
 #endif
 				// send remote offsets
-				const lpf_err_t brc = lpf_put(
-					data.context, data.slot, k * sizeof( size_t ), k, data.slot, 2 * data.P * sizeof( size_t ) + data.s * sizeof( size_t ), sizeof( size_t ), LPF_MSG_DEFAULT );
+				const lpf_err_t brc = lpf_put( data.context,
+					data.slot, k * sizeof( size_t ),
+					k, data.slot, 2 * data.P * sizeof( size_t ) + data.s * sizeof( size_t ),
+					sizeof( size_t ), LPF_MSG_DEFAULT
+				);
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
@@ -428,15 +484,27 @@ namespace grb {
 			// register nonzero memory areas for all-to-all: global
 			if( ret == SUCCESS ) {
 				// enure local cache is large enough
-				(void)config::MEMORY::report( "grb::buildMatrixUnique "
-											  "(PARALLEL mode)",
-					"will increase local cache to size", buffer_sizet[ data.s ] * sizeof( typename fwd_iterator::value_type ) );
+				(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
+					"will increase local cache to size",
+					buffer_sizet[ data.s ] * sizeof( typename fwd_iterator::value_type ) );
 				cache.resize( buffer_sizet[ data.s ] ); // see self-prefix comment above
 				// register memory slots for all-to-all
-				const lpf_err_t brc = cache.size() > 0 ? lpf_register_global( data.context, &( cache[ 0 ] ), cache.size() * sizeof( typename fwd_iterator::value_type ), &cache_slot ) :
-                                                         lpf_register_global( data.context, NULL, 0, &cache_slot );
+				const lpf_err_t brc = cache.size() > 0 ?
+					lpf_register_global(
+						data.context,
+						&( cache[ 0 ] ), cache.size() *
+							sizeof( typename fwd_iterator::value_type ),
+						&cache_slot
+					) :
+                                                lpf_register_global(
+							data.context,
+							nullptr, 0,
+							&cache_slot
+						);
 #ifdef _DEBUG
-				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size " << cache.size() * sizeof( typename fwd_iterator::value_type ) << ") binds to slot " << cache_slot << "\n";
+				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size "
+					<< cache.size() * sizeof( typename fwd_iterator::value_type )
+					<< ") binds to slot " << cache_slot << "\n";
 #endif
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
@@ -449,11 +517,20 @@ namespace grb {
 				}
 				assert( out_slot.size() == data.P );
 				const lpf_err_t brc = outgoing[ k ].size() > 0 ?
-                    lpf_register_local( data.context, &( outgoing[ k ][ 0 ] ), outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type ), &( out_slot[ k ] ) ) :
-                    lpf_register_local( data.context, NULL, 0, &( out_slot[ k ] ) );
+					lpf_register_local( data.context,
+						&(outgoing[ k ][ 0 ]),
+						outgoing[ k ].size() *
+							sizeof( typename fwd_iterator::value_type ),
+						&(out_slot[ k ])
+					) :
+					lpf_register_local( data.context,
+						nullptr, 0,
+						&(out_slot[ k ])
+					);
 #ifdef _DEBUG
-				std::cout << data.s << ": address " << &( outgoing[ k ][ 0 ] ) << " (size " << outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type ) << ") binds to slot " << out_slot[ k ]
-						  << "\n";
+				std::cout << data.s << ": address " << &( outgoing[ k ][ 0 ] ) << " (size "
+					<< outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type )
+					<< ") binds to slot " << out_slot[ k ] << "\n";
 #endif
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
@@ -476,16 +553,26 @@ namespace grb {
 #ifdef _DEBUG
 				for( size_t s = 0; ret == SUCCESS && s < data.P; ++s ) {
 					if( s == data.s ) {
-						std::cout << data.s << ": lpf_put( ctx, " << out_slot[ k ] << ", 0, " << k << ", " << cache_slot << ", "
-								  << buffer_sizet[ 2 * data.P + k ] * sizeof( typename fwd_iterator::value_type ) << ", " << outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type )
-								  << ", LPF_MSG_DEFAULT );\n";
+						std::cout << data.s << ": lpf_put( ctx, "
+							<< out_slot[ k ] << ", 0, " << k << ", " << cache_slot << ", "
+							<< buffer_sizet[ 2 * data.P + k ] *
+								sizeof( typename fwd_iterator::value_type )
+							<< ", " << outgoing[ k ].size() *
+								sizeof( typename fwd_iterator::value_type )
+							<< ", LPF_MSG_DEFAULT );\n";
 					}
 					lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 #endif
 				if( outgoing[ k ].size() > 0 ) {
-					const lpf_err_t brc = lpf_put( data.context, out_slot[ k ], 0, k, cache_slot, buffer_sizet[ 2 * data.P + k ] * sizeof( typename fwd_iterator::value_type ),
-						outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type ), LPF_MSG_DEFAULT );
+					const lpf_err_t brc = lpf_put( data.context,
+							out_slot[ k ], 0,
+							k, cache_slot, buffer_sizet[ 2 * data.P + k ] *
+								sizeof( typename fwd_iterator::value_type ),
+							outgoing[ k ].size() *
+								sizeof( typename fwd_iterator::value_type ),
+							LPF_MSG_DEFAULT
+					);
 					if( brc != LPF_SUCCESS ) {
 						ret = PANIC;
 					}
@@ -513,7 +600,8 @@ namespace grb {
 					ret = PANIC;
 				}
 			}
-			// clean up outgoing slots, which goes from 2x to 1x memory store for the nonzeroes here contained
+			// clean up outgoing slots, which goes from 2x to 1x memory store for the
+			// nonzeroes here contained
 			{
 				std::vector< std::vector< typename fwd_iterator::value_type > > emptyVector;
 				std::swap( emptyVector, outgoing );
@@ -521,26 +609,43 @@ namespace grb {
 		}
 
 #ifdef _DEBUG
-		printf( "Dimensions at PID %zd: (%zd, %zd). Locally cached: %zd\n", static_cast< size_t >( data.s ), A._m, A._n, cache.size() );
-		fflush( stdout );
+		std::cout << "Dimensions at PID " << data.s << ": "
+			<< "( " << A._m << ", " << A._n << " ). "
+			<< "Locally cached: " << cache.size() << "\n";
 #endif
 
 		if( ret == SUCCESS ) {
 			// sanity check
 			assert( nnz( A._local ) == 0 );
 			// delegate and done!
-			ret = buildMatrixUnique< descr >(
-				A._local, utils::makeNonzeroIterator< IType, JType, VType >( cache.begin() ), utils::makeNonzeroIterator< IType, JType, VType >( cache.end() ), SEQUENTIAL );
+			ret = buildMatrixUnique< descr >( A._local,
+				utils::makeNonzeroIterator< IType, JType, VType >( cache.begin() ),
+				utils::makeNonzeroIterator< IType, JType, VType >( cache.end() ),
+				SEQUENTIAL
+			);
 			// sanity checks
 			assert( ret != MISMATCH );
 			assert( nnz( A._local ) == cache.size() );
 		}
 
 #ifdef _DEBUG
-		printf( "Number of nonzeroes at the local matrix at PID %zd is %zd\n", static_cast< size_t >( data.s ), nnz( A._local ) );
+		std::cout << "Number of nonzeroes at the local matrix at PID " << data.s
+			<< " is " << nnz( A._local ) << "\n";
 #endif
 
 		return ret;
+	}
+
+	/** \internal Simply rely on backend implementation. */
+	template< typename InputType, typename Coords >
+	uintptr_t getID( const Vector< InputType, BSP1D, Coords > &x ) {
+		return x._id;
+	}
+
+	/** \internal Simply rely on backend implementation. */
+	template< typename InputType >
+	uintptr_t getID( const Matrix< InputType, BSP1D > &A ) {
+		return A._id;
 	}
 
 } // namespace grb
@@ -548,3 +653,4 @@ namespace grb {
 #undef NO_CAST_ASSERT
 
 #endif // end ``_H_GRB_BSP1D_IO''
+

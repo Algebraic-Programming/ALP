@@ -66,6 +66,10 @@ add_grb_executables( distribution distribution.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
 
+add_grb_executables( id id.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+)
+
 add_grb_executables( dot dot.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )

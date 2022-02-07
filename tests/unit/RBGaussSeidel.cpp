@@ -24,6 +24,7 @@
 
 using namespace grb;
 
+
 constexpr const size_t MAX_FN_LENGTH = 500;
 static_assert( MAX_FN_LENGTH > 0, "MAX_FN_LENGTH must be larger than 0" );
 
@@ -32,7 +33,7 @@ struct Input {
 	bool indirect;
 };
 
-void grb_program( const Input & in, grb::RC & rc ) {
+void grb_program( const Input &in, grb::RC &rc ) {
 	// read input file and basic checks
 	grb::utils::MatrixFileReader< double > matrixFile( in.filename, in.indirect );
 	const size_t m = matrixFile.m();
@@ -310,16 +311,19 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
+	grb::RC out = SUCCESS;
 	(void)strncpy( in.filename, argv[ 1 ], MAX_FN_LENGTH );
 	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (launcher error)" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
-	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		return 255;
 	}
+	std::cout << "Test OK" << std::endl;
 	return 0;
 }
+

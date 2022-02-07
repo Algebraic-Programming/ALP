@@ -25,15 +25,18 @@
 #include <graphblas/utils/alloc.hpp>
 
 #ifndef _GRB_NO_LIBNUMA
-#include <numa.h> //numa_set_localalloc
+ #include <numa.h> //numa_set_localalloc
 #endif
 #ifdef _GRB_WITH_OMP
-#include <omp.h> //omp_get_num_threads
+ #include <omp.h> //omp_get_num_threads
 #endif
 
-size_t * __restrict__ grb::internal::privateSizetOMP = NULL;
 
-char * grb::internal::reference_buffer = NULL;
+size_t * __restrict__ grb::internal::privateSizetOMP = nullptr;
+
+grb::utils::DMapper< uintptr_t > grb::internal::reference_mapper;
+
+char * grb::internal::reference_buffer = nullptr;
 
 size_t grb::internal::reference_bufsize = 0;
 

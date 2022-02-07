@@ -24,13 +24,38 @@
 #define _H_GRB_REFERENCE_INIT
 
 #include <graphblas/base/init.hpp>
+#include <graphblas/utils/DMapper.hpp>
+
 
 namespace grb {
 
 	namespace internal {
 #ifndef _H_GRB_REFERENCE_OMP_INIT
+		// these are all the global fields for the reference backend
+
+		/** \internal Used for generating deterministic IDs. */
+		extern grb::utils::DMapper< uintptr_t > reference_mapper;
+
+		/** \internal Shared buffer */
 		extern char * reference_buffer;
+
+		/** \internal Shared buffer size */
 		extern size_t reference_bufsize;
+
+		/**
+		 * \internal
+		 * Helper function that ensures a given size is available.
+		 *
+		 * @tparam D The buffer element type desired.
+		 *
+		 * @param[in] n The desired number of elements of type \a D.
+		 *
+		 * This implementation uses recursive doubling.
+		 *
+		 * @returns true  if the requested size is available.
+		 * @returns false if allocation for the requested buffers size has failed.
+		 * \endinternal
+		 */
 		template< typename D >
 		bool ensureReferenceBufsize( const size_t n ) {
 			const size_t targetSize = n * sizeof( D );
@@ -54,15 +79,31 @@ namespace grb {
 				return true;
 			}
 		}
+
+		/**
+		 * \internal
+		 * Gets a buffer of the requested size iff the requested buffer does not
+		 * exceed the available buffer size.
+		 *
+		 * @tparam D The buffer element type desired.
+		 *
+		 * @param[in] n The desired number of elements of type \a D.
+		 *
+		 * @returns An array of type \a D of size \a n.
+		 *
+		 * @see ensureReferenceBufsize.
+		 * \endinternal
+		 */
 		template< typename D >
 		D * getReferenceBuffer( const size_t n ) {
 			assert( n * sizeof( D ) <= reference_bufsize );
-#ifdef NDEBUG
+ #ifdef NDEBUG
 			(void)n;
-#endif
+ #endif
 			return reinterpret_cast< D * >( reference_buffer );
 		}
 #else
+		/** \internal A small shared buffer for index offset computations. */
 		extern size_t * __restrict__ privateSizetOMP;
 #endif
 	} // namespace internal
@@ -122,15 +163,15 @@ namespace grb {
 } // namespace grb
 
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_INIT
-#define _H_GRB_REFERENCE_OMP_INIT
-#define reference reference_omp
-#include <omp.h>
-
-#include "init.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_INIT
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_INIT
+  #define _H_GRB_REFERENCE_OMP_INIT
+  #define reference reference_omp
+  #include <omp.h>
+  #include "init.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_INIT
+ #endif
 #endif
 
 #endif //``end _H_GRB_REFERENCE_INIT''
+

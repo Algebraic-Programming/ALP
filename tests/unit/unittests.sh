@@ -160,6 +160,12 @@ for MODE in debug ndebug; do
 				echo "#################################################################"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::id on vectors and matrices"
+				$runner ${TEST_BIN_DIR}/id_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
 				echo "                                 1 000 000."
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log

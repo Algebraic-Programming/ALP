@@ -34,6 +34,7 @@
 #include "init.hpp"
 #include "spmd.hpp"
 
+
 namespace grb {
 
 	/**
@@ -58,7 +59,12 @@ namespace grb {
 		template< typename InputType, typename length_type >
 		friend RC resize( Matrix< InputType, BSP1D > &, const length_type );
 
-		template< Descriptor, bool, bool, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename InputType4, typename Coords >
+		template<
+			Descriptor, bool, bool, bool, class Ring,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
 		friend RC internal::bsp1d_mxv( Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Matrix< InputType2, BSP1D > &,
@@ -66,7 +72,12 @@ namespace grb {
 			const Vector< InputType4, BSP1D, Coords > &,
 			const Ring & );
 
-		template< Descriptor descr, bool, bool, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename InputType4, typename Coords >
+		template<
+			Descriptor descr, bool, bool, bool, class Ring,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
 		friend RC internal::bsp1d_vxm( Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Vector< InputType1, BSP1D, Coords > &,
@@ -75,20 +86,39 @@ namespace grb {
 			const Ring & );
 
 		template< Descriptor descr, typename InputType, typename fwd_iterator >
-		friend RC buildMatrixUnique( Matrix< InputType, BSP1D > &, fwd_iterator, const fwd_iterator, const IOMode );
+		friend RC buildMatrixUnique(
+			Matrix< InputType, BSP1D > &,
+			fwd_iterator, const fwd_iterator,
+			const IOMode
+		);
 
 		template< typename IOType >
-		friend Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal( Matrix< IOType, BSP1D > & ) noexcept;
+		friend Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
+			Matrix< IOType, BSP1D > &
+		) noexcept;
 
 		template< typename IOType >
-		friend const Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal( const Matrix< IOType, BSP1D > & ) noexcept;
+		friend const Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
+			const Matrix< IOType, BSP1D > &
+		) noexcept;
+
+		template< typename IOType >
+		friend uintptr_t getID( const Matrix< IOType, BSP1D > & );
+
 
 	private:
+
 		/** The type of the sequential matrix implementation. */
 		typedef Matrix< D, _GRB_BSP1D_BACKEND > LocalMatrix;
 
 		/** My own type. */
 		typedef Matrix< D, BSP1D > self_type;
+
+		/** The ID of this container. */
+		uintptr_t _id;
+
+		/** A pointer used to derive a unique ID from. */
+		const char * _ptr;
 
 		/**
 		 * The global row-wise dimension of this matrix.
@@ -108,32 +138,61 @@ namespace grb {
 		LocalMatrix _local;
 
 		/** Internal constructor. */
-		Matrix( internal::BSP1D_Data & data, const size_t rows, const size_t columns ) :
-			_m( rows ), _n( columns ), _local( internal::Distribution< BSP1D >::global_length_to_local( rows, data.s, data.P ), columns ) {
+		Matrix() :
+			_id( std::numeric_limits< uintptr_t >::max() ), _ptr( nullptr ),
+			_m( 0 ), _n( 0 )
+		{}
+
+		/** Initializes this container. */
+		void initialize( const size_t rows, const size_t cols ) {
+			auto &data = internal::grb_BSP1D.load();
+			_m = rows;
+			_n = cols;
 			if( _m > 0 && _n > 0 ) {
 				// make sure we support an all-reduce on type D
-				if( data.ensureBufferSize( data.P * utils::SizeOf< D >::value ) != SUCCESS ) {
-					throw std::runtime_error( "Error during resizing of global GraphBLAS buffer" );
+				if( data.ensureBufferSize(
+						data.P * utils::SizeOf< D >::value
+					) != SUCCESS
+				) {
+					throw std::runtime_error( "Error during resizing of global GraphBLAS "
+						"buffer" );
 				}
+				const size_t local_m =
+					internal::Distribution< BSP1D >::global_length_to_local(
+						rows, data.s, data.P
+					);
+				const size_t local_n = cols;
+				_ptr = new char[1];
+				_id = data.mapper.insert(
+					reinterpret_cast< uintptr_t >(_ptr)
+				);
+				_local.initialize( &_id, local_m, local_n );
 			}
 		}
 
 		/** Implements move constructor and assign-from-temporary. */
 		void moveFromOther( self_type &&other ) {
 			// copy fields
+			_id = other._id;
+			_ptr = other._ptr;
 			_m = other._m;
 			_n = other._n;
 			_local = std::move( other._local );
 
 			// invalidate other
+			other._id = std::numeric_limits< uintptr_t >::max();
+			other._ptr = nullptr;
 			other._m = 0;
 			other._n = 0;
 		}
 
+
 	public:
 
 		/** Base constructor. */
-		Matrix( const size_t rows, const size_t columns ) : Matrix( internal::grb_BSP1D.load(), rows, columns ) {}
+		Matrix( const size_t rows, const size_t columns ) : Matrix() {
+			initialize( rows, columns );
+		}
 
 		/** Copy constructor */
 		Matrix( const Matrix< D, BSP1D > &other ) : Matrix( other._m, other._n ) {
@@ -148,9 +207,26 @@ namespace grb {
 		}
 
 		/** Move constructor. */
-		Matrix( self_type &&other ) noexcept : _m( other._m ), _n( other._n ), _local( std::move( other._local ) ) {
+		Matrix( self_type &&other ) noexcept :
+			_id( other._id ), _ptr( other._ptr ),
+			_m( other._m ), _n( other._n ),
+			_local( std::move( other._local )
+		) {
+			other._id = std::numeric_limits< uintptr_t >::max();
+			other._ptr = nullptr;
 			other._m = 0;
 			other._n = 0;
+		}
+
+		/** Destructor. */
+		~Matrix() {
+			if( _m > 0 && _n > 0 ) {
+				auto &data = internal::grb_BSP1D.load();
+				assert( _id != std::numeric_limits< uintptr_t >::max() );
+				data.mapper.remove( _id );
+				delete [] _ptr;
+				_ptr = nullptr;
+			}
 		}
 
 		/** Assign-from-temporary. */
@@ -159,38 +235,79 @@ namespace grb {
 			return *this;
 		}
 
-		typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< internal::Distribution< BSP1D > > begin(
-			const IOMode mode = PARALLEL ) const {
-			return _local.template begin< internal::Distribution< BSP1D > >( mode, spmd< BSP1D >::pid(), spmd< BSP1D >::nprocs() );
+		/** Copy-assign. */
+		self_type& operator=( const self_type &other ) {
+			self_type replace( other );
+			*this = std::move( replace );
+			return *this;
 		}
 
-		typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< internal::Distribution< BSP1D > > end(
-			const IOMode mode = PARALLEL ) const {
-			return _local.template end< internal::Distribution< BSP1D > >( mode, spmd< BSP1D >::pid(), spmd< BSP1D >::nprocs() );
+		typename internal::Compressed_Storage<
+			D,
+			grb::config::RowIndexType,
+			grb::config::NonzeroIndexType
+		>::template ConstIterator< internal::Distribution< BSP1D > > begin(
+			const IOMode mode = PARALLEL
+		) const {
+			return _local.template begin< internal::Distribution< BSP1D > >(
+				mode,
+				spmd< BSP1D >::pid(),
+				spmd< BSP1D >::nprocs()
+			);
 		}
 
-		typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< internal::Distribution< BSP1D > > cbegin(
-			const IOMode mode = PARALLEL ) const {
+		typename internal::Compressed_Storage<
+			D,
+			grb::config::RowIndexType,
+			grb::config::NonzeroIndexType
+		>::template ConstIterator< internal::Distribution< BSP1D > > end(
+			const IOMode mode = PARALLEL
+		) const {
+			return _local.template end< internal::Distribution< BSP1D > >(
+				mode,
+				spmd< BSP1D >::pid(),
+				spmd< BSP1D >::nprocs()
+			);
+		}
+
+		typename internal::Compressed_Storage<
+			D,
+			grb::config::RowIndexType,
+			grb::config::NonzeroIndexType
+		>::template ConstIterator< internal::Distribution< BSP1D > > cbegin(
+			const IOMode mode = PARALLEL
+		) const {
 			return begin( mode );
 		}
 
-		typename internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< internal::Distribution< BSP1D > > cend(
-			const IOMode mode = PARALLEL ) const {
+		typename internal::Compressed_Storage<
+			D,
+			grb::config::RowIndexType,
+			grb::config::NonzeroIndexType
+		>::template ConstIterator< internal::Distribution< BSP1D > > cend(
+			const IOMode mode = PARALLEL
+		) const {
 			return end( mode );
 		}
 	};
 
 	namespace internal {
+
 		/** Gets the process-local matrix */
 		template< typename D >
-		Matrix< D, _GRB_BSP1D_BACKEND > & getLocal( Matrix< D, BSP1D > & A ) noexcept {
+		Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
+			Matrix< D, BSP1D > &A
+		) noexcept {
 			return A._local;
 		}
 		/** Const variant */
 		template< typename D >
-		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal( const Matrix< D, BSP1D > & A ) noexcept {
+		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
+			const Matrix< D, BSP1D > &A
+		) noexcept {
 			return A._local;
 		}
+
 	} // namespace internal
 
 	// template specialisation for GraphBLAS type_traits
@@ -203,4 +320,5 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_BSP1D_MATRIX'
+
 

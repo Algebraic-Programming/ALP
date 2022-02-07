@@ -180,13 +180,13 @@ namespace grb {
 
 	// BLAS1 forward declaration of friends
 	template< typename DataType, typename Coords >
-	size_t size( const Vector< DataType, BSP1D, Coords > & x ) noexcept;
+	size_t size( const Vector< DataType, BSP1D, Coords > & ) noexcept;
 
 	template< typename DataType, typename Coords >
-	RC clear( Vector< DataType, BSP1D, Coords > & x ) noexcept;
+	RC clear( Vector< DataType, BSP1D, Coords > & ) noexcept;
 
 	template< typename DataType, typename Coords >
-	size_t nnz( const Vector< DataType, BSP1D, Coords > & x );
+	size_t nnz( const Vector< DataType, BSP1D, Coords > & );
 
 	/**
 	 * A BSP1D vector. Uses a block-cyclic distribution.
@@ -267,17 +267,20 @@ namespace grb {
 			const Ring & );
 
 		/* ********************
-		      IO collectives
-		         friends
+		         IO friends
 		   ******************** */
 
 		friend class PinnedVector< D, BSP1D >;
+
+		template< typename DataType, typename Coords >
+		friend uintptr_t getID( const Vector< DataType, BSP1D, Coords > & );
 
 		/* ********************
 		     internal friends
 		   ******************** */
 
 		friend void internal::signalLocalChange< D, C >( Vector< D, BSP1D, C > & );
+
 
 	private:
 
@@ -289,6 +292,9 @@ namespace grb {
 
 		/** Stores a map of which global vector offset starts at which process ID.*/
 		std::map< size_t, size_t > PIDmap;
+
+		/** The ID of this container. */
+		uintptr_t _id;
 
 		/** Raw vector of size \a _n. */
 		D * _raw;
@@ -442,81 +448,109 @@ namespace grb {
 		 * \note The case where \a raw_in is not equal to \a NULL is currently
 		 *       unused and untested.
 		 */
-		void initialize( void * const raw_in, void * const assigned_in, void * const buffer_in, const size_t cap_in ) {
+		void initialize(
+			void * const raw_in, void * const assigned_in,
+			void * const buffer_in, const size_t cap_in
+		) {
 #ifdef _DEBUG
-			std::cout << "grb::Vector< T, BSP1D, C >::initialize called\n";
+			std::cout << "In grb::Vector< T, BSP1D, C >::initialize\n";
 #endif
 			// check for undefined behaviour
 #ifndef NDEBUG
-			if( raw_in == NULL || assigned_in == NULL || buffer_in == NULL ) {
+			if( raw_in == nullptr || assigned_in == nullptr || buffer_in == nullptr ) {
 				// Illegal arguments: raw_in and assigned_in must both be NULL or both be non-NULL.
-				assert( ! ( raw_in != NULL || assigned_in != NULL || buffer_in != NULL ) );
+				assert( !( raw_in != nullptr || assigned_in != nullptr ||
+					buffer_in != nullptr ) );
 			}
 #endif
 
 			// if no vector was provided, create a new one
-			if( raw_in == NULL ) {
+			if( raw_in == nullptr ) {
 				// build a descriptor string of this vector
 				std::stringstream sstream;
 				sstream << ", for a vector of size " << cap_in;
 				// declare new assigned array as char *
-				char * new_assigned = NULL;
+				char * new_assigned = nullptr;
 
-				const size_t bufferSize = internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) + internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
+				const size_t bufferSize =
+					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) +
+					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
 				const RC rc = grb::utils::alloc( "grb::Vector< T, BSP1D, C > (initialize)",
-					sstream.str(), _raw, cap_in, true,
-					_raw_deleter,                                                                                            // allocate raw array
-					new_assigned, internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ), true, _assigned_deleter, // allocate assigned array
-					_buffer, bufferSize, true, _buffer_deleter );
+					sstream.str(), _raw, cap_in, true, _raw_deleter, // allocate raw array
+					new_assigned,
+					internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ), true,
+					_assigned_deleter,                               // allocate assigned array
+					_buffer, bufferSize, true, _buffer_deleter       // allocate (stack) buffer
+				);
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
-					throw std::runtime_error( "Out-of-memory during BSP1D Vector memory allocation" );
+					throw std::runtime_error( "Out-of-memory during BSP1D Vector memory "
+						"allocation" );
 				} else if( rc != SUCCESS ) {
-					throw std::runtime_error( "Unhandled runtime error during BSP1D Vector memory allocation" );
+					throw std::runtime_error( "Unhandled runtime error during BSP1D Vector "
+						"memory allocation" );
 				}
 				// all OK, so set and exit
-				_assigned = reinterpret_cast< bool * >( new_assigned );
+				_assigned = reinterpret_cast< bool * >(new_assigned);
 			} else {
 				// note that this does not catch overlapping cases, nor multiply-used memory areas
 				// checking for all of this is way too expensive.
 
 				// just take the provided memory areas
 				_raw = static_cast< D * >( raw_in );
-				_assigned = reinterpret_cast< internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType * >( assigned_in );
+				_assigned = reinterpret_cast<
+						internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType *
+					>( assigned_in );
 				_buffer = static_cast< char * >( buffer_in );
-				// note that we do not set the AutoDeleter, the callee must handle the memory we have been given
+				// note that we do not set the AutoDeleter, the callee must handle the
+				// memory we have been given
 			}
 
-			const size_t local_buffer_offset = internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
-
-			// delegate to sequential implementation
-			_global.initialize( _raw, _assigned, false, _buffer, cap_in );
-			_local.initialize( _raw + _offset, _assigned + _offset, true, _buffer + local_buffer_offset, _local_n );
-
-			// now set remaining fieldds
-			_n = cap_in;
-			const size_t arraySize = internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in );
-			const size_t stackSize = internal::Coordinates< _GRB_BSP1D_BACKEND >::stackSize( cap_in );
-			void * stack = NULL;
-			{
-				size_t tmp;
-				stack = internal::getCoordinates( _global ).getRawStack( tmp );
-			}
+			const size_t local_buffer_offset =
+				internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
 
 			// get thread-local store
 			auto &data = internal::grb_BSP1D.load();
+
+			// generate ID
+			_id = data.mapper.insert(
+				reinterpret_cast< uintptr_t >(_assigned)
+			);
+
+			// delegate to sequential implementation
+			_global.initialize( &_id, _raw, _assigned, false, _buffer, cap_in );
+			_local.initialize( &_id,
+				_raw + _offset,
+				_assigned + _offset, true,
+				_buffer + local_buffer_offset,
+				_local_n
+			);
+
+			// now set remaining fieldds
+			_n = cap_in;
+			const size_t arraySize =
+				internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in );
+			const size_t stackSize =
+				internal::Coordinates< _GRB_BSP1D_BACKEND >::stackSize( cap_in );
+			void * stack = nullptr;
+			{
+				size_t tmp;
+				stack = internal::getCoordinates( _global ).getRawStack( tmp );
+				(void) tmp;
+			}
+
 #ifdef _DEBUG
-			std::cout << data.s
-					  << ": local and global coordinates are initialised. The "
-						 "array size is "
-					  << arraySize << " while the stack size is " << stackSize << " (in bytes). The value array size is " << _n * sizeof( D ) << " bytes.\n";
+			std::cout << data.s << ": local and global coordinates are initialised. The "
+				"array size is " << arraySize << " while the stack size is " <<
+				stackSize << " (in bytes). The value array size is " <<
+				_n * sizeof( D ) << " bytes.\n";
 #endif
 
 #ifndef NDEBUG
 			if( _n == 0 ) {
-				assert( _raw == NULL );
+				assert( _raw == nullptr );
 			}
-			if( _raw == NULL ) {
+			if( _raw == nullptr ) {
 				assert( _n == 0 );
 			}
 #endif
@@ -525,7 +559,9 @@ namespace grb {
 				// make sure we can cache all vector data inside the GraphBLAS buffer
 				// this is actually an over-estimation
 #ifdef _DEBUG
-				std::cout << "Ensuring buffer capacity for vector of global size " << _n << ", local size " << _local_n << ", and P = " << data.P << ". Context is " << data.context << std::endl;
+				std::cout << "Ensuring buffer capacity for vector of global size " << _n
+					<< ", local size " << _local_n << ", and P = " << data.P << ". "
+					<< "Context is " << data.context << std::endl;
 #endif
 				if( data.ensureBufferSize(
 						// combine preamble
@@ -534,9 +570,13 @@ namespace grb {
 							// stack-based combine
 							2 * data.P * sizeof( size_t ) +
 							// buffer for alltoallv
-							( _n + 1 ) * ( 2 * sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ) ), // +1 is for padding
+							( _n + 1 ) * ( 2 * sizeof( D ) + // +1 is for padding
+								sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ) ),
 							// array-based combine
-							_local_n * data.P * ( sizeof( D ) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ) )
+							_local_n * data.P * (
+								sizeof( D ) +
+								sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType
+							) )
 						) ) != SUCCESS ) {
 					throw std::runtime_error( "Error during resizing of global GraphBLAS buffer" );
 				}
@@ -552,13 +592,14 @@ namespace grb {
 				}
 				if( rc == LPF_SUCCESS ) {
 #ifdef _DEBUG
-					std::cout << data.s << ": pointer at " << _raw << " registered. Size is " << _n << ". Slot is " << _raw_slot << ".\n";
+					std::cout << data.s << ": pointer at " << _raw << " registered. "
+						<< "Size is " << _n << ". Slot is " << _raw_slot << ".\n";
 #endif
 #ifndef NDEBUG
 					if( arraySize == 0 ) {
-						assert( _assigned == NULL );
+						assert( _assigned == nullptr );
 					}
-					if( _assigned == NULL ) {
+					if( _assigned == nullptr ) {
 						assert( arraySize == 0 );
 					}
 #endif
@@ -569,20 +610,22 @@ namespace grb {
 				}
 				if( rc == LPF_SUCCESS ) {
 #ifdef _DEBUG
-					std::cout << data.s << ": pointer at " << _assigned << " registered. Size is " << arraySize << ". Slot is " << _assigned_slot << ".\n";
+					std::cout << data.s << ": pointer at " << _assigned << " registered. "
+						<< "Size is " << arraySize << ". Slot is " << _assigned_slot << ".\n";
 #endif
 #ifndef NDEBUG
 					if( stackSize == 0 ) {
-						assert( stack == NULL );
+						assert( stack == nullptr );
 					}
-					if( stack == NULL ) {
+					if( stack == nullptr ) {
 						assert( stackSize == 0 );
 					}
 #endif
 					rc = lpf_register_global( data.context, stack, stackSize, &_stack_slot );
 					if( rc == LPF_SUCCESS ) {
 #ifdef _DEBUG
-						std::cout << data.s << ": pointer at " << stack << " registered. Size is " << stackSize << ". Slot is " << _stack_slot << ".\n";
+						std::cout << data.s << ": pointer at " << stack << " registered. "
+							<< "Size is " << stackSize << ". Slot is " << _stack_slot << ".\n";
 #endif
 						data.signalMemslotTaken();
 					}
@@ -594,9 +637,8 @@ namespace grb {
 				// sanity check
 				if( rc != LPF_SUCCESS ) {
 					// according to the spec, this can never happen. So if it does, it's proper to panic.
-					throw std::runtime_error( "Error during call to "
-											  "lpf_register_global during "
-											  "BSP1D Vector initialisation" );
+					throw std::runtime_error( "Error during call to lpf_register_global "
+						"during BSP1D Vector initialisation" );
 				}
 
 				// activate registrations
@@ -609,17 +651,18 @@ namespace grb {
 			{
 				size_t totalLength = 0;
 				for( size_t k = 0; k < data.P; ++k ) {
-					const size_t curLength = internal::Distribution< BSP1D >::global_length_to_local( _n, k, data.P );
+					const size_t curLength =
+						internal::Distribution< BSP1D >::global_length_to_local( _n, k, data.P );
 					if( curLength > 0 ) {
 						totalLength += curLength;
 						PIDmap[ totalLength ] = k;
 #ifdef _DEBUG
-						std::cout << "\t" << data.s << ": PIDmap[ " << totalLength << " ] = " << k << "\n";
+						std::cout << "\t" << data.s << ": "
+							<< "PIDmap[ " << totalLength << " ] = " << k << "\n";
 #endif
 					}
 				}
 			}
-
 		}
 
 		/** Updates the number of nonzeroes if and only if the nonzero count might have changed. */
@@ -1861,7 +1904,7 @@ namespace grb {
 		 * @throws Runtime error When the POSIX call to get an aligned memory area
 		 *                       fails for any other reason.
 		 */
-		Vector( const internal::BSP1D_Data & data, const size_t n ) :
+		Vector( const internal::BSP1D_Data &data, const size_t n ) :
 			_n( 0 ), _nnz( 0 ),
 			_raw_slot( LPF_INVALID_MEMSLOT ),
 			_assigned_slot( LPF_INVALID_MEMSLOT ),
@@ -1874,14 +1917,14 @@ namespace grb {
 				_local_n = internal::Distribution< BSP1D >::global_length_to_local( n, data.s, data.P );
 				_offset = internal::Distribution< BSP1D >::local_offset( n, data.s, data.P );
 				// delegate
-				initialize( NULL, NULL, NULL, n );
+				initialize( nullptr, nullptr, nullptr, n );
 			} else {
 				// set trivial fields and exit
 				_raw = nullptr;
 				_assigned = nullptr;
 				_buffer = nullptr;
-				_global.initialize( nullptr, nullptr, true, nullptr, 0 );
-				_local.initialize( nullptr, nullptr, true, nullptr, 0 );
+				_global.initialize( nullptr, nullptr, nullptr, true, nullptr, 0 );
+				_local.initialize( nullptr, nullptr, nullptr, true, nullptr, 0 );
 				_local_n = _offset = 0;
 			}
 		}
@@ -1941,7 +1984,9 @@ namespace grb {
 		 * @throws runtime_error If the call to grb::set fails, the error code is
 		 *                       caught and thrown.
 		 */
-		Vector( const Vector< D, BSP1D, C > & x ) : Vector( internal::grb_BSP1D.cload(), size( x ) ) {
+		Vector( const Vector< D, BSP1D, C > &x ) :
+			Vector( internal::grb_BSP1D.cload(), size( x ) )
+		{
 			const RC rc = set( *this, x );
 			if( rc != SUCCESS ) {
 				throw std::runtime_error( "grb::set inside copy-constructor: " + toString( rc ) );
@@ -1955,10 +2000,19 @@ namespace grb {
 		 *
 		 * @see grb::Vector for the user-level specfication.
 		 */
-		Vector( Vector< D, BSP1D, C > && x ) noexcept :
-			_raw( x._raw ), _assigned( x._assigned ), _buffer( x._buffer ), _local_n( x._local_n ), _offset( x._offset ), _n( x._n ), _nnz( x._nnz ), _raw_slot( x._raw_slot ),
-			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ), _cleared( x._cleared ), _became_dense( x._became_dense ), _nnz_is_dirty( x._nnz_is_dirty ),
-			_global_is_dirty( x._global_is_dirty ) {
+		Vector( Vector< D, BSP1D, C > &&x ) noexcept :
+			_id( x._id ),
+			_raw( x._raw ), _assigned( x._assigned ),
+			_buffer( x._buffer ),
+			_local_n( x._local_n ), _offset( x._offset ),
+			_n( x._n ), _nnz( x._nnz ),
+			_raw_slot( x._raw_slot ),
+			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ),
+			_cleared( x._cleared ),
+			_became_dense( x._became_dense ),
+			_nnz_is_dirty( x._nnz_is_dirty ),
+			_global_is_dirty( x._global_is_dirty )
+		{
 			_local = std::move( x._local );
 			_global = std::move( x._global );
 			_raw_deleter = std::move( x._raw_deleter );
@@ -1966,9 +2020,10 @@ namespace grb {
 			_buffer_deleter = std::move( x._buffer_deleter );
 
 			// invalidate fields of x
-			x._raw = NULL;
-			x._assigned = NULL;
-			x._buffer = NULL;
+			x._id = std::numeric_limits< uintptr_t >::max();
+			x._raw = nullptr;
+			x._assigned = nullptr;
+			x._buffer = nullptr;
 			// local and global have been invalidated by std::move
 			x._local_n = x._offset = x._n = x._nnz = 0;
 			x._raw_slot = x._assigned_slot = x._stack_slot = LPF_INVALID_MEMSLOT;
@@ -1985,8 +2040,9 @@ namespace grb {
 		 *
 		 * @see grb::Vector for the user-level specfication.
 		 */
-		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > && x ) noexcept {
+		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &&x ) noexcept {
 			// move all fields from x to our instance
+			_id = x._id;
 			_raw = x._raw;
 			_assigned = x._assigned;
 			_buffer = x._buffer;
@@ -2008,9 +2064,10 @@ namespace grb {
 			_buffer_deleter = std::move( x._buffer_deleter );
 
 			// invalidate fields of x
-			x._raw = NULL;
-			x._assigned = NULL;
-			x._buffer = NULL;
+			x._id = std::numeric_limits< uintptr_t >::max();
+			x._raw = nullptr;
+			x._assigned = nullptr;
+			x._buffer = nullptr;
 			// local and global have been invalidated by std::move
 			x._local_n = x._offset = x._n = x._nnz = 0;
 			x._raw_slot = x._assigned_slot = x._stack_slot = LPF_INVALID_MEMSLOT;
@@ -2024,17 +2081,18 @@ namespace grb {
 		/** Base destructor. */
 		~Vector() {
 			// get thread-local store
-			auto & data = internal::grb_BSP1D.load();
+			auto &data = internal::grb_BSP1D.load();
 #ifdef _DEBUG
 			std::cout << data.s << ", Vector< BSP1D >::~Vector< BSP1D > called.\n";
 #endif
 			// if GraphBLAS is currently still initialised
-			if( ! data.destroyed ) {
+			if( !data.destroyed ) {
 				// then do bookkeeping; deregister memslot
 				lpf_err_t rc = LPF_SUCCESS;
 				if( _raw_slot != LPF_INVALID_MEMSLOT ) {
 #ifdef _DEBUG
-					std::cout << "\t" << data.s << ", deregistering value array @ " << _raw << ", slot #" << _raw_slot << "...\n";
+					std::cout << "\t" << data.s << ", deregistering value array @ "
+						<< _raw << ", slot #" << _raw_slot << "...\n";
 #endif
 					rc = lpf_deregister( data.context, _raw_slot );
 					assert( rc == LPF_SUCCESS );
@@ -2044,7 +2102,8 @@ namespace grb {
 				}
 				if( _assigned_slot != LPF_INVALID_MEMSLOT ) {
 #ifdef _DEBUG
-					std::cout << "\t" << data.s << ", deregistering assigned array @ " << _assigned << ", slot #" << _assigned_slot << "...\n";
+					std::cout << "\t" << data.s << ", deregistering assigned array @ "
+						<< _assigned << ", slot #" << _assigned_slot << "...\n";
 #endif
 					rc = lpf_deregister( data.context, _assigned_slot );
 					assert( rc == LPF_SUCCESS );
@@ -2054,7 +2113,8 @@ namespace grb {
 				}
 				if( _stack_slot != LPF_INVALID_MEMSLOT ) {
 #ifdef _DEBUG
-					std::cout << "\t" << data.s << ", deregistering stack array, slot #" << _stack_slot << "...\n";
+					std::cout << "\t" << data.s
+						<< ", deregistering stack array, slot #" << _stack_slot << "...\n";
 #endif
 					rc = lpf_deregister( data.context, _stack_slot );
 					assert( rc == LPF_SUCCESS );
@@ -2064,9 +2124,15 @@ namespace grb {
 				}
 			}
 #ifdef _DEBUG
-			std::cout << "\t" << data.s << ", GraphBLAS vector at ( " << _raw << ", " << _assigned << " ) destroyed.\n";
+			std::cout << "\t" << data.s << ", GraphBLAS vector at "
+				<< "( " << _raw << ", " << _assigned << " ) destroyed.\n";
 			std::cout << data.s << ", Vector< BSP1D >::~Vector< BSP1D > done.\n";
 #endif
+			// free container ID
+			if( _n > 0 ) {
+				data.mapper.remove( _id );
+			}
+
 			// note that the free of _raw and _assigned is handled by there AutoDeleters.
 		}
 

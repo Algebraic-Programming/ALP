@@ -37,6 +37,10 @@
   _Pragma( "GCC diagnostic push" ) ;\
   _Pragma( "GCC diagnostic ignored \"-Wmaybe-uninitialized\"" );\
 
+ #define GRB_UTIL_IGNORE_CLASS_MEMACCESS \
+  _Pragma( "GCC diagnostic push" ) ;\
+  _Pragma( "GCC diagnostic ignored \"-Wclass-memaccess\"" );\
+
  #define GRB_UTIL_RESTORE_WARNINGS \
   _Pragma( "GCC diagnostic pop" );\
 

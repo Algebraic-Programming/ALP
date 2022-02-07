@@ -25,15 +25,18 @@
 
 #include <vector> //queue of HP put and get requests
 
+#include "config.hpp"
+
+#include <graphblas/base/init.hpp>
+#include <graphblas/rc.hpp>
+
+#include <graphblas/utils/DMapper.hpp>
+#include <graphblas/utils/ThreadLocalStorage.hpp>
+
 #include <assert.h> //assertions
 #include <lpf/bsmp.h>
 #include <lpf/core.h>
 
-#include <graphblas/base/init.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/utils/ThreadLocalStorage.hpp>
-
-#include "config.hpp"
 
 namespace grb {
 
@@ -69,11 +72,13 @@ namespace grb {
 		class BSP1D_Data {
 
 		private:
+
 			/** Number of slots taken */
 			size_t regs_taken;
 
 			/** Information on the current environment. */
 			lpf_machine_t lpf_info;
+
 
 		public:
 			/** The user process ID. */
@@ -163,6 +168,9 @@ namespace grb {
 
 			/** Whether a finalize has been called. */
 			bool destroyed;
+
+			/** Mapper to assign IDs to BSP1D containers .*/
+			utils::DMapper< uintptr_t > mapper;
 
 			/**
 			 * Initialises all fields.

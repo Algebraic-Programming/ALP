@@ -63,6 +63,7 @@ namespace grb {
 				col_start = nullptr;
 			}
 
+
 		public:
 			/** The value array. */
 			D * __restrict__ values;
@@ -73,6 +74,7 @@ namespace grb {
 			/** The column start indices. */
 			SIZE * __restrict__ col_start;
 
+
 		private:
 
 			/** Implements a move from another instance */
@@ -82,6 +84,7 @@ namespace grb {
 				values = other.values;
 				other.clear();
 			}
+
 
 		public:
 
@@ -119,6 +122,7 @@ namespace grb {
 
 				/** Current nonzero. */
 				std::pair< std::pair< size_t, size_t >, D > nonzero;
+
 
 			public:
 				/** Base constructor. */
@@ -300,13 +304,22 @@ namespace grb {
 			};
 
 			/** Base constructor (NULL-initialiser). */
-			Compressed_Storage() : values( NULL ), row_index( NULL ), col_start( NULL ) {}
+			Compressed_Storage() : values( nullptr ),
+				row_index( nullptr ), col_start( nullptr )
+			{}
 
 			/** Non-shallow copy constructor. */
-			explicit Compressed_Storage( const Compressed_Storage< D, IND, SIZE > & other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {}
+			explicit Compressed_Storage(
+				const Compressed_Storage< D, IND, SIZE > &other
+			) : values( other.values ),
+				row_index( other.row_index ), col_start( other.col_start )
+			{}
 
 			/** Move constructor. */
-			Compressed_Storage( Compressed_Storage< D, IND, SIZE > &&other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {
+			Compressed_Storage( Compressed_Storage< D, IND, SIZE > &&other ) :
+				values( other.values ),
+				row_index( other.row_index ), col_start( other.col_start )
+			{
 				moveFromOther( other );
 			}
 
@@ -344,7 +357,17 @@ namespace grb {
 			}
 
 			/**
-			 * Gets the current raw pointers of the resizable arrays that are being used by this instance.
+			 * @returns Const-version of the offset array.
+			 *
+			 * \warning Does not check for <tt>NULL</tt> pointers.
+			 */
+			const SIZE * getOffsets() const noexcept {
+				return col_start;
+			}
+
+			/**
+			 * Gets the current raw pointers of the resizable arrays that are being used
+			 * by this instance.
 			 */
 			void getPointers( void ** pointers ) {
 				*pointers++ = values;
@@ -404,8 +427,16 @@ namespace grb {
 			 * disjoint ranges \a start and \a end. The copy is guaranteed to be
 			 * complete if the union of ranges spans 0 to 2nz + m + 1.
 			 */
-			template< bool use_id = false, typename InputType, typename ValueType = char >
-			void copyFrom( const Compressed_Storage< InputType, IND, SIZE > & other, const size_t nz, const size_t m, const size_t start, size_t end, const ValueType * __restrict__ id = NULL ) {
+			template<
+				bool use_id = false,
+				typename InputType, typename ValueType = char
+			>
+			void copyFrom(
+				const Compressed_Storage< InputType, IND, SIZE > &other,
+				const size_t nz, const size_t m,
+				const size_t start, size_t end,
+				const ValueType * __restrict__ id = nullptr
+			) {
 #ifdef _DEBUG
 				std::cout << "CompressedStorage::copyFrom (cast) called with "
 							 "range "
@@ -440,7 +471,10 @@ namespace grb {
 				if( k < nz ) {
 					const size_t loop_end = std::min( nz, end );
 					assert( k <= loop_end );
-					(void)std::memcpy( row_index + k, other.row_index + k, ( loop_end - k ) * sizeof( IND ) );
+					(void)std::memcpy( row_index + k,
+						other.row_index + k,
+						(loop_end - k) * sizeof( IND )
+					);
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -453,17 +487,24 @@ namespace grb {
 				if( k < m + 1 ) {
 					const size_t loop_end = std::min( m + 1, end );
 					assert( k <= loop_end );
-					(void)std::memcpy( col_start + k, other.col_start + k, ( loop_end - k ) * sizeof( SIZE ) );
+					(void)std::memcpy( col_start + k,
+						other.col_start + k,
+						(loop_end - k) * sizeof( SIZE )
+					);
 				}
 			}
 
 			/** \internal Specialisation for no cast copy */
 			template< bool use_id = false >
-			void copyFrom( const Compressed_Storage< D, IND, SIZE > & other, const size_t nz, const size_t m, const size_t start, size_t end, const D * __restrict__ id = NULL ) {
+			void copyFrom(
+				const Compressed_Storage< D, IND, SIZE > &other,
+				const size_t nz, const size_t m,
+				const size_t start, size_t end,
+				const D * __restrict__ id = nullptr
+			) {
 #ifdef _DEBUG
-				std::cout << "CompressedStorage::copyFrom (no-cast) called "
-							 "with range "
-						  << start << "--" << end;
+				std::cout << "CompressedStorage::copyFrom (no-cast) called with range "
+					<< start << "--" << end;
 				if( use_id ) {
 					std::cout << ". The identity " << (*id) << " will be used.\n";
 				} else {
@@ -480,7 +521,14 @@ namespace grb {
 					if( use_id ) {
 						std::fill( values + k, values + loop_end, *id );
 					} else {
-						(void)std::memcpy( values + k, other.values + k, ( loop_end - k ) * sizeof( D ) );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS // by the ALP spec, D can only be POD
+							                        // types. In this case raw memory copies
+										// are OK.
+						(void)std::memcpy( values + k,
+							other.values + k,
+							(loop_end - k) * sizeof( D )
+						);
+						GRB_UTIL_RESTORE_WARNINGS
 					}
 					k = 0;
 				} else {
@@ -497,7 +545,10 @@ namespace grb {
 					std::cout << "\t index range " << k << " -- " << loop_end << "\n";
 #endif
 					assert( k <= loop_end );
-					(void)std::memcpy( row_index + k, other.row_index + k, ( loop_end - k ) * sizeof( IND ) );
+					(void)std::memcpy( row_index + k,
+						other.row_index + k,
+						(loop_end - k) * sizeof( IND )
+					);
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -513,7 +564,10 @@ namespace grb {
 					std::cout << "\t start range " << k << " -- " << loop_end << "\n";
 #endif
 					assert( k <= loop_end );
-					(void)std::memcpy( col_start + k, other.col_start + k, ( loop_end - k ) * sizeof( SIZE ) );
+					(void)std::memcpy( col_start + k,
+						other.col_start + k,
+						(loop_end - k) * sizeof( SIZE )
+					);
 #ifndef NDEBUG
 					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 						assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -872,6 +926,15 @@ namespace grb {
 			 * \warning Does not check for <tt>NULL</tt> pointers.
 			 */
 			SIZE * getOffsets() noexcept {
+				return col_start;
+			}
+
+			/**
+			 * @returns Const-version of the offset array.
+			 *
+			 * \warning Does not check for <tt>NULL</tt> pointers.
+			 */
+			const SIZE * getOffsets() const noexcept {
 				return col_start;
 			}
 
