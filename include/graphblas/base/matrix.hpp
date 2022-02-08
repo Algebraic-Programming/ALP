@@ -443,8 +443,12 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 /**
  * \brief An ALP structured matrix.
  *
- * This is an opaque data type for structured matrices. A structured matrix is 
- * generalized over five parameters further described below: its data type, 
+ * This is an opaque data type for structured matrices. 
+ * This container allows to maintain the interface of grb::Matrix and grb::Vector 
+ * unaltered enabling back-compatibility while building on them to create
+ * semantically reacher algebraic objects.
+ * A structured matrix is generalized over five parameters further described 
+ * below: its data type, 
  * its structure, whether it is stored using a dense or sparse storage scheme, 
  * a static view and the backend for which it is implemented.
  * At a high level of abstraction a structured matrix exposes a mathematical 
@@ -452,7 +456,14 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
  * (e.g., the transpose of a symmetric matrix).
  * At the lowest level, the logical layout maps to its physical counterpart via 
  * a particular choice of a storage scheme within those exposed by the chosen 
- * backend.
+ * backend. grb::Matrix and grb::Vector are used as interfaces to the physical
+ * layout.
+ * To visualize this, you could think of a band matrix. Using either the 
+ * \a storage::Dense:full or \a storage::Dense:band storage schemes would require
+ * the use of a \a grb::Matrix container (see include/graphblas/storage.hpp for
+ * more details about the two storage schemes). However, the interpration of its 
+ * content would differ in the two cases being a function of both the Structure 
+ * information and the storage scheme combined.
  * 
  * Views can be used to create logical \em perspectives on top of a container. 
  * For example, I could decide to refer to the transpose of a matrix or to see 
