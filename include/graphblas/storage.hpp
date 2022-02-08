@@ -16,9 +16,12 @@
 
 /**
  *
- * @file This file registers matrix storage schemes that are either
- *       implemented, under implementation, or were at any point in time
- *       conceived and noteworthy enough to be recorded for future consideration.
+ * @file 
+ * 
+ * This file registers matrix storage schemes that are either
+ * implemented, under implementation, or were at any point in time
+ * conceived and noteworthy enough to be recorded for future consideration.
+ * 
  */
 
 #ifndef _H_GRB_STORAGE
@@ -32,9 +35,9 @@ namespace grb {
 	namespace storage {
 
 		/**
-		 * Collection of possible storage scheme options for dense matrices (or now including classic BLAS/LAPACK storage schemes).
+		 * Collection of possible storage scheme options for dense matrices (for now including classic BLAS/LAPACK storage schemes).
 		 * \note Assumption is row-major but a complete specification might depend by a similar row/column-major option perhaps included
-		 * at the level of Matrix (general ).
+		 * at the level of grb::Matrix.
 		 */
 		enum Dense {
 
