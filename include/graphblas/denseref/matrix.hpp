@@ -153,7 +153,16 @@ namespace grb {
 		/** @see Matrix::Matrix() */
 		Matrix( const size_t rows, const size_t columns ): m( rows ), n( columns ), initialized( false ) {
 			// TODO Implement allocation properly
-			data = new T[ m * n ];
+			if( m > 0 && n > 0) {
+				data = new (std::nothrow) T[ m * n ];
+			} else {
+				data = nullptr;
+			}
+
+			if ( m > 0 && n > 0 && data == nullptr ) {
+				throw std::runtime_error( "Could not allocate memory during grb::Matrix<reference_dense> construction." );
+			}
+
 		}
 
 		/** @see Matrix::Matrix( const Matrix & ) */
@@ -173,7 +182,11 @@ namespace grb {
 		}
 
 		/** @see Matrix::~Matrix(). */
-		~Matrix() {}
+		~Matrix() {
+			if( data != nullptr ) {
+				delete [] data;
+			}
+		}
 	};
 
 	// template specialisation for GraphBLAS type traits
