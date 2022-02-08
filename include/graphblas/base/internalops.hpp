@@ -655,7 +655,10 @@ namespace grb {
 				 * \warning Passing invalid pointers will result in UB.
 				 */
 				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see internal issue 306 for rationale
 					*c += *a;
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -667,8 +670,14 @@ namespace grb {
 				 *
 				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see internal issue 306 for rationale
 					*c += *b;
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 			};
 			// [Example Base Operator Implementation]

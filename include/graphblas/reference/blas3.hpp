@@ -824,7 +824,8 @@ namespace grb {
 			std::cout << "}\n";
 			for( size_t i = 0; i < m_A; ++i ) {
 				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << i << ", " << A_raw.row_index[ k ] << " ) = " << A_raw.values[ k ] << "\n";
+					std::cout << "\t\t ( " << i << ", " << A_raw.row_index[ k ] << " ) = "
+						<< A_raw.getPrintValue( k ) << "\n";
 				}
 			}
 			std::cout << "\t\t B offset array = { ";
@@ -834,7 +835,8 @@ namespace grb {
 			std::cout << "}\n";
 			for( size_t j = 0; j < m_B; ++j ) {
 				for( size_t k = B_raw.col_start[ j ]; k < B_raw.col_start[ j + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << B_raw.row_index[ k ] << ", " << j << " ) = " << B_raw.values[ k ] << "\n";
+					std::cout << "\t\t ( " << B_raw.row_index[ k ] << ", " << j << " ) = "
+						<< B_raw.getPrintValue( k ) << "\n";
 				}
 			}
 #endif

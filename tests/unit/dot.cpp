@@ -63,7 +63,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test 2, init
 	grb::Semiring<
-		grb::operators::add< double >, grb::operators::left_assign_if< double, bool, double >,
+		grb::operators::add< double >,
+		grb::operators::left_assign_if< double, bool, double >,
 		grb::identities::zero, grb::identities::logical_true
 	> pattern_sum_if;
 	rc = grb::clear( left );
@@ -73,7 +74,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		rc = rc ? rc : grb::setElement( right, 1.0, 2 * i );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t test 2 (sparse, non-standard semiring) initialisation FAILED\n";
+		std::cerr << "\t test 2 (sparse, non-standard semiring) "
+			<< "initialisation FAILED\n";
 		return;
 	}
 	out = 0;

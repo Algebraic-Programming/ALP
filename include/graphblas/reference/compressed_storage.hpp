@@ -643,6 +643,21 @@ namespace grb {
 				return static_cast< ReturnType >( values[ k ] );
 			}
 
+#ifdef _DEBUG
+			/**
+			 * For _DEBUG tracing, define a function that prints the value to a string.
+			 *
+			 * @param[in] k The index of the value to print.
+			 *
+			 * @returns A pretty-printed version of the requested value.
+			 */
+			inline std::string getPrintValue( const size_t k ) const noexcept {
+				std::ostringstream oss;
+				oss << "values[ " << k << " ] = " << values[ k ];
+				return oss.str();
+			}
+#endif
+
 			/**
 			 * Helper function to set a nonzero value. Only records the value itself,
 			 * does nothing to update the matrix' nonzero structure.
@@ -1070,9 +1085,20 @@ namespace grb {
 			 *         Semiring::getOne function.
 			 */
 			template< typename ReturnType >
-			inline const ReturnType getValue( const size_t, const ReturnType & identity ) const noexcept {
+			inline const ReturnType getValue( const size_t, const ReturnType &identity ) const noexcept {
 				return identity;
 			}
+
+#ifdef _DEBUG
+			/**
+			 * For _DEBUG tracing, define a function that prints the value to a string.
+			 *
+			 * @returns A pretty-printed version of the requested value.
+			 */
+			inline std::string getPrintValue( const size_t ) const noexcept {
+				return "\"1\"";
+			}
+#endif
 
 			/**
 			 * Specialisation for void matrices: function translates to no-op.
@@ -1089,3 +1115,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_REFERENCE_COMPRESSED_STORAGE'
+

@@ -6991,7 +6991,10 @@ namespace internal {
 							}
 							for( size_t k = 0; k < AnyOp::blocksize; ++k ) {
 								if( mask[ k ] ) {
-									apply( zz[ k ], xx[ k ], yy[ k ], anyOp );
+									GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED        // yy and xx cannot be used
+									                                           // uninitialised or mask
+									apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false. also, zz
+									GRB_UTIL_RESTORE_WARNINGS                  // init is just above
 								}
 							}
 						} else {

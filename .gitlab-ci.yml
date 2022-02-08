@@ -125,6 +125,31 @@ build_test:
     expire_in: 30 minutes
 
 
+build_debug2_tests:
+  image: gcc:9.3
+  tags:
+    - docker
+  stage: debug-build
+  before_script:
+    - apt update && apt -y install make cmake libnuma-dev coreutils
+  script:
+    - mkdir -p install && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
+
+
+build_debugrelease_tests:
+  image: gcc:9.3
+  tags:
+    - docker
+  stage: build-and-secrets
+  before_script:
+    - apt update && apt -y install make cmake libnuma-dev coreutils
+  script:
+    - mkdir -p install && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+  only:
+    - master
+    - develop
+
+
 # linting is currently disabled since clang-format is not mature enough
 # and leads to weirdnesses and instabilities; we may reactivate it in future
 #
