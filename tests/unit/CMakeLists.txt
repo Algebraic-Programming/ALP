@@ -204,6 +204,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
+add_grb_executables( dense_matrix_allocation_size dense_matrix_allocation_size.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_mxm dense_mxm.cpp
 	BACKENDS reference_dense
 )
