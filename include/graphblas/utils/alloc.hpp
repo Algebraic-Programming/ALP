@@ -49,6 +49,9 @@ namespace grb {
 #ifdef _GRB_WITH_REFERENCE
 #include "graphblas/reference/alloc.hpp"
 #endif
+#ifdef _GRB_WITH_DENSEREF
+ #include "graphblas/denseref/alloc.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
 #include "graphblas/bsp1d/alloc.hpp"
 #endif
