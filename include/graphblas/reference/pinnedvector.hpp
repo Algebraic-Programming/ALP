@@ -67,7 +67,7 @@ namespace grb {
 		public:
 
 			/** No implementation notes. */
-			PinnedVector() : _buffered_values( NULL ) {}
+			PinnedVector() : _buffered_values( nullptr ) {}
 
 			/** No implementation notes. */
 			PinnedVector(
