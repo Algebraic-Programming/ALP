@@ -189,12 +189,18 @@ namespace grb {
 		/** Whether the container presently is uninitialized. */
 		bool initialized;
 
-		/** @see Matrix::buildMatrixUnique */
+		/** @see Matrix::buildMatrixUnique
+		 * Returns RC::MISMATCH if the input size does not match the matrix storage size.
+		*/
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end ) {
 			// detect trivial case
 			if ( _start == _end || m == 0 || n == 0) {
 				return SUCCESS;
+			}
+
+			if ( (size_t)( _end - _start ) != ( m * n ) ) {
+				return MISMATCH;
 			}
 
 			// TODO: Add more sanity checks (e.g. overflow)
