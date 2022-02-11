@@ -88,6 +88,7 @@ int vector_verification(
 	assert( truth_filename != nullptr );
 	assert( c1 > 0 ); assert( c1 < 1 );
 	assert( c2 > 0 ); assert( c2 < 1 );
+	const constexpr double one = static_cast< double >( 1 );
 
 	// open verification file
 	FILE *in = fopen( truth_filename, "r" );
@@ -99,7 +100,7 @@ int vector_verification(
 	}
 
 	// read the truth output vector from the input verification file
-	size_t n = output_vector.length();
+	const size_t n = output_vector.size();
 	double * const truth = new double[ n ];
 	if( truth == nullptr ) {
 		std::cerr << "Could not allocate necessary buffer" << std::endl;
@@ -134,7 +135,6 @@ int vector_verification(
 	magnitude2 = sqrt( magnitude2 );
 
 	// convert the Pinned Vector into raw data
-	assert( output_vector.length() == n );
 	double * const raw_output_vector = new double[ n ];
 	bool * const written_to = new bool[ n ];
 	if( raw_output_vector == nullptr || written_to == nullptr ) {
@@ -146,15 +146,13 @@ int vector_verification(
 		written_to[ i ] = false;
 	}
 
-	// Warning: this should be a loop over the number of nonzeroes in output_vector
-	//          update once internal issue #297 is resolved
-	for( size_t k = 0; k < n; k++ ) {
-		if( !output_vector.mask( k ) ) { continue; }
-		const size_t i = output_vector.index( k );
-		assert( i < n );
-		assert( !written_to[ i ] );
-		raw_output_vector[ i ] = output_vector.mask( k ) ? output_vector[ k ] : 0;
-		written_to[ i ] = true;
+	for( size_t k = 0; k < output_vector.nonzeroes(); k++ ) {
+		const double value = output_vector.getNonzeroValue( k, one );
+		const size_t index = output_vector.getNonzeroIndex( k );
+		assert( index < n );
+		assert( !written_to[ index ] );
+		raw_output_vector[ index ] = value;
+		written_to[ index ] = true;
 	}
 
 	// detect accidental zeroes

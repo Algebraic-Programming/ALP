@@ -34,6 +34,7 @@
 #define C1 0.0001
 #define C2 0.0001
 
+
 using namespace grb;
 using namespace algorithms;
 
@@ -52,7 +53,7 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
-void grbProgram( const struct input & data_in, struct output & out ) {
+void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
 	const size_t s = spmd<>::pid();
@@ -74,8 +75,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< double,
-		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parser( data_in.filename, data_in.direct );
+		std::conditional<
+			(
+				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
+			),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType >::type
+	> parser( data_in.filename, data_in.direct );
 	assert( parser.m() == parser.n() );
 	const size_t n = parser.n();
 	out.times.io = timer.time();
@@ -84,10 +90,18 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// load into GraphBLAS
 	Matrix< double > L( n, n );
 	{
-		const RC rc = buildMatrixUnique( L, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
-		//		const RC rc = buildMatrixUnique( L, parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
+		const RC rc = buildMatrixUnique( L,
+			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL),
+			SEQUENTIAL
+		);
+		/* Once internal issue #342 is resolved this can be re-enabled
+		const RC rc = buildMatrixUnique( L,
+			parser.begin( PARALLEL ), parser.end( PARALLEL),
+			PARALLEL
+		);*/
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+				<< "(" << toString( rc ) << ")." << std::endl;
 			return;
 		}
 	}
@@ -97,14 +111,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		const size_t global_nnz = nnz( L );
 		const size_t parser_nnz = parser.nz();
 		if( global_nnz != parser_nnz ) {
-			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal parser nnz (" << parser_nnz << ")." << std::endl;
+			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
+				<< "parser nnz (" << parser_nnz << ")." << std::endl;
 			return;
 		}
 	} catch( const std::runtime_error & ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-					 "cannot be derived from the matrix file header. The "
-					 "grb::Matrix reports "
-				  << nnz( L ) << " nonzeroes.\n";
+			<< "cannot be derived from the matrix file header. The "
+			<< "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
 	}
 
 	// test default pagerank run
@@ -121,10 +135,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = conjugate_gradient( x, L, b, MAX_ITERS, TOL, out.iterations, out.residual, r, u, temp );
+		rc = conjugate_gradient(
+			x, L, b,
+			MAX_ITERS, TOL,
+			out.iterations, out.residual,
+			r, u, temp
+		);
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to conjugate_gradient did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == SUCCESS ) {
@@ -137,8 +157,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
 		if( rc == SUCCESS ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold conjugate_gradient completed within " << out.iterations << " iterations. Last computed residual is " << out.residual << ". Time taken was " << single_time
-						  << " ms. Deduced inner repetitions parameter of " << out.rep << " to take 1 second or more per inner benchmark.\n";
+				std::cout << "Info: cold conjugate_gradient completed within "
+					<< out.iterations << " iterations. Last computed residual is "
+					<< out.residual << ". Time taken was " << single_time << " ms. "
+					<< "Deduced inner repetitions parameter of " << out.rep << " "
+					<< "to take 1 second or more per inner benchmark.\n";
 			}
 		}
 	} else {
@@ -150,7 +173,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 			rc = set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
 
 			if( rc == SUCCESS ) {
-				rc = conjugate_gradient( x, L, b, MAX_ITERS, TOL, out.iterations, out.residual, r, u, temp );
+				rc = conjugate_gradient(
+					x, L, b,
+					MAX_ITERS, TOL,
+					out.iterations, out.residual,
+					r, u, temp
+				);
 			}
 		}
 		time_taken = timer.time();
@@ -159,9 +187,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		}
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " Conjugate Gradients calls (hot start): " << out.times.useful << ". Error code is " << out.error_code << std::endl;
+			std::cout << "Time taken for a " << out.rep << " "
+				<< "Conjugate Gradients calls (hot start): " << out.times.useful << ". "
+				<< "Error code is " << out.error_code << std::endl;
 			std::cout << "\tnumber of CG iterations: " << out.iterations << "\n";
-			std::cout << "\tmilliseconds per iteration: " << ( out.times.useful / static_cast< double >( out.iterations ) ) << "\n";
+			std::cout << "\tmilliseconds per iteration: "
+				<< ( out.times.useful / static_cast< double >( out.iterations ) )
+				<< "\n";
 		}
 		sleep( 1 );
 	}
@@ -194,12 +226,15 @@ int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 3 || argc > 7 ) {
 		std::cout << "Usage: " << argv[ 0 ]
-			<< " <dataset> <direct/indirect> (inner iterations) (outer iterations) (verification <truth-file>)\n";
+			<< " <dataset> <direct/indirect> "
+			<< "(inner iterations) (outer iterations) (verification <truth-file>)\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
-		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner()
-			<< ". If set to zero, the program will select a number of iterations approximately required to take at"
-			<< " least one second to complete.\n";
-		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer()
+		std::cout << "(inner iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::inner() << ". "
+			<< "If set to zero, the program will select a number of iterations "
+			<< "approximately required to take at least one second to complete.\n";
+		std::cout << "(outer iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::outer()
 			<< ". This value must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
@@ -222,11 +257,12 @@ int main( int argc, char ** argv ) {
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-	char * end = NULL;
+	char * end = nullptr;
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ] << " for number of inner experiment repititions." << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
+				<< "for number of inner experiment repititions." << std::endl;
 			return 2;
 		}
 	}
@@ -236,7 +272,8 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ] << " for number of outer experiment repititions." << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
+				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
 	}
@@ -251,16 +288,20 @@ int main( int argc, char ** argv ) {
 				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
-				std::cerr << "The verification file was not provided as an argument." << std::endl;
+				std::cerr << "The verification file was not provided as an argument."
+					<< std::endl;
 				return 5;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", the optional \"verification\" argument was expected." << std::endl;
+			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
+				<< "the optional \"verification\" argument was expected." << std::endl;
 			return 5;
 		}
 	}
 
-	std::cout << "Executable called with parameters " << in.filename << ", inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
+	std::cout << "Executable called with parameters " << in.filename << ", "
+		<< "inner repititions = " << in.rep << ", and outer reptitions = " << outer
+		<< std::endl;
 
 	// the output struct
 	struct output out;
@@ -276,7 +317,8 @@ int main( int argc, char ** argv ) {
 			in.rep = out.rep;
 		}
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
 			return 6;
 		}
 	}
@@ -287,59 +329,39 @@ int main( int argc, char ** argv ) {
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "benchmarker.exec returns with non-SUCCESS error code " << grb::toString( rc ) << std::endl;
+		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
 		return 8;
 	} else if( out.error_code == 0 ) {
-		std::cout << "Benchmark completed successfully and took " << out.iterations << " iterations to converge with residual " << out.residual << ".\n";
+		std::cout << "Benchmark completed successfully and took " << out.iterations
+			<< " iterations to converge with residual " << out.residual << ".\n";
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
-	std::cout << "Size of x is " << out.pinnedVector.length() << ".\n";
-	if( out.error_code == 0 && out.pinnedVector.length() > 0 ) {
-		std::cout << "First 10 elements of x are: ( ";
-		if( out.pinnedVector.mask( 0 ) ) {
-			std::cout << out.pinnedVector[ 0 ];
-		} else {
-			std::cout << "0";
-		}
-		for( size_t i = 1; i < out.pinnedVector.length() && i < 10; ++i ) {
-			std::cout << ", ";
-			if( out.pinnedVector.mask( i ) ) {
-				std::cout << out.pinnedVector[ i ];
-			} else {
-				std::cout << "0";
-			}
-		}
-		std::cout << " )" << std::endl;
+	std::cout << "Size of x is " << out.pinnedVector.size() << ".\n";
+	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cout << "First 10 nonzeroes of x are: ( ";
-		size_t nnzs = 0;
-		size_t i = 0;
-		while( i < out.pinnedVector.length() && nnzs == 0 ) {
-			if( out.pinnedVector.mask( i ) ) {
-				std::cout << out.pinnedVector[ i ];
-				++nnzs;
-			}
-			++i;
+		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); ++k ) {
+			const auto &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			std::cout << nonzeroValue << " ";
 		}
-		while( nnzs < 10 && i < out.pinnedVector.length() ) {
-			if( out.pinnedVector.mask( i ) ) {
-				std::cout << ", " << out.pinnedVector[ i ];
-				++nnzs;
-			}
-			++i;
-		}
-		std::cout << " )" << std::endl;
+		std::cout << ")" << std::endl;
 	}
 
 	if( out.error_code != 0 ) {
-		std::cout << "Test FAILED.\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n";
 	} else {
 		if( verification ) {
-			out.error_code = vector_verification( out.pinnedVector, truth_filename, C1, C2 );
+			out.error_code = vector_verification(
+				out.pinnedVector, truth_filename,
+				C1, C2
+			);
 			if( out.error_code == 0 ) {
 				std::cout << "Output vector verificaton was successful!\n";
 				std::cout << "Test OK\n";
 			} else {
+				std::cerr << std::flush;
 				std::cout << "Verification FAILED\n";
 				std::cout << "Test FAILED\n";
 			}

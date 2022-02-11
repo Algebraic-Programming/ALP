@@ -26,53 +26,64 @@
 #ifndef _H_GRB_BASE_PINNEDVECTOR
 #define _H_GRB_BASE_PINNEDVECTOR
 
+#include <limits>
+
 #include <graphblas/backends.hpp>
 #include <graphblas/iomode.hpp>
 
 #include "vector.hpp"
 
+
 namespace grb {
 
 	/** \addtogroup IO
+	 *
 	 * Provides a mechanism to access GraphBLAS containers from outside of any
 	 * GraphBLAS context.
 	 *
-	 * Semantically, an instance of \a PinnedVector caches a container's data and
-	 * returns it to user space. The user can operate on the returned data until
-	 * such time the \a PinnedVector's instance is destroyed. The container may
-	 * not be modified or any derived instance of \a PinnedVector shall become
-	 * invalid, or, more precisely: the behaviour of an instance of this class
-	 * becomes invalid the moment the underlying container is modified without a
-	 * preceding call to PinnendMemory::free. Destroying an instance of this
-	 * class automatically calls #free explicitly.
-	 * Additionally, further use of the GraphBLAS container this instance was
-	 * derived from shall become undefined when the user modifies the vector
-	 * contents via this PinnedVector. This is only OK to do when the GraphBLAS
-	 * container shall \em not be used after modification of its data via an
-	 * instance of a PinnedVector.
+	 * An instance of \a PinnedVector caches a container's data and returns it
+	 * to the user. The user can refer to the returned data until such time the
+	 * \a PinnedVector's instance is destroyed, regardless of whether a call to
+	 * #grb::finalize occurs, and regardless whether the ALP/GraphBLAS program
+	 * executed through the #grb::Launcher had already returned.
 	 *
-	 * A performant implementation in fact does \em not copy the container's
-	 * data, but provides a mechanism to access the underlying GraphBLAS memory
-	 * whenever it is possible to do so. This memory should remain valid even
-	 * after a call to grb::finalize() is made while an instance of
-	 * \a PinnedVector is retained for the user to reference.
+	 * The original container may not be modified or any derived instance of
+	 * \a PinnedVector shall become invalid.
 	 *
-	 * \note Some implementations do not retain a raw vector. In this case, a
+	 * \note It would be strange if a GraphBLAS container a pinned vector is
+	 *       derived from persists-- pinned vectors are designed to be used
+	 *       precisely when the original container no longer is in scope.
+	 *       Therefore this last remark on invalidation should not matter.
+	 *
+	 * The PinnedVector abstracts a container over nonzeroes. A nonzero is a pair
+	 * of indices and values. One may query for the number of nonzeroes and use
+	 *   1. #getNonzeroValue to retrieve a nonzero value, or
+	 *   2. #getNonzeroIndex to retrieve a nonzero index.
+	 *
+	 * An instance of the PinnedVector cannot modify the underlying nonzero
+	 * structure nor its values.
+	 *
+	 * \note A performant implementation in fact does \em not copy the container
+	 *       data, but provides a mechanism to access the underlying GraphBLAS
+	 *       memory whenever it is possible to do so. This memory should remain
+	 *       valid even after a call to grb::finalize() is made, and for as long
+	 *       as the \a PinnedVector instance remains valid.
+	 *
+	 * \note Some implementations may not retain a raw vector. In this case, a
 	 *       copy is unavoidable.
-	 *
-	 * \note This mechanism takes some inspiration from Java's Native Interface
-	 *       and its JVM-to-C memory sharing API.
 	 */
 	template< typename IOType, enum Backend implementation >
 	class PinnedVector {
 
 		private :
 
-			/** \internal Dummy variable to ensure the spec can compile. */
-			static constexpr IOType dummy = IOType();
+			/**
+			 * \internal Dummy false bool with a descriptive name for assertion
+			 * failures.
+			 */
+			static const constexpr bool
+				function_was_not_implemented_in_the_selected_backend = false;
 
-			/** \internal Dummy variable to ensure the spec can compile. */
-			static constexpr bool false_mask = false;
 
 		public :
 
@@ -126,6 +137,7 @@ namespace grb {
 			) {
 				(void)vector;
 				(void)mode;
+				assert( function_was_not_implemented_in_the_selected_backend );
 			}
 
 			/**
@@ -135,72 +147,22 @@ namespace grb {
 			 * A call to this function inherits the same performance semantics as
 			 * described above.
 			 *
-			 * Unlike the above, calling this constructor need not be a collective
-			 * operation.
+			 * Unlike the above, and exceptionally, calling this constructor need not be
+			 * a collective operation.
 			 */
-			PinnedVector() {}
+			PinnedVector() {
+				assert( function_was_not_implemented_in_the_selected_backend );
+			}
 
 			/**
 			 * Destroying a pinned vector will only remove the underlying vector data if
 			 * and only if:
 			 *   1) the original grb::Vector has been destroyed;
-			 *   2) no other PinnedVector instance to the same vector exists.
-			 *
-			 * @see free A destructor of PinnedVector shall always call free().
+			 *   2) no other PinnedVector instance derived from the same source container
+			 *      exists.
 			 */
-			~PinnedVector() {}
-
-			/**
-			 * Returns a requested nonzero of the pinned vector.
-			 *
-			 * @param[in] k The nonzero ID to return the value of.
-			 *
-			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
-			 * #length nonzeroes. Therefore, \a k must be less than #length.
-			 *
-			 * This function should only be called when #mask( \a k ) returns
-			 * <tt>true</tt>, or otherwise undefined behaviour occurs.
-			 *
-			 * @return If #mask( \a k ) is <tt>true</tt>, a reference to the \a k-th
-			 *         nonzero value.
-			 *
-			 * \par Performance semantics.
-			 *   -# This function incurs \f$ \Theta(1) \f$ work.
-			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-			 *   -# This function does not incur inter-process communication.
-			 *   -# This function does not allocate new memory nor makes any other system
-			 *      calls.
-			 */
-			inline IOType& operator[]( const size_t k ) noexcept {
-				(void)k;
-				return dummy;
-			}
-
-			/** @see operator[] This is the const version of the above operator[]. */
-			inline const IOType& operator[]( const size_t k ) const noexcept {
-				(void)k;
-				return dummy;
-			}
-
-			/**
-			 * Whether the k-th nonzero from operator[]() contains a nonzero.
-			 *
-			 * @param[in] k The nonzero ID of which to return whether a value exists.
-			 *
-			 * The argument \a k must be smaller than #length.
-			 *
-			 * @return \a true if the requested nonzero exists, and \a false otherwise.
-			 *
-			 * \par Performance semantics.
-			 *   -# This function incurs \f$ \Theta(1) \f$ work.
-			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
-			 *   -# This function does not incur inter-process communication.
-			 *   -# This function does not allocate new memory nor makes any other system
-			 *      calls.
-			 */
-			const bool& mask( const size_t k ) const noexcept {
-				(void)k;
-				return false_mask;
+			~PinnedVector() {
+				assert( function_was_not_implemented_in_the_selected_backend );
 			}
 
 			/**
@@ -213,20 +175,13 @@ namespace grb {
 			 *   -# This function does not allocate new memory nor makes any other system
 			 *      calls.
 			 */
-			size_t length() const noexcept {
+			inline size_t size() const noexcept {
+				assert( function_was_not_implemented_in_the_selected_backend );
 				return 0;
 			}
 
 			/**
-			 * Translates the given nonzero ID \a k into a global index.
-			 *
-			 * \param[in] k The nonzero ID. Must be smaller than #length().
-			 *
-			 * \note If #length returns 0, then this function must \em never be called.
-			 *
-			 * @return The global index corresponding to the \a k-th nonzero.
-			 *
-			 * This function may be called even if #mask( \a k ) returns <tt>false</tt>.
+			 * @returns The number of nonzeroes this pinned vector contains.
 			 *
 			 * \par Performance semantics.
 			 *   -# This function incurs \f$ \Theta(1) \f$ work.
@@ -235,37 +190,102 @@ namespace grb {
 			 *   -# This function does not allocate new memory nor makes any other system
 			 *      calls.
 			 */
-			size_t index( const size_t k ) const noexcept {
-				(void) k;
+			inline size_t nonzeroes() const noexcept {
+				assert( function_was_not_implemented_in_the_selected_backend );
 				return 0;
 			}
 
 			/**
-			 * Releases any resources tied to this instance either
-			 *   1) back to ALP/GraphBLAS, or
-			 *   2) back to the system.
-			 * Case 1) will happen if the original vector still exists. Case 2) will
-			 * happen if and only if the original vector no longer exists while also
-			 * no other PinnedVector instances derived from that original vector no
-			 * longer exist.
+			 * Returns a requested nonzero of the pinned vector.
 			 *
-			 * A subsequent call to any member function except #free will
-			 * cause undefined behaviour.
+			 * @tparam OutputType The value type returned by this function. If this
+			 *                    differs from \a IOType and \a IOType is not
+			 *                    <tt>void</tt>, then nonzero values will be cast to
+			 *                    \a OutputType.
 			 *
-			 * \note This function may thus safely be called more than once.
+			 * \warning If \a OutputType and \a IOType is not compatible, then this
+			 *          function should not be used.
 			 *
-			 * An instance of this class going out of scope will automatically call this
-			 * function.
+			 * @param[in] k   The nonzero ID to return the value of.
+			 * @param[in] one (Optional.) In case \a IOType is <tt>void</tt>, which value
+			 *                should be returned in lieu of a vector element value. By
+			 *                default, this will be a default-constructed instance of
+			 *                \a OutputType.
+			 *
+			 * If \a OutputType cannot be default-constructed, then \a one no longer is
+			 * optional.
+			 *
+			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
+			 * #nonzeroes() nonzeroes. Therefore, \a k must be less than #nonzeroes().
+			 *
+			 * @return The requested value.
 			 *
 			 * \par Performance semantics.
-			 *   -# This function incurs at most \f$ \mathcal{O}(n) \f$ work.
-			 *   -# This function moves at most \f$ \mathcal{O}(n) \f$ bytes of data
-			 *      within its process.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
 			 *   -# This function does not incur inter-process communication.
-			 *   -# This function may de-allocate memory areas of (combined) size
-			 *      \f$ \mathcal{O}(n) \f$.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
 			 */
-			void free() noexcept {}
+			template< typename OutputType >
+			inline OutputType getNonzeroValue(
+				const size_t k, const OutputType one = OutputType()
+			) const noexcept {
+				(void)k;
+				assert( function_was_not_implemented_in_the_selected_backend );
+				return one;
+			}
+
+			/**
+			 * Direct access variation of the general #getNonzeroValue function.
+			 *
+			 * This variant is only defined when \a IOType is not <tt>void</tt>.
+			 *
+			 * \warning If, in your application, \a IOType is templated and can be
+			 *          <tt>void</tt>, then robust code should use the general
+			 *          #getNonzeroValue variant.
+			 *
+			 * For semantics, including performance semantics, see the general
+			 * specification of #getNonzeroValue.
+			 *
+			 * \note By providing this variant, implementations may avoid the
+			 *       requirement thatensure that that \a IOType must be default-
+			 *       constructable.
+			 */
+			inline IOType getNonzeroValue(
+				const size_t k
+			) const noexcept {
+				IOType ret;
+				(void)k;
+				assert( function_was_not_implemented_in_the_selected_backend );
+				return ret;
+			}
+
+			/**
+			 * Retrieves a nonzero index.
+			 *
+			 * @param[in] k The nonzero ID to return the index of.
+			 *
+			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
+			 * #nonzeroes() nonzeroes. Therefore, \a k must be less than #nonzeroes().
+			 *
+			 * @return The requested index.
+			 *
+			 * \par Performance semantics.
+			 *   -# This function incurs \f$ \Theta(1) \f$ work.
+			 *   -# This function moves \f$ \Theta(1) \f$ bytes of data.
+			 *   -# This function does not incur inter-process communication.
+			 *   -# This function does not allocate new memory nor makes any other system
+			 *      calls.
+			 */
+			inline size_t getNonzeroIndex(
+				const size_t k
+			) const noexcept {
+				(void)k;
+				assert( function_was_not_implemented_in_the_selected_backend );
+				return std::numeric_limits< size_t >::max();
+			}
+
 
 	}; // namespace grb
 

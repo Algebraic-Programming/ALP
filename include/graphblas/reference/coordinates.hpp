@@ -98,18 +98,6 @@ namespace grb {
 				size_t _buf;
 
 				/**
-				 * Copy is disallowed.
-				 *
-				 * Declaring it private means that users of the #Coordinates class cannot
-				 * accidentally call it. To be sure of unintentional use within this class,
-				 * the function furthermore throws an exception.
-				 */
-				inline Coordinates & operator=( const Coordinates & ) {
-					throw std::runtime_error( "grb::internal::Coordinates cannot "
-						"be copy-assigned." );
-				}
-
-				/**
 				 * Increments the number of nonzeroes in the current thread-local stack.
 				 *
 				 * @param[in,out] update Which stack will have a new nonzero added in.
@@ -251,13 +239,32 @@ namespace grb {
 					x._n = x._cap = x._buf = 0;
 				}
 
-				/** Shallow copy constructor for use with #PinnedVector. */
+				/**
+				 * \internal
+				 * Shallow copy constructor for use with #PinnedVector.
+				 *
+				 * This is for internal use only.
+				 * \endinternal
+				 */
 				inline Coordinates( const Coordinates &x ) noexcept :
 					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
 					_n( x._n ), _cap( x._cap ), _buf( x._buf )
 				{
 					// self-assignment is a programming error
 					assert( this != &x );
+				}
+
+				/**
+				 * \internal
+				 * Follows the above shallow copy constructor.
+				 *
+				 * This is for internal use only.
+				 * \endinternal
+				 */
+				inline Coordinates & operator=( const Coordinates &other ) {
+					Coordinates replace( other );
+					*this = std::move( replace );
+					return *this;
 				}
 
 				/**

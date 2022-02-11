@@ -25,6 +25,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 using namespace algorithms;
 
@@ -41,7 +42,7 @@ struct output {
 	size_t rep;
 };
 
-void grbProgram( const struct input & data_in, struct output & out ) {
+void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
@@ -57,7 +58,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	timer.reset();
 
 	// parse file locally
-	grb::utils::MatrixFileReader< void, unsigned int > reader( data_in.filename, data_in.direct );
+	grb::utils::MatrixFileReader< void, unsigned int > reader(
+		data_in.filename, data_in.direct
+	);
 
 	// retrieve number of vertices
 	const size_t n = reader.n();
@@ -86,7 +89,8 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// set source to approx. middle vertex
 	const size_t source = n / 2;
-	std::cout << s << ": starting " << data_in.k << "-hop from source vertex " << source << "\n";
+	std::cout << s << ": starting " << data_in.k << "-hop from source vertex "
+		<< source << "\n";
 
 	// handle trivial case
 	if( data_in.k == 0 ) {
@@ -99,7 +103,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// load parsed file into GraphBLAS
 	Matrix< void > A( n, n );
-	RC rc = buildMatrixUnique( A, reader.begin( PARALLEL ), reader.end( PARALLEL ), PARALLEL );
+	RC rc = buildMatrixUnique( A,
+		reader.begin( PARALLEL ), reader.end( PARALLEL ),
+		PARALLEL
+	);
 	if( rc != SUCCESS ) {
 		out.error_code = rc;
 		return;
@@ -110,9 +117,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// time the knn computation
 	double time_taken;
 #ifdef _DEBUG
-	std::cout << s << ": starting knn with a " << grb::nrows( A ) << " by " << grb::ncols( A ) << " matrix holding " << grb::nnz( A ) << " nonzeroes.\n";
+	std::cout << s << ": starting knn with a " << grb::nrows( A ) << " by "
+		<< grb::ncols( A ) << " matrix holding " << grb::nnz( A ) << " nonzeroes.\n";
 #endif
-	rc = knn< descriptors::no_operation >( neighbourhood, A, source, data_in.k, buf1, buf2 );
+	rc = knn< descriptors::no_operation >(
+		neighbourhood, A, source, data_in.k,
+		buf1, buf2
+	);
 	time_taken = timer.time();
 	out.times.useful = time_taken;
 	out.rep = static_cast< size_t >( 100.0 / time_taken ) + 1;
@@ -143,14 +154,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	out.times.postamble = timer.time();
 
-	// print timing at root process
+	// print test output at root process
 	if( s == 0 ) {
 #ifdef _DEBUG
 		size_t count = 0;
 		std::cout << "First 10 neighbours:\n";
-		for( size_t i = 0; count < 10 && i < out.neighbourhood.length(); ++i ) {
-			if( out.neighbourhood.mask( i ) && out.neighbourhood[ i ] ) {
-				std::cout << out.neighbourhood.index( i ) << "\n";
+		for( size_t k = 0; count < 10 && k < out.neighbourhood.nonzeroes(); ++k ) {
+			const auto value = out.neighbourhood.getNonzeroValue( k, true );
+			const auto index = out.neighbourhood.getNonzeroIndex( k );
+			if( value ) {
+				std::cout << index << "\n";
 				++count;
 			}
 		}
@@ -164,13 +177,17 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 4 || argc > 6 ) {
-		std::cout << "Usage: " << argv[ 0 ]
-			<< " <k> <dataset> <direct/indirect> (inner iterations) (outer iterations)\n";
-		std::cout << "<k>, <dataset>, and <direct/indirect> are mandatory arguments.\n";
-		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". "
-			<< "If set to zero, the program will select a number of iterations approximately required "
-			<< "to take at least one second to complete.\n";
-		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". "
+		std::cout << "Usage: " << argv[ 0 ] << " "
+			<< "<k> <dataset> <direct/indirect> "
+			<< "(inner iterations) (outer iterations)\n";
+		std::cout << "<k>, <dataset>, and <direct/indirect> "
+			<< "are mandatory arguments.\n";
+		std::cout << "(inner iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::inner() << ". "
+			<< "If set to zero, the program will select a number of iterations "
+			<< "approximately required to take at least one second to complete.\n";
+		std::cout << "(outer iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::outer() << ". "
 			<< "This value must be strictly larger than 0." << std::endl;
 		return 0;
 	}
@@ -216,8 +233,9 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	std::cout << "Executable called with parameters k = " << in.k << ", " << in.filename << ", "
-		<< "direct = " << in.direct << ", inner repetitions = " << inner << ", "
+	std::cout << "Executable called with parameters k = " << in.k << ", "
+		<< in.filename << ", " << "direct = " << in.direct << ", "
+		<< "inner repetitions = " << inner << ", "
 		<< "outer repetitions = " << outer << std::endl;
 
 	// the output struct
@@ -230,10 +248,12 @@ int main( int argc, char ** argv ) {
 		rc = launcher.exec( &grbProgram, in, out, true );
 		if( rc == SUCCESS ) {
 			inner = out.rep;
-			std::cout << "Auto-selected " << inner << " repetitions to reach approx. 1 second run-time." << std::endl;
+			std::cout << "Auto-selected " << inner << " repetitions to reach approx. "
+				<< "1 second run-time." << std::endl;
 		}
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
 			return 6;
 		}
 	}
@@ -244,34 +264,33 @@ int main( int argc, char ** argv ) {
 	}
 
 	if( rc != SUCCESS ) {
-		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+		std::cerr << "launcher.exec returns with non-SUCCESS error code "
+			<< (int)rc << std::endl;
 		return 50;
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
-	std::cout << "Output vector size is " << out.neighbourhood.length() << ".\n";
-	size_t count = 0;
-	for( size_t i = 0; i < out.neighbourhood.length(); ++i ) {
-		if( out.neighbourhood.mask( i ) && out.neighbourhood[ i ] ) {
-			++count;
-		}
-	}
-	std::cout << "Neighbourhood size is " << count << " (out of " << out.neighbourhood.length() << ").\n";
+	std::cout << "Output vector size is " << out.neighbourhood.size() << ".\n";
+	const size_t count = out.neighbourhood.nonzeroes();
+	std::cout << "Neighbourhood size is " << count << " "
+		<< "(out of " << out.neighbourhood.size() << ").\n";
 #if defined PRINT_FIRST_TEN || defined _DEBUG
-	count = 0;
-	std::cout << "First 10 neighbours:\n";
-	for( size_t i = 0; count < 10 && i < out.neighbourhood.length(); ++i ) {
-		if( out.neighbourhood.mask( i ) && out.neighbourhood[ i ] ) {
-			std::cout << out.neighbourhood.index( i ) << "\n";
-			++count;
+	const size_t firstTen = std::min( count, static_cast< size_t >(10) );
+	std::cout << "First " << firstTen << " neighbours:\n";
+	for( size_t k = 0; k < firstTen; ++k ) {
+		const auto index = out.neighbourhood.getNonzeroIndex( k );
+		const auto value = out.neighbourhood.getNonzeroValue( k, true );
+		if( value ) {
+			std::cout << index << "\n";
 		}
 	}
 #endif
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED.\n" << std::endl;
-		return 1;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
+		return 255;
 	}
 	std::cout << "Test OK\n" << std::endl;
 	return 0;

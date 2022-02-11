@@ -31,6 +31,7 @@
 
 #include <graphblas.hpp>
 
+
 /**
  * @brief Prints the first \p _limit items (including zeroes) of vector \p x with optional heading \p head.
  *
@@ -84,38 +85,35 @@ void print_vector( const grb::Vector< T, B > & x, std::size_t _limit = 10UL, con
 }
 
 /**
- * @brief Prints the first \p limit items of pinned vector \p x with optional heading \p head.
+ * @brief Prints the first \p limit items of pinned vector \p x with optional
+ * heading \p head.
  *
  * @tparam T vector data type
  * @tparam B GraphBLAS backend storing the vector
- * @param v pinned vector to print
- * @param _limit max number of elements to print; 0 for the entire vector
- * @param head optional heading to print \b before the vector
+ *
+ * @param[in] v pinned vector to print
+ * @param[in] _limit max number of elements to print; 0 for the entire vector
+ * @param[in]  head optional heading to print \b before the vector
  */
 template< typename T, enum grb::Backend B >
-void print_vector( const grb::PinnedVector< T, B > & v, std::size_t limit = 10UL, const char * head = nullptr ) {
+void print_vector( const grb::PinnedVector< T, B > &v,
+	const std::size_t limit = 10UL,
+	const char * const head = nullptr
+) {
+	static_assert( !std::is_same< T, void >::value,
+		"Cannot print the values of a void vector"
+	);
 	if( head != nullptr ) {
 		std::cout << "<<< " << head << " >>>" << std::endl;
 	}
-	std::cout << "First " << limit << " elements are: ( ";
-	std::cout << ( v.mask( 0 ) ? v[ 0 ] : 0.0 );
-	for( std::size_t i { 1 }; i < v.length() && i < limit; ++i ) {
-		std::cout << ", " << ( v.mask( i ) ? v[ i ] : 0.0 );
-	}
-	std::cout << " )" << std::endl;
 	std::cout << "First " << limit << " nonzeroes of x are: ( ";
-
-	size_t i { 0 };
-	for( ; i < v.length() && ! v.mask( i ); i++ )
-		; // go to first non-zero
-	if( i < v.length() ) {
-		std::cout << v[ i++ ];
+	size_t k { 0 };
+	if( k < v.nonzeroes() && limit > 0 ) {
+		std::cout << v.getNonzeroValue( k++ );
 	}
-	for( std::size_t nnzs { 1 }; nnzs < limit && i < v.length(); i++ ) {
-		if( v.mask( i ) ) {
-			std::cout << ", " << v[ i ];
-			++nnzs;
-		}
+	for( std::size_t nnzs { 1 }; nnzs < limit && k < v.nonzeroes(); k++ ) {
+		std::cout << ", " << v.getNonzeroValue( k );
+		++nnzs;
 	}
 	std::cout << " )" << std::endl;
 }

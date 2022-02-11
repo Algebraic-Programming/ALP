@@ -310,9 +310,9 @@ int main( int argc, char ** argv ) {
 	if( ! out.pinnedVector ) {
 		thcerr << "no output vector to inspect" << std::endl;
 	} else {
-		const PinnedVector< double > & solution { *out.pinnedVector };
-		thcout << "Size of x is " << solution.length() << std::endl;
-		if( solution.length() > 0 ) {
+		const PinnedVector< double > &solution { *out.pinnedVector };
+		thcout << "Size of x is " << solution.size() << std::endl;
+		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
 		} else {
 			thcerr << "ERROR: solution contains no values" << std::endl;
