@@ -49,11 +49,11 @@ endif()
 
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
-option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
-option( WITH_OMP_BACKEND "With OMP backend" ON )
-option( WITH_NUMA "With NUMA support" ON )
+option( WITH_REFERENCE_BACKEND "With Reference backend" OFF )
+option( WITH_OMP_BACKEND "With OMP backend" OFF )
+option( WITH_NUMA "With NUMA support" OFF )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
-option( WITH_MLIR_BACKEND "With MLIR" OFF)
+option( WITH_MLIR_BACKEND "With MLIR" ON)
 # the following options depend on LPF_INSTALL_PATH being set
 include(CMakeDependentOption)
 cmake_dependent_option( WITH_BSP1D_BACKEND "Build the BSP1D backend (needs \
