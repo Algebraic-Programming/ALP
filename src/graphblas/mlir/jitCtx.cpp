@@ -113,7 +113,8 @@ RC JitContext::buildAndExecute() {
 	mlir::OpBuilder::InsertionGuard guard( builder );
 	builder.setInsertionPointToEnd( module->getBody() );
 	auto fnType = mlir::FunctionType::get( &ctx, typeOperands, {} );
-	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), "moduleFn", fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
+  std::string funcName = "moduleFn" + std::to_string(counter++);
+	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), funcName, fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
 	funcOp->setAttr( "llvm.emit_c_interface", mlir::UnitAttr::get( module->getContext() ) );
 	mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
 	mlir::Block * entryBlock = funcOp.addEntryBlock();
@@ -132,6 +133,8 @@ RC JitContext::buildAndExecute() {
 		builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { funcOp.getArgument( posA ), funcOp.getArgument( posB ) }, funcOp.getArgument( posC ) );
 	}
 	builder.create< mlir::ReturnOp >( loc );
+  llvm::errs() << "------Module pre optimization/lowering------\n";
 	module->dump();
-	return executeFn( "moduleFn", descriptors );
+  llvm::errs() << "--------------------------------------------\n";
+	return executeFn( funcName, descriptors );
 }

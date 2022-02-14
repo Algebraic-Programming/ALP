@@ -66,6 +66,8 @@ namespace grb {
 			// register a GEMM operation to the queue.
 			grb::RC registerMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A );
 
+      // counter to have unique name for compiled function.
+      size_t counter = 1;
 			// current MLIR context.
 			mlir::MLIRContext ctx;
 			// current MLIR module.
