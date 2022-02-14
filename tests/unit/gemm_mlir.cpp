@@ -44,12 +44,12 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	std::vector< float > vA( n * n, 2.0 ), vB( n * n, 1.0 );
 
-	if( failed(grb::buildMatrixUnique( A, vA.begin(), vA.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation FAILED\n";
-    return;
-  }
-	
-	if( failed(grb::buildMatrixUnique( B, vB.begin(), vB.end(), SEQUENTIAL ))) {
+	if( failed( grb::buildMatrixUnique( A, vA.begin(), vA.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation FAILED\n";
+		return;
+	}
+
+	if( failed( grb::buildMatrixUnique( B, vB.begin(), vB.end(), SEQUENTIAL ) ) ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		return;
 	}

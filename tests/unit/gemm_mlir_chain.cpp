@@ -24,91 +24,85 @@
 
 using namespace grb;
 
-static bool failed(grb::RC rc) {
-  if (rc != SUCCESS)
-    return true;
-  return false;
+static bool failed( grb::RC rc ) {
+	if( rc != SUCCESS )
+		return true;
+	return false;
 }
 
 /// Test chain mxm.
 void grb_program_chain( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, 
-  grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
 	std::cout << "\tStarting chain mxm test with size: " << n << "\n";
 
 	// initialize test
 	grb::Matrix< float > A1( 30, 35 );
 	grb::Matrix< float > A2( 35, 15 );
-  grb::Matrix< float > O1( 30, 15);
-  grb::Matrix< float > A3( 15, 5 );
-  grb::Matrix< float > O2( 30, 5 );
+	grb::Matrix< float > O1( 30, 15 );
+	grb::Matrix< float > A3( 15, 5 );
+	grb::Matrix< float > O2( 30, 5 );
 	grb::Matrix< float > A4( 5, 10 );
-  grb::Matrix< float > O3( 30, 10 );
-  grb::Matrix< float > A5( 10, 20 );
-  grb::Matrix< float > O4( 30, 20 );
-  grb::Matrix< float > A6( 20, 25 );
-  grb::Matrix< float > O5( 30, 25 );
+	grb::Matrix< float > O3( 30, 10 );
+	grb::Matrix< float > A5( 10, 20 );
+	grb::Matrix< float > O4( 30, 20 );
+	grb::Matrix< float > A6( 20, 25 );
+	grb::Matrix< float > O5( 30, 25 );
 
-	std::vector< float > vA1( 30 * 35, 1.0 ), 
-                       vA2( 35 * 15, 2.0 ), 
-                       vA3( 15 * 5, 3.0 ),
-                       vA4( 5 * 10, 4.0 ),
-                       vA5( 10 * 20, 1.0 ),
-                       vA6( 20 * 25, 1.0);
+	std::vector< float > vA1( 30 * 35, 1.0 ), vA2( 35 * 15, 2.0 ), vA3( 15 * 5, 3.0 ), vA4( 5 * 10, 4.0 ), vA5( 10 * 20, 1.0 ), vA6( 20 * 25, 1.0 );
 
-	if (failed(grb::buildMatrixUnique( A1, vA1.begin(), vA1.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for A FAILED\n";
-    return;
-  }
-  if (failed(grb::buildMatrixUnique( A2, vA2.begin(), vA2.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for B FAILED\n";
-    return;
-  }
-  if (failed(grb::buildMatrixUnique( A3, vA3.begin(), vA3.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for D FAILED\n";
-    return; 
-  }
-  if (failed(grb::buildMatrixUnique( A4, vA4.begin(), vA4.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for D FAILED\n";
-    return;
-  }
-  if (failed(grb::buildMatrixUnique( A5, vA5.begin(), vA5.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for D FAILED\n";
-    return;
-  }
-  if (failed(grb::buildMatrixUnique( A6, vA6.begin(), vA6.end(), SEQUENTIAL ))) {
-    std::cerr << "\tinitialisation for D FAILED\n";
-    return;
-  }
-  
-	// compute with the semiring mxm
-	std::cout << "\tVerifying the semiring version of mxm\n";
-
-	if (failed(grb::mxm( O1, A2, A1, ring ))) {
-	  std::cerr << "Call to grb::mxm 1 FAILED\n";
+	if( failed( grb::buildMatrixUnique( A1, vA1.begin(), vA1.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for A FAILED\n";
+		return;
+	}
+	if( failed( grb::buildMatrixUnique( A2, vA2.begin(), vA2.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for B FAILED\n";
+		return;
+	}
+	if( failed( grb::buildMatrixUnique( A3, vA3.begin(), vA3.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for D FAILED\n";
+		return;
+	}
+	if( failed( grb::buildMatrixUnique( A4, vA4.begin(), vA4.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for D FAILED\n";
+		return;
+	}
+	if( failed( grb::buildMatrixUnique( A5, vA5.begin(), vA5.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for D FAILED\n";
+		return;
+	}
+	if( failed( grb::buildMatrixUnique( A6, vA6.begin(), vA6.end(), SEQUENTIAL ) ) ) {
+		std::cerr << "\tinitialisation for D FAILED\n";
 		return;
 	}
 
-  if (failed(grb::mxm( O2, A3, O1, ring ))) {
-    std::cerr << "Call to grb::mxm 2 FAILED\n";
-    return;
-  }
+	// compute with the semiring mxm
+	std::cout << "\tVerifying the semiring version of mxm\n";
 
-  if (failed(grb::mxm( O3, A4, O2, ring ))) {
-    std::cerr << "Call to grb::mxm 3 FAILED\n";
-    return;
-  }
+	if( failed( grb::mxm( O1, A2, A1, ring ) ) ) {
+		std::cerr << "Call to grb::mxm 1 FAILED\n";
+		return;
+	}
 
-  if (failed(grb::mxm( O4, A5, O3, ring ))) {
-    std::cerr << "Call to grb::mxm 4 FAILED\n";
-    return;
-  }
+	if( failed( grb::mxm( O2, A3, O1, ring ) ) ) {
+		std::cerr << "Call to grb::mxm 2 FAILED\n";
+		return;
+	}
 
-  if (failed(grb::mxm( O5, A6, O4, ring ))) {
-    std::cerr << "Call to grb::mxm  5 FAILED\n";
-    return;
-  }
+	if( failed( grb::mxm( O3, A4, O2, ring ) ) ) {
+		std::cerr << "Call to grb::mxm 3 FAILED\n";
+		return;
+	}
+
+	if( failed( grb::mxm( O4, A5, O3, ring ) ) ) {
+		std::cerr << "Call to grb::mxm 4 FAILED\n";
+		return;
+	}
+
+	if( failed( grb::mxm( O5, A6, O4, ring ) ) ) {
+		std::cerr << "Call to grb::mxm  5 FAILED\n";
+		return;
+	}
 
 	auto deepCopy = internal::getFull( O5 );
 	for( size_t i = 0; i < 30; i++ ) {
@@ -158,7 +152,7 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
 
- if( launcher.exec( &grb_program_chain, in, out, true ) != SUCCESS ) {
+	if( launcher.exec( &grb_program_chain, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
