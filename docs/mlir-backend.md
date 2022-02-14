@@ -1,6 +1,14 @@
 # MLIR Backend
 
-## Build and run a simple GEMM operation.
+## What you are executing
+
+We will execute a single mxm (aka GEMM) operation in a loop of 5
+iterations. See the C++ program is located in tests/unit/gemm_mlir.cpp
+
+The call to mxm will build linalg IR in MLIR and it will jit-compile
+and execute it.
+
+## Build and run the mxm exmaple.
 ```
 
 #!/bin/bash
@@ -44,5 +52,19 @@ make -j32
 make build_tests_backend_mlir
 echo "Running GEMM Test..."
 ./tests/unit/gemm_mlir_debug_mlir
+
+```
+
+## What to expect as output
+
+The printed llvm module and the operation's result:
+
+```
+50 50 50 50 50 
+50 50 50 50 50 
+50 50 50 50 50 
+50 50 50 50 50 
+50 50 50 50 50 
+Test OK
 
 ```

@@ -274,6 +274,11 @@ if (WITH_MLIR_BACKEND)
     ADDITIONAL_LINK_LIBRARIES llvmpack 
   )
 
+  add_grb_executables( gemm_mlir_chain gemm_mlir_chain.cpp
+    BACKENDS mlir
+    ADDITIONAL_LINK_LIBRARIES llvmpack
+  )
+
 endif()
 
 # targets to list and build the test for this category
