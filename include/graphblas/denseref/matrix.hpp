@@ -285,6 +285,18 @@ namespace grb {
 		return m.n;
 	}
 
+	namespace internal {
+			template< typename T, typename Structure, typename Storage, typename View >
+			const Matrix< T, reference_dense > & getContainer( const StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+				return *( A._container );
+			}
+
+			template< typename T, typename Structure, typename Storage, typename View >
+			Matrix< T, reference_dense > & getContainer( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+				return *( A._container );
+			}
+	} // namespace internal
+
 	/**
 	 * Here starts spec draft for StructuredMatrix
 	 */
@@ -312,16 +324,21 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
+		using self_type = StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense >;
+
 		friend size_t nrows<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
 
 		friend size_t ncols<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
 
 		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
+		
+		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
+
+		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
 
 		template< typename fwd_iterator >
 		friend RC buildMatrix( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > &, const fwd_iterator &, const fwd_iterator ) noexcept;
 
-		using self_type = StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense >;
 
 		// Physical layout - TBD
 		// Matrix< T, reference_dense > A;
@@ -367,23 +384,26 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
+		using self_type = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense >;
+
 		friend size_t nrows<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
 
 		friend size_t ncols<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
 
 		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
 
+		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
+
+		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
+
 		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
 		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
-		using self_type = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense >;
-
 		// Physical layout - TBD
 		// Matrix< T, reference_dense > A;
+		Matrix< T, reference_dense > * _container;
 
 		std::shared_ptr<imf::IMF> imf_l, imf_r;
-
-		Matrix< T, reference_dense > * _container;
 
 		/**
 		 * The container's storage scheme.
@@ -416,9 +436,9 @@ namespace grb {
 		using reference_t = identity_t;
 
 		StructuredMatrix( const size_t rows, const size_t cols ) :
+			_container( new Matrix< T, reference_dense >(rows, cols) ),
 			imf_l( std::make_shared< imf::Id >( rows ) ),
 			imf_r( std::make_shared< imf::Id >( cols ) ),
-			_container( new Matrix< T, reference_dense >(rows, cols) ),
 			storage_scheme( storage::full ),
 			initialized( false ) {
 		}
