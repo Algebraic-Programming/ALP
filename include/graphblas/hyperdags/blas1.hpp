@@ -52,7 +52,6 @@ namespace grb {
 			!grb::is_object< T >::value,
 		void >::type * const = nullptr
 	) {
-		std::cout << "\t Called Set(vectir, scalar) \n";
 		internal::hyperdags::generator.addSource(
 			internal::hyperdags::SET,
 			&x
@@ -151,7 +150,6 @@ namespace grb {
 			! grb::is_object< InputType >::value,
 		void >::type * const = NULL) {
 		
-		std::cout << "\t Called Set(vectir, vector, vector) \n";
 		std::array< const void *, 2 > sources{ &mask, &y };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -175,7 +173,6 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< DataType >::value && 
 		! grb::is_object< T >::value, void >::type * const = NULL ) 	{
 
-		std::cout << "\t Called Set(vector, vector, scalar) \n";
 		std::array< const void *, 2 > sources{ &m };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -192,8 +189,6 @@ namespace grb {
 		typename OutputType, typename InputType, typename Coords >
 	RC set( Vector< OutputType, hyperdags, Coords > & x,
 		const Vector< InputType, hyperdags, Coords > & y ){
-		
-		std::cout << "\t Called Set(vector, vector) \n";
 		
 		std::array< const void *, 1 > sources{ &y };
 		std::array< const void *, 1 > destinations{ &x };
