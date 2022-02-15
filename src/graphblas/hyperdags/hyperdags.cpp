@@ -58,6 +58,14 @@ std::string grb::internal::hyperdags::toString(
 		case DOT:
 			return "dot";
 
+		case SET_USING_MASK_AND_VECTOR:
+			return "set (vector, vector, vector)";
+
+		case SET_USING_MASK_AND_SCALAR:
+			return "set (vector, vector, scalar)";
+
+		case SET_FROM_VECTOR:
+			return "set (vector, vector)";
 	}
 	assert( false );
 	return "unknown operation";

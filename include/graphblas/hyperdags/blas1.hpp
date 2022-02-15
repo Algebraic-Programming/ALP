@@ -52,11 +52,12 @@ namespace grb {
 			!grb::is_object< T >::value,
 		void >::type * const = nullptr
 	) {
+		std::cout << "\t Called Set(vectir, scalar) \n";
 		internal::hyperdags::generator.addSource(
 			internal::hyperdags::SET,
 			&x
 		);
-		return set( internal::getVector( x ), val );
+		return set<descr>( internal::getVector( x ), val );
 	}
 
 	template<
@@ -84,9 +85,8 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return setElement( internal::getVector( x ),
-			val, i
-		);
+		return setElement<descr>( internal::getVector( x ),
+			val, i);
 	}
 
 	template< typename DataType, typename Coords >
@@ -131,10 +131,78 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return dot( z,
+		return dot<descr>( z,
 			internal::getVector(x), internal::getVector(y),
 			addMonoid, anyOp
 		);
+	}
+	
+	// myadd
+	template< 
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename Coords
+		>
+	RC set( Vector< OutputType, hyperdags, Coords > & x,
+		const Vector< MaskType, hyperdags, Coords > & mask,
+		const Vector< InputType, hyperdags, Coords > & y,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
+			! grb::is_object< MaskType >::value &&
+			! grb::is_object< InputType >::value,
+		void >::type * const = NULL) {
+		
+		std::cout << "\t Called Set(vectir, vector, vector) \n";
+		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_USING_MASK_AND_VECTOR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return set<descr>(internal::getVector(x),
+			internal::getVector(mask), internal::getVector(y)
+		);	
+	}	
+
+	template<
+		Descriptor descr = descriptors::no_operation, 
+		typename DataType, typename MaskType, typename T, 
+		typename Coords
+		>
+	RC set( Vector< DataType, hyperdags, Coords > & x,
+		const Vector< MaskType, hyperdags, Coords > & m,
+		const T val,
+		const typename std::enable_if< ! grb::is_object< DataType >::value && 
+		! grb::is_object< T >::value, void >::type * const = NULL ) 	{
+
+		std::cout << "\t Called Set(vector, vector, scalar) \n";
+		std::array< const void *, 2 > sources{ &m };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_USING_MASK_AND_SCALAR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return set<descr>(internal::getVector(x), internal::getVector(m), val);	
+		
+	}
+	
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType, typename Coords >
+	RC set( Vector< OutputType, hyperdags, Coords > & x,
+		const Vector< InputType, hyperdags, Coords > & y ){
+		
+		std::cout << "\t Called Set(vector, vector) \n";
+		
+		std::array< const void *, 1 > sources{ &y };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_FROM_VECTOR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return set<descr>(internal::getVector(x), internal::getVector(y));	
 	}
 
 } // end namespace grb

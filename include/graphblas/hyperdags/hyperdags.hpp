@@ -224,11 +224,16 @@ namespace grb {
 				SET_VECTOR_ELEMENT,
 
 				/** \internal The monoid-operator version, specifically */
-				DOT
-
+				DOT,
+				
+				SET_USING_MASK_AND_VECTOR,
+				
+				SET_USING_MASK_AND_SCALAR,
+				
+				SET_FROM_VECTOR
 			};
 
-			const constexpr size_t numOperationVertexTypes = 4;
+			const constexpr size_t numOperationVertexTypes = 7;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -236,7 +241,10 @@ namespace grb {
 				NNZ_VECTOR,
 				CLEAR_VECTOR,
 				SET_VECTOR_ELEMENT,
-				DOT
+				DOT,
+				SET_USING_MASK_AND_VECTOR,
+				SET_USING_MASK_AND_SCALAR,
+				SET_FROM_VECTOR
 			};
 
 			std::string toString( const enum OperationVertexType ) noexcept;
