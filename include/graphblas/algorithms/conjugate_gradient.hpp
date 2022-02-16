@@ -49,6 +49,7 @@ namespace grb {
 		 *
 		 * Valid descriptors to this algorithm are:
 		 *   -# descriptors::no_casting
+		 *   -# descriptors::transpose
 		 *
 		 * By default, i.e., if none of \a ring, \a minus, or \a divide (nor their
 		 * types) are explicitly provided by the user, the natural field on double
@@ -63,6 +64,7 @@ namespace grb {
 		 * @param[in]     A              The (square) positive semi-definite system
 		 *                               matrix.
 		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
+		 *                               Must be structurally dense.
 		 * @param[in]     max_iterations The maximum number of CG iterations.
 		 * @param[in]     tol            The requested relative tolerance.
 		 * @param[out]    residual       The residual corresponding to output \a x.
@@ -97,7 +99,7 @@ namespace grb {
 			const size_t max_iterations,
 			ResidualType tol,
 			size_t &iterations,
-			ResidualType & residual,
+			ResidualType &residual,
 			grb::Vector< IOType > &r,
 			grb::Vector< IOType > &u,
 			grb::Vector< IOType > &temp,
@@ -105,17 +107,44 @@ namespace grb {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+			// static checks
 			static_assert( std::is_floating_point< ResidualType >::value,
 				"Can only use the CG algorithm with floating-point residual "
 				"types." ); // unless some different norm were used: issue #89
-			static_assert(
-				!( descr & descriptors::no_casting ) || (
+			static_assert( !( descr & descriptors::no_casting ) || (
 					std::is_same< IOType, ResidualType >::value &&
 					std::is_same< IOType, NonzeroType >::value &&
 					std::is_same< IOType, InputType >::value
 				), "One or more of the provided containers have differing element types "
 				"while the no-casting descriptor has been supplied"
 			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< NonzeroType, typename Ring::D1 >::value &&
+					std::is_same< IOType, typename Ring::D2 >::value &&
+					std::is_same< InputType, typename Ring::D3 >::value &&
+					std::is_same< InputType, typename Ring::D4 >::value
+				), "no_casting descriptor was set, but semiring has incompatible domains "
+				"with the given containers."
+			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< InputType, typename Minus::D1 >::value &&
+					std::is_same< InputType, typename Minus::D2 >::value &&
+					std::is_same< InputType, typename Minus::D3 >::value
+				), "no_casting descriptor was set, but given minus operator has "
+				"incompatible domains with the given containers."
+			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< ResidualType, typename Divide::D1 >::value &&
+					std::is_same< ResidualType, typename Divide::D2 >::value &&
+					std::is_same< ResidualType, typename Divide::D3 >::value
+				), "no_casting descriptor was set, but given divide operator has "
+				"incompatible domains with the given tolerance type."
+			);
+			static_assert( std::is_floating_point< ResidualType >::value,
+				"Require floating-point residual type."
+			);
+
+			constexpr const Descriptor descr_dense = descr | descriptors::dense;
 			const ResidualType zero = ring.template getZero< ResidualType >();
 
 			{
@@ -142,6 +171,12 @@ namespace grb {
 #endif
 					return MISMATCH;
 				}
+				if( nnz( x ) != n ) {
+					return ILLEGAL;
+				}
+				if( nnz( b ) != n ) {
+					return ILLEGAL;
+				}
 			}
 
 			ResidualType alpha, sigma, bnorm;
@@ -155,11 +190,11 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			// temp = A * x
-			ret = ret ? ret : grb::mxv( temp, A, x, ring );
+			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
 			assert( ret == SUCCESS );
 
 			// r = b - temp;
-			ret = ret ? ret : grb::eWiseApply( r, b, temp, minus );
+			ret = ret ? ret : grb::eWiseApply< descr_dense >( r, b, temp, minus );
 			assert( ret == SUCCESS );
 
 			// u = r;
@@ -168,12 +203,12 @@ namespace grb {
 
 			// sigma = r' * r;
 			sigma = zero;
-			ret = ret ? ret : grb::dot( sigma, r, r, ring );
+			ret = ret ? ret : grb::dot< descr_dense >( sigma, r, r, ring );
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			ret = ret ? ret : grb::dot( bnorm, b, b, ring );
+			ret = ret ? ret : grb::dot< descr_dense >( bnorm, b, b, ring );
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
@@ -188,12 +223,12 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// temp = A * u;
-				ret = ret ? ret : grb::mxv( temp, A, u, ring );
+				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
 				assert( ret == SUCCESS );
 
 				// residual = u' * temp
 				residual = zero;
-				ret = ret ? ret : grb::dot( residual, temp, u, ring );
+				ret = ret ? ret : grb::dot< descr_dense >( residual, temp, u, ring );
 				assert( ret == SUCCESS );
 
 				// alpha = sigma / residual;
@@ -201,7 +236,7 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// x = x + alpha * u;
-				ret = ret ? ret : grb::eWiseMul( x, alpha, u, ring );
+				ret = ret ? ret : grb::eWiseMul< descr_dense >( x, alpha, u, ring );
 				assert( ret == SUCCESS );
 
 				// temp = alpha .* temp
@@ -210,12 +245,12 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// r = r - temp;
-				ret = ret ? ret : grb::foldl( r, temp, minus );
+				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 				assert( ret == SUCCESS );
 
 				// residual = r' * r;
 				residual = zero;
-				ret = ret ? ret : grb::dot( residual, r, r, ring );
+				ret = ret ? ret : grb::dot< descr_dense >( residual, r, r, ring );
 				assert( ret == SUCCESS );
 
 				if( ret == SUCCESS ) {
@@ -229,9 +264,9 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				// temp = r + alpha * u;
-				ret = ret ? ret : grb::clear( temp );
+				ret = ret ? ret : grb::set( temp, r );
 				assert( ret == SUCCESS );
-				ret = ret ? ret : grb::eWiseMulAdd( temp, alpha, u, r, ring );
+				ret = ret ? ret : grb::eWiseMul< descr_dense >( temp, alpha, u, ring );
 				assert( ret == SUCCESS );
 				assert( nnz( temp ) == size( temp ) );
 
@@ -258,3 +293,4 @@ namespace grb {
 } // end namespace grb
 
 #endif // end _H_GRB_ALGORITHMS_CONJUGATE_GRADIENT
+

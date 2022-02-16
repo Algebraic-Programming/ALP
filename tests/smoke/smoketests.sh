@@ -193,6 +193,21 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
+			echo "                                 matrix gyrom_m.mtx. This test verifies against a ground-"
+			echo "                                 truth solution vector, the same as used for the earlier"
+			echo "                                 conjugate gradient test. Likewise to that one, this test"
+			echo "                                 employs the grb::Launcher in automatic mode. It uses"
+			echo "                                 direct-mode file IO."
+			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
+				$runner ${TEST_BIN_DIR}/bicgstab_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: gyro_m.mtx was not found. To enable, please provide ${INPUT_DIR}/gyro_m.mtx"
+			fi
+			echo " "
+
 			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
 			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
 			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."

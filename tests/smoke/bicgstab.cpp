@@ -21,18 +21,18 @@
 
 #include <inttypes.h>
 
-#include <graphblas/algorithms/conjugate_gradient.hpp>
+#include <graphblas/algorithms/bicgstab.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
-#define TOL 0.000001
+#define TOL 0.0001
 #define MAX_ITERS 10000
 
-#define C1 0.0001
-#define C2 0.0001
+#define C1 0.001
+#define C2 0.001
 
 
 using namespace grb;
@@ -76,11 +76,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// create local parser
 	grb::utils::MatrixFileReader< double,
 		std::conditional<
-			(
-				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
-			),
-		grb::config::RowIndexType,
-		grb::config::ColIndexType >::type
+			(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
 	> parser( data_in.filename, data_in.direct );
 	assert( parser.m() == parser.n() );
 	const size_t n = parser.n();
@@ -121,8 +120,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			<< "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
 	}
 
-	// test default pagerank run
-	Vector< double > x( n ), b( n ), r( n ), u( n ), temp( n );
+	// test default BiCGstab run
+	Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+	grb::operators::subtract< double > minus;
+	grb::operators::divide< double > divide;
+	Vector< double > x( n ), b( n ), r( n ),
+		buf1( n ), buf2( n ), buf3( n ), buf4( n ), buf5( n );
 
 	set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
 	set( b, static_cast< double >( 1 ) );
@@ -135,15 +141,16 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = conjugate_gradient(
+		rc = bicgstab(
 			x, L, b,
 			MAX_ITERS, TOL,
 			out.iterations, out.residual,
-			r, u, temp
+			r, buf1, buf2, buf3, buf4, buf5,
+			ring, minus, divide
 		);
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
+			std::cerr << "Failure: call to bicgstab not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
@@ -157,7 +164,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
 		if( rc == SUCCESS ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold conjugate_gradient completed within "
+				std::cout << "Info: cold bicgstab completed within "
 					<< out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.rep << " "
@@ -173,11 +180,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			rc = set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
 
 			if( rc == SUCCESS ) {
-				rc = conjugate_gradient(
+				rc = bicgstab(
 					x, L, b,
 					MAX_ITERS, TOL,
 					out.iterations, out.residual,
-					r, u, temp
+					r, buf1, buf2, buf3, buf4, buf5
 				);
 			}
 		}
@@ -190,7 +197,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			std::cout << "Time taken for a " << out.rep << " "
 				<< "Conjugate Gradients calls (hot start): " << out.times.useful << ". "
 				<< "Error code is " << out.error_code << std::endl;
-			std::cout << "\tnumber of CG iterations: " << out.iterations << "\n";
+			std::cout << "\tnumber of BiCGstab iterations: " << out.iterations << "\n";
 			std::cout << "\tmilliseconds per iteration: "
 				<< ( out.times.useful / static_cast< double >( out.iterations ) )
 				<< "\n";

@@ -195,7 +195,7 @@ int main( int argc, char ** argv ) {
 #endif
 		std::cout << "First 10 nonzeroes of pr are: ( ";
 #ifdef PINNED_OUTPUT
-		for( size_t k = 0; k < 10 && k < pr.pinnedVector.nonzeroes(); ++k ) {
+		for( size_t k = 0; k < 10 && k < pr.pinnedVector.nonzeroes() && k < 10; ++k ) {
 			const auto &nonzeroValue = pr.pinnedVector.getNonzeroValue( k );
 			std::cout << nonzeroValue << " ";
 		}

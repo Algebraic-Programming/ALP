@@ -340,7 +340,7 @@ namespace grb {
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
 		RC ret = grb::dot< descr >( x, y, y, ring );
 		if( ret == SUCCESS ) {
@@ -371,8 +371,12 @@ namespace grb {
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< IOType >::value &&
 			grb::is_semiring< Ring >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
+#ifdef _DEBUG
+		std::cout << "In grb::dot (semiring, generic version)\n"
+			<< "\t dispatches to monoid-operator version\n";
+#endif
 		return grb::dot< descr >( x,
 			left, right,
 			ring.getAdditiveMonoid(),

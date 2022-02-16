@@ -6892,6 +6892,7 @@ namespace internal {
 #ifdef _DEBUG
 		std::cout << "\t In dot_generic with loopsize " << loopsize << "\n";
 #endif
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 		z = addMonoid.template getIdentity< OutputType >();
 		#pragma omp parallel
@@ -6901,6 +6902,9 @@ namespace internal {
 #else
 			const size_t start = 0;
 			const size_t end = loopsize;
+#endif
+#ifdef _DEBUG
+			std::cout << "\t\t local thread has range " << start << "--" << end << "\n";
 #endif
 			if( end > start ) {
 				// get raw alias
@@ -6953,6 +6957,10 @@ namespace internal {
 						//^--> note that this foldl operates on raw arrays,
 						//     and thus should not be mistaken with a foldl
 						//     on a grb::Vector.
+#ifdef _DEBUG
+						std::cout << "\t\t " << (i-AnyOp::blocksize) << "--" << i << ": "
+							<< "running reduction = " << reduced << "\n";
+#endif
 					}
 				} else {
 #ifdef _DEBUG
@@ -7160,6 +7168,11 @@ RC dot( OutputType &z,
 		"called with an output vector value type that does not match the third "
 		"domain of the given additive operator" );
 
+#ifdef _DEBUG
+	std::cout << "In grb::dot (reference). "
+		<< "I/O scalar on input reads " << z << "\n";
+#endif
+
 	// dynamic sanity check
 	const size_t n = internal::getCoordinates( y ).size();
 	if( internal::getCoordinates( x ).size() != n ) {
@@ -7170,8 +7183,15 @@ RC dot( OutputType &z,
 	const size_t nnzx = internal::getCoordinates( x ).nonzeroes();
 	const size_t nnzy = internal::getCoordinates( y ).nonzeroes();
 
+#ifdef _DEBUG
+	std::cout << "\t dynamic checks pass\n";
+#endif
+
 	// catch trivial case
 	if( nnzx == 0 && nnzy == 0 ) {
+#ifdef _DEBUG
+		std::cout << "\t at least one input vector is empty-- exiting\n";
+#endif
 		return SUCCESS;
 	}
 
@@ -7185,23 +7205,44 @@ RC dot( OutputType &z,
 		// check if inputs are actually dense...
 		if( nnzx == n && nnzy == n ) {
 			// call dense implementation
+#ifdef _DEBUG
+			std::cout << "\t dispatching to dense dot_generic (I)\n";
+#endif
 			ret = internal::dot_generic< descr | descriptors::dense >( oop, x, y, addMonoid, anyOp );
 		} else {
 			// pass to sparse implementation
+#ifdef _DEBUG
+			std::cout << "\t dispatching to sparse dot_generic\n";
+#endif
 			ret = internal::dot_generic< descr >( oop, x, y, addMonoid, anyOp );
 		}
 	} else {
 		// descriptor says dense, but if any of the vectors are actually sparse...
 		if( nnzx < n || nnzy < n ) {
+#ifdef _DEBUG
+			std::cout << "\t dense descriptor given, but at least one input vector was "
+				"sparse\n";
+#endif
 			return ILLEGAL;
 		} else {
 			// all OK, pass to dense implementation
+#ifdef _DEBUG
+			std::cout << "\t dispatching to dense dot_generic (II)\n";
+#endif
 			ret = internal::dot_generic< descr >( oop, x, y, addMonoid, anyOp );
 		}
 	}
 
 	// fold out-of-place dot product into existing input, and exit
+#ifdef _DEBUG
+	std::cout << "\t dot_generic returned " << oop << ", "
+		<< "which will be folded into " << z << " "
+		<< "using the additive monoid\n";
+#endif
 	ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
+#ifdef _DEBUG
+	std::cout << "\t returning " << z << "\n";
+#endif
 	return ret;
 }
 
