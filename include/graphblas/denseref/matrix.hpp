@@ -765,6 +765,30 @@ namespace grb {
 		return smat_trans;
 	}
 
+	/**
+	 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+	 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
+	 */
+
+	template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+	StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+	          std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
+
+		// No static check as the compatibility depends on IMF, which is a runtime level parameter
+
+		if( ! TargetStructure::isInstantiableFrom( source, * imf_r, * imf_c ) ) {
+			throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+		}
+
+		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
+		using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
+
+		target_strmat_t target( source, imf_r, imf_c );
+
+		return target;
+	}
+
 } // namespace grb
 
 #endif // end ``_H_GRB_DENSEREF_MATRIX''
