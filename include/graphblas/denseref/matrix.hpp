@@ -586,6 +586,126 @@ namespace grb {
 
 	}; // StructuredMatrix Square reference
 
+	// StructuredMatrix UpperTriangular, container
+	template< typename T >
+	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > {
+
+	private:
+		/*********************
+		    Storage info friends
+		******************** */
+
+		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense >;
+
+		friend size_t nrows<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
+
+		friend size_t ncols<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
+
+		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
+
+		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
+
+		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
+
+		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+
+		// Physical layout - TBD
+		// Matrix< T, reference_dense > A;
+		Matrix< T, reference_dense > * _container;
+
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
+
+		/**
+		 * The container's storage scheme.
+		 */
+		storage::Dense storage_scheme;
+
+		/** Whether the container presently is initialized or not. */
+		bool initialized;
+
+		std::pair< size_t, size_t > _dims() const {
+			return std::make_pair( imf_l->n, imf_r->n );
+		}
+
+		template< typename fwd_iterator >
+		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+			std::cout << "Building StructuredMatrix<>; calling buildMatrix( Matrix<> )\n";
+			return buildMatrix( *_container, start, end );
+		}
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+		using structure = structures::UpperTriangular;
+
+		// A general Structure knows how to define a reference to itself (which is an identity reference view)
+		// as well as other static views.
+		using identity_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< self_type >, reference_dense >;
+		using transpose_t = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
+
+		using reference_t = identity_t;
+
+		StructuredMatrix( const size_t rows, const size_t cols ) :
+			_container( new Matrix< T, reference_dense >(rows, cols) ),
+			imf_l( std::make_shared< imf::Id >( rows ) ),
+			imf_r( std::make_shared< imf::Id >( cols ) ),
+			storage_scheme( storage::full ),
+			initialized( false ) {
+		}
+
+	}; // StructuredMatrix UpperTriangular, container
+
+	// StructuredMatrix UpperTriangular, reference
+	template< typename T, typename View >
+	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense > {
+
+	private:
+		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense >;
+		using target_type = typename View::applied_to;
+		/*********************
+		    Storage info friends
+		******************** */
+
+		friend size_t nrows<>( const self_type & ) noexcept;
+
+		friend size_t ncols<>( const self_type & ) noexcept;
+
+		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
+
+		target_type * ref;
+
+		std::shared_ptr<imf::IMF> imf_l, imf_r;
+
+		std::pair< size_t, size_t > _dims() const {
+			return std::make_pair( imf_l->n, imf_r->n );
+		}
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+		using structure = structures::UpperTriangular;
+
+		using identity_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< self_type >, reference_dense >;
+		using transpose_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
+
+		// ref to empty matrix
+		StructuredMatrix( ) : ref( nullptr ), imf_l( std::make_shared< imf::Id >( 0 ) ), imf_r( std::make_shared< imf::Id >( 0 ) ) {}
+
+		StructuredMatrix( target_type & struct_mat ) : ref( & struct_mat ), imf_l( nullptr ), imf_r( nullptr ) {
+			// No matter the view it has to be a square matrix
+			imf_l = std::make_shared< imf::Id >( nrows( struct_mat ) );
+			imf_r = std::make_shared< imf::Id >( ncols( struct_mat ) );
+		}
+
+		StructuredMatrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+			ref( & struct_mat ),
+			imf_l( imf_l ),
+			imf_r( imf_r ) {
+		}
+
+	}; //  StructuredMatrix UpperTriangular, reference
+
 	namespace structures {
 
 		// GraphBLAS type traits for structure
