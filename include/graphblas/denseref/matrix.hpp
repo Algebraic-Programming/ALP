@@ -597,42 +597,49 @@ namespace grb {
 	} // namespace structures
 
 	/**
-	 * Peel off any possible view from an input StructuredMatrix type.
-	 * Returns a compatible container-type StructuredMatrix.
-	 */
-	template< typename StructuredMatrixT >
-	struct remove_ref;
-
-	template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	struct remove_ref< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > > {
-		using type = StructuredMatrix< T, Structure, StorageSchemeType, view::Identity< void >, backend >;
-	};
-
-	/**
-	 * Generate a ref StructuredMatrix type.
+	 * Generate an identity view where the type is compliant with the source StructuredMatrix.
 	 * If no target structure is specified the one of the source type is assumed.
 	 * Otherwise it can only generate a type if the target structure is the same as the source type
 	 * or a more specialized version that would preserve its static properties (e.g., symmetric reference
 	 * to a square matrix -- any assumption based on symmetry would not break those based on square).
 	 */
-	template< typename StructuredMatrixT, typename TargetStructure = void >
-	struct get_ref;
 
 	template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	struct get_ref< StructuredMatrix< T, Structure, StorageSchemeType, View, backend >, void > {
-		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
-		using type = StructuredMatrix< T, Structure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
-	};
+	StructuredMatrix< T, Structure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source ) {
 
-	template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend, typename TargetStructure >
-	struct get_ref< StructuredMatrix< T, Structure, StorageSchemeType, View, backend >, TargetStructure > {
+		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
+		using target_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
+
+		target_strmat_t target( source );
+
+		return target;
+	}
+
+	template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+	StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source ) {
 
 		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
-			"Can only create a ref StructuredMatrix with a target structure that implies the source." );
+			"Can only create a view when the target structure is compatible with the source." );
 
 		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
-		using type = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
-	};
+		using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
+
+		target_strmat_t target( source );
+
+		return target;
+	}
+
+	template< typename StructuredMatrixT >
+	typename StructuredMatrixT::transpose_t
+	transpose( StructuredMatrixT &smat ) {
+
+		std::cout << "Using general version" << std::endl;
+		typename StructuredMatrixT::transpose_t smat_trans( smat );
+
+		return smat_trans;
+	}
 
 } // namespace grb
 

@@ -46,13 +46,11 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::StructuredMatrix< float, grb::structures::Square > A( n );
 	grb::StructuredMatrix< float, grb::structures::NonSingular > B( n, n );
 	grb::StructuredMatrix< float, grb::structures::FullRank > C( n, 2 * n );
-	decltype( A )::transpose_t At( A );
-	decltype( M )::transpose_t Mt( M );
+	auto At = grb::transpose( A );
+	auto Mt = grb::transpose( M );
 
-	grb::get_ref< decltype( M ) >::type Mref( M );
-	grb::get_ref< decltype( M ), grb::structures::Square >::type Sq_Mref;
-
-	grb::remove_ref< decltype( Mt ) >::type M1( n, n );
+	auto Mview = grb::get_view( M );
+	auto Sq_Mref = grb::get_view< grb::structures::Square > ( A );
 
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
@@ -61,7 +59,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	ask_questions( At, "At" );
 	ask_questions( Mt, "Mt" );
-	ask_questions( Mref, "Mref" );
+	ask_questions( Mview, "Mview" );
 
 	rc = grb::SUCCESS;
 }
