@@ -538,6 +538,10 @@ namespace grb {
 
 		}
 
+		StructuredMatrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+			ref( &struct_mat ), imf_l( imf_l ), imf_r( imf_r ) {
+		}
+
 	}; // StructuredMatrix General reference
 
 	template< typename T, typename View >
