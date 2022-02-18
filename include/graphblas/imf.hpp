@@ -57,6 +57,10 @@ namespace grb {
 
                 virtual size_t map(size_t i) = 0;
 
+                virtual bool isSame( const IMF & other ) const {
+                    return typeid( *this ) == typeid( other ) && n == other.n && N == other.N;
+                }
+
         };
 
         /**
@@ -93,6 +97,12 @@ namespace grb {
                 }
 
                 Strided(size_t n, size_t N, size_t b, size_t s): IMF(n, N), b(b), s(s) { }
+
+                virtual bool isSame( const IMF & other ) const {
+                    return IMF::isSame( other )
+                        && b == dynamic_cast< const Strided & >( other ).b
+                        && s == dynamic_cast< const Strided & >( other ).s;
+                }
         };
 
         /**
