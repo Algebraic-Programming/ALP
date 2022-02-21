@@ -237,7 +237,49 @@ namespace grb {
 
 		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, void > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
 
-	}; // class VectorView
+	}; // class VectorView with physical container
+
+	/**
+	 * Vector view of a vector only via \a view::Identity of another VectorView.
+	 */
+	template< typename T, typename VectorViewT >
+	class VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, void > {
+
+	private:
+		using self_type = VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, void >;
+		using target_type = VectorViewT;
+
+		/*********************
+		    Storage info friends
+		******************** */
+
+		friend size_t getLength<>( const self_type & ) noexcept;
+
+		std::shared_ptr< target_type > ref;
+
+		std::shared_ptr<imf::IMF> imf;
+
+		size_t _length() const {
+			return imf->n;
+		}
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+
+		VectorView( target_type & vec_view ) : ref( &vec_view ), imf( nullptr ) {
+			
+			imf = std::make_shared< imf::Id >( getLength( *ref ) );
+
+		}
+
+		VectorView( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( & vec_view ), imf( imf ) {
+			if( getLength( vec_view ) != imf->N ) {
+				throw std::length_error( "VectorView(vec_view, * imf): IMF range differs from target's vector length." );
+			}
+		}
+
+	}; // Identity VectorView
 
 
 	/**
@@ -275,7 +317,7 @@ namespace grb {
 
 		}
 
-	}; // StructuredMatrix General reference
+	}; // Diagonal Vector view
 
 	template< typename StructuredMatrixT >
 	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void >
@@ -284,6 +326,31 @@ namespace grb {
 		VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void > smat_diag( smat );
 
 		return smat_diag;
+	}
+
+	/**
+	 * Generate an identity view of a VectorView.
+	 */
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend >
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, void > >, StorageSchemeType, backend, void > 
+	get_view( VectorView< T, View, StorageSchemeType, backend, void > &source ) {
+
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, void > >, StorageSchemeType, backend, void > vec_view( source );
+
+		return vec_view;
+	}
+
+	/**
+	 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+	 */
+
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend >
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, void > >, StorageSchemeType, backend, void > 
+	get_view( VectorView< T, View, StorageSchemeType, backend, void > &source, std::shared_ptr< imf::IMF > imf ) {
+
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, void > >, StorageSchemeType, backend, void > vec_view( source, imf );
+
+		return vec_view;
 	}
 
 
