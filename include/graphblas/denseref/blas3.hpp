@@ -266,6 +266,26 @@ namespace grb {
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
+	/**
+	 * \internal mxm implementation with additive monoid and multiplicative operator
+	 * Dispatches to internal::mxm_generic
+	 */
+	template< typename OutputType, typename InputType1, typename InputType2, class Operator, class Monoid,
+		typename OutputStructure, typename OutputView = view::Identity< void >,
+		typename InputStructure1, typename InputView1 = view::Identity< void >,
+		typename InputStructure2, typename InputView2 = view::Identity< void > >
+	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > & C,
+		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > & A,
+		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > & B,
+		const Operator & mulOp,
+		const Monoid & addM,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
+		                               grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
+			void >::type * const = NULL ) {
+		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
+		return internal::mxm_generic< true >( C, A, B, mulOp, addM, Monoid() );
+	}
+
 	namespace internal {
 
 		/**
@@ -531,6 +551,68 @@ namespace grb {
 			&beta,
 			mulmono.getOperator(), mulmono, phase
 		);
+	}
+
+	/**
+	 * Outer product of two vectors. Assuming vectors \a u and \a v are oriented
+	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$.
+	 *
+	 * \internal Implemented via mxm as a multiplication of a column vector with
+	 *           a row vector.
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename OutputStructure,
+		typename OutputStorage, typename InputStorage1, typename InputStorage2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename InputCoords1, typename InputCoords2, class Operator >
+	RC outer( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > & A,
+		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1 > & u,
+		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2 > & v,
+		const Operator & mul = Operator(),
+		const PHASE & phase = NUMERICAL,
+		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
+			void >::type * const = NULL ) {
+		// static checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::outerProduct",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::outerProduct",
+			"called with a postfactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::outerProduct",
+			"called with an output matrix that does not match the output domain of "
+			"the given multiplication operator" );
+
+		const size_t nrows = getLength( u );
+		const size_t ncols = getLength( v );
+
+		if( nrows != grb::nrows( A ) ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) ) {
+			return MISMATCH;
+		}
+
+		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense > u_matrix( nrows, 1 );
+		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense > v_matrix( 1, ncols );
+
+		// auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
+		// 	return std::make_pair( std::make_pair( ind, 0 ), val );
+		// } );
+
+		// grb::buildMatrixUnique( u_matrix, u_converter.begin(), u_converter.end(), PARALLEL );
+
+		// auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t & ind, const InputType2 & val ) {
+		// 	return std::make_pair( std::make_pair( 0, ind ), val );
+		// } );
+		// grb::buildMatrixUnique( v_matrix, v_converter.begin(), v_converter.end(), PARALLEL );
+
+		grb::Monoid< grb::operators::left_assign< OutputType >, grb::identities::zero > mono;
+
+		(void)phase;
+		return grb::mxm( A, u_matrix, v_matrix, mul, mono );
 	}
 
 } // end namespace ``grb''
