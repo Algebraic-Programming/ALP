@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <memory>
 
 #include <graphblas.hpp>
 
@@ -48,7 +49,6 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::StructuredMatrix< float, grb::structures::FullRank > C( n, 2 * n );
 	auto At = grb::transpose( A );
 	auto Mt = grb::transpose( M );
-	auto v_diag = grb::diagonal( M );
 
 	auto Mview = grb::get_view( M );
 	auto Sq_Mref = grb::get_view< grb::structures::Square > ( A );
@@ -62,7 +62,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	ask_questions( Mt, "Mt" );
 	ask_questions( Mview, "Mview" );
 	
+	auto v_diag = grb::diagonal( M );
+	auto v_view = grb::get_view( v_diag, std::make_shared< grb::imf::Strided >( 2, 5, 1, 1 ) );
 	std::cout << "v_diag( " << grb::getLength( v_diag ) << " )" << std::endl;
+	std::cout << "v_view( " << grb::getLength( v_view ) << " )" << std::endl;
 
 	rc = grb::SUCCESS;
 }
