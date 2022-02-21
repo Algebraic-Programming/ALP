@@ -111,6 +111,14 @@ namespace grb {
 				(void)M;
 				return imf_l.map( 0 ) <= imf_r.map( imf_r.N );
 			}
+
+			template< typename T, typename Storage, typename View, enum Backend backend >
+			static bool isInstantiableFrom( const StructuredMatrix< T, General, Storage, View, backend > & M, grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+				(void)M;
+				(void)imf_l;
+				(void)imf_r;
+				return true;
+			}
 		};
 
 		struct Square {

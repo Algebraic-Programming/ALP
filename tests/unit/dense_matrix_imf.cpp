@@ -37,6 +37,21 @@ void buildUpperTriangularRawArray( std::vector< double > & v, int n ) {
 
 void grb_program( const size_t & n, grb::RC & rc ) {
 	// initialize test
+	// using General Views over General Structured Matrix
+	grb::StructuredMatrix< double, grb::structures::General > A( n, n );
+	std::cout << "General gather from a general StructuredMatrix (expect success)\n";
+	try {
+		auto Aview = grb::get_view< grb::structures::General >(
+			A,
+			std::make_shared< grb::imf::Strided >( n, 2, 1, 1 ),
+			std::make_shared< grb::imf::Strided >( n, 4, 1, 1 )
+		);
+		std::cout << "\tSUCCESS\n";
+	} catch( const std::exception & e ) {
+		std::cerr << e.what() << "\n";
+	}
+
+
 	// using Upper Triangular Structured Matrix
 	grb::StructuredMatrix< double, grb::structures::UpperTriangular > U( n, n );
 
