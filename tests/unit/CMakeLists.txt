@@ -211,6 +211,10 @@ add_grb_executables( dense_mxm dense_mxm.cpp
 	BACKENDS reference_dense
 )
 
+add_grb_executables( dense_outer dense_outer.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_structured_matrix dense_structured_matrix.cpp
 	BACKENDS reference_dense
 )
