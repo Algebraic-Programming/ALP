@@ -371,7 +371,6 @@ namespace grb {
 
 		// A general Structure knows how to define a reference to itself (which is an identity reference view).
 		using identity_t = StructuredMatrix< T, Structure, storage::Dense, view::Identity< self_type >, reference_dense >;
-		using reference_t = identity_t;
 
 		StructuredMatrix( const size_t rows, const size_t cols ) : imf_l( std::make_shared< imf::Id >( rows ) ), imf_r( std::make_shared< imf::Id >( cols ) ), storage_scheme( storage::full ), initialized( false ) {}
 	}; // class StructuredMatrix
@@ -433,8 +432,6 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		using reference_t = identity_t;
-
 		StructuredMatrix( const size_t rows, const size_t cols ) :
 			_container( new Matrix< T, reference_dense >(rows, cols) ),
 			imf_l( std::make_shared< imf::Id >( rows ) ),
@@ -485,8 +482,6 @@ namespace grb {
 
 		using identity_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
-
-		using reference_t = identity_t;
 
 		StructuredMatrix( const size_t rows ) : imf_l( std::make_shared< imf::Id >( rows ) ), imf_r( std::make_shared< imf::Id >( rows ) ), storage_scheme( storage::full ), initialized( false ) {}
 
@@ -648,8 +643,6 @@ namespace grb {
 		using identity_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		using reference_t = identity_t;
-
 		StructuredMatrix( const size_t rows, const size_t cols ) :
 			_container( new Matrix< T, reference_dense >(rows, cols) ),
 			imf_l( std::make_shared< imf::Id >( rows ) ),
@@ -759,7 +752,6 @@ namespace grb {
 	typename StructuredMatrixT::transpose_t
 	transpose( StructuredMatrixT &smat ) {
 
-		std::cout << "Using general version" << std::endl;
 		typename StructuredMatrixT::transpose_t smat_trans( smat );
 
 		return smat_trans;
