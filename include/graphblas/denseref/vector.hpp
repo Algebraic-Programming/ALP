@@ -23,15 +23,24 @@
 #ifndef _H_GRB_DENSEREF_VECTOR
 #define _H_GRB_DENSEREF_VECTOR
 
-#include <graphblas/rc.hpp>
-#include <graphblas/utils/alloc.hpp>
-#include <graphblas/utils/autodeleter.hpp>
-
-#include <graphblas/denseref/vectoriterator.hpp>
 
 #include <stdexcept>
+#include <memory>
 
 #include <assert.h>
+
+#include <graphblas/rc.hpp>
+#include <graphblas/backends.hpp>
+
+// #include <graphblas/utils/alloc.hpp>
+// #include <graphblas/utils/autodeleter.hpp>
+// #include <graphblas/denseref/vectoriterator.hpp>
+
+#include <graphblas/imf.hpp>
+#include <graphblas/views.hpp>
+#include <graphblas/storage.hpp>
+
+#include <graphblas/base/vector.hpp>
 
 
 namespace grb {
@@ -65,9 +74,6 @@ namespace grb {
 			/** The vector data. */
 			T *__restrict__ data;
 
-			/** Deleter corresponding to #data. */
-			utils::AutoDeleter< T > data_deleter;
-
 			/** Whether the container presently is uninitialized. */
 			bool initialized;
 
@@ -80,51 +86,44 @@ namespace grb {
 			/** The return type of #operator[](). */
 			typedef T& lambda_reference;
 
-			/** The iterator type. */
-			typedef typename internal::ConstDenserefVectorIterator< T, reference_dense > const_iterator;
-
 			/**
 			 * @param[in] length The requested vector length.
 			 *
 			 * \internal Allocates a single array of size \a length.
 			 */
 			Vector( const size_t length ) : n( length ), initialized( false ) {
-				const RC rc = grb::utils::alloc(
-					"grb::Vector< T, reference_dense > (constructor)", "",
-					data, length, true, data_deleter
-				);
-				if( rc == OUTOFMEM ) {
-					throw std::runtime_error( "Out-of-memory during Vector< T, reference_dense > construction" );
-				} else if( rc != SUCCESS ) {
-					throw std::runtime_error( "Unhandled runtime error during Vector< T, reference_dense > construction " );
+				// TODO: Implement allocation properly
+				if( n > 0) {
+					data = new (std::nothrow) T[ n ];
+				} else {
+					data = nullptr;
+				}
+
+				if ( n > 0 && data == nullptr ) {
+					throw std::runtime_error( "Could not allocate memory during grb::Vector<reference_dense> construction." );
 				}
 			}
 
-			/** \internal Simply calls Vector( 0 ). */
-			Vector() : Vector( 0 ) {}
+			// /** \internal Makes a deep copy of \a other. */
+			// Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n ) {
+			// 	initialized = false;
+			// 	const RC rc = set( *this, other ); // note: initialized will be set as part of this call
+			// 	if( rc != SUCCESS ) {
+			// 		throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
+			// 	}
+			// }
 
-			/** \internal Makes a deep copy of \a other. */
-			Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n ) {
-				initialized = false;
-				const RC rc = set( *this, other ); // note: initialized will be set as part of this call
-				if( rc != SUCCESS ) {
-					throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
-				}
-			}
-
-			/** \internal No implementation notes. */
-			Vector( Vector< T, reference_dense, void > &&other ) {
-				n = other.n; other.n = 0;
-				data = other.data; other.data = 0;
-				data_deleter = std::move( other.data_deleter );
-				initialized = other.initialized; other.initialized = false;
-			}
+			// /** \internal No implementation notes. */
+			// Vector( Vector< T, reference_dense, void > &&other ) {
+			// 	n = other.n; other.n = 0;
+			// 	data = other.data; other.data = 0;
+			// 	data_deleter = std::move( other.data_deleter );
+			// 	initialized = other.initialized; other.initialized = false;
+			// }
 
 			/** \internal No implementation notes. */
 			~Vector() {
-				n = 0;
-				initialized = false;
-				// free of data will be handled by #data_deleter
+				delete [] data;
 			}
 
 			/** \internal No implementation notes. */
@@ -141,29 +140,29 @@ namespace grb {
 				return data[ i ];
 			}
 
-			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
-			const_iterator cbegin() const noexcept {
-				return initialized ?
-					const_iterator( data, n, false ) :
-					const_iterator( nullptr, 0, false );
-			}
+			// /** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			// const_iterator cbegin() const noexcept {
+			// 	return initialized ?
+			// 		const_iterator( data, n, false ) :
+			// 		const_iterator( nullptr, 0, false );
+			// }
 
-			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
-			const_iterator begin() const noexcept {
-				return cbegin();
-			}
+			// /** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			// const_iterator begin() const noexcept {
+			// 	return cbegin();
+			// }
 
-			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
-			const_iterator cend() const noexcept {
-				return initialized ?
-					const_iterator( data, n, true ) :
-					const_iterator( nullptr, 0, true );
-			}
+			// /** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			// const_iterator cend() const noexcept {
+			// 	return initialized ?
+			// 		const_iterator( data, n, true ) :
+			// 		const_iterator( nullptr, 0, true );
+			// }
 
-			/** \internal Relies on #internal::ConstDenserefVectorIterator. */
-			const_iterator end() const noexcept {
-				return cend();
-			}
+			// /** \internal Relies on #internal::ConstDenserefVectorIterator. */
+			// const_iterator end() const noexcept {
+			// 	return cend();
+			// }
 
 	};
 
@@ -192,6 +191,50 @@ namespace grb {
 		}
 
 	} // end namespace ``grb::internal''
+
+
+
+	/**
+	 * Here starts spec draft for vectorView
+	 */
+
+	template< typename T, typename View >
+	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, void > &v ) noexcept {
+		return v._length();
+	}
+
+	template< typename T>
+	class VectorView< T, view::Identity< void >, storage::Dense, reference_dense, void > {
+
+	private:
+		/*********************
+		    Storage info friends
+		******************** */
+
+		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, void >;
+
+		friend size_t getLength<>( const self_type & ) noexcept;
+
+		// Physical layout
+		std::unique_ptr< Vector< T, reference_dense, void > > v;
+
+		std::shared_ptr<imf::IMF> imf;
+
+		/** Whether the container presently is initialized or not. */
+		bool initialized;
+
+		size_t _length() const {
+			return imf->n;
+		}
+
+	public:
+		using value_type = T;
+
+		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, void > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
+
+	}; // class VectorView
+
+
 
 } // end namespace ``grb''
 
