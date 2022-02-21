@@ -198,6 +198,11 @@ add_grb_executables( spy spy.cpp
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
 	BACKENDS reference_dense
 )
+
+add_grb_executables( dense_matrix_eWiseApply dense_matrix_eWiseApply.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_matrix_allocation_size dense_matrix_allocation_size.cpp
 	BACKENDS reference_dense
 )
