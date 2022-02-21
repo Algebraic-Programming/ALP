@@ -37,8 +37,9 @@
 // #include <graphblas/denseref/vectoriterator.hpp>
 
 #include <graphblas/imf.hpp>
-#include <graphblas/views.hpp>
+#include <graphblas/matrix.hpp>
 #include <graphblas/storage.hpp>
+#include <graphblas/views.hpp>
 
 #include <graphblas/base/vector.hpp>
 
@@ -198,6 +199,10 @@ namespace grb {
 	 * Here starts spec draft for vectorView
 	 */
 
+
+	/**
+	 * Identity View over a vector container.
+	 */
 	template< typename T, typename View >
 	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, void > &v ) noexcept {
 		return v._length();
@@ -233,6 +238,53 @@ namespace grb {
 		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, void > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
 
 	}; // class VectorView
+
+
+	/**
+	 * Diagonal Vector View of a structured matrix.
+	 */
+	template< typename T, typename StructuredMatrixT >
+	class VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void > {
+
+	private:
+		using self_type = VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void >;
+		using target_type = StructuredMatrixT;
+
+		/*********************
+		    Storage info friends
+		******************** */
+
+		friend size_t getLength<>( const self_type & ) noexcept;
+
+		std::shared_ptr< target_type > ref;
+
+		std::shared_ptr<imf::IMF> imf;
+
+		size_t _length() const {
+			return imf->n;
+		}
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+
+		VectorView( target_type & struct_mat ) : ref( &struct_mat ), imf( nullptr ) {
+			
+			size_t _length = view::Diagonal< target_type >::getLength( dims( *ref ) );
+			imf = std::make_shared< imf::Id >( _length  );
+
+		}
+
+	}; // StructuredMatrix General reference
+
+	template< typename StructuredMatrixT >
+	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void >
+	diagonal( StructuredMatrixT &smat ) {
+
+		VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, void > smat_diag( smat );
+
+		return smat_diag;
+	}
 
 
 

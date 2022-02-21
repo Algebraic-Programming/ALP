@@ -488,7 +488,7 @@ namespace grb {
 	}; // StructuredMatrix Square, container
 
 	/**
-	 * Reference to a Square Matrix generalized over views.
+	 * Reference to a general Matrix generalized over views.
 	 */
 	template< typename T, typename View >
 	class StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense > {
