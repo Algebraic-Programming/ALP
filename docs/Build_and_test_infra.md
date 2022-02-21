@@ -18,7 +18,7 @@ limitations under the License.
 
 - [Introduction to ALP/GraphBLAS Building and Testing Infrastructure:](#introduction-to-alpgraphblas-building-and-testing-infrastructure)
 - [The Building Infrastructure](#the-building-infrastructure)
-	- [Generation via the `configure` script](#generation-via-the-configure-script)
+	- [Generation via the `bootstrap.sh` script](#generation-via-the-bootstrap-script)
 		- [Direct Generation via `cmake`](#direct-generation-via-cmake)
 		- [CMake Build Options, Types and Flags](#cmake-build-options-types-and-flags)
 	- [Naming conventions for targets](#naming-conventions-for-targets)
@@ -76,18 +76,31 @@ additional compilation/optimization flags, ...).
 There are **two ways to create the building infrastructure**, depending on the
 level of control you want over the build options.
 
-## Generation via the `configure` script
+## Generation via the `bootstrap.sh` script
 
-The easiest way to initialize the building infrastructure is via the `configure`
-script in the project root.
-This way is primarily meant for users of ALP/GraphBLAS who do not want to work
-on its internals, but only need to build it in order to embed it into their own
-application.
-For these users the script `configure` in the project root takes care of
-initializing the main options of the CMake-based infrastructure via its
-command-line arguments:
+The easiest way to initialize the building infrastructure is via the
+`bootstrap.sh` script in the project root. This script allows for the convenient
+setting of common build options for end-users of ALP/GraphBLAS. To invoke it,
+create an empty directory for the build, move into it, and then invoke the
+`bootstrap.sh` script from there. For example:
 
-* `--help` shows all available options
+```bash
+cd <ALP/GraphBLAS root>
+mkdir build
+cd build
+../bootstrap.sh --prefix=../install <other options>
+```
+
+The `bootstrap.sh` script should be invoked from an empty directory; if the
+directory is not empty, it asks to delete its contents. Invoking it from the
+ALP/GraphBLAS source directory is disallowed. The script accepts the following
+arguments:
+
+* `--prefix=<path/to/install/directory/>` (**mandatory**) specifies the
+directory to install ALP/GraphBLAS consumable targets (binaries, headers,
+wrapper scripts and configuration files for consumption via CMake); if the
+directory does not exist it is built at the moment, but its parent directory
+must exist
 * `--with-lpf[=<path/>]` enables LPF and passes its installation directory; if
 only `--with-lpf` is given without the `=<path/>` information, LPF binaries
 are assumed to be available in the standard search paths and automatically read
@@ -100,15 +113,16 @@ backend (required together with `--with-banshee=<path/>`)
 * `--debug-build` build ALP/GraphBLAS with debug-suitable options, both backends
 and tests; note that this causes tests to run much slower than with standard
 options (corresponding to CMake's `Release` build type)
-*	`--generator=<value>` sets the generator for CMake, otherwise CMake's default
+* `--generator=<value>` sets the generator for CMake, otherwise CMake's default
 is used; example values are `Unix Makefiles` (usually CMake's default on UNIX
 systems) and `Ninja` -- for more information, see
 [the official documentation](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html)
-* `--show` show generation commands instead of running them; useful for dry runs
-of the script
+* `--show` shows generation commands instead of running them; useful for dry
+runs of the script
+* `--delete-files` deletes all files in the current directory without asking for
+confirmation; it is iseful, for example, for scripted builds
+* `--help` shows all available options and skips directory checks.
 
-By default, calling `configure` creates a `build` directory where `cmake` is
-invoked with the appropriate options.
 For a dry run, just add the `--show` option to inspect the building command on
 the terminal.
 
@@ -121,7 +135,7 @@ backends and dependencies are enabled and many more aspects.
 
 Since CMake encourages out-of-tree builds, you should first create a dedicated
 build directory, from which you may run `cmake`.
-This way, you can experiment with multiple building options and have separate
+This way you can experiment with multiple building options and have separate
 build-trees, where in case of changes you need to recompile only what is really
 needed: for example, you may have a directory `build_release` to compile with
 release-suitable options (`cmake` flag `-DCMAKE_BUILD_TYPE=Release`) and another
@@ -132,8 +146,8 @@ test (e.g., `build_release` if you want to assess the performance or
 `build_debug` to run with a debugger).
 
 As from above, a convenient way to start even for a custom build is from the
-configure script, which can be invoked with the `--show` option to inspect the
-building command and start from there with the custom options.
+`bootstrap.sh` script, which can be invoked with the `--show` option to inspect
+the building command and start from there with the custom options.
 For example:
 
 ```cmake
@@ -307,6 +321,15 @@ the building infrastructure) start with `build_`, for example:
   * `list_tests_all` to list all tests
 
 
+Other targets:
+
+* `libs` build the binary libraries for all backends
+* `docs` builds all HTML ALP/GraphBLAS documentation in
+`<ALP/GraphBLAS root>/docs/code/html/index.html` and the LaTeX source files in
+`<ALP/GraphBLAS root>/docs/code/latex`; if `pdflatex`, `graphviz`, and other
+standard tools are available, they are compiled into a PDF found at
+`<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`.
+
 ## Adding a new test
 
 Test sources are split in categories, whose purpose is explained in the [Testing
@@ -458,17 +481,27 @@ You should add the new ones for the new backend.
 
 Examples of needed variables:
 
-1. a variable storing the default name of the backend target for tests, usually
-something like `set( EXAMPLE_BACKEND_DEFAULT_NAME "backend_example" )`
+1. a variable storing the default name of the backend target for tests,
 according to the conventions explained in
-[Naming conventions for targets](#naming-conventions-for-targets)
+[Naming conventions for targets](#naming-conventions-for-targets), for example
+
+    ```cmake
+    set( EXAMPLE_BACKEND_DEFAULT_NAME "backend_example" )
+    ```
 
 2. a variable storing the compilation definitions to include the relevant
-headers, for example `set( EXAMPLE_INCLUDE_DEFS "_GRB_WITH_EXAMPLE" )`
+headers, for example
+
+    ```cmake
+    set( EXAMPLE_INCLUDE_DEFS "_GRB_WITH_EXAMPLE" )
+    ```
 
 3. a variable storing the compilation definitions to select the example backend
 by default when compiling executables, for example
-`set( EXAMPLE_SELECTION_DEFS "_GRB_BACKEND=example" )`
+
+    ```cmake
+    set( EXAMPLE_SELECTION_DEFS "_GRB_BACKEND=example" )
+    ```
 
 4. the variable `ALL_BACKENDS` lists all possible backends (even if not enabled)
 to detect potential configuration errors: therefore, you should always add the
@@ -476,11 +509,11 @@ new backend to this variable; on the contrary, the variable `AVAILABLE_BACKENDS`
 lists only the backends actually configured to be built, depending on the user's
 inputs; you may add your backend with something like
 
-```cmake
-if ( WITH_EXAMPLE_BACKEND )
-	list( APPEND AVAILABLE_BACKENDS "example" )
-endif()
-```
+    ```cmake
+    if ( WITH_EXAMPLE_BACKEND )
+    	list( APPEND AVAILABLE_BACKENDS "example" )
+    endif()
+    ```
 
 For more details, you may see inside
 [`<ALP/GraphBLAS root>/cmake/AddGRBVars.cmake`](../cmake/AddGRBVars.cmake) how
@@ -553,40 +586,40 @@ This usually requires:
 
 1. creating an `INTERFACE` library, for example
 
-```cmake
-add_library( backend_example_headers INTERFACE )
-```
+    ```cmake
+    add_library( backend_example_headers INTERFACE )
+    ```
 2. adding a dependency on `backend_headers_nodefs` to add the global include
 path (`<ALP/GraphBLAS root>/include`) all source files assume
 
-```cmake
-target_link_libraries( backend_example_headers INTERFACE backend_headers_nodefs )
-```
+    ```cmake
+    target_link_libraries( backend_example_headers INTERFACE backend_headers_nodefs )
+    ```
 3. adding other dependencies (if any) as `INTERFACE`
 
-```cmake
-target_link_libraries( backend_example_headers INTERFACE <cmake targets example headers depend on> )
-```
+    ```cmake
+    target_link_libraries( backend_example_headers INTERFACE <cmake targets example headers depend on> )
+    ```
 
 4. adding relevant compile definitions/options (if any)
 
-```cmake
-target_compile_definitions( backend_example_headers INTERFACE "KEY=VALUE" "SYMBOL_TO_BE_DEFINED" )
-target_compile_options( backend_example_headers "-Wall" "-Wextra" ) # if you want very verbose warnings
-```
-please, note that these settings will propagate to all targets depending on
+    ```cmake
+    target_compile_definitions( backend_example_headers INTERFACE "KEY=VALUE" "SYMBOL_TO_BE_DEFINED" )
+    target_compile_options( backend_example_headers "-Wall" "-Wextra" ) # if you want very verbose warnings
+    ```
+    please, note that these settings will propagate to all targets depending on
 `backend_example_headers`, so you should add only what is really needed
 
 5. adding the installation options
 
-```cmake
-install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/example" # path with the headers
-    DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" # installation destination: you should leave the default
-    FILES_MATCHING REGEX "${HEADERS_REGEX}" # regex to install headers only (in case "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/example" contains other files)
-)
-install( TARGETS backend_example_headers EXPORT GraphBLASTargets )
-```
-to copy the header files (first call) and to add the `backend_example_headers`
+    ```cmake
+    install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/example" # path with the headers
+        DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" # installation destination: you should leave the default
+        FILES_MATCHING REGEX "${HEADERS_REGEX}" # regex to install headers only (in case "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/example" contains other files)
+    )
+    install( TARGETS backend_example_headers EXPORT GraphBLASTargets )
+    ```
+    to copy the header files (first call) and to add the `backend_example_headers`
 target to the configuration file during installation (so that users can consume
 the backends directly from their CMake infrastructure), while the second call
 exports the newly created target to the CMake infrastructure automatically
@@ -604,75 +637,94 @@ instruction for the binary library of the new backend
 [`<ALP/GraphBLAS root>/src/graphblas/CMakeLists.txt`](../src/graphblas/CMakeLists.txt)
 by adding the sub-directory at the end
 
-```cmake
-if( WITH_EXAMPLE_BACKEND )
-    add_subdirectory( example )
-endif()
-```
+    ```cmake
+    if( WITH_EXAMPLE_BACKEND )
+        add_subdirectory( example )
+    endif()
+    ```
 3. inside `<ALP/GraphBLAS root>/src/graphblas/example/CMakeLists.txt`, create
 the library target
 
-```cmake
-add_library( backend_example_static STATIC <sources of new backend> )
-```
-note that this creates a static library, while you may want to also create a
+    ```cmake
+    add_library( backend_example_static STATIC <sources of new backend> )
+    ```
+    note that this creates a static library, while you may want to also create a
 shared library with the `SHARED` keyword
 
 4. link the new target against all needed targets, in particular the related
-headers and the `backend_flags` target, storing the compilation default flags
-for backends
+backend headers and the `backend_flags` target
 
-```cmake
-target_link_libraries( backend_example_static PUBLIC
-  backend_example_headers backend_flags
-  <other dependencies, e.g. Numa::Numa>
-)
-```
+    ```cmake
+    target_link_libraries( backend_example_static
+      PRIVATE backend_flags
+      PUBLIC backend_example_headers
+      PRIVATE <other dependencies, e.g. Numa::Numa>
+    )
+    ```
+
+    here, it is important to note that:
+
+    * the `backend_flags` target, which stores the default flags for all backends
+and in particular the optimization flags, is linked as `PRIVATE` in order to
+keep its flags only local to `backend_example_static` and not propagate them to
+depending targets (which have their own flags)
+    * `backend_example_headers` is linked as `PUBLIC` to expose the include
+paths and the related definitions also to depending targets
+    * the other dependencies are here all linked as `PRIVATE` for the sake of
+example, the actual visibility though depends on the implementation of the
+backend and should be evaluated for each dependency
+
 5. add the relevant compile definitions to select the new backend by default
 when compiling depending targets (like tests), for example
 
-```cmake
-target_compile_definitions( backend_example_static INTERFACE "${EXAMPLE_BACKEND_SELECTION_DEFS}" )
-```
-where `EXAMPLE_BACKEND_SELECTION_DEFS` is a variable defined in
+    ```cmake
+    target_compile_definitions( backend_example_static PUBLIC "${EXAMPLE_BACKEND_SELECTION_DEFS}" )
+    ```
+    where `EXAMPLE_BACKEND_SELECTION_DEFS` is a variable defined in
 [step 2](#2-add-the-backend-specific-variables) inside
 [`<ALP/GraphBLAS root>/cmake/AddGRBVars.cmake`](../cmake/AddGRBVars.cmake),
-usually something like `"_GRB_BACKEND=example"`
+usually something like `"_GRB_BACKEND=example"`; here, the `PUBLIC` keyword
+causes the definitions to be used for both the backend library and the depending
+targets
 
 6. add the needed definitions and compile options (if any), with the usual
-`target_compile_definitions( backend_example_static ...)` and
-`target_compile_options( backend_example_static ... )`; similarly, you may want
-to set specific target properties, like the binary build path
-`set_target_properties( backend_example_static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example_output_dir" )`
+    * `target_compile_definitions( backend_example_static ...)`
+    * `target_compile_options( backend_example_static ... )`
+    * similarly, you may want to set specific target properties, like the binary
+build path, with
 
-7. add the new library to the `libs` target, which allows users to compile all
+        ```cmake
+        set_target_properties( backend_example_static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example_output_dir" )
+        ```
+
+1. add the new library to the `libs` target, which allows users to compile all
 backend libraries at once
 
-```cmake
-add_dependencies( libs backend_example_static )
-```
+    ```cmake
+    add_dependencies( libs backend_example_static )
+    ```
 8. add the installation options
 
-```cmake
-install( TARGETS backend_example_static
-  EXPORT GraphBLASTargets
-  ARCHIVE DESTINATION "${EXAMPLE_BACKEND_INSTALL_DIR}"
-)
-```
-which exports the binary target to the generated CMake infrastructure in the
+    ```cmake
+    install( TARGETS backend_example_static
+      EXPORT GraphBLASTargets
+      ARCHIVE DESTINATION "${EXAMPLE_BACKEND_INSTALL_DIR}"
+    )
+    ```
+    which exports the binary target to the generated CMake infrastructure in the
 installation directory and the binary library to the directory
 `${EXAMPLE_BACKEND_INSTALL_DIR}` defined previously
 
-1. if the target name `backend_example_static` is different from the
+9. if the target name `backend_example_static` is different from the
 corresponding default one specified during
 [step 2](#2-add-the-backend-specific-variables) inside
 [`<ALP/GraphBLAS root>/cmake/AddGRBVars.cmake`](../cmake/AddGRBVars.cmake),
-you should create an `ALIAS` target to for the default backend target to exist
+you should create an `ALIAS` target for the default backend target to exist
 
-```cmake
-add_library( "${EXAMPLE_BACKEND_DEFAULT_NAME}" ALIAS backend_example_static )
-```
-where `EXAMPLE_BACKEND_DEFAULT_NAME` is the variable defined in
+    ```cmake
+    add_library( "${EXAMPLE_BACKEND_DEFAULT_NAME}" ALIAS backend_example_static )
+    ```
+    where `EXAMPLE_BACKEND_DEFAULT_NAME` is the variable defined in
 [step 2](#2-add-the-backend-specific-variables) that stores the default name
 according to the convention `backend_<backend name>`, for example
 `set( EXAMPLE_BACKEND_DEFAULT_NAME backend_example )` (for more information,
@@ -688,16 +740,16 @@ the initial configuration (e.g., by adding a hypothetical configuration option
 Since not all tests may run against all backends (for example because of
 functionalities still under development), you should add the `example` option to
 each test you want to compile against.
-Tests are listed in the [tests/CMakeLists.txt](../tests/CMakeLists.txt) and
-[tests/launcher/CMakeLists.txt](../tests/launcher/CMakeLists.txt) files.
+Tests are listed in the `CMakeLists.txt` files under
+`<ALP/GraphBLAS root>/tests/` according to their category.
 For example, to compile the existing `argmax` test (defined in
-[tests/CMakeLists.txt](../tests/CMakeLists.txt)) also against the new backend,
-you may add `example` to its list of compatible backends as in the following
+[tests/unit/CMakeLists.txt](../tests/unit/CMakeLists.txt)) also against the new
+backend, you may add `example` to its list of compatible backends as in the
+following
 
 ```cmake
 add_grb_executables( argmax argmax.cpp
     BACKENDS reference reference_omp bsp1d hybrid example
-    CATEGORIES unit
 )
 ```
 
@@ -713,9 +765,10 @@ built for this test and backend
 3. checks that a target `backend_example` exists; if not, no default target
 associated to the `example` backend exists and an error is raised
 4. creates an executable target linked against `backend_example` and populates
-the related variables (list of per-category tests and so on)
+the related variables (list of per-category tests and so on); the target is
+named `test_argmax_[<test mode>_]example` according to the conventions
 5. on compilation, a binary named `argmax_example` is generated in
-`<build directory>/tests/`
+`<build directory>/tests/unit`
 
 Similarly, you may want to add an example built against your test to showcase
 your new backend's nitty-gritties.

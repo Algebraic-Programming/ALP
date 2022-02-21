@@ -19,7 +19,7 @@ stages:
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
-#    - rm -rf build install && mkdir -p install && ./configure --prefix=./install && cd ./build && make -j$(nproc) && make -j$(nproc) build_tests_all
+#    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  only:
 #    - master
 #    - develop
@@ -40,7 +40,7 @@ stages:
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
-#    - mkdir -p install && ./configure --prefix=./install --debug-build && cd ./build && make -j$(nproc) && make -j$(nproc) build_tests_all
+#    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  only:
 #    - master
 #    - develop
@@ -115,7 +115,7 @@ build_test:
   before_script:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
-    - mkdir -p install && ./configure --prefix=./install && cd ./build && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) build_tests_all
   artifacts:
     paths:
       - build/
@@ -133,7 +133,7 @@ build_debug2_tests:
   before_script:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
-    - mkdir -p install && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
 
 
 build_debugrelease_tests:
@@ -144,7 +144,7 @@ build_debugrelease_tests:
   before_script:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
-    - mkdir -p install && mkdir -p build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
   only:
     - master
     - develop
@@ -208,7 +208,7 @@ build_debug:
   before_script:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
-    - rm -rf build install && mkdir -p install && ./configure --prefix=./install --debug-build && cd ./build && make -j$(nproc) && make -j$(nproc) build_tests_all
+    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
   artifacts:
     paths:
       - build/
