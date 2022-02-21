@@ -30,6 +30,29 @@
 #include "io.hpp"
 #include "matrix.hpp"
 
+#define NO_CAST_ASSERT( x, y, z )                                              \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the semiring domains, as specified in the "            \
+		"documentation of the function " y ", supply a container argument of " \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible semiring where all domains "  \
+		"match those of the container arguments, as specified in the "         \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
+
 namespace grb {
 	namespace internal {
 
@@ -241,6 +264,273 @@ namespace grb {
 			void >::type * const = NULL ) {
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
+	}
+
+	namespace internal {
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 */
+
+		template<
+			bool allow_void,
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			typename OutputStructure, typename InputStructure1, typename InputStructure2,
+			typename OutputStorage, typename InputStorage1, typename InputStorage2,
+			typename OutputView, typename InputView1, typename InputView2,
+			class Operator
+		>
+		RC eWiseApply_matrix_generic( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > *C,
+			const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > *A,
+			const InputType1 *alpha,
+			const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > *B,
+			const InputType1 *beta,
+			const Operator &oper,
+			const MulMonoid &mulMonoid,
+			const PHASE &phase,
+			const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value,
+			void >::type * const = NULL
+		) {
+			(void)C;
+			(void)A;
+			(void)alpha;
+			(void)B;
+			(void)beta;
+			(void)oper;
+			(void)mulMonoid;
+			static_assert( allow_void ||
+				( !(
+				     std::is_same< InputType1, void >::value ||
+				     std::is_same< InputType2, void >::value
+				) ),
+				"grb::internal::eWiseApply_matrix_generic: the non-monoid version of "
+				"elementwise mxm can only be used if neither of the input matrices "
+				"is a pattern matrix (of type void)" );
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::eWiseApply_matrix_generic\n";
+#endif
+
+			// get whether the matrices should be transposed prior to execution
+			// constexpr bool trans_left = descr & descriptors::transpose_left;
+			// constexpr bool trans_right = descr & descriptors::transpose_right;
+
+			// run-time checks
+			// TODO: support left/right_scalar
+			// const size_t m = grb::nrows( *C );
+			// const size_t n = grb::ncols( *C );
+			// const size_t m_A = !trans_left ? grb::nrows( *A ) : grb::ncols( *A );
+			// const size_t n_A = !trans_left ? grb::ncols( *A ) : grb::nrows( *A );
+			// const size_t m_B = !trans_right ? grb::nrows( *B ) : grb::ncols( *B );
+			// const size_t n_B = !trans_right ? grb::ncols( *B ) : grb::nrows( *B );
+
+			// if( m != m_A || m != m_B || n != n_A || n != n_B ) {
+			// 	return MISMATCH;
+			// }
+
+
+			// retrieve buffers
+			// end buffer retrieval
+
+			// initialisations
+			// end initialisations
+
+			// symbolic phase
+			if( phase == SYMBOLIC ) {
+			}
+
+			// computational phase
+			if( phase == NUMERICAL ) {
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+	} // namespace internal
+
+	/**
+	 * Computes \f$ C = A . B \f$ for a given monoid.
+	 *
+	 * \internal Allows pattern matrix inputs.
+	 *
+	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1, typename InputStructure2,
+		typename OutputStorage, typename InputStorage1, typename InputStorage2,
+		typename OutputView, typename InputView1, typename InputView2,
+		class MulMonoid
+	>
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
+		const MulMonoid &mulmono,
+		const PHASE phase = NUMERICAL,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< MulMonoid >::value,
+		void >::type * const = NULL
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a postfactor input matrix B that does not match the "
+			"second domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D3, OutputType >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with an output matrix C that does not match the output domain "
+			"of the monoid operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
+#endif
+
+		return internal::eWiseApply_matrix_generic< true, false, false, descr >(
+			&C, &A, static_cast< const InputType1 * >( nullptr ), &B, static_cast< const InputType2 * >( nullptr ), mulmono.getOperator(), mulmono, phase
+		);
+	}
+
+	/**
+	 * Computes \f$ C = alpha . B \f$ for a given monoid.
+	 *
+	 * \internal Allows pattern matrix inputs.
+	 *
+	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure2,
+		typename OutputStorage, typename InputStorage2,
+		typename OutputView, typename InputView2,
+		class MulMonoid
+	>
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+		const InputType1 &alpha,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
+		const MulMonoid &mulmono,
+		const PHASE phase = NUMERICAL,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< MulMonoid >::value,
+		void >::type * const = NULL
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a postfactor input matrix B that does not match the "
+			"second domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D3, OutputType >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with an output matrix C that does not match the output domain "
+			"of the monoid operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
+#endif
+
+		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
+			&C,
+			no_matrix,
+			&alpha,
+			&B,
+			static_cast< const InputType2 * >( nullptr ),
+			mulmono.getOperator(), mulmono, phase
+		);
+	}
+
+/**
+	 * Computes \f$ C = A . beta \f$ for a given monoid.
+	 *
+	 * \internal Allows pattern matrix inputs.
+	 *
+	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1,
+		typename OutputStorage, typename InputStorage1,
+		typename OutputView, typename InputView1,
+		class MulMonoid
+	>
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
+		const InputType2 &beta,
+		const MulMonoid &mulmono,
+		const PHASE phase = NUMERICAL,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< MulMonoid >::value,
+		void >::type * const = NULL
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with a postfactor input matrix B that does not match the "
+			"second domain of the monoid operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename MulMonoid::D3, OutputType >::value ),
+			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"called with an output matrix C that does not match the output domain "
+			"of the monoid operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
+#endif
+
+		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
+			&C,
+			&A,
+			static_cast< const InputType1 * >( nullptr ),
+			no_matrix,
+			&beta,
+			mulmono.getOperator(), mulmono, phase
+		);
 	}
 
 } // end namespace ``grb''
