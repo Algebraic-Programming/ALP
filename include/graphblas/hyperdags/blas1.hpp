@@ -141,7 +141,7 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
 		typename Coords
-		>
+	>
 	RC set( Vector< OutputType, hyperdags, Coords > & x,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Vector< InputType, hyperdags, Coords > & y,
@@ -166,7 +166,7 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, 
 		typename DataType, typename MaskType, typename T, 
 		typename Coords
-		>
+	>
 	RC set( Vector< DataType, hyperdags, Coords > & x,
 		const Vector< MaskType, hyperdags, Coords > & m,
 		const T val,
@@ -186,7 +186,8 @@ namespace grb {
 	
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType, typename Coords >
+		typename OutputType, typename InputType, typename Coords 
+	>
 	RC set( Vector< OutputType, hyperdags, Coords > & x,
 		const Vector< InputType, hyperdags, Coords > & y ){
 		
@@ -198,6 +199,113 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return set<descr>(internal::getVector(x), internal::getVector(y));	
+	}
+	
+	
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, 
+		typename T, typename U, typename Coords 
+	>
+	RC zip( Vector< std::pair< T, U >, hyperdags, Coords > & z,
+		const Vector< T, hyperdags, Coords > & x,
+		const Vector< U, hyperdags, Coords > & y,
+		const typename std::enable_if< ! grb::is_object< T >::value &&
+		! grb::is_object< U >::value, void >::type * const = NULL 
+		) {
+
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::ZIP,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()	
+		);
+		return zip<descr>(internal::getVector(z), internal::getVector(x),
+			internal::getVector(y));		
+	}
+
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP, 
+		typename OutputType, typename InputType1, typename InputType2, 
+		typename Coords 
+	>
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
+		const Vector< InputType1, hyperdags, Coords > & x,
+		const Vector< InputType2, hyperdags, Coords > & y,
+		const OP & op = OP(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && 
+		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
+		grb::is_operator< OP >::value, void >::type * const = NULL 
+		) {
+
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return eWiseApply<descr>(internal::getVector(z), internal::getVector(x),
+			internal::getVector(y), op);
+	}
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename Coords 
+	>
+	RC foldr( const Vector< InputType, hyperdags, Coords > & x,
+		IOType & beta, // beta might be a pair 
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< ! grb::is_object< InputType >::value && 
+		! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL 
+		) {
+
+		std::array< const void *, 2 > sources{ &x, &beta };
+		std::array< const void *, 1 > destinations{ &beta };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_VECTOR_SCALAR_MONOID,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(internal::getVector(x), beta, monoid);
+	}
+	
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename MaskType, typename Coords
+	>
+	RC foldl( IOType & x,
+		const Vector< InputType, hyperdags, Coords > & y,
+		const Vector< MaskType, hyperdags, Coords > & mask,
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< ! grb::is_object< IOType >::value &&
+		! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value &&
+		grb::is_monoid< Monoid >::value, void >::type * const = NULL 
+		) {
+
+		std::array< const void *, 3 > sources{&x, &y, &mask };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_VECTOR_MASK_MONOID,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return foldl<descr>(x, internal::getVector(y), internal::getVector(mask), monoid);
+	}
+
+	template< 
+		typename Func, typename DataType, typename Coords 
+		>
+	RC eWiseLambda( const Func f, const Vector< DataType, hyperdags, Coords > & x ) {
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISELAMBDA,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return eWiseLambda( f, internal::getVector(x) );
 	}
 
 } // end namespace grb

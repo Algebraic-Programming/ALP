@@ -69,7 +69,6 @@ namespace grb {
 				 *           to set.
 				 */
 				SET
-
 			};
 
 			const constexpr size_t numSourceVertexTypes = 3;
@@ -230,10 +229,20 @@ namespace grb {
 				
 				SET_USING_MASK_AND_SCALAR,
 				
-				SET_FROM_VECTOR
+				SET_FROM_VECTOR,
+				
+				ZIP,
+
+				E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
+				
+				FOLDR_VECTOR_SCALAR_MONOID,
+				
+				FOLDL_SCALAR_VECTOR_MASK_MONOID,
+				
+				EWISELAMBDA
 			};
 
-			const constexpr size_t numOperationVertexTypes = 7;
+			const constexpr size_t numOperationVertexTypes = 12;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -244,7 +253,12 @@ namespace grb {
 				DOT,
 				SET_USING_MASK_AND_VECTOR,
 				SET_USING_MASK_AND_SCALAR,
-				SET_FROM_VECTOR
+				SET_FROM_VECTOR,
+				ZIP,
+				E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
+				FOLDR_VECTOR_SCALAR_MONOID,
+				FOLDL_SCALAR_VECTOR_MASK_MONOID,
+				EWISELAMBDA
 			};
 
 			std::string toString( const enum OperationVertexType ) noexcept;
