@@ -57,7 +57,8 @@ namespace grb {
 	/*
 	 * The default value of \a StorageSchemeType could also be made conditional (Dense or Sparse) depending on \a config::default_backend
 	 */
-	template< typename T, typename View = view::Identity< void >, typename StorageSchemeType = storage::Dense, enum Backend backend = config::default_backend, typename C = internal::DefaultCoordinates >
+	// template< typename T, typename View = view::Identity< void >, typename StorageSchemeType = storage::Dense, enum Backend backend = config::default_backend, typename C = internal::DefaultCoordinates >
+	template< typename T, typename View =  view::Identity< void >, typename StorageSchemeType = storage::Dense, enum Backend backend = config::default_backend, typename C = void >
 	class VectorView;
 
 }

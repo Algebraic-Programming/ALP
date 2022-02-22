@@ -52,7 +52,7 @@ namespace grb {
 		T * getRaw( Vector< T, reference_dense, void > & ) noexcept;
 
 		template< typename T >
-		const T * getRaw( Vector< T, reference_dense, void > & ) noexcept;
+		const T * getRaw( const Vector< T, reference_dense, void > & ) noexcept;
 
 		template< typename T >
 		size_t getLength( const Vector< T, reference_dense, void > & ) noexcept;
@@ -238,6 +238,13 @@ namespace grb {
 		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, void > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
 
 	}; // class VectorView with physical container
+
+	/** Identifies any reference_dense vector as an ALP vector. */
+	template< typename T, typename View, typename Storage >
+	struct is_container< VectorView< T, View, Storage, reference_dense, void > > {
+		/** A reference_vector is an ALP object. */
+		static const constexpr bool value = true;
+	};
 
 	/**
 	 * Vector view of a vector only via \a view::Identity of another VectorView.
