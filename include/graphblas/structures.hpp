@@ -150,16 +150,56 @@ namespace grb {
 			}
 		};
 
-		struct Diagonal {
-			using inferred_structures = structures::tuple_cat< std::tuple< Diagonal >, LowerTriangular::inferred_structures, UpperTriangular::inferred_structures >::type;
-		};
-
 		struct FullRank {
 			using inferred_structures = structures::tuple_cat< std::tuple< FullRank >, General::inferred_structures >::type;
 		};
 
 		struct NonSingular {
 			using inferred_structures = structures::tuple_cat< std::tuple< NonSingular >, Square::inferred_structures, FullRank::inferred_structures >::type;
+		};
+
+		struct OrthogonalColumns {
+			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalColumns >, FullRank::inferred_structures >::type;
+		};
+
+		struct OrthogonalRows {
+			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalRows >, FullRank::inferred_structures >::type;
+		};
+
+		struct Orthogonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< Orthogonal >, NonSingular::inferred_structures, OrthogonalColumns::inferred_structures, OrthogonalRows::inferred_structures >::type;
+		};
+
+		struct Tridiagonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< Tridiagonal >, General::inferred_structures >::type;
+		};
+
+		struct Bidiagonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< Bidiagonal >, Tridiagonal::inferred_structures >::type;
+		};
+
+		struct LowerBidiagonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< LowerBidiagonal >, Bidiagonal::inferred_structures >::type;
+		};
+
+		struct UpperBidiagonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< UpperBidiagonal >, Bidiagonal::inferred_structures >::type;
+		};
+
+		struct Diagonal {
+			using inferred_structures = structures::tuple_cat< std::tuple< Diagonal >, LowerTriangular::inferred_structures, UpperTriangular::inferred_structures, LowerBidiagonal::inferred_structures, UpperBidiagonal::inferred_structures >::type;
+		};
+
+		struct Constant {
+			using inferred_structures = structures::tuple_cat< std::tuple< Constant >, General::inferred_structures >::type;
+		};
+
+		struct Identity {
+			using inferred_structures = structures::tuple_cat< std::tuple< Identity >, FullRank::inferred_structures, Diagonal::inferred_structures, Constant::inferred_structures >::type;
+		};
+
+		struct Zero {
+			using inferred_structures = structures::tuple_cat< std::tuple< Zero >, Constant::inferred_structures >::type;
 		};
 
 	} // namespace structures
