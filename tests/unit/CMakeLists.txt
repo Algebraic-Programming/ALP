@@ -204,6 +204,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
+add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
 	BACKENDS reference_dense
 )
