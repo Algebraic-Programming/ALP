@@ -286,15 +286,36 @@ namespace grb {
 	}
 
 	namespace internal {
-			template< typename T, typename Structure, typename Storage, typename View >
-			const Matrix< T, reference_dense > & getContainer( const StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
-				return *( A._container );
-			}
+		/** Forward declaration */
+		template< typename T >
+		class StructuredMatrixContainer;
 
-			template< typename T, typename Structure, typename Storage, typename View >
-			Matrix< T, reference_dense > & getContainer( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
-				return *( A._container );
-			}
+		/** Container reference getters used by friend functions of specialized StructuredMatrix */
+		template< typename T >
+		const Matrix< T, reference_dense > & getContainer( const StructuredMatrixContainer< T > & A );
+
+		template< typename T >
+		Matrix< T, reference_dense > & getContainer( StructuredMatrixContainer< T > & A );
+
+		/** Container reference getters. Defer the call to base class friend function */
+		template< typename T, typename Structure, typename Storage, typename View >
+		const Matrix< T, reference_dense > & getContainer( const StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+			return getContainer( A );
+		}
+
+		template< typename T, typename Structure, typename Storage, typename View >
+		Matrix< T, reference_dense > & getContainer( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+			return getContainer( A );
+		}
+
+		/** Forward declaration */
+		class StructuredMatrixBase;
+
+		size_t nrows( const StructuredMatrixBase & A ) noexcept;
+
+		size_t ncols( const StructuredMatrixBase & A ) noexcept;
+
+		std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept;
 	} // namespace internal
 
 	/**
@@ -303,17 +324,17 @@ namespace grb {
 
 	template< typename D, typename Structure, typename View >
 	size_t nrows( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
-		return A._dims().first;
+		return internal::nrows( A );
 	}
 
 	template< typename D, typename Structure, typename View >
 	size_t ncols( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
-		return A._dims().second;
+		return internal::ncols( A );
 	}
 
 	template< typename D, typename Structure, typename View >
 	std::pair< size_t, size_t > dims( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
-		return A._dims();
+		return internal::dims( A );
 	}
 
 	namespace internal {
@@ -325,12 +346,24 @@ namespace grb {
 		class StructuredMatrixBase {
 
 		protected:
+			friend size_t nrows( const StructuredMatrixBase & A ) noexcept {
+				return A._dims().first;
+			}
+
+			friend size_t ncols( const StructuredMatrixBase & A ) noexcept {
+				return A._dims().second;
+			}
+
+			friend std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept {
+				return A._dims();
+			}
+
 			std::shared_ptr<imf::IMF> imf_l, imf_r;
 
 			/** Whether the container presently is initialized or not. */
 			bool initialized;
 
-			std::pair< size_t, size_t > _dims() const {
+			virtual std::pair< size_t, size_t > _dims() const {
 				return std::make_pair( imf_l->n, imf_r->n );
 			}
 
@@ -352,6 +385,14 @@ namespace grb {
 		template< typename T >
 		class StructuredMatrixContainer : public StructuredMatrixBase {
 		protected:
+			friend const Matrix< T, reference_dense > & getContainer( const StructuredMatrixContainer< T > & A ) {
+				return *( A._container );
+			}
+
+			friend Matrix< T, reference_dense > & getContainer( StructuredMatrixContainer< T > & A ) {
+				return *( A._container );
+			}
+
 			Matrix< T, reference_dense > * _container;
 
 			/**
@@ -401,16 +442,6 @@ namespace grb {
 
 		using self_type = StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense >;
 
-		friend size_t nrows<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend size_t ncols<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-		
-		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
-
-		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
-
 		template< typename fwd_iterator >
 		friend RC buildMatrix( const StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > &, const fwd_iterator &, const fwd_iterator ) noexcept;
 
@@ -435,16 +466,6 @@ namespace grb {
 		******************** */
 
 		using self_type = StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense >;
-
-		friend size_t nrows<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend size_t ncols<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, structures::General, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
-
-		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
 
 		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
 		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
@@ -476,16 +497,6 @@ namespace grb {
 		public internal::StructuredMatrixContainer< T > {
 
 	private:
-		/*********************
-		    Storage info friends
-		******************** */
-
-		friend size_t nrows<>( const StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend size_t ncols<>( const StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense >;
 
 	public:
@@ -512,16 +523,6 @@ namespace grb {
 		using self_type = StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
 
-		/*********************
-		    Storage info friends
-		******************** */
-
-		friend size_t nrows<>( const self_type & ) noexcept;
-
-		friend size_t ncols<>( const self_type & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
-
 	public:
 		/** Exposes the element type and the structure. */
 		using value_type = T;
@@ -546,15 +547,6 @@ namespace grb {
 	private:
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
-		/*********************
-		    Storage info friends
-		******************** */
-
-		friend size_t nrows<>( const self_type & ) noexcept;
-
-		friend size_t ncols<>( const self_type & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
 
 	public:
 		/** Exposes the element type and the structure. */
@@ -586,16 +578,6 @@ namespace grb {
 		******************** */
 
 		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense >;
-
-		friend size_t nrows<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend size_t ncols<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Identity< void >, reference_dense > & ) noexcept;
-
-		friend const Matrix< T, reference_dense> & internal::getContainer<>( const self_type & A ) noexcept;
-
-		friend Matrix< T, reference_dense> & internal::getContainer<>( self_type & A ) noexcept;
 
 		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
 		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
@@ -629,15 +611,6 @@ namespace grb {
 	private:
 		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
-		/*********************
-		    Storage info friends
-		******************** */
-
-		friend size_t nrows<>( const self_type & ) noexcept;
-
-		friend size_t ncols<>( const self_type & ) noexcept;
-
-		friend std::pair< size_t, size_t > dims<>( const self_type & ) noexcept;
 
 	public:
 		/** Exposes the element type and the structure. */
