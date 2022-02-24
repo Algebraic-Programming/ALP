@@ -42,69 +42,6 @@
 
 namespace grb {
 
-	namespace internal {
-		/** Helper class to calculate number of elements for raw matrix storage,
-		 * depending on the storage scheme and the structure.
-		 * 
-		 * \internal Thoughts:
-		 * Currently, this class has to depend on structure (to allow for "optimal" element count).
-		 * E.g. Matrix< Dense:full, Structure::Triangular> can use less storage than
-		 * Matrix< Dense::full, Structure::General>.
-		 * If we add Storage::packed (which could store Triangular or Symetric matrices),
-		 * then it seems that Structure can be removed from template list of this class.
-		 * 
-		 * TODO: Expand the class to StructuredMatrix
-		*/
-		template< typename T, typename grb::storage::Dense, typename Structure = grb::structures::General >
-		class DataElementsCalculator {
-		public:
-			static size_t calculate( const Matrix< T, reference_dense > & A ) {
-				(void)A;
-				std::cout << "Cannot determine storage size due to unspecified storage scheme. \n";
-				assert( false );
-				return (size_t)-1;
-			}
-		};
-
-		template< typename T >
-		class DataElementsCalculator< T, grb::storage::Dense::full > {
-		public:
-			static size_t calculate( const Matrix< T, reference_dense > & A ) {
-				return nrows( A ) * ncols( A );
-			}
-		};
-
-		template< typename T >
-		class DataElementsCalculator< T, grb::storage::Dense::full, grb::structures::Triangular > {
-		public:
-			static size_t calculate( const Matrix< T, reference_dense > & A ) {
-				// structures::Triangular assumes that the matrix is structures::Square
-				std::size_t m = nrows( A );
-				return m * ( m + 1 ) / 2;
-			}
-		};
-
-		template< typename T >
-		class DataElementsCalculator< T, grb::storage::Dense::band > {
-		public:
-			static size_t calculate( const Matrix< T, reference_dense > & A ) {
-				size_t ku = 1; // nsuperdiagonals( A ); only exists in banded matrix
-				size_t kl = 1; // nsubdiagonals( A ); only exists in banded matrix
-				return ncols( A ) * ( ku + kl + 1 );
-			}
-		};
-
-		template< typename T >
-		class DataElementsCalculator< T, grb::storage::Dense::array1d > {
-		public:
-			static size_t calculate( const Matrix< T, reference_dense > & A ) {
-				size_t min_dimension = min( nrows( A ), ncols( A ) );
-				// Temporary: Assume main diagonal + one subdiagonal + one superdiagonal
-				return min_dimension + 2 * ( min_dimension - 1 );
-			}
-		};
-	} // namespace internal
-
 	template< typename T >
 	T * getRaw( Matrix< T, reference_dense > & ) noexcept;
 
