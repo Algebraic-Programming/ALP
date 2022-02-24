@@ -316,6 +316,51 @@ namespace grb {
 		return A._dims();
 	}
 
+	namespace internal {
+		/**
+		 * Base StructuredMatrix class containing attributes common to all StructuredMatrix specialization
+		 */
+		template< typename T >
+		class StructuredMatrixBase {
+
+		protected:
+			std::shared_ptr<imf::IMF> imf_l, imf_r;
+
+			/** Whether the container presently is initialized or not. */
+			bool initialized;
+
+			std::pair< size_t, size_t > _dims() const {
+				return std::make_pair( imf_l->n, imf_r->n );
+			}
+
+		public:
+			using value_type = T;
+		};
+
+		/**
+		 * Base class with container-related attributes, used in container-type StructuredMatrix specializations
+		 */
+		template< typename T >
+		class StructuredMatrixContainer {
+		protected:
+			Matrix< T, reference_dense > * _container;
+
+			/**
+			 * The container's storage scheme.
+			 */
+			storage::Dense storage_scheme;
+
+		};
+
+		/**
+		 * Base class with reference-related attributes, used in Views on container-type StructuredMatrix specializations
+		 * 
+		 */
+		class StructuredMatrixReference {
+
+		};
+	} // namespace internal
+
 	template< typename T, typename Structure >
 	class StructuredMatrix< T, Structure, storage::Dense, view::Identity< void >, reference_dense > {
 
