@@ -521,6 +521,15 @@ namespace grb {
 	private:
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense >;
 
+		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+
+		template< typename fwd_iterator >
+		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+			std::cout << "Building StructuredMatrix<>; calling buildMatrix( Matrix<> )\n";
+			return buildMatrix( *(this->_container), start, end );
+		}
+
 	public:
 		/** Exposes the element type and the structure. */
 		using value_type = T;
@@ -654,6 +663,42 @@ namespace grb {
 
 	}; //  StructuredMatrix UpperTriangular, reference
 
+	// StructuredMatrix Identity, container
+	template< typename T >
+	class StructuredMatrix< T, structures::Identity, storage::Dense, view::Identity< void >, reference_dense > :
+		public internal::StructuredMatrixContainer< T > {
+
+	private:
+		/*********************
+		    Storage info friends
+		******************** */
+
+		using self_type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Identity< void >, reference_dense >;
+
+		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+
+		template< typename fwd_iterator >
+		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+			std::cout << "Building StructuredMatrix<>; calling buildMatrix( Matrix<> )\n";
+			return buildMatrix( *(this->_container), start, end );
+		}
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+		using structure = structures::Identity;
+
+		// A general Structure knows how to define a reference to itself (which is an identity reference view)
+		// as well as other static views.
+		using identity_t = StructuredMatrix< T, structures::Identity, storage::Dense, view::Identity< self_type >, reference_dense >;
+		using transpose_t = StructuredMatrix< T, structures::Identity, storage::Dense, view::Transpose< self_type >, reference_dense >;
+
+		StructuredMatrix( const size_t rows ) :
+			internal::StructuredMatrixContainer< T >( rows, rows ) {}
+
+	}; // StructuredMatrix Identity, container
+
 	namespace structures {
 
 		// GraphBLAS type traits for structure
@@ -730,6 +775,39 @@ namespace grb {
 		target_strmat_t target( source, imf_r, imf_c );
 
 		return target;
+	}
+
+	/** Returns a constant reference to an Identity matrix of the provided size
+	 * */
+	template< typename T >
+	const StructuredMatrix< T, structures::Identity, storage::Dense, view::Identity< void >, reference_dense > &
+	I( const size_t n ) {
+		using return_type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Identity< void >, reference_dense >;
+		return_type * ret = new return_type( n );
+		return * ret;
+	}
+
+	/** Returns a constant reference to a Zero matrix of the provided size
+	 * */
+	template< typename T >
+	const StructuredMatrix< T, structures::Zero, storage::Dense, view::Identity< void >, reference_dense > &
+	Zero( const size_t rows, const size_t cols ) {
+		using return_type = StructuredMatrix< T, structures::Zero, storage::Dense, view::Identity< void >, reference_dense >;
+		return_type * ret = new return_type( rows, cols );
+		return * ret;
+	}
+
+	/** Returns a constant reference to a matrix representing Givens rotation
+	 * of the provided size n and parameters i, j, s and c, where
+	 * s = sin( theta ) and c = cos( theta )
+	 * */
+	template< typename T >
+	const StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense > &
+	Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
+		using return_type = const StructuredMatrix< T, structures::Square, storage::Dense, view::Identity< void >, reference_dense >;
+		return_type * ret = new return_type( n );
+		// TODO: initialize matrix values according to the provided parameters
+		return * ret;
 	}
 
 } // namespace grb
