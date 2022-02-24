@@ -151,6 +151,12 @@ namespace grb {
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
+			(void)C;
+			(void)A;
+			(void)B;
+			(void)oper;
+			(void)monoid;
+			(void)mulMonoid;
 			// TODO; Implement this as a backup version that works for any structure and storage.
 			// Even though the performance does not have to be optimal, we guarantee that any two matrices can be multiplied
 			// To provide better performing mxm, one should implement a function with specialized template elements
