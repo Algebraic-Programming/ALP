@@ -316,6 +316,20 @@ namespace grb {
 		size_t ncols( const StructuredMatrixBase & A ) noexcept;
 
 		std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept;
+
+		bool getInitialized( StructuredMatrixBase & ) noexcept;
+
+		void getInitialized( StructuredMatrixBase &, bool ) noexcept;
+
+		template< typename T, typename Structure, typename Storage, typename View >
+		bool getInitialized( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) noexcept {
+			return getInitialized( A );
+		}
+
+		template< typename T, typename Structure, typename Storage, typename View >
+		void setInitialized( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A, bool initialized ) noexcept {
+			setInitialized( A, initialized );
+		}
 	} // namespace internal
 
 	/**
@@ -356,6 +370,14 @@ namespace grb {
 
 			friend std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept {
 				return A._dims();
+			}
+
+			friend bool getInitialized( StructuredMatrixBase & A ) noexcept {
+				return A.initialized;
+			}
+
+			friend void setInitialized( StructuredMatrixBase & A, bool initialized ) noexcept {
+				A.initialized = initialized;
 			}
 
 			std::shared_ptr<imf::IMF> imf_l, imf_r;
