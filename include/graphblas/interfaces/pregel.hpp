@@ -25,6 +25,7 @@ namespace grb {
 			const size_t &outdegree;
 			const size_t &indegree;
 			const size_t &round;
+			const size_t &vertex_ID;
 		};
 
 		template<
@@ -51,6 +52,9 @@ namespace grb {
 
 				/** Pre-cominputed indegrees. */
 				grb::Vector< size_t > indegrees;
+
+				/** Global vertex IDs. */
+				grb::Vector< size_t > IDs;
 
 				/** 
 				 * Initialises the following fields:
@@ -83,6 +87,12 @@ namespace grb {
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute indegrees" );
 					}
+					if( grb::set< grb::descriptors::use_index >(
+							IDs, 0
+						) != SUCCESS
+					) {
+						throw std::runtime_error( "Could not compute vertex IDs" );
+					}
 				}
 
 
@@ -98,7 +108,8 @@ namespace grb {
 					activeVertices( _n ),
 					haltVotes( _n ),
 					outdegrees( _n ),
-					indegrees( _n )
+					indegrees( _n ),
+					IDs( _n )
 				{
 					if( grb::ncols( graph ) != grb::nrows( graph ) ) {
 						throw std::runtime_error( "Input graph is bipartite" );
@@ -234,7 +245,8 @@ namespace grb {
 									n,
 									outdegrees[ i ],
 									indegrees[ i ],
-									step
+									step,
+									IDs[ i ]
 								};
 								// only execute program on active vertices
 								if( activeVertices[ i ] ) {

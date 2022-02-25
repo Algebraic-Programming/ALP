@@ -314,10 +314,11 @@ int main( int argc, char ** argv ) {
 	std::cout << "Error code is " << out.error_code << ".\n";
 	std::cout << "Size of pr is " << n << ".\n";
 	if( out.error_code == 0 && n > 0 ) {
-		std::cout << "First 10 nonzeroes of pr are: ( ";
+		std::cout << "First 10 nonzeroes of pr are: (\n";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
+			const auto &index = out.pinnedVector.getNonzeroIndex( k );
 			const auto &value = out.pinnedVector.getNonzeroValue( k );
-			std::cout << value << " ";
+			std::cout << "\t " << index << ", " << value << "\n";
 		}
 		std::cout << ")" << std::endl;
 	}

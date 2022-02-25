@@ -32,12 +32,15 @@ namespace grb {
 					const Data &parameters,
 					grb::interfaces::PregelData &pregel
 				) {
+					// initialise
 					if( pregel.round == 0 ) {
 						current_score = 1 /
 							static_cast< double >(
 								pregel.num_vertices
 							);
 					}
+
+					// compute
 					if( pregel.round > 0 ) {
 						const double old_score = current_score;
 						current_score = (1-parameters.alpha) +
@@ -48,6 +51,8 @@ namespace grb {
 							pregel.active = false;
 						}
 					}
+
+					// broadcast
 					if( pregel.outdegree > 0 ) {
 						outgoing_message =
 							current_score /
