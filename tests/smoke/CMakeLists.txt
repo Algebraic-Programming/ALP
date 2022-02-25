@@ -113,6 +113,11 @@ add_grb_executables( simple_pagerank simple_pagerank.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( pregel_pagerank pregel_pagerank.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
 add_grb_executables( conjugate_gradient conjugate_gradient.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
