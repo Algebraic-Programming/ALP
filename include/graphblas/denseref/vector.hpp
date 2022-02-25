@@ -62,7 +62,7 @@ namespace grb {
 	/**
 	 * The reference implementation of the ALP/Dense vector.
 	 *
-	 * @tparam D The type of an element of this vector. \a D shall not be a
+	 * @tparam T The type of an element of this vector. \a T shall not be a
 	 *           GraphBLAS type.
 	 *
 	 * \warning Creating a grb::Vector of other GraphBLAS types is
@@ -209,24 +209,23 @@ namespace grb {
 	 * Here starts spec draft for vectorView
 	 */
 
-
-	/**
-	 * Identity View over a vector container.
-	 */
 	template< typename T, typename View, typename C >
 	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, C > &v ) noexcept {
 		return v._length();
 	}
 
+	/**
+	 * Identity View over a vector container.
+	 */
 	template< typename T, typename C >
 	class VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C > {
 
 	private:
+		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C >;
+
 		/*********************
 		    Storage info friends
 		******************** */
-
-		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C >;
 
 		friend size_t getLength<>( const self_type & ) noexcept;
 
@@ -235,14 +234,19 @@ namespace grb {
 
 		std::shared_ptr<imf::IMF> imf;
 
-		/** Whether the container presently is initialized or not. */
+		/** Whether the container presently is initialized or not. Currently,
+		 * container is created as uninitialized and set to initialized in a
+		 * buildMatrix call.
+		 */
 		bool initialized;
 
+		/** Returns the length of the vector */
 		size_t _length() const {
 			return imf->n;
 		}
 
 	public:
+		/** @see Vector::value_type. */
 		using value_type = T;
 
 		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, C > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
@@ -272,8 +276,10 @@ namespace grb {
 
 		friend size_t getLength<>( const self_type & ) noexcept;
 
+		/** Reference to a target vector to which this vector view points to */
 		std::shared_ptr< target_type > ref;
 
+		/** Index-mapping function. @see IMF */
 		std::shared_ptr<imf::IMF> imf;
 
 		size_t _length() const {
@@ -281,15 +287,18 @@ namespace grb {
 		}
 
 	public:
-		/** Exposes the element type and the structure. */
+		/** Exposes the element type. */
 		using value_type = T;
 
+		/** Constructor for creating a view over a given target vector */
 		VectorView( target_type & vec_view ) : ref( &vec_view ), imf( nullptr ) {
 			
 			imf = std::make_shared< imf::Id >( getLength( *ref ) );
 
 		}
 
+		/** Constructor for creating a view over a given target vector and
+		 * applying the given index mapping function */
 		VectorView( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( & vec_view ), imf( imf ) {
 			if( getLength( vec_view ) != imf->N ) {
 				throw std::length_error( "VectorView(vec_view, * imf): IMF range differs from target's vector length." );
@@ -306,6 +315,8 @@ namespace grb {
 	class VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C > {
 
 	private:
+		/** Exposes the own type and the type of the VectorView object over
+		 * which this view is created. */
 		using self_type = VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >;
 		using target_type = StructuredMatrixT;
 
@@ -315,8 +326,10 @@ namespace grb {
 
 		friend size_t getLength<>( const self_type & ) noexcept;
 
+		/** Pointer to a VectorView object upon which this view is created */
 		std::shared_ptr< target_type > ref;
 
+		/** @see IMF */
 		std::shared_ptr<imf::IMF> imf;
 
 		size_t _length() const {
@@ -324,7 +337,7 @@ namespace grb {
 		}
 
 	public:
-		/** Exposes the element type and the structure. */
+		/** Exposes the element type. */
 		using value_type = T;
 
 		VectorView( target_type & struct_mat ) : ref( &struct_mat ), imf( nullptr ) {
@@ -336,7 +349,17 @@ namespace grb {
 
 	}; // Diagonal Vector view
 
-	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates >
+	/** Creates a Diagonal Vector View over a given \a StructuredMatrix
+	 * 
+	 * @paramt StructuredMatrixT    Type of the StructuredMatrix over which the
+	 *                              view is created.
+	 * @paramt C                    @see Coordinates
+	 * @param[in] smat              StructuredMatrix object over which the view
+	 *                              is created.
+	 * 
+	 * @returns                     A VectorView object.
+	 * */
+	template< typename StructuredMatrixT, typename C >
 	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
 	diagonal( StructuredMatrixT &smat ) {
 
@@ -347,6 +370,10 @@ namespace grb {
 
 	/**
 	 * Generate an identity view of a VectorView.
+	 * 
+	 * @param[in] source The VectorView object over which the view is created.
+	 * 
+	 * @returns          A VectorView object.
 	 */
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
 	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
@@ -358,7 +385,13 @@ namespace grb {
 	}
 
 	/**
-	 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+	 * Implement a gather through a View over compatible Structure using
+	 * provided Index Mapping Functions.
+	 * 
+	 * @param[in] source The VectorView object over which the view is created.
+	 * @param[in] imf Index-mapping function applied to the created view.
+	 * 
+	 * @returns          A VectorView object.
 	 */
 
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
