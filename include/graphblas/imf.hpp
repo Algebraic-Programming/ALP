@@ -44,6 +44,10 @@
 #define _H_GRB_IMF
 
 #include <memory>
+#include <vector>
+#include <algorithm>
+#include <stdexcept>
+
 
 namespace grb {
 
@@ -102,6 +106,27 @@ namespace grb {
                     return IMF::isSame( other )
                         && b == dynamic_cast< const Strided & >( other ).b
                         && s == dynamic_cast< const Strided & >( other ).s;
+                }
+        };
+
+        class Select: public IMF {
+
+            public:
+                std::vector< size_t > select;
+
+                size_t map(size_t i) {
+                    return select.at( i );
+                }
+
+                Select(size_t N, std::vector< size_t > & select): IMF( select.size(), N ), select( select ) {
+                    if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
+                        throw std::runtime_error("IMF Select beyond range.");
+                    }
+                }
+
+                virtual bool isSame( const IMF & other ) const {
+                    return IMF::isSame( other )
+                        && select == dynamic_cast< const Select & >( other ).select;
                 }
         };
 

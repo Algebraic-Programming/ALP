@@ -25,6 +25,7 @@
 
 #include <stdexcept>
 #include <memory>
+#include <vector>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
@@ -690,29 +691,55 @@ namespace grb {
 		return smat_trans;
 	}
 
-	/**
-	 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
-	 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
-	 */
+	namespace internal {
+		/**
+		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
+		 */
 
-	template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
-	          std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
+		template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+		StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+				std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
+			
+			if( dynamic_cast< imf::Select >( imf_r ) == nullptr || dynamic_cast< imf::Select >( imf_c ) == nullptr ) {
+				throw std::runtime_error("Cannot gather with imf::Select yet.");
+			}
+			// No static check as the compatibility depends on IMF, which is a runtime level parameter
+			if( ! TargetStructure::isInstantiableFrom( source, * imf_r, * imf_c ) ) {
+				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			}
 
-		// No static check as the compatibility depends on IMF, which is a runtime level parameter
+			using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
+			using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
 
-		if( ! TargetStructure::isInstantiableFrom( source, * imf_r, * imf_c ) ) {
-			throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			target_strmat_t target( source, imf_r, imf_c );
+
+			return target;
+		}
+	} // namespace internal
+
+		template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+		StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+				const utils::range& rng_r, const utils::range& rng_c ) {
+			
+			auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
+			auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
+
+			return internal::get_view<TargetStructure, T, Structure, StorageSchemeType, View, backend>( source, imf_r, imf_c );
 		}
 
-		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
-		using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< source_strmat_t >, backend >;
+		template< typename TargetStructure, typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+		StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Identity< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
+		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+				const std::vector< size_t >& sel_r, const std::vector< size_t >& sel_c ) {
+			
+			auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
+			auto imf_c = std::make_shared< imf::Strided >( ncols(source), sel_c );
 
-		target_strmat_t target( source, imf_r, imf_c );
-
-		return target;
-	}
+			return internal::get_view<TargetStructure, T, Structure, StorageSchemeType, View, backend>( source, imf_r, imf_c );
+		}
 
 	/** Returns a constant reference to an Identity matrix of the provided size
 	 * */
