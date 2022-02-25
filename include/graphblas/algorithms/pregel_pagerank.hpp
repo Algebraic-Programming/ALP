@@ -22,7 +22,7 @@ namespace grb {
 
 				struct Data {
 					IOType alpha = 0.85;
-					IOType tolerance = 0.001;
+					IOType tolerance = 0.00001;
 				};
 
 				static void program(
@@ -59,6 +59,7 @@ namespace grb {
 				static grb::RC execute(
 					grb::interfaces::Pregel< PregelType > &pregel,
 					grb::Vector< IOType > &scores,
+					size_t &steps_taken,
 					const Data &parameters = Data(),
 					const size_t max_steps = 1000
 				) {
@@ -70,15 +71,17 @@ namespace grb {
 					grb::Vector< IOType > in( n );
 					grb::Vector< IOType > out( n );
 
-					return pregel.execute(
-						scores,
-						in, out,
-						program,
-						parameters,
-						grb::operators::add< double >(),
-						grb::identities::zero(),
-						max_steps
-					);
+					return pregel.template execute<
+							grb::operators::add< double >,
+							grb::identities::zero
+						> (
+							scores,
+							in, out,
+							program,
+							parameters,
+							steps_taken,
+							max_steps
+						);
 				}
 
 			};

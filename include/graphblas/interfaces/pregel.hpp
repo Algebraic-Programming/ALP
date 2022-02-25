@@ -58,12 +58,11 @@ namespace grb {
 				 */
 				void initialize() {
 					grb::Semiring<
-						size_t, size_t, size_t, size_t,
-						grb::operators::add,
-						grb::operators::right_assign,
+						grb::operators::add< size_t >,
+						grb::operators::right_assign_if< bool, size_t, size_t >,
 						grb::identities::zero,
-						grb::identities::zero
-					> patternRing;
+						grb::identities::logical_true
+					> ring;
 					grb::Vector< size_t > ones( n );
 					if( grb::set( ones, 1 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not set vector ones" );
@@ -71,16 +70,16 @@ namespace grb {
 					if( grb::set( outdegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise outdegrees" );
 					}
-					if( grb::mxv< grb::descriptors::in_place | grb::descriptors::transpose_matrix >(
-						outdegrees, graph, ones, patternRing
+					if( grb::mxv< grb::descriptors::transpose_matrix >(
+						outdegrees, graph, ones, ring
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute outdegrees" );
 					}
 					if( grb::set( indegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise indegrees" );
 					}
-					if( grb::mxv< grb::descriptors::in_place >(
-						indegrees, graph, ones, patternRing
+					if( grb::mxv(
+						indegrees, graph, ones, ring
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute indegrees" );
 					}
@@ -119,12 +118,12 @@ namespace grb {
 				 *                instead be reset to the given identity.
 				 */
 				template<
+					class AddOp,
+					template< typename > class AddId,
 					typename IOType,
 					typename IncomingMessageType,
 					typename OutgoingMessageType,
 					typename GlobalProgramData,
-					template< typename, typename, typename > class Combiner,
-					class CombinerIdentity,
 					class Program
 				>
 				grb::RC execute(
@@ -133,33 +132,22 @@ namespace grb {
 					grb::Vector< OutgoingMessageType > &out,
 					Program program,
 					const GlobalProgramData &data,
-					const Combiner<
-						IncomingMessageType,
-						OutgoingMessageType,
-						OutgoingMessageType
-					> &combiner = Combiner<
-						IncomingMessageType,
-						OutgoingMessageType,
-						OutgoingMessageType
-					>(),
-					const CombinerIdentity &identity = CombinerIdentity(),
+					size_t &steps,
 					const size_t max_steps = 1000
 				) {
-					static_assert( grb::is_operator< Combiner<
-							IncomingMessageType,
-							OutgoingMessageType,
-							OutgoingMessageType
-						> >::value,
-						"The combiner must be a GraphBLAS operator"
+					static_assert( grb::is_operator< AddOp >::value &&
+							grb::is_associative< AddOp >::value,
+						"The combiner must be an associate operator"
 					);
+					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+						"The combiner left-hand input domain should match the incoming message type." );
+					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+						"The combiner right-hand input domain should match the incoming message type." );
+					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+						"The combiner output domain should match the incoming message type." );
 
-					static_assert( grb::is_associative< Combiner<
-							IncomingMessageType,
-							OutgoingMessageType,
-							OutgoingMessageType
-						> >::value,
-						"The combiner must be associative."
-					);
+					// set default output
+					steps = 0;
 
 					// sanity checks
 					if( grb::size(x) != n ) {
@@ -173,24 +161,22 @@ namespace grb {
 					}
 
 					// define some monoids and semirings
-					grb::Monoid< bool, bool, bool,
-						grb::operators::logical_or,
+					grb::Monoid<
+						grb::operators::logical_or< bool >,
 						grb::identities::logical_false
 					> orMonoid;
 
-					grb::Monoid< bool, bool, bool,
-						grb::operators::logical_and,
+					grb::Monoid<
+						grb::operators::logical_and< bool >,
 						grb::identities::logical_true
 					> andMonoid;
 
 					grb::Semiring<
-						IncomingMessageType,
-						bool,
-						IncomingMessageType,
-						OutgoingMessageType,
-						Combiner,
-						grb::operators::left_assign_if,
-						CombinerIdentity,
+						AddOp,
+						grb::operators::left_assign_if<
+							IncomingMessageType, bool, IncomingMessageType
+						>,
+						AddId,
 						grb::identities::logical_true
 					> ring;
 
@@ -212,19 +198,21 @@ namespace grb {
 							std::cerr << "Warning: overwriting initial incoming messages because it was not a dense vector\n";
 						}
 #endif
-						ret = grb::set( in, ring.template getZero< IncomingMessageType >() );
+						ret = grb::set( in, AddId< IncomingMessageType >::value() );
 					}
 
 					// set default outgoing message
 					if( ret == SUCCESS ) {
-						ret = grb::set( out, ring.template getZero< OutgoingMessageType >() );
+						ret = grb::set( out, AddId< OutgoingMessageType >::value() );
 					}
 
 					// by construction, we start out with all vertices active
 					bool thereAreActiveVertices = true;
 
 					// return if initialisation failed
-					if( ret != SUCCESS ) { return ret; }
+					if( ret != SUCCESS ) {
+						return ret;
+					}
 
 					// while there are active vertices, execute
 					while( thereAreActiveVertices && ret == SUCCESS && step < max_steps ) {
@@ -289,7 +277,7 @@ namespace grb {
 						if( ret == SUCCESS ) {
 							ret = grb::set(
 								in,
-								ring.template getZero< IncomingMessageType >()
+								AddId< IncomingMessageType >::value()
 							);
 						}
 						// execute communication
@@ -298,7 +286,8 @@ namespace grb {
 						}
 						// reset outgoing buffer
 						if( ret == SUCCESS ) {
-							ret = grb::set( out, ring.template getZero< OutgoingMessageType >() );
+							ret = grb::set( out,
+								AddId< OutgoingMessageType >::value() );
 						}
 						// check if there is a next round
 						if( ret == SUCCESS ) {
@@ -311,11 +300,16 @@ namespace grb {
 						}
 					}
 
+#ifdef _DEBUG
 					if( grb::spmd<>::pid() == 0 ) {
-						std::cout << "Info: Pregel exits after " << step << " steps with error code " << ret << " ( " << grb::toString(ret) << " )\n";
+						std::cout << "Info: Pregel exits after " << step
+							<< " steps with error code " << ret
+							<< " ( " << grb::toString(ret) << " )\n";
 					}
+#endif
 
 					// done
+					steps = step;
 					return ret;
 				}
 
