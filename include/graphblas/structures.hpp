@@ -109,8 +109,7 @@ namespace grb {
 			template< typename T, typename Storage, typename View, enum Backend backend >
 			static bool isInstantiableFrom( const StructuredMatrix< T, UpperTriangular, Storage, View, backend > & M, grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
 				(void)M;
-				// return imf_l.map( 0 ) <= imf_r.map( imf_r.N );
-				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 ) + 1;
+				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
 			}
 
 			template< typename T, typename Storage, typename View, enum Backend backend >

@@ -702,7 +702,7 @@ namespace grb {
 		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
 				std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
 			
-			if( dynamic_cast< imf::Select >( imf_r ) == nullptr || dynamic_cast< imf::Select >( imf_c ) == nullptr ) {
+			if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
 				throw std::runtime_error("Cannot gather with imf::Select yet.");
 			}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
@@ -736,7 +736,7 @@ namespace grb {
 				const std::vector< size_t >& sel_r, const std::vector< size_t >& sel_c ) {
 			
 			auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
-			auto imf_c = std::make_shared< imf::Strided >( ncols(source), sel_c );
+			auto imf_c = std::make_shared< imf::Select >( ncols(source), sel_c );
 
 			return internal::get_view<TargetStructure, T, Structure, StorageSchemeType, View, backend>( source, imf_r, imf_c );
 		}
