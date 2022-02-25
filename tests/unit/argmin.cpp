@@ -56,7 +56,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	grb::operators::argmin< size_t, double > argminOp;
-	grb::Monoid< grb::operators::argmin< size_t, double >, grb::identities::infinity > argminMonoid;
+	grb::Monoid<
+		grb::operators::argmin< size_t, double >,
+		grb::identities::infinity
+	> argminMonoid;
 
 	// test 1
 	rc = grb::eWiseApply( out, left, right, argminOp );
@@ -65,19 +68,22 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( out ) != n ) {
-		std::cerr << "\t element-wise argmin results in " << grb::nnz( out ) << " nonzeroes, but expected " << n << "\n";
+		std::cerr << "\t element-wise argmin results in " << grb::nnz( out )
+			<< " nonzeroes, but expected " << n << "\n";
 		rc = FAILED;
 	}
 	for( const auto & pair : out ) {
 		if( pair.first == n / 2 ) {
 			if( pair.second.second != 0.5 ) {
-				std::cerr << "\t element-wise argmin results in unexpected "
-							 "entry ( "
-						  << pair.first << ", [ " << pair.second.first << ", " << pair.second.second << " ] ): expected value 0.5.\n";
+				std::cerr << "\t element-wise argmin results in unexpected entry ( "
+					<< pair.first << ", [ " << pair.second.first << ", "
+					<< pair.second.second << " ] ): expected value 0.5.\n";
 				rc = FAILED;
 			}
 		} else if( pair.second.second != 1.5 ) {
-			std::cerr << "\t element-wise argmin results in unexpected entry ( " << pair.first << ", [ " << pair.second.first << ", " << pair.second.second << " ] ): expected value 1.5.\n";
+			std::cerr << "\t element-wise argmin results in unexpected entry ( "
+				<< pair.first << ", [ " << pair.second.first << ", "
+				<< pair.second.second << " ] ): expected value 1.5.\n";
 			rc = FAILED;
 		}
 	}
@@ -95,9 +101,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.first != n / 2 || reduced.second != 0.5 ) {
-		std::cerr << "\t reduction via argmin (left-one) has unexpected result "
-					 "( "
-				  << reduced.first << ", " << reduced.second << " ): expected ( " << ( n / 2 ) << ", 0.5 ).\n";
+		std::cerr << "\t reduction via argmin (left-one) has unexpected result ( "
+			<< reduced.first << ", " << reduced.second << " ): expected ( "
+			<< ( n / 2 ) << ", 0.5 ).\n";
 		rc = FAILED;
 		return;
 	}
@@ -111,9 +117,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.second != 1.5 ) {
-		std::cerr << "\t reduction via argmin (right-any) has unexpected "
-					 "result ( "
-				  << reduced.first << ", " << reduced.second << " ): expected value 1.5.\n";
+		std::cerr << "\t reduction via argmin (right-any) has unexpected result ( "
+			<< reduced.first << ", " << reduced.second << " ): expected value 1.5.\n";
 		rc = FAILED;
 		return;
 	}
@@ -130,11 +135,114 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.second == n / 2 || reduced.second != 1.5 ) {
-		std::cerr << "\t reduction via argmin (right-any-except) has "
-					 "unexpected result ( "
-				  << reduced.first << ", " << reduced.second << " ): expected ( i, 1.5 ) with i not equal to " << ( n / 2 ) << "\n";
+		std::cerr << "\t reduction via argmin (right-any-except) "
+			<< "has unexpected result ( " << reduced.first << ", "
+			<< reduced.second << " ): expected ( i, 1.5 ) with i "
+			<< "not equal to " << ( n / 2 ) << "\n";
 		rc = FAILED;
 		return;
+	}
+
+	// test 5
+	std::pair< int, float > sevenPi = { 7, 3.1415926535 };
+	std::pair< int, float > minusOneTwo = { -1, 2 };
+	std::pair< int, float > test;
+	grb::operators::argmin< int, float > intFloatArgmin;
+	rc = apply( test, sevenPi, minusOneTwo, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t application of argmin to scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t argmin to scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 6
+	test = { 10, 10.0 };
+	rc = apply( test, minusOneTwo, sevenPi, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t application of argmin to scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t argmin to scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 7
+	test = sevenPi;
+	rc = foldl( test, minusOneTwo, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldl of scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t foldl of scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 8
+	test = sevenPi;
+	rc = foldr( minusOneTwo, test, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldr of scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t foldr of scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 9
+	test = minusOneTwo;
+	rc = foldl( test, sevenPi, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldl of scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t foldl of scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 10
+	test = minusOneTwo;
+	rc = foldr( sevenPi, test, intFloatArgmin );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldr of scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != -1 || test.second != 2 ) {
+			std::cerr << "\t foldr of scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of -1, 2\n";
+			rc = FAILED;
+		}
 	}
 
 	// done

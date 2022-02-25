@@ -94,10 +94,15 @@ namespace grb {
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( a->second < b->second ) {
-						c->first = a->first;
-						c->second = a->second;
+						*c = *a;
+					} else {
+						*c = *b;
 					}
 				}
 
@@ -183,10 +188,15 @@ namespace grb {
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( a->second > b->second ) {
-						c->first = a->first;
-						c->second = a->second;
+						*c = *a;
+					} else {
+						*c = *b;
 					}
 				}
 
