@@ -125,24 +125,24 @@ namespace grb {
 			 * @return \a false if the function can determined that the new view may alter underlying assumptions 
 			 * 			associated with the source structure \a SrcStructure; \a true otherwise. 
 			 */
-			template< typename SrcStructure >
-			static bool isInstantiableFrom( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
-
-				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
-
-				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
-			}
 
 			template< typename SrcStructure >
 			static bool isInstantiableFrom( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
-
-				static_assert( std::is_same< SrcStructure, General >::value );
-
-				(void)imf_l;
-				(void)imf_r;
-				return true;
+				return false;
 			}
 		};
+
+		template<>
+		bool General::isInstantiableFrom< UpperTriangular >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+			return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
+		}
+
+		template<>
+		bool General::isInstantiableFrom< General >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+			(void)imf_l;
+			(void)imf_r;
+			return true;
+		}
 
 		struct Square {
 			using inferred_structures = structures::tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
