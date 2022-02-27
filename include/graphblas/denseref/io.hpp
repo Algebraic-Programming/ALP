@@ -141,7 +141,11 @@ namespace grb {
 	 */
 	template< typename StructuredMatrixT, typename fwd_iterator >
 	RC buildMatrixUnique( StructuredMatrixT & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
-		return A.template buildMatrixUnique( start, end );
+		(void)A;
+		(void)start;
+		(void)end;
+		return PANIC;
+		// return A.template buildMatrixUnique( start, end );
 	}
 
 	/**
@@ -150,9 +154,13 @@ namespace grb {
 	 * 
 	 * @see grb::buildMatrix
 	 */
-	template< typename StructuredMatrixT, typename fwd_iterator >
-	RC buildMatrix( StructuredMatrixT & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
-		return A.template buildMatrixUnique( start, end );
+	template< typename InputType, typename Structure, typename Storage, typename View, bool tmp, typename fwd_iterator >
+	RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense, tmp > & A, const fwd_iterator & start, const fwd_iterator & end ) {
+		(void)A;
+		(void)start;
+		(void)end;
+		return PANIC;
+		// return A.template buildMatrixUnique( start, end );
 	}
 
 } // end namespace ``grb''

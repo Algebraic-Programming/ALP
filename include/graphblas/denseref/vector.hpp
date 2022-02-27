@@ -336,7 +336,7 @@ namespace grb {
 
 	}; // Diagonal Vector view
 
-	template< typename StructuredMatrixT, typename C >
+	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates >
 	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
 	diagonal( StructuredMatrixT &smat ) {
 
@@ -348,7 +348,7 @@ namespace grb {
 	/**
 	 * Generate an identity view of a VectorView.
 	 */
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
 	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
 	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source ) {
 

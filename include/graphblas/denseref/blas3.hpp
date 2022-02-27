@@ -106,9 +106,9 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			const auto A_raw = grb::getRaw( A );
-			const auto B_raw = grb::getRaw( B );
-			auto C_raw = grb::getRaw( C );
+			const auto A_raw = grb::internal::getRaw( A );
+			const auto B_raw = grb::internal::getRaw( B );
+			auto C_raw = grb::internal::getRaw( C );
 
 			std::cout << "Multiplying dense matrices.\n";
 
@@ -136,11 +136,12 @@ namespace grb {
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid,
 			typename OutputStructure, typename InputStructure1, typename InputStructure2,
-			typename OutputView, typename InputView1, typename InputView2
+			typename OutputView, typename InputView1, typename InputView2,
+			bool OutputTmp, bool InputTmp1, bool InputTmp2
 		>
-		RC mxm_generic( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > &C,
-			const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > &A,
-			const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > &B,
+		RC mxm_generic( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense, OutputTmp > &C,
+			const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense, InputTmp1 > &A,
+			const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense, InputTmp2 > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -172,11 +173,12 @@ namespace grb {
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid,
-			typename OutputView = view::Identity< void >, typename InputView1 = view::Identity< void >, typename InputView2 = view::Identity< void >
+			typename OutputView = view::Identity< void >, typename InputView1 = view::Identity< void >, typename InputView2 = view::Identity< void >,
+			bool OutputTmp, bool InputTmp1, bool InputTmp2
 		>
-		RC mxm_generic( StructuredMatrix< OutputType, structures::General, storage::Dense, OutputView, reference_dense > &C,
-			const StructuredMatrix< InputType1, structures::General, storage::Dense, InputView1, reference_dense > &A,
-			const StructuredMatrix< InputType2, structures::General, storage::Dense, InputView2, reference_dense > &B,
+		RC mxm_generic( StructuredMatrix< OutputType, structures::General, storage::Dense, OutputView, reference_dense, OutputTmp > &C,
+			const StructuredMatrix< InputType1, structures::General, storage::Dense, InputView1, reference_dense, InputTmp1 > &A,
+			const StructuredMatrix< InputType2, structures::General, storage::Dense, InputView2, reference_dense, InputTmp2 > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -261,10 +263,11 @@ namespace grb {
 	template< typename OutputType, typename InputType1, typename InputType2, class Semiring,
 		typename OutputStructure, typename OutputView = view::Identity< void >,
 		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void > >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > & B,
+		typename InputStructure2, typename InputView2 = view::Identity< void >,
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
+	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense, OutputTmp > & C,
+		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense, InputTmp1 > & A,
+		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense, InputTmp2 > & B,
 		const Semiring & ring = Semiring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
@@ -279,10 +282,11 @@ namespace grb {
 	template< typename OutputType, typename InputType1, typename InputType2, class Operator, class Monoid,
 		typename OutputStructure, typename OutputView = view::Identity< void >,
 		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void > >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > & B,
+		typename InputStructure2, typename InputView2 = view::Identity< void >,
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
+	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense, OutputTmp > & C,
+		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense, InputTmp1 > & A,
+		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense, InputTmp2 > & B,
 		const Operator & mulOp,
 		const Monoid & addM,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
@@ -307,12 +311,13 @@ namespace grb {
 			typename OutputStructure, typename InputStructure1, typename InputStructure2,
 			typename OutputStorage, typename InputStorage1, typename InputStorage2,
 			typename OutputView, typename InputView1, typename InputView2,
+			bool OutputTmp, bool InputTmp1, bool InputTmp2,
 			class Operator
 		>
-		RC eWiseApply_matrix_generic( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > *C,
-			const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > *A,
+		RC eWiseApply_matrix_generic( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > *C,
+			const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, InputTmp1 > *A,
 			const InputType1 *alpha,
-			const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > *B,
+			const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense, InputTmp2 > *B,
 			const InputType1 *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
@@ -395,11 +400,12 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		typename OutputStorage, typename InputStorage1, typename InputStorage2,
 		typename OutputView, typename InputView1, typename InputView2,
+		bool OutputTmp, bool InputTmp1, bool InputTmp2,
 		class MulMonoid
 	>
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
-		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
-		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > &C,
+		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, InputTmp1 > &A,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense, InputTmp2 > &B,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -450,11 +456,12 @@ namespace grb {
 		typename OutputStructure, typename InputStructure2,
 		typename OutputStorage, typename InputStorage2,
 		typename OutputView, typename InputView2,
+		bool OutputTmp, bool InputTmp2,
 		class MulMonoid
 	>
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > &C,
 		const InputType1 &alpha,
-		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense, InputTmp2 > &B,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -487,7 +494,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense, false> * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
 			&C,
 			no_matrix,
@@ -511,10 +518,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1,
 		typename OutputStorage, typename InputStorage1,
 		typename OutputView, typename InputView1,
+		bool OutputTmp, bool InputTmp1,
 		class MulMonoid
 	>
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
-		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
+	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > &C,
+		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, InputTmp1 > &A,
 		const InputType2 &beta,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
@@ -548,7 +556,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
 			&C,
 			&A,
@@ -571,8 +579,9 @@ namespace grb {
 		typename OutputStructure,
 		typename OutputStorage, typename InputStorage1, typename InputStorage2,
 		typename OutputView, typename InputView1, typename InputView2,
+		bool OutputTmp,
 		typename InputCoords1, typename InputCoords2, class Operator >
-	RC outer( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > & A,
+	RC outer( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > & A,
 		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1 > & u,
 		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2 > & v,
 		const Operator & mul = Operator(),
@@ -601,8 +610,8 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense > u_matrix( nrows, 1 );
-		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense > v_matrix( 1, ncols );
+		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > u_matrix( nrows, 1 );
+		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > v_matrix( 1, ncols );
 
 		// auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
 		// 	return std::make_pair( std::make_pair( ind, 0 ), val );
