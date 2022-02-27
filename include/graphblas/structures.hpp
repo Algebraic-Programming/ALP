@@ -17,9 +17,13 @@
 
 /**
  *
- * @file This file registers all matrix structures that are either
- *       implemented, under implementation, or were at any point in time
- *       conceived and noteworthy enough to be recorded for future consideration.
+ * @file 
+ * 
+ * This file registers all matrix structures that are either
+ * implemented, under implementation, or were at any point in time
+ * conceived and noteworthy enough to be recorded for future consideration.
+ * 
+ * A structure 
  */
 
 #ifndef _H_GRB_STRUCTURES
@@ -31,9 +35,6 @@
 #include "imf.hpp"
 
 namespace grb {
-
-	template< typename T, typename Structure, typename Storage, typename View, enum Backend backend >
-	class StructuredMatrix;
 
 	/**
 	 * Collects all ALP matrix structures.
@@ -68,53 +69,75 @@ namespace grb {
 		template< typename Structure, typename... Structures >
 		struct is_in< Structure, std::tuple< Structure, Structures... > > : std::true_type {};
 
-		enum SymmetryDirection {
 
-			unspecified,
-
-			north,
-
-			south,
-
-			east,
-
-			west,
-
-			/*
-			 * Could specify symmetry with upper access
+		namespace internal {
+			/**
+			 * @internal WIP interface. Symmetry may be extended so to describe the
+			 * direction of the symmetry.
 			 */
-			north_west,
+			enum SymmetryDirection {
 
-			/*
-			 * Could specify symmetry with lower access
-			 */
-			south_east,
+				unspecified,
 
-			/*
-			 * Could specify persymmetry with upper access
-			 */
-			north_east,
+				north,
 
-			/*
-			 * Could specify persymmetry with lower access
-			 */
-			south_west
-		};
+				south,
+
+				east,
+
+				west,
+
+				/*
+				* Could specify symmetry with upper access
+				*/
+				north_west,
+
+				/*
+				* Could specify symmetry with lower access
+				*/
+				south_east,
+
+				/*
+				* Could specify persymmetry with upper access
+				*/
+				north_east,
+
+				/*
+				* Could specify persymmetry with lower access
+				*/
+				south_west
+			};
+		} // namespace internal 
 
 		struct UpperTriangular;
 
 		struct General {
 			using inferred_structures = std::tuple< General >;
 
-			template< typename T, typename Storage, typename View, enum Backend backend >
-			static bool isInstantiableFrom( const StructuredMatrix< T, UpperTriangular, Storage, View, backend > & M, grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
-				(void)M;
+			/**
+			 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
+			 * 		  and index mapping functions (IMFs) \a imf_l and \a imf_r can be defined over \a SrcStructure.
+			 * 
+			 * @tparam SrcStructure The underlying structure of the target view.
+			 * @param imf_l 		The IMF applied to the rows of the source matrix.
+			 * @param imf_r 		The IMF applied to the columns of the source matrix.
+
+			 * @return \a false if the function can determined that the new view may alter underlying assumptions 
+			 * 			associated with the source structure \a SrcStructure; \a true otherwise. 
+			 */
+			template< typename SrcStructure >
+			static bool isInstantiableFrom( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+
+				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
+
 				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
 			}
 
-			template< typename T, typename Storage, typename View, enum Backend backend >
-			static bool isInstantiableFrom( const StructuredMatrix< T, General, Storage, View, backend > & M, grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
-				(void)M;
+			template< typename SrcStructure >
+			static bool isInstantiableFrom( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+
+				static_assert( std::is_same< SrcStructure, General >::value );
+
 				(void)imf_l;
 				(void)imf_r;
 				return true;
@@ -143,9 +166,11 @@ namespace grb {
 			// Maybe we can consider inheritance here to allow calling checks in base classes.
 			// For example, in all cases we should check if IMFs do not overflow the original container.
 			// (if it is actually necessary. Maybe we want to assume that the user knows what he is doing)
-			template< typename T, typename Storage, typename View, enum Backend backend >
-			static bool isInstantiableFrom( const StructuredMatrix< T, UpperTriangular, Storage, View, backend > & M, const grb::imf::IMF & imf_l, const grb::imf::IMF & imf_r ) {
-				(void)M;
+			template< typename SrcStructure >
+			static bool isInstantiableFrom( const grb::imf::IMF & imf_l, const grb::imf::IMF & imf_r ) {
+
+				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
+
 				return imf_l.isSame(imf_r);
 			}
 		};

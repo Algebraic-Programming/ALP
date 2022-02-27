@@ -437,69 +437,7 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 	return UNSUPPORTED;
 }
 
-/**
- * \brief An ALP structured matrix.
- *
- * This is an opaque data type for structured matrices. 
- * This container allows to maintain the interface of grb::Matrix and grb::Vector 
- * unaltered enabling back-compatibility while building on them to create
- * semantically reacher algebraic objects.
- * A structured matrix is generalized over five parameters further described 
- * below: its data type, 
- * its structure, whether it is stored using a dense or sparse storage scheme, 
- * a static view and the backend for which it is implemented.
- * At a high level of abstraction a structured matrix exposes a mathematical 
- * \em logical layout which allows to express implementation-oblivious concepts 
- * (e.g., the transpose of a symmetric matrix).
- * At the lowest level, the logical layout maps to its physical counterpart via 
- * a particular choice of a storage scheme within those exposed by the chosen 
- * backend. grb::Matrix and grb::Vector are used as interfaces to the physical
- * layout.
- * To visualize this, you could think of a band matrix. Using either the 
- * \a storage::Dense:full or \a storage::Dense:band storage schemes would require
- * the use of a \a grb::Matrix container (see include/graphblas/storage.hpp for
- * more details about the two storage schemes). However, the interpration of its 
- * content would differ in the two cases being a function of both the Structure 
- * information and the storage scheme combined.
- * 
- * Views can be used to create logical \em perspectives on top of a container. 
- * For example, I could decide to refer to the transpose of a matrix or to see 
- * a for limited part of my program a square matrix as symmetric. 
- * If a view can be expressed as concept invariant of specific runtime features,
- * such views can be defined statically (for example I can always refer to the 
- * transpose or the diagonal of a matrix irrespective of features such as its 
- * size). Other may depend on features such as the size of a matrix
- * and can be expressed as linear transformations via operations such as \a mxm 
- * (e.g., gathering/scattering the rows/columns of a matrix or permuting them).
- * Structured matrices defined as views on other matrices do not instantiate a
- * new container but refer to the one used by their targets. (See the 
- * documentation of StructuredMatrix for both scenarios within the \em denseref 
- * backend folder).
- *
- * @tparam T The type of the matrix elements. \a T shall not be a GraphBLAS
- *            type.
- * @tparam Structure  One of the matrix structures in \a grb::structures.
- * @tparam StorageSchemeType Either \em enum \a storage::Dense or \em enum 
- * 	       \a storage::Sparse.
- * 		   A StructuredMatrix will be allowed to pick among the storage schemes 
- *         within their specified \a StorageSchemeType.
- * @tparam View  One of the matrix views in \a grb::view.
- * 		   All static views except for \a view::Identity (via 
- *         \a view::identity<void> cannot instantiate a new container and only 
- *         allow to refer to an existing \a StructuredMatrix.  
- *         The \a View parameter should not be used directly by the user but 
- *         can be set using specific member types appropriately 
- *         defined by each StructuredMatrix. (See examples of StructuredMatrix 
- *         definitions within \a include/graphblas/denseref/matrix.hpp and the
- *         \a dense_structured_matrix.cpp unit test).
- * @tparam backend Allows multiple backends to implement different versions 
- *         of this data type.
- *
- * \note The presence of different combination of structures and views could 
- *       produce many specialization with lots of logic replication. We might
- *       could use some degree of inheritence to limit this.
- */
-template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend, bool tmp >
 class StructuredMatrix {
 
 

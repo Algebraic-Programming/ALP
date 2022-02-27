@@ -29,14 +29,16 @@
  * according to \f$f\f$ by multiplying \f$A\f$ by \f$G_f\f$ from the left:
  * \f[\tilde{A} = G_f\cdot A,\quad \tilde{A}\in R^{n\times N}\f]
  *      
- * \note In this draft we use integer maps. A symbolic version of them could be 
+ * \note The idea of parametrized matrices to express matrix accesses at 
+ *       a higher level of mathematical abstractions is inspired by the 
+ *       SPIRAL literature (Franchetti et al. SPIRAL: Extreme Performance Portability. 
+ *       http://spiral.net/doc/papers/08510983_Spiral_IEEE_Final.pdf). 
+ *       Similar affine formulations are also used in the polyhedral 
+ *       compilation literature to express concepts such as access
+ *       relations.
+ *       In this draft we use integer maps. A symbolic version of them could be 
  *       defined using external libraries such as the Integer Set Library (isl 
  *       \link https://libisl.sourceforge.io/).
- *       The idea of parametrized matrices to express matrix accesses at 
- *       a higher level of mathematical abstractions is inspired by the 
- *       SPIRAL literature (cite?). Similar although more general concepts 
- *       also exist in the polyhedral compilation literature (e.g., access
- *       relations, cite).
  *       
  */
 
