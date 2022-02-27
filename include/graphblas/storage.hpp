@@ -35,9 +35,17 @@ namespace grb {
 	namespace storage {
 
 		/**
-		 * Collection of possible storage scheme options for dense matrices (for now including classic BLAS/LAPACK storage schemes).
-		 * \note Assumption is row-major but a complete specification might depend by a similar row/column-major option perhaps included
-		 * at the level of grb::Matrix.
+		 * WIP.
+		 * Collection of possible storage scheme options for dense matrices.
+		 *
+		 * \note Although the list for now includes classic BLAS/LAPACK storage schemes we may decide to extend or replace 
+		 * 		 this list with different schemes. A user should not make any assumptions on which specific scheme is 
+		 * 		 selected internally by a backend to to store a given structure.
+		 * 
+		 * \note This labelled formulation will be replaced by a more flexible description of the underlying mappings 
+		 * 		 associated to each scheme in the spirit of the index mapping functions formualation.
+		 * 
+		 * @see \a imf.hpp
 		 */
 		enum Dense {
 
