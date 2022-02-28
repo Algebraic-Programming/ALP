@@ -28,7 +28,7 @@
 #include <graphblas/rc.hpp>
 #include <graphblas/storage.hpp>
 
-
+#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -45,6 +45,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+#endif
 
 namespace grb {
 
@@ -3624,7 +3625,11 @@ namespace grb {
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "grb::dot",
 			"called with an output vector value type that does not match the third "
 			"domain of the given additive operator" );
-
+		(void)z;
+		(void)x;
+		(void)y;
+		(void)addMonoid;
+		(void)anyOp;
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
