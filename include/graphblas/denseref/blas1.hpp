@@ -153,6 +153,8 @@ namespace grb {
 	 * be changed. A call to this function shall always succeed.
 	 *
 	 * @tparam DataType The type of elements contained in the vector \a x.
+	 * @tparam View     The view type applied to the vector \a x.
+	 * @tparam Tmp      Whether the vector \a x is a temporary.
 	 *
 	 * @param[in] x The VectorView of which to retrieve the size.
 	 *
@@ -178,6 +180,8 @@ namespace grb {
 	 * A call to this function always succeeds.
 	 *
 	 * @tparam DataType The type of elements contained in this VectorView.
+	 * @tparam View     The view type applied to the vector \a x.
+	 * @tparam Tmp      Whether the vector \a x is a temporary.
 	 *
 	 * @param[in] x The VectorView of which to retrieve the number of nonzeroes.
 	 *
@@ -229,6 +233,8 @@ namespace grb {
 	 *
 	 * @tparam descr    The descriptor used for this operation.
 	 * @tparam DataType The type of each element in the given VectorView.
+	 * @tparam View     The view type applied to the vector \a x.
+	 * @tparam Tmp      Whether the vector \a x is a temporary.
 	 * @tparam T        The type of the given value.
 	 *
 	 * \parblock
@@ -301,6 +307,8 @@ namespace grb {
 	 *
 	 * @tparam descr    The descriptor used for this operation.
 	 * @tparam DataType The type of each element in the given vector.
+	 * @tparam View     The view type applied to the given vector.
+	 * @tparam Tmp      Whether the vector is a temporary.
 	 * @tparam T        The type of the given value.
 	 *
 	 * \parblock
@@ -382,6 +390,8 @@ namespace grb {
 	 * @tparam descr    The descriptor to be used during evaluation of this
 	 *                  function.
 	 * @tparam DataType The type of the elements of \a x.
+	 * @tparam View     The view type applied to the vector \a x.
+	 * @tparam Tmp      Whether the vector \a x is a temporary.
 	 * @tparam T        The type of the value to be set.
 	 *
 	 * @param[in,out] x The vector to be modified.
@@ -609,6 +619,10 @@ namespace grb {
 	 *                   The operator must be associative.
 	 * @tparam InputType The type of the elements of \a x.
 	 * @tparam IOType    The type of the value \a y.
+	 * @tparam InputView The view type applied to the vector \a x.
+	 * @tparam IOView    The view type applied to the vector \a y.
+	 * @tparam InputTmp  Whether the vector \a x is a temporary.
+	 * @tparam IOTmp     Whether the vector \a y is a temporary.
 	 *
 	 * @param[in]     x    The input VectorView \a x that will not be modified.
 	 *                     This input VectorView must be dense.
@@ -1078,6 +1092,8 @@ namespace grb {
 	 * @tparam OP        The type of the operator to be applied.
 	 * @tparam IOType    The type of the value \a beta.
 	 * @tparam InputType The type of the elements of \a x.
+	 * @tparam IOView    The view type applied to the vector \a x.
+	 * @tparam IOTmp     Whether the vector \a x is a temporary.
 	 *
 	 * @param[in,out] x    On function entry: the initial values to be applied as
 	 *                     the left-hand side input to \a op. The input vector must
@@ -1620,6 +1636,12 @@ namespace grb {
 	 * @tparam InputType1 The value type of the left-hand vector.
 	 * @tparam InputType2 The value type of the right-hand scalar.
 	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam InputView1 The view type applied to the left-hand vector.
+	 * @tparam InputView2 The view type applied to the right-hand vector.
+	 * @tparam OutputView1 The view type applied to the output vector.
+	 * @tparam InputTmp1  Whether the left-hand vector is a temporary.
+	 * @tparam InputTmp2  Whether the right-hand vector is a temporary.
+	 * @tparam OutputTmp1 Whether the output vector is a temporary.
 	 *
 	 * @param[in]   x   The left-hand input vector.
 	 * @param[in]  beta The right-hand input scalar.
@@ -2126,6 +2148,12 @@ namespace grb {
 	 *                    of the \a ring.
 	 * @tparam OutputType The the result type of the additive operator of the
 	 *                    \a ring.
+	 * @tparam InputView1 The view type applied to the left-hand vector.
+	 * @tparam InputView2 The view type applied to the right-hand vector.
+	 * @tparam OutputView1 The view type applied to the output vector.
+	 * @tparam InputTmp1  Whether the left-hand vector is a temporary.
+	 * @tparam InputTmp2  Whether the right-hand vector is a temporary.
+	 * @tparam OutputTmp1 Whether the output vector is a temporary.
 	 *
 	 * @param[out]  z  The output vector of type \a OutputType. This may be a
 	 *                 sparse vector.
@@ -2747,6 +2775,14 @@ namespace grb {
 	 * @tparam OutputType The right-hand side input type to the additive operator
 	 *                    of the \a ring \em and the result type of the same
 	 *                    operator.
+	 * @tparam InputView1 The view type applied to the left-hand vector.
+	 * @tparam InputView2 The view type applied to the right-hand vector.
+	 * @tparam InputView3 The view applied to the vector \a _y
+	 * @tparam OutputView1 The view type applied to the output vector.
+	 * @tparam InputTmp1  Whether the left-hand vector is a temporary.
+	 * @tparam InputTmp2  Whether the right-hand vector is a temporary.
+	 * @tparam InputView3 Whether the vector \a _y is a temporary.
+	 * @tparam OutputTmp1 Whether the output vector is a temporary.
 	 *
 	 * @param[out] _z  The pre-allocated output vector.
 	 * @param[in]  _a  The elements for left-hand side multiplication.
@@ -2850,6 +2886,12 @@ namespace grb {
 	 *                    operator of the \a ring.
 	 * @tparam OutputType The the result type of the multiplicative operator of
 	 *                    the \a ring.
+	 * @tparam InputView1 The view type applied to the left-hand vector.
+	 * @tparam InputView2 The view type applied to the right-hand vector.
+	 * @tparam OutputView1 The view type applied to the output vector.
+	 * @tparam InputTmp1  Whether the left-hand vector is a temporary.
+	 * @tparam InputTmp2  Whether the right-hand vector is a temporary.
+	 * @tparam OutputTmp1 Whether the output vector is a temporary.
 	 *
 	 * @param[out]  z  The output vector of type \a OutputType.
 	 * @param[in]   x  The left-hand input vector of type \a InputType1.
@@ -3456,6 +3498,10 @@ namespace grb {
 	 * @tparam OutputType The output type.
 	 * @tparam InputType1 The input element type of the left-hand input vector.
 	 * @tparam InputType2 The input element type of the right-hand input vector.
+	 * @tparam InputView1 The view type applied to the left-hand input vector.
+	 * @tparam InputView2 The view type applied to the right-hand input vector.
+	 * @tparam InputTmp1  Whether the left-hand input vector is a temporary.
+	 * @tparam InputTmp2  Whether the right-hand input vector is a temporary.
 	 *
 	 * @param[in,out]  z    The output element \f$ z + \alpha \f$.
 	 * @param[in]      x    The left-hand input vector.
@@ -3525,7 +3571,7 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AddMonoid, class AnyOp,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputView, typename InputView1, typename InputView2,
+		typename InputView1, typename InputView2,
 		typename Coords,
 		bool InputTmp1, bool InputTmp2
 	>
