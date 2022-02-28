@@ -140,7 +140,7 @@ namespace grb {
 	 *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords, typename Tmp >
+	template< typename DataType, typename View, typename Coords, bool Tmp >
 	RC clear( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp> & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
@@ -167,7 +167,7 @@ namespace grb {
 	 *  -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords, typename Tmp >
+	template< typename DataType, typename View, typename Coords, bool Tmp >
 	size_t size( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
 		return getLength( x );
 	}
@@ -192,14 +192,14 @@ namespace grb {
 	 *   -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords, typename Tmp >
+	template< typename DataType, typename View, typename Coords, bool Tmp >
 	size_t nnz( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation." );
 		return 0;
 	}
 
 	/** \todo add documentation. In particular, think about the meaning with \a P > 1. */
-	template< typename InputType, typename View, typename length_type, typename Coords, typename Tmp >
+	template< typename InputType, typename View, typename length_type, typename Coords, bool Tmp >
 	RC resize( VectorView< InputType, View, storage::Dense, reference_dense, Coords, Tmp > & x, const length_type new_nz ) {
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
@@ -264,7 +264,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename View, typename T,
-		typename Coords, typename Tmp
+		typename Coords, bool Tmp
 	>
 	RC set( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x, const T val,
 		const typename std::enable_if<
@@ -410,7 +410,7 @@ namespace grb {
 	 *   -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename View, typename T, typename Coords, typename Tmp >
+	template< Descriptor descr = descriptors::no_operation, typename DataType, typename View, typename T, typename Coords, bool Tmp >
 	RC setElement( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x,
 		const T val,
 		const size_t i,
