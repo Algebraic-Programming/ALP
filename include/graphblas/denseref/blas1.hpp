@@ -128,17 +128,17 @@ namespace grb {
 	 *
 	 * \note This function cannot fail.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      This function
-	 *        -# contains \f$ \mathcal{O}(n) \f$ work,
-	 *        -# will not allocate new dynamic memory,
-	 *        -# will take at most \f$ \Theta(1) \f$ memory beyond the memory
-	 *           already used by the application before the call to this
-	 *           function.
-	 *        -# will move at most \f$ \mathit{sizeof}(\mathit{bool}) +
-	 *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      This function
+	//  *        -# contains \f$ \mathcal{O}(n) \f$ work,
+	//  *        -# will not allocate new dynamic memory,
+	//  *        -# will take at most \f$ \Theta(1) \f$ memory beyond the memory
+	//  *           already used by the application before the call to this
+	//  *           function.
+	//  *        -# will move at most \f$ \mathit{sizeof}(\mathit{bool}) +
+	//  *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
+	//  * \endparblock
 	 */
 	template< typename DataType, typename View, typename Coords, bool Tmp >
 	RC clear( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp> & x ) noexcept {
@@ -160,14 +160,14 @@ namespace grb {
 	 *
 	 * @return The size of the VectorView \a x.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *  -# consists of \f$ \Theta(1) \f$ work;
-	 *  -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *  -# does not allocate any dynamic memory;
-	 *  -# shall not make any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *  -# consists of \f$ \Theta(1) \f$ work;
+	//  *  -# moves \f$ \Theta(1) \f$ bytes of memory;
+	//  *  -# does not allocate any dynamic memory;
+	//  *  -# shall not make any system calls.
+	//  * \endparblock
 	 */
 	template< typename DataType, typename View, typename Coords, bool Tmp >
 	size_t size( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
@@ -187,14 +187,14 @@ namespace grb {
 	 *
 	 * @return The number of nonzeroes in \a x.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(1) \f$ work;
-	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta(1) \f$ work;
+	//  *   -# moves \f$ \Theta(1) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * \endparblock
 	 */
 	template< typename DataType, typename View, typename Coords, bool Tmp >
 	size_t nnz( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
@@ -252,14 +252,14 @@ namespace grb {
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(n) \f$ work;
-	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta(n) \f$ work;
+	//  *   -# moves \f$ \Theta(n) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * \endparblock
 	 *
 	 * @see grb::foldl.
 	 * @see grb::foldr.
@@ -328,16 +328,16 @@ namespace grb {
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
-	 *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
-	 * above shall be interpreted as \f$ size( m ) \f$ instead.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
+	//  *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
+	//  * above shall be interpreted as \f$ size( m ) \f$ instead.
+	//  * \endparblock
 	 *
 	 * @see grb::foldl.
 	 * @see grb::foldr.
@@ -411,14 +411,14 @@ namespace grb {
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(1) \f$ work;
-	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta(1) \f$ work;
+	//  *   -# moves \f$ \Theta(1) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename View, typename T, typename Coords, bool Tmp >
 	RC setElement( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x,
@@ -473,14 +473,14 @@ namespace grb {
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(n) \f$ work;
-	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta(n) \f$ work;
+	//  *   -# moves \f$ \Theta(n) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * \endparblock
 	 *
 	 * @see grb::foldl.
 	 * @see grb::foldr.
@@ -556,16 +556,16 @@ namespace grb {
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
-	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
-	 * above shall be considered equal to \f$ nnz( y ) \f$.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  * A call to this function
+	//  *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
+	//  *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
+	//  *   -# does not allocate nor free any dynamic memory;
+	//  *   -# shall not make any system calls.
+	//  * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
+	//  * above shall be considered equal to \f$ nnz( y ) \f$.
+	//  * \endparblock
 	 *
 	 * @see grb::foldl.
 	 * @see grb::foldr.
@@ -662,24 +662,24 @@ namespace grb {
 	 *   -# associative.
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \cdot\mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will rely on in-place
-	 *         operators.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \cdot\mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will rely on in-place
+	//  *         operators.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -742,23 +742,23 @@ namespace grb {
 	 *   -# (no requirements).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -851,27 +851,27 @@ namespace grb {
 	 *   -# (no requirements).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \cdot (
-	 *                       \mathit{sizeof}(InputType) + 2\mathit{sizeof}(IOType)
-	 *                     ) + \mathcal{O}(1)
-	 *         \f$
-	 *         bytes of data movement. A good implementation will rely on in-place
-	 *         operators whenever allowed.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \cdot (
+	//  *                       \mathit{sizeof}(InputType) + 2\mathit{sizeof}(IOType)
+	//  *                     ) + \mathcal{O}(1)
+	//  *         \f$
+	//  *         bytes of data movement. A good implementation will rely on in-place
+	//  *         operators whenever allowed.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -984,27 +984,27 @@ namespace grb {
 	 *   -# (no requirements).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \cdot (
-	 *                       \mathit{sizeof}(InputType) + 2\mathit{sizeof}(IOType)
-	 *                     ) + \mathcal{O}(1)
-	 *         \f$
-	 *         bytes of data movement. A good implementation will rely on in-place
-	 *         operators whenever allowed.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \cdot (
+	//  *                       \mathit{sizeof}(InputType) + 2\mathit{sizeof}(IOType)
+	//  *                     ) + \mathcal{O}(1)
+	//  *         \f$
+	//  *         bytes of data movement. A good implementation will rely on in-place
+	//  *         operators whenever allowed.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -1129,23 +1129,23 @@ namespace grb {
 	 *   -# (no requirement).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -1251,23 +1251,23 @@ namespace grb {
 	 *   -# (no requirement).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -1369,28 +1369,28 @@ namespace grb {
 	 *   -# (no requirements).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \cdot (
-	 *                \mathit{sizeof}(\mathit{IOType}) +
-	 *                \mathit{sizeof}(\mathit{InputType})
-	 *             ) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will apply in-place
-	 *         vectorised instructions whenever the input domains, the output
-	 *         domain, and the operator used allow for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \cdot (
+	//  *                \mathit{sizeof}(\mathit{IOType}) +
+	//  *                \mathit{sizeof}(\mathit{InputType})
+	//  *             ) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will apply in-place
+	//  *         vectorised instructions whenever the input domains, the output
+	//  *         domain, and the operator used allow for this.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -1465,28 +1465,28 @@ namespace grb {
 	 *   -# (no requirements).
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \cdot (
-	 *                \mathit{sizeof}(\mathit{IOType}) +
-	 *                \mathit{sizeof}(\mathit{InputType})
-	 *             ) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will apply in-place
-	 *         vectorised instructions whenever the input domains, the output
-	 *         domain, and the operator used allow for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \cdot (
+	//  *                \mathit{sizeof}(\mathit{IOType}) +
+	//  *                \mathit{sizeof}(\mathit{InputType})
+	//  *             ) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will apply in-place
+	//  *         vectorised instructions whenever the input domains, the output
+	//  *         domain, and the operator used allow for this.
+	//  * \endparblock
 	 *
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
@@ -1654,27 +1654,27 @@ namespace grb {
 	 *                       this call was never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vectors \a x and \a z. The constant factor depends
-	 *         on the cost of evaluating the operator. A good implementation uses
-	 *         vectorised instructions whenever the input domains, the output
-	 *         domain, and the operator used allow for this.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n(
-	 *               \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D3})
-	 *             ) +
-	 *         \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will stream \a y
-	 *         into \a z to apply the multiplication operator in-place, whenever
-	 *         the input domains, the output domain, and the operator allow for
-	 *         this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vectors \a x and \a z. The constant factor depends
+	//  *         on the cost of evaluating the operator. A good implementation uses
+	//  *         vectorised instructions whenever the input domains, the output
+	//  *         domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n(
+	//  *               \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D3})
+	//  *             ) +
+	//  *         \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a y
+	//  *         into \a z to apply the multiplication operator in-place, whenever
+	//  *         the input domains, the output domain, and the operator allow for
+	//  *         this.
+	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP,
 		typename OutputType, typename InputType1, typename InputType2,
@@ -1958,27 +1958,27 @@ namespace grb {
 	 *                       this call was never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vectors \a y and \a z. The constant factor depends
-	 *         on the cost of evaluating the operator. A good implementation uses
-	 *         vectorised instructions whenever the input domains, the output
-	 *         domain, and the operator used allow for this.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n(
-	 *               \mathit{sizeof}(\mathit{D2}) + \mathit{sizeof}(\mathit{D3})
-	 *             ) +
-	 *         \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will stream \a y
-	 *         into \a z to apply the multiplication operator in-place, whenever
-	 *         the input domains, the output domain, and the operator allow for
-	 *         this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vectors \a y and \a z. The constant factor depends
+	//  *         on the cost of evaluating the operator. A good implementation uses
+	//  *         vectorised instructions whenever the input domains, the output
+	//  *         domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n(
+	//  *               \mathit{sizeof}(\mathit{D2}) + \mathit{sizeof}(\mathit{D3})
+	//  *             ) +
+	//  *         \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a y
+	//  *         into \a z to apply the multiplication operator in-place, whenever
+	//  *         the input domains, the output domain, and the operator allow for
+	//  *         this.
+	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP,
 		typename OutputType, typename InputType1, typename InputType2,
@@ -2067,29 +2067,29 @@ namespace grb {
 	 *                       be as though this call was never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vectors \a x, \a y, and \a z. The constant factor
-	 *         depends on the cost of evaluating the operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n(
-	 *               \mathit{sizeof}(\mathit{OutputType}) +
-	 *               \mathit{sizeof}(\mathit{InputType1}) +
-	 *               \mathit{sizeof}(\mathit{InputType2})
-	 *             ) +
-	 *         \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will stream \a x or
-	 *         \a y into \a z to apply the multiplication operator in-place,
-	 *         whenever the input domains, the output domain, and the operator
-	 *         used allow for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vectors \a x, \a y, and \a z. The constant factor
+	//  *         depends on the cost of evaluating the operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n(
+	//  *               \mathit{sizeof}(\mathit{OutputType}) +
+	//  *               \mathit{sizeof}(\mathit{InputType1}) +
+	//  *               \mathit{sizeof}(\mathit{InputType2})
+	//  *             ) +
+	//  *         \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a x or
+	//  *         \a y into \a z to apply the multiplication operator in-place,
+	//  *         whenever the input domains, the output domain, and the operator
+	//  *         used allow for this.
+	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP,
 		typename OutputType, typename InputType1, typename InputType2,
@@ -2183,32 +2183,32 @@ namespace grb {
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
-	 *         size of the vectors \a x, \a y, and \a z. The constant factor
-	 *         depends on the cost of evaluating the addition operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the the additive operator used
-	 *         allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *         No system calls will be made.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n( \mathit{sizeof}(
-	 *             \mathit{InputType1} +
-	 *             \mathit{InputType2} +
-	 *             \mathit{OutputType}
-	 *           ) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will stream \a x or
-	 *         \a y into \a z to apply the additive operator in-place, whenever
-	 *         the input domains, the output domain, and the operator used allow
-	 *         for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
+	//  *         size of the vectors \a x, \a y, and \a z. The constant factor
+	//  *         depends on the cost of evaluating the addition operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the the additive operator used
+	//  *         allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *         No system calls will be made.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n( \mathit{sizeof}(
+	//  *             \mathit{InputType1} +
+	//  *             \mathit{InputType2} +
+	//  *             \mathit{OutputType}
+	//  *           ) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a x or
+	//  *         \a y into \a z to apply the additive operator in-place, whenever
+	//  *         the input domains, the output domain, and the operator used allow
+	//  *         for this.
+	//  * \endparblock
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
@@ -2816,29 +2816,29 @@ namespace grb {
 	 * not true, the code shall not compile.
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
-	 *         size of the vectors \a _a, \a _x, \a _y, and \a _z. The constant
-	 *         factor depends on the cost of evaluating the addition and
-	 *         multiplication operators. A good implementation uses vectorised
-	 *         instructions whenever the input domains, the output domain, and
-	 *         the operators used allow for this.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         already used by the application when this function is called.
-	 *
-	 *      -# This call incurs at most \f$ n( \mathit{sizeof}(
-	 *           \mathit{InputType1} + \mathit{bool}
-	 *           \mathit{InputType2} + \mathit{bool}
-	 *           \mathit{InputType3} + \mathit{bool}
-	 *           \mathit{OutputType} + \mathit{bool}
-	 *         ) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. A good implementation will stream \a _a,
-	 *         \a _x or \a _y into \a _z to apply the additive and multiplicative
-	 *         operators in-place, whenever the input domains, the output domain,
-	 *         and the operators used allow for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
+	//  *         size of the vectors \a _a, \a _x, \a _y, and \a _z. The constant
+	//  *         factor depends on the cost of evaluating the addition and
+	//  *         multiplication operators. A good implementation uses vectorised
+	//  *         instructions whenever the input domains, the output domain, and
+	//  *         the operators used allow for this.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         already used by the application when this function is called.
+	//  *
+	//  *      -# This call incurs at most \f$ n( \mathit{sizeof}(
+	//  *           \mathit{InputType1} + \mathit{bool}
+	//  *           \mathit{InputType2} + \mathit{bool}
+	//  *           \mathit{InputType3} + \mathit{bool}
+	//  *           \mathit{OutputType} + \mathit{bool}
+	//  *         ) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a _a,
+	//  *         \a _x or \a _y into \a _z to apply the additive and multiplicative
+	//  *         operators in-place, whenever the input domains, the output domain,
+	//  *         and the operators used allow for this.
+	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
@@ -2918,27 +2918,27 @@ namespace grb {
 	 *
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
-	 *         size of the vectors \a x, \a y, and \a z. The constant factor
-	 *         depends on the cost of evaluating the multiplication operator. A
-	 *         good implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the multiplicative operator used
-	 *         allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most \f$ n( \mathit{sizeof}(\mathit{D1}) +
-	 *         \mathit{sizeof}(\mathit{D2}) + \mathit{sizeof}(\mathit{D3})) +
-	 *         \mathcal{O}(1) \f$ bytes of data movement. A good implementation
-	 *         will stream \a x or \a y into \a z to apply the multiplication
-	 *         operator in-place, whenever the input domains, the output domain,
-	 *         and the operator used allow for this.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
+	//  *         size of the vectors \a x, \a y, and \a z. The constant factor
+	//  *         depends on the cost of evaluating the multiplication operator. A
+	//  *         good implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the multiplicative operator used
+	//  *         allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most \f$ n( \mathit{sizeof}(\mathit{D1}) +
+	//  *         \mathit{sizeof}(\mathit{D2}) + \mathit{sizeof}(\mathit{D3})) +
+	//  *         \mathcal{O}(1) \f$ bytes of data movement. A good implementation
+	//  *         will stream \a x or \a y into \a z to apply the multiplication
+	//  *         operator in-place, whenever the input domains, the output domain,
+	//  *         and the operator used allow for this.
+	//  * \endparblock
 	 *
 	 * \warning When given sparse vectors, the zero now annihilates instead of
 	 *       acting as an identity. Thus the eWiseMul cannot simply map to an
@@ -3523,28 +3523,28 @@ namespace grb {
 	 *                       never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
-	 *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
-	 *         \f$ p \f$ is the number of user processes. The constant factor
-	 *         depends on the cost of evaluating the addition and multiplication
-	 *         operators. A good implementation uses vectorised instructions
-	 *         whenever the input domains, output domain, and the operators used
-	 *         allow for this.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory used
-	 *         by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n( \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D2}) ) + \mathcal{O}(p) \f$
-	 *         bytes of data movement.
-	 *
-	 *      -# This call incurs at most \f$ \Theta(\log p) \f$ synchronisations
-	 *         between two or more user processes.
-	 *
-	 *      -# A call to this function does result in any system calls.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
+	//  *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
+	//  *         \f$ p \f$ is the number of user processes. The constant factor
+	//  *         depends on the cost of evaluating the addition and multiplication
+	//  *         operators. A good implementation uses vectorised instructions
+	//  *         whenever the input domains, output domain, and the operators used
+	//  *         allow for this.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory used
+	//  *         by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n( \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D2}) ) + \mathcal{O}(p) \f$
+	//  *         bytes of data movement.
+	//  *
+	//  *      -# This call incurs at most \f$ \Theta(\log p) \f$ synchronisations
+	//  *         between two or more user processes.
+	//  *
+	//  *      -# A call to this function does result in any system calls.
+	//  * \endparblock
 	 *
 	 * \note This requires an implementation to pre-allocate \f$ \Theta(p) \f$
 	 *       memory for inter-process reduction, if the underlying communication
@@ -3720,26 +3720,26 @@ namespace grb {
 	 * these is not true, the code shall not compile.
 	 * \endparblock
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
-	 *
-	 *      -# This call will not result in additional dynamic memory allocations.
-	 *         No system calls will be made.
-	 *
-	 *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
-	 *         used by the application at the point of a call to this function.
-	 *
-	 *      -# This call incurs at most
-	 *         \f$ n \mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. If \a y is sparse, a call to this function
-	 *         incurs at most \f$ n \mathit{sizeof}( \mathit{bool} ) \f$ extra
-	 *         bytes of data movement.
-	 * \endparblock
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *         No system calls will be made.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n \mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. If \a y is sparse, a call to this function
+	//  *         incurs at most \f$ n \mathit{sizeof}( \mathit{bool} ) \f$ extra
+	//  *         bytes of data movement.
+	//  * \endparblock
 	 *
 	 * @see grb::foldl provides similar functionality.
 	 */
@@ -3808,28 +3808,28 @@ namespace grb {
      *                       never made.
      * @return grb::SUCCESS  On successful completion of this call.
      *
-     * \parblock
-     * \par Performance semantics
-     *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
-     *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
-     *         \f$ p \f$ is the number of user processes. The constant factor
-     *         depends on the cost of evaluating the addition and multiplication
-     *         operators. A good implementation uses vectorised instructions
-     *         whenever the input domains, output domain, and the operators used
-     *         allow for this.
-     *
-     *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory used
-     *         by the application at the point of a call to this function.
-     *
-     *      -# This call incurs at most
-     *         \f$ n( \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D2}) ) + \mathcal{O}(p) \f$
-     *         bytes of data movement.
-     *
-     *      -# This call incurs at most \f$ \Theta(\log p) \f$ synchronisations
-     *         between two or more user processes.
-     *
-     *      -# A call to this function does result in any system calls.
-     * \endparblock
+    //  * \parblock
+    //  * \par Performance semantics
+    //  *      -# This call takes \f$ \Theta(n/p) \f$ work at each user process, where
+    //  *         \f$ n \f$ equals the size of the vectors \a x and \a y, and
+    //  *         \f$ p \f$ is the number of user processes. The constant factor
+    //  *         depends on the cost of evaluating the addition and multiplication
+    //  *         operators. A good implementation uses vectorised instructions
+    //  *         whenever the input domains, output domain, and the operators used
+    //  *         allow for this.
+    //  *
+    //  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory used
+    //  *         by the application at the point of a call to this function.
+    //  *
+    //  *      -# This call incurs at most
+    //  *         \f$ n( \mathit{sizeof}(\mathit{D1}) + \mathit{sizeof}(\mathit{D2}) ) + \mathcal{O}(p) \f$
+    //  *         bytes of data movement.
+    //  *
+    //  *      -# This call incurs at most \f$ \Theta(\log p) \f$ synchronisations
+    //  *         between two or more user processes.
+    //  *
+    //  *      -# A call to this function does result in any system calls.
+    //  * \endparblock
      *
      * \note This requires an implementation to pre-allocate \f$ \Theta(p) \f$
      *       memory for inter-process reduction, if the underlying communication
