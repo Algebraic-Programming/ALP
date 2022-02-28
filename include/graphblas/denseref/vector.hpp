@@ -359,7 +359,7 @@ namespace grb {
 	 * 
 	 * @returns                     A VectorView object.
 	 * */
-	template< typename StructuredMatrixT, typename C >
+	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates >
 	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
 	diagonal( StructuredMatrixT &smat ) {
 
