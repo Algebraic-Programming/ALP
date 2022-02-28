@@ -875,7 +875,7 @@ namespace grb {
 			}
 };
 
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C, typename tmp >
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C, bool tmp >
 	class VectorView { };
 
 }
