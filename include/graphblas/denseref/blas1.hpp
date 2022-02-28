@@ -140,8 +140,8 @@ namespace grb {
 	 *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords >
-	RC clear( VectorView< DataType, View, storage::Dense, reference_dense, Coords > & x ) noexcept {
+	template< typename DataType, typename View, typename Coords, typename Tmp >
+	RC clear( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp> & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
 	}
@@ -167,8 +167,8 @@ namespace grb {
 	 *  -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords >
-	size_t size( const VectorView< DataType, View, storage::Dense, reference_dense, Coords > & x ) noexcept {
+	template< typename DataType, typename View, typename Coords, typename Tmp >
+	size_t size( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
 		return getLength( x );
 	}
 
@@ -192,15 +192,15 @@ namespace grb {
 	 *   -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< typename DataType, typename View, typename Coords >
-	size_t nnz( const VectorView< DataType, View, storage::Dense, reference_dense, Coords > & x ) noexcept {
+	template< typename DataType, typename View, typename Coords, typename Tmp >
+	size_t nnz( const VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation." );
 		return 0;
 	}
 
 	/** \todo add documentation. In particular, think about the meaning with \a P > 1. */
-	template< typename InputType, typename View, typename length_type, typename Coords >
-	RC resize( VectorView< InputType, View, storage::Dense, reference_dense, Coords > & x, const length_type new_nz ) {
+	template< typename InputType, typename View, typename length_type, typename Coords, typename Tmp >
+	RC resize( VectorView< InputType, View, storage::Dense, reference_dense, Coords, Tmp > & x, const length_type new_nz ) {
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 			return MISMATCH;
@@ -264,9 +264,9 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename View, typename T,
-		typename Coords
+		typename Coords, typename Tmp
 	>
-	RC set( VectorView< DataType, View, storage::Dense, reference_dense, Coords > & x, const T val,
+	RC set( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x, const T val,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
 			!grb::is_object< T >::value,
@@ -337,9 +337,9 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataView, typename MaskType, typename MaskView, typename T, typename Coords >
-	RC set( VectorView< DataType, DataView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataView, typename MaskType, typename MaskView, typename DataTmp, typename MaskTmp, typename T, typename Coords >
+	RC set( VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const T val,
 		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
@@ -410,8 +410,8 @@ namespace grb {
 	 *   -# shall not make any system calls.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename View, typename T, typename Coords >
-	RC setElement( VectorView< DataType, View, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, typename DataType, typename View, typename T, typename Coords, typename Tmp >
+	RC setElement( VectorView< DataType, View, storage::Dense, reference_dense, Coords, Tmp > & x,
 		const T val,
 		const size_t i,
 		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
@@ -478,8 +478,8 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputView, typename InputView, typename Coords >
-	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & x, const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y ) {
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputView, typename InputView, typename Coords, typename OutputTmp, typename InputTmp >
+	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & x, const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
 			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "grb::copy (Vector)", "called with vector parameters whose element data types do not match" );
@@ -563,10 +563,10 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename OutputView, typename MaskView, typename InputView, typename Coords >
-	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename OutputView, typename MaskView, typename InputView, typename Coords, typename OutputTmp, typename MaskTmp, typename InputTmp >
+	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * const = NULL ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
@@ -670,8 +670,8 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename InputView, typename IOType, typename Coords >
-	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename InputView, typename IOType, typename Coords, typename InputTmp >
+	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
@@ -749,9 +749,9 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename InputView, typename Coords >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename InputView, typename Coords, typename InputTmp >
 	RC foldr( const InputType & alpha,
-		VectorView< IOType, InputView, storage::Dense, reference_dense, Coords > & y,
+		VectorView< IOType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		// static sanity checks
@@ -774,9 +774,9 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename Coords >
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
 	RC foldr( const InputType & alpha,
-		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & y,
+		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_operator< OP >::value, void >::type * const = NULL ) {
 		// static sanity checks
@@ -862,9 +862,9 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords >
-	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & x,
-		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
+		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -891,10 +891,14 @@ namespace grb {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords >
-	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename MaskType, typename InputType,
+		typename IOView, typename MaskView, typename InputView,
+		typename Coords,
+		typename IOTmp, typename MaskTmp, typename InputTmp >
+	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< IOType >::value, void >::type * =
 			NULL ) {
@@ -991,9 +995,9 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords >
-	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & x,
-		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
+		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1022,10 +1026,10 @@ namespace grb {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords >
-	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, typename IOTmp, typename MaskTmp, typename InputTmp >
+	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * =
 			NULL ) {
@@ -1130,8 +1134,8 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const InputType beta,
 		const Op & op = Op(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_operator< Op >::value, void >::type * = NULL ) {
@@ -1156,9 +1160,9 @@ namespace grb {
 	 *
 	 * Masked operator variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, typename IOTmp, typename MaskTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType beta,
 		const Op & op = Op(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value && grb::is_operator< Op >::value, void >::type * =
@@ -1252,8 +1256,8 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL ) {
@@ -1278,9 +1282,9 @@ namespace grb {
 	 *
 	 * Masked monoid variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename Coords, typename IOTmp, typename MaskTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * =
@@ -1375,9 +1379,9 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1471,9 +1475,9 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1502,10 +1506,14 @@ namespace grb {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename MaskType, typename InputType,
+		typename IOView, typename MaskView, typename InputView,
+		typename Coords,
+		typename IOTmp, typename MaskTmp, typename InputTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * =
 			NULL ) {
@@ -1541,10 +1549,14 @@ namespace grb {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords >
-	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename IOView, typename MaskView, typename InputView,
+		typename Coords,
+		typename IOTmp, typename MaskTmp, typename InputTmp >
+	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * =
 			NULL ) {
@@ -1642,9 +1654,13 @@ namespace grb {
 	 *         this.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		const InputType2 beta,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
@@ -1661,8 +1677,12 @@ namespace grb {
 	 *
 	 * Specialisation for \a x and \a y scalar, operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const OP & op = OP(),
@@ -1682,8 +1702,12 @@ namespace grb {
 	 *
 	 * Specialisation for \a x and \a y scalar, monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const Monoid & monoid = Monoid(),
@@ -1701,10 +1725,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y, masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
@@ -1726,10 +1754,14 @@ namespace grb {
 	 *
 	 * Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -1745,10 +1777,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x. Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -1764,9 +1800,13 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y. Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
@@ -1783,11 +1823,15 @@ namespace grb {
 	 *
 	 * Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_monoid< Monoid >::value,
@@ -1804,11 +1848,15 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x. Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_monoid< Monoid >::value,
@@ -1825,10 +1873,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y. Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
@@ -1906,10 +1958,14 @@ namespace grb {
 	 *         this.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
 			void >::type * const = NULL ) {
@@ -1925,11 +1981,15 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x. Masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_operator< OP >::value,
@@ -2009,10 +2069,14 @@ namespace grb {
 	 *         used allow for this.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
 			void >::type * const = NULL ) {
@@ -2028,11 +2092,15 @@ namespace grb {
 	 *
 	 * Masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1, typename InputView2, 
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_operator< OP >::value,
@@ -2116,10 +2184,14 @@ namespace grb {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2145,10 +2217,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename InputView2, typename OutputView, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename InputView2, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2174,9 +2250,13 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename InputView1, typename OutputView,typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename InputView1, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
@@ -2203,8 +2283,12 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x and \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename OutputView, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename OutputView,
+		typename Coords,
+		typename OutputTmp >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
@@ -2234,11 +2318,15 @@ namespace grb {
 	 *
 	 * Masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
+		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2267,11 +2355,15 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x, masked version
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType, typename InputView2, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename InputView2, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2300,10 +2392,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType, typename InputView1, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename InputView1, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
@@ -2333,9 +2429,13 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x and \a y, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType, typename OutputView, typename Coords >
-	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp >
+	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & m, /** \internal \todo Should this be MaskType, MaskView (copied as is from reference/blas1.hpp) */
 		const InputType1 alpha,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
@@ -2367,11 +2467,15 @@ namespace grb {
 	 *
 	 * Specialisation for when \a a is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView2, typename InputView3, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView2, typename InputView3, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2399,11 +2503,15 @@ namespace grb {
 	 *
 	 * Specialisation for when \a x is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView1, typename InputView3, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView1, typename InputView3, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 chi,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2430,10 +2538,14 @@ namespace grb {
 	 *
 	 * Specialisation for when \a y is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView1, typename InputView2, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView1, typename InputView2, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
@@ -2461,9 +2573,13 @@ namespace grb {
 	 *
 	 * Specialisation for when \a x and \a y are scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView1, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView1, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 beta,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
@@ -2492,10 +2608,14 @@ namespace grb {
 	 *
 	 * Specialisation for when \a a and \a y are scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView2, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView2, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
@@ -2525,11 +2645,15 @@ namespace grb {
 	 *
 	 * \internal Dispatches to eWiseAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename InputView3, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+		typename InputView3, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2562,8 +2686,12 @@ namespace grb {
 	 *
 	 * \internal Dispatches to set.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+		typename OutputView,
+		typename Coords,
+		typename OutputTmp >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
@@ -2676,11 +2804,15 @@ namespace grb {
 	 *         and the operators used allow for this.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename InputView1, typename InputView2, typename InputView3, typename OutputView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
+		typename InputView1, typename InputView2, typename InputView3, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value,
@@ -2772,10 +2904,14 @@ namespace grb {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename InputView1, typename InputView2, typename OutputView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename InputView1, typename InputView2, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2800,10 +2936,14 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename InputView2, typename OutputView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename InputView2, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2828,9 +2968,13 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename InputView1, typename OutputView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename InputView1, typename OutputView,
+		typename Coords,
+		typename OutputTmp, typename InputTmp2 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp2 > & x,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
@@ -2856,12 +3000,16 @@ namespace grb {
 	 *
 	 * Specialisation for when \a a is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename InputView2, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView2, typename InputView3, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
@@ -2890,12 +3038,16 @@ namespace grb {
 	 *
 	 * Specialisation for when \a x is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename InputView1, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView1, typename InputView3, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 chi,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
@@ -2923,11 +3075,15 @@ namespace grb {
 	 *
 	 * Specialisation for when \a y is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename InputView1, typename InputView2, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView1, typename InputView2, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
@@ -2956,11 +3112,14 @@ namespace grb {
 	 *
 	 * Specialisation for when \a x and \a y are scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
-	          typename InputView1, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView1, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 beta,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
@@ -2990,12 +3149,15 @@ namespace grb {
 	 *
 	 * Specialisation for when \a a and \a y are scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
-	          typename InputView2, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView2, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
@@ -3024,13 +3186,16 @@ namespace grb {
 	 *
 	 * Masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
-	          typename InputView1, typename InputView2, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & _z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & _m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & _a,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & _x,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & _y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
+		typename InputView1, typename InputView2, typename InputView3, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
@@ -3063,12 +3228,15 @@ namespace grb {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType,
-	          typename InputView1, typename InputView2, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename InputView1, typename InputView2, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
 				grb::is_semiring< Ring >::value,
@@ -3097,12 +3265,15 @@ namespace grb {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType,
-	          typename InputView2, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename InputView2, typename InputView3, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
 				grb::is_semiring< Ring >::value,
@@ -3131,11 +3302,14 @@ namespace grb {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename MaskType,
-	          typename InputView1, typename InputView3, typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > & x,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
+		typename InputView1, typename InputView3, typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
@@ -3165,13 +3339,16 @@ namespace grb {
 	 *
 	 * \internal Dispatches to masked eWiseAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-	          typename OutputView, typename MaskView, typename InputView3, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
+		typename OutputView, typename MaskView, typename InputView3,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp, typename InputTmp3 >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
 		const InputType2 beta,
-		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords > & y,
+		const VectorView< InputType3, InputView3, storage::Dense, reference_dense, Coords, InputTmp3 > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
 				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
@@ -3205,10 +3382,13 @@ namespace grb {
 	 *
 	 * \internal Dispatches to masked set.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-	          typename OutputView, typename MaskView, typename Coords >
-	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords > & z,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & m,
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
+		typename OutputView, typename MaskView,
+		typename Coords,
+		typename OutputTmp, typename MaskTmp >
+	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
@@ -3251,11 +3431,12 @@ namespace grb {
 			Descriptor descr = descriptors::no_operation,
 			class AddMonoid, class AnyOp,
 			typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2,
-			typename Coords
+			typename Coords,
+			typename InputTmp1, typename InputTmp2
 		>
 		RC dot_generic( OutputType &z,
-			const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > &x,
-			const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > &y,
+			const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > &x,
+			const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > &y,
 			const AddMonoid &addMonoid = AddMonoid(),
 			const AnyOp &anyOp = AnyOp()
 		) {
@@ -3343,12 +3524,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AddMonoid, class AnyOp,
-		typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2,
-		typename Coords
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputView, typename InputView1, typename InputView2,
+		typename Coords,
+		typename InputTmp1, typename InputTmp2
 	>
 	RC dot( OutputType &z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords > &x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords > &y,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > &x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -3383,8 +3566,8 @@ namespace grb {
 	}
 
 	/** No implementation notes. */
-	template< typename Func, typename DataType, typename DataView, typename Coords >
-	RC eWiseMap( const Func f, VectorView< DataType, DataView, storage::Dense, reference_dense, Coords > & x ) {
+	template< typename Func, typename DataType, typename DataView, typename Coords, typename DataTmp >
+	RC eWiseMap( const Func f, VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x ) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3399,8 +3582,16 @@ namespace grb {
 	 * @see VectorView::operator[]()
 	 * @see VectorView::lambda_reference
 	 */
-	template< typename Func, typename DataType1, typename DataType2, typename DataView1, typename DataView2, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const VectorView< DataType1, DataView1, storage::Dense, reference_dense, Coords > & x, const VectorView< DataType2, DataView2, storage::Dense, reference_dense, Coords > & y, Args const &... args ) {
+	template< typename Func,
+		typename DataType1, typename DataType2,
+		typename DataView1, typename DataView2,
+		typename Coords,
+		typename InputTmp1, typename InputTmp2,
+		typename... Args >
+	RC eWiseLambda( const Func f,
+		const VectorView< DataType1, DataView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
+		const VectorView< DataType2, DataView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
+		Args const &... args ) {
 		// catch mismatch
 		if( size( x ) != size( y ) ) {
 			return MISMATCH;
@@ -3416,8 +3607,8 @@ namespace grb {
 	 * @see VectorView::operator[]()
 	 * @see VectorView::lambda_reference
 	 */
-	template< typename Func, typename DataType, typename DataView, typename Coords >
-	RC eWiseLambda( const Func f, const VectorView< DataType, DataView, storage::Dense, reference_dense, Coords > & x ) {
+	template< typename Func, typename DataType, typename DataView, typename Coords, typename DataTmp >
+	RC eWiseLambda( const Func f, const VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x ) {
 	#ifdef _DEBUG
 		std::cout << "Info: entering eWiseLambda function on vectors.\n";
 	#endif
@@ -3506,10 +3697,14 @@ namespace grb {
 	 *
 	 * @see grb::foldl provides similar functionality.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename IOType, typename MaskType, typename InputView, typename MaskView, typename Coords >
+	template< Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename InputView, typename MaskView,
+		typename Coords,
+		typename IOTmp, typename MaskTmp >
 	RC foldl( IOType & x,
-		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords > & y,
-		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords > & mask,
+		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, IOTmp > & y,
+		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -3616,11 +3811,12 @@ namespace grb {
 		class AddMonoid, class AnyOp,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename InputView1, typename InputView2,
-		typename InputCoords1, typename InputCoords2
+		typename InputCoords1, typename InputCoords2,
+		typename InputTmp1, typename InputTmp2
 	>
 	RC dot( OutputType &z,
-		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, InputCoords1 > &x,
-		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, InputCoords2 > &y,
+		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, InputCoords1, InputTmp1 > &x,
+		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, InputCoords2, InputTmp2 > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -3713,11 +3909,12 @@ namespace grb {
 		typename IOType, typename InputType1, typename InputType2,
 		typename InputView1, typename InputView2,
 		typename InputStorage1, typename InputStorage2,
-		Backend backend, typename Coords1, typename Coords2
+		Backend backend, typename Coords1, typename Coords2,
+		typename InputTmp1, typename InputTmp2
 	>
 	RC dot( IOType &x,
-		const VectorView< InputType1, InputView1, InputStorage1, backend, Coords1 > &left,
-		const VectorView< InputType2, InputView2, InputStorage2, backend, Coords2 > &right,
+		const VectorView< InputType1, InputView1, InputStorage1, backend, Coords1, InputTmp1 > &left,
+		const VectorView< InputType2, InputView2, InputStorage2, backend, Coords2, InputTmp2 > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			!grb::is_object< InputType1 >::value &&
@@ -3762,10 +3959,11 @@ namespace grb {
 		typename InputType, typename OutputType,
         typename InputView,
 		typename InputStorage,
-		Backend backend, typename Coords
+		Backend backend, typename Coords,
+		typename InputTmp
 	>
 	RC norm2( OutputType &x,
-		const VectorView< InputType, InputView, InputStorage, backend, Coords > &y,
+		const VectorView< InputType, InputView, InputStorage, backend, Coords, InputTmp > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
