@@ -31,6 +31,7 @@
 
 #include <graphblas/rc.hpp>
 #include <graphblas/backends.hpp>
+#include <graphblas/coordinates.hpp>
 
 // #include <graphblas/utils/alloc.hpp>
 // #include <graphblas/utils/autodeleter.hpp>
