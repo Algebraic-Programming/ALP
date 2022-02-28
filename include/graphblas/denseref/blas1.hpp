@@ -337,7 +337,7 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataView, typename MaskType, typename MaskView, typename DataTmp, typename MaskTmp, typename T, typename Coords >
+	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataView, typename MaskType, typename MaskView, bool DataTmp, bool MaskTmp, typename T, typename Coords >
 	RC set( VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const T val,
@@ -478,7 +478,7 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputView, typename InputView, typename Coords, typename OutputTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputView, typename InputView, typename Coords, bool OutputTmp, bool InputTmp >
 	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & x, const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
@@ -563,7 +563,7 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename OutputView, typename MaskView, typename InputView, typename Coords, typename OutputTmp, typename MaskTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename OutputView, typename MaskView, typename InputView, typename Coords, bool OutputTmp, bool MaskTmp, bool InputTmp >
 	RC set( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
@@ -670,7 +670,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename InputView, typename IOType, typename Coords, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename InputView, typename IOType, typename Coords, bool InputTmp >
 	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
@@ -749,7 +749,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename InputView, typename Coords, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename InputView, typename Coords, bool InputTmp >
 	RC foldr( const InputType & alpha,
 		VectorView< IOType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const Monoid & monoid = Monoid(),
@@ -774,7 +774,7 @@ namespace grb {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename Coords, bool IOTmp >
 	RC foldr( const InputType & alpha,
 		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const OP & op = OP(),
@@ -862,7 +862,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, bool IOTmp, bool InputTmp >
 	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const OP & op = OP(),
@@ -895,7 +895,7 @@ namespace grb {
 		typename IOType, typename MaskType, typename InputType,
 		typename IOView, typename MaskView, typename InputView,
 		typename Coords,
-		typename IOTmp, typename MaskTmp, typename InputTmp >
+		bool IOTmp, bool MaskTmp, bool InputTmp >
 	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
@@ -995,7 +995,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, bool IOTmp, bool InputTmp >
 	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const Monoid & monoid = Monoid(),
@@ -1026,7 +1026,7 @@ namespace grb {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, typename IOTmp, typename MaskTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, bool IOTmp, bool MaskTmp, bool InputTmp >
 	RC foldr( const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & y,
@@ -1134,7 +1134,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
+	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOView, typename Coords, bool IOTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const InputType beta,
 		const Op & op = Op(),
@@ -1160,7 +1160,7 @@ namespace grb {
 	 *
 	 * Masked operator variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, typename IOTmp, typename MaskTmp >
+	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename InputView, typename Coords, bool IOTmp, bool MaskTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType beta,
@@ -1256,7 +1256,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename Coords, typename IOTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename Coords, bool IOTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
@@ -1282,7 +1282,7 @@ namespace grb {
 	 *
 	 * Masked monoid variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename Coords, typename IOTmp, typename MaskTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename MaskType, typename InputType, typename IOView, typename MaskView, typename Coords, bool IOTmp, bool MaskTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType & beta,
@@ -1379,7 +1379,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, bool IOTmp, bool InputTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const OP & op = OP(),
@@ -1475,7 +1475,7 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, typename IOTmp, typename InputTmp >
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOView, typename InputView, typename Coords, bool IOTmp, bool InputTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
 		const Monoid & monoid = Monoid(),
@@ -1510,7 +1510,7 @@ namespace grb {
 		typename IOType, typename MaskType, typename InputType,
 		typename IOView, typename MaskView, typename InputView,
 		typename Coords,
-		typename IOTmp, typename MaskTmp, typename InputTmp >
+		bool IOTmp, bool MaskTmp, bool InputTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
@@ -1553,7 +1553,7 @@ namespace grb {
 		typename IOType, typename MaskType, typename InputType,
 		typename IOView, typename MaskView, typename InputView,
 		typename Coords,
-		typename IOTmp, typename MaskTmp, typename InputTmp >
+		bool IOTmp, bool MaskTmp, bool InputTmp >
 	RC foldl( VectorView< IOType, IOView, storage::Dense, reference_dense, Coords, IOTmp > & x,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, InputTmp > & y,
@@ -1658,7 +1658,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp >
+		bool OutputTmp, bool InputTmp >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp > & x,
 		const InputType2 beta,
@@ -1681,7 +1681,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp >
+		bool OutputTmp >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -1706,7 +1706,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp >
+		bool OutputTmp >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -1729,7 +1729,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -1758,7 +1758,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -1781,7 +1781,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -1804,7 +1804,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1 >
+		bool OutputTmp, bool InputTmp1 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
@@ -1827,7 +1827,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -1852,7 +1852,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const InputType1 alpha,
@@ -1877,7 +1877,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -1962,7 +1962,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -1985,7 +1985,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const InputType1 alpha,
@@ -2073,7 +2073,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -2096,7 +2096,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2, 
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseApply( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -2188,7 +2188,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -2221,7 +2221,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename InputView2, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -2254,7 +2254,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename InputView1, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1 >
+		bool OutputTmp, bool InputTmp1 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const InputType2 beta,
@@ -2287,7 +2287,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename OutputView,
 		typename Coords,
-		typename OutputTmp >
+		bool OutputTmp >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -2322,7 +2322,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -2359,7 +2359,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename InputView2, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
@@ -2396,7 +2396,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename InputView1, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1 >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -2433,7 +2433,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp >
+		bool OutputTmp, bool MaskTmp >
 	RC eWiseAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & m, /** \internal \todo Should this be MaskType, MaskView (copied as is from reference/blas1.hpp) */
 		const InputType1 alpha,
@@ -2471,7 +2471,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView2, typename InputView3, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2, typename InputTmp3 >
+		bool OutputTmp, bool InputTmp2, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
@@ -2507,7 +2507,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView1, typename InputView3, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp3 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 chi,
@@ -2542,7 +2542,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView1, typename InputView2, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
@@ -2577,7 +2577,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView1, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1 >
+		bool OutputTmp, bool InputTmp1 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const InputType2 beta,
@@ -2612,7 +2612,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView2, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
@@ -2649,7 +2649,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
 		typename InputView3, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp3 >
+		bool OutputTmp, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -2690,7 +2690,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
 		typename OutputView,
 		typename Coords,
-		typename OutputTmp >
+		bool OutputTmp >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -2808,7 +2808,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType,
 		typename InputView1, typename InputView2, typename InputView3, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & _x,
@@ -2908,7 +2908,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename InputView1, typename InputView2, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -2940,7 +2940,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename InputView2, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const InputType1 alpha,
 		const VectorView< InputType2, InputView2, storage::Dense, reference_dense, Coords, InputTmp2 > & y,
@@ -2972,7 +2972,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType,
 		typename InputView1, typename OutputView,
 		typename Coords,
-		typename OutputTmp, typename InputTmp2 >
+		bool OutputTmp, bool InputTmp2 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp2 > & x,
 		const InputType2 beta,
@@ -3004,7 +3004,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView2, typename InputView3, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2, typename InputTmp3 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const InputType1 alpha,
@@ -3042,7 +3042,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView1, typename InputView3, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp3 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
@@ -3079,7 +3079,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView1, typename InputView2, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
@@ -3116,7 +3116,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView1, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
@@ -3153,7 +3153,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView2, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const InputType1 alpha,
@@ -3190,7 +3190,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3, typename OutputType, typename MaskType,
 		typename InputView1, typename InputView2, typename InputView3, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & _z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & _m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & _a,
@@ -3232,7 +3232,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename InputView1, typename InputView2, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1, bool InputTmp2 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -3269,7 +3269,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename InputView2, typename InputView3, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp2 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp2 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
@@ -3306,7 +3306,7 @@ namespace grb {
 		typename InputType1, typename InputType2, typename OutputType, typename MaskType,
 		typename InputView1, typename InputView3, typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp1 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp1 >
 	RC eWiseMul( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -3343,7 +3343,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
 		typename OutputView, typename MaskView, typename InputView3,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp, typename InputTmp3 >
+		bool OutputTmp, bool MaskTmp, bool InputTmp3 >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
@@ -3386,7 +3386,7 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
 		typename OutputView, typename MaskView,
 		typename Coords,
-		typename OutputTmp, typename MaskTmp >
+		bool OutputTmp, bool MaskTmp >
 	RC eWiseMulAdd( VectorView< OutputType, OutputView, storage::Dense, reference_dense, Coords, OutputTmp > & z,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & m,
 		const InputType1 alpha,
@@ -3432,7 +3432,7 @@ namespace grb {
 			class AddMonoid, class AnyOp,
 			typename OutputType, typename InputType1, typename InputType2, typename OutputView, typename InputView1, typename InputView2,
 			typename Coords,
-			typename InputTmp1, typename InputTmp2
+			bool InputTmp1, bool InputTmp2
 		>
 		RC dot_generic( OutputType &z,
 			const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > &x,
@@ -3527,7 +3527,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Coords,
-		typename InputTmp1, typename InputTmp2
+		bool InputTmp1, bool InputTmp2
 	>
 	RC dot( OutputType &z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, Coords, InputTmp1 > &x,
@@ -3566,7 +3566,7 @@ namespace grb {
 	}
 
 	/** No implementation notes. */
-	template< typename Func, typename DataType, typename DataView, typename Coords, typename DataTmp >
+	template< typename Func, typename DataType, typename DataView, typename Coords, bool DataTmp >
 	RC eWiseMap( const Func f, VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x ) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -3586,7 +3586,7 @@ namespace grb {
 		typename DataType1, typename DataType2,
 		typename DataView1, typename DataView2,
 		typename Coords,
-		typename InputTmp1, typename InputTmp2,
+		bool InputTmp1, bool InputTmp2,
 		typename... Args >
 	RC eWiseLambda( const Func f,
 		const VectorView< DataType1, DataView1, storage::Dense, reference_dense, Coords, InputTmp1 > & x,
@@ -3607,7 +3607,7 @@ namespace grb {
 	 * @see VectorView::operator[]()
 	 * @see VectorView::lambda_reference
 	 */
-	template< typename Func, typename DataType, typename DataView, typename Coords, typename DataTmp >
+	template< typename Func, typename DataType, typename DataView, typename Coords, bool DataTmp >
 	RC eWiseLambda( const Func f, const VectorView< DataType, DataView, storage::Dense, reference_dense, Coords, DataTmp > & x ) {
 	#ifdef _DEBUG
 		std::cout << "Info: entering eWiseLambda function on vectors.\n";
@@ -3701,7 +3701,7 @@ namespace grb {
 		typename InputType, typename IOType, typename MaskType,
 		typename InputView, typename MaskView,
 		typename Coords,
-		typename IOTmp, typename MaskTmp >
+		bool IOTmp, bool MaskTmp >
 	RC foldl( IOType & x,
 		const VectorView< InputType, InputView, storage::Dense, reference_dense, Coords, IOTmp > & y,
 		const VectorView< MaskType, MaskView, storage::Dense, reference_dense, Coords, MaskTmp > & mask,
@@ -3812,7 +3812,7 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename InputView1, typename InputView2,
 		typename InputCoords1, typename InputCoords2,
-		typename InputTmp1, typename InputTmp2
+		bool InputTmp1, bool InputTmp2
 	>
 	RC dot( OutputType &z,
 		const VectorView< InputType1, InputView1, storage::Dense, reference_dense, InputCoords1, InputTmp1 > &x,
@@ -3910,7 +3910,7 @@ namespace grb {
 		typename InputView1, typename InputView2,
 		typename InputStorage1, typename InputStorage2,
 		Backend backend, typename Coords1, typename Coords2,
-		typename InputTmp1, typename InputTmp2
+		bool InputTmp1, bool InputTmp2
 	>
 	RC dot( IOType &x,
 		const VectorView< InputType1, InputView1, InputStorage1, backend, Coords1, InputTmp1 > &left,
@@ -3960,7 +3960,7 @@ namespace grb {
         typename InputView,
 		typename InputStorage,
 		Backend backend, typename Coords,
-		typename InputTmp
+		bool InputTmp
 	>
 	RC norm2( OutputType &x,
 		const VectorView< InputType, InputView, InputStorage, backend, Coords, InputTmp > &y,

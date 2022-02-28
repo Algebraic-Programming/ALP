@@ -52,7 +52,7 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, typename InputTmp >
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
 	size_t nrows( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
 		return A.m;
 	}
@@ -73,7 +73,7 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, typename InputTmp >
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
 	size_t ncols( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
 		return A.n;
 	}
@@ -94,7 +94,7 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, typename InputTmp >
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
 	size_t nnz( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
 		return A.nz;
 	}
@@ -126,7 +126,7 @@ namespace grb {
 	 * \warning This is an expensive function. Use sparingly and only when
 	 *          absolutely necessary
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, typename InputTmp >
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
 	RC resize( StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A, const size_t new_nz ) noexcept {
 		// delegate
 		return A.resize( new_nz );
@@ -140,7 +140,7 @@ namespace grb {
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputType3, typename InputView3, typename InputStorage3,
 		typename Coords,
-		typename IOTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+		bool IOTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
 	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords, IOTmp > & u,
 		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords, InputTmp3 > & mask,
 		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords, InputTmp1 > & v,
@@ -160,7 +160,7 @@ namespace grb {
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename Coords,
-		typename IOTmp, typename InputTmp1, typename InputTmp2, typename InputTmp3 >
+		bool IOTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
 	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords, IOTmp > & u,
 		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords, InputTmp3 > & mask,
 		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords, InputTmp1 > & v,
