@@ -32,6 +32,7 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
+#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -54,6 +55,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+#endif
 
 namespace grb {
 	namespace internal {
@@ -327,6 +329,7 @@ namespace grb {
 		const PHASE &phase = NUMERICAL,
 		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value && grb::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
+		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
@@ -348,6 +351,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value &&
 		                               grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
+		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, mulOp, addM, Monoid() );
 	}
@@ -784,7 +788,6 @@ namespace grb {
 		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1, false > & u,
 		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2, false > & v,
 		const Operator & mul = Operator(),
-		const PHASE & phase = NUMERICAL,
 		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
 			void >::type * const = NULL ) {
 		// static checks
@@ -825,7 +828,6 @@ namespace grb {
 
 		grb::Monoid< grb::operators::left_assign< OutputType >, grb::identities::zero > mono;
 
-		(void)phase;
 		return grb::mxm( A, u_matrix, v_matrix, mul, mono );
 	}
 

@@ -408,15 +408,38 @@ namespace grb {
 				A.initialized = initialized;
 			}
 
+			/** 
+			 * All matrix views use a pair of index mapping functions to 
+			 * capture the correspondence between their logical layout and the one 
+			 * of their underlying container. This may be another view leading to a composition
+			 * of IMFs between the top matrix view and the physical container.
+			 */
 			std::shared_ptr<imf::IMF> imf_l, imf_r;
 
-			/** Whether the container presently is initialized or not. */
+			/** 
+			 * Whether the container presently is initialized or not. 
+			 * TODO: Should be pushed down to the container and reference classess
+			 * so to obtain this status directly from the underlying container. 
+			 */
 			bool initialized;
 
+			/**
+			 * @brief determines the size of the structured matrix via the domain of 
+			 * the index mapping functions.
+			 * 
+			 * @return A pair of dimensions.
+			 */
 			virtual std::pair< size_t, size_t > _dims() const {
 				return std::make_pair( imf_l->n, imf_r->n );
 			}
 
+			/**
+			 * @brief Construct a new structured matrix Base object assigning identity
+			 * mapping functions both to the row and column dimensions.
+			 * 
+			 * @param rows The number of rows of the matrix.
+			 * @param cols The number of columns of the matrix.
+			 */
 			StructuredMatrixBase( size_t rows, size_t cols ) :
 				imf_l( std::make_shared< imf::Id >( rows ) ),
 				imf_r( std::make_shared< imf::Id >( cols ) ),
@@ -443,10 +466,11 @@ namespace grb {
 				return *( A._container );
 			}
 
+			/** A container-type view is characterized by its association with a physical container */
 			Matrix< T, reference_dense > * _container;
 
 			/**
-			 * A container's storage scheme. \a storage_scheme is not exposed to the user as an option
+			 * The container's storage scheme. \a storage_scheme is not exposed to the user as an option
 			 * but can defined by ALP at different points in the execution depending on the \a backend choice.
 			 * In particular, if the structured matrix is not a temporary matrix than it is fixed at construction
 			 * time when the allocation takes place.
@@ -457,6 +481,12 @@ namespace grb {
 			 */
 			storage::Dense storage_scheme;
 
+			/**
+			 * @brief Construct a new structured matrix container object.
+			 * 
+			 * TODO: Add the storage scheme a parameter to the constructor 
+			 * so that allocation can be made accordingly, generalizing the full case.
+			 */
 			StructuredMatrixContainer( size_t rows, size_t cols ) :
 				StructuredMatrixBase( rows, cols ),
 				_container( new Matrix< T, reference_dense >(rows, cols) ),
@@ -471,6 +501,11 @@ namespace grb {
 		template< typename TargetType >
 		class StructuredMatrixReference : public StructuredMatrixBase {
 		protected:
+			/** A reference-type view is characterized by an indirect association with a
+			 * physical layout via either another \a StructuredMatrixReference or a \a 
+			 * StructuredMatrixContainer. Thus a \a StructuredMatrixReference never allocates
+			 * memory but only establishes a logical view on top of it.
+			 */
 			TargetType * ref;
 
 			StructuredMatrixReference() : StructuredMatrixBase( 0, 0 ), ref( nullptr ) {}
