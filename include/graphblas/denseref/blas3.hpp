@@ -239,10 +239,38 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * \internal grb::mxm, semiring version.
-	 * Dispatches to internal::mxm_generic
+	 * Dense Matrix-Matrix multiply between unstructured containers.
+	 * Version with semiring parameter.
+	 *
+	 * @tparam descr      The descriptors under which to perform the computation.
+	 * @tparam OutputType The type of elements in the output matrix.
+	 * @tparam InputType1 The type of elements in the left-hand side input
+	 *                    matrix.
+	 * @tparam InputType2 The type of elements in the right-hand side input
+	 *                    matrix.
+	 * @tparam Semiring   The semiring under which to perform the
+	 *                    multiplication.
+	 * @tparam Backend    The backend that should perform the computation.
+	 *
+	 * @returns SUCCESS If the computation completed as intended.
+	 * @returns FAILED  If the call was not not preceded by one to
+	 *                  #grb::resize( C, A, B ); \em and the current capacity of
+	 *                  \a C was insufficient to store the multiplication of \a A
+	 *                  and \a B. The contents of \a C shall be undefined (which
+	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
+	 *                  error has side effects).
+	 *
+	 * @param[out] C The output matrix \f$ C = AB \f$ when the function returns
+	 *               #SUCCESS.
+	 * @param[in]  A The left-hand side input matrix \f$ A \f$.
+	 * @param[in]  B The left-hand side input matrix \f$ B \f$.
+	 *
+	 * @param[in] ring (Optional.) The semiring under which the computation should
+	 *                             proceed.
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Semiring >
+	template< Descriptor descr = descriptors::no_operation,
+			  typename OutputType, typename InputType1, typename InputType2, 
+			  class Semiring >
 	RC mxm( Matrix< OutputType, reference_dense > & C,
 		const Matrix< InputType1, reference_dense > & A,
 		const Matrix< InputType2, reference_dense > & B,
@@ -258,38 +286,63 @@ namespace grb {
 	}
 
 	/**
-	 * \internal grb::mxm semiring version for dense Structured Matrices
+	 * Dense Matrix-Matrix multiply between structured matrices.
+	 * Version with semiring parameter.
+	 *
+	 * @tparam descr      		The descriptors under which to perform the computation.
+	 * @tparam OutputStructMatT The structured matrix type of the output matrix.
+	 * @tparam InputStructMatT1 The structured matrix type of the the left-hand side input
+	 *                    		matrix.
+	 * @tparam InputStructMatT2 The structured matrix type of the right-hand side input
+	 *                    		matrix.
+	 * @tparam Semiring   		The semiring under which to perform the
+	 *                    		multiplication.
+	 *
+	 * @returns SUCCESS If the computation completed as intended.
+	 * @returns FAILED  If the current capacity of
+	 *                  \a C was insufficient to store the multiplication of \a A
+	 *                  and \a B, including due to an incorrect structure formulation.
+	 * 					The contents of \a C shall be undefined (which
+	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
+	 *                  error has side effects).
+	 *
+	 * @param[out] C The output matrix \f$ C = AB \f$ when the function returns
+	 *               #SUCCESS.
+	 * @param[in]  A The left-hand side input matrix \f$ A \f$.
+	 * @param[in]  B The left-hand side input matrix \f$ B \f$.
+	 *
+	 * @param[in] ring (Optional.) The semiring under which the computation should
+	 *                             proceed.
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Semiring,
-		typename OutputStructure, typename OutputView = view::Identity< void >,
-		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void >,
-		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense, OutputTmp > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense, InputTmp1 > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense, InputTmp2 > & B,
+	template< Descriptor descr = descriptors::no_operation, 
+			  typename OutputStructMatT, 
+			  typename InputStructMatT1, 
+			  typename InputStructMatT2, 
+			  class Semiring>
+	RC mxm( OutputStructMatT & C,
+		const InputStructMatT1 & A,
+		const InputStructMatT2 & B,
 		const Semiring & ring = Semiring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
+		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value && grb::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
 	/**
-	 * \internal mxm implementation with additive monoid and multiplicative operator
-	 * Dispatches to internal::mxm_generic
+	 * Dense Matrix-Matrix multiply between structured matrices.
+	 * Version with additive monoid and multiplicative operator
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Operator, class Monoid,
-		typename OutputStructure, typename OutputView = view::Identity< void >,
-		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void >,
-		bool OutputTmp, bool InputTmp1, bool InputTmp2 >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense, OutputTmp > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense, InputTmp1 > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense, InputTmp2 > & B,
+	template< typename OutputStructMatT, 
+			  typename InputStructMatT1, 
+			  typename InputStructMatT2, 
+			  class Operator, class Monoid >
+	RC mxm( OutputStructMatT & C,
+		const InputStructMatT1 & A,
+		const InputStructMatT2 & B,
 		const Operator & mulOp,
 		const Monoid & addM,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
+		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value &&
 		                               grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
