@@ -433,10 +433,10 @@ namespace grb {
 	 * @returns          A VectorView object.
 	 */
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates, bool tmp = false >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C, tmp > 
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp >
 	get_view( VectorView< T, View, StorageSchemeType, backend, C, tmp > &source ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C, tmp > vec_view( source );
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp > vec_view( source );
 
 		return vec_view;
 	}
@@ -452,10 +452,10 @@ namespace grb {
 	 */
 
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C, bool tmp = false >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C, tmp > 
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp >
 	get_view( VectorView< T, View, StorageSchemeType, backend, C, tmp > &source, std::shared_ptr< imf::IMF > imf ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C, tmp > vec_view( source, imf );
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp > vec_view( source, imf );
 
 		return vec_view;
 	}
