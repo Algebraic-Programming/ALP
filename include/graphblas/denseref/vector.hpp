@@ -215,6 +215,57 @@ namespace grb {
 	}
 
 	/**
+	 * \brief An ALP vector view.
+	 *
+	 * This is an opaque data type for vector views.
+	 *
+	 * A vector exposes a mathematical
+	 * \em logical layout which allows to express implementation-oblivious concepts
+	 * including the matrix structure itself and \em views on the matrix.
+	 * The logical layout of a vector view maps to a physical counterpart via
+	 * a storage scheme which typically depends on the selected backend.
+	 * grb::Vector may be used as an interface to such a physical layout.
+	 *
+	 * Views can be used to create logical \em perspectives on top of a container.
+	 * For example, one may decide to refer to the part of the vector or
+	 * to reference a diagonal of a matrix as a vector.
+	 * See specialization \a VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp >
+	 * as an example of such usage.
+	 *
+	 * Vector View defined as views on other vectors do not instantiate a
+	 * new container but refer to the one used by their targets.
+	 *
+	 * Finally, a vector view can be declared as temporary, in which case the ALP
+	 * framework has the freedom to decide whether a container should be allocated in practice
+	 * or not. For example, a JIT backend may optimize away the use of such vector which
+	 * would make memory allocation for such vector unnecessary.
+	 *
+	 * @tparam T				 The type of the vector elements. \a T shall not be a GraphBLAS
+	 *              			 type.
+	 * @tparam View  			 One of the vector views.
+	 * 		   					 All static views except for \a view::Identity (via
+	 *         					 \a view::identity<void> cannot instantiate a new container
+	 * 							 and only allow to refer to a previously defined
+	 * 							 \a VectorView.
+	 *         					 The \a View parameter should not be used directly
+	 * 							 by the user but can be set using specific member types
+	 * 							 appropriately defined by each VectorView and
+	 * 							 accessible via functions.
+	 * @tparam StorageSchemeType Either \em enum \a storage::Dense or \em enum
+	 * 	                         \a storage::Sparse.
+	 * 		   					 \a VectorView will be allowed to pick storage schemes
+	 *         					 defined within their specified \a StorageSchemeType.
+	 * @tparam tmp  			 Whether the vector view is temporary. If \a true and the
+	 * 							 and the vector view can instantiate a physical container
+	 * 							 (i.e., it is defined with \a View = \a view::identity<void>)
+	 * 							 then the framework may or may not decide to actually allocate
+	 * 							 memory for such vector.
+	 *
+	 */
+	template< typename T, typename View, typename C, typename tmp >
+	class VectorView< T, View, storage::Dense, reference_dense, C, tmp > { };
+
+	/**
 	 * Identity View over a vector container.
 	 */
 	template< typename T, typename C, typename tmp >
