@@ -117,8 +117,9 @@ void grb_memref( const size_t & n, RC & rc ) {
 		/*optLevel=*/enableOpt ? 1 : 0, /*sizeLevel=*/0,
 		/*targetMachine=*/nullptr );
 
-	auto maybeEngine = mlir::ExecutionEngine::create( *module,
-		/*llvmModuleBuilder=*/nullptr, optPipeline );
+  mlir::ExecutionEngineOptions engineOpts;
+  engineOpts.transformer = optPipeline;
+	auto maybeEngine = mlir::ExecutionEngine::create( *module, engineOpts );
 	assert( maybeEngine && "failed to construct an execution engine" );
 	if( ! maybeEngine ) {
 		rc = FAILED;
@@ -181,8 +182,9 @@ void grb_constant( const size_t & n, RC & rc ) {
 		/*optLevel=*/enableOpt ? 0 : 0, /*sizeLevel=*/0,
 		/*targetMachine=*/nullptr );
 
-	auto maybeEngine = mlir::ExecutionEngine::create( *module,
-		/*llvmModuleBuilder=*/nullptr, optPipeline );
+  mlir::ExecutionEngineOptions engineOpts;
+  engineOpts.transformer = optPipeline;
+	auto maybeEngine = mlir::ExecutionEngine::create( *module, engineOpts );
 	assert( maybeEngine && "failed to construct an execution engine" );
 	if( ! maybeEngine ) {
 		rc = FAILED;

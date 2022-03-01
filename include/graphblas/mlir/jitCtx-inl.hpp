@@ -14,9 +14,11 @@ namespace grb {
 
 		template< typename T >
 		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
+			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
+			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
 			pm.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
-			pm.addPass( mlir::createLowerToCFGPass() );
+			pm.addPass( mlir::createConvertSCFToCFPass() );
 			pm.addPass( mlir::createMemRefToLLVMPass() );
 			pm.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
 			pm.addPass( mlir::createLowerToLLVMPass() );
@@ -42,8 +44,9 @@ namespace grb {
 				/*optLevel=*/enableOpt ? 1 : 0, /*sizeLevel=*/0,
 				/*targetMachine=*/nullptr );
 
-			auto maybeEngine = mlir::ExecutionEngine::create( *module,
-				/*llvmModuleBuilder=*/nullptr, optPipeline );
+			mlir::ExecutionEngineOptions engineOpts;
+			engineOpts.transformer = optPipeline;
+			auto maybeEngine = mlir::ExecutionEngine::create( *module, engineOpts );
 			assert( maybeEngine && "failed to construct an execution engine!" );
 			if( ! maybeEngine ) {
 				return FAILED;

@@ -253,7 +253,7 @@ if (WITH_MLIR_BACKEND)
     MLIRSupport
     MLIRIR
     MLIRLLVMIR
-    MLIRSCFToStandard
+    MLIRSCFToControlFlow
     MLIRStandardToLLVM
     MLIRTargetLLVMIRImport
     MLIRLLVMToLLVMIRTranslation
