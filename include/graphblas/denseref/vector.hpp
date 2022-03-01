@@ -83,6 +83,9 @@ namespace grb {
 			/** The length of the vector. */
 			size_t n;
 
+			/** The container capacity (in elements). */
+			size_t cap;
+
 			/** The vector data. */
 			T *__restrict__ data;
 
@@ -103,7 +106,7 @@ namespace grb {
 			 *
 			 * \internal Allocates a single array of size \a length.
 			 */
-			Vector( const size_t length ) : n( length ), initialized( false ) {
+			Vector( const size_t length, const size_t cap = 0 ) : n( length ), cap( std::max( length, cap ) ), initialized( false ) {
 				// TODO: Implement allocation properly
 				if( n > 0) {
 					data = new (std::nothrow) T[ n ];
