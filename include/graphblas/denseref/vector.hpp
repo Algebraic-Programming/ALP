@@ -102,9 +102,28 @@ namespace grb {
 			typedef T& lambda_reference;
 
 			/**
-			 * @param[in] length The requested vector length.
+			 * The main ALP/Dense vector constructor.
 			 *
-			 * \internal Allocates a single array of size \a length.
+			 * The constructed object will be uninitalised after successful construction.
+			 *
+			 *
+			 * @param length      The number of elements in the new vector.
+			 *
+			 * @return SUCCESS This function never fails.
+			 *
+			 * \parblock
+			 * \par Performance semantics.
+			 *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
+			 *        -# This constructor may allocate \f$ \Theta( length ) \f$ bytes
+			 *           of dynamic memory.
+			 *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
+			 *           memory beyond that at constructor entry.
+			 *        -# This constructor incurs \f$ \Theta(1) \f$ data movement.
+			 *        -# This constructor \em may make system calls.
+			 * \endparblock
+			 *
+			 * \warning Avoid the use of this constructor within performance critical
+			 *          code sections.
 			 */
 			Vector( const size_t length, const size_t cap = 0 ) : n( length ), cap( std::max( length, cap ) ), initialized( false ) {
 				// TODO: Implement allocation properly
@@ -119,26 +138,78 @@ namespace grb {
 				}
 			}
 
-			// /** \internal Makes a deep copy of \a other. */
-			// Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n ) {
-			// 	initialized = false;
-			// 	const RC rc = set( *this, other ); // note: initialized will be set as part of this call
-			// 	if( rc != SUCCESS ) {
-			// 		throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
-			// 	}
-			// }
+			/**
+			 * Copy constructor.
+			 *
+			 * @param other The vector to copy. The initialization state of the copy
+			 *              reflects the state of \a other.
+			 *
+			 * \parblock
+			 * \par Performance semantics.
+			 *      Allocates the same capacity as the \a other vector, even if the
+			 *      actual number of elements contained in \a other is less.
+			 *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
+			 *        -# This constructor allocates \f$ \Theta(\max{mn, cap} ) \f$ bytes
+			 *           of dynamic memory.
+			 *        -# This constructor incurs \f$ \Theta(mn) \f$ of data
+			 *           movement.
+			 *        -# This constructor \em may make system calls.
+			 * \endparblock
+			 *
+			 * \warning Avoid the use of this constructor within performance critical
+			 *          code sections.
+			 */
+			Vector( const Vector< T, reference_dense, void > &other ) : Vector( other.n, other.cap ) {
+				initialized = other.initialized;
+				// const RC rc = set( *this, other ); // note: initialized will be set as part of this call
+				// if( rc != SUCCESS ) {
+				// 	throw std::runtime_error( "grb::Vector< T, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
+				// }
+			}
 
-			// /** \internal No implementation notes. */
-			// Vector( Vector< T, reference_dense, void > &&other ) {
-			// 	n = other.n; other.n = 0;
-			// 	data = other.data; other.data = 0;
-			// 	data_deleter = std::move( other.data_deleter );
-			// 	initialized = other.initialized; other.initialized = false;
-			// }
+			/**
+			 * Move constructor. The new vector equal the given
+			 * vector. Invalidates the use of the input vector.
+			 *
+			 * @param[in] other The GraphBLAS vector to move to this new instance.
+			 *
+			 * \parblock
+			 * \par Performance semantics.
+			 *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
+			 *        -# This constructor will not allocate any new dynamic memory.
+			 *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
+			 *           memory beyond that at constructor entry.
+			 *        -# This constructor will move \f$ \Theta(1) \f$ bytes of data.
+			 * \endparblock
+			 */
+			Vector( Vector< T, reference_dense, void > &&other ) : n( other.n ), cap( other.cap ), data( other.data ) {
+				other.n = 0;
+				other.cap = 0;
+				other.data = 0;
+				// data_deleter = std::move( other.data_deleter );
+				// initialized = other.initialized; other.initialized = false;
+			}
 
-			/** \internal No implementation notes. */
+			/**
+			 * Vector destructor.
+			 *
+			 * \parblock
+			 * \par Performance semantics.
+			 *        -# This destructor entails \f$ \Theta(1) \f$ amount of work.
+			 *        -# This destructor will not perform any memory allocations.
+			 *        -# This destructor will use \f$ \mathcal{O}(1) \f$ extra bytes of
+			 *           memory beyond that at constructor entry.
+			 *        -# This destructor will move \f$ \Theta(1) \f$ bytes of data.
+			 *        -# This destructor makes system calls.
+			 * \endparblock
+			 *
+			 * \warning Avoid calling destructors from within performance critical
+			 *          code sections.
+			 */
 			~Vector() {
-				delete [] data;
+				if( data != nullptr ) {
+					delete [] data;
+				}
 			}
 
 			/** \internal No implementation notes. */
@@ -223,9 +294,8 @@ namespace grb {
 	 *
 	 * This is an opaque data type for vector views.
 	 *
-	 * A vector exposes a mathematical
-	 * \em logical layout which allows to express implementation-oblivious concepts
-	 * including the matrix structure itself and \em views on the matrix.
+	 * A vector exposes a mathematical \em logical layout which allows to
+	 * express implementation-oblivious concepts such as \em views on the vector.
 	 * The logical layout of a vector view maps to a physical counterpart via
 	 * a storage scheme which typically depends on the selected backend.
 	 * grb::Vector may be used as an interface to such a physical layout.
