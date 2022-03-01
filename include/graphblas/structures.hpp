@@ -133,12 +133,12 @@ namespace grb {
 		};
 
 		template<>
-		bool General::isInstantiableFrom< UpperTriangular >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+		inline bool General::isInstantiableFrom< UpperTriangular >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
 			return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
 		}
 
 		template<>
-		bool General::isInstantiableFrom< General >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+		inline bool General::isInstantiableFrom< General >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
 			(void)imf_l;
 			(void)imf_r;
 			return true;
