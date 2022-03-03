@@ -501,12 +501,12 @@ namespace grb {
 			 * MatrixContainer. Thus a \a MatrixReference never allocates
 			 * memory but only establishes a logical view on top of it.
 			 */
-			TargetType * ref;
+			TargetType & ref;
 
 			MatrixReference() : MatrixBase( 0, 0 ), ref( nullptr ) {}
-			MatrixReference( TargetType & struct_mat ) : MatrixBase( nrows( struct_mat ), ncols( struct_mat ) ), ref( & struct_mat ) {}
+			MatrixReference( TargetType & struct_mat ) : MatrixBase( nrows( struct_mat ), ncols( struct_mat ) ), ref( struct_mat ) {}
 			MatrixReference( TargetType & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-				MatrixBase( imf_l, imf_r ), ref( & struct_mat ) {}
+				MatrixBase( imf_l, imf_r ), ref( struct_mat ) {}
 		};
 	} // namespace internal
 
