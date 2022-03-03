@@ -317,8 +317,8 @@ namespace grb {
 	 * @tparam T				 The type of the vector elements. \a T shall not be a GraphBLAS
 	 *              			 type.
 	 * @tparam View  			 One of the vector views.
-	 * 		   					 All static views except for \a view::Identity (via
-	 *         					 \a view::identity<void> cannot instantiate a new container
+	 * 		   					 All static views except for \a view::Original (via
+	 *         					 \a view::Original<void> cannot instantiate a new container
 	 * 							 and only allow to refer to a previously defined
 	 * 							 \a VectorView.
 	 *         					 The \a View parameter should not be used directly
@@ -338,10 +338,10 @@ namespace grb {
 	 * Identity View over a vector container.
 	 */
 	template< typename T, typename C >
-	class VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C > {
+	class VectorView< T, view::Original< void >, storage::Dense, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C >;
+		using self_type = VectorView< T, view::Original< void >, storage::Dense, reference_dense, C >;
 
 		/*********************
 		    Storage info friends
@@ -381,13 +381,13 @@ namespace grb {
 	};
 
 	/**
-	 * Vector view of a vector only via \a view::Identity of another VectorView.
+	 * Vector view of a vector only via \a view::Original of another VectorView.
 	 */
 	template< typename T, typename VectorViewT, typename C >
-	class VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C > {
+	class VectorView< T, view::Original< VectorViewT >, storage::Dense, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C >;
+		using self_type = VectorView< T, view::Original< VectorViewT >, storage::Dense, reference_dense, C >;
 		using target_type = VectorViewT;
 
 		/*********************
@@ -496,10 +496,10 @@ namespace grb {
 	 * @returns          A VectorView object.
 	 */
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
+	VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
 	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source );
+		VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source );
 
 		return vec_view;
 	}
@@ -515,10 +515,10 @@ namespace grb {
 	 */
 
 	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
+	VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
 	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source, std::shared_ptr< imf::IMF > imf ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source, imf );
+		VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source, imf );
 
 		return vec_view;
 	}

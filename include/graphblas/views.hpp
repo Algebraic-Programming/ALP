@@ -37,7 +37,7 @@ namespace grb {
 	namespace view {
 
 		template< typename OriginalType >
-		struct Identity {
+		struct Original {
 
 			using applied_to = OriginalType;
 

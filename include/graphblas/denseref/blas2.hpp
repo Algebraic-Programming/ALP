@@ -279,7 +279,7 @@ namespace grb {
 		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const VectorView< bool, view::Identity< void >, structure::full, reference_dense, Coords > empty_mask( 0 );
+		const VectorView< bool, view::Original< void >, structure::full, reference_dense, Coords > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
 	}
 
@@ -293,7 +293,7 @@ namespace grb {
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const grb::VectorView< bool, view::Identity< void >, structure::full, reference_dense, Coords > empty_mask( 0 );
+		const grb::VectorView< bool, view::Original< void >, structure::full, reference_dense, Coords > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
 	}
 
