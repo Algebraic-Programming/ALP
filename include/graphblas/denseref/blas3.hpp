@@ -785,8 +785,8 @@ namespace grb {
 		bool OutputTmp,
 		typename InputCoords1, typename InputCoords2, class Operator >
 	RC outer( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense, OutputTmp > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1, false > & u,
-		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2, false > & v,
+		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1 > & u,
+		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2 > & v,
 		const Operator & mul = Operator(),
 		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
 			void >::type * const = NULL ) {

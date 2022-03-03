@@ -52,8 +52,8 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
-	size_t nrows( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView >
+	size_t nrows( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense > & A ) noexcept {
 		return A.m;
 	}
 
@@ -73,8 +73,8 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
-	size_t ncols( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
+	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView >
+	size_t ncols( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense > & A ) noexcept {
 		return A.n;
 	}
 
@@ -94,8 +94,8 @@ namespace grb {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
-	size_t nnz( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A ) noexcept {
+	template< typename InputType >
+	size_t nnz( const StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense > & A ) noexcept {
 		return A.nz;
 	}
 
@@ -126,8 +126,8 @@ namespace grb {
 	 * \warning This is an expensive function. Use sparingly and only when
 	 *          absolutely necessary
 	 */
-	template< typename InputType, typename InputStructure, typename InputStorage, typename InputView, bool InputTmp >
-	RC resize( StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense, InputTmp > & A, const size_t new_nz ) noexcept {
+	template< typename InputType >
+	RC resize( StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense > & A, const size_t new_nz ) noexcept {
 		// delegate
 		return A.resize( new_nz );
 	}
@@ -139,12 +139,11 @@ namespace grb {
 		typename InputType1, typename InputType1, typename InputView1, typename InputStorage1,
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputType3, typename InputView3, typename InputStorage3,
-		typename Coords,
-		bool IOTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords, IOTmp > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords, InputTmp3 > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords, InputTmp1 > & v,
-		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense, InputTmp2 > & A,
+		typename Coords >
+	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		const VectorView< bool, reference, Coords > empty_mask( 0 );
@@ -159,12 +158,11 @@ namespace grb {
 		typename InputType1, typename InputView1, typename InputStorage1,
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputView3, typename InputStorage3,
-		typename Coords,
-		bool IOTmp, bool InputTmp1, bool InputTmp2, bool InputTmp3 >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords, IOTmp > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords, InputTmp3 > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords, InputTmp1 > & v,
-		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense, InputTmp2 > & A,
+		typename Coords >
+	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
