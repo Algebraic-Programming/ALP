@@ -493,7 +493,7 @@ class StructuredMatrix {
 	 * When a structured matrix defines a View over another matrix, it contains a pointer
 	 * to the latter. Its type can be identified via the View parameter.
 	 */
-	using target_type = typename std::enable_if<! std::is_same<View, view::Identity<void> >::value, typename View::applied_to>::type;
+	using target_type = typename std::enable_if<! std::is_same<View, view::Original<void> >::value, typename View::applied_to>::type;
 	target_type * ref;
 
 	public :
