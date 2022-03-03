@@ -284,8 +284,8 @@ namespace grb {
 	 * Here starts spec draft for vectorView
 	 */
 
-	template< typename T, typename View, typename C, bool tmp >
-	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, C, tmp > &v ) noexcept {
+	template< typename T, typename View, typename C >
+	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, C > &v ) noexcept {
 		return v._length();
 	}
 
@@ -303,7 +303,7 @@ namespace grb {
 	 * Views can be used to create logical \em perspectives on top of a container.
 	 * For example, one may decide to refer to the part of the vector or
 	 * to reference a diagonal of a matrix as a vector.
-	 * See specialization \a VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp >
+	 * See specialization \a VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
 	 * as an example of such usage.
 	 *
 	 * Vector View defined as views on other vectors do not instantiate a
@@ -329,24 +329,19 @@ namespace grb {
 	 * 	                         \a storage::Sparse.
 	 * 		   					 \a VectorView will be allowed to pick storage schemes
 	 *         					 defined within their specified \a StorageSchemeType.
-	 * @tparam tmp  			 Whether the vector view is temporary. If \a true and the
-	 * 							 and the vector view can instantiate a physical container
-	 * 							 (i.e., it is defined with \a View = \a view::identity<void>)
-	 * 							 then the framework may or may not decide to actually allocate
-	 * 							 memory for such vector.
 	 *
 	 */
-	template< typename T, typename View, typename C, bool tmp >
-	class VectorView< T, View, storage::Dense, reference_dense, C, tmp > { };
+	template< typename T, typename View, typename C >
+	class VectorView< T, View, storage::Dense, reference_dense, C > { };
 
 	/**
 	 * Identity View over a vector container.
 	 */
-	template< typename T, typename C, bool tmp >
-	class VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C, tmp > {
+	template< typename T, typename C >
+	class VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C, tmp >;
+		using self_type = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C >;
 
 		/*********************
 		    Storage info friends
@@ -374,19 +369,13 @@ namespace grb {
 		/** @see Vector::value_type. */
 		using value_type = T;
 
-		/**
-		 * @brief Any vector view type which allocates a physical container provides a version of 
-		 * itself for defining a temporary vector of the same type via the \a tmp_t member type.
-		 */
-		using tmp_t = VectorView< T, view::Identity< void >, storage::Dense, reference_dense, C, true >;
-
 		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, C > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
 
 	}; // class VectorView with physical container
 
 	/** Identifies any reference_dense vector as an ALP vector. */
-	template< typename T, typename View, typename Storage, typename C, bool tmp >
-	struct is_container< VectorView< T, View, Storage, reference_dense, C, tmp > > {
+	template< typename T, typename View, typename Storage, typename C >
+	struct is_container< VectorView< T, View, Storage, reference_dense, C > > {
 		/** A reference_vector is an ALP object. */
 		static const constexpr bool value = true;
 	};
@@ -394,11 +383,11 @@ namespace grb {
 	/**
 	 * Vector view of a vector only via \a view::Identity of another VectorView.
 	 */
-	template< typename T, typename VectorViewT, typename C, bool tmp >
-	class VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C, tmp > {
+	template< typename T, typename VectorViewT, typename C >
+	class VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C, tmp >;
+		using self_type = VectorView< T, view::Identity< VectorViewT >, storage::Dense, reference_dense, C >;
 		using target_type = VectorViewT;
 
 		/*********************
@@ -442,13 +431,13 @@ namespace grb {
 	/**
 	 * Diagonal Vector View of a structured matrix.
 	 */
-	template< typename T, typename StructuredMatrixT, typename C, bool tmp >
-	class VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp > {
+	template< typename T, typename StructuredMatrixT, typename C >
+	class VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C > {
 
 	private:
 		/** Exposes the own type and the type of the VectorView object over
 		 * which this view is created. */
-		using self_type = VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp >;
+		using self_type = VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >;
 		using target_type = StructuredMatrixT;
 
 		/*********************
@@ -490,11 +479,11 @@ namespace grb {
 	 * 
 	 * @returns                     A VectorView object.
 	 * */
-	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates, bool tmp = false >
-	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp >
+	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates >
+	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
 	diagonal( StructuredMatrixT &smat ) {
 
-		VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C, tmp > smat_diag( smat );
+		VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C > smat_diag( smat );
 
 		return smat_diag;
 	}
@@ -506,11 +495,11 @@ namespace grb {
 	 * 
 	 * @returns          A VectorView object.
 	 */
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates, bool tmp = false >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp >
-	get_view( VectorView< T, View, StorageSchemeType, backend, C, tmp > &source ) {
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
+	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp > vec_view( source );
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source );
 
 		return vec_view;
 	}
@@ -525,11 +514,11 @@ namespace grb {
 	 * @returns          A VectorView object.
 	 */
 
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C, bool tmp = false >
-	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp >
-	get_view( VectorView< T, View, StorageSchemeType, backend, C, tmp > &source, std::shared_ptr< imf::IMF > imf ) {
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
+	VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
+	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source, std::shared_ptr< imf::IMF > imf ) {
 
-		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C, tmp > >, StorageSchemeType, backend, C, tmp > vec_view( source, imf );
+		VectorView< T, view::Identity< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source, imf );
 
 		return vec_view;
 	}
