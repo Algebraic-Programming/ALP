@@ -443,17 +443,6 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
 class StructuredMatrix {
 
-
-	/** 
-	 * Whether the container presently is initialized or not. 
-	 * We differentiate the concept of empty matrix (matrix of size \f$0\times 0\f$)
-	 * from the one of uninitialized (matrix of size \f$m\times n\f$ which was never set)
-	 * and that of zero matrix (matrix with all zero elements).
-	 * \note in sparse format a zero matrix result in an ampty data structure. Is this
-	 * used to refer to uninitialized matrix in ALP/GraphBLAS?
-	 **/
-	bool initialized;
-
 	/**
 	 * The two following members define the \em logical layout of a structured matrix:
 	 * Its structure and access relations. This is enabled only if the structured matrix
