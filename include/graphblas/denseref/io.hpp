@@ -154,8 +154,8 @@ namespace grb {
 	 * 
 	 * @see grb::buildMatrix
 	 */
-	template< typename InputType, typename Structure, typename Storage, typename View, bool tmp, typename fwd_iterator >
-	RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense, tmp > & A, const fwd_iterator & start, const fwd_iterator & end ) {
+	template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
+	RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
 		(void)A;
 		(void)start;
 		(void)end;

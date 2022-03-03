@@ -437,7 +437,7 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 	return UNSUPPORTED;
 }
 
-template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend, bool tmp >
+template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
 class StructuredMatrix {
 
 
@@ -497,9 +497,9 @@ class StructuredMatrix {
 
 	StructuredMatrix( const size_t m, const size_t n );
 
-	StructuredMatrix( const StructuredMatrix< T, Structure, StorageSchemeType, View, backend, tmp > & other );
+	StructuredMatrix( const StructuredMatrix< T, Structure, StorageSchemeType, View, backend > & other );
 
-	StructuredMatrix( StructuredMatrix< T, Structure, StorageSchemeType, View, backend, tmp > && other );
+	StructuredMatrix( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > && other );
 
 	~StructuredMatrix();
 
@@ -510,8 +510,8 @@ class StructuredMatrix {
  */
 template< typename T >
 struct is_structured_matrix : std::false_type {};
-template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend, bool tmp >
-struct is_structured_matrix< StructuredMatrix< T, Structure, StorageSchemeType, View, backend, tmp > > : std::true_type {};
+template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+struct is_structured_matrix< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > > : std::true_type {};
 
 } // end namespace ``grb''
 
