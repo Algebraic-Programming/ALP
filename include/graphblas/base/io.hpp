@@ -1366,7 +1366,6 @@ namespace grb {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
-  
 	template< Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
@@ -1390,8 +1389,6 @@ namespace grb {
 		//using  iterator_category=std::forward_iterator_tag;  //testing only
 		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end, iterator_category() );
 		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end, iterator_category() );
-
-
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1493,13 +1490,11 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-
-	  return buildMatrixUnique< descr >( A, start, end, mode );
-		// (void)A;
-		// (void)start;
-		// (void)end;
-		// (void)mode;
-		// return PANIC;
+		(void)A;
+		(void)start;
+		(void)end;
+		(void)mode;
+		return PANIC;
 	}
 
 	/**

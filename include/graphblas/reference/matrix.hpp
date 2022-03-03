@@ -196,6 +196,143 @@ namespace grb {
 			const std::function< size_t( size_t ) > &col_g2l
 		);
 
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+		template< typename itertype , typename elmtype,
+			typename sizetype, typename comprestype,
+			typename elmtype2 >
+		void count_sort_omp(
+			itertype it,
+			sizetype nz,
+			elmtype imin,
+			elmtype imax,
+			sizetype nsize,
+			elmtype *buffer,
+			sizetype buffersize,
+			comprestype &CXX,
+			elmtype2 a_get,
+			bool save_by_i ){
+
+			sizetype bufferlen; //local buffer size
+			if(nsize==1){
+				bufferlen = imax-imin+1;
+#ifdef _DEBUG    
+				std::cout << " readjustment:  bufferlen=" << bufferlen << " using full buffer with one thread  \n" ;
+#endif
+			} else {
+				bufferlen=(buffersize)/nsize;
+			}
+			
+			if (nz<=1) {
+				return ;
+			}
+			
+			if (imin==imax) {
+				std::cout << " imin==imax=" << imax << ": return\n" ;	
+				return ;
+			}
+			
+			if( buffersize <= 1 ) {
+				std::cerr << "error: buffersize < 1 \n";
+				return ;
+			}
+	
+			if(bufferlen<=1){
+				while(bufferlen<=1 && nsize>=2){
+					(void)--nsize;
+					bufferlen=(buffersize)/nsize;
+#ifdef _DEBUG    
+					std::cout << " readjustment:  bufferlen=" << bufferlen << " cannot use all threads \n" ;
+					std::cout << "                    nsize=" << nsize << "\n" ;
+#endif
+				}
+			}
+			
+			sizetype bucketlen=(imax-imin+1)/bufferlen ;
+			
+			if((imax-imin+1)==bufferlen){
+				bucketlen=0;
+			}
+	
+#ifdef _DEBUG    
+			std::cout << " bucketlen=" << bucketlen << "\n" ;
+#endif
+			
+			#pragma omp for
+			for (sizetype i=0;i<buffersize;i++) buffer[i] = 0;
+
+			#pragma omp parallel
+			{
+				const sizetype irank = omp_get_thread_num();
+				if(irank<nsize) for (size_t i=irank*nz/nsize;i<(irank+1)*nz/nsize;i++)
+									buffer[irank*bufferlen+(a_get(it,i)-imin)/(bucketlen+1)]++ ;
+			}
+  
+			#pragma omp for
+			for (size_t irank=1;irank<nsize;irank++)
+				for (size_t i=0;i<bufferlen;i++)
+					buffer[irank*bufferlen+i]+=buffer[(irank-1)*bufferlen+i];
+
+			//this loop still not parallel, no significant speedup 
+			for (size_t i=1;i<bufferlen;i++)  
+				buffer[(nsize-1)*bufferlen+i]+=buffer[(nsize-1)*bufferlen+i-1];
+			//prefixsum_inplace(&buffer[(nsize-1)*bufferlen],bufferlen,threadsbuffer);
+  
+			#pragma omp for  
+			for (size_t i=1;i<bufferlen;i++)  
+				for (size_t irank=0;irank<nsize-1;irank++)  
+					buffer[irank*bufferlen+i]+=buffer[(nsize-1)*bufferlen+i-1] ;
+			
+			#pragma omp parallel
+			{
+				const size_t irank = omp_get_thread_num();
+				if(irank<nsize) {
+					for (size_t i=irank*nz/nsize;i<(irank+1)*nz/nsize;i++) {
+						auto i1=irank*bufferlen+(a_get(it,i)-imin)/(bucketlen+1);
+						--buffer[i1];
+						itertype ittmp=it;
+						ittmp+=(size_t)i;
+						CXX.recordValue( buffer[i1], save_by_i, ittmp );
+					}
+				}
+			}
+			
+			#pragma omp for
+			for (size_t i=0;i<imax-imin;i++ ) CXX.col_start[ i ] =  buffer[i];
+
+		};
+		
+		template< typename elmtype, typename sizetype >
+		void prefixsum_inplace(elmtype *x, sizetype N, elmtype *rank_sum) {
+			//rank_sum is a buffer of size= nsize+1
+		#pragma omp parallel
+		  {
+		    const sizetype irank = omp_get_thread_num();
+		    const sizetype nsize = omp_get_num_threads();
+		#pragma omp single
+		    {
+		      rank_sum[0] = 0;
+		    }
+		    elmtype sum = 0;
+		#pragma omp for schedule(static)
+		    for (sizetype i=0; i<N; i++) {
+		      sum += x[i];
+		      x[i] = sum;
+		    }
+		    rank_sum[irank+1] = sum;
+		#pragma omp barrier
+		    elmtype offset = 0;
+		    for(sizetype i=0; i<(irank+1); i++) {
+		      offset += rank_sum[i];
+		    }
+		#pragma omp for schedule(static)
+		    for (sizetype i=0; i<N; i++) {
+		      x[i] += offset;
+		    }
+		  }
+		};
+#endif
+	  
+
 	} // namespace internal
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
@@ -958,9 +1095,12 @@ namespace grb {
    	        /** @see Matrix::buildMatrixUnique */
 	        template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
 		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end ) {
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
 		  typedef typename std::iterator_traits<fwd_iterator>::iterator_category category;
 		  buildMatrixUniqueImpl(_start, _end, category());
-		  //buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() ); //TEST
+#else
+		  buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
+#endif
 		  return SUCCESS;
 		}
 
@@ -968,6 +1108,7 @@ namespace grb {
 	        //forward iterator version
 	        template <typename fwd_iterator>
 		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {
+		  
 #ifdef _DEBUG
 		        std::cout << " fwrd acces iterator " << '\n';
 		        //compilation of the next lines should fail
@@ -987,6 +1128,7 @@ namespace grb {
 
 			// keep count of nonzeroes
 			nz = 0;
+			
 
 			// reset col_start array to zero, fused loop
 			{
@@ -1043,10 +1185,11 @@ namespace grb {
 					<< "input at " << it.j() << "\n";
 			      return MISMATCH;
 			    }
-			    ++( CRS.col_start[ it.i() ] );
-			    ++( CCS.col_start[ it.j() ] );
-			    ++nz;
+			    (void)++( CRS.col_start[ it.i() ] );
+			    (void)++( CCS.col_start[ it.j() ] );
+			    (void)++nz;
 			  }
+
 
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
@@ -1062,8 +1205,6 @@ namespace grb {
 
 			// allocate enough space
 			resize( nz );
-
-			// parallelise below loops -- internal issue #192
 
 			// make counting sort array cumulative
 			for( size_t i = 1; i < m; ++i ) {
@@ -1082,6 +1223,9 @@ namespace grb {
 #endif
 				CCS.col_start[ i ] += CCS.col_start[ i - 1 ];
 			}
+
+
+
 
 			// perform counting sort
 			fwd_iterator it = _start;
@@ -1117,37 +1261,34 @@ namespace grb {
 				(void)printf( "col_start[ %ld ] = %ld.\n", i, CCS.col_start[ i ] );
 			}
 #endif
-
 			// done
+
+			
 			return SUCCESS;
 		}
 
 
-	        //random access version
-	        template <typename fwd_iterator>
-		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::random_access_iterator_tag) {
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX		
+		//random access version 
+		template <typename rndacc_iterator>
+		RC buildMatrixUniqueImpl(rndacc_iterator _start, rndacc_iterator _end, std::random_access_iterator_tag) {
 #ifdef _DEBUG
 		        std::cout << " rnd access iterator " << '\n';
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX						
-                        #pragma omp parallel for
-#endif
-		        for( fwd_iterator it = _start; it != _end; ++it ){}
-			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
-			std::cout << "buildMatrixUnique: input is\n";
-			for( fwd_iterator it = _start; it != _end; ++it ) {
-				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
-			}
-			std::cout << "buildMatrixUnique: end input.\n";
+				std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
+				std::cout << "buildMatrixUnique: input is\n";
+				for( rndacc_iterator it = _start; it != _end; ++it ) {
+					std::cout << "\t" << it.i() << ", " << it.j() << "\n";
+				}
+				std::cout << "buildMatrixUnique: end input.\n";
 #endif
 
+				// detect trivial case
+				if( _start == _end || m == 0 || n == 0 ) {
+					return SUCCESS;
+				}
 
-			// detect trivial case
-			if( _start == _end || m == 0 || n == 0 ) {
-				return SUCCESS;
-			}
-
-			// keep count of nonzeroes
-			nz = 0;
+				// count of nonzeroes
+				nz = _end-_start;
 
 			// reset col_start array to zero, fused loop
 			{
@@ -1158,29 +1299,23 @@ namespace grb {
 					std::swap( min_dim, max_dim );
 				}
 				// fill until minimum
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
 				#pragma omp parallel for schedule( \
  		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
 				for( size_t i = 0; i < min_dim; ++i ) {
 					CRS.col_start[ i ] = 0;
 					CCS.col_start[ i ] = 0;
 				}
 				// if the minimum dimension is the row dimension
 				if( min_dim == static_cast< size_t >( m ) ) {
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					#pragma omp parallel for schedule( \
  		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
 					// then continue to fill column dimension
 					for( size_t i = min_dim; i < max_dim; ++i ) {
 						CCS.col_start[ i ] = 0;
 					}
 				} else {
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					#pragma omp parallel for schedule( \
  		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
 					// otherwise, continue to fill row dimension
 					for( size_t i = min_dim; i < max_dim; ++i ) {
 						CRS.col_start[ i ] = 0;
@@ -1188,95 +1323,12 @@ namespace grb {
 				}
 			}
 
-
-
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
 			size_t nsize;
-                        #pragma omp parallel
-			{
-			  nsize = omp_get_num_threads();
-			}
-							  
-			size_t** pCCS = new size_t* [nsize];
-			size_t** pCRS = new size_t* [nsize];
-			
-			for ( size_t i=0;i<nsize;i++) pCCS[i] = new size_t [n];
-			for ( size_t i=0;i<nsize;i++) pCRS[i] = new size_t [m];
-			
-			for ( size_t i=0;i<nsize;i++) for ( size_t j=0;j<n;j++) pCCS[i][j] = 0;
-			for ( size_t i=0;i<nsize;i++) for ( size_t j=0;j<m;j++) pCRS[i][j] = 0;
-			
-			
-			int  checkMISMATCH=0;
-			// #pragma omp parallel for reduction(+:checkMISMATCH) reduction(+:nz) \
-			//   reduction(+:p1[:n]) reduction(+:p2[:m])
-			
 			#pragma omp parallel
 			{
-			const size_t irank = omp_get_thread_num();
-			
-			#pragma omp for reduction(+:checkMISMATCH) reduction(+:nz)
-#endif
-			for( fwd_iterator it = _start; it != _end; ++it )
-			  {
-			    if( it.i() >= m ) {
-			      std::cerr << "Error: " << m << " times " << n
-					<< " matrix nonzero ingestion encounters row "
-					<< "index at " << it.i() << "\n";
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			      checkMISMATCH=1;
-#else			      
-			      return MISMATCH;
-#endif
-			    }
-			    if( it.j() >= n ) {
-			      std::cerr << "Error: " << m << " times " << n
-					<< " matrix nonzero ingestion encounters column "
-					<< "input at " << it.j() << "\n";
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			      checkMISMATCH=1;
-#else			      
-			      return MISMATCH;
-#endif
-			    }
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			    // #pragma omp critical
-			    // {
-			    // ++( CRS.col_start[ it.i() ] );
-			    // ++( CCS.col_start[ it.j() ] );			    
-			    // }
-			    ++pCRS[irank][it.i()];
-			    ++pCCS[irank][it.j()];
-#else
-			    ++( CRS.col_start[ it.i() ] );
-			    ++( CCS.col_start[ it.j() ] );
-#endif			    
-			    ++nz;
-			  }
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			}
-			if(checkMISMATCH) return MISMATCH;
-#endif			  
+			  nsize = omp_get_num_threads();
+			}							  
 
-
-
-
-
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			#pragma omp for
-			for ( size_t j=0;j<n;j++) for ( size_t i=0;i<nsize;i++)  CCS.col_start[ j ] += pCCS[i][j];
-			#pragma omp for
-			for ( size_t j=0;j<m;j++) for ( size_t i=0;i<nsize;i++)  CRS.col_start[ j ] += pCRS[i][j];
-
-			for ( size_t i=0;i<nsize;i++) delete[] pCCS[i];
-			for ( size_t i=0;i<nsize;i++) delete[] pCRS[i];
-			delete[] pCCS;
-			delete[] pCRS;
-#endif
-
-
-
-			
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
 					std::numeric_limits< NonzeroIndexType >::max()
@@ -1288,72 +1340,46 @@ namespace grb {
 			// put final entries
 			CRS.col_start[ m ] = nz;
 			CCS.col_start[ n ] = nz;
-
+			
 			// allocate enough space
 			resize( nz );
 
-			// parallelise below loops -- internal issue #192
-
-			// make counting sort array cumulative
-			for( size_t i = 1; i < m; ++i ) {
-#ifdef _DEBUG
-				std::cout << "There are " << CRS.col_start[ i ] << " "
-					<< "nonzeroes at row " << i << "\n";
-#endif
-				CRS.col_start[ i ] += CRS.col_start[ i - 1 ];
+			{
+			size_t amax=m;
+			size_t amin=0;
+			size_t bufferlen_tot = (nsize)*(amax-amin+1); // this is min buffer size
+			grb::internal::ensureReferenceBufsize<size_t>( bufferlen_tot ) ;
+			size_t *buffer1=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
+			rndacc_iterator it = _start;
+			count_sort_omp( it, nz, amin, amax, nsize,
+						  buffer1, bufferlen_tot, CRS,
+						  [&](const rndacc_iterator itr, const size_t& k) {
+							  rndacc_iterator itrtmp=itr;
+							  itrtmp+=k;
+							  return (itrtmp.i());
+						  },
+						  false ) ;
 			}
 
-			// make counting sort array cumulative
-			for( size_t i = 1; i < n; ++i ) {
-#ifdef _DEBUG
-				std::cout << "There are " << CCS.col_start[ i ] << " "
-					<< "nonzeroes at column " << i << "\n";
-#endif
-				CCS.col_start[ i ] += CCS.col_start[ i - 1 ];
+			{
+			size_t amax=n;
+			size_t amin=0;
+			size_t bufferlen_tot = (nsize)*(amax-amin+1); // this is min buffer size
+			grb::internal::ensureReferenceBufsize<size_t>( bufferlen_tot ) ;
+			size_t *buffer2=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
+			rndacc_iterator it = _start;
+			count_sort_omp( it, nz, amin, amax, nsize,
+						  buffer2, bufferlen_tot, CCS,
+						  [&](const rndacc_iterator itr, const size_t& k) {
+							  rndacc_iterator itrtmp=itr;
+							  itrtmp+=k;
+							  return (itrtmp.j());
+						  },
+						  true ) ;
 			}
-
-			// perform counting sort
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			//#pragma omp parallel for
-#endif
-			for( fwd_iterator it = _start; it != _end; ++it ) {
-				const size_t crs_pos = --( CRS.col_start[ it.i() ] );
-				CRS.recordValue( crs_pos, false, it );
-#ifdef _DEBUG
-				std::cout << "Nonzero  ( " << it.i() << ", " << it.j() << " ) "
-					<< "is stored at CRS position "
-					<< static_cast< size_t >( crs_pos ) << ".\n";
-				// Disabled the following to support pattern matrices:
-				// "Its stored value is " << CRS.values[crs_pos] << ", "
-				// "while the original input was " << it.v() << ".\n";
-#endif
-				const size_t ccs_pos = --( CCS.col_start[ it.j() ] );
-				CCS.recordValue( ccs_pos, true, it );
-#ifdef _DEBUG
-				std::cout << "Nonzero  ( " << it.i() << ", " << it.j() << " ) "
-					<< "is stored at CCS position "
-					<< static_cast< size_t >( ccs_pos ) << ".\n";
-				// Disabled the following to support pattern matrices:
-				// ". Its stored value is " << CCS.values[ccs_pos] << ", while the "
-				// "original input was " << it.v() << ".\n";
-#endif
-			}
-
-#ifdef _DEBUG
-			for( size_t i = 0; i <= m; ++i ) {
-				std::cout << "row_start[ " << i << " ] = " << CRS.col_start[ i ] << ".\n";
-			}
-			for( size_t i = 0; i <= n; ++i ) {
-				std::cout << "col_start[ " << i << " ] = " << CCS.col_start[ i ] << ".\n";
-			}
-#endif
-
-			// done
-
-			
 			return SUCCESS;
 		}
-
+#endif
 
 
 	public:

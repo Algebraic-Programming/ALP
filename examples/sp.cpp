@@ -35,58 +35,18 @@
 
 #include <graphblas.hpp>
 
-
 using namespace grb;
-
-template< typename iteratortype >
-void test(const iteratortype ){
-  typedef typename std::iterator_traits<iteratortype>::iterator_category category;
-  std::cout << "-----------------> test category= "<< typeid(category()).name() <<" \n";
-}
-
 
 //! [Example Data]
 static const char * const vertex_ids[ 5 ] = { "Shenzhen", "Hong Kong", "Santa Clara", "London", "Paris" };
 
-
+static const double distances[ 10 ] = { 8.628, 8.964, 11.148, .334, 9.606, 9.610, .017, .334, .017, .334 };
 static const int price[ 10 ] = { 723, 956, 600, 85, 468, 457, 333, 85, 50, 150 };
 static const double timeliness[ 10 ] = { 0.9, 0.7, 0.99, 0.9, 0.9, 0.7, 0.99, 0.7, .99, 0.99 };
 static const std::string mode[ 10 ] = { "air", "air", "air", "air", "air", "air", "air", "air", "land", "land" };
 
-size_t I[ 10 ] = { 3, 4, 2, 3, 3, 4, 1, 4, 1, 4 };
-size_t J[ 10 ] = { 2, 2, 1, 4, 1, 1, 0, 3, 0, 3 };
-double distances[ 10 ] = { 8.628, 8.964, 11.148, .334, 9.606, 9.610, .017, .334, .017, .334 };
-
-class data {
-  int iindex;
-  int jindex;
-  double vdata;
-  public :
-  data(){
-    iindex=0;
-    jindex=0;
-    vdata=0;
-  };
-  data(int _i,int _j,double _v){
-    iindex=_i;
-    jindex=_j;
-    vdata=_v;
-  };
-  void set(int _i,int _j,double _v){
-    iindex=_i;
-    jindex=_j;
-    vdata=_v;
-  };  
-  int & i(){ return (iindex);};
-  int & j(){ return (jindex);};
-  double & v(){ return (vdata);};
-};
-  
-
-
-
-
-
+static const size_t I[ 10 ] = { 3, 4, 2, 3, 3, 4, 1, 4, 1, 4 };
+static const size_t J[ 10 ] = { 2, 2, 1, 4, 1, 1, 0, 3, 0, 3 };
 //! [Example Data]
 
 //! [Example function taking arbitrary semirings]
@@ -123,33 +83,8 @@ int main( int argc, char ** argv ) {
 				  "-->dist.buildMatrixUnique( dist, &(I[0]), &(J[0]), distances, 10 "
 				  ");\n" );
 	//! [Example matrix assignment]
-	size_t *p1,*p2;
-	p1=I;
-	p2=J;
-
-	data *mydata = new data[10];
-	for (int i=0;i<10;i++) mydata[i].set(I[i],J[i],distances[i]);
-
-	//data *start=mydata;
-	//data *end=mydata;
-	//end+=10;
-	
-	//for (data *it=start;it!=end;it++) std::cout << (it).i() << "  " << (it).j() << "  " << (it).v() << "  \n" ;
-	
-	typedef typename std::iterator_traits<size_t *>::iterator_category category;
-	std::cout << "-----------------> before buildMatrixUnique std::iterator_traits category= "<< typeid(category()).name() <<" \n";
-	typedef typename std::iterator_traits<double *>::iterator_category category_dist;
-	std::cout << "-----------------> before buildMatrixUnique std::iterator_traits category_dist= "<< typeid(category_dist()).name() <<" \n";
-
-
-	//grb::buildMatrixUnique( dist, start, end, SEQUENTIAL );
-	
-	grb::buildMatrixUnique( dist, p1, p2 , distances, 10, SEQUENTIAL );
-	printf( "\n\n\n\n\n");
-
-	test(p1);
+	buildMatrixUnique( dist, &( I[ 0 ] ), &( J[ 0 ] ), distances, 10, SEQUENTIAL );
 	//! [Example matrix assignment]
-	//return 0;
 
 	(void)printf( "Create new vectors x and y:\n"
 				  "-->grb::Vector< int > x( 5 );\n"
@@ -320,4 +255,3 @@ int main( int argc, char ** argv ) {
 
 	return EXIT_SUCCESS;
 }
-

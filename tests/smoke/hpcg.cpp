@@ -66,26 +66,26 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
 #include <utils/assertions.hpp>
 #include <utils/print_vec_mat.hpp>
 
-using namespace grb;
-using namespace algorithms;
-
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference HPCG
-constexpr std::size_t PHYS_SYSTEM_SIZE_DEF = 16UL;
-constexpr std::size_t PHYS_SYSTEM_SIZE_MIN = 4UL;
-constexpr std::size_t DEF_COARSENING_LEVELS = 1U;
-constexpr std::size_t MAX_COARSENING_LEVELS = 4U;
-constexpr std::size_t MAX_ITERATIONS_DEF = 56UL;
-constexpr std::size_t SMOOTHER_STEPS_DEF = 1;
+constexpr std::size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
+constexpr std::size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
+constexpr std::size_t DEF_COARSENING_LEVELS{ 1U };
+constexpr std::size_t MAX_COARSENING_LEVELS{ 4U };
+constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
+constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
 
 // internal values
-constexpr double SYSTEM_DIAG_VALUE = 26.0;
-constexpr double SYSTEM_NON_DIAG_VALUE = -1.0;
-constexpr std::size_t BAND_WIDTH_3D = 13UL;
-constexpr std::size_t HALO_RADIUS =  1UL ;
+constexpr double SYSTEM_DIAG_VALUE { 26.0 };
+constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
+constexpr std::size_t BAND_WIDTH_3D { 13UL };
+constexpr std::size_t HALO_RADIUS { 1U };
 //============================================
 
-constexpr double MAX_NORM = 4.0e-14;
+constexpr double MAX_NORM { 4.0e-14 };
+
+using namespace grb;
+using namespace algorithms;
 
 static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
@@ -153,14 +153,7 @@ T static next_pow_2( T n ) {
 static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
 	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
-		physical_sys_sizes,
-		HALO_RADIUS,
-		BAND_WIDTH_3D * 2 + 1,
-		SYSTEM_DIAG_VALUE,
-		SYSTEM_NON_DIAG_VALUE,
-		PHYS_SYSTEM_SIZE_MIN,
-		in.max_coarsening_levels,
-		2
+		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
 
 	return build_hpcg_system< 3, double >( holder, params );
