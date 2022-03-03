@@ -131,9 +131,13 @@ namespace grb {
 		D * __restrict__ data;
 
 		/** 
-		 * Whether the container presently is uninitialized. 
-		 * Matrix is in such state when the object is constructed.
-		 */
+		 * Whether the container presently is initialized or not.
+		 * We differentiate the concept of empty matrix (matrix of size \f$0\times 0\f$)
+		 * from the one of uninitialized (matrix of size \f$m\times n\f$ which was never set)
+		 * and that of zero matrix (matrix with all zero elements).
+		 * \note in sparse format a zero matrix result in an ampty data structure. Is this
+		 * used to refer to uninitialized matrix in ALP/GraphBLAS?
+		 **/
 		bool initialized;
 
 		/**
@@ -400,14 +404,6 @@ namespace grb {
 				return A._dims();
 			}
 
-			friend bool getInitialized( MatrixBase & A ) noexcept {
-				return A.initialized;
-			}
-
-			friend void setInitialized( MatrixBase & A, bool initialized ) noexcept {
-				A.initialized = initialized;
-			}
-
 			/** 
 			 * All matrix views use a pair of index mapping functions to 
 			 * capture the correspondence between their logical layout and the one 
@@ -415,13 +411,6 @@ namespace grb {
 			 * of IMFs between the top matrix view and the physical container.
 			 */
 			std::shared_ptr<imf::IMF> imf_l, imf_r;
-
-			/** 
-			 * Whether the container presently is initialized or not. 
-			 * TODO: Should be pushed down to the container and reference classess
-			 * so to obtain this status directly from the underlying container. 
-			 */
-			bool initialized;
 
 			/**
 			 * @brief determines the size of the structured matrix via the domain of 
@@ -442,13 +431,11 @@ namespace grb {
 			 */
 			MatrixBase( size_t rows, size_t cols ) :
 				imf_l( std::make_shared< imf::Id >( rows ) ),
-				imf_r( std::make_shared< imf::Id >( cols ) ),
-				initialized( false ) {}
+				imf_r( std::make_shared< imf::Id >( cols ) ) {}
 
 			MatrixBase( std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
 				imf_l( imf_l ),
-				imf_r( imf_r ),
-				initialized( false ) {}
+				imf_r( imf_r ) {}
 
 		};
 
@@ -464,6 +451,14 @@ namespace grb {
 
 			friend Matrix< T, reference_dense > & getContainer( MatrixContainer< T > & A ) {
 				return *( A._container );
+			}
+
+			friend bool getInitialized( MatrixContainer & A ) noexcept {
+				return getInitialized( getCointainer( A ) );
+			}
+
+			friend void setInitialized( MatrixContainer & A, bool initialized ) noexcept {
+				setInitialized( getContainer( A, initialized ));
 			}
 
 			/** A container-type view is characterized by its association with a physical container */
