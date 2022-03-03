@@ -177,7 +177,7 @@ namespace grb {
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid,
-			typename OutputView = view::Identity< void >, typename InputView1 = view::Identity< void >, typename InputView2 = view::Identity< void >,
+			typename OutputView = view::Original< void >, typename InputView1 = view::Original< void >, typename InputView2 = view::Original< void >,
 			bool OutputTmp, bool InputTmp1, bool InputTmp2
 		>
 		RC mxm_generic( StructuredMatrix< OutputType, structures::General, storage::Dense, OutputView, reference_dense, OutputTmp > &C,
@@ -580,7 +580,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense, false> * no_matrix = nullptr;
+		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Original< void >, reference_dense, false> * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
 			&C,
 			no_matrix,
@@ -640,7 +640,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > * no_matrix = nullptr;
+		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Original< void >, reference_dense, false > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
 			&C,
 			&A,
@@ -812,8 +812,8 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > u_matrix( nrows, 1 );
-		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense, false > v_matrix( 1, ncols );
+		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Original< void >, reference_dense, false > u_matrix( nrows, 1 );
+		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Original< void >, reference_dense, false > v_matrix( 1, ncols );
 
 		// auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
 		// 	return std::make_pair( std::make_pair( ind, 0 ), val );
