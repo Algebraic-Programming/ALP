@@ -320,14 +320,14 @@ namespace grb {
 	namespace internal {
 		/** Forward declaration */
 		template< typename T >
-		class StructuredMatrixContainer;
+		class MatrixContainer;
 
 		/** Container reference getters used by friend functions of specialized StructuredMatrix */
 		template< typename T >
-		const Matrix< T, reference_dense > & getContainer( const StructuredMatrixContainer< T > & A );
+		const Matrix< T, reference_dense > & getContainer( const MatrixContainer< T > & A );
 
 		template< typename T >
-		Matrix< T, reference_dense > & getContainer( StructuredMatrixContainer< T > & A );
+		Matrix< T, reference_dense > & getContainer( MatrixContainer< T > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
 		template< typename T, typename Structure, typename Storage, typename View, bool tmp >
@@ -341,17 +341,17 @@ namespace grb {
 		}
 
 		/** Forward declaration */
-		class StructuredMatrixBase;
+		class MatrixBase;
 
-		size_t nrows( const StructuredMatrixBase & A ) noexcept;
+		size_t nrows( const MatrixBase & A ) noexcept;
 
-		size_t ncols( const StructuredMatrixBase & A ) noexcept;
+		size_t ncols( const MatrixBase & A ) noexcept;
 
-		std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept;
+		std::pair< size_t, size_t > dims( const MatrixBase & A ) noexcept;
 
-		bool getInitialized( StructuredMatrixBase & ) noexcept;
+		bool getInitialized( MatrixBase & ) noexcept;
 
-		void getInitialized( StructuredMatrixBase &, bool ) noexcept;
+		void getInitialized( MatrixBase &, bool ) noexcept;
 
 		template< typename T, typename Structure, typename Storage, typename View, bool tmp >
 		bool getInitialized( StructuredMatrix< T, Structure, Storage, View, reference_dense, tmp > & A ) noexcept {
@@ -385,26 +385,26 @@ namespace grb {
 		 * \internal Maybe this class can be inherited by Container and Reference classes below
 		 */
 
-		class StructuredMatrixBase {
+		class MatrixBase {
 
 		protected:
-			friend size_t nrows( const StructuredMatrixBase & A ) noexcept {
+			friend size_t nrows( const MatrixBase & A ) noexcept {
 				return A._dims().first;
 			}
 
-			friend size_t ncols( const StructuredMatrixBase & A ) noexcept {
+			friend size_t ncols( const MatrixBase & A ) noexcept {
 				return A._dims().second;
 			}
 
-			friend std::pair< size_t, size_t > dims( const StructuredMatrixBase & A ) noexcept {
+			friend std::pair< size_t, size_t > dims( const MatrixBase & A ) noexcept {
 				return A._dims();
 			}
 
-			friend bool getInitialized( StructuredMatrixBase & A ) noexcept {
+			friend bool getInitialized( MatrixBase & A ) noexcept {
 				return A.initialized;
 			}
 
-			friend void setInitialized( StructuredMatrixBase & A, bool initialized ) noexcept {
+			friend void setInitialized( MatrixBase & A, bool initialized ) noexcept {
 				A.initialized = initialized;
 			}
 
@@ -440,12 +440,12 @@ namespace grb {
 			 * @param rows The number of rows of the matrix.
 			 * @param cols The number of columns of the matrix.
 			 */
-			StructuredMatrixBase( size_t rows, size_t cols ) :
+			MatrixBase( size_t rows, size_t cols ) :
 				imf_l( std::make_shared< imf::Id >( rows ) ),
 				imf_r( std::make_shared< imf::Id >( cols ) ),
 				initialized( false ) {}
 
-			StructuredMatrixBase( std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+			MatrixBase( std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
 				imf_l( imf_l ),
 				imf_r( imf_r ),
 				initialized( false ) {}
@@ -456,13 +456,13 @@ namespace grb {
 		 * Base class with container-related attributes, used in container-type StructuredMatrix specializations
 		 */
 		template< typename T >
-		class StructuredMatrixContainer : public StructuredMatrixBase {
+		class MatrixContainer : public MatrixBase {
 		protected:
-			friend const Matrix< T, reference_dense > & getContainer( const StructuredMatrixContainer< T > & A ) {
+			friend const Matrix< T, reference_dense > & getContainer( const MatrixContainer< T > & A ) {
 				return *( A._container );
 			}
 
-			friend Matrix< T, reference_dense > & getContainer( StructuredMatrixContainer< T > & A ) {
+			friend Matrix< T, reference_dense > & getContainer( MatrixContainer< T > & A ) {
 				return *( A._container );
 			}
 
@@ -487,8 +487,8 @@ namespace grb {
 			 * TODO: Add the storage scheme a parameter to the constructor 
 			 * so that allocation can be made accordingly, generalizing the full case.
 			 */
-			StructuredMatrixContainer( size_t rows, size_t cols ) :
-				StructuredMatrixBase( rows, cols ),
+			MatrixContainer( size_t rows, size_t cols ) :
+				MatrixBase( rows, cols ),
 				_container( new Matrix< T, reference_dense >(rows, cols) ),
 				storage_scheme( storage::full ) {}
 
@@ -499,19 +499,19 @@ namespace grb {
 		 * 
 		 */
 		template< typename TargetType >
-		class StructuredMatrixReference : public StructuredMatrixBase {
+		class MatrixReference : public MatrixBase {
 		protected:
 			/** A reference-type view is characterized by an indirect association with a
-			 * physical layout via either another \a StructuredMatrixReference or a \a 
-			 * StructuredMatrixContainer. Thus a \a StructuredMatrixReference never allocates
+			 * physical layout via either another \a MatrixReference or a \a
+			 * MatrixContainer. Thus a \a MatrixReference never allocates
 			 * memory but only establishes a logical view on top of it.
 			 */
 			TargetType * ref;
 
-			StructuredMatrixReference() : StructuredMatrixBase( 0, 0 ), ref( nullptr ) {}
-			StructuredMatrixReference( TargetType & struct_mat ) : StructuredMatrixBase( nrows( struct_mat ), ncols( struct_mat ) ), ref( & struct_mat ) {}
-			StructuredMatrixReference( TargetType & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-				StructuredMatrixBase( imf_l, imf_r ), ref( & struct_mat ) {}
+			MatrixReference() : MatrixBase( 0, 0 ), ref( nullptr ) {}
+			MatrixReference( TargetType & struct_mat ) : MatrixBase( nrows( struct_mat ), ncols( struct_mat ) ), ref( & struct_mat ) {}
+			MatrixReference( TargetType & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+				MatrixBase( imf_l, imf_r ), ref( & struct_mat ) {}
 		};
 	} // namespace internal
 
@@ -589,7 +589,7 @@ namespace grb {
 	 */
 	template< typename T, bool tmp >
 	class StructuredMatrix< T, structures::General, storage::Dense, view::Original< void >, reference_dense, tmp > :
-		public internal::StructuredMatrixContainer< T > {
+		public internal::MatrixContainer< T > {
 
 	private:
 		/*********************
@@ -626,7 +626,7 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::StructuredMatrixContainer< T >( rows, cols ) {
+			internal::MatrixContainer< T >( rows, cols ) {
 		}
 
 	}; // StructuredMatrix General, container
@@ -636,7 +636,7 @@ namespace grb {
 	 */
 	template< typename T, typename View, bool tmp >
 	class StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense, tmp > :
-		public internal::StructuredMatrixReference< typename View::applied_to > {
+		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense, tmp >;
@@ -650,18 +650,18 @@ namespace grb {
 		using original_t = StructuredMatrix< T, structures::General, storage::Dense, view::Original< self_type >, reference_dense, tmp >;
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
-		StructuredMatrix( ) : internal::StructuredMatrixBase( 0, 0 ) {}
+		StructuredMatrix( ) : internal::MatrixBase( 0, 0 ) {}
 
-		StructuredMatrix( target_type & struct_mat ) : internal::StructuredMatrixReference< target_type >( struct_mat ) {}
+		StructuredMatrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {}
 
 		StructuredMatrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			internal::StructuredMatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
+			internal::MatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
 
 	}; // StructuredMatrix General reference
 
 	template< typename T, typename Structure, bool tmp >
 	class StructuredMatrix< T, Structure, storage::Dense, view::Original< void >, reference_dense, tmp > :
-		public internal::StructuredMatrixContainer< T > {
+		public internal::MatrixContainer< T > {
 
 	private:
 		/*********************
@@ -683,12 +683,12 @@ namespace grb {
 		using original_t = StructuredMatrix< T, Structure, storage::Dense, view::Original< self_type >, reference_dense, tmp >;
 
 		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::StructuredMatrixContainer< T >( rows, cols ) {}
+			internal::MatrixContainer< T >( rows, cols ) {}
 	}; // class StructuredMatrix
 
 	template< typename T, bool tmp >
 	class StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense, tmp > :
-		public internal::StructuredMatrixContainer< T > {
+		public internal::MatrixContainer< T > {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense, tmp >;
@@ -712,13 +712,13 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		StructuredMatrix( const size_t rows ) :
-			internal::StructuredMatrixContainer< T >( rows, rows ) {}
+			internal::MatrixContainer< T >( rows, rows ) {}
 
 	}; // StructuredMatrix Square, container
 
 	template< typename T, typename View, bool tmp >
 	class StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense, tmp > :
-		public internal::StructuredMatrixReference< typename View::applied_to > {
+		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense, tmp >;
@@ -733,9 +733,9 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		// ref to empty matrix
-		StructuredMatrix( ) : internal::StructuredMatrixReference< target_type >() {}
+		StructuredMatrix( ) : internal::MatrixReference< target_type >() {}
 
-		StructuredMatrix( target_type & struct_mat ) : internal::StructuredMatrixReference< target_type >( struct_mat ) {
+		StructuredMatrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {
 			if( nrows( struct_mat ) != ncols( struct_mat ) ) {
 				throw std::length_error( "Square StructuredMatrix reference to non-square target." );
 			}
@@ -746,7 +746,7 @@ namespace grb {
 	// StructuredMatrix UpperTriangular, container
 	template< typename T, bool tmp >
 	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< void >, reference_dense, tmp > :
-		public internal::StructuredMatrixContainer< T > {
+		public internal::MatrixContainer< T > {
 
 	private:
 		/*********************
@@ -776,14 +776,14 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::StructuredMatrixContainer< T >( rows, cols ) {}
+			internal::MatrixContainer< T >( rows, cols ) {}
 
 	}; // StructuredMatrix UpperTriangular, container
 
 	// StructuredMatrix UpperTriangular, reference
 	template< typename T, typename View, bool tmp >
 	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense, tmp > :
-		public internal::StructuredMatrixReference< typename View::applied_to > {
+		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
 		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense, tmp >;
@@ -798,22 +798,22 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		// ref to empty matrix
-		StructuredMatrix( ) : internal::StructuredMatrixReference< target_type >() {}
+		StructuredMatrix( ) : internal::MatrixReference< target_type >() {}
 
-		StructuredMatrix( target_type & struct_mat ) : internal::StructuredMatrixReference< target_type >( struct_mat ) {
+		StructuredMatrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {
 			// No matter the view it has to be a square matrix
 		}
 
 		StructuredMatrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			internal::StructuredMatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
+			internal::MatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
 
 	}; //  StructuredMatrix UpperTriangular, reference
 
 	// StructuredMatrix Identity, container
-	// Should Identity be a StructuredMatrixContainer?
+	// Should Identity be a MatrixContainer?
 	template< typename T, bool tmp >
 	class StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< void >, reference_dense, tmp > :
-		public internal::StructuredMatrixContainer< T > {
+		public internal::MatrixContainer< T > {
 
 	private:
 		/*********************
@@ -843,7 +843,7 @@ namespace grb {
 		using transpose_t = StructuredMatrix< T, structures::Identity, storage::Dense, view::Transpose< self_type >, reference_dense, tmp >;
 
 		StructuredMatrix( const size_t rows ) :
-			internal::StructuredMatrixContainer< T >( rows, rows ) {}
+			internal::MatrixContainer< T >( rows, rows ) {}
 
 	}; // StructuredMatrix Identity, container
 
