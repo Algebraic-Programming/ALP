@@ -18,6 +18,12 @@ and execute it.
 # Git: apt-get install git
 # make: apt-get install cmake
 # python3: apt-get install python3
+# We also provide a docker:
+#
+# docker pull lchelini/alp
+# docker run -it lchelini/alp
+# ./runme.sh
+#
 
 # ALP
 echo "Cloning ALP..."
