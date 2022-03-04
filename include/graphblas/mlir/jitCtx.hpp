@@ -39,7 +39,7 @@ namespace grb {
 		class JitContext {
 		public:
 			JitContext() : ctx( mlir::DialectRegistry(), mlir::MLIRContext::Threading::DISABLED ), module( mlir::ModuleOp::create( mlir::OpBuilder( &ctx ).getUnknownLoc() ) ) {
-				ctx.getOrLoadDialect< mlir::StandardOpsDialect >();
+				ctx.getOrLoadDialect< mlir::func::FuncDialect >();
 				ctx.getOrLoadDialect< mlir::scf::SCFDialect >();
 				ctx.getOrLoadDialect< mlir::arith::ArithmeticDialect >();
 				ctx.getOrLoadDialect< mlir::LLVM::LLVMDialect >();

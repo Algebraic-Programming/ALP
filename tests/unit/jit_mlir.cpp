@@ -67,7 +67,7 @@ void grb_memref( const size_t & n, RC & rc ) {
 	mlir::DialectRegistry registry;
 	mlir::MLIRContext context( registry );
 	// register dialects
-	context.getOrLoadDialect< mlir::StandardOpsDialect >();
+	context.getOrLoadDialect< mlir::func::FuncDialect >();
 	context.getOrLoadDialect< mlir::scf::SCFDialect >();
 	context.getOrLoadDialect< mlir::arith::ArithmeticDialect >();
 	context.getOrLoadDialect< mlir::LLVM::LLVMDialect >();
@@ -146,7 +146,7 @@ void grb_constant( const size_t & n, RC & rc ) {
 	mlir::DialectRegistry registry;
 	mlir::MLIRContext context( registry );
 	// register dialects
-	context.getOrLoadDialect< mlir::StandardOpsDialect >();
+	context.getOrLoadDialect< mlir::func::FuncDialect >();
 	context.getOrLoadDialect< mlir::scf::SCFDialect >();
 	context.getOrLoadDialect< mlir::arith::ArithmeticDialect >();
 	context.getOrLoadDialect< mlir::LLVM::LLVMDialect >();

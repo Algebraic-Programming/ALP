@@ -1,6 +1,6 @@
 #include <llvm/ADT/ScopedHashTable.h>
 #include <mlir/ExecutionEngine/MemRefUtils.h>
-
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <graphblas/mlir/jitCtx.hpp>
 #include <graphblas/mlir/matrix.hpp>
 
@@ -22,7 +22,7 @@ static mlir::Type getMemRefType( Matrix< float, Backend::mlir > & buff, mlir::Op
 // build mxm (aka linalg.matmul) based on memref.
 static void buildMxmBody( mlir::OpBuilder & builder, mlir::Location loc, mlir::FuncOp fn, mlir::Block * block ) {
 	builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { fn.getArgument( 1 ), fn.getArgument( 2 ) }, fn.getArgument( 0 ) );
-	builder.create< mlir::ReturnOp >( loc );
+	builder.create< mlir::func::ReturnOp >( loc );
 }
 
 static mlir::FunctionType
@@ -132,7 +132,7 @@ RC JitContext::buildAndExecute() {
 		size_t posA = symTab.lookup( basePtr );
 		builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { funcOp.getArgument( posA ), funcOp.getArgument( posB ) }, funcOp.getArgument( posC ) );
 	}
-	builder.create< mlir::ReturnOp >( loc );
+	builder.create< mlir::func::ReturnOp >( loc );
   llvm::errs() << "------Module pre optimization/lowering------\n";
 	module->dump();
   llvm::errs() << "--------------------------------------------\n";
