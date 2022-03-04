@@ -268,18 +268,18 @@ namespace grb {
 		// get access to user process data on s and P
 		internal::BSP1D_Data & data = internal::grb_BSP1D.load();
 
-		// delegate for sequential case
-		if( data.P == 1 ) {
-			return buildMatrixUnique< descr >( A._local, start, end, SEQUENTIAL );
-		}
-
-		// function semantics require the matrix be cleared first
-		RC ret = clear( A );
-
 #ifdef _DEBUG
 		std::cout << "buildMatrixUnique is called from process " << data.s << " "
 			<< "out of " << data.P << " processes total.\n";
 #endif
+
+		// delegate for sequential case
+		if( data.P == 1 ) {
+			return buildMatrixUnique< descr >( internal::getLocal(A), start, end, SEQUENTIAL );
+		}
+
+		// function semantics require the matrix be cleared first
+		RC ret = clear( A );
 
 		// local cache, used to delegate to reference buildMatrixUnique
 		std::vector< typename fwd_iterator::value_type > cache;

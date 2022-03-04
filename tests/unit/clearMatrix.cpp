@@ -24,15 +24,17 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< double > diag( n, n );
 	grb::Vector< double > vector( n );
 	rc = grb::set< grb::descriptors::use_index >( vector, 0 );
 	if( rc == SUCCESS ) {
-		auto converter = grb::utils::makeVectorToMatrixConverter< double >( vector, []( const size_t & ind, const double & val ) {
+		auto converter = grb::utils::makeVectorToMatrixConverter< double >( vector, []( const size_t &ind, const double &val ) {
 			return std::make_pair( std::make_pair( ind, ind ), val );
 		} );
-		rc = grb::buildMatrixUnique( diag, converter.begin(), converter.end(), PARALLEL );
+		auto start = converter.begin();
+		auto end = converter.end();
+		rc = grb::buildMatrixUnique( diag, start, end, PARALLEL );
 	}
 	if( rc != SUCCESS || grb::nnz( diag ) != n ) {
 		std::cerr << "\t initialisation FAILED\n";

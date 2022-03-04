@@ -23,16 +23,17 @@
  * @date 2021-04-30
  */
 
-#ifndef _H_GRB_ALGO_MULTIGRID_V_CYCLE
-#define _H_GRB_ALGO_MULTIGRID_V_CYCLE
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_V_CYCLE
+#define _H_GRB_ALGORITHMS_MULTIGRID_V_CYCLE
 
 #include <cassert>
 #include <vector>
 
-#include <graphblas/algorithms/hpcg_data.hpp>
-#include <graphblas/algorithms/red_black_gauss_seidel.hpp>
-
 #include <graphblas.hpp>
+
+#include "hpcg_data.hpp"
+#include "red_black_gauss_seidel.hpp"
+
 
 namespace grb {
 	namespace algorithms {
@@ -248,4 +249,4 @@ namespace grb {
 	}     // namespace algorithms
 } // namespace grb
 
-#endif // _H_GRB_ALGO_MULTIGRID_V_CYCLE
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_V_CYCLE

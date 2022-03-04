@@ -64,30 +64,32 @@ namespace grb {
 		void setDense( Vector< DataType, BSP1D, Coords > & x );
 
 		template< Descriptor descr,
-			bool output_masked,
-			bool input_masked,
-			bool left_handed,
+			bool output_masked, bool input_masked, bool left_handed,
 			class Ring,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
-		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > & u,
-			const Vector< InputType3, BSP1D, Coords > & u_mask,
-			const Matrix< InputType2, BSP1D > & A,
-			const Vector< InputType1, BSP1D, Coords > & v,
-			const Vector< InputType4, BSP1D, Coords > & v_mask,
-			const Ring & ring );
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
+		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > &u,
+			const Vector< InputType3, BSP1D, Coords > &u_mask,
+			const Matrix< InputType2, BSP1D > &A,
+			const Vector< InputType1, BSP1D, Coords > &v,
+			const Vector< InputType4, BSP1D, Coords > &v_mask,
+			const Ring &ring );
 
-		template< Descriptor descr, bool, bool, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename InputType4, typename Coords >
-		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > & u,
-			const Vector< InputType3, BSP1D, Coords > & u_mask,
-			const Vector< InputType1, BSP1D, Coords > & v,
-			const Vector< InputType4, BSP1D, Coords > & v_mask,
-			const Matrix< InputType2, BSP1D > & A,
-			const Ring & ring = Ring() );
+		template< Descriptor descr,
+			bool, bool, bool,
+			class Ring,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
+		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > &u,
+			const Vector< InputType3, BSP1D, Coords > &u_mask,
+			const Vector< InputType1, BSP1D, Coords > &v,
+			const Vector< InputType4, BSP1D, Coords > &v_mask,
+			const Matrix< InputType2, BSP1D > &A,
+			const Ring &ring );
 
 		/**
 		 * Retrieves the process-local part of a distributed vector.

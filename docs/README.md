@@ -28,3 +28,4 @@ development philosophy and work with its codebase
 infrastructure (`make docs`) and available in the subdirectory `code`
 * the
 [guide to use ALP/GraphBLAS in your own project](Use_ALPGraphBLAS_in_your_own_project.md)
+* the [directory structure of the project](Directory_structure.md)

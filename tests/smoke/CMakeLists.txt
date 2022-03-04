@@ -97,9 +97,7 @@ add_grb_executables( knn knn.cpp ../unit/parser.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
-add_grb_executables( hpcg hpcg_test.cpp
-	hpcg_matrix_building_utils.hpp
-	hpcg_system_building_utils.hpp
+add_grb_executables( hpcg hpcg.cpp
 
 	BACKENDS reference reference_omp bsp1d hybrid
 	ADDITIONAL_LINK_LIBRARIES test_utils

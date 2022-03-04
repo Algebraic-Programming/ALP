@@ -432,6 +432,9 @@ namespace grb {
 #ifdef NDEBUG
 		(void)mode;
 #endif
+#ifdef _DEBUG
+		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
+#endif
 		return A.template buildMatrixUnique< descr >( start, end );
 	}
 

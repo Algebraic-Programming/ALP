@@ -317,13 +317,13 @@ namespace grb {
 
 	/** No implementation details. */
 	template< typename DataType >
-	size_t nrows( const Matrix< DataType, BSP1D > & A ) noexcept {
+	size_t nrows( const Matrix< DataType, BSP1D > &A ) noexcept {
 		return A._m;
 	}
 
 	/** No implementation details. */
 	template< typename DataType >
-	size_t ncols( const Matrix< DataType, BSP1D > & A ) noexcept {
+	size_t ncols( const Matrix< DataType, BSP1D > &A ) noexcept {
 		return A._n;
 	}
 

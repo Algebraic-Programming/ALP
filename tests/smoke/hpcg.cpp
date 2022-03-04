@@ -34,33 +34,55 @@
 #include <memory>
 #include <type_traits>
 
-#include <graphblas/algorithms/hpcg.hpp>
+#include <graphblas.hpp>
+#include <graphblas/algorithms/hpcg/hpcg.hpp>
+#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
+
+// here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
+#ifdef HPCG_PRINT_STEPS
+
+// HPCG_PRINT_STEPS requires defining the following symbols
+
+/**
+ * @brief simply prints \p args on a dedicated line.
+ */
+#define DBG_println( args ) std::cout << args << std::endl;
+
+// forward declaration for the tracing facility
+template< typename T,
+	class Ring = grb::Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+>
+void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
+
+/**
+ * @brief prints \p head and the norm of \p r.
+ */
+#define DBG_print_norm( vec, head ) print_norm( vec, head )
+#endif
+
 #include <graphblas/utils/Timer.hpp>
 
-#include "hpcg_system_building_utils.hpp"
-
-#include <graphblas.hpp>
 #include <utils/argument_parser.hpp>
 #include <utils/assertions.hpp>
 #include <utils/print_vec_mat.hpp>
 
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference HPCG
-#define PHYS_SYSTEM_SIZE_DEF 16UL
-#define PHYS_SYSTEM_SIZE_MIN 4UL
-#define DEF_COARSENING_LEVELS 1U
-#define MAX_COARSENING_LEVELS 4U
-#define MAX_ITERATIONS_DEF 56UL
-#define SMOOTHER_STEPS_DEF 1
+constexpr std::size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
+constexpr std::size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
+constexpr std::size_t DEF_COARSENING_LEVELS{ 1U };
+constexpr std::size_t MAX_COARSENING_LEVELS{ 4U };
+constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
+constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
 
 // internal values
-#define SYSTEM_DIAG_VALUE ( 26.0 )
-#define SYSTEM_NON_DIAG_VALUE ( -1.0 )
-#define BAND_WIDTH_3D 13UL
-#define HALO_RADIUS ( 1U )
+constexpr double SYSTEM_DIAG_VALUE { 26.0 };
+constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
+constexpr std::size_t BAND_WIDTH_3D { 13UL };
+constexpr std::size_t HALO_RADIUS { 1U };
 //============================================
 
-#define MAX_NORM 4.0e-14
+constexpr double MAX_NORM { 4.0e-14 };
 
 using namespace grb;
 using namespace algorithms;
@@ -68,6 +90,7 @@ using namespace algorithms;
 static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
+
 
 /**
  * @brief Container for system parameters to create the HPCG problem.
@@ -145,6 +168,23 @@ static void print_system( const hpcg_data< double, double, double > & data ) {
 		print_matrix( coarser->A, 50, "COARSER SYSTEM MATRIX" );
 		coarser = coarser->coarser_level;
 	}
+}
+#endif
+
+#ifdef HPCG_PRINT_STEPS
+template< typename T,
+		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+	>
+void print_norm( const grb::Vector< T > & r, const char * head, const Ring & ring ) {
+	T norm;
+	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
+	(void)ret;
+	assert( ret == SUCCESS );
+	std::cout << ">>> ";
+	if( head != nullptr ) {
+		std::cout << head << ": ";
+	}
+	std::cout << norm << std::endl;
 }
 #endif
 
@@ -258,15 +298,14 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 /**
  * @brief Parser the command-line arguments to extract the simulation information and checks they are valid.
  */
-static void parse_arguments( simulation_input &, std::size_t &, double &, bool &, int, char ** );
+static void parse_arguments( simulation_input &, std::size_t &, double &, int, char ** );
 
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
 	size_t test_outer_iterations;
 	double max_residual_norm;
-	bool exit_on_violation;
 
-	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, exit_on_violation, argc, argv );
+	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
 	thcout << "System size x: " << sim_in.nx << std::endl;
 	thcout << "System size y: " << sim_in.ny << std::endl;
 	thcout << "System size z: " << sim_in.nz << std::endl;
@@ -278,10 +317,6 @@ int main( int argc, char ** argv ) {
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
 	thcout << "Maximum norm for residual: " << max_residual_norm << std::endl;
-	thcout << "Exit on assertion violation: " << std::boolalpha << exit_on_violation << std::noboolalpha << std::endl;
-
-	// by default, do not exit on assertion violation
-	assertion_engine::set_exit_on_violation( exit_on_violation );
 
 	// the output struct
 	struct output out;
@@ -330,10 +365,9 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, double & max_residual_norm, bool & exit_on_violation, int argc, char ** argv ) {
+static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
 
 	argument_parser parser;
-	bool no_exit_on_violation { false };
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
 		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
@@ -351,12 +385,9 @@ static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iter
 		.add_option( "--evaluation-run", sim_in.evaluation_run, false,
 			"launch single run directly, without benchmarker (ignore "
 			"repetitions)" )
-		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" )
-		.add_option( "--no-exit-on-assert-violation", no_exit_on_violation, false, "keep running even if an assertion is violated" );
+		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" );
 
 	parser.parse( argc, argv );
-
-	exit_on_violation = ! no_exit_on_violation;
 
 	// check for valid values
 	std::size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };

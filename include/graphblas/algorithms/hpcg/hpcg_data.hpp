@@ -22,12 +22,14 @@
  * @date 2021-04-30
  */
 
-#ifndef _H_HPCG_DATA
-#define _H_HPCG_DATA
+#ifndef _H_GRB_ALGORITHMS_HPCG_DATA
+#define _H_GRB_ALGORITHMS_HPCG_DATA
 
 #include <vector>
+#include <cstddef>
 
 #include <graphblas.hpp>
+
 
 namespace grb {
 	namespace algorithms {
@@ -187,4 +189,4 @@ namespace grb {
 	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_HPCG_DATA
+#endif // _H_GRB_ALGORITHMS_HPCG_DATA
