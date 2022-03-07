@@ -8,15 +8,43 @@
 #include <mlir/InitAllPasses.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
+#include <mlir/Parser.h>
+#include <Dialects/LinalgTransform/Passes.h>
 
 namespace grb {
 	namespace jit {
 
 		template< typename T >
 		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
+      // read the execution tactic.
+      auto tactic = R"(
+      pdl.pattern @pdl_target : benefit(1) {
+        %args = operands
+        %results = types
+        %0 = operation "linalg.matmul"(%args : !pdl.range<value>) -> (%results : !pdl.range<type>)
+        apply_native_constraint "nestedInFunc"[@matmul_tensors](%0 : !pdl.operation)
+        // TODO: we don't want this, but it is the required terminator for pdl.pattern
+        rewrite %0 with "linalg_transform.apply"
+      }
+
+      linalg_transform.sequence {
+        %0 = match @pdl_target
+        tile %0 {sizes = [4, 4, 4], pad = false}
+      }
+      )";
+      mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( 
+        mlir::parseSourceString< mlir::ModuleOp >( tactic, &ctx ));
+      mlir::OpBuilder builder (&ctx);
+      mlir::OpBuilder::InsertionGuard guard( builder );
+      builder.setInsertionPointToEnd( module->getBody() );
+      // clone into original module.
+      for (mlir::Operation &op : moduleTactic->getBody()->getOperations())
+        builder.clone(op); 
+
 			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
 			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
+      pm.addPass( mlir::createLinalgTransformInterpreterPass() );
 			pm.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
 			pm.addPass( mlir::createConvertSCFToCFPass() );
 			pm.addPass( mlir::createMemRefToLLVMPass() );

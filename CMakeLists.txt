@@ -165,8 +165,9 @@ if( WITH_MLIR_BACKEND )
   list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 
-  message( STATUS "Include dir for LLVM: ${LLVM_INCLUDE_DIRS}" )
-  message( STATUS "Include dir for MLIR: ${MLIR_INCLUDE_DIRS}" )
+  # FIXME
+  set( IREE_DIALECTS_ROOT "/home/lchelini/scratch/tmp/iree-llvm-sandbox"
+       CACHE PATH "Path to iree-dialects projects" )
 
   include( TableGen )
   include( AddLLVM )
@@ -174,6 +175,12 @@ if( WITH_MLIR_BACKEND )
   include( HandleLLVMOptions )
   include_directories( ${LLVM_INCLUDE_DIRS} )
   include_directories( ${MLIR_INCLUDE_DIRS} )
+  set( IREE_INCLUDE_DIRS "${IREE_DIALECTS_ROOT}/include"
+       CACHE PATH "Path to iree-dialects projects include" )
+  set( IREE_INCLUDE_BUILD_DIRS "${IREE_DIALECTS_ROOT}/build/tools/sandbox/include"
+       CACHE PATH "Path to iree-dialects projects include" ) 
+  include_directories( ${IREE_INCLUDE_DIRS} )
+  include_directories( ${IREE_INCLUDE_BUILD_DIRS} )
   include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
   include_directories( ${CMAKE_CURRENT_BINARY_DIR}/include )
   add_definitions( ${LLVM_DEFINITIONS} )

@@ -9,6 +9,8 @@
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/InitAllDialects.h>
 
+#include <Dialects/LinalgTransform/LinalgTransformOps.h>
+
 #include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
 
@@ -38,13 +40,16 @@ namespace grb {
 		/// purposes.
 		class JitContext {
 		public:
-			JitContext() : ctx( mlir::DialectRegistry(), mlir::MLIRContext::Threading::DISABLED ), module( mlir::ModuleOp::create( mlir::OpBuilder( &ctx ).getUnknownLoc() ) ) {
+			JitContext() : ctx( mlir::DialectRegistry(), mlir::MLIRContext::Threading::DISABLED ), 
+                     module( mlir::ModuleOp::create( mlir::OpBuilder( &ctx ).getUnknownLoc() ) ) {
 				ctx.getOrLoadDialect< mlir::func::FuncDialect >();
 				ctx.getOrLoadDialect< mlir::scf::SCFDialect >();
 				ctx.getOrLoadDialect< mlir::arith::ArithmeticDialect >();
 				ctx.getOrLoadDialect< mlir::LLVM::LLVMDialect >();
 				ctx.getOrLoadDialect< mlir::memref::MemRefDialect >();
 				ctx.getOrLoadDialect< mlir::linalg::LinalgDialect >();
+        ctx.getOrLoadDialect< mlir::pdl_interp::PDLInterpDialect >();
+        ctx.getOrLoadDialect< mlir::linalg::transform::LinalgTransformDialect >();
 			};
 			~JitContext() = default;
 			JitContext( const JitContext & ) = delete;

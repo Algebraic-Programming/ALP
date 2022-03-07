@@ -228,19 +228,31 @@ add_grb_executables( vxm vxm.cpp
 )
 
 if (WITH_MLIR_BACKEND)
-  #find_package( LLVM REQUIRED CONFIG )
   message( STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}" )
   message( STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}" )
 
-  #find_package( MLIR REQUIRED CONFIG )
   message( STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}" )
+  message( STATUS "MLIR CMAKE DIR is: ${MLIR_CMAKE_DIR}" )
+  
   list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 
+  message (STATUS "Path to iree is: ${IREE_DIALECTS_ROOT}" )
+  find_library( MLIRLinalgTransformTransforms
+    NAMES MLIRLinalgTransformTransforms
+    HINTS ${IREE_DIALECTS_ROOT}/build/lib )
+  find_library( MLIRLinalgTransformOps
+    NAMES MLIRLinalgTransformOps
+    HINTS ${IREE_DIALECTS_ROOT}/build/lib )
+  message( STATUS "MLIRLinalgTransformTransforms: ${MLIRLinalgTransformTransforms}" )
+  message( STATUS "MLIRLinalgTransformOps: ${MLIRLinalgTransformOps}" )
+
   add_library (llvmpack INTERFACE)
   
-  target_include_directories(llvmpack INTERFACE ${LLVM_INCLUDE_DIRS} )
-  target_include_directories(llvmpack INTERFACE ${MLIR_INCLUDE_DIRS} )
+  target_include_directories( llvmpack INTERFACE ${LLVM_INCLUDE_DIRS} )
+  target_include_directories( llvmpack INTERFACE ${MLIR_INCLUDE_DIRS} )
+  target_include_directories( llvmpack INTERFACE ${IREE_INCLUDE_DIRS} )
+  target_include_directories( llvmpack INTERFACE ${IREE_INCLUDE_BUILD_DIRS} )
 
   # Find the libraries that correspond to the LLVM components
   # that we wish to use
@@ -261,6 +273,8 @@ if (WITH_MLIR_BACKEND)
     MLIRMemRefToLLVM
     MLIRReconcileUnrealizedCasts
     MLIRLinalgTransforms
+    ${MLIRLinalgTransformTransforms}
+    ${MLIRLinalgTransformOps}
     test_utils
   )
 
