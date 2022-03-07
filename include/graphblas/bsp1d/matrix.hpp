@@ -37,6 +37,22 @@
 
 namespace grb {
 
+	// forward declare internal getters
+	namespace internal {
+
+		template< typename D >
+		Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
+			Matrix< D, BSP1D > &
+		) noexcept;
+
+		template< typename D >
+		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
+			const Matrix< D, BSP1D > &
+		) noexcept;
+
+	} // namespace internal
+
+
 	/**
 	 * A BSP1D Matrix. Uses a 1D block-cyclic distribution for A and A-transpose.
 	 */
@@ -320,5 +336,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_BSP1D_MATRIX'
-
 
