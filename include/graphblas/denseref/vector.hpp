@@ -335,7 +335,7 @@ namespace grb {
 	class VectorView< T, View, storage::Dense, reference_dense, C > { };
 
 	/**
-	 * Identity View over a vector container.
+	 * Original View over a vector container.
 	 */
 	template< typename T, typename C >
 	class VectorView< T, view::Original< void >, storage::Dense, reference_dense, C > {
@@ -425,7 +425,7 @@ namespace grb {
 			}
 		}
 
-	}; // Identity VectorView
+	}; // Original VectorView
 
 
 	/**
@@ -489,7 +489,7 @@ namespace grb {
 	}
 
 	/**
-	 * Generate an identity view of a VectorView.
+	 * Generate an original view of a VectorView.
 	 * 
 	 * @param[in] source The VectorView object over which the view is created.
 	 * 
