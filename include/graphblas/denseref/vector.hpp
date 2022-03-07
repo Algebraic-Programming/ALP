@@ -58,6 +58,12 @@ namespace grb {
 		template< typename T, typename C >
 		size_t getLength( const Vector< T, reference_dense, C > & ) noexcept;
 
+		template< typename T, typename C >
+		const bool & getInitialized( const Vector< T, reference_dense, C > & v ) noexcept;
+
+		template< typename T, typename C >
+		void setInitialized( Vector< T, reference_dense, C > & v, bool initialized ) noexcept;
+
 	} // end namespace ``grb::internal''
 
 	/**
@@ -77,6 +83,14 @@ namespace grb {
 		friend T * internal::getRaw< T >( Vector< T, reference_dense, C > & ) noexcept;
 		friend const T * internal::getRaw< T >( const Vector< T, reference_dense, C > & ) noexcept;
 		friend size_t internal::getLength< T >( const Vector< T, reference_dense, C > & ) noexcept;
+
+		/* ********************
+		        IO friends
+		   ******************** */
+
+		friend const bool & internal::getInitialized< T >( const Vector< T, reference_dense, C > & ) noexcept;
+
+		friend void internal::setInitialized< T >( Vector< T, reference_dense, C > & , bool ) noexcept;
 
 		private:
 
@@ -276,6 +290,15 @@ namespace grb {
 			return v.n;
 		}
 
+		template< typename T, typename C >
+		const bool & getInitialized( const Vector< T, reference_dense, C > & v ) noexcept {
+			return v.initialized;
+		}
+
+		template< typename T, typename C >
+		void setInitialized( Vector< T, reference_dense, C > & v, bool initialized ) noexcept {
+			v.initialized = initialized;
+		}
 	} // end namespace ``grb::internal''
 
 
@@ -288,6 +311,18 @@ namespace grb {
 	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, C > &v ) noexcept {
 		return v._length();
 	}
+
+	namespace internal {
+		template< typename T, typename View, typename C >
+		bool getInitialized( VectorView< T, View, storage::Dense, reference_dense, C > & v ) noexcept {
+			return getInitialized( v );
+		}
+
+		template< typename T, typename View, typename C >
+		void setInitialized( VectorView< T, View, storage::Dense, reference_dense, C > & v, bool initialized ) noexcept {
+			setInitialized( v, initialized );
+		}
+	} // end namespace ``grb::internal''
 
 	/**
 	 * \brief An ALP vector view.
@@ -354,12 +389,6 @@ namespace grb {
 
 		std::shared_ptr<imf::IMF> imf;
 
-		/** Whether the container presently is initialized or not. Currently,
-		 * container is created as uninitialized and set to initialized in a
-		 * buildMatrix call.
-		 */
-		bool initialized;
-
 		/** Returns the length of the vector */
 		size_t _length() const {
 			return imf->n;
@@ -369,7 +398,7 @@ namespace grb {
 		/** @see Vector::value_type. */
 		using value_type = T;
 
-		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, C > >( length ) ), imf( std::make_shared< imf::Id >( length ) ), initialized( false ) {}
+		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, C > >( length ) ), imf( std::make_shared< imf::Id >( length ) ) {}
 
 	}; // class VectorView with physical container
 
