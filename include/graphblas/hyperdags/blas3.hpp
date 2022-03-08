@@ -16,28 +16,29 @@
  */
 
 /*
- * @author A. N. Yzelman
- * @date 21st of February, 2017
+ * @file
+ *
+ * Implements the BLAS-3 API for the hypergraphs backend.
+ *
+ * @author A. Karanasiou
+ * @date 3rd of March, 2022
  */
 
-#ifndef _H_GRB_IO
-#define _H_GRB_IO
+#ifndef _H_GRB_HYPERDAGS_BLAS3
+#define _H_GRB_HYPERDAGS_BLAS3
 
-#include "base/io.hpp"
+#include <graphblas/matrix.hpp>
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/io.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
-#include <graphblas/hyperdags/io.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/io.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/io.hpp>
-#endif
+#include <graphblas/hyperdags/init.hpp>
 
-#endif // end ``_H_GRB_IO''
+
+namespace grb {
+	template< typename InputType >
+	RC clear( Matrix< InputType, hyperdags > & A ) noexcept {
+		// delegate
+		return clear(internal::getMatrix(A));
+	}
+} // end namespace grb
+
+#endif
 

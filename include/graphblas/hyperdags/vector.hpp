@@ -27,6 +27,8 @@
 
 
 namespace grb {
+	template< typename T >
+	class Matrix< T, hyperdags >;
 
 	namespace internal {
 
@@ -117,6 +119,14 @@ namespace grb {
 			template< Backend spmd_backend = reference >
 			ConstIterator< spmd_backend > end( const size_t s = 0, const size_t P = 1 ) const {
 				return vector.end( s, P );
+			}
+			
+			T & operator[]( const size_t i ) {
+				return vector[ i ];
+			}
+
+			T & operator[]( const size_t i ) const {
+				return vector[ i ];
 			}
 
 	};

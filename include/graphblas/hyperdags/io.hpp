@@ -16,28 +16,24 @@
  */
 
 /*
- * @author A. N. Yzelman
- * @date 21st of February, 2017
+ * @author A. Karanasiou
+ * @date 3rd of March 2022
  */
 
-#ifndef _H_GRB_IO
-#define _H_GRB_IO
+#include <graphblas/config.hpp>
 
-#include "base/io.hpp"
+namespace grb {
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/io.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
-#include <graphblas/hyperdags/io.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/io.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/io.hpp>
-#endif
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator
+	>
+	RC buildMatrixUnique( Matrix< InputType, hyperdags > &A,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode
+	) {
+		return buildMatrixUnique(internal::getMatrix(A), start, end, mode);
+	}
 
-#endif // end ``_H_GRB_IO''
+} // namespace grb
 
