@@ -8,7 +8,7 @@
 #include <mlir/InitAllPasses.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
-#include <mlir/Parser.h>
+#include <mlir/Parser/Parser.h>
 #include <Dialects/LinalgTransform/Passes.h>
 
 namespace grb {
@@ -45,14 +45,22 @@ namespace grb {
 			mlir::PassManager pm( &ctx );
 			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
       pm.addPass( mlir::createLinalgTransformInterpreterPass() );
-			pm.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
-			pm.addPass( mlir::createConvertSCFToCFPass() );
-			pm.addPass( mlir::createMemRefToLLVMPass() );
-			pm.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
-			pm.addPass( mlir::createLowerToLLVMPass() );
-			pm.addPass( mlir::createReconcileUnrealizedCastsPass() );
+    
+      if( mlir::failed( pm.run( *module ) ) ) {
+        std::cout << "module verification error!\n";
+        return FAILED;
+      }
+      module->dump();  
+      mlir::PassManager pm2( &ctx );  
+      pm2.addPass( mlir::createDropScheduleFromModulePass() );
+			pm2.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
+			pm2.addPass( mlir::createConvertSCFToCFPass() );
+			pm2.addPass( mlir::createMemRefToLLVMPass() );
+			pm2.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
+			pm2.addPass( mlir::createConvertFuncToLLVMPass() );
+			pm2.addPass( mlir::createReconcileUnrealizedCastsPass() );
 
-			if( mlir::failed( pm.run( *module ) ) ) {
+			if( mlir::failed( pm2.run( *module ) ) ) {
 				std::cout << "module verification error!\n";
 				return FAILED;
 			}

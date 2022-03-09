@@ -266,7 +266,7 @@ if (WITH_MLIR_BACKEND)
     MLIRIR
     MLIRLLVMIR
     MLIRSCFToControlFlow
-    MLIRStandardToLLVM
+    MLIRFuncToLLVM
     MLIRTargetLLVMIRImport
     MLIRLLVMToLLVMIRTranslation
     MLIRExecutionEngine

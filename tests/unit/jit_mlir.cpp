@@ -30,12 +30,12 @@
 #include "mlir/IR/Verifier.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
-#include "mlir/Parser.h"
+#include "mlir/Parser/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Support/LogicalResult.h"
-#include "mlir/Support/MlirOptMain.h"
+#include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 
 #include <graphblas.hpp>
@@ -47,7 +47,7 @@ static mlir::LogicalResult lowerToLLVMDialect( mlir::OwningOpRef< mlir::ModuleOp
 	mlir::PassManager pm( module->getContext() );
 	pm.addPass( mlir::createMemRefToLLVMPass() );
 	pm.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
-	pm.addPass( mlir::createLowerToLLVMPass() );
+	pm.addPass( mlir::createConvertFuncToLLVMPass() );
 	pm.addPass( mlir::createReconcileUnrealizedCastsPass() );
 	return pm.run( *module );
 }
@@ -160,7 +160,7 @@ void grb_constant( const size_t & n, RC & rc ) {
 	mlir::OwningOpRef< mlir::ModuleOp > module( mlir::parseSourceString< mlir::ModuleOp >( str, &context ) );
 	mlir::PassManager pm( &context );
 
-	pm.addPass( mlir::createLowerToLLVMPass() );
+	pm.addPass( mlir::createConvertFuncToLLVMPass() );
 
 	if( mlir::failed( pm.run( *module ) ) ) {
 		llvm::errs() << "module verification error!\n";
