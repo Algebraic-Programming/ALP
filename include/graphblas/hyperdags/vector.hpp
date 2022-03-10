@@ -128,6 +128,25 @@ namespace grb {
 			T & operator[]( const size_t i ) const {
 				return vector[ i ];
 			}
+			/**
+			 * Non-standard data accessor for debug purposes.
+			 *
+			 * \warning Do not use this fucntion.
+			 *
+			 * The user promises to never write to this data when GraphBLAS can operate
+			 * on it. The user understands that data read out may be subject to incoming
+			 * changes caused by preceding GraphBLAS calls.
+			 *
+			 * \warning This function is only defined for the reference and hyperdags backends--
+			 *          thus switching backends may cause your code to not compile.
+			 *
+			 * @return A const reference to the raw data this vector contains.
+			 *
+			 * \note This function is used internally for testing purposes.
+			 */
+			T * raw() const {
+				return vector.raw();
+			}
 
 	};
 
