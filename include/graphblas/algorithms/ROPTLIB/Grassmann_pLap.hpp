@@ -29,6 +29,12 @@ namespace ROPTLIB
         const double p;
         mutable std::vector<grb::Vector<double> *> Columns, Etax, Res;
 
+        mutable grb::Matrix<double> Wuu;
+        mutable grb::Vector<double> vec, vec2;
+
+
+            
+
         const grb::Semiring<
             grb::operators::add<double>,
             grb::operators::mul<double>,
@@ -50,15 +56,12 @@ namespace ROPTLIB
         {
             grb::RC rc = grb::SUCCESS;
 
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-// #endif
             const double *xPtr = x.ObtainReadData();
 
-            // does this paralllel for make sense together with distributed memory backends?
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-// #endif
+            // does this parallel for make sense together with distributed memory backends?
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
+#endif
             for (size_t i = 0; i < k; ++i)
             {
                 rc = rc ? rc : grb::buildVector(*(grb_x[i]), xPtr + i * n, xPtr + (i + 1) * n, SEQUENTIAL);
@@ -72,9 +75,9 @@ namespace ROPTLIB
         {
             double *resPtr = result->ObtainWriteEntireData();
 
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-// #endif
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
+#endif
             for (size_t i = 0; i < k; ++i)
             {
                 // once we have random-access Vector iterators can parallelise this
@@ -87,12 +90,13 @@ namespace ROPTLIB
 
         double summandEvalNum(const size_t l) const
         {
-            grb::Matrix<double> Wuu(n, n);
-            grb::resize(Wuu, grb::nnz(W));
-            grb::Vector<double> vec(n);
+            //grb::Matrix<double> Wuu(n, n);
+            //grb::resize(Wuu, grb::nnz(W));
+            //grb::Vector<double> vec(n);
             double s = 0;
 
-            grb::set(Wuu, W);
+            grb::set( Wuu, W );
+            grb::clear( vec );
             grb::eWiseLambda([&Wuu, &l, this](const size_t i, const size_t j, double &v)
                              { v = v * std::pow(std::fabs((*(this->Columns[l]))[i] - (*(this->Columns[l]))[j]), this->p); },
                              Wuu);
@@ -105,18 +109,17 @@ namespace ROPTLIB
 
         double pPowSum(const size_t l) const
         {
-            grb::Vector<double> vec(n);
-            double s = 0;
-
             //working with orthonormal columns
             if (p == 2)
                 return 1.0;
-
-            grb::set(vec, *Columns[l]);
+            
+            double s = 0;
+            //grb::Vector<double> vec(n);
+            grb::set( vec, *Columns[l] );
             grb::eWiseMap([this](const double u)
                           { return std::pow(std::fabs(u), this->p); },
                           vec);
-            grb::foldl(s, vec, reals_ring.getAdditiveMonoid());
+            grb::foldl( s, vec, reals_ring.getAdditiveMonoid() );
 
             return s;
         }
@@ -131,7 +134,10 @@ namespace ROPTLIB
                                                                                             ones(in_n),
                                                                                             n(in_n),
                                                                                             k(in_k),
-                                                                                            p(p_in)
+                                                                                            p(p_in),
+                                                                                            Wuu(in_n,in_n),
+                                                                                            vec(in_n),
+                                                                                            vec2(in_n)
         {
             NumGradHess = false;
 
@@ -141,9 +147,11 @@ namespace ROPTLIB
             Etax.resize(k);
             Res.resize(k);
 
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-// #endif
+            grb::resize(Wuu, grb::nnz(W));
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
+#endif
             for (size_t i = 0; i < k; ++i)
             {
                 Columns[i] = new grb::Vector<double>(n);
@@ -206,18 +214,18 @@ namespace ROPTLIB
             timer.reset();
             ROPTLIBtoGRB(x, Columns);
 
-            for (size_t l = 0; l < k; ++l)
-            {
-                for (const auto &pair : *Columns[l])
-                {
-                    if (isnan(pair.second))
-                    {
-                        std::cerr << "in eucgrad";
-                    }
-                    assert(!isnan(pair.second));
-                    //std::cout << pair.second << " ";
-                }
-            }
+            // for (size_t l = 0; l < k; ++l)
+            // {
+            //     for (const auto &pair : *Columns[l])
+            //     {
+            //         if (isnan(pair.second))
+            //         {
+            //             std::cerr << "in eucgrad";
+            //         }
+            //         assert(!isnan(pair.second));
+            //         //std::cout << pair.second << " ";
+            //     }
+            // }
             io_time += timer.time();
 
             // ============================================== //
@@ -228,9 +236,9 @@ namespace ROPTLIB
             for (size_t l = 0; l < k; ++l)
             {
 
-                grb::Matrix<double> Wphiu(n, n);
-                grb::resize(Wphiu, grb::nnz(W));
-                grb::Vector<double> vec(n);
+                //grb::Matrix<double> Wphiu(n, n);
+                //grb::resize(Wphiu, grb::nnz(W));
+                //grb::Vector<double> vec(n);
 
                 // Print the entries of the input matrix W    
                 // for ( size_t i=0; i<n; ++i) {
@@ -246,11 +254,11 @@ namespace ROPTLIB
                 // End Print
 
 
-                grb::set(Wphiu, W);
-                grb::eWiseLambda([&Wphiu, &l, this](const size_t i, const size_t j, double &v)
+                grb::set(Wuu, W);
+                grb::eWiseLambda([&Wuu, &l, this](const size_t i, const size_t j, double &v)
                                  { v = v * phi_p((*(this->Columns[l]))[j] - (*(this->Columns[l]))[i]); 
                                  },
-                                 Wphiu);
+                                 Wuu);
 
                 // Print the entries of the resulting matrix Wphiu
                 // for ( size_t i=0; i<n; ++i) {
@@ -266,7 +274,7 @@ namespace ROPTLIB
                 // End Print
 
                 grb::set(vec, 0);
-                grb::vxm(vec, ones, Wphiu, reals_ring);
+                grb::vxm(vec, ones, Wuu, reals_ring);
 
                 double powsum = pPowSum(l);
                 double factor = summandEvalNum(l) / (2 * powsum);
@@ -329,19 +337,19 @@ namespace ROPTLIB
 
             io_time += timer.time();
 
-            for (size_t l = 0; l < k; ++l)
-            {
-                for (const auto &pair : *Res[l])
-                {
-                    // Print pair.second here (double)
-                    // these are the components of the gradient
-                    if (isnan(pair.second))
-                    {
-                        std::cerr << "in eucgrad";
-                    }
-                    assert(!isnan(pair.second));
-                }
-            }
+            // for (size_t l = 0; l < k; ++l)
+            // {
+            //     for (const auto &pair : *Res[l])
+            //     {
+            //         // Print pair.second here (double)
+            //         // these are the components of the gradient
+            //         if (isnan(pair.second))
+            //         {
+            //             std::cerr << "in eucgrad";
+            //         }
+            //         assert(!isnan(pair.second));
+            //     }
+            // }
 
             return *result;
         }
@@ -358,27 +366,27 @@ namespace ROPTLIB
             // convert to k Graphblas vectors
             timer.reset();
             ROPTLIBtoGRB(x, Columns);
-            for (size_t l = 0; l < k; ++l)
-            {
-                for (const auto &pair : *Columns[l])
-                {
-                    if (isnan(pair.second))
-                    {
-                        std::cerr << "Nan in  Hessian * eta" << std::endl;
-                    }
-                    assert(!isnan(pair.second));
-                    //std::cout << pair.second << " ";
-                }
-            }
+            // for (size_t l = 0; l < k; ++l)
+            // {
+            //     for (const auto &pair : *Columns[l])
+            //     {
+            //         if (isnan(pair.second))
+            //         {
+            //             std::cerr << "Nan in  Hessian * eta" << std::endl;
+            //         }
+            //         assert(!isnan(pair.second));
+            //         //std::cout << pair.second << " ";
+            //     }
+            // }
             ROPTLIBtoGRB(etax, Etax);
             io_time += timer.time();
 
             // evaluate hessian*vector in graphblas
             timer.reset();
 
-            grb::Matrix<double> Wuu(n, n);
-            grb::resize(Wuu, grb::nnz(W));
-            grb::Vector<double> vec1(n), vec2(n);
+            //grb::Matrix<double> Wuu(n, n);
+            //grb::resize(Wuu, grb::nnz(W));
+            //grb::Vector<double> vec1(n), vec2(n);
 
             for (size_t l = 0; l < k; ++l)
             {
@@ -423,35 +431,35 @@ namespace ROPTLIB
                                      Wuu);
                 
 
-                grb::set(vec1, 0);
+                grb::set(vec, 0);
                 grb::set(vec2, 0);
-                grb::vxm(vec1, ones, Wuu, reals_ring);
+                grb::vxm(vec, ones, Wuu, reals_ring);
                 grb::vxm(vec2, *(this->Etax[l]), Wuu, reals_ring);
                 double powsum = pPowSum(l);
 
                 grb::set(*(Res[l]), 0);
-                grb::eWiseLambda([&vec1, &vec2, &powsum, &l, this](const size_t i)
+                grb::eWiseLambda([&vec, &vec2, &powsum, &l, this](const size_t i)
                                  {
                                      (*(this->Res[l]))[i] =
                                          ((this->p) * (this->p - 1) / powsum) *
-                                         (vec1[i] * (*(this->Etax[l]))[i] - vec2[i]);
+                                         (vec[i] * (*(this->Etax[l]))[i] - vec2[i]);
 
                                      //  std::cout << "-------------" << std::endl;
                                      //  std::cout <<  vec1[i] << " || " << std::endl;
 
-                                     if (isnan((*(this->Res[l]))[i]))
-                                     {
-                                         std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-                                         std::cout << " Nan in the Hessian computation. Printing components " << std::endl;
-                                         std::cout << "Vector No is: " << l << std::endl;
-                                         std::cout <<  "p(p-1)/||u||^p_p = "  << powsum << std::endl;                                         
-                                         std::cout << "vec1 * eta = " <<  vec1[i] * (*(this->Etax[l]))[i] << std::endl;
-                                         std::cout << "vec2 = " << vec2[i] << std::endl;
-                                         std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-                                        //  std::cin.get();
-                                     }
+                                    //  if (isnan((*(this->Res[l]))[i]))
+                                    //  {
+                                    //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+                                    //      std::cout << " Nan in the Hessian computation. Printing components " << std::endl;
+                                    //      std::cout << "Vector No is: " << l << std::endl;
+                                    //      std::cout <<  "p(p-1)/||u||^p_p = "  << powsum << std::endl;                                         
+                                    //      std::cout << "vec1 * eta = " <<  vec1[i] * (*(this->Etax[l]))[i] << std::endl;
+                                    //      std::cout << "vec2 = " << vec2[i] << std::endl;
+                                    //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+                                    //     //  std::cin.get();
+                                    //  }
                                  },
-                                 vec1);
+                                 vec);
                 // }
                 // std::cout << "p: " << p << " || "
                 //           << "p*(p-1)/denom: " << ((this->p) * (this->p - 1) / powsum) << " ||" << std::endl;
@@ -473,17 +481,17 @@ namespace ROPTLIB
 
             io_time += timer.time();
 
-            for (size_t l = 0; l < k; ++l)
-            {
-                for (const auto &pair : *Res[l])
-                {
-                    if (isnan(pair.second))
-                    {
-                        std::cerr << "Nan in  Hessian * eta" << std::endl;
-                    }
-                    assert(!isnan(pair.second));
-                }
-            }
+            // for (size_t l = 0; l < k; ++l)
+            // {
+            //     for (const auto &pair : *Res[l])
+            //     {
+            //         if (isnan(pair.second))
+            //         {
+            //             std::cerr << "Nan in  Hessian * eta" << std::endl;
+            //         }
+            //         assert(!isnan(pair.second));
+            //     }
+            // }
 
             return *result;
         }
