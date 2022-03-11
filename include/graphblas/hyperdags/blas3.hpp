@@ -154,13 +154,78 @@ namespace grb {
 	}
 	
 	
+	template< 
+		Descriptor descr = descriptors::no_operation, typename OutputType,
+		typename InputType1, typename InputType2, class Semiring
+	>
+	RC mxm( Matrix< OutputType, hyperdags > & C,
+		const Matrix< InputType1, hyperdags > & A,
+		const Matrix< InputType2, hyperdags > & B,
+		const Semiring & ring = Semiring(),
+		const PHASE & phase = NUMERICAL,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
+		! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value, void >::type * const = NULL )
+	{
+	
+		std::array< const void *, 2 > sources{ &A, &B};
+		std::array< const void *, 1 > destinations{ &C };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+	return mxm<descr>( internal::getMatrix( C ), internal::getMatrix( A ),  internal::getMatrix( B ), ring, phase );
+	}
+		
 	
 	
+	template< 
+		Descriptor descr = grb::descriptors::no_operation, typename OutputType, 
+		typename InputType1, typename InputType2, class Operator, class Monoid 
+	>
+	RC mxm( Matrix< OutputType, hyperdags > & C,
+		const Matrix< InputType1, hyperdags > & A,
+		const Matrix< InputType2, hyperdags > & B,
+		const Operator & mulOp,
+		const Monoid & addM,
+		const PHASE & phase = NUMERICAL,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! 
+		grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL )
+	{
+		std::array< const void *, 2 > sources{ &A, &B};
+		std::array< const void *, 1 > destinations{ &C };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::MXM_MATRIX_MATRIX_MATRIX_MONOID,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
 	
 	
+	return mxm<descr>( internal::getMatrix( C ), internal::getMatrix( A ),  internal::getMatrix( B ), mulOp, addM, phase );
+
+	}
 	
 	
-	
+	template< Descriptor descr = descriptors::no_operation, typename InputType1,
+		 typename InputType2, typename OutputType, typename Coords, class Operator 
+	>
+	RC outer( Matrix< OutputType, hyperdags > & A,
+		const Vector< InputType1, hyperdags, Coords > & u,
+		const Vector< InputType2, hyperdags, Coords > & v,
+		const Operator & mul = Operator(),
+		const PHASE & phase = NUMERICAL,
+		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && 
+		! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value, void >::type * const = NULL ) {
+		
+		std::array< const void *, 2 > sources{ &u, &v};
+		std::array< const void *, 1 > destinations{ &A };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::OUTER,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return outer<descr>( internal::getMatrix( A ), internal::getVector( u ),  internal::getVector( v ), mul, phase);
+	}
 	
 	
 } // end n1amespace grb

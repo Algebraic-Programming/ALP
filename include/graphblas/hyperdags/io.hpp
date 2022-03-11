@@ -32,7 +32,7 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		return buildMatrixUnique(internal::getMatrix(A), start, end, mode);
+		return buildMatrixUnique<descr>( internal::getMatrix(A), start, end, mode );
 	}
 
 } // namespace grb

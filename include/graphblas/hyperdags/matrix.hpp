@@ -39,6 +39,20 @@ namespace grb {
 		const Matrix< T, _GRB_WITH_HYPERDAGS_USING> & getMatrix(
 			const Matrix< T, grb::hyperdags > &x
 		);
+		
+
+		template< typename T >
+		inline internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< T, grb::hyperdags > & A ) noexcept;
+
+		template< typename T >
+		inline const internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< T, grb::hyperdags > & A ) noexcept;
+
+		template< typename T >
+		inline internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< T, grb::hyperdags > & A ) noexcept;
+
+		template< typename T >
+		inline const internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< T, grb::hyperdags > & A ) noexcept;
+
 
 	}
 
@@ -108,6 +122,27 @@ namespace grb {
 			const Matrix< T, grb::hyperdags > &x
 		) {
 			return x.matrix;
+		}
+		
+		
+		template< typename T >
+		inline internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< T, grb::hyperdags > & A ) noexcept {
+			return getCRS( internal::getMatrix(A) );
+		}
+
+		template< typename T >
+		inline const internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< T, grb::hyperdags > & A ) noexcept {
+			return getCRS( internal::getMatrix(A) );
+		}
+
+		template< typename T >
+		inline internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< T, grb::hyperdags > & A ) noexcept {
+			return getCCS( internal::getMatrix(A) );
+		}
+
+		template< typename T >
+		inline const internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< T, grb::hyperdags > & A ) noexcept {
+			return getCCS( internal::getMatrix(A) );
 		}
 
 	}
