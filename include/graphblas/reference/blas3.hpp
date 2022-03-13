@@ -230,41 +230,6 @@ namespace grb {
 
 	} // namespace internal
 
-	/**
-	 * Clears the matrix of all nonzeroes.
-	 *
-	 * On function exit, this matrix contains zero nonzeroes. The matrix
-	 * dimensions remain unchanged (these cannot change).
-	 *
-	 * @return grb::SUCCESS This function cannot fail.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \mathcal{O}(m+n) \f$ work.
-	 *        -# This function allocates no additional dynamic memory.
-	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
-	 *           beyond that which was already used at function entry.
-	 *        -# This function will move up to
-	 *             \f$ (m+n)\mathit{sizeof}( size\_t ) \f$
-	 *           bytes of memory.
-	 *        -# This function \em may free up to
-	 *           \f$ \mathcal{O} \left(
-	 *               (m+n)\mathit{sizeof}( size\_t ) +
-	 *               \mathit{nz}\mathit{sizeof}( \text{InputType} )
-	 *           \right) \f$
-	 *           bytes of dynamically allocated memory.
-	 * \endparblock
-	 *
-	 * \warning Calling clear may not clear any dynamically allocated
-	 *          memory. Only destruction of the container \a A would
-	 *          ensure this.
-	 */
-	template< typename InputType >
-	RC clear( Matrix< InputType, reference > & A ) noexcept {
-		// delegate
-		return A.clear();
-	}
-
 	namespace internal {
 
 		template<
@@ -622,7 +587,7 @@ namespace grb {
 			}
 
 			if( ret == SUCCESS ) {
-				internal::getCurrentNonzeroes( A ) = crs_offsets[ nrows ];
+				internal::setCurrentNonzeroes( A, crs_offsets[ nrows ] );
 			}
 
 			assert( x_it == x_end );

@@ -241,14 +241,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		if( data_in.thresholded ) {
 			rc = sparse_nn_single_inference(
-				vout, vin, L, biases,
-				data_in.threshold, data_in.layers,
+				vout, vin, L,
+				biases, data_in.threshold,
 				temp
 			);
 		} else {
 			rc = sparse_nn_single_inference(
-				vout, vin, L, biases,
-				data_in.layers, temp
+				vout, vin, L,
+				biases,
+				temp
 			);
 		}
 		double single_time = timer.time();
@@ -281,15 +282,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				if( data_in.thresholded ) {
 					rc = sparse_nn_single_inference(
-						vout, vin, L, biases,
-						data_in.threshold, data_in.layers,
+						vout, vin, L,
+						biases, data_in.threshold,
 						temp
 					);
 				} else {
 					rc = sparse_nn_single_inference(
-						vout, vin, L, biases,
-						data_in.layers,
-						temp
+						vout, vin, L,
+						biases, temp
 					);
 				}
 			}

@@ -55,8 +55,9 @@ namespace grb {
 	class Matrix< D, BSP1D >;
 
 	namespace internal {
+
 		template< typename DataType, typename Coords >
-		RC synchronizeVector( const Vector< DataType, BSP1D, Coords > & x ) {
+		RC synchronizeVector( const Vector< DataType, BSP1D, Coords > &x ) {
 			return x.synchronize();
 		}
 
@@ -104,7 +105,11 @@ namespace grb {
 		 * Contents of the returned vector may be modified.
 		 */
 		template< typename DataType, typename Coords >
-		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getLocal( Vector< DataType, BSP1D, Coords > & x );
+		Vector<
+			DataType,
+			_GRB_BSP1D_BACKEND,
+			Coordinates< _GRB_BSP1D_BACKEND >
+		> &getLocal( Vector< DataType, BSP1D, Coords > &x );
 
 		/**
 		 * Retrieves the process-local part of a distributed vector.
@@ -119,7 +124,11 @@ namespace grb {
 		 * Contents of the returned vector may not be modified.
 		 */
 		template< typename DataType, typename Coords >
-		const Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getLocal( const Vector< DataType, BSP1D, Coords > & x );
+		const Vector<
+			DataType,
+			_GRB_BSP1D_BACKEND,
+			Coordinates< _GRB_BSP1D_BACKEND >
+		> & getLocal( const Vector< DataType, BSP1D, Coords > &x );
 
 		/**
 		 * Retrieves the global mirror of a distributed vector.
@@ -131,7 +140,11 @@ namespace grb {
 		 * @returns A vector of type \a _GRB_BSP1D_BACKEND.
 		 */
 		template< typename DataType, typename Coords >
-		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getGlobal( Vector< DataType, BSP1D, Coords > & x );
+		Vector<
+			DataType,
+			_GRB_BSP1D_BACKEND,
+			Coordinates< _GRB_BSP1D_BACKEND >
+		> & getGlobal( Vector< DataType, BSP1D, Coords > &x );
 
 		/**
 		 * Retrieves the global mirror of a distributed vector.
@@ -143,7 +156,11 @@ namespace grb {
 		 * @returns A vector of type \a _GRB_BSP1D_BACKEND.
 		 */
 		template< typename DataType, typename Coords >
-		const Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getGlobal( const Vector< DataType, BSP1D, Coords > & x );
+		const Vector<
+			DataType,
+			_GRB_BSP1D_BACKEND,
+			Coordinates< _GRB_BSP1D_BACKEND >
+		> & getGlobal( const Vector< DataType, BSP1D, Coords > &x );
 
 		/**
 		 * Signals change in the sparsity structure of the local vector.
@@ -153,7 +170,7 @@ namespace grb {
 		 * @param[in] x The vector which underwent a local change to its sparsity.
 		 */
 		template< typename DataType, typename Coords >
-		void signalLocalChange( Vector< DataType, BSP1D, Coords > & x );
+		void signalLocalChange( Vector< DataType, BSP1D, Coords > &x );
 
 		/**
 		 * Updates the nonzero count of a given vector.
@@ -188,10 +205,18 @@ namespace grb {
 	RC clear( Vector< DataType, BSP1D, Coords > & ) noexcept;
 
 	template< typename DataType, typename Coords >
+	RC resize( Vector< DataType, BSP1D, Coords > &, const size_t ) noexcept;
+
+	template< typename DataType, typename Coords >
 	size_t nnz( const Vector< DataType, BSP1D, Coords > & );
 
+	template< typename DataType, typename Coords >
+	size_t capacity( const Vector< DataType, BSP1D, Coords > & ) noexcept;
+
 	/**
-	 * A BSP1D vector. Uses a block-cyclic distribution.
+	 * A BSP1D vector.
+	 *
+	 * \internal Uses a block-cyclic distribution.
 	 */
 	template< typename D, typename C >
 	class Vector< D, BSP1D, C > {
@@ -200,23 +225,49 @@ namespace grb {
 		        BLAS1 friends
 		   ********************* */
 
-		// template< typename DataType >
 		friend RC clear< D, C >( Vector< D, BSP1D, C > & ) noexcept;
 
-		// template< typename DataType >
+		friend RC resize< D, C >( Vector< D, BSP1D, C > &, const size_t ) noexcept;
+
 		friend size_t size< D, C >( const Vector< D, BSP1D, C > & ) noexcept;
 
-		// template< typename DataType >
 		friend size_t nnz< D, C >( const Vector< D, BSP1D, C > & );
 
-		template< Descriptor descr, typename OutputType, typename Coords, typename InputType >
-		friend RC set( Vector< OutputType, BSP1D, Coords > &, const Vector< InputType, BSP1D, Coords > & );
+		friend size_t capacity< D, C >( const Vector< D, BSP1D, C > & ) noexcept;
 
-		template< Descriptor, typename InputType, typename fwd_iterator, typename Coords, class Dup >
-		friend RC buildVector( Vector< InputType, BSP1D, Coords > &, fwd_iterator, const fwd_iterator, const IOMode, const Dup & );
+		template<
+			Descriptor,
+			typename OutputType, typename InputType,
+			typename Coords
+		>
+		friend RC set(
+			Vector< OutputType, BSP1D, Coords > &,
+			const Vector< InputType, BSP1D, Coords > &
+		);
 
-		template< Descriptor, typename InputType, typename fwd_iterator1, typename fwd_iterator2, typename Coords, class Dup >
-		friend RC buildVector( Vector< InputType, BSP1D, Coords > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
+		template<
+			Descriptor,
+			typename InputType, typename fwd_iterator,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, BSP1D, Coords > &,
+			fwd_iterator, const fwd_iterator,
+			const IOMode, const Dup &
+		);
+
+		template<
+			Descriptor,
+			typename InputType,
+			typename fwd_iterator1, typename fwd_iterator2,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, BSP1D, Coords > &,
+			fwd_iterator1, const fwd_iterator1,
+			fwd_iterator2, const fwd_iterator2,
+			const IOMode, const Dup &
+		);
 
 		// template< typename DataType >
 		friend RC internal::updateNnz< D, C >( Vector< D, BSP1D, C > & );
@@ -224,49 +275,103 @@ namespace grb {
 		// template< typename DataType >
 		friend void internal::setDense< D, C >( Vector< D, BSP1D, C > & );
 
-		template< Descriptor, bool, bool, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename InputType4, typename Coords >
+		template<
+			Descriptor,
+			bool, bool, bool,
+			class Ring,
+			typename IOType,
+			typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
 		friend RC internal::bsp1d_mxv( Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Matrix< InputType2, BSP1D > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Ring & );
+			const Ring &
+		);
 
-		template< Descriptor descr, bool, bool, bool, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename InputType4, typename Coords >
+		template<
+			Descriptor,
+			bool, bool, bool,
+			class Ring,
+			typename IOType,
+			typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
 		friend RC internal::bsp1d_vxm( Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Matrix< InputType2, BSP1D > & A,
-			const Ring & ring );
+			const Matrix< InputType2, BSP1D > &,
+			const Ring &
+		);
 
-		friend RC internal::synchronizeVector< D, C >( const Vector< D, BSP1D, C > & );
+		friend Vector<
+			D,
+			_GRB_BSP1D_BACKEND,
+			internal::Coordinates< _GRB_BSP1D_BACKEND >
+		> & internal::getLocal< D, C >( Vector< D, BSP1D, C > & );
 
-		friend Vector< D, _GRB_BSP1D_BACKEND, internal::Coordinates< _GRB_BSP1D_BACKEND > > & internal::getLocal< D, C >( Vector< D, BSP1D, C > & );
+		friend const Vector<
+			D,
+			_GRB_BSP1D_BACKEND,
+			internal::Coordinates< _GRB_BSP1D_BACKEND >
+		> & internal::getLocal< D, C >( const Vector< D, BSP1D, C > & );
 
-		friend const Vector< D, _GRB_BSP1D_BACKEND, internal::Coordinates< _GRB_BSP1D_BACKEND > > & internal::getLocal< D, C >( const Vector< D, BSP1D, C > & );
+		friend Vector<
+			D,
+			_GRB_BSP1D_BACKEND,
+			internal::Coordinates< _GRB_BSP1D_BACKEND >
+		> & internal::getGlobal< D, C >( Vector< D, BSP1D, C > & );
 
-		friend Vector< D, _GRB_BSP1D_BACKEND, internal::Coordinates< _GRB_BSP1D_BACKEND > > & internal::getGlobal< D, C >( Vector< D, BSP1D, C > & );
-
-		friend const Vector< D, _GRB_BSP1D_BACKEND, internal::Coordinates< _GRB_BSP1D_BACKEND > > & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
+		friend const Vector<
+			D,
+			_GRB_BSP1D_BACKEND,
+			internal::Coordinates< _GRB_BSP1D_BACKEND >
+		> & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
 
 		template< typename Func, typename DataType, typename Coords >
-		friend RC eWiseLambda( const Func, const Vector< DataType, BSP1D, Coords > & );
+		friend RC eWiseLambda(
+			const Func,
+			const Vector< DataType, BSP1D, Coords > &
+		);
 
-		template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
-		friend RC eWiseLambda( const Func, const Vector< DataType1, BSP1D, Coords > &, const Vector< DataType2, BSP1D, Coords > &, Args const &... args );
+		template<
+			typename Func,
+			typename DataType1, typename DataType2,
+			typename Coords, typename... Args
+		>
+		friend RC eWiseLambda(
+			const Func,
+			const Vector< DataType1, BSP1D, Coords > &,
+			const Vector< DataType2, BSP1D, Coords > &,
+			Args const &... args
+		);
 
 		/* *********************
 		    Level-1 collectives
 		          friends
 		   ********************* */
 
-		template< Descriptor, class Ring, typename OutputType, typename InputType1, typename InputType2 >
+		template<
+			Descriptor,
+			class Ring,
+			typename OutputType, typename InputType1, typename InputType2
+		>
 		friend RC internal::allreduce( OutputType &,
 			const Vector< InputType1, BSP1D, C > &,
 			const Vector< InputType2, BSP1D, C > &,
-			RC( reducer )( OutputType &, const Vector< InputType1, BSP1D, C > &, const Vector< InputType2, BSP1D, C > &, const Ring & ),
-			const Ring & );
+			RC( reducer )(
+				OutputType &,
+				const Vector< InputType1, BSP1D, C > &,
+				const Vector< InputType2, BSP1D, C > &,
+				const Ring &
+			),
+			const Ring &
+		);
 
 		/* ********************
 		         IO friends
@@ -283,11 +388,17 @@ namespace grb {
 
 		friend void internal::signalLocalChange< D, C >( Vector< D, BSP1D, C > & );
 
+		friend RC internal::synchronizeVector< D, C >( const Vector< D, BSP1D, C > & );
+
 
 	private:
 
 		/** The local vector type. */
-		typedef Vector< D, _GRB_BSP1D_BACKEND, internal::Coordinates< _GRB_BSP1D_BACKEND > > LocalVector;
+		typedef Vector<
+			D,
+			_GRB_BSP1D_BACKEND,
+			internal::Coordinates< _GRB_BSP1D_BACKEND >
+		> LocalVector;
 
 		/** The blocksize of the block-cyclic distribution of this vector. */
 		static constexpr size_t _b = config::CACHE_LINE_SIZE::value();
@@ -336,6 +447,9 @@ namespace grb {
 
 		/** The global size of this distributed vector. */
 		size_t _n;
+
+		/** The global capacity of this distributed vector. */
+		size_t _cap;
 
 		/**
 		 * The global number of nonzeroes in this distributed vector.
@@ -452,7 +566,8 @@ namespace grb {
 		 */
 		void initialize(
 			void * const raw_in, void * const assigned_in,
-			void * const buffer_in, const size_t cap_in
+			void * const buffer_in, const size_t cap_in,
+			const size_t nz
 		) {
 #ifdef _DEBUG
 			std::cout << "In grb::Vector< T, BSP1D, C >::initialize\n";
@@ -460,11 +575,19 @@ namespace grb {
 			// check for undefined behaviour
 #ifndef NDEBUG
 			if( raw_in == nullptr || assigned_in == nullptr || buffer_in == nullptr ) {
-				// Illegal arguments: raw_in and assigned_in must both be NULL or both be non-NULL.
+				// Illegal arguments: raw_in and assigned_in must both be NULL,
+				// or both be non-NULL.
 				assert( !( raw_in != nullptr || assigned_in != nullptr ||
 					buffer_in != nullptr ) );
 			}
 #endif
+
+			if( cap_in > 0 && nz > cap_in ) {
+#ifdef _DEBUG
+				std::cerr << "\t illegal initial capacity requested\n";
+#endif
+				throw std::runtime_error( toString( ILLEGAL ) );
+			}
 
 			// if no vector was provided, create a new one
 			if( raw_in == nullptr ) {
@@ -477,12 +600,14 @@ namespace grb {
 				const size_t bufferSize =
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) +
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
-				const RC rc = grb::utils::alloc( "grb::Vector< T, BSP1D, C > (initialize)",
-					sstream.str(), _raw, cap_in, true, _raw_deleter, // allocate raw array
+				const RC rc = grb::utils::alloc(
+					"grb::Vector< T, BSP1D, C > (initialize)", sstream.str(),
+					_raw, cap_in, true, _raw_deleter,                      // allocate raw array
 					new_assigned,
-					internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ), true,
-					_assigned_deleter,                               // allocate assigned array
-					_buffer, bufferSize, true, _buffer_deleter       // allocate (stack) buffer
+						internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
+						true,
+						_assigned_deleter,                             // allocate assigned array
+					_buffer, bufferSize, true, _buffer_deleter             // allocate (stack) buffer
 				);
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
@@ -515,20 +640,33 @@ namespace grb {
 			auto &data = internal::grb_BSP1D.load();
 
 			// generate ID
+			assert( cap_in > 0 );
 			_id = data.mapper.insert(
 				reinterpret_cast< uintptr_t >(_assigned)
 			);
 
 			// delegate to sequential implementation
-			_global.initialize( &_id, _raw, _assigned, false, _buffer, cap_in );
+			_global.initialize( &_id, _raw, _assigned, false, _buffer, cap_in, nz );
 			_local.initialize( &_id,
 				_raw + _offset,
 				_assigned + _offset, true,
 				_buffer + local_buffer_offset,
-				_local_n
+				_local_n,
+				nz < _local_n ? nz : _local_n
 			);
 
-			// now set remaining fieldds
+			// retrieve global capacity
+			size_t global_cap = capacity( _local );
+			if( collectives< BSP1D >::allreduce(
+					global_cap,
+					grb::operators::add< size_t >()
+				) != SUCCESS
+			) {
+				throw std::runtime_error( "Synchronising global capacity failed" );
+			}
+			_cap = global_cap;
+
+			// now set remaining fields
 			_n = cap_in;
 			const size_t arraySize =
 				internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in );
@@ -670,7 +808,7 @@ namespace grb {
 		/** Updates the number of nonzeroes if and only if the nonzero count might have changed. */
 		RC updateNnz() const noexcept {
 			// if nonzero count cannot have changed
-			if( ! _nnz_is_dirty ) {
+			if( !_nnz_is_dirty ) {
 				return SUCCESS;
 			}
 
@@ -679,7 +817,10 @@ namespace grb {
 			// get local number of nonzeroes
 			_nnz = nnz( _local );
 			// call allreduce on it
-			const RC rc = collectives< BSP1D >::allreduce< descriptors::no_casting, operators::add< size_t > >( _nnz );
+			const RC rc = collectives< BSP1D >::allreduce<
+				descriptors::no_casting,
+				operators::add< size_t >
+			>( _nnz );
 			// check for error
 			if( rc == SUCCESS ) {
 				// update _became_dense flag
@@ -699,12 +840,16 @@ namespace grb {
 		 * view is a dense vector. The run-time will be linear in the global vector
 		 * size n. This code will execute one allgather.
 		 */
-		RC dense_synchronize( internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates ) const {
+		RC dense_synchronize(
+			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
+		) const {
 			const auto data = internal::grb_BSP1D.cload();
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
-			std::cout << "Issuing allgathers on value array from offset " << _offset * sizeof( bool ) << " length " << _local_n << ". P = " << data.P << "\n";
+			std::cout << "Issuing allgathers on value array from offset "
+				<< _offset * sizeof( bool ) << " length " << _local_n << ". "
+				<< "P = " << data.P << "\n";
 #endif
 
 			// perform allgather on the vector data
@@ -735,12 +880,16 @@ namespace grb {
 		 * global stack. The run-time will be linear in the global vector size n. This
 		 * code will execute two allgathers.
 		 */
-		RC array_synchronize( internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates ) const {
+		RC array_synchronize(
+			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
+		) const {
 			const auto data = internal::grb_BSP1D.cload();
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
-			std::cout << "Issuing allgathers on value and assigned array from offset " << _offset * sizeof( bool ) << " length " << _local_n << ". P = " << data.P << "\n";
+			std::cout << "Issuing allgathers on value and assigned array from offset "
+				<< _offset * sizeof( bool ) << " length " << _local_n << ". "
+				<< "P = " << data.P << "\n";
 #endif
 
 			// perform allgather on the vector data
@@ -789,7 +938,11 @@ namespace grb {
 		 *
 		 * @param[in] nzs The number of nonzeroes in each local stack.
 		 */
-		RC stack_synchronize( internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates, size_t * const nzs, const internal::Coordinates< _GRB_BSP1D_BACKEND > &local_coordinates ) const {
+		RC stack_synchronize(
+			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates,
+			size_t * const nzs,
+			const internal::Coordinates< _GRB_BSP1D_BACKEND > &local_coordinates
+		) const {
 			auto &data = internal::grb_BSP1D.load();
 			assert( data.P > 1 );
 
@@ -811,25 +964,33 @@ namespace grb {
 			std::cout << ")\n";
 #endif
 
-			assert(
-				data.checkBufferSize(
-					data.P * sizeof(size_t) + // nzs
-					nzs[ data.s ] * sizeof(internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType) + // output_ind_buf
-					(nzs[ data.s ] + global_nz) * utils::SizeOf< D >::value + // output_val_buf and input_val_buf
-					sizeof(size_t) // padding
-				) == SUCCESS
-			);
+			// check buffer requirements
+			//              nzs: data.P times sizeof(size_t)
+			//   output_ind_buf: nzs[ data.s ] * StackTypeSize
+			//   output_val_buf: nzs[ data.s ] * sizeof(D)
+			//    input_val_buf:  global_nz * sizeof(D)
+			//          padding: sizeof(size_t)
+			constexpr const size_t StackTypeSize =
+				sizeof(internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType);
+			assert( data.checkBufferSize(
+					data.P * sizeof(size_t) +
+					nzs[ data.s ] * StackTypeSize +
+					(nzs[ data.s ] + global_nz) * utils::SizeOf< D >::value +
+					sizeof(size_t)
+				) == SUCCESS );
 
 			RC ret = SUCCESS;
 			D * input_val_buf = nullptr;
 			D * output_val_buf = nullptr;
-			typename internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType * output_ind_buf = nullptr;
+			typename internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType *
+				output_ind_buf = nullptr;
 			size_t input_val_buf_o = 0;
 			size_t output_val_buf_o = 0;
 			size_t output_ind_buf_o = 0;
 
 			// find offsets in shared global buffer
-			// value input and output sections are only allocated in case of non-void vectors
+			// value input and output sections are only allocated in case of non-void
+			// vectors
 			if( utils::SizeOf< D >::value > 0 ) {
 				// compute offsets for local input and output buffers for nonzero values
 				input_val_buf_o = data.P * sizeof(size_t);
@@ -837,20 +998,34 @@ namespace grb {
 				output_val_buf_o = input_val_buf_o + global_nz * sizeof(D);
 				output_val_buf = input_val_buf + global_nz;
 				{
-					char * unaligned_ptr = static_cast< char * >( static_cast< void * >(output_val_buf + nzs[ data.s ]) );
-					const uintptr_t x = reinterpret_cast< uintptr_t >(unaligned_ptr) % sizeof(int);
+					char * unaligned_ptr = static_cast< char * >(
+						static_cast< void * >(output_val_buf + nzs[ data.s ])
+					);
+					const uintptr_t x =
+						reinterpret_cast< uintptr_t >(unaligned_ptr) % sizeof(int);
 					const ptrdiff_t y = sizeof(int) - x;
 					unaligned_ptr += y;
 					output_ind_buf_o = output_val_buf_o + nzs[ data.s ] * sizeof(D) + y;
-					output_ind_buf = static_cast< internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType * >( static_cast< void * >(unaligned_ptr) );
+					output_ind_buf =
+						static_cast< internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType * >(
+							static_cast< void * >(unaligned_ptr)
+						);
 				}
 			} else {
 				output_ind_buf_o = data.P * sizeof(size_t);
-				output_ind_buf = static_cast< internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType * >( static_cast< void * >( nzs + data.P ) );
+				output_ind_buf =
+					static_cast< internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType * >(
+						static_cast< void * >( nzs + data.P )
+					);
 			}
 
 			// pack values and indices
-			ret = local_coordinates.packValues( output_ind_buf, _offset, output_val_buf, _raw + _offset );
+			ret = local_coordinates.packValues(
+				output_ind_buf,
+				_offset,
+				output_val_buf,
+				_raw + _offset
+			);
 
 			// clear global vector
 			if( ret == SUCCESS ) {
@@ -863,9 +1038,12 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "Issuing allgather on shared buffer:\n"
 					<< "\t source offset: " << output_val_buf_o << "\n"
-					<< "\t destination offset: " << (input_val_buf_o + offset * utils::SizeOf< D >::value) << "\n"
-					<< "\t source length: " << (local_coordinates.nonzeroes() * utils::SizeOf< D >::value) << "\n"
-					<< "\t total incoming bytes: " << (global_nz * utils::SizeOf< D >::value) << "\n";
+					<< "\t destination offset: "
+					<< (input_val_buf_o + offset * utils::SizeOf< D >::value) << "\n"
+					<< "\t source length: "
+					<< (local_coordinates.nonzeroes() * utils::SizeOf< D >::value) << "\n"
+					<< "\t total incoming bytes: " << (global_nz * utils::SizeOf< D >::value)
+					<< "\n";
 				std::cout << "Source values: ( ";
 				for( size_t k = 0; k < local_coordinates.nonzeroes(); ++k ) {
 					std::cout << output_val_buf[ k ] << " ";
@@ -891,9 +1069,9 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				const size_t offset = data.s == 0 ? 0 : nzs[ data.s - 1 ];
 				ret = internal::allgather( data.slot, output_ind_buf_o,
-					_stack_slot, offset * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ),
-					local_coordinates.nonzeroes() * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ),
-					global_nz * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::StackType ),
+					_stack_slot, offset * StackTypeSize,
+					local_coordinates.nonzeroes() * StackTypeSize,
+					global_nz * StackTypeSize,
 					false
 				);
 			}
@@ -959,18 +1137,23 @@ namespace grb {
 			const bool local_dense = local_coordinates.nonzeroes() == n;
 
 #ifdef _DEBUG
-			std::cout << "Synchronizing local vectors (mine has " << local_coordinates.nonzeroes()
-				<< " / " << n << " nonzeroes) to one vector of size " << _n << ".\n";
+			std::cout << "Synchronizing local vectors (mine has "
+				<< local_coordinates.nonzeroes() << " / " << n << " nonzeroes) "
+				<< "to one vector of size " << _n << ".\n";
 			std::cout << "\t my local vector has nonzeroes at coordinates ";
 			for( size_t k = 0; k < local_coordinates.nonzeroes(); ++k ) {
 				std::cout << local_coordinates.index( k ) << " ";
 			}
-			std::cout << "\n\t my present global view has " << global_coordinates.nonzeroes()
-				<< " / " << global_coordinates.size() << " nonzeroes.\n";
+			std::cout << "\n\t my present global view has "
+				<< global_coordinates.nonzeroes() << " / "
+				<< global_coordinates.size() << " nonzeroes.\n";
 #endif
 
 			bool global_dense = local_dense;
-			ret = collectives<>::allreduce( global_dense, grb::operators::logical_and< bool >() );
+			ret = collectives<>::allreduce(
+				global_dense,
+				grb::operators::logical_and< bool >()
+			);
 			if( ret != SUCCESS ) {
 				std::cerr << "\t failed inferring global density status\n";
 				return ret;
@@ -1037,7 +1220,9 @@ namespace grb {
 
 #ifdef _DEBUG
 			if( ret == SUCCESS ) {
-				std::cout << "Sync completed. Returning a global vector with " << global_coordinates.nonzeroes() << " / " << _n << " nonzeroes at positions ";
+				std::cout << "Sync completed. Returning a global vector with "
+					<< global_coordinates.nonzeroes() << " / " << _n
+					<< " nonzeroes at positions ";
 				for( size_t k = 0; k < global_coordinates.nonzeroes(); ++k ) {
 					std::cout << global_coordinates.index( k ) << " ";
 				}
@@ -1067,14 +1252,18 @@ namespace grb {
 			auto &local_coordinates = internal::getCoordinates( _local );
 #endif
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ": performing a dense combine, requesting all-to-all of "
-					  << _local_n * sizeof( D ) << " bytes at local offset " << _offset * sizeof( D ) << "...\n";
+			std::cout << "\t" << s << ": performing a dense combine, "
+				<< "requesting all-to-all of " << _local_n * sizeof( D ) << " bytes "
+				<< "at local offset " << _offset * sizeof( D ) << "...\n";
 #endif
 			assert( local_coordinates.size() == _local_n );
 			assert( data.checkBufferSize( _local_n * P ) == grb::SUCCESS );
 			// NOTE: this alltoall does not perform more communication than optimal
-			RC ret = internal::alltoall( _raw_slot, _offset * sizeof( D ), _local_n * sizeof( D ) );
+			RC ret = internal::alltoall(
+				_raw_slot,
+				_offset * sizeof( D ),
+				_local_n * sizeof( D )
+			);
 			if( ret == SUCCESS ) {
 #ifdef _DEBUG
 				std::cout << "\t\t" << s << ": post all-to-all... " << std::endl;
@@ -1084,28 +1273,32 @@ namespace grb {
 				}
 				const D * __restrict__ const valbuf = data.template getBuffer< D >();
 				if( s != 0 ) {
-					ret = internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation >(
-						_local,
-						valbuf,
-						_local_n, s,
-						s,
-						acc
-					);
+					ret =
+						internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation >(
+							_local,
+							valbuf,
+							_local_n, s,
+							s,
+							acc
+						);
 				}
 				if( ret == SUCCESS && s + 1 != P ) {
 #ifdef _DEBUG
-					std::cout << "\t\t\t" << s << ": shifting buffer to offset " << ( s + 1 ) * _local_n << "\n";
+					std::cout << "\t\t\t" << s << ": shifting buffer to offset "
+						<< ( s + 1 ) * _local_n << "\n";
 #endif
-					ret = internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation >(
-						_local,
-						valbuf + (s + 1) * _local_n,
-						_local_n, (P - s - 1),
-						(P - s - 1),
-						acc
-					);
+					ret =
+						internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation >(
+							_local,
+							valbuf + (s + 1) * _local_n,
+							_local_n, (P - s - 1),
+							(P - s - 1),
+							acc
+						);
 				}
 #ifdef _DEBUG
-				std::cout << "\t\t" << s << ": local vector now contains " << nnz( _local ) << " / " << size( _local ) << " nonzeroes... ";
+				std::cout << "\t\t" << s << ": local vector now contains " << nnz( _local )
+					<< " / " << size( _local ) << " nonzeroes... ";
 #endif
 
 #ifdef _DEBUG
@@ -1145,45 +1338,65 @@ namespace grb {
 			// initialise local buffers
 			D * valbuf = nullptr;
 			bool * agnbuf = nullptr;
-			assert( data.checkBufferSize( P * _local_n *
-					(sizeof(D) + sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType))
+			assert( data.checkBufferSize( P * _local_n * (
+						sizeof(D) +
+						sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType)
+					)
 				) == grb::SUCCESS
 			);
 			valbuf = data.template getBuffer< D >();
-			static_assert( ( sizeof( D ) % sizeof( bool ) ) == 0, "Bad alignment resulting in UB detected! Please submit a bug report." );
+			static_assert( ( sizeof( D ) % sizeof( bool ) ) == 0,
+				"Bad alignment resulting in UB detected! Please submit a bug report." );
 			agnbuf = reinterpret_cast< bool * >( ( valbuf + (P * _local_n) ) );
 			const size_t bitmask_array_offset = P * _local_n * sizeof(D);
 
 #ifdef _DEBUG
 			std::cout << "\t" << s << ": valbuf at " << valbuf << ".\n"
 				<< "\t" << s << ": agnbuf at " << agnbuf << ".\n"
-				<< "\t" << s << ": offset of bitmask to value array is " << bitmask_array_offset << ".\n"
-				<< "\t" << s << ": alltoall from " << _raw_slot << " @ " << _offset * sizeof( D )
-				<< " of length " << _local_n * sizeof( D ) << " requested. Destination offset is 0.\n";
+				<< "\t" << s << ": offset of bitmask to value array is "
+				<< bitmask_array_offset << ".\n"
+				<< "\t" << s << ": alltoall from " << _raw_slot
+				<< " @ " << _offset * sizeof( D )
+				<< " of length " << _local_n * sizeof( D ) << " requested. "
+				<< "Destination offset is 0.\n";
 #endif
 			// exchange value array
-			RC ret = internal::alltoall( _raw_slot, _offset * sizeof( D ), _local_n * sizeof( D ) );
+			RC ret = internal::alltoall(
+				_raw_slot,
+				_offset * sizeof( D ),
+				_local_n * sizeof( D )
+			);
 
 			// exchange SPA (bitmask) array
 			if( ret == SUCCESS ) {
 #ifdef _DEBUG
 				std::cout << "\t" << s << ": alltoall from " << _assigned_slot
-					<< " @ " << _offset * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType )
-					<< " of length " << _local_n * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ) << " requested."
+					<< " @ " << _offset *
+						sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType )
+					<< " of length " << _local_n *
+						sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType )
+					<< " requested."
 					<< " Destination offset is " << bitmask_array_offset << ".\n";
 #endif
 				ret = internal::alltoall(
-					_assigned_slot, _offset * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ),
-					_local_n * sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ),
+					_assigned_slot, _offset *
+						sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ),
+					_local_n *
+						sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType ),
 					bitmask_array_offset
 				);
 			}
 			if( ret == SUCCESS && s > 0 ) {
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": foldl_from_raw_matrix_to_vector into " << &_local << " requested.\n"
-					<< "\t To-be-folded matrix is of size " << _local_n << " by " << s << ".\n";
+				std::cout << "\t" << s << ": foldl_from_raw_matrix_to_vector into "
+					<< &_local << " requested.\n"
+					<< "\t To-be-folded matrix is of size "
+					<< _local_n << " by " << s << ".\n";
 #endif
-				ret = internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation, true >(
+				ret = internal::foldl_from_raw_matrix_to_vector<
+					descriptors::no_operation,
+					true
+				> (
 					_local,
 					valbuf, agnbuf,
 					_local_n, s,
@@ -1192,10 +1405,15 @@ namespace grb {
 			}
 			if( ret == SUCCESS && s + 1 < P ) {
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": foldl_from_raw_matrix_to_vector into " << &_local << " requested. To-be-folded matrix is of size " << _local_n << " by " << ( P - s - 1 )
-						  << ", and was shifted with " << ( s + 1 ) << " columns. Agnbuf offset is " << ( s + 1 ) * _local_n << std::endl;
+				std::cout << "\t" << s << ": foldl_from_raw_matrix_to_vector into " << &_local
+					<< " requested. To-be-folded matrix is of size " << _local_n << " by "
+					<< ( P - s - 1 ) << ", and was shifted with " << ( s + 1 ) << " columns. "
+					<< "Agnbuf offset is " << ( s + 1 ) * _local_n << std::endl;
 #endif
-				ret = internal::foldl_from_raw_matrix_to_vector< descriptors::no_operation, true >(
+				ret = internal::foldl_from_raw_matrix_to_vector<
+					descriptors::no_operation,
+					true
+				> (
 					_local,
 					valbuf + (s + 1) * _local_n, agnbuf + (s + 1) * _local_n,
 					_local_n, (P - s - 1),
@@ -1205,7 +1423,8 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": exiting array-based sparse combine with exit code " << ret << "\n";
+			std::cout << "\t" << s << ": exiting array-based sparse combine with exit "
+				<< "code " << ret << "\n";
 #endif
 			// done
 			return ret;
@@ -1229,24 +1448,30 @@ namespace grb {
 		 * @returns MISMATCH when reducing mismatching containers after all-to-all
 		 */
 		template< Descriptor descr, class Acc >
-		RC stack_combine( internal::BSP1D_Data &data, size_t * const nzsk, size_t * const nzks, size_t * const global_nzs, size_t &recv_nz, size_t sent_nz, const Acc &acc ) {
+		RC stack_combine(
+			internal::BSP1D_Data &data,
+			size_t * const nzsk, size_t * const nzks,
+			size_t * const global_nzs,
+			size_t &recv_nz, size_t sent_nz,
+			const Acc &acc
+		) {
 			const auto &P = data.P;
 			const auto &s = data.s;
 			const auto &global_coordinates = internal::getCoordinates( _global );
 			auto &local_coordinates = internal::getCoordinates( _local );
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ": in stack-based sparse combine. Retrieving "
-						 "stack and initialising counting sort..."
-					  << std::endl;
+			std::cout << "\t" << s << ": in stack-based sparse combine. Retrieving "
+				"stack and initialising counting sort...\n";
 #endif
 			// retrieve stack of global coordinates
 			size_t stackSize = 0;
-			internal::Coordinates< reference >::StackType * __restrict__ stack = global_coordinates.getStack( stackSize );
+			internal::Coordinates< reference >::StackType * __restrict__ stack =
+				global_coordinates.getStack( stackSize );
 #ifdef _DEBUG
 			std::cout << "\t" << s << ": local stack size is " << stackSize << ".\n";
 #endif
-			static_assert( sizeof( size_t ) % sizeof( internal::Coordinates< reference >::StackType ) == 0,
+			static_assert( sizeof( size_t ) %
+				sizeof( internal::Coordinates< reference >::StackType ) == 0,
 				"size_t is not a multiple of StackType's size while the "
 				"code does assume this is true. Please submit a ticket to "
 				"get this fixed!" );
@@ -1271,7 +1496,8 @@ namespace grb {
 #endif
 				}
 #ifdef _DEBUG
-				std::cout << "). Check is " << ( global_nzs[ P - 1 ] == stackSize - nzsk[ P - 1 ] ) << std::endl;
+				std::cout << "). Check is " <<
+					( global_nzs[ P - 1 ] == stackSize - nzsk[ P - 1 ] ) << "\n";
 #endif
 				assert( global_nzs[ P - 1 ] == stackSize - nzsk[ P - 1 ] );
 			}
@@ -1294,38 +1520,63 @@ namespace grb {
 			recv_nz -= nzks[ s ];
 			sent_nz -= nzsk[ s ];
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": local #elements to receive:  " << recv_nz << "\n";
-			std::cout << "\t" << s << ": local #elements to send out: " << sent_nz << "\n";
+			std::cout << "\t" << s << ": local #elements to receive:  "
+				<< recv_nz << "\n"
+				<< "\t" << s << ": local #elements to send out: "
+				<< sent_nz << "\n";
 #endif
 			// prepare buffer
-			assert( data.checkBufferSize( 6 * P * sizeof( size_t ) + ( recv_nz + 1 ) * ( sizeof( internal::Coordinates< reference >::StackType ) + sizeof( D ) ) +
-								( sent_nz + nzsk[ s ] + 1 ) * sizeof( D ) ) == grb::SUCCESS );
+			assert( data.checkBufferSize( 6 * P * sizeof( size_t ) +
+					( recv_nz + 1 ) * (
+						sizeof( internal::Coordinates< reference >::StackType ) +
+						sizeof( D )
+					) +
+					( sent_nz + nzsk[ s ] + 1 ) * sizeof( D )
+				) == grb::SUCCESS
+			);
 			char * raw_buffer = data.template getBuffer< char >();
 
 			// store outgoing values after 6P size_t values
 			size_t valbuf_o = 6 * P * sizeof( size_t ) + sizeof( D ) - 1;
-			valbuf_o -= ( reinterpret_cast< uintptr_t >( raw_buffer + valbuf_o ) % sizeof( D ) );
-			D * __restrict__ const valbuf = reinterpret_cast< D * >( raw_buffer + valbuf_o );
-			assert( reinterpret_cast< uintptr_t >( valbuf ) - reinterpret_cast< uintptr_t >( raw_buffer ) == valbuf_o );
+			valbuf_o -= ( reinterpret_cast< uintptr_t >(
+					raw_buffer + valbuf_o
+				) % sizeof( D ) );
+			D * __restrict__ const valbuf =
+				reinterpret_cast< D * >( raw_buffer + valbuf_o );
+			assert( reinterpret_cast< uintptr_t >( valbuf ) -
+				reinterpret_cast< uintptr_t >( raw_buffer ) == valbuf_o );
 
 			// store incoming offsets after that
-			size_t indbuf_o = valbuf_o + ( sent_nz + nzsk[ data.s ] ) * sizeof( D ) + sizeof( internal::Coordinates< reference >::StackType ) - 1;
-			indbuf_o -= ( reinterpret_cast< uintptr_t >( raw_buffer + indbuf_o ) % sizeof( internal::Coordinates< reference >::StackType ) );
-			internal::Coordinates< reference >::StackType * __restrict__ const indbuf = reinterpret_cast< internal::Coordinates< reference >::StackType * >( raw_buffer + indbuf_o );
-			assert( reinterpret_cast< uintptr_t >( indbuf ) - reinterpret_cast< uintptr_t >( raw_buffer ) == indbuf_o );
+			size_t indbuf_o = valbuf_o +
+				( sent_nz + nzsk[ data.s ] ) * sizeof( D ) +
+				sizeof( internal::Coordinates< reference >::StackType ) -
+				1;
+			indbuf_o -= ( reinterpret_cast< uintptr_t >( raw_buffer + indbuf_o ) %
+				sizeof( internal::Coordinates< reference >::StackType ) );
+			internal::Coordinates< reference >::StackType * __restrict__ const indbuf =
+				reinterpret_cast< internal::Coordinates< reference >::StackType * >(
+					raw_buffer + indbuf_o
+				);
+			assert( reinterpret_cast< uintptr_t >( indbuf ) -
+				reinterpret_cast< uintptr_t >( raw_buffer ) == indbuf_o );
 
 			// store incoming values after that
-			size_t dstbuf_o = indbuf_o + recv_nz * sizeof( internal::Coordinates< reference >::StackType ) + sizeof( D ) - 1;
-			dstbuf_o -= ( reinterpret_cast< uintptr_t >( raw_buffer + dstbuf_o ) % sizeof( D ) );
+			size_t dstbuf_o = indbuf_o +
+				recv_nz * sizeof( internal::Coordinates< reference >::StackType ) +
+				sizeof( D ) -
+				1;
+			dstbuf_o -= ( reinterpret_cast< uintptr_t >( raw_buffer + dstbuf_o ) %
+				sizeof( D ) );
 			D * __restrict__ dstbuf = reinterpret_cast< D * >( raw_buffer + dstbuf_o );
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": receive buffers created at " << valbuf << ", " << indbuf << ", and " << dstbuf << ".\n";
-			std::cout << "\t\t" << s
-					  << ": these corresponds to the following "
-						 "offsets; "
-					  << valbuf_o << " (valbuf_o), " << indbuf_o << " (indbuf_o), " << dstbuf_o << " (dstbuf_o)\n";
-			std::cout << "\t" << s << ": performing counting sort of " << stackSize << " stack elements..." << std::endl;
+			std::cout << "\t" << s << ": receive buffers created at " << valbuf << ", "
+				<< indbuf << ", and " << dstbuf << ".\n"
+				<< "\t\t" << s << ": these corresponds to the following offsets; "
+				<< valbuf_o << " (valbuf_o), " << indbuf_o << " (indbuf_o), "
+				<< dstbuf_o << " (dstbuf_o)\n";
+			std::cout << "\t" << s << ": performing counting sort of " << stackSize <<
+				" stack elements...\n";
 			for( size_t i = 0; i < 10 && i < stackSize; ++i ) {
 				std::cout << "\t\t" << stack[ i ] << "\n";
 			}
@@ -1346,11 +1597,13 @@ namespace grb {
 				}
 				while( src < P && i < stackSize ) {
 #ifdef _DEBUG
-					std::cout << "\t" << s << ": stack @ " << stack << ", position " << i << " / " << stackSize;
+					std::cout << "\t" << s << ": stack @ " << stack << ", "
+						<< "position " << i << " / " << stackSize;
 #endif
 					const size_t index = stack[ i ];
 #ifdef _DEBUG
-					std::cout << ", has index " << index << " which refers to value " << _raw[ index ];
+					std::cout << ", has index " << index << " which refers to value "
+						<< _raw[ index ];
 #endif
 					const size_t dst = PIDmap.upper_bound( index )->second;
 #ifdef _DEBUG
@@ -1358,30 +1611,30 @@ namespace grb {
 #endif
 					if( src == dst ) {
 #ifdef _DEBUG
-						std::cout << "\t" << s
-								  << ": source matches destination, "
-									 "copying value...\n";
+						std::cout << "\t" << s << ": source matches destination, "
+							<< "copying value...\n";
 #endif
 						valbuf[ i ] = _raw[ index ];
 						(void)++i;
 						if( i == global_nzs[ src + 1 ] ) {
 #ifdef _DEBUG
-							std::cout << "\t" << s << ": these were all " << global_nzs[ src + 1 ] - global_nzs[ src ] << " elements that were assigned to PID " << src << ".\n";
+							std::cout << "\t" << s << ": these were all "
+								<< global_nzs[ src + 1 ] - global_nzs[ src ]
+								<< " elements that were assigned to PID "
+								<< src << ".\n";
 #endif
 							if( src + 1 < P ) {
 #ifdef _DEBUG
-								std::cout << "\t" << s
-										  << ": shifting to next "
-											 "bucket...\n";
+								std::cout << "\t" << s << ": shifting to next bucket...\n";
 #endif
 								(void)++src;
 							}
 							while( src + 1 < P && i == global_nzs[ src + 1 ] ) {
 #ifdef _DEBUG
 								std::cout << "\t" << s << ": bucket " << src
-										  << " was also already completed. "
-											 "Shifting to next one, and skipping "
-										  << pos[ src ] << " elements.\n";
+									<< " was also already completed. "
+									<< "Shifting to next one, and skipping " << pos[ src ]
+									<< " elements.\n";
 #endif
 								i += pos[ src ];
 								(void)++src;
@@ -1405,20 +1658,22 @@ namespace grb {
 					}
 					(void)++( pos[ dst ] );
 #ifdef _DEBUG
-					std::cout << "\t" << s << " shifted number of elements in bucket " << dst << " by one. New value is " << pos[ dst ] << ".\n";
+					std::cout << "\t" << s << " shifted number of elements in bucket "
+						<< dst << " by one. New value is " << pos[ dst ] << ".\n";
 #endif
 				}
 			}
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ": counting sort on stack completed. Now "
-						 "computing offsets..."
-					  << std::endl;
+			std::cout << "\t" << s << ": counting sort on stack completed. "
+				<< "Now computing offsets...\n";
 #endif
 
 			size_t * const local_offset = pos;
 			size_t * const remote_offset = pos + P;
-			size_t * const remote_val_offset = data.template getBuffer< size_t >(); // OK since no buffered collective calls (like collectives<>::allreduce) are forthcoming
+			// the below is OK since no buffered collective calls (like
+			// collectives<>::allreduce) are forthcoming
+			size_t * const remote_val_offset =
+				data.template getBuffer< size_t >();
 			size_t recv = data.s == 0 ? 0 : nzks[ 0 ];
 			local_offset[ 0 ] = remote_offset[ 0 ] = 0;
 #ifdef _DEBUG
@@ -1438,16 +1693,28 @@ namespace grb {
 			assert( data.template getBuffer< size_t >() + 4 * P == local_offset );
 			assert( data.template getBuffer< size_t >() + 5 * P == remote_offset );
 			assert( data.template getBuffer< size_t >() == remote_val_offset );
-			RC ret = internal::alltoall( data.slot, 5 * P * sizeof( size_t ) + s * sizeof( size_t ), sizeof( size_t ), 0, false );
+			RC ret = internal::alltoall( data.slot,
+				5 * P * sizeof( size_t ) + s * sizeof( size_t ),
+				sizeof( size_t ),
+				0, false
+			);
 			if( ret == SUCCESS ) {
-				ret = internal::alltoall( data.slot, 4 * P * sizeof( size_t ) + s * sizeof( size_t ), sizeof( size_t ), 5 * P * sizeof( size_t ), false );
+				ret = internal::alltoall(
+					data.slot,
+					4 * P * sizeof( size_t ) + s * sizeof( size_t ),
+					sizeof( size_t ),
+					5 * P * sizeof( size_t ),
+					false
+				);
 			}
 
 			if( ret == SUCCESS ) {
 #ifdef _DEBUG
 				for( size_t i = 0; i < P; ++i ) {
-					std::cout << "\t" << s << ": remote_offset[ " << i << " ] is " << remote_offset[ i ] << "\n";
-					std::cout << "\t" << s << ": remote_val_offset[ " << i << " ] is " << remote_val_offset[ i ] << "\n";
+					std::cout << "\t" << s << ": remote_offset[ " << i << " ] is "
+						<< remote_offset[ i ] << "\n";
+					std::cout << "\t" << s << ": remote_val_offset[ " << i << " ] is "
+						<< remote_val_offset[ i ] << "\n";
 				}
 #endif
 
@@ -1462,7 +1729,8 @@ namespace grb {
 
 #ifdef _DEBUG
 				for( size_t i = 0; i < P; ++i ) {
-					std::cout << "\t" << s << ": local_offset[ " << i << " ] is " << local_offset[ i ] << "\n";
+					std::cout << "\t" << s << ": local_offset[ " << i << " ] is "
+					       	<< local_offset[ i ] << "\n";
 				}
 #endif
 #ifndef NDEBUG
@@ -1471,36 +1739,35 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t" << s << ": stack size is " << stackSize << "\n";
 				std::cout << "\t\t" << s
-						  << ": source indices are at offset 0 from "
-							 "slot "
+						  << ": source indices are at offset 0 from slot "
 						  << _stack_slot << "\n";
-				std::cout << "\t\t" << s << ": source values are at offset " << reinterpret_cast< uintptr_t >( valbuf ) - reinterpret_cast< uintptr_t >( raw_buffer ) << " from slot "
-						  << data.slot << "\n";
+				std::cout << "\t\t" << s << ": source values are at offset "
+					<< reinterpret_cast< uintptr_t >( valbuf ) -
+						reinterpret_cast< uintptr_t >( raw_buffer )
+					<< " from slot " << data.slot << "\n";
 #endif
 #ifdef _DEBUG
 				for( size_t k = 0; k < P; ++k ) {
 					if( k == s ) {
 						if( stackSize > 0 ) {
-							std::cout << "\t" << s
-									  << ": sorted stack entry 0 has "
-										 "index "
-									  << stack[ 0 ] << " and value " << valbuf[ 0 ] << "\n";
+							std::cout << "\t" << s << ": sorted stack entry 0 has index "
+								<< stack[ 0 ] << " and value " << valbuf[ 0 ] << "\n";
 						}
 #endif
 						if( stackSize > 1 ) {
 							for( size_t i = 1; i < stackSize; ++i ) {
 #ifdef _DEBUG
-								std::cout << "\t" << s << ": sorted stack entry " << i << " has index " << stack[ i ] << " and value " << valbuf[ i ] << " and should go to PID "
-										  << PIDmap.upper_bound( stack[ i ] )->second << "\n";
+								std::cout << "\t" << s << ": sorted stack entry " << i << " has index "
+									<< stack[ i ] << " and value " << valbuf[ i ] << " "
+									<< "and should go to PID " << PIDmap.upper_bound( stack[ i ] )->second
+									<< "\n";
 #endif
-								assert( PIDmap.upper_bound( stack[ i - 1 ] )->second <= PIDmap.upper_bound( stack[ i ] )->second );
+								assert( PIDmap.upper_bound( stack[ i - 1 ] )->second <=
+									PIDmap.upper_bound( stack[ i ] )->second );
 							}
 						}
 #ifdef _DEBUG
-						std::cout << "\t" << s
-								  << ": sorted stack sanity check now "
-									 "complete!"
-								  << std::endl;
+						std::cout << "\t" << s << ": sorted stack sanity check now complete!\n";
 					}
 					assert( spmd< BSP1D >::sync() == SUCCESS );
 				}
@@ -1510,53 +1777,63 @@ namespace grb {
 				// nzsk and nzks should now refer to bytes, not elements
 #ifdef _DEBUG
 				std::cout << "\t" << s << ": Now proceeding to alltoallvs...\n";
-				std::cout << "\t\t" << s
-						  << ": indices will go into local buffer at "
-							 "offset "
+				std::cout << "\t\t" << s << ": indices will go into local buffer at offset "
 						  << indbuf_o << "\n";
 #endif
 				// do alltoallvs
 				for( size_t k = 0; k < P; ++k ) {
-					local_offset[ k ] *= sizeof( internal::Coordinates< reference >::StackType );
-					remote_offset[ k ] *= sizeof( internal::Coordinates< reference >::StackType );
-					nzsk[ k ] *= sizeof( internal::Coordinates< reference >::StackType );
-					nzks[ k ] *= sizeof( internal::Coordinates< reference >::StackType );
+					local_offset[ k ] *= sizeof(internal::Coordinates< reference >::StackType);
+					remote_offset[ k ] *= sizeof(internal::Coordinates< reference >::StackType);
+					nzsk[ k ] *= sizeof(internal::Coordinates< reference >::StackType);
+					nzks[ k ] *= sizeof(internal::Coordinates< reference >::StackType);
 #ifdef _DEBUG
 					for( size_t t = 0; t < P; ++t ) {
 						if( t == s ) {
-							std::cout << "\t" << t << ": will get " << nzsk[ k ] << " bytes from PID " << k << " at offset " << remote_offset[ k ] << " to local offset " << indbuf_o << " + "
-									  << local_offset[ k ] << " = " << ( indbuf_o + local_offset[ k ] ) << " receiving " << nzks[ k ]
-									  << " bytes. It will overwrite the values "
-										 "starting with "
-									  << ( *reinterpret_cast< D * >( raw_buffer + indbuf_o + local_offset[ k ] ) ) << "\n";
+							std::cout << "\t" << t << ": will get " << nzsk[ k ]
+								<< " bytes from PID " << k << " at offset " << remote_offset[ k ]
+								<< " to local offset " << indbuf_o << " + " << local_offset[ k ]
+								<< " = " << ( indbuf_o + local_offset[ k ] ) << " receiving "
+								<< nzks[ k ] << " bytes. It will overwrite the values starting with "
+								<< (*reinterpret_cast< D * >(raw_buffer + indbuf_o + local_offset[ k ]))
+								<< "\n";
 						}
 						spmd< BSP1D >::sync();
 					}
 #endif
 				}
-				ret = internal::alltoallv( _stack_slot, nzsk, 0, remote_offset, nzks, indbuf_o, local_offset, true );
+				ret = internal::alltoallv(
+					_stack_slot,
+					nzsk, 0, remote_offset,
+					nzks, indbuf_o, local_offset,
+					true
+				);
 				for( size_t k = 0; k < P; ++k ) {
-					local_offset[ k ] /= sizeof( internal::Coordinates< reference >::StackType );
-					remote_offset[ k ] /= sizeof( internal::Coordinates< reference >::StackType );
+					local_offset[ k ] /=
+						sizeof( internal::Coordinates< reference >::StackType );
+					remote_offset[ k ] /=
+						sizeof( internal::Coordinates< reference >::StackType );
 					nzsk[ k ] /= sizeof( internal::Coordinates< reference >::StackType );
 					nzks[ k ] /= sizeof( internal::Coordinates< reference >::StackType );
 				}
 			}
 #ifdef _DEBUG
-			std::cout << "\t\t" << s << ": values will go into local buffer at offset " << dstbuf_o
-				  << "\nReprinting local stacks after 1st all-to-all:\n";
+			std::cout << "\t\t" << s << ": values will go into local buffer at offset "
+				<< dstbuf_o << "\nReprinting local stacks after 1st all-to-all:\n";
 			for( size_t k = 0; k < P; ++k ) {
 				if( k == s ) {
 					if( stackSize > 0 ) {
-						std::cout << "\t" << s << ": sorted stack entry 0 has index " << stack[ 0 ] << " and value " << valbuf[ 0 ] << "\n";
+						std::cout << "\t" << s << ": sorted stack entry 0 has index "
+							<< stack[ 0 ] << " and value " << valbuf[ 0 ] << "\n";
 					}
 					if( stackSize > 1 ) {
 						for( size_t i = 1; i < stackSize; ++i ) {
-							std::cout << "\t" << s << ": sorted stack entry " << i << " has index " << stack[ i ] << " and value " << valbuf[ i ]
-								<< " and should go to PID " << PIDmap.upper_bound( stack[ i ] )->second << "\n";
+							std::cout << "\t" << s << ": sorted stack entry " << i << " has index "
+								<< stack[ i ] << " and value " << valbuf[ i ] << " "
+								<< "and should go to PID "
+								<< PIDmap.upper_bound( stack[ i ] )->second << "\n";
 						}
 					}
-					std::cout << "\t" << s << ": sorted stack sanity check now complete!" << std::endl;
+					std::cout << "\t" << s << ": sorted stack sanity check now complete!\n";
 				}
 				(void)spmd< BSP1D >::sync();
 			}
@@ -1571,16 +1848,18 @@ namespace grb {
 #ifdef _DEBUG
 					for( size_t t = 0; t < P; ++t ) {
 						if( t == s ) {
-							std::cout << "\t" << t << ": will get " << nzsk[ k ] << " bytes from PID " << k << " at offset " << valbuf_o << " + " << remote_val_offset[ k ] << " = "
-									  << ( valbuf_o + remote_val_offset[ k ] ) << " to local offset " << dstbuf_o << " + " << local_offset[ k ] << " = " << ( dstbuf_o + local_offset[ k ] )
-									  << " receiving " << nzks[ k ]
-									  << " bytes. It will overwrite the values "
-										 "starting with "
-									  << ( *reinterpret_cast< D * >( raw_buffer + dstbuf_o + local_offset[ k ] ) ) << ".\n";
-							std::cout << "\t" << t
-									  << ": remote processes will retrieve "
-										 "values from me starting at "
-									  << valbuf_o << ". Its first value is " << ( *reinterpret_cast< D * >( raw_buffer + valbuf_o ) ) << ".\n";
+							std::cout << "\t" << t << ": will get " << nzsk[ k ]
+								<< " bytes from PID " << k << " at offset " << valbuf_o << " + "
+								<< remote_val_offset[ k ] << " = "
+								<< ( valbuf_o + remote_val_offset[ k ] ) << " to local offset "
+								<< dstbuf_o << " + " << local_offset[ k ] << " = "
+								<< ( dstbuf_o + local_offset[ k ] ) << " receiving " << nzks[ k ]
+								<< " bytes. It will overwrite the values starting with "
+								<< (*reinterpret_cast< D * >(raw_buffer + dstbuf_o + local_offset[ k ]))
+								<< ".\n";
+							std::cout << "\t" << t << ": remote processes will retrieve values from "
+								<< "me starting at " << valbuf_o << ". Its first value is "
+								<< ( *reinterpret_cast< D * >( raw_buffer + valbuf_o ) ) << ".\n";
 						}
 						spmd< BSP1D >::sync();
 					}
@@ -1598,20 +1877,25 @@ namespace grb {
 #ifdef _DEBUG
 				for( size_t k = 0; k < P; ++k ) {
 					if( k == s ) {
-						std::cout << "\t" << s
-								  << ": alltoallv on stacks and value buffers "
-									 "completed. Now rewinding the "
-								  << recv << " received contributions.\n";
-						std::cout << "\t\t" << s << ": indices stack is at offset " << reinterpret_cast< uintptr_t >( indbuf ) - reinterpret_cast< uintptr_t >( raw_buffer ) << "\n";
-						std::cout << "\t\t" << s << ": values stack is at offset " << reinterpret_cast< uintptr_t >( dstbuf ) - reinterpret_cast< uintptr_t >( raw_buffer ) << "\n";
+						std::cout << "\t" << s << ": alltoallv on stacks and value buffers "
+							<< "completed. Now rewinding the " << recv << " received "
+							<< "contributions.\n"
+							<< "\t\t" << s << ": indices stack is at offset "
+							<< reinterpret_cast< uintptr_t >( indbuf ) -
+								reinterpret_cast< uintptr_t >( raw_buffer )
+							<< "\n\t\t" << s << ": values stack is at offset "
+							<< reinterpret_cast< uintptr_t >( dstbuf ) -
+								reinterpret_cast< uintptr_t >( raw_buffer )
+							<< "\n";
 #endif
 						// TODO internal issue #197
 						for( size_t i = 0; i < recv; ++i ) {
 							const auto index = indbuf[ i ];
 							const D value = dstbuf[ i ];
 #ifdef _DEBUG
-							std::cout << "\t" << s << ": processing received nonzero #" << i << ", index is " << index << " (offset is " << _offset << ") value is " << value << "..."
-									  << std::endl;
+							std::cout << "\t" << s << ": processing received nonzero #" << i << ", "
+								<< "index is " << index << " (offset is " << _offset << ") value is "
+								<< value << "...\n";
 #endif
 							assert( index >= _offset );
 							assert( index - _offset < local_coordinates.size() );
@@ -1628,10 +1912,9 @@ namespace grb {
 #endif
 			}
 #ifdef _DEBUG
-			std::cout << "\t" << s
-					  << ": sparse stack-based combine complete; local "
-						 "vector has "
-					  << local_coordinates.nonzeroes() << " / " << local_coordinates.size() << " nonzeroes.\n";
+			std::cout << "\t" << s << ": sparse stack-based combine complete; local "
+				"vector has " << local_coordinates.nonzeroes() << " / "
+				<< local_coordinates.size() << " nonzeroes.\n";
 #endif
 			return ret;
 		}
@@ -1658,31 +1941,40 @@ namespace grb {
 
 #ifdef _DEBUG
 			std::cout << s << ": in Vector< BSP1D >::combine...\n";
-			std::cout << "\t" << s << " global coordinates hold " << global_coordinates.nonzeroes() << " / " << global_coordinates.size() << " nonzeroes:\n";
+			std::cout << "\t" << s << " global coordinates hold "
+				<< global_coordinates.nonzeroes() << " / "
+				<< global_coordinates.size() << " nonzeroes:\n";
 			// for( size_t i = 0; i < global_coordinates.size(); ++i ) {
 			//	std::cout << "\t" << global_coordinates._assigned[ i ] << "\n";
 			//}
-			std::cout << "\t" << s << " local coordinates hold " << local_coordinates.nonzeroes() << " / " << local_coordinates.size() << " nonzeroes:\n";
+			std::cout << "\t" << s << " local coordinates hold "
+				<< local_coordinates.nonzeroes() << " / "
+				<< local_coordinates.size() << " nonzeroes:\n";
 			// for( size_t i = 0; i < local_coordinates.size(); ++i ) {
 			//	std::cout << "\t" << local_coordinates._assigned[ i ] << "\n";
 			//}
 #endif
 			// check trivial case
 			if( P == 1 ) {
-				const bool is_dense{ ( descr & descriptors::dense ) != descriptors::no_operation };
+				const bool is_dense = (descr & descriptors::dense) !=
+					descriptors::no_operation;
 				_local._coordinates.rebuild( is_dense );
 				return SUCCESS;
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": non-trivial vector combine requested with a " << descriptors::toString( descr ) << "\n";
+			std::cout << "\t" << s << ": non-trivial vector combine requested with a "
+				<< descriptors::toString( descr ) << "\n";
 #endif
 
 			RC ret = SUCCESS;
-			assert( data.checkBufferSize( 4 * data.P * sizeof( size_t ) ) == grb::SUCCESS );
-			size_t * nzsk = NULL;
-			size_t * nzks = NULL;
-			size_t * global_nzs = NULL;
+			assert( data.checkBufferSize(
+					4 * data.P * sizeof( size_t )
+				) == grb::SUCCESS
+			);
+			size_t * nzsk = nullptr;
+			size_t * nzks = nullptr;
+			size_t * global_nzs = nullptr;
 			size_t min_global_nz = 0;
 			size_t max_global_nz = 0;
 			if( ret == SUCCESS ) {
@@ -1701,7 +1993,8 @@ namespace grb {
 					const size_t index = is_dense ? i : global_coordinates.index( i );
 					const size_t process_id = PIDmap.upper_bound( index )->second;
 #ifdef _DEBUG
-					std::cout << "\t" << s << ": global stack entry " << i << " has index " << index << " which should map to process " << process_id << "\n";
+					std::cout << "\t" << s << ": global stack entry " << i << " has index "
+						<< index << " which should map to process " << process_id << "\n";
 #endif
 					(void)++( nzsk[ process_id ] );
 				}
@@ -1711,14 +2004,23 @@ namespace grb {
 					std::cout << ", " << nzsk[ k ];
 				}
 				std::cout << " )\n";
-				std::cout << "\t" << s << ": allgather from " << data.slot << " @ " << ( P + s ) << " (" << nzsk[ P + s ] << ") to " << data.slot << " @ " << ( P + s ) << std::endl;
+				std::cout << "\t" << s << ": allgather from " << data.slot << " @ "
+					<< ( P + s ) << " (" << nzsk[ P + s ] << ") to " << data.slot << " @ "
+					<< ( P + s ) << std::endl;
 #endif
-				ret = internal::allgather( data.slot, ( 2 * P + s ) * sizeof( size_t ), data.slot, ( 2 * P + s ) * sizeof( size_t ), sizeof( size_t ), P * sizeof( size_t ), true );
+				ret = internal::allgather(
+					data.slot,
+					( 2 * P + s ) * sizeof( size_t ),
+					data.slot, ( 2 * P + s ) * sizeof( size_t ),
+					sizeof( size_t ), P * sizeof( size_t ),
+					true
+				);
 #ifdef _DEBUG
 				if( ret != SUCCESS ) {
 					std::cout << "\t" << s << ": allgather failed.\n";
 				} else {
-					std::cout << "\t" << s << ": post-allgather, global_nzs array is ( " << global_nzs[ 0 ];
+					std::cout << "\t" << s << ": post-allgather, global_nzs array is "
+						<< "( " << global_nzs[ 0 ];
 					for( size_t i = 1; i < P; ++i ) {
 						std::cout << ", " << global_nzs[ i ];
 					}
@@ -1727,7 +2029,13 @@ namespace grb {
 #endif
 			}
 			if( ret == SUCCESS ) {
-				ret = internal::alltoall( data.slot, ( s + P ) * sizeof( size_t ), sizeof( size_t ), 3 * P * sizeof( size_t ), false );
+				ret = internal::alltoall(
+					data.slot,
+					( s + P ) * sizeof( size_t ),
+					sizeof( size_t ),
+					3 * P * sizeof( size_t ),
+					false
+				);
 #ifdef _DEBUG
 				if( ret != SUCCESS ) {
 					std::cout << "\t" << s << ": alltoall failed.\n";
@@ -1753,8 +2061,10 @@ namespace grb {
 #ifdef _DEBUG
 			for( size_t k = 0; ret == SUCCESS && k < P; ++k ) {
 				if( k == s ) {
-					std::cout << "\t" << s << ": my global nnz is " << global_nzs[ s ] << "(/" << _n << "), minimum across all user processes is " << min_global_nz
-							  << ", maximum across all user processes is " << max_global_nz << std::endl;
+					std::cout << "\t" << s << ": my global nnz is " << global_nzs[ s ] << "(/"
+						<< _n << "), minimum across all user processes is " << min_global_nz
+						<< ", maximum across all user processes is " << max_global_nz
+						<< std::endl;
 					std::cout << "\t" << s << ": my nzsk array is ( " << nzsk[ 0 ];
 					for( size_t i = 1; i < P; ++i ) {
 						std::cout << ", " << nzsk[ i ];
@@ -1786,20 +2096,24 @@ namespace grb {
 				ret = dense_combine< descr >( data, acc );
 			} else {
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": global vector to be reduced is sparse at at least one neighbour. Mine holds "
-					<< internal::getCoordinates( _global ).nonzeroes() << " / " << internal::getCoordinates( _global ).size() << " nonzeroes.\n";
+				std::cout << "\t" << s << ": global vector to be reduced is sparse at at "
+					<< "least one neighbour. Mine holds "
+					<< internal::getCoordinates( _global ).nonzeroes() << " / "
+					<< internal::getCoordinates( _global ).size() << " nonzeroes.\n";
 				std::cout << "\t" << s << ": local vector prior to rebuild holds "
-					<< internal::getCoordinates( _local ).nonzeroes() << " / " << internal::getCoordinates( _local ).size()
-					<< " nonzeroes.\n";
-				// std::cout << "\t" << s << ": local assigned array is at " << local_coordinates._assigned << ", global one is at " << global_coordinates._assigned << ". Global plus offset is " <<
-				// global_coordinates._assigned + _offset << "\n";
+					<< internal::getCoordinates( _local ).nonzeroes() << " / "
+					<< internal::getCoordinates( _local ).size() << " nonzeroes.\n";
+				// std::cout << "\t" << s << ": local assigned array is at "
+				// 	<< local_coordinates._assigned << ", global one is at "
+				// 	<< global_coordinates._assigned << ". Global plus offset is "
+				// 	<< global_coordinates._assigned + _offset << "\n";
 #endif
 				// rebuild local stack
 				local_coordinates.rebuild( false );
 #ifdef _DEBUG
 				std::cout << "\t" << s << ": local vector after rebuild holds "
-					<< internal::getCoordinates( _local ).nonzeroes() << " / " << internal::getCoordinates( _local ).size()
-					<< " nonzeroes.\n";
+					<< internal::getCoordinates( _local ).nonzeroes() << " / "
+					<< internal::getCoordinates( _local ).size() << " nonzeroes.\n";
 				std::cout << "\t" << s << ": nzsk = ( ";
 				for( size_t i = 0; i < data.P; ++i ) {
 					std::cout << nzsk[ i ] << " ";
@@ -1821,9 +2135,13 @@ namespace grb {
 				ret = collectives< BSP1D >::allreduce( sent_nz, operators::max< size_t >() );
 				if( ret == SUCCESS ) {
 #ifdef _DEBUG
-					std::cout << "\t" << s << ": reduced sent_nz = " << sent_nz << ". Now calling allreduce over recv_nz = " << recv_nz << "\n";
+					std::cout << "\t" << s << ": reduced sent_nz = " << sent_nz << ". "
+						<< "Now calling allreduce over recv_nz = " << recv_nz << "\n";
 #endif
-					ret = collectives< BSP1D >::allreduce( recv_nz, operators::max< size_t >() );
+					ret = collectives< BSP1D >::allreduce(
+						recv_nz,
+						operators::max< size_t >()
+					);
 				}
 #ifdef _DEBUG
 				if( ret == SUCCESS ) {
@@ -1831,26 +2149,40 @@ namespace grb {
 				}
 #endif
 				const size_t stack_h = std::max( sent_nz, recv_nz );
-				const size_t cost_array = ( _n - internal::Distribution< BSP1D >::global_length_to_local( _n, P - 1, P ) ) * ( sizeof( D ) + sizeof( bool ) );
-				const size_t cost_stack = stack_h * ( sizeof( D ) * sizeof( grb::config::VectorIndexType ) );
+				const size_t cost_array = ( _n -
+						internal::Distribution< BSP1D >::global_length_to_local( _n, P - 1, P )
+					) * ( sizeof( D ) + sizeof( bool ) );
+				const size_t cost_stack = stack_h * (
+					sizeof( D ) * sizeof( grb::config::VectorIndexType )
+				);
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": array-based sparse combine costs " << cost_array << "\n";
-				std::cout << "\t" << s << ": stack-based sparse combine costs " << cost_stack << "\n";
+				std::cout << "\t" << s << ": array-based sparse combine costs "
+					<< cost_array << "\n";
+				std::cout << "\t" << s << ": stack-based sparse combine costs "
+					<< cost_stack << "\n";
 #endif
 				if( cost_array < cost_stack ) {
 					ret = array_combine< descr >( data, acc );
 				} else {
-					ret = stack_combine< descr >( data, nzsk, nzks, global_nzs, recv_nz, sent_nz, acc );
+					ret = stack_combine< descr >(
+						data,
+						nzsk, nzks,
+						global_nzs,
+						recv_nz, sent_nz,
+						acc
+					);
 				}
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": at Vector< BSP1D >::combine coda with exit code " << ret << "." << std::endl;
+			std::cout << "\t" << s << ": at Vector< BSP1D >::combine coda "
+				<< "with exit code " << ret << "." << std::endl;
 #endif
 			// global number of nonzeroes may have changed
 			if( ret == SUCCESS ) {
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": now synchronising global number of nonzeroes..." << std::endl;
+				std::cout << "\t" << s << ": now synchronising global number of "
+					<< "nonzeroes..." << std::endl;
 #endif
 				const size_t old_nnz = _nnz;
 				operators::add< size_t > adder;
@@ -1861,7 +2193,8 @@ namespace grb {
 #endif
 				ret = collectives< BSP1D >::allreduce( _nnz, adder );
 #ifdef _DEBUG
-				std::cout << "\t" << s << ": allreduced global number of nonzeroes: " << _nnz << "." << std::endl;
+				std::cout << "\t" << s << ": allreduced global number of nonzeroes: "
+					<< _nnz << "." << std::endl;
 #endif
 				_nnz_is_dirty = false;
 				if( _nnz == _n && old_nnz != _n ) {
@@ -1872,26 +2205,29 @@ namespace grb {
 			// sync global_coordinates to local_coordinates
 			if( ret == SUCCESS ) {
 #ifdef _DEBUG
-				std::cout << "\t" << s
-						  << ": resetting global vector sparsity pattern to "
-							 "match that of the combined local vector..."
-						  << std::endl;
+				std::cout << "\t" << s << ": resetting global vector sparsity pattern to "
+					<< "match that of the combined local vector..." << std::endl;
 #endif
-				internal::getCoordinates( _global ).template rebuildGlobalSparsity< ( ( descr & descriptors::dense ) > 0 ) >( local_coordinates, _offset );
+				internal::getCoordinates( _global ).template rebuildGlobalSparsity<
+					((descr & descriptors::dense) > 0)
+				>( local_coordinates, _offset );
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ": exiting Vector< BSP1D >::combine with exit code " << ret << ". New global number of nonzeroes: " << _nnz << std::endl;
+			std::cout << "\t" << s << ": exiting Vector< BSP1D >::combine with exit code "
+				<< ret << ". New global number of nonzeroes: " << _nnz << std::endl;
 #endif
 			// done
 			return ret;
 		}
 
 		/**
-		 * Constructs the vector given thread-local data corresponding to this user
-		 * process.
+		 * \internal
 		 *
-		 * \note This constructor is never called explicitly.
+		 * Constructs a BSP1D vector.
+		 *
+		 * The vector given thread-local data corresponding to this user process--
+		 * this is not a constructor that can be called by the public.
 		 *
 		 * @param[in] data The thread-local data corresponding to this user process.
 		 * @param[in] n    The global length of the input vector.
@@ -1906,8 +2242,11 @@ namespace grb {
 		 * @throws Runtime error When the POSIX call to get an aligned memory area
 		 *                       fails for any other reason.
 		 */
-		Vector( const internal::BSP1D_Data &data, const size_t n ) :
-			_n( 0 ), _nnz( 0 ),
+		Vector( const internal::BSP1D_Data &data, const size_t n, const size_t nz ) :
+			_id( std::numeric_limits< uintptr_t >::max() ),
+			_raw( nullptr ), _assigned( nullptr ),
+			_local_n( 0 ), _offset( 0 ),
+			_n( 0 ), _cap( 0 ), _nnz( 0 ),
 			_raw_slot( LPF_INVALID_MEMSLOT ),
 			_assigned_slot( LPF_INVALID_MEMSLOT ),
 			_stack_slot( LPF_INVALID_MEMSLOT ),
@@ -1916,23 +2255,28 @@ namespace grb {
 		{
 			if( n > 0 ) {
 				// set non-trivial fields
-				_local_n = internal::Distribution< BSP1D >::global_length_to_local( n, data.s, data.P );
-				_offset = internal::Distribution< BSP1D >::local_offset( n, data.s, data.P );
+				_local_n = internal::Distribution< BSP1D >::global_length_to_local(
+					n, data.s, data.P
+				);
+				_offset = internal::Distribution< BSP1D >::local_offset(
+					n, data.s, data.P
+				);
 				// delegate
-				initialize( nullptr, nullptr, nullptr, n );
+				initialize( nullptr, nullptr, nullptr, n, nz );
 			} else {
 				// set trivial fields and exit
 				_raw = nullptr;
 				_assigned = nullptr;
 				_buffer = nullptr;
-				_global.initialize( nullptr, nullptr, nullptr, true, nullptr, 0 );
-				_local.initialize( nullptr, nullptr, nullptr, true, nullptr, 0 );
+				_global.initialize( nullptr, nullptr, nullptr, true, nullptr, 0, 0 );
+				_local.initialize( nullptr, nullptr, nullptr, true, nullptr, 0, 0 );
 				_local_n = _offset = 0;
 			}
 		}
 
 
 	public:
+
 		/** @see Vector::value_type. */
 		typedef D value_type;
 
@@ -1950,10 +2294,36 @@ namespace grb {
 		typedef typename LocalVector::template ConstIterator< BSP1D > const_iterator;
 
 		/**
-		 * This constructor may throw exceptions.
+		 * Constructs a BSP1D vector.
 		 *
-		 * @see Vector for the user-level specfication.
+		 * \parblock
+		 * \par Performance semantics
 		 *
+		 * This constructor inherits the performance semantics of the Vector
+		 * constructor of the underlying process-local backend, which is the reference
+		 * backend by default.
+		 * The global work, intra-process data movement, and storage requirements of
+		 * the constructed BSP1D distributed vector are then calculated as \a P times
+		 * what is required for process-local vectors of length \f$ n \f$ with
+		 * capacity \f$ \min\{ k, n \} \f$.
+		 *
+		 * Additionally, this constructor incurs:
+		 *   -# \f$ \Omega(\log P) + \mathcal{O}( n + P ) \f$ work,
+		 *   -# \f$ \Omega(\log P) + \mathcal{O}( n + P ) \f$ intra-process data movement,
+		 *   -# \f$ \Omega(\log P) + \mathcal{O}(P) \f$ inter-process data movement,
+		 *   -# two inter-process synchronisation steps, and
+		 *   -# dynamic memory allocations and corresponding system calls.
+		 *
+		 * Here, \f$ P \f$ is the number of user processes, while \f$ n \f$
+		 * corresponds to #grb::size( x ).
+		 * \endparblock
+		 *
+		 * \note Two inter-process synchronisations are required as both the global
+		 *       capacity as well as memory registrations need to be synchronised.
+		 *
+		 * \todo This can be reduced once non-blocking collectives are available.
+		 *
+		 * \internal
 		 * This delegates to the #LocalVector constructor to create a local data
 		 * cache. The size of the local cache is \f$ \lfloor n / p \rfloor + 1 \f$,
 		 * which is an upper bound on the required local storage in all cases.
@@ -1973,10 +2343,20 @@ namespace grb {
 		 * The \f$ i \f$th local element of this vector corresponds to the global
 		 * index
 		 * \f$ \lfloor i / b \rfloor \cdot pb + i\text{ mod }b \f$.
-		 *
-		 * @param[in] n The global vector length.
 		 */
-		Vector( const size_t n ) : Vector( internal::grb_BSP1D.cload(), n ) {}
+		Vector( const size_t n, const size_t nz ) :
+			Vector( internal::grb_BSP1D.cload(), n, nz )
+		{
+#ifdef _DEBUG
+			std::cerr << "In Vector constructor (BSP1D, with initial capacity)\n";
+#endif
+		}
+
+		Vector( const size_t n ) : Vector( n, n ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector constructor (BSP1D, default capacity)\n";
+#endif
+		}
 
 		/**
 		 * Copy constructor.
@@ -1987,11 +2367,17 @@ namespace grb {
 		 *                       caught and thrown.
 		 */
 		Vector( const Vector< D, BSP1D, C > &x ) :
-			Vector( internal::grb_BSP1D.cload(), size( x ) )
+			Vector(
+				internal::grb_BSP1D.cload(),
+				size( x ),
+				capacity( x )
+			)
 		{
 			const RC rc = set( *this, x );
 			if( rc != SUCCESS ) {
-				throw std::runtime_error( "grb::set inside copy-constructor: " + toString( rc ) );
+				throw std::runtime_error(
+					"grb::set inside copy-constructor: " + toString( rc )
+				);
 			}
 		}
 
@@ -2007,7 +2393,7 @@ namespace grb {
 			_raw( x._raw ), _assigned( x._assigned ),
 			_buffer( x._buffer ),
 			_local_n( x._local_n ), _offset( x._offset ),
-			_n( x._n ), _nnz( x._nnz ),
+			_n( x._n ), _cap( x._cap ), _nnz( x._nnz ),
 			_raw_slot( x._raw_slot ),
 			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ),
 			_cleared( x._cleared ),
@@ -2027,7 +2413,7 @@ namespace grb {
 			x._assigned = nullptr;
 			x._buffer = nullptr;
 			// local and global have been invalidated by std::move
-			x._local_n = x._offset = x._n = x._nnz = 0;
+			x._local_n = x._offset = x._n = x._cap = x._nnz = 0;
 			x._raw_slot = x._assigned_slot = x._stack_slot = LPF_INVALID_MEMSLOT;
 			x._cleared = x._became_dense = x._nnz_is_dirty = x._global_is_dirty = false;
 			// deleters have been invalidated by std::move
@@ -2053,6 +2439,7 @@ namespace grb {
 			_local_n = x._local_n;
 			_offset = x._offset;
 			_n = x._n;
+			_cap = x._cap;
 			_nnz = x._nnz;
 			_raw_slot = x._raw_slot;
 			_assigned_slot = x._assigned_slot;
@@ -2071,7 +2458,7 @@ namespace grb {
 			x._assigned = nullptr;
 			x._buffer = nullptr;
 			// local and global have been invalidated by std::move
-			x._local_n = x._offset = x._n = x._nnz = 0;
+			x._local_n = x._offset = x._n = x._cap = x._nnz = 0;
 			x._raw_slot = x._assigned_slot = x._stack_slot = LPF_INVALID_MEMSLOT;
 			x._cleared = x._became_dense = x._nnz_is_dirty = x._global_is_dirty = false;
 			// deleters have been invalidated by std::move
@@ -2115,8 +2502,8 @@ namespace grb {
 				}
 				if( _stack_slot != LPF_INVALID_MEMSLOT ) {
 #ifdef _DEBUG
-					std::cout << "\t" << data.s
-						<< ", deregistering stack array, slot #" << _stack_slot << "...\n";
+					std::cout << "\t" << data.s << ", "
+						<< "deregistering stack array, slot #" << _stack_slot << "...\n";
 #endif
 					rc = lpf_deregister( data.context, _stack_slot );
 					assert( rc == LPF_SUCCESS );
@@ -2126,8 +2513,8 @@ namespace grb {
 				}
 			}
 #ifdef _DEBUG
-			std::cout << "\t" << data.s << ", GraphBLAS vector at "
-				<< "( " << _raw << ", " << _assigned << " ) destroyed.\n";
+			std::cout << "\t" << data.s << ", GraphBLAS vector at ( " << _raw << ", "
+				<< _assigned << " ) destroyed.\n";
 			std::cout << data.s << ", Vector< BSP1D >::~Vector< BSP1D > done.\n";
 #endif
 			// free container ID
@@ -2187,7 +2574,8 @@ namespace grb {
 		}
 
 		/** No implementation notes (see above). */
-		const typename LocalVector::lambda_reference operator[]( const size_t i ) const {
+		const typename LocalVector::lambda_reference
+		operator[]( const size_t i ) const {
 			// return const reference
 			return _local[ i ];
 		}
@@ -2199,6 +2587,7 @@ namespace grb {
 		D * raw() {
 			return _local.raw();
 		}
+
 	};
 
 	// template specialisation for GraphBLAS type traits
@@ -2212,7 +2601,7 @@ namespace grb {
 
 		// documentation is in forward declaration
 		template< typename DataType, typename Coords >
-		void signalLocalChange( Vector< DataType, BSP1D, Coords > & x ) {
+		void signalLocalChange( Vector< DataType, BSP1D, Coords > &x ) {
 			x._global_is_dirty = true;
 			x._nnz_is_dirty = true;
 		}
@@ -2221,5 +2610,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif
+#endif // end ``_H_GRB_BSP1D_VECTOR''
 

@@ -25,9 +25,10 @@
 
 #include <memory>
 
-#include "graphblas/blas1.hpp"                 //for grb::size
-#include "graphblas/utils/NonzeroIterator.hpp" //for transforming an std::vector::iterator into a GraphBLAS-compatible iterator
-#include "graphblas/utils/pattern.hpp"         //for handling pattern input
+#include "graphblas/blas1.hpp"                 // for grb::size
+#include "graphblas/utils/NonzeroIterator.hpp" // for transforming an std::vector::iterator
+                                               // into an ALP/GraphBLAS-compatible iterator
+#include "graphblas/utils/pattern.hpp"         // for handling pattern input
 #include <graphblas/base/io.hpp>
 
 #include "lpf/core.h"
@@ -57,6 +58,354 @@
 namespace grb {
 
 	/**
+	 * \defgroup IO Data Ingestion -- BSP1D backend
+	 * @{
+	 */
+
+	/** \internal No implementation notes. */
+	template< typename DataType, typename Coords >
+	size_t size( const Vector< DataType, BSP1D, Coords > &x ) noexcept {
+		return x._n;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType >
+	size_t nrows( const Matrix< DataType, BSP1D > &A ) noexcept {
+		return A._m;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType >
+	size_t ncols( const Matrix< DataType, BSP1D > &A ) noexcept {
+		return A._n;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType, typename Coords >
+	size_t capacity( const Vector< DataType, BSP1D, Coords > &x ) noexcept {
+		return x._cap;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType >
+	size_t capacity( const Matrix< DataType, BSP1D > &A ) noexcept {
+		return A._cap;
+	}
+
+	/**
+	 * \internal Uses grb::collectives::alreduce. Can throw exceptions.
+	 *
+	 * \todo Internal issue #200 -- this function should not be able to throw
+	 *       exceptions.
+	 */
+	template< typename DataType, typename Coords >
+	size_t nnz( const Vector< DataType, BSP1D, Coords > &x ) {
+		// first update number of nonzeroes (and _became_dense flag)
+		if( x.updateNnz() != SUCCESS ) {
+			throw std::runtime_error( "Unrecoverable error during update of "
+				"the global nonzero count."
+			);
+		}
+		// done
+		return x._nnz;
+	}
+
+	/**
+	 * Implementation details: relies on grb::collectives::allreduce.
+	 *
+	 * \todo internal issue #200 -- allreduce could fail, which is not acceptable.
+	 *
+	 * @see grb::nnz for the user-level specification.
+	 */
+	template< typename DataType >
+	size_t nnz( const Matrix< DataType, BSP1D > &A ) noexcept {
+#ifdef _DEBUG
+		std::cout << "Called grb::nnz (matrix, BSP1D).\n";
+#endif
+		// get local number of nonzeroes
+		size_t ret = nnz( A._local );
+#ifdef _DEBUG
+		std::cout << "\t local number of nonzeroes: " << ret << std::endl;
+#endif
+		// call allreduce on it
+		collectives< BSP1D >::allreduce<
+			descriptors::no_casting,
+			operators::add< size_t >
+		>( ret );
+#ifdef _DEBUG
+		std::cout << "\t global number of nonzeroes: " << ret << std::endl;
+#endif
+		// after allreduce, return sum of the local nonzeroes
+		return ret;
+	}
+
+	/**
+	 * Clears a given vector of all values.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * This primitive inherits the performance semantics of #grb::clear of the
+	 * underlying process-local backend, which is the reference backend by default.
+	 * It adds to those:
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ work,
+	 *   -# \f$ \Theta( P ) \f$ intra-process data movement,
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ inter-process
+	 *      data movement,
+	 *   -# one inter-process synchronisation step.
+	 * Here, \f$ P \f$ is the number of user processes.
+	 * \endparblock
+	 *
+	 * \internal No implementation notes.
+	 */
+	template< typename DataType, typename Coords >
+	RC clear( Vector< DataType, BSP1D, Coords > &x ) noexcept {
+		const RC ret = clear( internal::getLocal( x ) );
+		if( ret == SUCCESS ) {
+			x._cleared = true;
+			internal::signalLocalChange( x );
+		}
+		return ret;
+	}
+
+	/**
+	 * Clears a given matrix of all values.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * This primitive inherits the performance semantics of #grb::clear of the
+	 * underlying process-local backend, which is the reference backend by default.
+	 * It does not add any costs beyond those.
+	 * \endparblock
+	 *
+	 * \internal No implementation notes.
+	 */
+	template< typename IOType >
+	RC clear( grb::Matrix< IOType, BSP1D > &A ) noexcept {
+		return grb::clear( internal::getLocal( A ) );
+	}
+
+	/**
+	 * Resizes the capacity of a given vector.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * This primitive inherits the performance semantics of #grb::resize of the
+	 * underlying process-local backend, which is the reference backend by default.
+	 * It adds to those:
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ work,
+	 *   -# \f$ \Theta( P ) \f$ intra-process data movement,
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ inter-process
+	 *      data movement,
+	 *   -# two inter-process synchronisation steps.
+	 * Here, \f$ P \f$ is the number of user processes.
+	 * \endparblock
+	 *
+	 * \note The two synchronisation steps are required for error detection and
+	 *       global capacity synchronisation, respectively; note that even though
+	 *       the current process may report no errors, others might.
+	 *
+	 * \todo Employ non-blocking collectives and arbitrary-order write conflict
+	 *       resolution to enable both synchronisations within a single step.
+	 *
+	 * \internal
+	 * For sparse vectors, there is no way of knowing beforehand which element
+	 * is distributed where. Therefore, \a new_nz can only be interpreted as a
+	 * local value, although the user gives a global number. We first detect a
+	 * mismatch, then correct the value against the local maximum length, and
+	 * then delegate to the underlying backend.
+	 */
+	template< typename InputType, typename Coords >
+	RC resize( Vector< InputType, BSP1D, Coords > &x, const size_t new_nz ) noexcept {
+#ifdef _DEBUG
+		std::cerr << "In grb::resize (vector, BSP1D)\n"
+			<< "\t vector size is " << size(x) << "\n"
+			<< "\t requested capacity is " << new_nz << "\n";
+#endif
+
+		// check trivial op
+		const size_t n = size( x );
+		if( n == 0 ) {
+			return clear( x );
+		}
+
+		// check if we have a mismatch
+		if( new_nz > n ) {
+			return ILLEGAL;
+		}
+
+		// if \a new_nz is larger than local capacity, correct to local max
+		const size_t local_size = grb::size( internal::getLocal( x ) );
+		const size_t local_new_nz = new_nz > local_size ? local_size : new_nz;
+
+#ifdef _DEBUG
+		std::cerr << "\t will request local capacity " << local_new_nz << "\n";
+#endif
+
+		// try activate new capacity
+		grb::RC rc = resize( internal::getLocal( x ), local_new_nz );
+
+		// collect global error state
+		if( collectives< BSP1D >::allreduce(
+				rc, grb::operators::any_or< grb::RC >()
+			) != SUCCESS
+		) {
+			return PANIC;
+		}
+
+		// on failure, old capacity remains in effect, so return
+		if( rc != SUCCESS ) {
+#ifdef _DEBUG
+			std::cerr << "\t at least one user process reports error: "
+				<< toString( rc ) << "\n";
+#endif
+			return rc;
+		}
+
+		// we have success, so get actual new global capacity
+		size_t new_cap = local_new_nz;
+		rc = collectives< BSP1D >::allreduce(
+			new_cap, grb::operators::add< size_t >()
+		);
+		if( rc != grb::SUCCESS ) { return PANIC; }
+#ifdef _DEBUG
+		std::cerr << "\t new global capacity: " << new_cap << "\n";
+#endif
+		x._cap = new_cap;
+		x._nnz = 0;
+		x._cleared = true;
+		x._global_is_dirty = true;
+
+		// delegate
+		return rc;
+	}
+
+	/**
+	 * Resizes the capacity of a given matrix.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * This primitive inherits the performance semantics of #grb::resize of the
+	 * underlying process-local backend, which is the reference backend by default.
+	 * It adds to those:
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ work,
+	 *   -# \f$ \Theta( P ) \f$ intra-process data movement,
+	 *   -# \f$ \Omega( \log P ) \f$ and \f$ \mathcal{O}( P ) \f$ inter-process
+	 *      data movement,
+	 *   -# two inter-process synchronisation steps.
+	 * Here, \f$ P \f$ is the number of user processes.
+	 * \endparblock
+	 *
+	 * \note The two synchronisation steps are required for error detection and
+	 *       global capacity synchronisation, respectively; note that even though
+	 *       the current process may report no errors, others might.
+	 *
+	 * \todo Employ non-blocking collectives and arbitrary-order write conflict
+	 *       resolution to enable both synchronisations within a single step.
+	 *
+	 * \internal this function reserves the given amount of space <em>at this
+	 * user process</em>. Rationale: it cannot be predicted how many nonzeroes
+	 * end up at each separate user process, thus global information cannot be
+	 * exploited to make rational process-local decisions (in general).
+	 */
+	template< typename InputType >
+	RC resize( Matrix< InputType, BSP1D > &A, const size_t new_nz ) noexcept {
+#ifdef _DEBUG
+		std::cerr << "In grb::resize (matrix, BSP1D)\n"
+			<< "\t matrix is " << nrows( A ) << " by " << ncols( A ) << "\n"
+			<< "\t current capacity is " << capacity( A ) << "\n"
+			<< "\t requested new capacity is " << new_nz << "\n";
+#endif
+
+		RC ret = clear( A );
+		if( ret != SUCCESS ) { return ret; }
+
+		// check trivial case and new_nz
+		{
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+			if( new_nz / m > n ||
+				new_nz / n > m ||
+				(new_nz / m == n && (new_nz % m > 0)) ||
+				(new_nz / n == m && (new_nz % n > 0))
+			) {
+#ifdef _DEBUG
+				std::cerr << "\t requested capacity is too large\n";
+#endif
+				return ILLEGAL;
+			}
+		}
+
+		// delegate to local resize
+		size_t old_capacity = capacity( internal::getLocal( A ) );
+		const size_t m = nrows( internal::getLocal( A ) );
+		const size_t n = ncols( internal::getLocal( A ) );
+		// pre-catch trivial local case in order to avoid divide-by-zero
+		if( m > 0 && n > 0 ) {
+			// make sure new_nz does not overflow locally
+#ifdef _DEBUG
+			std::cerr << "\t delegating to process-local grb::resize\n";
+#endif
+			if( new_nz / m > n || new_nz / m > n ) {
+				ret = resize( internal::getLocal( A ), m * n );
+			} else {
+				ret = resize( internal::getLocal( A ), new_nz );
+			}
+		}
+
+		// check global error state while remembering if locally OK
+		bool local_ok = ret == SUCCESS;
+		if( collectives< BSP1D >::allreduce(
+				ret,
+				operators::any_or< RC >()
+			) != grb::SUCCESS
+		) {
+#ifdef _DEBUG
+			std::cerr << "\t some user processes reported error\n";
+#endif
+		}
+
+		// if any one process reports an error, then try to get back old capacity and
+		// exit
+		if( ret != SUCCESS ) {
+			if( local_ok ) {
+				if( resize( internal::getLocal( A ), old_capacity ) != SUCCESS ) {
+					// this situation is a breach of contract that we (apparently) cannot
+					// recover from
+#ifdef _DEBUG
+					std::cerr << "\t could not recover old capacity\n";
+#endif
+					return PANIC;
+				}
+			}
+			return ret;
+		}
+
+		// everyone is OK, so sync up new global capacity
+		size_t new_global_cap = capacity( A._local );
+		ret = collectives< BSP1D >::allreduce(
+			new_global_cap,
+			operators::add< size_t >()
+		);
+		if( ret != SUCCESS ) {
+#ifdef _DEBUG
+			std::cerr << "\t could not synchronise new global capacity\n";
+#endif
+			return PANIC;
+		}
+		A._cap = new_global_cap;
+#ifdef _DEBUG
+		std::cerr << "\t new global capacity is " << new_global_cap << "\n";
+#endif
+
+		// done
+		return ret;
+	}
+
+	/**
+	 * \internal
 	 * Implementation details:
 	 *
 	 * All user processes read in all input data but record only the data which
@@ -76,13 +425,23 @@ namespace grb {
 	 *
 	 * @see grb::buildVector for the user-level specification.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator, typename Coords, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, BSP1D, Coords > & x, fwd_iterator start, const fwd_iterator end, const IOMode mode, const Dup & dup = Dup() ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator, typename Coords,
+		class Dup = operators::right_assign< InputType >
+	>
+	RC buildVector(
+		Vector< InputType, BSP1D, Coords > &x,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode, const Dup &dup = Dup()
+	) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename std::iterator_traits< fwd_iterator >::value_type >::value ),
-			"grb::buildVector (BSP1D implementation)",
+		NO_CAST_ASSERT( (!(descr & descriptors::no_casting) ||
+				std::is_same< InputType, typename std::iterator_traits< fwd_iterator >::value_type >::value
+			), "grb::buildVector (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
-			"descriptor was set" );
+			"descriptor was set"
+		);
 
 		// prepare
 		RC ret = SUCCESS;
@@ -106,7 +465,10 @@ namespace grb {
 						ret = MISMATCH;
 					} else {
 						// if this element is distributed to me
-						if( internal::Distribution< BSP1D >::global_index_to_process_id( i, x._n, data.P ) == data.s ) {
+						if( internal::Distribution< BSP1D >::global_index_to_process_id(
+								i, x._n, data.P
+							) == data.s
+						) {
 							// cache it locally
 							cache.push_back( *start );
 						}
@@ -115,17 +477,24 @@ namespace grb {
 
 				// defer to local constructor
 				if( ret == SUCCESS ) {
-					ret = buildVector< descr >( x._local, cache.begin(), cache.end(), SEQUENTIAL, dup );
+					ret = buildVector< descr >(
+						x._local,
+						cache.begin(), cache.end(),
+						SEQUENTIAL, dup
+					);
 				}
 			}
 		}
 
 		// check for illegal at sibling processes
-		if( data.P > 1 && ( descr & descriptors::no_duplicates ) ) {
+		if( data.P > 1 && (descr & descriptors::no_duplicates) ) {
 #ifdef _DEBUG
 			std::cout << "\t global exit-check\n";
 #endif
-			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< grb::RC >() ) != SUCCESS ) {
+			if( collectives< BSP1D >::allreduce(
+					ret, grb::operators::any_or< grb::RC >()
+				) != SUCCESS
+			) {
 				return PANIC;
 			}
 		}
@@ -141,6 +510,7 @@ namespace grb {
 	}
 
 	/**
+	 * \internal
 	 * Implementation details:
 	 *
 	 * In sequential mode, the input from the iterators is filtered and cached in
@@ -152,19 +522,26 @@ namespace grb {
 	 * sent to the process who owns the nonzero via bulk-synchronous message
 	 * passing. After the iterators have been exhausted, the incoming message
 	 * buffers are drained into the storage memory.
+	 * \endinternal
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename fwd_iterator1, typename fwd_iterator2, typename Coords, class Dup = operators::right_assign< InputType > >
-	RC buildVector( Vector< InputType, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
+		typename Coords, class Dup = operators::right_assign< InputType >
+	>
+	RC buildVector( Vector< InputType, BSP1D, Coords > &x,
 		fwd_iterator1 ind_start,
 		const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start,
 		const fwd_iterator2 val_end,
 		const IOMode mode,
-		const Dup & dup = Dup() ) {
+		const Dup &dup = Dup()
+	) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
-							std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value ),
-			"grb::buildVector (BSP1D implementation)",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
+				std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value
+			), "grb::buildVector (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set" );
 
@@ -197,13 +574,20 @@ namespace grb {
 				}
 
 				// check if this element is distributed to me
-				if( internal::Distribution< BSP1D >::global_index_to_process_id( *ind_start, n, data.P ) == data.s ) {
+				if( internal::Distribution< BSP1D >::global_index_to_process_id(
+						*ind_start, n, data.P
+					) == data.s
+				) {
 					// yes, so cache
-					const size_t localIndex = internal::Distribution< BSP1D >::global_index_to_local( *ind_start, n, data.P );
+					const size_t localIndex =
+						internal::Distribution< BSP1D >::global_index_to_local(
+							*ind_start, n, data.P
+						);
 					index_cache.push_back( localIndex );
 					value_cache.push_back( static_cast< InputType >( *val_start ) );
 #ifdef _DEBUG
-					std::cout << "\t local nonzero will be added to " << localIndex << ", value " << ( *val_start ) << "\n";
+					std::cout << "\t local nonzero will be added to " << localIndex << ", "
+						<< "value " << ( *val_start ) << "\n";
 #endif
 				} else {
 #ifdef _DEBUG
@@ -215,13 +599,23 @@ namespace grb {
 			// do delegate
 			auto ind_it = index_cache.cbegin();
 			auto val_it = value_cache.cbegin();
-			RC rc = buildVector< descr >( internal::getLocal( x ), ind_it, index_cache.cend(), val_it, value_cache.cend(), SEQUENTIAL, dup );
+			RC rc = buildVector< descr >(
+				internal::getLocal( x ),
+				ind_it, index_cache.cend(),
+				val_it, value_cache.cend(),
+				SEQUENTIAL,
+				dup
+			);
 
-			if( data.P > 1 && ( descr & descriptors::no_duplicates ) ) {
+			if( data.P > 1 && (descr & descriptors::no_duplicates) ) {
 #ifdef _DEBUG
 				std::cout << "\t global exit check (2)\n";
 #endif
-				if( collectives< BSP1D >::allreduce( rc, grb::operators::any_or< grb::RC >() ) != SUCCESS ) {
+				if( collectives< BSP1D >::allreduce(
+						rc,
+						grb::operators::any_or< grb::RC >()
+					) != SUCCESS
+				) {
 					return PANIC;
 				}
 			}
@@ -241,7 +635,7 @@ namespace grb {
 	}
 
 	/**
-	 * TODO describe implementation details
+	 * \internal No implementation details.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -275,7 +669,11 @@ namespace grb {
 
 		// delegate for sequential case
 		if( data.P == 1 ) {
-			return buildMatrixUnique< descr >( internal::getLocal(A), start, end, SEQUENTIAL );
+			return buildMatrixUnique< descr >(
+				internal::getLocal(A),
+				start, end,
+				SEQUENTIAL
+			);
 		}
 
 		// function semantics require the matrix be cleared first
@@ -283,6 +681,7 @@ namespace grb {
 
 		// local cache, used to delegate to reference buildMatrixUnique
 		std::vector< typename fwd_iterator::value_type > cache;
+
 		// caches non-local nonzeroes (in case of Parallel IO)
 		std::vector< std::vector< typename fwd_iterator::value_type > > outgoing;
 		if( mode == PARALLEL ) {
@@ -451,9 +850,11 @@ namespace grb {
 				buffer_sizet[ k ] = buffer_sizet[ k - 1 ] + buffer_sizet[ data.P + k - 1 ];
 			}
 			// self-prefix is not used, update to reflect total number of local elements
-			if( data.s + 1 < data.P ) {                                                  // if data.s == data.P - 1 then the current number is already correct
+			// if data.s == data.P - 1 then the current number is already correct
+			if( data.s + 1 < data.P ) {
+				// otherwise overwrite with correct number
 				buffer_sizet[ data.s ] =
-					buffer_sizet[ data.P - 1 ] + buffer_sizet[ 2 * data.P - 1 ]; // otherwise overwrite with correct number
+					buffer_sizet[ data.P - 1 ] + buffer_sizet[ 2 * data.P - 1 ];
 			}
 			// communicate prefix
 			for( size_t k = 0; ret == SUCCESS && k < data.P; ++k ) {
@@ -636,17 +1037,19 @@ namespace grb {
 		return ret;
 	}
 
-	/** \internal Simply rely on backend implementation. */
+	/** \internal No implementation details. */
 	template< typename InputType, typename Coords >
 	uintptr_t getID( const Vector< InputType, BSP1D, Coords > &x ) {
 		return x._id;
 	}
 
-	/** \internal Simply rely on backend implementation. */
+	/** \internal No implementation details. */
 	template< typename InputType >
 	uintptr_t getID( const Matrix< InputType, BSP1D > &A ) {
 		return A._id;
 	}
+
+	/** @} */
 
 } // namespace grb
 

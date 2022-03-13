@@ -28,7 +28,7 @@
 #include <graphblas/ops.hpp>
 
 /**
- * The main GraphBLAS namespace.
+ * The main ALP/GraphBLAS namespace.
  */
 namespace grb {
 
@@ -351,3 +351,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+

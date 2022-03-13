@@ -66,33 +66,26 @@ namespace grb {
 		 *
 		 * Does not perform any preconditioning.
 		 *
-		 * @param[in,out] x On input: an initial guess to the solution \f$ Ax=b \f$.
+		 * @param[in,out] x On input: an initial guess to the solution \f$ Ax = b \f$.
 		 *                  On output: if #grb::SUCCESS is returned, the solution to
-		 *                  \f$ Ax=b \f$ within the given tolerance \a tol.
+		 *                  \f$ Ax=b \f$ within the given tolerance \a tol. Otherwise,
+		 *                  the last computed approximation to the solution is
+		 *                  returned.
 		 * @param[in]     A The square non-singular system matrix \f$ A \f$.
-		 * @param[in]     b The dense right-hand side vector \f$ b \f$.
+		 * @param[in]     b The right-hand side vector \f$ b \f$.
 		 *
 		 * If the size of \f$ A \f$ is \f$ n \times n \f$, then the sizes of \a x and
-		 * \a b must be \f$ n \f$ also.
+		 * \a b must be \f$ n \f$ also. The vector \a x must have capacity \f$ n \f$.
 		 *
-		 * A guess on input captured by \a x is optional. However, if \a x is dense
-		 * on input, this algorithm will assume \a x is a valid initial guess.
+		 * Mandatory inputs to the BiCGstab algorithm:
 		 *
-		 * \warning grb::set( x, zero ); is not a valid initial guess. This algorithm
-		 *          will return with an error if given this input.
+		 * @param[in]  max_iterations The maximum number of iterations this algorithm
+		 *                            may perform.
+		 * @param[in]  tol            The relative tolerance which determines when an
+		 *                            an approximated solution \f$ x \f$ becomes
+		 *                            acceptable. Must be positive and non-zero.
 		 *
-		 * \note If unsure what constitutes a valid guess, it is recommended to call
-		 *       #grb::clear(x) prior to this function. An initial guess will then be
-		 *       provided.
-		 *
-		 * If there are zeroes in \a b, then this algorithm assumes they are explicit
-		 * zeroes; \a b must be structurally dense.
-		 *
-		 * @param[in]     max_iterations The maximum number of iterations this
-		 *                               algorithm may perform.
-		 * @param[in]     tol            The relative tolerance which determines when
-		 *                               an approximated solution \f$ x \f$ becomes
-		 *                               acceptable. Must be positive and non-zero.
+		 * Additional outputs of this algorithm:
 		 *
 		 * @param[out]    iterations When #grb::SUCCESS is returned, the number of
 		 *                           iterations that were required to obtain an
@@ -101,8 +94,11 @@ namespace grb {
 		 *                           2-norm of the residual; i.e., \f$ (r,r) \f$,
 		 *                           where \f$ r = b - Ax \f$.
 		 *
-		 * @param[in] r, rhat, p, v, s, t Work space required for BiCGstab. These
-		 *                                must all be vectors of length \f$ n \f$.
+		 * To operate, this algorithm requires a workspace consisting of six vectors
+		 * of length and capacity \f$ n \f$. If vectors with less capacity are passed
+		 * as arguments, #grb::ILLEGAL will be returned.
+		 *
+		 * @param[in] r, rhat, p, v, s, t Workspace vectors required for BiCGstab.
 		 *
 		 * Valid descriptors to this algorithm are:
 		 *   -# descriptors::no_casting
@@ -110,11 +106,19 @@ namespace grb {
 		 *
 		 * @returns #grb::SUCCESS  If an acceptable solution is returned.
 		 * @returns #grb::FAILED   If the algorithm failed to find an acceptable
-		 *                         approximate solution.
+		 *                         solution and returns an approximate one with the
+		 *                         given \a residual.
 		 * @returns #grb::MISMATCH If two or more of the input arguments have
 		 *                         incompatible sizes.
-		 * @returns #grb::ILLEGAL  If \a b is structurally sparse.
+		 * @returns #grb::MISMATCH If one or more of the workspace vectors has an
+		 *                         incompatible size.
 		 * @returns #grb::ILLEGAL  If \a tol is zero or negative.
+		 * @returns #grb::ILLEGAL  If \a x has capacity less than \f$ n \f$.
+		 * @returns #grb::ILLEGAL  If one or more of the workspace vectors has a
+		 *                         capacity less than \f$ n \f$.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
 		 *
 		 * \par Performance semantics
 		 *
@@ -123,7 +127,9 @@ namespace grb {
 		 *
 		 * For performance semantics regarding work, inter-process data movement,
 		 * intra-process data movement, synchronisations, and memory use, please see
-		 * the specification of the ALP primitives this function relies on.
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
 		 */
 		template< Descriptor descr = descriptors::no_operation,
 			typename IOType, typename NonzeroType, typename InputType,
@@ -200,7 +206,7 @@ namespace grb {
 			const ResidualType zero = semiring.template getZero< ResidualType >();
 			const ResidualType one  = semiring.template getOne< ResidualType >();
 
-			// dynamic checks
+			// dynamic checks, sizes:
 			const size_t n = nrows( A );
 			if( n != ncols( A ) ) {
 				return MISMATCH;
@@ -211,14 +217,23 @@ namespace grb {
 			if( n != size( b ) ) {
 				return MISMATCH;
 			}
-			if( n != nnz( b ) ) {
-				return ILLEGAL;
-			}
 			if( n != size( r ) || n != size( rhat ) || n != size( p ) ||
 				n != size( p ) || n != size( s ) || n != size( t )
 			) {
 				return MISMATCH;
 			}
+
+			// dynamic checks, capacity:
+			if( n != capacity( x ) ) {
+				return ILLEGAL;
+			}
+			if( n != capacity( r ) || n != capacity( rhat ) || n != capacity( p ) ||
+				n != capacity( p ) || n != capacity( s ) || n != capacity( t )
+			) {
+				return ILLEGAL;
+			}
+
+			// dynamic checks, others:
 			if( tol <= zero ) {
 				return ILLEGAL;
 			}
@@ -244,20 +259,24 @@ namespace grb {
 			std::cout << "Effective squared relative tolerance is " << tol << "\n";
 #endif
 
-			// if no proper guess was given, make one
-			// warn: the present code assumes that any dense input is a valid guess
+			// ensure that x is structurally dense
 			if( nnz( x ) != n ) {
-				IOType guess = semiring.template getOne< IOType >();
-				ret = foldl( guess, n, divide );
-				ret = ret ? ret : set( x, guess );
+				ret = grb::set< descriptors::invert_mask | descriptors::structural >(
+					x, x, zero
+				);
+				assert( nnz( x ) == n );
 			}
 
-			// compute residual
+			// compute residual (squared), taking into account that b may be sparse
 			residual = zero;
-			ret = ret ? ret : set( r, zero );
-			ret = ret ? ret : mxv< dense_descr >( r, A, x, semiring ); // r = Ax
-			ret = ret ? ret : foldr< dense_descr >( b, r, minus ); // r = b - Ax
-			ret = ret ? ret : dot< dense_descr >( residual, r, r, semiring );
+			ret = ret ? ret : set( t, zero );                                   // t = Ax
+			ret = ret ? ret : mxv< dense_descr >( t, A, x, semiring );
+			assert( nnz( t ) == n );
+			ret = ret ? ret : set( r, zero );                               // r = b - Ax
+			ret = ret ? ret : foldl( r, b, semiring.getAdditiveMonoid() );
+			assert( nnz( r ) == n );
+			ret = ret ? ret : foldl< dense_descr >( r, t, minus );
+			ret = ret ? ret : dot< dense_descr >( residual, r, r, semiring ); // residual
 
 			// check for prelude error
 			if( ret ) {
@@ -310,7 +329,8 @@ namespace grb {
 #endif
 
 				// p = r + beta ( p - omega * v )
-				ret = ret ? ret : eWiseLambda( [&r,&beta,&p,&v,&omega,&semiring,&minus] (const size_t i) {
+				ret = ret ? ret : eWiseLambda(
+					[&r,&beta,&p,&v,&omega,&semiring,&minus] (const size_t i) {
 						InputType tmp;
 						apply( tmp, omega, v[i], semiring.getMultiplicativeOperator() );
 						foldl( p[ i ], tmp, minus );

@@ -211,97 +211,6 @@ namespace grb {
 	 */
 
 	/**
-	 * Clears all elements from the given vector \a x.
-	 *
-	 * At the end of this operation, the number of nonzero elements in this vector
-	 * will be zero. The size of the vector remains unchanged.
-	 *
-	 * @return grb::SUCCESS When the vector is successfully cleared.
-	 *
-	 * \note This function cannot fail.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 *      This function
-	 *        -# contains \f$ \mathcal{O}(n) \f$ work,
-	 *        -# will not allocate new dynamic memory,
-	 *        -# will take at most \f$ \Theta(1) \f$ memory beyond the memory
-	 *           already used by the application before the call to this
-	 *           function.
-	 *        -# will move at most \f$ \mathit{sizeof}(\mathit{bool}) +
-	 *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
-	 * \endparblock
-	 */
-	template< typename DataType, typename Coords >
-	RC clear( Vector< DataType, reference, Coords > & x ) noexcept {
-		internal::getCoordinates( x ).clear();
-		return SUCCESS;
-	}
-
-	/**
-	 * Request the size (dimension) of a given vector.
-	 *
-	 * The dimension is set at construction of the given vector and cannot be
-	 * changed. A call to this function shall always succeed.
-	 *
-	 * @tparam DataType The type of elements contained in the vector \a x.
-	 *
-	 * @param[in] x The vector of which to retrieve the size.
-	 *
-	 * @return The size of the vector \a x.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *  -# consists of \f$ \Theta(1) \f$ work;
-	 *  -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *  -# does not allocate any dynamic memory;
-	 *  -# shall not make any system calls.
-	 * \endparblock
-	 */
-	template< typename DataType, typename Coords >
-	size_t size( const Vector< DataType, reference, Coords > & x ) noexcept {
-		return internal::getCoordinates( x ).size();
-	}
-
-	/**
-	 * Request the number of nonzeroes in a given vector.
-	 *
-	 * A call to this function always succeeds.
-	 *
-	 * @tparam DataType The type of elements contained in this vector.
-	 *
-	 * @param[in] x The vector of which to retrieve the number of nonzeroes.
-	 *
-	 * @return The number of nonzeroes in \a x.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(1) \f$ work;
-	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
-	 */
-	template< typename DataType, typename Coords >
-	size_t nnz( const Vector< DataType, reference, Coords > & x ) noexcept {
-		return internal::getCoordinates( x ).nonzeroes();
-	}
-
-	/** \todo add documentation. In particular, think about the meaning with \a P > 1. */
-	template< typename InputType, typename length_type, typename Coords >
-	RC resize( Vector< InputType, reference, Coords > & x, const length_type new_nz ) {
-		// check if we have a mismatch
-		if( new_nz > grb::size( x ) ) {
-			return MISMATCH;
-		}
-		// in the reference implementation, vectors are of static size
-		// so this function immediately succeeds
-		return SUCCESS;
-	}
-
-	/**
 	 * Sets all elements of a vector to the given value. Can be masked.
 	 *
 	 * This function is functionally equivalent to
@@ -357,16 +266,18 @@ namespace grb {
 		typename DataType, typename T,
 		typename Coords
 	>
-	RC set( Vector< DataType, reference, Coords > & x, const T val,
+	RC set( Vector< DataType, reference, Coords > &x, const T val,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
 			!grb::is_object< T >::value,
 		void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector, unmasked)",
-			"called with a value type that does not match that of the given "
-			"vector" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< DataType, T >::value
+			), "grb::set (Vector, unmasked)",
+			"called with a value type that does not match that of the given vector"
+		);
 
 		// pre-cast value to be copied
 		const DataType toCopy = static_cast< DataType >( val );
@@ -380,10 +291,12 @@ namespace grb {
 		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 		for( size_t i = 0; i < n; ++ i ) {
-			raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::getFromScalar( toCopy, i );
+			raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
+				getFromScalar( toCopy, i );
 		}
 		// sanity check
-		assert( internal::getCoordinates( x ).nonzeroes() == internal::getCoordinates( x ).size() );
+		assert( internal::getCoordinates( x ).nonzeroes() ==
+			internal::getCoordinates( x ).size() );
 
 		// done
 		return SUCCESS;
@@ -444,11 +357,17 @@ namespace grb {
 	 * @see grb::operators::right_assign.
 	 * @see grb::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename MaskType, typename T, typename Coords >
-	RC set( Vector< DataType, reference, Coords > & x,
-		const Vector< MaskType, reference, Coords > & m,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename MaskType, typename T, typename Coords
+	>
+	RC set( Vector< DataType, reference, Coords > &x,
+		const Vector< MaskType, reference, Coords > &m,
 		const T val,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+		const typename std::enable_if<
+				!grb::is_object< DataType >::value && !grb::is_object< T >::value,
+			void >::type * const = nullptr
+		) {
 #ifdef _DEBUG
 		std::cout << "In grb::set (vector-to-value, masked)\n";
 #endif
@@ -3923,13 +3842,22 @@ RC eWiseApply( Vector< OutputType, reference, Coords > & z,
  *
  * Specialisation for scalar \a y. Monoid version.
  */
-template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-RC eWiseApply( Vector< OutputType, reference, Coords > & z,
-	const Vector< InputType1, reference, Coords > & x,
+template<
+	Descriptor descr = descriptors::no_operation,
+	class Monoid,
+	typename OutputType, typename InputType1, typename InputType2,
+	typename Coords
+>
+RC eWiseApply( Vector< OutputType, reference, Coords > &z,
+	const Vector< InputType1, reference, Coords > &x,
 	const InputType2 beta,
-	const Monoid & monoid = Monoid(),
-	const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
-		void >::type * const = NULL ) {
+	const Monoid &monoid = Monoid(),
+	const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+) {
 #ifdef _DEBUG
 	std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
 #endif

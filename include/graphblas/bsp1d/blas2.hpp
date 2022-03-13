@@ -315,56 +315,6 @@ namespace grb {
 
 	} // namespace internal
 
-	/** No implementation details. */
-	template< typename DataType >
-	size_t nrows( const Matrix< DataType, BSP1D > &A ) noexcept {
-		return A._m;
-	}
-
-	/** No implementation details. */
-	template< typename DataType >
-	size_t ncols( const Matrix< DataType, BSP1D > &A ) noexcept {
-		return A._n;
-	}
-
-	/**
-	 * Implementation details: relies on grb::collectives::allreduce.
-	 *
-	 * TODO internal issue #200.
-	 *
-	 * @see grb::nnz for the user-level specification.
-	 */
-	template< typename DataType >
-	size_t nnz( const Matrix< DataType, BSP1D > & A ) noexcept {
-#ifdef _DEBUG
-		std::cout << "Called grb::nnz (matrix, BSP1D).\n";
-#endif
-		// get local number of nonzeroes
-		size_t ret = nnz( A._local );
-#ifdef _DEBUG
-		std::cout << "\t local number of nonzeroes: " << ret << std::endl;
-#endif
-		// call allreduce on it
-		collectives< BSP1D >::allreduce< descriptors::no_casting, operators::add< size_t > >( ret );
-#ifdef _DEBUG
-		std::cout << "\t global number of nonzeroes: " << ret << std::endl;
-#endif
-		// after allreduce, return sum of the local nonzeroes
-		return ret;
-	}
-
-	/**
-	 * Implementation details: reserves the given amount of space <em>at this
-	 * user process</em>. Rationale: it cannot be predicted how many nonzeroes
-	 * end up at each separate user process, thus global information cannot be
-	 * exploited to make rational process-local decisions (in general).
-	 */
-	template< typename InputType, typename length_type >
-	RC resize( Matrix< InputType, BSP1D > & A, const length_type new_nz ) {
-		// delegate
-		return resize( A._local, new_nz );
-	}
-
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -486,8 +436,17 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, BSP1D > & A, const Vector< DataType2, BSP1D, Coords > x, Args... args ) {
+	template<
+		typename Func,
+		typename DataType1, typename DataType2,
+		typename Coords, typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, BSP1D > &A,
+		const Vector< DataType2, BSP1D, Coords > &x,
+		Args... args
+	) {
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseLambda (BSP1D, matrix, recursive/vararg)\n";
 #endif

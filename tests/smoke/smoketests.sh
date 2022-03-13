@@ -30,7 +30,7 @@ fi
 
 
 LABELTEST_SIZES=(8 256 4096) # for size 32, the ground-truth number of iterations is 6. This size is
-RESULTS=(4 9 13)             # disabled as there is no reason why this should behave differently
+LABELTEST_RESULTS=(4 9 13)   # disabled as there is no reason why this should behave differently
                              # from size 8 (both will map to the same single thread and process).
 
 echo " "
@@ -235,14 +235,14 @@ for BACKEND in ${BACKENDS[@]}; do
 			for ((i=0;i<${#LABELTEST_SIZES[@]};++i));
 			do
 				LABELTEST_SIZE=${LABELTEST_SIZES[i]}
-				LABELTEST_EXPECTED_RESULT=${LABELTEST_EXPECTED_RESULTS[i]}
+				LABELTEST_EXPECTED_RESULT=${LABELTEST_RESULTS[i]}
 				echo ">>>      [x]           [ ]       Testing label propagation using a a generated dataset"
 				echo "                                 of size ${LABELTEST_SIZE} using the ${BACKEND} backend."
 				echo "                                 This test verifies the number of iterations required"
-				echo "                                 to convergence against a ground-truth value."
+				echo "                                 to convergence against the ground-truth value of ${LABELTEST_EXPECTED_RESULT}"
 				$runner ${TEST_BIN_DIR}/labeltest_${BACKEND} ${LABELTEST_SIZE} &> ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log
 				head -1 ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log
-				(grep -q "${LABELTEST_EXPECTED_RESULT} total iterations" ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log && grep -i 'test ok' ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log) || echo "Test FAILED"
+				(grep -q "converged in ${LABELTEST_EXPECTED_RESULT} iterations" ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log && grep -i 'test ok' ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log) || echo "Test FAILED"
 				echo " "
 			done
 

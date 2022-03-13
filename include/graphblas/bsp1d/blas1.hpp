@@ -92,57 +92,6 @@ namespace grb {
 
 	} // namespace internal
 
-	/** \internal No implementation notes. */
-	template< typename DataType, typename Coords >
-	RC clear( Vector< DataType, BSP1D, Coords > & x ) noexcept {
-		const RC ret = clear( internal::getLocal( x ) );
-		if( ret == SUCCESS ) {
-			x._cleared = true;
-			internal::signalLocalChange( x );
-		}
-		return ret;
-	}
-
-	/** \internal No implementation notes. */
-	template< typename DataType, typename Coords >
-	size_t size( const Vector< DataType, BSP1D, Coords > & x ) noexcept {
-		return x._n;
-	}
-
-	/** \internal Uses grb::collectives::alreduce. Can throw exceptions. */
-	template< typename DataType, typename Coords >
-	size_t nnz( const Vector< DataType, BSP1D, Coords > & x ) {
-		// first update number of nonzeroes (and _became_dense flag)
-		if( x.updateNnz() != SUCCESS ) {
-			throw std::runtime_error( "Unrecoverable error during update of "
-									  "the global nonzero count." );
-		}
-		// done
-		return x._nnz;
-	}
-
-	/**
-	 * \internal
-	 * For sparse vectors, there is no way of knowing beforehand which element
-	 * is distributed where. Therefore, \a new_nz can only be interpreted as a
-	 * local value, although the user gives a global number. We first detect a
-	 * mismatch, then correct the value against the local maximum length, and
-	 * then delegate to the reference implementation.
-	 */
-	template< typename InputType, typename Coords, typename length_type >
-	RC resize( Vector< InputType, BSP1D, Coords > & x, const length_type new_nz ) {
-		// check if we have a mismatch
-		if( new_nz > grb::size( x ) ) {
-			return MISMATCH;
-		}
-
-		// if \a new_nz is larger than local capacity, correct to local max
-		const size_t local_new_nz = new_nz > x.local_n ? x.local_n : new_nz;
-
-		// delegate
-		return resize( internal::getLocal( x ), local_new_nz );
-	}
-
 	/** \internal Requires no inter-process communication. */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename Coords, typename T >
 	RC set( Vector< DataType, BSP1D, Coords > & x, const T val, const typename std::enable_if< ! grb::is_object< T >::value, void >::type * const = NULL ) noexcept {
@@ -209,8 +158,15 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename Coords, typename InputType >
-	RC set( Vector< OutputType, BSP1D, Coords > & x, const Vector< InputType, BSP1D, Coords > & y ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType,
+		typename Coords
+	>
+	RC set(
+		Vector< OutputType, BSP1D, Coords > &x,
+		const Vector< InputType, BSP1D, Coords > &y
+	) {
 		// sanity check
 		if( size( y ) != size( x ) ) {
 			return MISMATCH;

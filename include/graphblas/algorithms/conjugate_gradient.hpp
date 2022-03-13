@@ -59,27 +59,72 @@ namespace grb {
 		 *       \a Divide may be more appropriate. This will also naturally ensure
 		 *       that demands on domain types are met.
 		 *
-		 * @param[in,out] x              On input: the initial guess to the solution.
+		 * \todo There is a sqrt(...) operator that lives outside of the current
+		 *       algebraic abstractions. Would be great if that could be eliminated;
+		 *       see, e.g., the approach taken by BiCGstab implementation. An
+		 *       alternative solution is sketched in internal issue #89.
+		 *
+		 * @param[in,out] x              On input: an initial guess to the solution.
 		 *                               On output: the last computed approximation.
 		 * @param[in]     A              The (square) positive semi-definite system
 		 *                               matrix.
 		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
 		 *                               Must be structurally dense.
+		 *
+		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
+		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
+		 *
+		 * CG algorithm inputs:
+		 *
 		 * @param[in]     max_iterations The maximum number of CG iterations.
 		 * @param[in]     tol            The requested relative tolerance.
+		 *
+		 * Additional outputs (besides \a x):
+		 *
+		 * @param[out]    iterations     The number of iterations the algorithm has
+		 *                               performed.
 		 * @param[out]    residual       The residual corresponding to output \a x.
+		 *
+		 * The CG algorithm requires three workspace buffers with capacity \f$ n \f$:
+		 *
 		 * @param[in,out] r              A temporary vector of the same size as \a x.
 		 * @param[in,out] u              A temporary vector of the same size as \a x.
 		 * @param[in,out] temp           A temporary vector of the same size as \a x.
+		 *
+		 * Finally, the algebraic structures over which the CG is executed are given:
+		 *
 		 * @param[in]     ring           The semiring under which to perform the CG.
 		 * @param[in]     minus          The inverse of the additive operator of
 		 *                               \a ring.
 		 * @param[in]     divide         The inverse of the multiplicative operator
 		 *                               of \a ring.
 		 *
-		 * \todo There is a sqrt(...) operator that lives outside of the current
-		 *       algebraic abstractions. Would be great if that could be eliminated.
-		 *       See internal issue #89.
+		 * This algorithm may return one of the following error codes:
+		 *
+		 * @returns #grb::SUCCESS  When the algorithm has converged to a solution
+		 *                         within the given \a max_iterations and \a tol.
+		 * @returns #grb::FAILED   When the algorithm did not converge within the
+		 *                         given \a max_iterations.
+		 * @returns #grb::ILLEGAL  When \a A is not square.
+		 * @returns #grb::MISMATCH When \a x or \a b does not match the size of \a A.
+		 * @returns #grb::ILLEGAL  When \a x does not have capacity \f$ n \f$.
+		 * @returns #grb::ILLEGAL  When at least one of the workspace vectors does not
+		 *                         have capacity \f$ n \f$.
+		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
+		 *
+		 * \par Performance semantics
+		 *
+		 *   -# This function does not allocate nor free dynamic memory, nor shall it
+		 *      make any system calls.
+		 *
+		 * For performance semantics regarding work, inter-process data movement,
+		 * intra-process data movement, synchronisations, and memory use, please see
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
 		 */
 		template< Descriptor descr = descriptors::no_operation,
 			typename IOType,
@@ -146,37 +191,57 @@ namespace grb {
 
 			constexpr const Descriptor descr_dense = descr | descriptors::dense;
 			const ResidualType zero = ring.template getZero< ResidualType >();
+			const size_t n = grb::ncols( A );
 
+			// dynamic checks
 			{
 				const size_t m = grb::nrows( A );
-				const size_t n = grb::ncols( A );
 				if( size( x ) != n ) {
 					return MISMATCH;
 				}
 				if( size( b ) != m ) {
 					return MISMATCH;
 				}
+				if( size( r ) != n || size( u ) != n || size( temp ) != n ) {
+					std::cerr << "Error: provided workspace vectors are not of the correct "
+						<< "length.\n";
+					return MISMATCH;
+				}
 				if( m != n ) {
-#ifdef _DEBUG
 					std::cerr << "Warning: grb::algorithms::conjugate_gradient requires "
 						<< "square input matrices, but a non-square input matrix was "
 						<< "given instead.\n";
-#endif
 					return ILLEGAL;
 				}
-				if( size( r ) != n || size( u ) != n || size( temp ) != n ) {
-#ifdef _DEBUG
-					std::cerr << "Error: provided temporary vectors are not of the correct "
-						<< "length.\n";
-#endif
-					return MISMATCH;
+
+				// capacities
+				if( capacity( x ) != n ) {
+					return ILLEGAL;
 				}
+				if( capacity( r ) != n || capacity( u ) != n || capacity( temp ) != n ) {
+					return ILLEGAL;
+				}
+
+				// others
+				if( tol <= zero ) {
+					std::cerr << "Error: tolerance input to CG must be strictly positive\n";
+					return ILLEGAL;
+				}
+			}
+
+			// make x and b structurally dense (if not already) so that the remainder
+			// algorithm can safely use the dense descriptor for faster operations
+			{
+				RC rc = SUCCESS;
 				if( nnz( x ) != n ) {
-					return ILLEGAL;
+					rc = set< descriptors::invert_mask | descriptors::structural >(
+						x, x, zero
+					);
 				}
-				if( nnz( b ) != n ) {
-					return ILLEGAL;
+				if( rc != SUCCESS ) {
+					return rc;
 				}
+				assert( nnz( x ) == n );
 			}
 
 			ResidualType alpha, sigma, bnorm;
@@ -185,17 +250,18 @@ namespace grb {
 			grb::RC ret = grb::set( temp, 0 );
 			assert( ret == SUCCESS );
 
-			// r = 0
-			ret = ret ? ret : grb::set( r, 0 );
-			assert( ret == SUCCESS );
-
 			// temp = A * x
 			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
 			assert( ret == SUCCESS );
 
 			// r = b - temp;
-			ret = ret ? ret : grb::eWiseApply< descr_dense >( r, b, temp, minus );
+			ret = ret ? ret : grb::set( r, zero );
+			ret = ret ? ret : grb::foldl( r, b, ring.getAdditiveMonoid() );
+			assert( nnz( r ) == n );
+			assert( nnz( temp ) == n );
+			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 			assert( ret == SUCCESS );
+			assert( nnz( r ) == n );
 
 			// u = r;
 			ret = ret ? ret : grb::set( u, r );

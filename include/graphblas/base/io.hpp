@@ -30,29 +30,655 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
+#include <assert.h>
+
+
 namespace grb {
 
 	/**
 	 * \defgroup IO Data Ingestion and Extraction.
-	 * Provides functions for putting user data into opaque GraphBLAS objects,
-	 * and provides functions for extracting data from opaque GraphBLAS objects.
 	 *
-	 * The GraphBLAS operates on opaque data objects. Users can input data using
-	 * grb::buildVector and/or grb::buildMatrixUnique. This group provides free
-	 * functions that automatically dispatch to those variants.
+	 * Provides functions for putting user data into opaque ALP/GraphBLAS
+	 * containers, provides functions for extracting data from such containers,
+	 * and provides query as well resizing functionalities.
+	 *
+	 * ALP/GraphBLAS operates on opaque data objects. Users can input data using
+	 * grb::buildVector and/or grb::buildMatrix.
 	 *
 	 * The standard output methods are provided by grb::Vector::cbegin and
 	 * grb::Vector::cend, and similarly for grb::Matrix. Iterators provide
 	 * parallel output (see #IOMode for a discussion on parallel versus
 	 * sequential IO).
 	 *
-	 * Sometimes it is desired to have direct access to a GraphBLAS memory
-	 * area, and to have that memory available even after the GraphBLAS
-	 * context has been closed (via grb::finalize). This functionality is
-	 * provided by grb::pin_memory.
+	 * Sometimes it is desired to have direct access to ALP/GraphBLAS memory
+	 * area, and to have that memory available even after the ALP/GraphBLAS context
+	 * has been destroyed. This functionality is provided by the concept of
+	 * <em>pinned containers</em> such as provided by #PinnedVector.
+	 *
+	 * Containers may be instantiated with default or given requested capacities.
+	 * Implementations may reserve a higher capacity, but must allocate at least
+	 * the requested amount or otherwise raise an out-of-memory error.
+	 *
+	 * Capacities are always expressed in terms of number of nonzeroes that the
+	 * container can hold. Current capacities of container instances can be queried
+	 * using grb::capacity. At any point in time, the actual number of nonzeroes
+	 * held within a container is given by grb::nnz and must be less than the
+	 * reported capacity.
+	 *
+	 * To remove all nonzeroes from a container, see grb::clear. The use of this
+	 * function does not affect a container's capacity.
+	 *
+	 * Capacities can be resized after a container has been instantiated by use of
+	 * grb::resize. Smaller capacities may or may not yield a reduction of memory
+	 * used -- this depends on the implementation, and specifically on the memory
+	 * usage semantics it defines.
+	 *
+	 * After instantiation, the size of a container cannot be modified. The size
+	 * is retrieved through grb::size for vectors, and through grb::nrows as well
+	 * as grb::ncols for matrices.
+	 *
+	 * In the above, implementation can also be freely substituted with backend,
+	 * in that a single implementation can provide multiple backends that define
+	 * different performance and memory semantics.
 	 *
 	 * @{
 	 */
+
+	/**
+	 * Request the size of a given vector.
+	 *
+	 * The dimension is set at construction of the given vector and cannot be
+	 * changed after instantiation.
+	 *
+	 * A call to this function shall always succeed.
+	 *
+	 * @tparam DataType The type of elements contained in the vector \a x.
+	 * @tparam backend  The backend of the vector \a x.
+	 *
+	 * \internal
+	 *    @tparam Coords How sparse coordinates are stored.
+	 * \endinternal
+	 *
+	 * @param[in] x The vector of which to retrieve the size.
+	 *
+	 * @returns The size of the vector \a x.
+	 *
+	 * This function shall not raise exceptions.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a x unchanged.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note This specification forces implementations and backends to cache the
+	 *       size of a vector so that it can be immediately returned. By RAII
+	 *       principles, given containers, on account of being instantiated and
+	 *       passed by reference, indeed must have a size that can be immediately
+	 *       returned.
+	 */
+	template<
+		typename DataType,
+		Backend backend, typename Coords
+	>
+	size_t size( const Vector< DataType, backend, Coords > &x ) noexcept {
+#ifndef NDEBUG
+		const bool may_not_call_base_size = false;
+#endif
+		(void) x;
+		assert( may_not_call_base_size );
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Requests the row size of a given matrix.
+	 *
+	 * The row size is set at construction of the given matrix and cannot be
+	 * changed after instantiation.
+	 *
+	 * A call to this function shall always succeed.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * @param[in] A The matrix of which to retrieve the row size.
+	 *
+	 * @returns The number of rows of \a A.
+	 *
+	 * This function shall not raise exceptions.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a A unchanged.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note This specification forces implementations and backends to cache the
+	 *       row size of a matrix so that it can be immediately returned. By RAII
+	 *       principles, given containers, on account of being instantiated and
+	 *       passed by reference, indeed must have a size that can be immediately
+	 *       returned.
+	 */
+	template< typename InputType, Backend backend >
+	size_t nrows( const Matrix< InputType, backend > &A ) noexcept {
+#ifndef NDEBUG
+		const bool may_not_call_base_nrows = false;
+#endif
+		(void) A;
+		assert( may_not_call_base_nrows );
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Requests the column size of a given matrix.
+	 *
+	 * The column size is set at construction of the given matrix and cannot be
+	 * changed after instantiation.
+	 *
+	 * A call to this function shall always succeed.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * @param[in] A The matrix of which to retrieve the column size.
+	 *
+	 * @returns The number of columns of \a A.
+	 *
+	 * This function shall not raise exceptions.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a A unchanged.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note This specification forces implementations and backends to cache the
+	 *       column size of a matrix so that it can be immediately returned. By
+	 *       RAII principles, given containers, on account of being instantiated
+	 *       and passed by reference, indeed must have a size that can be
+	 *       immediately returned.
+	 */
+	template< typename InputType, Backend backend >
+	size_t ncols( const Matrix< InputType, backend > &A ) noexcept {
+#ifndef NDEBUG
+		const bool may_not_call_base_ncols = false;
+#endif
+		(void) A;
+		assert( may_not_call_base_ncols );
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Queries the capacity of the given ALP/GraphBLAS container.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * \internal
+	 *    @tparam Coords How sparse coordinates are stored.
+	 * \endinternal
+	 *
+	 * @param[in] x The vector whose capacity is requested.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a x unchanged.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note Backends thus are forced to cache current cacacities and immediately
+	 *       return those. By RAII principles, given containers on account of
+	 *       being instantiated, must have a capacity that can be immediately
+	 *       returned.
+	 */
+	template< typename InputType, Backend backend, typename Coords >
+	size_t capacity( const Vector< InputType, backend, Coords > &x ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_capacity = false;
+#endif
+		assert( should_not_call_base_vector_capacity );
+		(void) x;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Queries the capacity of the given ALP/GraphBLAS container.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend   The backend of the matrix \a A.
+	 *
+	 * @param[in] A The matrix whose capacity is requested.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions.
+	 *
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a A untouched.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note Backends thus are forced to cache current cacacities and immediately
+	 *       return those. By RAII principles, given containers on account of
+	 *       being instantiated, must have a capacity that can be immediately
+	 *       returned.
+	 */
+	template< typename InputType, Backend backend >
+	size_t capacity( const Matrix< InputType, backend > &A ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_capacity = false;
+#endif
+		assert( should_not_call_base_matrix_capacity );
+		(void) A;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Request the number of nonzeroes in a given vector.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * \internal
+	 *    @tparam Coords How sparse coordinates are stored.
+	 * \endinternal
+	 *
+	 * @param[in] x The vector whose current number of nonzeroes is requested.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions.
+	 *
+	 * @returns The number of nonzeroes in \a x.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a A untouched.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note Backends thus are forced to cache the current number of nonzeroes and
+	 *       immediately return that cached value.
+	 */
+	template< typename DataType, Backend backend, typename Coords >
+	size_t nnz( const Vector< DataType, backend, Coords > &x ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_nnz = false;
+#endif
+		(void) x;
+		assert( should_not_call_base_vector_nnz );
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Retrieve the number of nonzeroes contained in this matrix.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * @param[in] A The matrix whose current number of nonzeroes is requested.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions.
+	 *
+	 * @returns The number of nonzeroes that \a A contains.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * A call to this function:
+	 *    -# completes in \f$ \Theta(1) \f$ work.
+	 *    -# moves \f$ \Theta(1) \f$ intra-process data.
+	 *    -# moves \f$ 0 \f$ inter-process data.
+	 *    -# does not require inter-process reduction.
+	 *    -# leaves memory requirements of \a A untouched.
+	 *    -# does not make system calls, and in particular shall not allocate or
+	 *       free any dynamic memory.
+	 * \endparblock
+	 *
+	 * \note This is a getter function which has strict performance semantics that
+	 *       are \em not backend-specific.
+	 *
+	 * \note Backends thus are forced to cache the current number of nonzeroes and
+	 *       immediately return that cached value.
+	 */
+	template< typename InputType, Backend backend >
+	size_t nnz( const Matrix< InputType, backend > &A ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_nnz = false;
+#endif
+		(void) A;
+		assert( should_not_call_base_matrix_nnz );
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Clears a given vector of all nonzeroes.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * \internal
+	 *    @tparam Coords How sparse coordinates are stored.
+	 * \endinternal
+	 *
+	 * @param[in,out] x The vector of which to remove all values.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions. That clearing a container should never fail is also an implied
+	 * requirement of the specification of #grb::resize.
+	 *
+	 * On function exit, this vector contains zero nonzeroes. The vector size
+	 * as well as its nonzero capacity remain unchanged.
+	 *
+	 * @return grb::SUCCESS This function cannot fail.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * The backend must:
+	 *    -# define cost in terms of work
+	 *    -# define intra-process data movement costs
+	 *    -# define inter-process data movement costs
+	 *    -# define inter-process synchronisation requirements
+	 *    -# define memory storage requirements and may define
+	 *       this in terms of \a new_nz.
+	 *    -# define whether system calls may be made and in particular whether
+	 *       dynamic memory management may occor.
+	 * \endparblock
+	 *
+	 * \warning Calling clear shall not clear any dynamically allocated
+	 *          memory associated with \a x.
+	 *
+	 * \note Even #grb::resize may or may not free dynamically allocated memory
+	 *       associated with \a x-- depending on the memory usage semantics defined
+	 *       on a per-backend basis, this is optional.
+	 *
+	 * \note Only the destruction of \a x would ensure all corresponding memory is
+	 *       freed, for all backends.
+	 */
+	template< typename DataType, Backend backend, typename Coords >
+	RC clear( Vector< DataType, backend, Coords > &x ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_clear = false;
+#endif
+		(void) x;
+		assert( should_not_call_base_vector_clear );
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Clears a given matrix of all nonzeroes.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * @param[in,out] A The matrix of which to remove all nonzero values.
+	 *
+	 * A call to this function shall always succeed and shall never throw
+	 * exceptions. That clearing a container should never fail is also an implied
+	 * requirement of the specification of #grb::resize.
+	 *
+	 * On function exit, this matrix contains zero nonzeroes. The matrix
+	 * dimensions (i.e., row and column sizes) as well as the nonzero capacity
+	 * remains unchanged.
+	 *
+	 * @return grb::SUCCESS This function cannot fail.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * The backend must:
+	 *    -# define cost in terms of work
+	 *    -# define intra-process data movement costs
+	 *    -# define inter-process data movement costs
+	 *    -# define inter-process synchronisation requirements
+	 *    -# define memory storage requirements and may define
+	 *       this in terms of \a new_nz.
+	 *    -# define whether system calls may be made and in particular whether
+	 *       dynamic memory management may occor.
+	 * \endparblock
+	 *
+	 * \warning Calling clear may not clear any dynamically allocated
+	 *          memory associated with \a A.
+	 *
+	 * \note Depending on the memory usage semantics defined on a per-backend
+	 *       basis, grb::resize may or may not free dynamically allocated memory
+	 *       associated with \a A.
+	 *
+	 * \note Only the destruction of \a A would ensure all corresponding memory is
+	 *       freed, for all backends.
+	 */
+	template< typename InputType, Backend backend >
+	RC clear( Matrix< InputType, backend > &A ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_clear = false;
+#endif
+		(void) A;
+		assert( should_not_call_base_matrix_clear );
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Resizes the nonzero capacity of this vector. Any current contents of the
+	 * vector are \em not retained.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * \internal
+	 *    @tparam Coords How sparse coordinates are stored.
+	 * \endinternal
+	 *
+	 * @param[out]   x   The vector whose capacity is to be resized.
+	 * @param[in] new_nz The number of nonzeroes this vector is to contain. After
+	 *                   a successful call, the container has, at minimum, space
+	 *                   for \a new_nz nonzeroes.
+	 *
+	 * The requested \a new_nz must be smaller than or equal to the size of \a x.
+	 *
+	 * Even for non-successful calls to this function, the vector after the call
+	 * shall not contain any nonzeroes; only if #grb::PANIC is returned shall the
+	 * resulting state of \a x be undefined.
+	 *
+	 * The size of this vector is fixed. By a call to this function, only the
+	 * maximum number of nonzeroes that the vector may contain can be adapted.
+	 *
+	 * If the vector has size zero, all calls to this function will be equivalent
+	 * to a call to grb::clear. In particular, any value for \a new_nz shall be
+	 * ignored, even ones that would normally be considered illegal (which would
+	 * be any nonzero value in the case of an empty container).
+	 *
+	 * A request for less capacity than currently already may be allocated, may
+	 * or may not be ignored. A backend
+	 *   1. must define memory usage semantics that may be proportional
+	 *      to the requested capacity, and therefore must free any memory that the
+	 *      user has deemed unnecessary. However, a backend
+	 *   2. could define memory usage semantics that are \em not proportional to
+	 *      the requested capacity, and in that case a performant implementation
+	 *      may choose not to free memory that the user has deemed unnecessary.
+	 *
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a x was
+	 *                   non-empty. The vector \a x is cleared, but its capacity
+	 *                   remains unchanged.
+	 * @returns OUTOFMEM When the required memory memory could not be allocated.
+	 *                   The vector \a x is cleared, but its capacity remains
+	 *                   unchanged.
+	 * @returns SUCCESS  If \a x is empty (i.e., has #grb::size zero).
+	 * @returns PANIC    When allocation fails for any other reason. The vector
+	 *                   \a x, as well as ALP/GraphBLAS, enters an undefined
+	 *                   state.
+	 * @returns SUCCESS  If \a x is non-empty and when sufficient capacity for
+	 *                   the resize operation was available. The vector \a x has
+	 *                   obtained a capacity of at least \a new_nz \em while all
+	 *                   nonzeroes it previously contained, if any, are cleared.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * The backend must:
+	 *    -# define cost in terms of work
+	 *    -# define intra-process data movement costs
+	 *    -# define inter-process data movement costs
+	 *    -# define inter-process synchronisation requirements
+	 *    -# define memory storage requirements and may define
+	 *       this in terms of \a new_nz.
+	 *    -# define whether system calls may be made and in particular whether
+	 *       dynamic memory management may occor.
+	 * \endparblock
+	 *
+	 * \warning For most implementations, this function will indeed imply system
+	 *          calls, as well as \f$ \Theta( \mathit{new\_nz} ) \f$ work and data
+	 *          movement costs. It is thus to be considered an expensive function,
+	 *          and should be used sparingly and only when absolutely necessary.
+	 */
+	template<
+		typename InputType,
+		Backend backend, typename Coords
+	>
+	RC resize( Vector< InputType, backend, Coords > &x, const size_t new_nz ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_resize = false;
+#endif
+		(void) x;
+		(void) new_nz;
+		assert( should_not_call_base_vector_resize );
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Resizes the nonzero capacity of this matrix. Any current contents of the
+	 * matrix are \em not retained.
+	 *
+	 * @tparam InputType The type of elements contained in the matrix \a A.
+	 * @tparam backend  The backend of the matrix \a A.
+	 *
+	 * @param[out]   A   The matrix whose capacity is to be resized.
+	 * @param[in] new_nz The number of nonzeroes this matrix is to contain. After
+	 *                   a successful call, the container will have space for <em>
+	 *                   at least</em> \a new_nz nonzeroes.
+	 *
+	 * The requested \a new_nz must be smaller or equal to product of the number
+	 * of rows and columns.
+	 *
+	 * After a call to this function, the matrix shall not contain any nonzeroes.
+	 * This is the case even after an unsuccessful call, with the exception for
+	 * cases where #grb::PANIC is returned-- see below.
+	 *
+	 * The size of this matrix is fixed. By a call to this function, only the
+	 * maximum number of nonzeroes that the matrix may contain can be adapted.
+	 *
+	 * If the matrix has size zero, meaning either zero rows or zero columns (or,
+	 * as the preceding implies, both), then all calls to this function will be
+	 * equivalent to a call to grb::clear. In particular, any value of \a new_nz
+	 * shall be ignored, even ones that would normally be considered illegal
+	 * (which would be any nonzero value in the case of an empty container).
+	 *
+	 * A request for less capacity than currently already may be allocated,
+	 * may or may not be ignored. A backend
+	 *   1. must define memory usage semantics that may be proportional to the
+	 *      requested capacity, and therefore must free any memory that the user
+	 *      has deemed unnecessary. However, a backend
+	 *   2. could define memory usage semantics that are \em not proportional to
+	 *      the requested capacity, and in that case a performant implementation
+	 *      may choose not to free memory that the user has deemed unnecessary.
+	 *
+	 * \note However, useful implementations will almost surely define storage
+	 *       costs that are proportional to \a new_nz, and in such cases resizing
+	 *       to smaller capacity must indeed free up unused memory.
+	 *
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a A was
+	 *                   non-empty. The capacity of \a A remains unchanged while
+	 *                   its contents have been cleared.
+	 * @returns OUTOFMEM When the required memory memory could not be allocated.
+	 *                   The capacity of \a A remains unchanged while its contents
+	 *                   have been cleared.
+	 * @returns PANIC    When allocation fails for any other reason. The matrix
+	 *                   \a A as well as ALP/GraphBLAS, enters an undefined state.
+	 * @returns SUCCESS  If \a A is non-empty and when sufficient capacity for
+	 *                   resizing was available. The matrix \a A has obtained the
+	 *                   requested (or a larger) capacity. Its previous contents,
+	 *                   if any, have been cleared.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *    -# the backend must define cost in terms of work
+	 *    -# the backend must define intra-process data movement costs
+	 *    -# the backend must define inter-process data movement costs
+	 *    -# the backend must define memory storage requirements and may define
+	 *       this in terms of \a new_nz.
+	 *    -# the backend must define whether system calls may be made.
+	 * \endparblock
+	 *
+	 * \warning For useful backends, this function will indeed imply system calls
+	 *          and incur \f$ \Theta( \mathit{new\_nz} ) \f$ work and data movement
+	 *          costs. It is thus to be considered an expensive function, and
+	 *          should be used sparingly and only when absolutely necessary.
+	 */
+	template<
+		typename InputType,
+		Backend backend
+	>
+	RC resize( Matrix< InputType, backend > &A, const size_t new_nz ) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_resize = false;
+#endif
+		(void) A;
+		(void) new_nz;
+		assert( should_not_call_base_matrix_resize );
+		return UNSUPPORTED;
+	}
 
 	/**
 	 * Constructs a dense vector from a container of exactly grb::size(x)
@@ -87,7 +713,7 @@ namespace grb {
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVector( Vector< InputType, backend, Coords > & x,
+	RC buildVector( Vector< InputType, backend, Coords > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode, const Merger & merger = Merger()
@@ -157,7 +783,7 @@ namespace grb {
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVectorUnique( Vector< InputType, backend, Coords > & x,
+	RC buildVectorUnique( Vector< InputType, backend, Coords > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode
@@ -257,7 +883,7 @@ namespace grb {
 		typename length_type = size_t,
 		Backend implementation = config::default_backend >
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > & A,
+		Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator1 I_end,
 		fwd_iterator2 J, fwd_iterator2 J_end,
 		fwd_iterator3 V, fwd_iterator3 V_end,
@@ -426,7 +1052,9 @@ namespace grb {
 		Backend implementation = config::default_backend
 	>
 	uintptr_t getID( const Vector< ElementType, implementation, Coords > &x ) {
+#ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
+#endif
 		assert( this_is_an_invalid_default_implementation );
 		return static_cast< uintptr_t >(-1);
 	}
@@ -442,7 +1070,9 @@ namespace grb {
 		Backend implementation = config::default_backend
 	>
 	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+#ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
+#endif
 		assert( this_is_an_invalid_default_implementation );
 		return static_cast< uintptr_t >(-1);
 	}

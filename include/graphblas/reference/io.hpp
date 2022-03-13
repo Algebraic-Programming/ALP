@@ -26,8 +26,8 @@
 #include <graphblas/base/io.hpp>
 #include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
-#include "coordinates.hpp"
-#include "vector.hpp"
+#include "graphblas/base/vector.hpp"
+#include "graphblas/base/matrix.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -49,12 +49,226 @@
 		"********************************************************************" \
 		"******************************\n" );
 
+
 namespace grb {
 
 	/**
-	 * \defgroup IO Data Ingestion
+	 * \defgroup IO Data Ingestion -- reference backend
 	 * @{
 	 */
+
+	/** \internal No implementation notes. */
+	template< typename DataType, typename Coords >
+	size_t size( const Vector< DataType, reference, Coords > &x ) noexcept {
+		return internal::getCoordinates( x ).size();
+	}
+
+	/** \internal No implementation notes. */
+	template< typename InputType >
+	size_t nrows( const Matrix< InputType, reference > & A ) noexcept {
+		return A.m;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename InputType >
+	size_t ncols( const Matrix< InputType, reference > & A ) noexcept {
+		return A.n;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType, typename Coords >
+	size_t nnz( const Vector< DataType, reference, Coords > &x ) noexcept {
+		return internal::getCoordinates( x ).nonzeroes();
+	}
+
+	/** \internal No implementation notes. */
+	template< typename InputType >
+	size_t nnz( const Matrix< InputType, reference > &A ) noexcept {
+		return A.nz;
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType, typename Coords >
+	size_t capacity( const Vector< DataType, reference, Coords > &x ) noexcept {
+		return internal::getCoordinates( x ).size();
+	}
+
+	/** \internal No implementation notes. */
+	template< typename DataType >
+	size_t capacity( const Matrix< DataType, reference > &A ) noexcept {
+		return internal::getNonzeroCapacity( A );
+	}
+
+	/**
+	 * Clears the vector of all nonzeroes.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 *  This primitive
+	 *    -# contains \f$ \Theta( k ) \f$ work,
+	 *    -# moves \f$ \Theta( k ) \f$ data within this user process,
+	 *    -# leaves memory usage related to \a x untouched,
+	 *    -# will not allocate nor free dynamic memory, nor will make any
+	 *       other system calls.
+	 * Here, \f$ k \f$ is equal to #grb::nnz( x ).
+	 *
+	 * Note that this is a single user process backend, and hence trivially no
+	 * inter-process costs will occur.
+	 *
+	 * In the case of the #grb::reference_omp backend, the critical path length
+	 * is \f$ \mathcal{O}( k / T + T ) \f$, where \f$ T \f$ is the number of OpenMP
+	 * threads.
+	 * \endparblock
+	 */
+	template< typename DataType, typename Coords >
+	RC clear( Vector< DataType, reference, Coords > &x ) noexcept {
+		internal::getCoordinates( x ).clear();
+		return SUCCESS;
+	}
+
+	/**
+	 * Clears the matrix of all nonzeroes.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * This function
+	 *   -# consitutes \f$ \Theta(m+n) \f$ work,
+	 *   -# moves up to \f$ \Theta(m+n) \f$ bytes of memory within this user
+	 *      process,
+	 *   -# leaves memory usage related to \a A untouched,
+	 *   -# will not allocate nor free dynamic memory, nor will make any
+	 *       other system calls.
+	 * Here, \f$ m \f$ and \f$ n \f$ are equal to #grb::nrows( A ) and
+	 * #grb::ncols( A ), respectively.
+	 *
+	 * Note that this is a single user process backend, and hence trivially no
+	 * inter-process costs will occur.
+	 *
+	 * In the case of the #grb::reference_omp backend, the critical path length
+	 * is \f$ \mathcal{O}( (m+n) / T + T ) \f$, where \f$ T \f$ is the number of
+	 * OpenMP threads.
+	 * \endparblock
+	 */
+	template< typename InputType >
+	RC clear( Matrix< InputType, reference > &A ) noexcept {
+		// delegate
+		return A.clear();
+	}
+
+	/**
+	 * Resizes the capacity of a given vector. Any current elements in the vector
+	 * are \em not retained.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 *  This primitive
+	 *    -# contains \f$ \mathcal{O}(n) \f$ work,
+	 *    -# moves \f$ \mathcal{O}(n) \f$ data within this user process,
+	 *    -# leaves memory usage related to \a x untouched,
+	 *    -# will not allocate nor free dynamic memory, nor will make any
+	 *       other system calls.
+	 * Here, \f$ n \f$ is equal to #grb::size( x ).
+	 *
+	 * Note that this is a single user process backend, and hence trivially no
+	 * inter-process costs will occur.
+	 *
+	 * In the case of the #grb::reference_omp backend, the critical path length
+	 * is \f$ \mathcal{O}( n / T + T ) \f$, where \f$ T \f$ is the number of
+	 * OpenMP threads.
+	 * \endparblock
+	 *
+	 * \internal No implementation notes.
+	 */
+	template< typename InputType, typename Coords >
+	RC resize( Vector< InputType, reference, Coords > &x, const size_t new_nz ) noexcept {
+#ifdef _DEBUG
+		std::cerr << "In grb::resize (vector, reference)\n";
+#endif
+		// this cannot wait until after the below check, as the spec defines that
+		// anything is OK for an empty vector
+		if( new_nz == 0 ) { return grb::clear( x ); }
+
+		// check if we have a mismatch
+		if( new_nz > grb::size( x ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requested capacity of " << new_nz << ", "
+				<< "expected a value smaller than or equal to "
+				<< size( x ) << "\n";
+#endif
+			return ILLEGAL;
+		}
+
+		// in the reference implementation, vectors are of static size
+		// so this function immediately succeeds. However, all existing contents
+		// must be removed
+		return grb::clear( x );
+	}
+
+	/**
+	 * Resizes the nonzero capacity of this matrix. Any current contents of the
+	 * matrix are \em not retained.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * This function
+	 *   -# consitutes \f$ \mathcal{O}( \mathit{nz} ) \f$ work,
+	 *   -# moves \f$ \mathcal{O}( \mathit{nz} ) \f$ of data within the current
+	 *      user process,
+	 *   -# the memory storage requirements, if \a new_nz is higher than
+	 *      #grb::capacity( A ) and the call to this function is successful, will
+	 *      be increased to \f$ \Theta( \mathit{nz} + m + n + 2 ) \f$.
+	 *   -# allocates \f$ \mathcal{O}( \mathit{nz} ) \f$ bytes of dynamic
+	 *      memory, and in so doing, may make system calls.
+	 * Here, \f$ \mathit{nz} \f$ is \a new_nz, \f$ m \f$ equals #grb::nrows( A ),
+	 * and \f$ n \f$ equals #grb::ncols( A ). This costing also assumes allocation
+	 * proceeds in \f$ \mathcal{O}( \mathit{nz} ) \f$ time, although in reality
+	 * it is likely non-deterministic.
+	 *
+	 * Note that this is a single user process backend, and hence trivially no
+	 * inter-process costs will occur.
+	 *
+	 * In the case of the #grb::reference_omp backend, the critical path length
+	 * is \f$ \mathcal{O}( \mathit{nz} / T + T ) \f$, where \f$ T \f$ is the
+	 * number of OpenMP threads.
+	 * \endparblock
+	 *
+	 * \internal No implementation notes.
+	 */
+	template< typename InputType >
+	RC resize( Matrix< InputType, reference > &A, const size_t new_nz ) noexcept {
+#ifdef _DEBUG
+		std::cerr << "In grb::resize (matrix, reference)\n"
+			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
+			<< "\t requested capacity is " << new_nz << "\n";
+#endif
+		RC ret = clear( A );
+		if( ret != SUCCESS ) { return ret; }
+
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		// catch trivial case
+		if( m == 0 || n == 0 ) {
+			return SUCCESS;
+		}
+		// catch illegal input
+		if( new_nz / m > n ||
+			new_nz / n > m ||
+			(new_nz / m == n && (new_nz % m > 0)) ||
+			(new_nz / n == m && (new_nz % n > 0))
+		) {
+#ifdef _DEBUG
+			std::cerr << "\t requesting higher capacity than could be stored in a "
+				<< "matrix of the current size\n";
+#endif
+			return ILLEGAL;
+		}
+
+		// delegate
+		ret = A.resize( new_nz );
+
+		// done
+		return ret;
+	}
 
 	/**
 	 * Ingests raw data into a GraphBLAS vector.
@@ -171,7 +385,7 @@ namespace grb {
 		typename InputType, typename fwd_iterator, typename Coords,
 		class Dup = operators::right_assign< InputType >
 	>
-	RC buildVector( Vector< InputType, reference, Coords > & x,
+	RC buildVector( Vector< InputType, reference, Coords > &x,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode, const Dup & dup = Dup()
 	) {
