@@ -83,7 +83,7 @@ namespace grb {
 
 			Vector() : Vector( 0 ) {}
 
-			Vector( const MyVectorType &x ) : vector( x.vector ) {}
+			Vector( const MyVectorType &x ) : vector( x ) {}
 
 			Vector( MyVectorType &&x ) noexcept {
 				x = std::move( x.other );
