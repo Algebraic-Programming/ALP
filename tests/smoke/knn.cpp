@@ -75,7 +75,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// create buffers
 	Vector< bool > buf1( n );
-	Vector< bool > buf2( n );
 
 	out.times.preamble = timer.time();
 	timer.reset();
@@ -122,7 +121,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 	rc = knn< descriptors::no_operation >(
 		neighbourhood, A, source, data_in.k,
-		buf1, buf2
+		buf1
 	);
 	time_taken = timer.time();
 	out.times.useful = time_taken;

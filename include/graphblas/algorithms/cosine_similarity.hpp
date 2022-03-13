@@ -47,13 +47,13 @@ namespace grb {
 		 * Computes the cosine similarity.
 		 *
 		 * Given two vectors \f$ x, y \f$ of equal size \f$ n \f$, this function
-		 * computes \f$ \alpha = \frac{ (x,y) }{ ||x||_2\cdot||y||_2 } \f$ and then
-		 * executes grb::foldl with left-hand side the user supplied \a similarity,
-		 * the right-hand size the thus computed \f$ \alpha \f$, and as operator the
-		 * given accumulator.
+		 * computes \f$ \alpha = \frac{ (x,y) }{ ||x||_2\cdot||y||_2 } \f$.
 		 *
 		 * The 2-norms and inner products are computed according to the given semi-
-		 * ring.
+		 * ring. However, the norms make use of the standard <tt>sqrt</tt> and so the
+		 * algorithm assumes a regular field is used. Effectively, hence, the semiring
+		 * controls the precision / data types under which the computation is
+		 * performed.
 		 *
 		 * @tparam descr      The descriptor under which to perform the computation.
 		 * @tparam OutputType The type of the output element (scalar).
@@ -64,8 +64,8 @@ namespace grb {
 		 *                    corresponding to the given \a Ring.
 		 *
 		 * @param[out] similarity Where to fold the result into.
-		 * @param[in]  x          The left-hand input vector.
-		 * @param[in]  y          The right-hand input vector.
+		 * @param[in]  x          The non-zero left-hand input vector.
+		 * @param[in]  y          The non-zero right-hand input vector.
 		 * @param[in]  ring       The semiring to compute over.
 		 * @param[in]  div        The division operator corresponding to \a ring.
 		 *
@@ -74,63 +74,96 @@ namespace grb {
 		 * The argument \a div is optional. It will map to grb::operators::divide by
 		 * default.
 		 *
-		 * \warning If one of the two vectors is zero, the 2-norm of the other vector
-		 *          will be returned. If both vectors are zero, zero will be returned.
-		 *
-		 * \note This is a warning since you might expect -1 to be returned in the
-		 *       latter case, while in the former case it could be argued everything
-		 *       is equally similar to nothing, making the retun value completely
-		 *       arbitrary in nature.
-		 *
 		 * @returns SUCCESS  If the computation was successful.
-		 * @returns MISMATCH If the vector sizes do not match.
-		 * @returns PANIC    If the underlying GraphBLAS implementation has failed.
+		 * @returns MISMATCH If the vector sizes do not match. The output
+		 *                   \a similarity is undefined.
 		 * @returns ILLEGAL  In case \a x is all zero, and/or when \a y is all zero.
+		 *                   The output \a similarity is undefined.
+		 * @returns PANIC    If an unrecoverable error has been encountered. The
+		 *                   output as well as the state of ALP/GraphBLAS is
+		 *                   undefined.
+		 *
+		 * \par Performance semantics
+		 *
+		 *   -# This function does not allocate nor free dynamic memory, nor shall it
+		 *      make any system calls.
+		 *
+		 * For performance semantics regarding work, inter-process data movement,
+		 * intra-process data movement, synchronisations, and memory use, please see
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
 		 */
 		template< Descriptor descr = descriptors::no_operation,
 			typename OutputType,
 			typename InputType1,
 			typename InputType2,
 			class Ring,
-			class Division = grb::operators::divide< typename Ring::D3, typename Ring::D3, typename Ring::D4 > >
-		RC cosine_similarity( OutputType & similarity, const Vector< InputType1 > & x, const Vector< InputType2 > & y, const Ring & ring = Ring(), const Division & div = Division() ) {
-			static_assert( std::is_floating_point< OutputType >::value, "Cosine similarity requires a floating-point output type." );
+			class Division = grb::operators::divide<
+				typename Ring::D3, typename Ring::D3, typename Ring::D4
+			>
+		>
+		RC cosine_similarity(
+			OutputType &similarity,
+			const Vector< InputType1 > &x, const Vector< InputType2 > &y,
+			const Ring &ring = Ring(), const Division &div = Division()
+		) {
+			static_assert( std::is_floating_point< OutputType >::value,
+				"Cosine similarity requires a floating-point output type." );
 
 			// static sanity checks
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType1, typename Ring::D1 >::value ), "grb::algorithms::cosine_similarity",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType1, typename Ring::D1 >::value
+				), "grb::algorithms::cosine_similarity",
 				"called with a left-hand vector value type that does not match the "
 				"first domain of the given semiring" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType2, typename Ring::D2 >::value ), "grb::algorithms::cosine_similarity",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType2, typename Ring::D2 >::value
+				), "grb::algorithms::cosine_similarity",
 				"called with a right-hand vector value type that does not match "
 				"the second domain of the given semiring" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, typename Ring::D4 >::value ), "grb::algorithms::cosine_similarity",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< OutputType, typename Ring::D4 >::value
+				), "grb::algorithms::cosine_similarity",
 				"called with an output vector value type that does not match the "
 				"fourth domain of the given semiring" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, typename Ring::D4 >::value ), "grb::algorithms::cosine_similarity",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Ring::D3, typename Ring::D4 >::value
+				), "grb::algorithms::cosine_similarity",
 				"called with a semiring that has unequal additive input domains" );
 
+			const size_t n = size( x );
+
 			// run-time sanity checks
-			if( size( x ) != size( y ) ) {
+			if( n != size( y ) ) {
 				return MISMATCH;
 			}
+
+			// check whether inputs are dense
+			const bool dense = nnz( x ) == n && nnz( y ) == n;
 
 			// set return code
 			RC rc = SUCCESS;
 
-			// compute-- choose method depending on we can stream once or need to stream multiple times
-			OutputType nominator = 0, denominator = 0;
-			if( grb::Properties<>::writableCaptured ) {
+			// compute-- choose method depending on we can stream once or need to stream
+			// multiple times
+			OutputType nominator, denominator;
+			nominator = denominator = ring.template getZero< OutputType >();
+			if( dense && grb::Properties<>::writableCaptured ) {
 				// lambda works, so we can stream each vector precisely once:
-				OutputType norm1 = 0, norm2 = 0;
+				OutputType norm1, norm2;
+				norm1 = norm2 = ring.template getZero< OutputType >();
 				rc = grb::eWiseLambda(
 					[ &x, &y, &nominator, &norm1, &norm2, &ring ]( const size_t i ) {
+						const auto &mul = ring.getMultiplicativeOperator();
+						const auto &add = ring.getAdditiveOperator();
 						OutputType temp;
-						(void)grb::apply( temp, x[ i ], y[ i ], ring.getMultiplicativeOperator() );
-						(void)grb::foldl( nominator, temp, ring.getAdditiveOperator() );
-						(void)grb::apply( temp, x[ i ], x[ i ], ring.getMultiplicativeOperator() );
-						(void)grb::foldl( norm1, temp, ring.getAdditiveOperator() );
-						(void)grb::apply( temp, y[ i ], y[ i ], ring.getMultiplicativeOperator() );
-						(void)grb::foldl( norm2, temp, ring.getAdditiveOperator() );
+						(void)grb::apply( temp, x[ i ], y[ i ], mul );
+						(void)grb::foldl( nominator, temp, add );
+						(void)grb::apply( temp, x[ i ], x[ i ], mul );
+						(void)grb::foldl( norm1, temp, add );
+						(void)grb::apply( temp, y[ i ], y[ i ], mul );
+						(void)grb::foldl( norm2, temp, add );
 					},
 					x, y );
 				denominator = sqrt( norm1 ) * sqrt( norm2 );
@@ -165,8 +198,10 @@ namespace grb {
 		}
 
 	} // end namespace algorithms
+
 } // end namespace grb
 
 #undef NO_CAST_ASSERT
 
 #endif // end _H_GRB_COSSIM
+

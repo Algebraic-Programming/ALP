@@ -65,6 +65,7 @@ namespace grb {
 
 
 		public:
+
 			/** The value array. */
 			D * __restrict__ values;
 
@@ -125,15 +126,23 @@ namespace grb {
 
 
 			public:
+
 				/** Base constructor. */
-				ConstIterator() noexcept : values( NULL ), row_index( NULL ), col_start( NULL ), k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 ) {
+				ConstIterator() noexcept : values( nullptr ),
+					row_index( nullptr ), col_start( nullptr ),
+					k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 )
+				{
 					nonzero.first.first = 1;
 					nonzero.first.second = 1;
 				}
 
 				/** Copy constructor. */
 				ConstIterator( const ConstIterator & other ) noexcept :
-					values( other.values ), row_index( other.row_index ), col_start( other.col_start ), k( other.k ), m( other.m ), n( other.n ), row( other.row ), s( other.s ), P( other.P ) {}
+					values( other.values ),
+					row_index( other.row_index ), col_start( other.col_start ),
+					k( other.k ), m( other.m ), n( other.n ),
+					row( other.row ), s( other.s ), P( other.P )
+				{}
 
 				/** Move constructor. */
 				ConstIterator( ConstIterator && other ) {
@@ -149,12 +158,20 @@ namespace grb {
 				}
 
 				/** Non-trivial constructor. */
-				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const size_t _nz, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
-					values( _storage.values ), row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ), m( _m ), n( _n ), s( _s ), P( _P ) {
+				ConstIterator(
+					const Compressed_Storage &_storage,
+					const size_t _m, const size_t _n, const size_t _nz,
+					const bool end, const size_t _s = 0, const size_t _P = 1
+				) noexcept :
+					values( _storage.values ),
+					row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ),
+					m( _m ), n( _n ),
+					s( _s ), P( _P )
+				{
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "constructor called, with storage "
-							  << ( &_storage ) << ", m " << _m << ", n " << _n << ", and end " << end << ".\n";
+					std::cout << "Compressed_Storage::Const_Iterator constructor called, "
+						<< "with storage " << ( &_storage ) << ", "
+						<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
 #endif
 					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 						row = m;
@@ -170,7 +187,9 @@ namespace grb {
 
 					if( row < m ) {
 #ifdef _DEBUG
-						std::cout << "\tInitial pair, pre-translated at " << row << ", " << row_index[ k ] << " with value " << values[ k ] << ". P = " << P << ", row = " << row << ".\n";
+						std::cout << "\tInitial pair, pre-translated at " << row << ", "
+							<< row_index[ k ] << " with value " << values[ k ] << ". "
+							<< "P = " << P << ", row = " << row << ".\n";
 #endif
 						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
@@ -178,13 +197,15 @@ namespace grb {
 						nonzero.first.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
 						nonzero.second = values[ k ];
 #ifdef _DEBUG
-						std::cout << "\tInitial pair at " << nonzero.first.first << ", " << nonzero.first.second << " with value " << nonzero.second << ". P = " << P << ", row = " << row << ".\n";
+						std::cout << "\tInitial pair at " << nonzero.first.first << ", "
+							<< nonzero.first.second << " with value " << nonzero.second << ". "
+							<< "P = " << P << ", row = " << row << ".\n";
 #endif
 					}
 				}
 
 				/** Copy assignment. */
-				ConstIterator & operator=( const ConstIterator & other ) noexcept {
+				ConstIterator & operator=( const ConstIterator &other ) noexcept {
 					values = other.values;
 					row_index = other.row_index;
 					col_start = other.col_start;
@@ -197,7 +218,7 @@ namespace grb {
 				}
 
 				/** Move assignment. */
-				ConstIterator & operator=( ConstIterator && other ) {
+				ConstIterator & operator=( ConstIterator &&other ) {
 					values = std::move( other.values );
 					row_index = std::move( other.row_index );
 					col_start = std::move( other.col_start );
@@ -210,11 +231,11 @@ namespace grb {
 				}
 
 				/** Whether two iterators compare equal. */
-				bool operator==( const ConstIterator & other ) const noexcept {
+				bool operator==( const ConstIterator &other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "operator== called with k ( "
-							  << k << ", " << other.k << " ), m ( " << m << ", " << other.m << " )\n";
+					std::cout << "Compressed_Storage::Const_Iterator operator== called "
+						<< "with k ( " << k << ", " << other.k << " ), "
+						<< " m ( " << m << ", " << other.m << " )\n";
 #endif
 					assert( values == other.values );
 					assert( row_index == other.row_index );
@@ -238,9 +259,10 @@ namespace grb {
 				/** Whether two iterators do not compare equal. */
 				bool operator!=( const ConstIterator & other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "operator!= called with k ( "
-							  << k << ", " << other.k << " ), row ( " << row << ", " << other.row << " ), m ( " << m << ", " << other.m << " )\n";
+					std::cout << "Compressed_Storage::Const_Iterator operator!= called "
+						<< "with k ( " << k << ", " << other.k << " ), "
+						<< "row ( " << row << ", " << other.row << " ), "
+						<< "m ( " << m << ", " << other.m << " )\n";
 #endif
 					assert( values == other.values );
 					assert( row_index == other.row_index );
@@ -275,29 +297,39 @@ namespace grb {
 					}
 					if( row < m ) {
 #ifdef _DEBUG
-						std::cout << "\tupdated triple, pre-translated at ( " << row << ", " << row_index[ k ] << " ): " << values[ k ] << "\n";
+						std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
+							<< row_index[ k ] << " ): " << values[ k ] << "\n";
 #endif
-						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
+						const size_t col_pid = ActiveDistribution::offset_to_pid(
+							row_index[ k ], n, P
+						);
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
 						assert( col_off <= row_index[ k ] );
-						nonzero.first.first = ActiveDistribution::local_index_to_global( row, m, s, P );
-						nonzero.first.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
+						nonzero.first.first = ActiveDistribution::local_index_to_global(
+							row, m, s, P
+						);
+						nonzero.first.second = ActiveDistribution::local_index_to_global(
+							row_index[ k ] - col_off, n, col_pid, P
+						);
 						nonzero.second = values[ k ];
 #ifdef _DEBUG
-						std::cout << "\tupdated triple at ( " << nonzero.first.first << ", " << nonzero.first.second << " ): " << nonzero.second << "\n";
+						std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
+							<< nonzero.first.second << " ): " << nonzero.second << "\n";
 #endif
 					}
 					return *this;
 				}
 
 				/** Return a const-reference to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > & operator*() const noexcept {
+				const std::pair< std::pair< size_t, size_t >, D > &
+				operator*() const noexcept {
 					assert( row < m );
 					return nonzero;
 				}
 
 				/** Return a pointer to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > * operator->() const noexcept {
+				const std::pair< std::pair< size_t, size_t >, D > *
+				operator->() const noexcept {
 					assert( row < m );
 					return &nonzero;
 				}

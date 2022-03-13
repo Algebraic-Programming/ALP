@@ -36,7 +36,6 @@
 
 #include <graphblas/init.hpp>
 #include <graphblas/backends.hpp>
-#include <graphblas/base/io.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/base/pinnedvector.hpp>
 #include <graphblas/base/vector.hpp>
@@ -252,20 +251,38 @@ namespace grb {
 		 *                       conditions.
 		 * @throws Runtime error When the POSIX call to get an aligned memory area
 		 *                       fails for any other reason.
+		 *
+		 * \internal Single-process backends in thhis implementation must use the same
+		 *           signature for intialisation. This class must friend the vector
+		 *           constructors of distributed-memory backends so that they may
+		 *           manually initialise process-local vectors.
 		 */
 		void initialize(
 			const uintptr_t * const id_in,
 			D * const raw_in,
 			void * const assigned_in, bool assigned_initialized,
 			void * const buffer_in,
-			const size_t cap_in
+			const size_t cap_in,
+			const size_t nz
 		) {
 #ifdef _DEBUG
-			std::cout << "in Vector< reference >::initialize( "
+			std::cerr << "In Vector< reference >::initialize( "
 				<< id_in << ", "
-				<< raw_in << ", "
-				<< assigned_in << ", " << assigned_initialized << ", ... )\n";
+				<< static_cast< void* >(raw_in) << ", "
+				<< assigned_in << ", "
+				<< assigned_initialized << ", "
+				<< buffer_in << ", "
+				<< cap_in << " )" << std::endl;
 #endif
+
+			// check arguments
+			if( nz > cap_in ) {
+#ifdef _DEBUG
+				std::cerr << "\t requested initial capacity is too large\n";
+#endif
+				throw std::runtime_error( toString( ILLEGAL ) );
+			}
+
 			// set defaults
 			if( id_in == nullptr ) {
 				_id = std::numeric_limits< uintptr_t >::max();
@@ -324,6 +341,7 @@ namespace grb {
 			}
 
 			// assign _id
+			assert( assigned != nullptr );
 			if( id_in == nullptr ) {
 				_id = internal::reference_mapper.insert(
 					reinterpret_cast< uintptr_t >( assigned )
@@ -658,15 +676,48 @@ namespace grb {
 		typedef ConstIterator< reference > const_iterator;
 
 		/**
+		 * A reference vector constructor.
+		 *
+		 * May throw exceptions.
+		 *
+		 * \parblock
+		 * \par Performance semantics
+		 * This constructor:
+		 *   -# contains \f$ \Theta( n ) \f$ work,
+		 *   -# moves \f$ \Theta( n ) \f$ data intra-process,
+		 *   -# requires \f$ \Theta( n ) \f$ storage, and
+		 *   -# will result in system calls, in particular the allocation of memory
+		 *      areas of \f$ \Theta( n ) \f$.
+		 * Here, \f$ n \f$ refers to the argument \a n. There are no costs incurred
+		 * that are proportional to \a nz.
+		 *
+		 * In the case of the #grb::reference_omp backend, the critical work path
+		 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of OpenMP
+		 * threads that are active. This assumes that memory allocation is a scalable
+		 * operation (while in reality the complexity of allocation is, of course,
+		 * undefined).
+		 * \endparblock
+		 */
+		Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference >::Vector( size_t, size_t ) constructor\n";
+#endif
+			initialize( nullptr, nullptr, nullptr, false, nullptr, n, nz );
+		}
+
+		/**
+		 * Creates a reference vector with default capacity.
+		 *
 		 * This constructor may throw exceptions.
 		 *
-		 * @see Vector for the user-level specfication.
+		 * See the documentation for the constructor with given capacities for the
+		 * performance specification of this constructor. The default capacity
+		 * inferred by this constructor is \a n, as required by the specification.
 		 */
-		Vector( const size_t n ) : _raw( nullptr ) {
+		Vector( const size_t n ): Vector( n, n ) {
 #ifdef _DEBUG
-			std::cout << "In Vector< reference >::Vector( size_t ) constructor\n";
+			std::cerr << "In Vector< reference >::Vector( size_t ) constructor\n";
 #endif
-			initialize( nullptr, nullptr, nullptr, false, nullptr, n );
 		}
 
 		/**
@@ -687,7 +738,10 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In Vector< reference > copy-constructor\n";
 #endif
-			initialize( nullptr, nullptr, nullptr, false, nullptr, size( x ) );
+			initialize(
+				nullptr, nullptr, nullptr, false, nullptr,
+				size( x ), capacity( x )
+			);
 			if( size( x ) > 0 ) {
 #ifdef _DEBUG
 				std::cerr << "\t non-empty source vector; "
@@ -754,7 +808,7 @@ namespace grb {
 		 */
 		~Vector() {
 #ifdef _DEBUG
-			std::cout << "In ~Vector (reference) of container ID " << _id << "\n";
+			std::cout << "In ~Vector (reference) of container ID " << _id << std::endl;
 #endif
 			// all frees will be handled by
 			// _raw_deleter,

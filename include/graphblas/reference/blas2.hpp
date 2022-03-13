@@ -1192,102 +1192,6 @@ namespace grb {
 		}
 	} // namespace internal
 
-	/**
-	 * Retrieve the row dimension size of this matrix.
-	 *
-	 * @returns The number of rows the current matrix contains.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates no additional dynamic memory.
-	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
-	 *           beyond that which was already used at function entry.
-	 *        -# This function will move
-	 *             \f$ \mathit{sizeof}( size\_t ) \f$
-	 *           bytes of memory.
-	 * \endparblock
-	 */
-	template< typename InputType >
-	size_t nrows( const Matrix< InputType, reference > & A ) noexcept {
-		return A.m;
-	}
-
-	/**
-	 * Retrieve the column dimension size of this matrix.
-	 *
-	 * @returns The number of columns the current matrix contains.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates no additional dynamic memory.
-	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
-	 *           beyond that which was already used at function entry.
-	 *        -# This function will move
-	 *             \f$ \mathit{sizeof}( size\_t ) \f$
-	 *           bytes of memory.
-	 * \endparblock
-	 */
-	template< typename InputType >
-	size_t ncols( const Matrix< InputType, reference > & A ) noexcept {
-		return A.n;
-	}
-
-	/**
-	 * Retrieve the number of nonzeroes contained in this matrix.
-	 *
-	 * @returns The number of nonzeroes the current matrix contains.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates no additional dynamic memory.
-	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
-	 *           beyond that which was already used at function entry.
-	 *        -# This function will move
-	 *             \f$ \mathit{sizeof}( size\_t ) \f$
-	 *           bytes of memory.
-	 * \endparblock
-	 */
-	template< typename InputType >
-	size_t nnz( const Matrix< InputType, reference > & A ) noexcept {
-		return A.nz;
-	}
-
-	/**
-	 * Resizes the nonzero capacity of this matrix. Any current contents of the
-	 * matrix are \em not retained.
-	 *
-	 * The dimension of this matrix is fixed. Only the number of nonzeroes that
-	 * may be stored can change. If the matrix has row or column dimension size
-	 * zero, all calls to this function are ignored. A request for less capacity
-	 * than currently already may be allocated, may be ignored by the
-	 * implementation.
-	 *
-	 * @param[in] nonzeroes The number of nonzeroes this matrix is to contain.
-	 *
-	 * @return OUTOFMEM When no memory could be allocated to store this matrix.
-	 * @return PANIC    When allocation fails for any other reason.
-	 * @return SUCCESS  When a valid GraphBLAS matrix has been constructed.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \mathcal{O}(\mathit{nz} \f$ work.
-	 *        -# This function allocates \f$ \mathcal{O}(\mathit{nz}+m+n+1) \f$
-	 *           bytes of dynamic memory.
-	 *        -# This function will likely make system calls.
-	 * \endparblock
-	 *
-	 * \warning This is an expensive function. Use sparingly and only when
-	 *          absolutely necessary
-	 */
-	template< typename InputType >
-	RC resize( Matrix< InputType, reference > & A, const size_t new_nz ) noexcept {
-		// delegate
-		return A.resize( new_nz );
-	}
-
 	/** \internal Delegates to fully masked variant */
 	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
 	RC vxm( Vector< IOType, reference, Coords > & u,
@@ -2244,11 +2148,22 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, reference > & A, const Vector< DataType2, reference, Coords > x, Args... args ) {
+	template<
+		typename Func,
+		typename DataType1, typename DataType2,
+		typename Coords, typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, reference > &A,
+		const Vector< DataType2, reference, Coords > &x,
+		Args... args
+	) {
 		// do size checking
-		if( ! ( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
-			std::cerr << "Mismatching dimensions: given vector of size " << size( x ) << " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
+		if( !( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
+			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
+				<< " has nothing to do with either matrix dimension (" << nrows( A )
+				<< " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
 		}
 		// no need for synchronisation, everything is local in reference implementation
@@ -2261,15 +2176,16 @@ namespace grb {
 
 // parse this unit again for OpenMP support
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_BLAS2
-#define _H_GRB_REFERENCE_OMP_BLAS2
-#define reference reference_omp
-#include "graphblas/reference/blas2.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_BLAS2
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_BLAS2
+  #define _H_GRB_REFERENCE_OMP_BLAS2
+  #define reference reference_omp
+  #include "graphblas/reference/blas2.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_BLAS2
+ #endif
 #endif
 
 #undef NO_CAST_ASSERT
 
 #endif // end _H_GRB_REFERENCE_BLAS2
+

@@ -166,6 +166,14 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::capacity, grb::resize, and default"
+				echo "                                 and explicit capacities set during container"
+				echo "                                 construction"
+				$runner ${TEST_BIN_DIR}/capacity_${MODE}_${BACKEND} 5230 &> ${TEST_OUT_DIR}/capacity_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/capacity_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/capacity_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
 				echo "                                 1 000 000."
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
@@ -306,7 +314,9 @@ for MODE in debug ndebug; do
 				echo " "
 				echo ">>>      [x]           [ ]       Testing grb::buildVector and"
 				echo "                                 grb::buildVectorUnique"
-				$runner ${TEST_BIN_DIR}/buildVector_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/buildVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::vectorToMatrixConverter"
@@ -317,7 +327,9 @@ for MODE in debug ndebug; do
 
 				echo ">>>      [x]           [ ]       Testing grb::clear on a 1M by 1M matrix of"
 				echo "                                 doubles"
-				$runner ${TEST_BIN_DIR}/clearMatrix_${MODE}_${BACKEND} 10000000 2> ${TEST_OUT_DIR}/clearMatrix_${MODE}_${BACKEND}_${P}_${T}
+				$runner ${TEST_BIN_DIR}/clearMatrix_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/clearMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/clearMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/clearMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing double-masked grb::vxm and grb::mxv"
@@ -344,7 +356,9 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
-				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"

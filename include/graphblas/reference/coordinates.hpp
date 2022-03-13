@@ -71,7 +71,7 @@ namespace grb {
 				typedef bool ArrayType;
 
 
-		private:
+			private:
 
 				/** Pointer to the underlying indexing array. */
 				bool * __restrict__ _assigned;

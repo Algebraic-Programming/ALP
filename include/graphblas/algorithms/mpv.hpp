@@ -25,7 +25,9 @@
 
 #include <graphblas.hpp>
 
+
 namespace grb {
+
 	namespace algorithms {
 
 		/**
@@ -42,45 +44,80 @@ namespace grb {
 		 *
 		 * @param[out] u    The output vector. Contents shall be overwritten. The
 		 *                  supplied vector must match the row dimension size of \a A.
-		 * @param[in]  A    The input matrix A. The supplied matrix must match the
-		 *                  dimensions of \a u and \a v.
+		 * @param[in]  A    The square input matrix A. The supplied matrix must match
+		 *                  the dimensions of \a u and \a v.
 		 * @param[in]  v    The input vector v. The supplied vector must match the
-		 *                  column dimension size of \a A. It may not equal \a u.
+		 *                  column dimension size of \a A. It may not be the same
+		 *                  vector as \a u.
 		 * @param[in]  ring The semiring to be used. This defines the additive and
 		 *                  multiplicative monoids to be used.
 		 *
-		 * \parblock
+		 * This algorithm requires workspace:
+		 *
+		 * @param[in,out] temp A workspace buffer of matching size to the row
+		 *                     dimension of \a A. May be the same vector as \a v,
+		 *                     though note that the contents of \a temp on output are
+		 *                     undefined.
+		 *
+		 * This algorithm assumes that \a u and \a temp have full capacity. If this
+		 * assumption does not hold, then a two-stage mpv must be employed instead.
+		 *
+		 * @returns #grb::SUCCESS  If the computation completed successfully.
+		 * @returns #grb::ILLEGAL  If \a A is not square.
+		 * @returns #grb::MISMATCH If one or more of \a u, \a v, or \a temp has an
+		 *                         incompatible size with \a A.
+		 * @returns #grb::ILLEGAL  If one or more of \a u or \a temp does not have a
+		 *                         full capacity.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
+		 * @returns #grb::OVERLAP  If one or more of \a v or \a temp is the same
+		 *                         vector as \a u.
+		 *
 		 * \par Performance semantics
-		 *      -# This call takes \f$ k\Theta(\mathit{nz}) + \mathcal{O}(m+n)\f$
-		 *         work, where \f$ nz \f$ equals the number of nonzeroes in the
-		 *         matrix, and \f$ m, n \f$ the dimensions of the matrix.
 		 *
-		 *      -# This call takes \f$ \mathcal{O}(\mathit{m+n}) \f$ memory beyond the
-		 *         memory already used by the application when this function is called.
+		 *   -# This function does not allocate nor free dynamic memory, nor shall it
+		 *      make any system calls.
 		 *
-		 *      -# This call incurs at most
-		 *         \f$ k\cdot\mathit{nz}(
-		 *                 \mathit{sizeof}(\mathit{D1} + \mathit{sizeof}(\mathit{D2}) +
-		 *                 \mathit{sizeof}(\mathit{D3} + \mathit{sizeof}(\mathit{D4}) +
-		 *                 \mathit{sizeof}(\mathit{RI} + \mathit{sizeof}(\mathit{CI})
-		 *         ) + \mathcal{O}(1) \f$
-		 *         bytes of data movement, where RI is the row index data type
-		 *         used by the input matrix \a A, and CI is the column index data
-		 *         type used by the input matrix \a A.
-		 * \endparblock
+		 * For performance semantics regarding work, inter-process data movement,
+		 * intra-process data movement, synchronisations, and memory use, please see
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
 		 */
 		template< Descriptor descr, class Ring, typename IOType, typename InputType >
-		RC mpv( Vector< IOType > & u, const Matrix< InputType > & A, const size_t k, const Vector< IOType > & v, const Ring & ring, Vector< IOType > & temp ) {
-			static_assert( ! ( descr & descriptors::no_casting ) ||
-					( std::is_same< IOType, typename Ring::D4 >::value && std::is_same< InputType, typename Ring::D2 >::value && std::is_same< IOType, typename Ring::D1 >::value &&
-						std::is_same< IOType, typename Ring::D3 >::value ),
-				"grb::mpv : some containers were passed with element types that do not match the given semiring domains." );
+		RC mpv(
+			Vector< IOType > &u,
+			const Matrix< InputType > &A, const size_t k,
+			const Vector< IOType > &v,
+			Vector< IOType > &temp,
+			const Ring &ring
+		) {
+			static_assert( !(descr & descriptors::no_casting) ||
+					(std::is_same< IOType, typename Ring::D4 >::value &&
+						std::is_same< InputType, typename Ring::D2 >::value &&
+						std::is_same< IOType, typename Ring::D1 >::value &&
+						std::is_same< IOType, typename Ring::D3 >::value
+					),
+				"grb::mpv : some containers were passed with element types that do not"
+				"match the given semiring domains."
+			);
 
 			// runtime check
-			if( size( u ) != size( v ) || nrows( A ) != ncols( A ) ) {
+			const size_t n = nrows( A );
+			if( n != ncols( A ) ) {
+				return ILLEGAL;
+			}
+			if( size( u ) != n || n != size( v ) ) {
 				return MISMATCH;
 			}
-			if( static_cast< const void * >( &u ) == static_cast< const void * >( &v ) ) {
+			if( size( temp ) != n ) {
+				return MISMATCH;
+			}
+			if( capacity( u ) != n ) {
+				return ILLEGAL;
+			}
+			if( capacity( temp ) != n ) {
 				return ILLEGAL;
 			}
 			// catch trivial case
@@ -89,11 +126,7 @@ namespace grb {
 			}
 			// otherwise, do at least one multiplication
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
 			std::cout << "init: input vector nonzeroes is " << grb::nnz( v ) << ".\n";
-#else
-			printf( "init: input vector nonzeroes is %d\n", (int)grb::nnz( v ) );
-#endif
 #endif
 			RC ret = mxv< descr >( u, A, v, ring );
 			if( k == 1 ) {
@@ -106,11 +139,7 @@ namespace grb {
 				// multiply with output into temporary
 				copy = true;
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
 				std::cout << "up: input vector nonzeroes is " << grb::nnz( u ) << "\n";
-#else
-				printf( "up: input vector nonzeroes is %d\n", (int)grb::nnz( u ) );
-#endif
 #endif
 				ret = mxv< descr >( temp, A, u, ring );
 				// check if this was the final multiplication
@@ -121,18 +150,16 @@ namespace grb {
 				// multiply with output into u
 				copy = false;
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
 				std::cout << "down: input vector nonzeroes is " << grb::nnz( temp ) << "\n";
-#else
-				printf( "down: input vector nonzeroes is %d\n", (int)grb::nnz( temp ) );
-#endif
 #endif
 				ret = mxv< descr >( u, A, temp, ring );
 			}
+
 			// swap u and temp, if required
 			if( ret == SUCCESS && copy ) {
 				std::swap( u, temp );
 			}
+
 			// done
 			return ret;
 		}
@@ -142,3 +169,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end ``_H_GRB_ALGORITHMS_MPV''
+

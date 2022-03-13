@@ -29,12 +29,6 @@
 
 namespace grb {
 
-	/** \internal No implementation notes: a simple delegate yields correct behaviour. */
-	template< typename IOType >
-	RC clear( grb::Matrix< IOType, BSP1D > & A ) noexcept {
-		return grb::clear( internal::getLocal( A ) );
-	}
-
 	/** \internal No implementation details; simply delegates */
 	template< Descriptor descr = descriptors::no_operation, typename DataType1, typename DataType2 >
 	RC set( Matrix< DataType1, BSP1D > & out, const Matrix< DataType2, BSP1D > & in ) noexcept {
