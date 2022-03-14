@@ -307,19 +307,19 @@ namespace grb {
 	 * Here starts spec draft for vectorView
 	 */
 
-	template< typename T, typename View, typename C >
-	size_t getLength( const VectorView< T, View, storage::Dense, reference_dense, C > &v ) noexcept {
+	template< typename T, typename Structure, typename View, typename C >
+	size_t getLength( const VectorView< T, Structure, storage::Dense, View, reference_dense, C > &v ) noexcept {
 		return v._length();
 	}
 
 	namespace internal {
-		template< typename T, typename View, typename C >
-		bool getInitialized( VectorView< T, View, storage::Dense, reference_dense, C > & v ) noexcept {
+		template< typename T, typename Structure, typename View, typename C >
+		bool getInitialized( VectorView< T, Structure, storage::Dense, View, reference_dense, C > & v ) noexcept {
 			return getInitialized( v );
 		}
 
-		template< typename T, typename View, typename C >
-		void setInitialized( VectorView< T, View, storage::Dense, reference_dense, C > & v, bool initialized ) noexcept {
+		template< typename T, typename Structure, typename View, typename C >
+		void setInitialized( VectorView< T, Structure, storage::Dense, View, reference_dense, C > & v, bool initialized ) noexcept {
 			setInitialized( v, initialized );
 		}
 	} // end namespace ``grb::internal''
@@ -338,7 +338,7 @@ namespace grb {
 	 * Views can be used to create logical \em perspectives on top of a container.
 	 * For example, one may decide to refer to the part of the vector or
 	 * to reference a diagonal of a matrix as a vector.
-	 * See specialization \a VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
+	 * See specialization \a VectorView< T, Structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense, C >
 	 * as an example of such usage.
 	 *
 	 * Vector View defined as views on other vectors do not instantiate a
@@ -351,6 +351,8 @@ namespace grb {
 	 *
 	 * @tparam T				 The type of the vector elements. \a T shall not be a GraphBLAS
 	 *              			 type.
+	 * @tparam Structure		 Structure introduced to match the template
+	 * 							 parameter list of \a StructuredMatrix
 	 * @tparam View  			 One of the vector views.
 	 * 		   					 All static views except for \a view::Original (via
 	 *         					 \a view::Original<void> cannot instantiate a new container
@@ -366,17 +368,17 @@ namespace grb {
 	 *         					 defined within their specified \a StorageSchemeType.
 	 *
 	 */
-	template< typename T, typename View, typename C >
-	class VectorView< T, View, storage::Dense, reference_dense, C > { };
+	template< typename T, typename Structure, typename View, typename C >
+	class VectorView< T, Structure, storage::Dense, View, reference_dense, C > { };
 
 	/**
 	 * Original View over a vector container.
 	 */
-	template< typename T, typename C >
-	class VectorView< T, view::Original< void >, storage::Dense, reference_dense, C > {
+	template< typename T, typename Structure, typename C >
+	class VectorView< T, Structure, storage::Dense, view::Original< void >, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Original< void >, storage::Dense, reference_dense, C >;
+		using self_type = VectorView< T, Structure, storage::Dense, view::Original< void >, reference_dense, C >;
 
 		/*********************
 		    Storage info friends
@@ -403,8 +405,8 @@ namespace grb {
 	}; // class VectorView with physical container
 
 	/** Identifies any reference_dense vector as an ALP vector. */
-	template< typename T, typename View, typename Storage, typename C >
-	struct is_container< VectorView< T, View, Storage, reference_dense, C > > {
+	template< typename T, typename Structure, typename Storage, typename View, typename C >
+	struct is_container< VectorView< T, Structure, Storage, View, reference_dense, C > > {
 		/** A reference_vector is an ALP object. */
 		static const constexpr bool value = true;
 	};
@@ -412,11 +414,11 @@ namespace grb {
 	/**
 	 * Vector view of a vector only via \a view::Original of another VectorView.
 	 */
-	template< typename T, typename VectorViewT, typename C >
-	class VectorView< T, view::Original< VectorViewT >, storage::Dense, reference_dense, C > {
+	template< typename T, typename Structure, typename VectorViewT, typename C >
+	class VectorView< T, Structure, storage::Dense, view::Original< VectorViewT >, reference_dense, C > {
 
 	private:
-		using self_type = VectorView< T, view::Original< VectorViewT >, storage::Dense, reference_dense, C >;
+		using self_type = VectorView< T, Structure, storage::Dense, view::Original< VectorViewT >, reference_dense, C >;
 		using target_type = VectorViewT;
 
 		/*********************
@@ -460,13 +462,13 @@ namespace grb {
 	/**
 	 * Diagonal Vector View of a structured matrix.
 	 */
-	template< typename T, typename StructuredMatrixT, typename C >
-	class VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C > {
+	template< typename T, typename Structure, typename StructuredMatrixT, typename C >
+	class VectorView< T, Structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense, C > {
 
 	private:
 		/** Exposes the own type and the type of the VectorView object over
 		 * which this view is created. */
-		using self_type = VectorView< T, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >;
+		using self_type = VectorView< T, Structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense, C >;
 		using target_type = StructuredMatrixT;
 
 		/*********************
@@ -509,10 +511,10 @@ namespace grb {
 	 * @returns                     A VectorView object.
 	 * */
 	template< typename StructuredMatrixT, typename C = internal::DefaultCoordinates >
-	VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C >
+	VectorView< typename StructuredMatrixT::value_type, typename StructuredMatrixT::structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense, C >
 	diagonal( StructuredMatrixT &smat ) {
 
-		VectorView< typename StructuredMatrixT::value_type, view::Diagonal< StructuredMatrixT >, storage::Dense, reference_dense, C > smat_diag( smat );
+		VectorView< typename StructuredMatrixT::value_type, typename StructuredMatrixT::structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense, C > smat_diag( smat );
 
 		return smat_diag;
 	}
@@ -524,11 +526,11 @@ namespace grb {
 	 * 
 	 * @returns          A VectorView object.
 	 */
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
-	VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
-	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source ) {
+	template< typename T, typename Structure, typename View, typename StorageSchemeType, enum Backend backend, typename C = internal::DefaultCoordinates >
+	VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend, C > >, backend, C > 
+	get_view( VectorView< T, Structure, View, StorageSchemeType, backend, C > &source ) {
 
-		VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source );
+		VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, View, StorageSchemeType, backend, C > >, backend, C > vec_view( source );
 
 		return vec_view;
 	}
@@ -543,11 +545,11 @@ namespace grb {
 	 * @returns          A VectorView object.
 	 */
 
-	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
-	VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > 
-	get_view( VectorView< T, View, StorageSchemeType, backend, C > &source, std::shared_ptr< imf::IMF > imf ) {
+	template< typename T, typename Structure, typename View, typename StorageSchemeType, enum Backend backend, typename C >
+	VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend, C > >, backend, C > 
+	get_view( VectorView< T, Structure, StorageSchemeType, View, backend, C > &source, std::shared_ptr< imf::IMF > imf ) {
 
-		VectorView< T, view::Original< VectorView< T, View, StorageSchemeType, backend, C > >, StorageSchemeType, backend, C > vec_view( source, imf );
+		VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend, C > >, backend, C > vec_view( source, imf );
 
 		return vec_view;
 	}
