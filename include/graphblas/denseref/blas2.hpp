@@ -140,9 +140,9 @@ namespace grb {
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputType3, typename InputView3, typename InputStorage3,
 		typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
@@ -159,9 +159,9 @@ namespace grb {
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
@@ -183,10 +183,10 @@ namespace grb {
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename InputType4, typename InputView4, typename InputStorage4,
 		typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
-		const VectorView< InputType4, InputView4, InputStorage4, reference_dense, Coords > & v_mask,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
+		const VectorView< InputType4, InputStructure4, InputStorage4, InputView4, reference_dense, Coords > & v_mask,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
@@ -201,8 +201,8 @@ namespace grb {
 		typename InputType1 = typename Ring::D1, typename InputView1, typename InputStorage1,
 		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
@@ -212,8 +212,8 @@ namespace grb {
 
 	/** \internal Delegates to fully masked version */
 	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
@@ -232,10 +232,10 @@ namespace grb {
 		typename InputType2, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType3 = bool, typename InputView3, typename InputStorage3,
 		typename Coords >
-	RC mxv( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
+	RC mxv( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		const VectorView< bool, reference_dense, Coords > empty_mask( 0 );
@@ -253,11 +253,11 @@ namespace grb {
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename InputType4, typename InputView4, typename InputStorage4,
 		typename Coords >
-	RC mxv( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
+	RC mxv( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
-		const VectorView< InputType4, InputView4, InputStorage4, reference_dense, Coords > & v_mask,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
+		const VectorView< InputType4, InputStructure4, InputStorage4, InputView4, reference_dense, Coords > & v_mask,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 
@@ -270,13 +270,13 @@ namespace grb {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType = typename Ring::D4, typename IOView, IOStorage,
+		typename IOType = typename Ring::D4, typename IOView, typename IOStorage,
 		typename InputType1 = typename Ring::D1, typename InputStructure2, typename InputStorage2, typename InputView2,
 		typename InputType2 = typename Ring::D2, typename InputView1, typename InputStorage1,
 		typename Coords >
-	RC mxv( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
+	RC mxv( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		const VectorView< bool, view::Original< void >, structure::full, reference_dense, Coords > empty_mask( 0 );
@@ -285,9 +285,9 @@ namespace grb {
 
 	/** \internal Delegates to fully masked version */
 	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
-	RC mxv( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
+	RC mxv( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
@@ -311,10 +311,10 @@ namespace grb {
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename InputType4, typename InputView4, typename InputStorage4,
 		typename Coords >
-	RC vxm( VectorView< IOType, IOView, IOStorage, reference_dense, Coords > & u,
-		const VectorView< InputType3, InputView3, InputStorage3, reference_dense, Coords > & mask,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, Coords > & v,
-		const VectorView< InputType4, InputView4, InputStorage4, reference_dense, Coords > & v_mask,
+	RC vxm( VectorView< IOType, IOStructure, IOStorage, IOView, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, InputStorage3, InputView3, reference_dense, Coords > & mask,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense, Coords > & v,
+		const VectorView< InputType4, InputStructure4, InputStorage4, InputView4, reference_dense, Coords > & v_mask,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
@@ -341,11 +341,11 @@ namespace grb {
 		typename InputType3, typename InputView3, typename InputStorage3,
 		typename InputType4, typename InputView4, typename InputStorage4,
 		typename Coords >
-	RC mxv( VectorView< IOType, reference_dense, Coords > & u,
-		const VectorView< InputType3, reference_dense, Coords > & mask,
+	RC mxv( VectorView< IOType, IOStructure, reference_dense, Coords > & u,
+		const VectorView< InputType3, InputStructure3, reference_dense, Coords > & mask,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & A,
-		const VectorView< InputType1, reference_dense, Coords > & v,
-		const VectorView< InputType4, reference_dense, Coords > & v_mask,
+		const VectorView< InputType1, InputStructure1, reference_dense, Coords > & v,
+		const VectorView< InputType4, InputStructure4, reference_dense, Coords > & v_mask,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
@@ -385,7 +385,7 @@ namespace grb {
 		typename DataType2, typename View2, typename Storage2, typename Coords, typename... Args >
 	RC eWiseLambda( const Func f,
 		const StructuredMatrix< DataType1, Structure1, Storage1, View1, reference_dense > & A,
-		const VectorView< DataType2, View2, Storage2, reference_dense, Coords > x, Args... args ) {
+		const VectorView< DataType2, DataStructure2, Storage2, View2, reference_dense, Coords > x, Args... args ) {
 		// do size checking
 		if( ! ( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
 			std::cerr << "Mismatching dimensions: given vector of size " << size( x ) << " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
