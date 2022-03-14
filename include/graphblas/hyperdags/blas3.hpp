@@ -33,14 +33,29 @@
 
 
 namespace grb {
-	template< typename InputType >
+	/*template<
+		typename InputType ,typename Coords >
 	RC clear( Matrix< InputType, hyperdags > & A ) noexcept {
 		// delegate
-		return clear(internal::getMatrix(A));
+		return clear<descr>(internal::getMatrix(A));
+	}*/
+	
+
+	
+	/*template< 
+		typename InputType  
+	>
+	RC clear( Matrix< InputType, hyperdags > & A ) {
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 1 > destinations{ &A };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::CLEAR_MATRIX,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return clear( internal::getMatrix( A ) );
 	}
-	
-	
-	
+	*/
 	
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -226,6 +241,27 @@ namespace grb {
 		);
 		return outer<descr>( internal::getMatrix( A ), internal::getVector( u ),  internal::getVector( v ), mul, phase);
 	}
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords 
+	>
+	RC zip( Matrix< void, hyperdags > & A,
+		const Vector< InputType1, hyperdags, Coords > & x, 
+		const Vector< InputType2, hyperdags, Coords > & y ){
+		
+		std::array< const void *, 2 > sources{ &x, &y};
+		std::array< const void *, 1 > destinations{ &A };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::ZIP_MATRIX_VECTOR_VECTOR,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return zip<descr>( internal::getMatrix( A ), internal::getVector( x ),  internal::getVector( y ));
+	}
+	
+	
+	
+	
 	
 	
 } // end n1amespace grb

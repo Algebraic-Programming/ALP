@@ -853,12 +853,26 @@ namespace grb {
 		
 		}
 		
+	template< 
+		Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords 
+	>
+	RC unzip( Vector< T, hyperdags, Coords > & x,
+		Vector< U, hyperdags, Coords > & y,
+		const Vector< std::pair< T, U >, hyperdags, Coords > & in,
+		const typename std::enable_if< ! grb::is_object< T >::value && 
+		! grb::is_object< U >::value, void >::type * const = NULL ) {
+		
+		std::array< const void *, 2 > sources{&x,&y};
+		std::array< const void *, 1 > destinations{ &in};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::UNZIP_VECTOR_VECTOR_VECTOR,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return unzip <descr> (internal::getVector(x), internal::getVector(y), internal::getVector(in)); 	
+		}
 		
 		
-		
-		
-		
-		
+	
 		
 		
 		

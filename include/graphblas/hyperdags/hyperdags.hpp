@@ -303,11 +303,28 @@ namespace grb {
 				
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,
 				
-				OUTER
+				OUTER,
+				
+				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR,
+				
+				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_RING,
+				
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_RING,
+				
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD,
+				
+				UNZIP_VECTOR_VECTOR_VECTOR,
+				
+				ZIP_MATRIX_VECTOR_VECTOR,
+				
+				CLEAR_MATRIX
+				
+				
+				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 44;
+			const constexpr size_t numOperationVertexTypes = 51;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -355,7 +372,15 @@ namespace grb {
 				SET_MATRIX_MATRIX_DOUBLE,
 				MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,
-				OUTER
+				OUTER,
+				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR,
+				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_RING,
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_RING,
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD,
+				UNZIP_VECTOR_VECTOR_VECTOR,
+				ZIP_MATRIX_VECTOR_VECTOR,
+				CLEAR_MATRIX
+				
 			};
 
 			std::string toString( const enum OperationVertexType ) noexcept;

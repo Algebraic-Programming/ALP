@@ -161,6 +161,8 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
+
+
 	/**
 	 * Specialisation of grb::zip for void output matrices.
 	 */
