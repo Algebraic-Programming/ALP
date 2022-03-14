@@ -225,7 +225,7 @@ add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 )
 
 add_grb_executables( outer outer.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( mxv mxv.cpp
