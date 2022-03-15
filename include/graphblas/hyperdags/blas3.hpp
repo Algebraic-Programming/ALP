@@ -33,17 +33,16 @@
 
 
 namespace grb {
+
 	/*template<
 		typename InputType ,typename Coords >
 	RC clear( Matrix< InputType, hyperdags > & A ) noexcept {
 		// delegate
 		return clear<descr>(internal::getMatrix(A));
 	}*/
-	
 
-	
-	/*template< 
-		typename InputType  
+	/*template<
+		typename InputType
 	>
 	RC clear( Matrix< InputType, hyperdags > & A ) {
 		std::array< const void *, 1 > sources{ &A };
@@ -56,7 +55,7 @@ namespace grb {
 		return clear( internal::getMatrix( A ) );
 	}
 	*/
-	
+
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
@@ -71,27 +70,26 @@ namespace grb {
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
-		void >::type * const = NULL
-	){ 
+		void >::type * const = nullptr
+	){
 		std::array< const void *, 2 > sources{ &A, &B };
-		std::array< const void *, 1 > destinations{&C};
+		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MATRIX_MATRIX_MATRIX_MULMONOID_PHASE,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
 		return eWiseApply<descr>( internal::getMatrix( C ), internal::getMatrix( A ),
-		internal::getMatrix( B ), mulmono, phase );
+			internal::getMatrix( B ), mulmono, phase );
 	}
-
-
 
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
 		class Operator
 	>
-	RC eWiseApply( Matrix< OutputType, hyperdags > &C,
+	RC eWiseApply(
+		Matrix< OutputType, hyperdags > &C,
 		const Matrix< InputType1, hyperdags > &A,
 		const Matrix< InputType2, hyperdags > &B,
 		const Operator &mulOp,
@@ -100,7 +98,7 @@ namespace grb {
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
 		std::array< const void *, 2 > sources{ &A, &B };
 		std::array< const void *, 1 > destinations{&C};
@@ -114,13 +112,13 @@ namespace grb {
 	}
 
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation,
-		 typename OutputType, typename InputType
+		typename OutputType, typename InputType
 	>
-	RC set( Matrix< OutputType, hyperdags > & C,
-		const Matrix< InputType, hyperdags > & A ) 
-		{
+	RC set( Matrix< OutputType, hyperdags > &C,
+		const Matrix< InputType, hyperdags > &A
+	) {
 		std::array< const void *, 1 > sources{ &A };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -130,14 +128,16 @@ namespace grb {
 		);
 		return set<descr>( internal::getMatrix( C ), internal::getMatrix( A ) );
 	}
-	
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		typename OutputType, typename InputType1, typename InputType2 
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2
 	>
-	RC set( Matrix< OutputType, hyperdags > & C, const Matrix< InputType1, hyperdags > & A, 
-		const InputType2 & val )
-		{
+	RC set(
+		Matrix< OutputType, hyperdags > &C,
+		const Matrix< InputType1, hyperdags > &A,
+		const InputType2 &val
+	) {
 		std::array< const void *, 1 > sources{ &A };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -146,18 +146,18 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return set<descr>( internal::getMatrix( C ), internal::getMatrix( A ), val );
-		}
-
+	}
 
 	template<
 		bool A_is_mask,
 		Descriptor descr,
-		typename OutputType, typename InputType1, typename InputType2 = const OutputType
+		typename OutputType, typename InputType1,
+		typename InputType2 = const OutputType
 	>
 	RC set( Matrix< OutputType, hyperdags > &C,
 			const Matrix< InputType1, hyperdags > &A,
-			const InputType2 * __restrict__ id = NULL)
-	{
+			const InputType2 * __restrict__ id = nullptr
+	) {
 		std::array< const void *, 1 > sources{ &A };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -165,23 +165,25 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-	return set<descr>( internal::getMatrix( C ), internal::getMatrix( A ) );	
+		return set<descr>( internal::getMatrix( C ), internal::getMatrix( A ) );
 	}
-	
-	
-	template< 
+
+	template<
 		Descriptor descr = descriptors::no_operation, typename OutputType,
 		typename InputType1, typename InputType2, class Semiring
 	>
-	RC mxm( Matrix< OutputType, hyperdags > & C,
-		const Matrix< InputType1, hyperdags > & A,
-		const Matrix< InputType2, hyperdags > & B,
-		const Semiring & ring = Semiring(),
-		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
-		! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value, void >::type * const = NULL )
-	{
-	
+	RC mxm( Matrix< OutputType, hyperdags > &C,
+		const Matrix< InputType1, hyperdags > &A,
+		const Matrix< InputType2, hyperdags > &B,
+		const Semiring &ring = Semiring(),
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
 		std::array< const void *, 2 > sources{ &A, &B};
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -189,24 +191,31 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-	return mxm<descr>( internal::getMatrix( C ), internal::getMatrix( A ),  internal::getMatrix( B ), ring, phase );
+		return mxm<descr>( internal::getMatrix( C ),
+			internal::getMatrix( A ), internal::getMatrix( B ),
+			ring, phase
+		);
 	}
-		
-	
-	
-	template< 
-		Descriptor descr = grb::descriptors::no_operation, typename OutputType, 
-		typename InputType1, typename InputType2, class Operator, class Monoid 
+
+	template<
+		Descriptor descr = grb::descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class Operator, class Monoid
 	>
-	RC mxm( Matrix< OutputType, hyperdags > & C,
-		const Matrix< InputType1, hyperdags > & A,
-		const Matrix< InputType2, hyperdags > & B,
-		const Operator & mulOp,
-		const Monoid & addM,
-		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! 
-		grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL )
-	{
+	RC mxm( Matrix< OutputType, hyperdags > &C,
+		const Matrix< InputType1, hyperdags > &A,
+		const Matrix< InputType2, hyperdags > &B,
+		const Operator &mulOp,
+		const Monoid &addM,
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
 		std::array< const void *, 2 > sources{ &A, &B};
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -214,24 +223,30 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-	
-	
-	return mxm<descr>( internal::getMatrix( C ), internal::getMatrix( A ),  internal::getMatrix( B ), mulOp, addM, phase );
-
+		return mxm<descr>(
+			internal::getMatrix( C ),
+			internal::getMatrix( A ), internal::getMatrix( B ),
+			mulOp, addM, phase
+		);
 	}
-	
-	
-	template< Descriptor descr = descriptors::no_operation, typename InputType1,
-		 typename InputType2, typename OutputType, typename Coords, class Operator 
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords, class Operator
 	>
-	RC outer( Matrix< OutputType, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & u,
-		const Vector< InputType2, hyperdags, Coords > & v,
-		const Operator & mul = Operator(),
-		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && 
-		! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value, void >::type * const = NULL ) {
-		
+	RC outer( Matrix< OutputType, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &u,
+		const Vector< InputType2, hyperdags, Coords > &v,
+		const Operator &mul = Operator(),
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value,
+		void >::type * const = nullptr
+	) {
 		std::array< const void *, 2 > sources{ &u, &v};
 		std::array< const void *, 1 > destinations{ &A };
 		internal::hyperdags::generator.addOperation(
@@ -239,16 +254,21 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-		return outer<descr>( internal::getMatrix( A ), internal::getVector( u ),  internal::getVector( v ), mul, phase);
+		return outer<descr>(
+			internal::getMatrix( A ), internal::getVector( u ), internal::getVector( v ),
+			mul, phase
+		);
 	}
-	
-	template< 
-		Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords 
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2,
+		typename Coords
 	>
-	RC zip( Matrix< void, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & x, 
-		const Vector< InputType2, hyperdags, Coords > & y ){
-		
+	RC zip( Matrix< void, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y
+	){
 		std::array< const void *, 2 > sources{ &x, &y};
 		std::array< const void *, 1 > destinations{ &A };
 		internal::hyperdags::generator.addOperation(
@@ -256,15 +276,11 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-		return zip<descr>( internal::getMatrix( A ), internal::getVector( x ),  internal::getVector( y ));
+		return zip<descr>( internal::getMatrix( A ),
+			internal::getVector( x ),  internal::getVector( y ) );
 	}
-	
-	
-	
-	
-	
-	
-} // end n1amespace grb
+
+} // end namespace grb
 
 #endif
 
