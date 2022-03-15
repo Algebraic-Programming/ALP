@@ -872,7 +872,150 @@ namespace grb {
 		}
 		
 		
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename Coords 
+	>
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+		const Vector< InputType1, hyperdags, Coords > & _a,
+		const Vector< InputType2, hyperdags, Coords > & _x,
+		const InputType3 gamma,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! 
+		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && 
+		! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
+		{
+		std::array< const void *, 2 > sources{& _a,& _x};
+		std::array< const void *, 1 > destinations{ & _z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), internal::getVector(_x), gamma, ring); 	
+		}
 	
+	
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
+		typename InputType2, typename InputType3, typename OutputType, typename Coords 
+	>
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+		const Vector< InputType1, hyperdags, Coords > & _a,
+		const InputType2 beta,
+		const InputType3 gamma,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && 
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && 
+		grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
+		{
+		std::array< const void *, 1 > sources{& _a};
+		std::array< const void *, 1 > destinations{ & _z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_BETA_GAMMA_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), beta, gamma, ring); 
+		
+		}
+		
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
+		typename InputType2, typename InputType3, typename OutputType, typename Coords 
+	>
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+		const InputType1 alpha,
+		const Vector< InputType2, hyperdags, Coords > & _x,
+		const InputType3 gamma,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && 
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
+		 void >::type * const = NULL ) {
+		 
+		std::array< const void *, 1 > sources{& _x};
+		std::array< const void *, 1 > destinations{ & _z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_VECTOR_GAMMA_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(_z), alpha, internal::getVector(_x), gamma, ring); 
+		} 
+		
+		
+		
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
+	 	typename InputType1, typename InputType2, typename InputType3, typename Coords 
+	 >
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Vector< InputType3, hyperdags, Coords > & y,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! 
+		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value 
+		&& grb::is_semiring< Ring >::value, void >::type * const = NULL )
+		{
+		
+		std::array< const void *, 1 > sources{& y};
+		std::array< const void *, 1 > destinations{ & z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_BETA_VECTOR_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(z), alpha, beta, internal::getVector(y), ring); 
+
+		}
+		
+		
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
+		typename InputType1, typename InputType2, typename InputType3, typename Coords 
+	>
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const InputType3 gamma,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
+		{
+		
+		std::array< const void *, 0 > sources{};
+		std::array< const void *, 1 > destinations{ & z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_BETA_GAMMA_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(z), alpha, beta, gamma, ring); 
+		}
+		
+	template< 
+		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
+		typename InputType2, typename InputType3, typename OutputType, typename Coords 
+	>
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+		const Vector< InputType1, hyperdags, Coords > & _a,
+		const Vector< InputType2, hyperdags, Coords > & _x,
+		const Vector< InputType3, hyperdags, Coords > & _y,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )	
+		{
+		std::array< const void *, 3 > sources{ &_a, &_x, &_y};
+		std::array< const void *, 1 > destinations{ & _z};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_VECTOR_VECTOR_RING,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end());
+		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), internal::getVector(_x), internal::getVector(_y), ring); 
+		}
+		
+		
+		
+		
+		
 		
 		
 		
