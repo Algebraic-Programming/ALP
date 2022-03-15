@@ -196,7 +196,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 	if( error == 0 ) {
 		auto converter = grb::utils::VectorToMatrixConverter< double, size_t >(
-			vec,
+			vec.cbegin(), vec.cend(),
 			converter_function
 		);
 		testIterator(
@@ -213,7 +213,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 				"construction...\n";
 		}
 		auto converter = grb::utils::VectorToMatrixConverter< void, size_t >(
-			vec,
+			vec.cbegin(), vec.cend(),
 			converter_function_void
 		);
 		testIterator( error, converter, V,

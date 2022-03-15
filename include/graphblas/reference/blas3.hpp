@@ -364,22 +364,35 @@ namespace grb {
 	 * \internal grb::mxm, semiring version.
 	 * Dispatches to internal::mxm_generic
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Semiring >
-	RC mxm( Matrix< OutputType, reference > & C,
-		const Matrix< InputType1, reference > & A,
-		const Matrix< InputType2, reference > & B,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class Semiring
+	>
+	RC mxm( Matrix< OutputType, reference > &C,
+		const Matrix< InputType1, reference > &A,
+		const Matrix< InputType2, reference > &B,
 		const Semiring & ring = Semiring(),
 		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
-			void >::type * const = NULL ) {
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Semiring >::value,
+		void >::type * const = nullptr
+	) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Semiring::D1, InputType1 >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D1, InputType1 >::value
+			), "grb::mxm",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the given operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Semiring::D2, InputType2 >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D2, InputType2 >::value ), "grb::mxm",
 			"called with a postfactor input matrix B that does not match the "
 			"second domain of the given operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Semiring::D4, OutputType >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D4, OutputType >::value
+			), "grb::mxm",
 			"called with an output matrix C that does not match the output domain "
 			"of the given operator" );
 
@@ -387,47 +400,79 @@ namespace grb {
 		std::cout << "In grb::mxm (reference, unmasked, semiring)\n";
 #endif
 
-		return internal::mxm_generic< true, descr >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid(), phase );
+		return internal::mxm_generic< true, descr >(
+			C, A, B,
+			ring.getMultiplicativeOperator(),
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeMonoid(),
+			phase
+		);
 	}
 
 	/**
 	 * \internal mxm implementation with additive monoid and multiplicative operator
 	 * Dispatches to internal::mxm_generic
 	 */
-	template< Descriptor descr = grb::descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Operator, class Monoid >
-	RC mxm( Matrix< OutputType, reference > & C,
-		const Matrix< InputType1, reference > & A,
-		const Matrix< InputType2, reference > & B,
-		const Operator & mulOp,
-		const Monoid & addM,
-		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value &&
-				grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = grb::descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class Operator, class Monoid
+	>
+	RC mxm( Matrix< OutputType, reference > &C,
+		const Matrix< InputType1, reference > &A,
+		const Matrix< InputType2, reference > &B,
+		const Operator &mulOp,
+		const Monoid &addM,
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D1, InputType1 >::value
+			), "grb::mxm",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D2, InputType2 >::value
+			), "grb::mxm",
 			"called with a postfactor input matrix B that does not match the first "
 			"domain of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D3, OutputType >::value ),
+			"grb::mxm",
 			"called with an output matrix C that does not match the output domain "
 			"of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, typename Operator::D3 >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D1, typename Operator::D3 >::value
+			), "grb::mxm",
 			"the output domain of the multiplication operator does not match the "
 			"first domain of the given addition monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, OutputType >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D2, OutputType >::value
+			), "grb::mxm",
 			"the second domain of the given addition monoid does not match the "
 			"type of the output matrix C" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, OutputType >::value ), "grb::mxm",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D3, OutputType >::value
+			), "grb::mxm",
 			"the output type of the given addition monoid does not match the type "
 			"of the output matrix C" );
-		static_assert( ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
+		static_assert( ( !(
+				std::is_same< InputType1, void >::value ||
+				std::is_same< InputType2, void >::value
+			) ),
 			"grb::mxm: the operator-monoid version of mxm cannot be used if either "
 			"of the input matrices is a pattern matrix (of type void)" );
+		return internal::mxm_generic< false, descr >(
+			C, A, B, mulOp, addM, Monoid(), phase
+		);
 
-		return internal::mxm_generic< false, descr >( C, A, B, mulOp, addM, Monoid(), phase );
 	}
 
 	namespace internal {
@@ -667,27 +712,44 @@ namespace grb {
 
 	/**
 	 * Outer product of two vectors. Assuming vectors \a u and \a v are oriented
-	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$.
+	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$. This is an
+	 * out-of-place function and will be updated soon to be in-place instead.
 	 *
 	 * \internal Implemented via mxm as a multiplication of a column vector with
 	 *           a row vector.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename OutputType, typename Coords, class Operator >
-	RC outer( Matrix< OutputType, reference > & A,
-		const Vector< InputType1, reference, Coords > & u,
-		const Vector< InputType2, reference, Coords > & v,
-		const Operator & mul = Operator(),
-		const PHASE & phase = NUMERICAL,
-		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords, class Operator
+	>
+	RC outer( Matrix< OutputType, reference > &A,
+		const Vector< InputType1, reference, Coords > &u,
+		const Vector< InputType2, reference, Coords > &v,
+		const Operator &mul = Operator(),
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				!grb::is_object< OutputType >::value,
+			void
+		>::type * const = nullptr
+	) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D1, InputType1 >::value
+			), "grb::outerProduct",
 			"called with a prefactor vector that does not match the first domain "
 			"of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D2, InputType2 >::value
+			), "grb::outerProduct",
 			"called with a postfactor vector that does not match the first domain "
 			"of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D3, OutputType >::value
+			), "grb::outerProduct",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
 
@@ -705,26 +767,47 @@ namespace grb {
 		grb::Matrix< InputType1, reference > u_matrix( nrows, 1 );
 		grb::Matrix< InputType2, reference > v_matrix( 1, ncols );
 
-		auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
-			return std::make_pair( std::make_pair( ind, 0 ), val );
-		} );
+		auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >(
+			u, []( const size_t &ind, const InputType1 &val ) {
+				return std::make_pair( std::make_pair( ind, 0 ), val );
+			} );
 
-		grb::buildMatrixUnique( u_matrix, u_converter.begin(), u_converter.end(), PARALLEL );
+		grb::buildMatrixUnique(
+			u_matrix,
+			u_converter.begin(), u_converter.end(),
+			PARALLEL
+		);
 
-		auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t & ind, const InputType2 & val ) {
-			return std::make_pair( std::make_pair( 0, ind ), val );
-		} );
-		grb::buildMatrixUnique( v_matrix, v_converter.begin(), v_converter.end(), PARALLEL );
+		auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >(
+			v, []( const size_t &ind, const InputType2 &val ) {
+				return std::make_pair( std::make_pair( 0, ind ), val );
+			} );
 
-		grb::Monoid< grb::operators::left_assign< OutputType >, grb::identities::zero > mono;
+		grb::buildMatrixUnique(
+			v_matrix,
+			v_converter.begin(), v_converter.end(),
+			PARALLEL
+		);
 
-		return grb::mxm( A, u_matrix, v_matrix, mul, mono, phase );
+		grb::Monoid<
+			grb::operators::left_assign< OutputType >,
+			grb::identities::zero
+		> mono;
+
+		RC ret = SUCCESS;
+		if( phase == NUMERICAL ) {
+			ret = grb::clear( A );
+		}
+		assert( nnz( A ) == 0 );
+		ret = ret ? ret : grb::mxm( A, u_matrix, v_matrix, mul, mono, phase );
+		return ret;
 	}
 
 	namespace internal {
 
 		/**
-		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 * \internal general elementwise matrix application that all eWiseApply
+		 *           variants refer to.
 		 */
 
 		template<
@@ -1033,7 +1116,7 @@ namespace grb {
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
