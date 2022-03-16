@@ -29,24 +29,62 @@ namespace grb {
 		typename InputType, typename fwd_iterator
 	>
 	RC buildMatrixUnique( Matrix< InputType, hyperdags > &A,
-		fwd_iterator start, const fwd_iterator end,
+		fwd_iterator start, 
+		const fwd_iterator end,
 		const IOMode mode
 	) {
+		std::array< const void *, 1 > sources{ &A};
+		std::array< const void *, 0 > destinations{  };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
 		return buildMatrixUnique<descr>( internal::getMatrix(A), start, end, mode );
 	}
 	
-	template< typename DataType, typename Coords >
+	template< 
+		typename DataType, typename Coords 
+	>
 	size_t capacity( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
+	
+		std::array< const void *, 1 > sources{ &x};
+		std::array< const void *, 0 > destinations{  };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::CAPACITY_VECTOR,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
 		return capacity(internal::getVector( x ));
 	}
 
-	template< typename DataType >
+	template< 
+		typename DataType 
+	>
 	size_t capacity( const Matrix< DataType, hyperdags > &A ) noexcept {
+		std::array< const void *, 1 > sources{ &A};
+		std::array< const void *, 0 > destinations{  };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::CAPACITY_MATRIX,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
 		return capacity(internal::getMatrix( A ));
 	}
 	
-	template< typename InputType, typename Coords >
-	RC resize( Vector< InputType, hyperdags, Coords > &x, const size_t new_nz ) noexcept {
+	template< 
+		typename InputType, typename Coords 
+	>
+	RC resize( Vector< InputType, hyperdags, Coords > &x, 
+		const size_t new_nz ) noexcept {
+		
+		std::array< const void *, 1 > sources{ &x};
+		std::array< const void *, 0 > destinations{  };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::RESIZE,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
 		return resize(internal::getVector( x ), new_nz);
 	}
 

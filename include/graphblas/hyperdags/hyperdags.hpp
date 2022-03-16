@@ -345,14 +345,22 @@ namespace grb {
 				
 				MXV_VECTOR_MATRIX_VECTOR_RING,
 				
-				MXV_VECTOR_MATRIX_VECTOR_ADD_MUL
+				MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
+				
+				BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
+				
+				CAPACITY_VECTOR,
+				
+				CAPACITY_MATRIX,
+				
+				RESIZE
 				
 				
 				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 65;
+			const constexpr size_t numOperationVertexTypes = 69;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -421,8 +429,11 @@ namespace grb {
 				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
 				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
 				MXV_VECTOR_MATRIX_VECTOR_RING,
-				MXV_VECTOR_MATRIX_VECTOR_ADD_MUL
-				
+				MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
+				BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
+				CAPACITY_VECTOR,
+				CAPACITY_MATRIX,
+				RESIZE
 				
 			};
 
