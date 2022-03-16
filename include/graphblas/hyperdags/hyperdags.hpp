@@ -353,14 +353,18 @@ namespace grb {
 				
 				CAPACITY_MATRIX,
 				
-				RESIZE
+				RESIZE,
+				
+				GETID_VECTOR,
+				
+				GETID_MATRIX
 				
 				
 				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 69;
+			const constexpr size_t numOperationVertexTypes = 71;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -433,7 +437,9 @@ namespace grb {
 				BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
 				CAPACITY_VECTOR,
 				CAPACITY_MATRIX,
-				RESIZE
+				RESIZE,
+				GETID_VECTOR,
+				GETID_MATRIX
 				
 			};
 

@@ -66,6 +66,8 @@ namespace grb {
 
 		private:
 
+			typedef Vector< T, hyperdags, internal::hyperdags::Coordinates > SelfType;
+			
 			/** \internal Simply use an underlying implementation */
 			typedef Vector< T, grb::_GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > MyVectorType;
 
@@ -82,25 +84,25 @@ namespace grb {
 			Vector( const size_t n ) : vector( n ) {}
 
 			Vector() : Vector( 0 ) {}
-
-			Vector( const MyVectorType &x ) : vector( x ) {}
-
-			Vector( MyVectorType &&x ) noexcept {
-				x = std::move( x.other );
-			}
 			
+			Vector( const SelfType &x ) : vector( x.vector ) {}
+
+			Vector( SelfType &&x ) noexcept {
+				vector = std::move( x.vector );
+			}
+
 			Vector( const size_t n, const size_t nz ) : vector( n, nz ) {}
 
-			MyVectorType & operator=( const MyVectorType &x ) noexcept {
-				x = x.other;
+			SelfType & operator=( const SelfType &x ) noexcept {
+				vector = x.vector;
 				return *this;
 			}
 
-			MyVectorType & operator=( MyVectorType &&x ) noexcept {
-				x = std::move( x.other );
+			SelfType & operator=( SelfType &&x ) noexcept {
+				vector = std::move( x.vector );
 				return *this;
 			}
-
+			
 			~Vector() {}
 
 			template< Backend spmd_backend = reference >

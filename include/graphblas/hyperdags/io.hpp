@@ -88,5 +88,40 @@ namespace grb {
 		return resize(internal::getVector( x ), new_nz);
 	}
 
+
+	template< 
+		typename InputType, typename Coords 
+	>
+	uintptr_t getID( const Vector< InputType, hyperdags, Coords > &x )
+	{
+	
+		std::array< const void *, 1 > sources{ &x};
+		std::array< const void *, 0 > destinations{};
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::GETID_VECTOR,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return getID(internal::getVector( x ));
+	}
+	
+	template< 
+		typename InputType
+	>
+	uintptr_t getID( const Matrix< InputType, hyperdags > &A ) {
+		std::array< const void *, 1 > sources{ &A};
+		std::array< const void *, 0 > destinations{};
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::GETID_MATRIX,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+	
+		return getID(internal::getMatrix( A ));
+	}
+
+
+
+
 } // namespace grb
 
