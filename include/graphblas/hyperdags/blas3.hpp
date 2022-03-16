@@ -34,27 +34,12 @@
 
 namespace grb {
 
-	/*template<
-		typename InputType ,typename Coords >
+	template<
+		typename InputType >
 	RC clear( Matrix< InputType, hyperdags > & A ) noexcept {
 		// delegate
-		return clear<descr>(internal::getMatrix(A));
-	}*/
-
-	/*template<
-		typename InputType
-	>
-	RC clear( Matrix< InputType, hyperdags > & A ) {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 1 > destinations{ &A };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::CLEAR_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return clear( internal::getMatrix( A ) );
+		return clear(internal::getMatrix(A));
 	}
-	*/
 
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -258,6 +243,14 @@ namespace grb {
 			internal::getMatrix( A ), internal::getVector( u ), internal::getVector( v ),
 			mul, phase
 		);
+	}
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
+	RC zip( Matrix< OutputType, hyperdags > & A,
+		const Vector< InputType1, hyperdags, Coords > & x,
+		const Vector< InputType2, hyperdags, Coords > & y,
+		const Vector< InputType3, hyperdags, Coords > & z ) {
+		return zip<descr>( internal::getMatrix( A ),
+			internal::getVector( x ),  internal::getVector( y ),  internal::getVector( z ) );
 	}
 
 	template<
