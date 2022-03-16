@@ -81,6 +81,7 @@ namespace grb {
 
 		public:
 			Matrix( const size_t rows, const size_t columns ) : matrix( rows, columns ) {}
+			Matrix( const size_t rows, const size_t columns, const size_t nz ) : matrix(rows, columns, nz) {}
 			
 			template< class ActiveDistribution = internal::Distribution< grb::_GRB_WITH_HYPERDAGS_USING > >
 			typename internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution >

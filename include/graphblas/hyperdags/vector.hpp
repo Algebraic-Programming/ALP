@@ -88,6 +88,8 @@ namespace grb {
 			Vector( MyVectorType &&x ) noexcept {
 				x = std::move( x.other );
 			}
+			
+			Vector( const size_t n, const size_t nz ) : vector( n, nz ) {}
 
 			MyVectorType & operator=( const MyVectorType &x ) noexcept {
 				x = x.other;

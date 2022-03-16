@@ -34,6 +34,21 @@ namespace grb {
 	) {
 		return buildMatrixUnique<descr>( internal::getMatrix(A), start, end, mode );
 	}
+	
+	template< typename DataType, typename Coords >
+	size_t capacity( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
+		return capacity(internal::getVector( x ));
+	}
+
+	template< typename DataType >
+	size_t capacity( const Matrix< DataType, hyperdags > &A ) noexcept {
+		return capacity(internal::getMatrix( A ));
+	}
+	
+	template< typename InputType, typename Coords >
+	RC resize( Vector< InputType, hyperdags, Coords > &x, const size_t new_nz ) noexcept {
+		return resize(internal::getVector( x ), new_nz);
+	}
 
 } // namespace grb
 
