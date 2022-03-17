@@ -1,9 +1,13 @@
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include <Dialects/LinalgTransform/Passes.h>
+#include <llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h>
+#include <llvm/IR/LegacyPassNameParser.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/TargetSelect.h>
+#include <mlir/Dialect/PDL/IR/PDLOps.h>
 #include <mlir/ExecutionEngine/ExecutionEngine.h>
 #include <mlir/ExecutionEngine/OptUtils.h>
 #include <mlir/InitAllDialects.h>
@@ -11,7 +15,12 @@
 #include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
-#include <mlir/Dialect/PDL/IR/PDLOps.h>
+
+struct Options {
+	llvm::cl::OptionCategory optFlags { "opt-like flags" };
+	//   CLI list of pass information
+	llvm::cl::list< const llvm::PassInfo *, bool, llvm::PassNameParser > llvmPasses { llvm::cl::desc( "LLVM passes to run" ), llvm::cl::cat( optFlags ) };
+};
 
 namespace grb {
 	namespace jit {
@@ -46,7 +55,7 @@ namespace grb {
 				std::cout << "module verification error!\n";
 				return FAILED;
 			}
-			
+
 			// Remove pdl and linalg_transform dialects
 			builder.setInsertionPointToStart( module->getBody() );
 			module->walk( [ & ]( mlir::pdl::PatternOp op ) {
@@ -55,7 +64,7 @@ namespace grb {
 			module->walk( [ & ]( mlir::linalg::transform::SequenceOp op ) {
 				op->erase();
 			} );
-			
+
 			module->dump();
 
 			llvm::InitializeNativeTarget();
@@ -66,11 +75,33 @@ namespace grb {
 			mlir::registerLLVMDialectTranslation( ctx );
 
 			// TODO: user-defined option?
-			bool enableOpt = false;
+			bool enableOpt = true;
+
+			auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
+			if( ! tmBuilderOrError ) {
+				llvm::errs() << "Failed to create a JITTargetMachineBuilder for the host\n";
+				return FAILED;
+			}
+			auto tmOrError = tmBuilderOrError->createTargetMachine();
+			if( ! tmOrError ) {
+				llvm::errs() << "Failed to create a TargetMachine for the host\n";
+				return FAILED;
+			}
+
+			// Options for machine code generation
+			const char * llc_options[] = { "llc", "--loop-prefetch-writes" };
+
+			Options options;
+			llvm::cl::ParseCommandLineOptions( 2, llc_options, "LLC options\n" );
+
+			// Generate vector of pass information
+			mlir::SmallVector< const llvm::PassInfo *, 2 > passes;
+
+			for( unsigned i = 0, e = options.llvmPasses.size(); i < e; ++i )
+				passes.push_back( options.llvmPasses[ i ] );
+
 			// An optimization pipeline to use within the execution engine.
-			auto optPipeline = mlir::makeOptimizingTransformer(
-				/*optLevel=*/enableOpt ? 1 : 0, /*sizeLevel=*/0,
-				/*targetMachine=*/nullptr );
+			auto optPipeline = mlir::makeLLVMPassesTransformer( passes, enableOpt ? 3 : 0, tmOrError->get() );
 
 			mlir::ExecutionEngineOptions engineOpts;
 			engineOpts.transformer = optPipeline;
