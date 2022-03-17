@@ -166,7 +166,7 @@ if( WITH_MLIR_BACKEND )
   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 
   # FIXME
-  set( IREE_DIALECTS_ROOT "/home/lchelini/scratch/tmp/iree-llvm-sandbox"
+  set( IREE_DIALECTS_ROOT "$ENV{IREE_LLVM_SANDBOX_SOURCE_DIR}"
        CACHE PATH "Path to iree-dialects projects" )
 
   include( TableGen )
