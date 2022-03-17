@@ -1,69 +1,70 @@
+#include <fstream>
 #include <iostream>
 
+#include <Dialects/LinalgTransform/Passes.h>
+#include <llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h>
+#include <llvm/IR/LegacyPassNameParser.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/TargetSelect.h>
+#include <mlir/Dialect/PDL/IR/PDLOps.h>
 #include <mlir/ExecutionEngine/ExecutionEngine.h>
 #include <mlir/ExecutionEngine/OptUtils.h>
 #include <mlir/InitAllDialects.h>
 #include <mlir/InitAllPasses.h>
+#include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
-#include <mlir/Parser/Parser.h>
-#include <Dialects/LinalgTransform/Passes.h>
+
+struct Options {
+	llvm::cl::OptionCategory optFlags { "opt-like flags" };
+	//   CLI list of pass information
+	llvm::cl::list< const llvm::PassInfo *, bool, llvm::PassNameParser > llvmPasses { llvm::cl::desc( "LLVM passes to run" ), llvm::cl::cat( optFlags ) };
+};
 
 namespace grb {
 	namespace jit {
 
 		template< typename T >
 		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
-      // read the execution tactic.
-      auto tactic = R"(
-      pdl.pattern @pdl_target : benefit(1) {
-        %args = operands
-        %results = types
-        %0 = operation "linalg.matmul"(%args : !pdl.range<value>) -> (%results : !pdl.range<type>)
-        apply_native_constraint "nestedInFunc"[@matmul_tensors](%0 : !pdl.operation)
-        // TODO: we don't want this, but it is the required terminator for pdl.pattern
-        rewrite %0 with "linalg_transform.apply"
-      }
+			// read the execution tactic.
+			const std::ifstream input_stream( "pdl.txt", std::ios_base::binary );
 
-      linalg_transform.sequence {
-        %0 = match @pdl_target
-        tile %0 {sizes = [4, 4, 4], pad = false}
-      }
-      )";
-      mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( 
-        mlir::parseSourceString< mlir::ModuleOp >( tactic, &ctx ));
-      mlir::OpBuilder builder (&ctx);
-      mlir::OpBuilder::InsertionGuard guard( builder );
-      builder.setInsertionPointToEnd( module->getBody() );
-      // clone into original module.
-      for (mlir::Operation &op : moduleTactic->getBody()->getOperations())
-        builder.clone(op); 
+			if( input_stream.fail() ) {
+				throw std::runtime_error( "Failed to open file" );
+			}
+
+			std::stringstream buffer;
+			buffer << input_stream.rdbuf();
+
+			auto tactic = buffer.str();
+			mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( mlir::parseSourceString< mlir::ModuleOp >( tactic, &ctx ) );
+			mlir::OpBuilder builder( &ctx );
+			mlir::OpBuilder::InsertionGuard guard( builder );
+			builder.setInsertionPointToEnd( module->getBody() );
+			// clone into original module.
+			for( mlir::Operation & op : moduleTactic->getBody()->getOperations() )
+				builder.clone( op );
 
 			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
-			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
-      pm.addPass( mlir::createLinalgTransformInterpreterPass() );
-    
-      if( mlir::failed( pm.run( *module ) ) ) {
-        std::cout << "module verification error!\n";
-        return FAILED;
-      }
-      module->dump();  
-      mlir::PassManager pm2( &ctx );  
-      pm2.addPass( mlir::createDropScheduleFromModulePass() );
-			pm2.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
-			pm2.addPass( mlir::createConvertSCFToCFPass() );
-			pm2.addPass( mlir::createMemRefToLLVMPass() );
-			pm2.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
-			pm2.addPass( mlir::createConvertFuncToLLVMPass() );
-			pm2.addPass( mlir::createReconcileUnrealizedCastsPass() );
+			// pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
+			pm.addPass( mlir::createLinalgTransformInterpreterPass() );
 
-			if( mlir::failed( pm2.run( *module ) ) ) {
+			if( mlir::failed( pm.run( *module ) ) ) {
 				std::cout << "module verification error!\n";
 				return FAILED;
 			}
+
+			// Remove pdl and linalg_transform dialects
+			builder.setInsertionPointToStart( module->getBody() );
+			module->walk( [ & ]( mlir::pdl::PatternOp op ) {
+				op->erase();
+			} );
+			module->walk( [ & ]( mlir::linalg::transform::SequenceOp op ) {
+				op->erase();
+			} );
+
 			module->dump();
 
 			llvm::InitializeNativeTarget();
@@ -74,11 +75,33 @@ namespace grb {
 			mlir::registerLLVMDialectTranslation( ctx );
 
 			// TODO: user-defined option?
-			bool enableOpt = false;
+			bool enableOpt = true;
+
+			auto tmBuilderOrError = llvm::orc::JITTargetMachineBuilder::detectHost();
+			if( ! tmBuilderOrError ) {
+				llvm::errs() << "Failed to create a JITTargetMachineBuilder for the host\n";
+				return FAILED;
+			}
+			auto tmOrError = tmBuilderOrError->createTargetMachine();
+			if( ! tmOrError ) {
+				llvm::errs() << "Failed to create a TargetMachine for the host\n";
+				return FAILED;
+			}
+
+			// Options for machine code generation
+			const char * llc_options[] = { "llc", "--loop-prefetch-writes" };
+
+			Options options;
+			llvm::cl::ParseCommandLineOptions( 2, llc_options, "LLC options\n" );
+
+			// Generate vector of pass information
+			mlir::SmallVector< const llvm::PassInfo *, 2 > passes;
+
+			for( unsigned i = 0, e = options.llvmPasses.size(); i < e; ++i )
+				passes.push_back( options.llvmPasses[ i ] );
+
 			// An optimization pipeline to use within the execution engine.
-			auto optPipeline = mlir::makeOptimizingTransformer(
-				/*optLevel=*/enableOpt ? 1 : 0, /*sizeLevel=*/0,
-				/*targetMachine=*/nullptr );
+			auto optPipeline = mlir::makeLLVMPassesTransformer( passes, enableOpt ? 3 : 0, tmOrError->get() );
 
 			mlir::ExecutionEngineOptions engineOpts;
 			engineOpts.transformer = optPipeline;

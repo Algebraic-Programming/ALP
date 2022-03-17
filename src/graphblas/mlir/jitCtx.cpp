@@ -1,6 +1,7 @@
 #include <llvm/ADT/ScopedHashTable.h>
-#include <mlir/ExecutionEngine/MemRefUtils.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/ExecutionEngine/MemRefUtils.h>
+
 #include <graphblas/mlir/jitCtx.hpp>
 #include <graphblas/mlir/matrix.hpp>
 
@@ -14,9 +15,9 @@ JitContext & JitContext::getCurrentJitContext() {
 
 // Build a memref of type f32.
 // TODO: Double and others.
-static mlir::Type getMemRefType( Matrix< float, Backend::mlir > & buff, mlir::OpBuilder & builder ) {
+static mlir::Type getTensorType( Matrix< float, Backend::mlir > & buff, mlir::OpBuilder & builder ) {
 	llvm::SmallVector< int64_t > dims { buff.m, buff.n };
-	return mlir::MemRefType::get( dims, builder.getF32Type() );
+	return mlir::RankedTensorType::get( dims, builder.getF32Type() );
 }
 
 // build mxm (aka linalg.matmul) based on memref.
@@ -43,9 +44,9 @@ void JitContext::buildMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Ba
 	mlir::OpBuilder builder( &ctx );
 
 	llvm::SmallVector< mlir::Type, 3 > typeOperands;
-	typeOperands.push_back( getMemRefType( C, builder ) );
-	typeOperands.push_back( getMemRefType( B, builder ) );
-	typeOperands.push_back( getMemRefType( A, builder ) );
+	typeOperands.push_back( getTensorType( C, builder ) );
+	typeOperands.push_back( getTensorType( B, builder ) );
+	typeOperands.push_back( getTensorType( A, builder ) );
 
 	mlir::FunctionType fnType = mlir::FunctionType::get( builder.getContext(), typeOperands, {} );
 	// first time we build mxm.
@@ -72,16 +73,18 @@ RC JitContext::buildAndExecute() {
 	// Bind StridedMemRef's basePtr with their position in the function
 	// definition.
 	llvm::ScopedHashTable< void *, size_t > symTab;
+	llvm::ScopedHashTable< size_t, mlir::Value > changeMap;
 	llvm::ScopedHashTableScope< void *, size_t > scope( symTab );
+	llvm::ScopedHashTableScope< size_t, mlir::Value > scope2( changeMap );
 
 	mlir::OpBuilder builder( &ctx );
 	llvm::SmallVector< mlir::Type, 5 > typeOperands;
+	mlir::Type typeOutput;
 	llvm::SmallVector< void * > descriptors;
 
 	// Make a copy of the current queue. We use the copy to codegenerate the
 	// GemmNodes. The original queue is used to build the function definition.
 	std::queue< GemmNode > newQueue;
-
 	size_t posInFuncArg = 0;
 	while( ! queue.empty() ) {
 		GemmNode curr = queue.front();
@@ -91,36 +94,37 @@ RC JitContext::buildAndExecute() {
 		if( symTab.count( basePtr ) == 0 ) {
 			symTab.insert( basePtr, posInFuncArg++ );
 			descriptors.push_back( descriptor );
-			typeOperands.push_back( getMemRefType( curr.C, builder ) );
+			typeOperands.push_back( getTensorType( curr.C, builder ) );
+			typeOutput = getTensorType( curr.C, builder );
 		}
 		basePtr = &*( curr.B.storage )->basePtr;
 		descriptor = &*( curr.B.storage );
 		if( symTab.count( basePtr ) == 0 ) {
 			symTab.insert( basePtr, posInFuncArg++ );
 			descriptors.push_back( descriptor );
-			typeOperands.push_back( getMemRefType( curr.B, builder ) );
+			typeOperands.push_back( getTensorType( curr.B, builder ) );
 		}
 		basePtr = &*( curr.A.storage )->basePtr;
 		descriptor = &*( curr.A.storage );
 		if( symTab.count( basePtr ) == 0 ) {
 			symTab.insert( basePtr, posInFuncArg++ );
 			descriptors.push_back( descriptor );
-			typeOperands.push_back( getMemRefType( curr.A, builder ) );
+			typeOperands.push_back( getTensorType( curr.A, builder ) );
 		}
 		newQueue.push( curr );
 	}
 
 	mlir::OpBuilder::InsertionGuard guard( builder );
 	builder.setInsertionPointToEnd( module->getBody() );
-	auto fnType = mlir::FunctionType::get( &ctx, typeOperands, {} );
-  std::string funcName = "moduleFn" + std::to_string(counter++);
+	auto fnType = mlir::FunctionType::get( &ctx, typeOperands, typeOutput );
+	std::string funcName = "moduleFn" + std::to_string( counter++ );
 	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), funcName, fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
 	funcOp->setAttr( "llvm.emit_c_interface", mlir::UnitAttr::get( module->getContext() ) );
 	mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
 	mlir::Block * entryBlock = funcOp.addEntryBlock();
 	builder.setInsertionPointToStart( entryBlock );
 	mlir::Location loc = module->getLoc();
-
+	mlir::Value ret = nullptr;
 	while( ! newQueue.empty() ) {
 		GemmNode curr = newQueue.front();
 		newQueue.pop();
@@ -130,11 +134,26 @@ RC JitContext::buildAndExecute() {
 		size_t posB = symTab.lookup( basePtr );
 		basePtr = &*( curr.A.storage )->basePtr;
 		size_t posA = symTab.lookup( basePtr );
-		builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { funcOp.getArgument( posA ), funcOp.getArgument( posB ) }, funcOp.getArgument( posC ) );
+		mlir::linalg::MatmulOp mxm;
+		// Look for indirections of the arguments
+		auto A = changeMap.lookup( posA );
+		if( ! A )
+			A = funcOp.getArgument( posA );
+		auto B = changeMap.lookup( posB );
+		if( ! B )
+			B = funcOp.getArgument( posB );
+		auto C = changeMap.lookup( posC );
+		if( ! C )
+			C = funcOp.getArgument( posC );
+		mxm = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { A, B }, C );
+		ret = mxm.getResult( 0 );
+		// Update the indirection of the output
+		changeMap.insert( posC, ret );
 	}
-	builder.create< mlir::func::ReturnOp >( loc );
-  llvm::errs() << "------Module pre optimization/lowering------\n";
+	// Return the last computation
+	builder.create< mlir::func::ReturnOp >( loc, mlir::ValueRange { ret } );
+	llvm::errs() << "------Module pre optimization/lowering------\n";
 	module->dump();
-  llvm::errs() << "--------------------------------------------\n";
+	llvm::errs() << "--------------------------------------------\n";
 	return executeFn( funcName, descriptors );
 }

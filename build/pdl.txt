@@ -1,0 +1,5 @@
+
+  linalg_transform.sequence {
+		bufferize
+		lower_to_llvm
+  }
