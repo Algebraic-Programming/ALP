@@ -1,69 +1,61 @@
 #include <iostream>
+#include <fstream>
 
+#include <Dialects/LinalgTransform/Passes.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/TargetSelect.h>
 #include <mlir/ExecutionEngine/ExecutionEngine.h>
 #include <mlir/ExecutionEngine/OptUtils.h>
 #include <mlir/InitAllDialects.h>
 #include <mlir/InitAllPasses.h>
+#include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
-#include <mlir/Parser/Parser.h>
-#include <Dialects/LinalgTransform/Passes.h>
+#include <mlir/Dialect/PDL/IR/PDLOps.h>
 
 namespace grb {
 	namespace jit {
 
 		template< typename T >
 		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
-      // read the execution tactic.
-      auto tactic = R"(
-      pdl.pattern @pdl_target : benefit(1) {
-        %args = operands
-        %results = types
-        %0 = operation "linalg.matmul"(%args : !pdl.range<value>) -> (%results : !pdl.range<type>)
-        apply_native_constraint "nestedInFunc"[@matmul_tensors](%0 : !pdl.operation)
-        // TODO: we don't want this, but it is the required terminator for pdl.pattern
-        rewrite %0 with "linalg_transform.apply"
-      }
+			// read the execution tactic.
+			const std::ifstream input_stream( "pdl.txt", std::ios_base::binary );
 
-      linalg_transform.sequence {
-        %0 = match @pdl_target
-        tile %0 {sizes = [4, 4, 4], pad = false}
-      }
-      )";
-      mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( 
-        mlir::parseSourceString< mlir::ModuleOp >( tactic, &ctx ));
-      mlir::OpBuilder builder (&ctx);
-      mlir::OpBuilder::InsertionGuard guard( builder );
-      builder.setInsertionPointToEnd( module->getBody() );
-      // clone into original module.
-      for (mlir::Operation &op : moduleTactic->getBody()->getOperations())
-        builder.clone(op); 
+			if( input_stream.fail() ) {
+				throw std::runtime_error( "Failed to open file" );
+			}
+
+			std::stringstream buffer;
+			buffer << input_stream.rdbuf();
+
+			auto tactic = buffer.str();
+			mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( mlir::parseSourceString< mlir::ModuleOp >( tactic, &ctx ) );
+			mlir::OpBuilder builder( &ctx );
+			mlir::OpBuilder::InsertionGuard guard( builder );
+			builder.setInsertionPointToEnd( module->getBody() );
+			// clone into original module.
+			for( mlir::Operation & op : moduleTactic->getBody()->getOperations() )
+				builder.clone( op );
 
 			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
 			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
-      pm.addPass( mlir::createLinalgTransformInterpreterPass() );
-    
-      if( mlir::failed( pm.run( *module ) ) ) {
-        std::cout << "module verification error!\n";
-        return FAILED;
-      }
-      module->dump();  
-      mlir::PassManager pm2( &ctx );  
-      pm2.addPass( mlir::createDropScheduleFromModulePass() );
-			pm2.addNestedPass< mlir::FuncOp >( mlir::createConvertLinalgToLoopsPass() );
-			pm2.addPass( mlir::createConvertSCFToCFPass() );
-			pm2.addPass( mlir::createMemRefToLLVMPass() );
-			pm2.addNestedPass< mlir::FuncOp >( mlir::arith::createConvertArithmeticToLLVMPass() );
-			pm2.addPass( mlir::createConvertFuncToLLVMPass() );
-			pm2.addPass( mlir::createReconcileUnrealizedCastsPass() );
+			pm.addPass( mlir::createLinalgTransformInterpreterPass() );
 
-			if( mlir::failed( pm2.run( *module ) ) ) {
+			if( mlir::failed( pm.run( *module ) ) ) {
 				std::cout << "module verification error!\n";
 				return FAILED;
 			}
+			
+			// Remove pdl and linalg_transform dialects
+			builder.setInsertionPointToStart( module->getBody() );
+			module->walk( [ & ]( mlir::pdl::PatternOp op ) {
+				op->erase();
+			} );
+			module->walk( [ & ]( mlir::linalg::transform::SequenceOp op ) {
+				op->erase();
+			} );
+			
 			module->dump();
 
 			llvm::InitializeNativeTarget();
