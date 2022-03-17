@@ -48,7 +48,7 @@ namespace grb {
 
 			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
-			pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
+			// pm.addNestedPass< mlir::FuncOp >( mlir::createLinalgChainPass() );
 			pm.addPass( mlir::createLinalgTransformInterpreterPass() );
 
 			if( mlir::failed( pm.run( *module ) ) ) {

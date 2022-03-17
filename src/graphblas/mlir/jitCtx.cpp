@@ -1,7 +1,6 @@
 #include <llvm/ADT/ScopedHashTable.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/ExecutionEngine/MemRefUtils.h>
-#include <mlir/IR/OperationSupport.h>
 
 #include <graphblas/mlir/jitCtx.hpp>
 #include <graphblas/mlir/matrix.hpp>
@@ -74,7 +73,9 @@ RC JitContext::buildAndExecute() {
 	// Bind StridedMemRef's basePtr with their position in the function
 	// definition.
 	llvm::ScopedHashTable< void *, size_t > symTab;
+	llvm::ScopedHashTable< size_t, mlir::Value > changeMap;
 	llvm::ScopedHashTableScope< void *, size_t > scope( symTab );
+	llvm::ScopedHashTableScope< size_t, mlir::Value > scope2( changeMap );
 
 	mlir::OpBuilder builder( &ctx );
 	llvm::SmallVector< mlir::Type, 5 > typeOperands;
@@ -133,9 +134,23 @@ RC JitContext::buildAndExecute() {
 		size_t posB = symTab.lookup( basePtr );
 		basePtr = &*( curr.A.storage )->basePtr;
 		size_t posA = symTab.lookup( basePtr );
-		auto mxm = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { funcOp.getArgument( posA ), funcOp.getArgument( posB ) }, funcOp.getArgument( posC ) );
+		mlir::linalg::MatmulOp mxm;
+		// Look for indirections of the arguments
+		auto A = changeMap.lookup( posA );
+		if( ! A )
+			A = funcOp.getArgument( posA );
+		auto B = changeMap.lookup( posB );
+		if( ! B )
+			B = funcOp.getArgument( posB );
+		auto C = changeMap.lookup( posC );
+		if( ! C )
+			C = funcOp.getArgument( posC );
+		mxm = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { A, B }, C );
 		ret = mxm.getResult( 0 );
+		// Update the indirection of the output
+		changeMap.insert( posC, ret );
 	}
+	// Return the last computation
 	builder.create< mlir::func::ReturnOp >( loc, mlir::ValueRange { ret } );
 	llvm::errs() << "------Module pre optimization/lowering------\n";
 	module->dump();
