@@ -197,6 +197,10 @@ namespace grb {
 		 *
 		 * \warning Avoid the use of this constructor within performance critical
 		 *          code sections.
+		 * \warning \a cap is present for compatibility with other matrix specializations.
+		 *          In reference_dense backend, the number of non-zeros (i.e. capacity)
+		 *          depends on the used storage scheme. Therefore, this parameter is
+		 *          ignored.
 		 */
 		Matrix( const size_t rows, const size_t columns, const size_t cap = 0 ): m( rows ), n( columns ), cap( std::max( m*n, cap ) ), initialized( false ) {
 			// TODO Implement allocation properly
@@ -479,12 +483,17 @@ namespace grb {
 			/**
 			 * @brief Construct a new structured matrix container object.
 			 * 
+			 * \warning \a cap is present for compatibility with other matrix specializations.
+			 *          In reference_dense backend, the number of non-zeros (i.e. capacity)
+			 *          depends on the used storage scheme. Therefore, this parameter is
+			 *          ignored.
+			 *
 			 * TODO: Add the storage scheme a parameter to the constructor 
 			 * so that allocation can be made accordingly, generalizing the full case.
 			 */
-			MatrixContainer( size_t rows, size_t cols ) :
+			MatrixContainer( size_t rows, size_t cols, size_t cap = 0 ) :
 				MatrixBase( rows, cols ),
-				_container( new Matrix< T, reference_dense >(rows, cols) ),
+				_container( new Matrix< T, reference_dense >( rows, cols, cap ) ),
 				storage_scheme( storage::full ) {}
 
 		};
@@ -609,8 +618,8 @@ namespace grb {
 		using original_t = StructuredMatrix< T, structures::General, storage::Dense, view::Original< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::MatrixContainer< T >( rows, cols ) {
+		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+			internal::MatrixContainer< T >( rows, cols, cap ) {
 		}
 
 	}; // StructuredMatrix General, container
@@ -664,8 +673,8 @@ namespace grb {
 		/** The type of an identify view over the present type */
 		using original_t = StructuredMatrix< T, Structure, storage::Dense, view::Original< self_type >, reference_dense >;
 
-		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::MatrixContainer< T >( rows, cols ) {}
+		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+			internal::MatrixContainer< T >( rows, cols, cap ) {}
 	}; // class StructuredMatrix
 
 	template< typename T >
@@ -692,8 +701,8 @@ namespace grb {
 		using original_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Original< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( const size_t rows ) :
-			internal::MatrixContainer< T >( rows, rows ) {}
+		StructuredMatrix( const size_t rows, const size_t cap = 0 ) :
+			internal::MatrixContainer< T >( rows, rows, cap ) {}
 
 	}; // StructuredMatrix Square, container
 
@@ -755,8 +764,8 @@ namespace grb {
 		using original_t = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( const size_t rows, const size_t cols ) :
-			internal::MatrixContainer< T >( rows, cols ) {}
+		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+			internal::MatrixContainer< T >( rows, cols, cap ) {}
 
 	}; // StructuredMatrix UpperTriangular, container
 
@@ -821,8 +830,8 @@ namespace grb {
 		using original_t = StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< self_type >, reference_dense >;
 		using transpose_t = StructuredMatrix< T, structures::Identity, storage::Dense, view::Transpose< self_type >, reference_dense >;
 
-		StructuredMatrix( const size_t rows ) :
-			internal::MatrixContainer< T >( rows, rows ) {}
+		StructuredMatrix( const size_t rows, const size_t cap = 0 ) :
+			internal::MatrixContainer< T >( rows, rows, cap ) {}
 
 	}; // StructuredMatrix Identity, container
 
