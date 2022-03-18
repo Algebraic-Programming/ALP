@@ -200,6 +200,7 @@
 // contain the relevant definitions (without defaults)
 #include <graphblas/matrix.hpp>
 #include <graphblas/vector.hpp>
+#include <graphblas/scalar.hpp>
 #endif
 
 #endif // end ``_H_GRAPHBLAS''
