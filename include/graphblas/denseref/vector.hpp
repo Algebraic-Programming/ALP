@@ -97,7 +97,13 @@ namespace grb {
 			/** The length of the vector. */
 			size_t n;
 
-			/** The container capacity (in elements). */
+			/** The container capacity (in elements).
+			 *
+			 * \warning \a cap is present for compatibility with other vector specializations.
+			 *          In reference_dense backend, the number of non-zeros (i.e. capacity)
+			 *          depends on the used storage scheme. Therefore, this parameter is
+			 *          ignored when provided by user.
+			*/
 			size_t cap;
 
 			/** The vector data. */
@@ -400,7 +406,7 @@ namespace grb {
 		/** @see Vector::value_type. */
 		using value_type = T;
 
-		VectorView( const size_t length ) : v( std::make_unique< Vector< T, reference_dense, C > >( length ) ), imf( std::make_shared< imf::Id >( length ) ) {}
+		VectorView( const size_t length, const size_t cap = 0 ) : v( std::make_unique< Vector< T, reference_dense, C > >( length, cap ) ), imf( std::make_shared< imf::Id >( length ) ) {}
 
 	}; // class VectorView with physical container
 
