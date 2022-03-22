@@ -359,6 +359,26 @@ namespace grb {
 	 *          must be applied on the result of a dot-product of \a y with
 	 *          itself under the supplied semiring.
 	 */
+	// template<
+	// 	Descriptor descr = descriptors::no_operation, class Ring,
+	// 	typename InputType, typename OutputType, typename OutputStructure,
+	// 	Backend backend, typename Coords
+	// >
+	// RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
+	// 	const Vector< InputType, backend, Coords > &y,
+	// 	const Ring &ring = Ring(),
+	// 	const typename std::enable_if<
+	// 		std::is_floating_point< OutputType >::value,
+	// 	void >::type * const = NULL
+	// ) {
+	// 	RC ret = grb::dot< descr >( x, y, y, ring );
+	// 	if( ret == SUCCESS ) {
+	// 		x = sqrt( x );
+	// 	}
+	// 	return ret;
+	// }
+
+	/** Specialization for C++ scalars */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType, typename OutputType,
