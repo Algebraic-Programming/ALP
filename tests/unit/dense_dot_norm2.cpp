@@ -39,7 +39,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// 	std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
 	// 	return;
 	// }
-	double out = 2.55;
+	Scalar< double > out( 2.55 );
 
 	// test 1, exec
 	rc = grb::dot( out, left, right, ring );
