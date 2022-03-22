@@ -20,47 +20,40 @@ static mlir::Type getTensorType( Matrix< float, Backend::mlir > & buff, mlir::Op
 	return mlir::RankedTensorType::get( dims, builder.getF32Type() );
 }
 
-// build mxm (aka linalg.matmul) based on memref.
+// build mxm (aka linalg.matmul).
 static void buildMxmBody( mlir::OpBuilder & builder, mlir::Location loc, mlir::FuncOp fn, mlir::Block * block ) {
-	builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { fn.getArgument( 1 ), fn.getArgument( 2 ) }, fn.getArgument( 0 ) );
-	builder.create< mlir::func::ReturnOp >( loc );
+	auto op = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { fn.getArgument( 0 ), fn.getArgument( 1 ) }, fn.getArgument( 2 ) );
+	builder.create< mlir::func::ReturnOp >( loc, op.getResult( 0 ) );
 }
 
-static mlir::FunctionType
-buildMxmFunctionDef( mlir::OpBuilder & builder, mlir::OwningOpRef< mlir::ModuleOp > & module, const llvm::ArrayRef< mlir::Type > typeOperands, const llvm::ArrayRef< mlir::Type > typeResults = {} ) {
+static void
+buildMxmFunction( mlir::OpBuilder & builder, mlir::OwningOpRef< mlir::ModuleOp > & module, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName ) {
 	mlir::OpBuilder::InsertionGuard guard( builder );
 	builder.setInsertionPointToEnd( module->getBody() );
-	auto fnType = mlir::FunctionType::get( builder.getContext(), typeOperands, typeResults );
-	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), "mxm", fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
+	auto fnType = mlir::FunctionType::get( builder.getContext(), operands.getTypes(), resultType );
+	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), fnName, fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
 	funcOp->setAttr( "llvm.emit_c_interface", mlir::UnitAttr::get( module->getContext() ) );
 	mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
-	mlir::Block * entryBlock = funcOp.addEntryBlock();
-	builder.setInsertionPointToStart( entryBlock );
-	buildMxmBody( builder, module->getLoc(), funcOp, entryBlock );
-	return fnType;
+  mlir::Block * entryBlock = funcOp.addEntryBlock();
+  builder.setInsertionPointToStart( entryBlock );
+  buildMxmBody( builder, module->getLoc(), funcOp, entryBlock );
 }
 
-void JitContext::buildMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A ) {
-	mlir::OpBuilder builder( &ctx );
+mlir::FlatSymbolRefAttr JitContext::buildOrGetFunc( mlir::OpBuilder & builder, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName ) {
+  // TODO: this works because we emit only mxm. We may also want to look-up the name
+  // if we will emit more than just "mxm".
+  auto fnType = mlir::FunctionType::get( builder.getContext(), operands.getTypes(), resultType );
+  if( fnInModule.count(fnType) == 0 ) {
+    fnName = fnName + std::to_string( counter++ );
+    buildMxmFunction( builder, module, operands, resultType, fnName );
+    fnInModule[fnType] = mlir::SymbolRefAttr::get(&ctx, fnName);
+  } 
+  return fnInModule[fnType];
+}
 
-	llvm::SmallVector< mlir::Type, 3 > typeOperands;
-	typeOperands.push_back( getTensorType( C, builder ) );
-	typeOperands.push_back( getTensorType( B, builder ) );
-	typeOperands.push_back( getTensorType( A, builder ) );
-
-	mlir::FunctionType fnType = mlir::FunctionType::get( builder.getContext(), typeOperands, {} );
-	// first time we build mxm.
-	if( fnInModule.count( "mxm" ) == 0 ) {
-		fnType = buildMxmFunctionDef( builder, module, typeOperands );
-		fnInModule[ "mxm" ].push_back( fnType );
-	} else { // check if we already built the function.
-		for( mlir::FunctionType t : fnInModule[ "mxm" ] )
-			if( t == fnType )
-				return;
-		fnType = buildMxmFunctionDef( builder, module, typeOperands );
-		fnInModule[ "mxm" ].push_back( fnType );
-	}
-	// module->dump();
+mlir::func::CallOp JitContext::buildMatmulImpl( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType ) {
+  auto fn = buildOrGetFunc( builder, operands, resultType, "mxm" );
+  return builder.create< mlir::func::CallOp >( module->getLoc(), resultType, fn, operands );
 }
 
 RC JitContext::registerMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A ) {
@@ -134,7 +127,7 @@ RC JitContext::buildAndExecute() {
 		size_t posB = symTab.lookup( basePtr );
 		basePtr = &*( curr.A.storage )->basePtr;
 		size_t posA = symTab.lookup( basePtr );
-		mlir::linalg::MatmulOp mxm;
+		mlir::func::CallOp mxm;
 		// Look for indirections of the arguments
 		auto A = changeMap.lookup( posA );
 		if( ! A )
@@ -145,7 +138,7 @@ RC JitContext::buildAndExecute() {
 		auto C = changeMap.lookup( posC );
 		if( ! C )
 			C = funcOp.getArgument( posC );
-		mxm = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { A, B }, C );
+    mxm = buildMatmulImpl( builder, mlir::ValueRange{ A, B, C }, C.getType() ); 
 		ret = mxm.getResult( 0 );
 		// Update the indirection of the output
 		changeMap.insert( posC, ret );

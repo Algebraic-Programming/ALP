@@ -57,9 +57,6 @@ namespace grb {
 
 			static JitContext & getCurrentJitContext();
 
-			// TODO: more layered.
-			void buildMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A );
-
 			// build and execute the entire module by code generating all the functions in
 			// 'queue' and the jit compiling and executing the entire MLIR module.
 			grb::RC buildAndExecute();
@@ -71,6 +68,7 @@ namespace grb {
 			// register a GEMM operation to the queue.
 			grb::RC registerMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A );
 
+    private:
       // counter to have unique name for compiled function.
       size_t counter = 1;
 			// current MLIR context.
@@ -80,7 +78,14 @@ namespace grb {
 			// store the function to be inserted into the module.
 			std::queue< GemmNode > queue;
 			// cache for already inserted functions in the module.
-			std::map< std::string, std::vector< mlir::FunctionType > > fnInModule;
+			llvm::DenseMap< mlir::FunctionType, mlir::FlatSymbolRefAttr > fnInModule;
+
+      // build a call op to a matmul func. 
+      mlir::func::CallOp buildMatmulImpl( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType );
+
+      // build or return a func with name 'fnName'.
+      mlir::FlatSymbolRefAttr buildOrGetFunc( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName );
+
 		};
 
 	} // end namespace jit
