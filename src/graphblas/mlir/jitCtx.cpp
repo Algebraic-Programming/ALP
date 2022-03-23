@@ -26,34 +26,37 @@ static void buildMxmBody( mlir::OpBuilder & builder, mlir::Location loc, mlir::F
 	builder.create< mlir::func::ReturnOp >( loc, op.getResult( 0 ) );
 }
 
-static void
-buildMxmFunction( mlir::OpBuilder & builder, mlir::OwningOpRef< mlir::ModuleOp > & module, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName ) {
+static void buildMxmFunction( mlir::OpBuilder & builder, mlir::OwningOpRef< mlir::ModuleOp > & module, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName ) {
 	mlir::OpBuilder::InsertionGuard guard( builder );
 	builder.setInsertionPointToEnd( module->getBody() );
 	auto fnType = mlir::FunctionType::get( builder.getContext(), operands.getTypes(), resultType );
 	mlir::FuncOp funcOp = builder.create< mlir::FuncOp >( module->getLoc(), fnName, fnType, llvm::ArrayRef< mlir::NamedAttribute > {} );
 	funcOp->setAttr( "llvm.emit_c_interface", mlir::UnitAttr::get( module->getContext() ) );
 	mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
-  mlir::Block * entryBlock = funcOp.addEntryBlock();
-  builder.setInsertionPointToStart( entryBlock );
-  buildMxmBody( builder, module->getLoc(), funcOp, entryBlock );
+	mlir::Block * entryBlock = funcOp.addEntryBlock();
+	builder.setInsertionPointToStart( entryBlock );
+	buildMxmBody( builder, module->getLoc(), funcOp, entryBlock );
 }
 
 mlir::FlatSymbolRefAttr JitContext::buildOrGetFunc( mlir::OpBuilder & builder, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName ) {
-  // TODO: this works because we emit only mxm. We may also want to look-up the name
-  // if we will emit more than just "mxm".
-  auto fnType = mlir::FunctionType::get( builder.getContext(), operands.getTypes(), resultType );
-  if( fnInModule.count(fnType) == 0 ) {
-    fnName = fnName + std::to_string( counter++ );
-    buildMxmFunction( builder, module, operands, resultType, fnName );
-    fnInModule[fnType] = mlir::SymbolRefAttr::get(&ctx, fnName);
-  } 
-  return fnInModule[fnType];
+	// TODO: this works because we emit only mxm. We may also want to look-up the name
+	// if we will emit more than just "mxm".
+	auto fnType = mlir::FunctionType::get( builder.getContext(), operands.getTypes(), resultType );
+	if( fnInModule.count( fnType ) == 0 ) {
+		fnName = fnName + std::to_string( counter++ );
+		buildMxmFunction( builder, module, operands, resultType, fnName );
+		fnInModule[ fnType ] = mlir::SymbolRefAttr::get( &ctx, fnName );
+	}
+	return fnInModule[ fnType ];
 }
 
-mlir::func::CallOp JitContext::buildMatmulImpl( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType ) {
-  auto fn = buildOrGetFunc( builder, operands, resultType, "mxm" );
-  return builder.create< mlir::func::CallOp >( module->getLoc(), resultType, fn, operands );
+mlir::func::CallOp JitContext::buildMatmulImpl( mlir::OpBuilder & builder, mlir::ValueRange operands, mlir::TypeRange resultType ) {
+	// mlir::RankedTensorType toCast = mlir::RankedTensorType::get({-1, -1}, resultType[0].cast<mlir::ShapedType>().getElementType() );
+	// mlir::Value A = builder.create<mlir::tensor::CastOp>(module->getLoc(), toCast, operands[0]);
+	// mlir::Value B = builder.create<mlir::tensor::CastOp>(module->getLoc(), toCast, operands[1]);
+	// mlir::Value C = builder.create<mlir::tensor::CastOp>(module->getLoc(), toCast, operands[2]);
+	auto fn = buildOrGetFunc( builder, operands, resultType, "mxm" );
+	return builder.create< mlir::func::CallOp >( module->getLoc(), resultType, fn, operands );
 }
 
 RC JitContext::registerMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A ) {
@@ -138,7 +141,17 @@ RC JitContext::buildAndExecute() {
 		auto C = changeMap.lookup( posC );
 		if( ! C )
 			C = funcOp.getArgument( posC );
-    mxm = buildMatmulImpl( builder, mlir::ValueRange{ A, B, C }, C.getType() ); 
+		// convert known-dimension to unknown ones.
+		assert( A.getType().cast< mlir::ShapedType >().getShape().size() == 2 );
+		assert( B.getType().cast< mlir::ShapedType >().getShape().size() == 2 );
+		assert( C.getType().cast< mlir::ShapedType >().getShape().size() == 2 );
+		if( castToUnknownDims ) {
+			mlir::RankedTensorType toCast = mlir::RankedTensorType::get( { -1, -1 }, C.getType().cast< mlir::ShapedType >().getElementType() );
+			C = builder.create< mlir::tensor::CastOp >( loc, toCast, C );
+			A = builder.create< mlir::tensor::CastOp >( loc, toCast, A );
+			B = builder.create< mlir::tensor::CastOp >( loc, toCast, B );
+		}
+		mxm = buildMatmulImpl( builder, mlir::ValueRange { A, B, C }, C.getType() );
 		ret = mxm.getResult( 0 );
 		// Update the indirection of the output
 		changeMap.insert( posC, ret );

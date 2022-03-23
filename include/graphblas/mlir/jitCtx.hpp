@@ -4,12 +4,11 @@
 #include <queue>
 #include <unordered_set>
 
+#include <Dialects/LinalgTransform/LinalgTransformOps.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Dialect.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/InitAllDialects.h>
-
-#include <Dialects/LinalgTransform/LinalgTransformOps.h>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
@@ -40,16 +39,15 @@ namespace grb {
 		/// purposes.
 		class JitContext {
 		public:
-			JitContext() : ctx( mlir::DialectRegistry(), mlir::MLIRContext::Threading::DISABLED ), 
-                     module( mlir::ModuleOp::create( mlir::OpBuilder( &ctx ).getUnknownLoc() ) ) {
+			JitContext() : ctx( mlir::DialectRegistry(), mlir::MLIRContext::Threading::DISABLED ), module( mlir::ModuleOp::create( mlir::OpBuilder( &ctx ).getUnknownLoc() ) ) {
 				ctx.getOrLoadDialect< mlir::func::FuncDialect >();
 				ctx.getOrLoadDialect< mlir::scf::SCFDialect >();
 				ctx.getOrLoadDialect< mlir::arith::ArithmeticDialect >();
 				ctx.getOrLoadDialect< mlir::LLVM::LLVMDialect >();
 				ctx.getOrLoadDialect< mlir::memref::MemRefDialect >();
 				ctx.getOrLoadDialect< mlir::linalg::LinalgDialect >();
-        ctx.getOrLoadDialect< mlir::pdl_interp::PDLInterpDialect >();
-        ctx.getOrLoadDialect< mlir::linalg::transform::LinalgTransformDialect >();
+				ctx.getOrLoadDialect< mlir::pdl_interp::PDLInterpDialect >();
+				ctx.getOrLoadDialect< mlir::linalg::transform::LinalgTransformDialect >();
 			};
 			~JitContext() = default;
 			JitContext( const JitContext & ) = delete;
@@ -68,9 +66,9 @@ namespace grb {
 			// register a GEMM operation to the queue.
 			grb::RC registerMxm( Matrix< float, Backend::mlir > & C, Matrix< float, Backend::mlir > & B, Matrix< float, Backend::mlir > & A );
 
-    private:
-      // counter to have unique name for compiled function.
-      size_t counter = 1;
+		private:
+			// counter to have unique name for compiled function.
+			size_t counter = 1;
 			// current MLIR context.
 			mlir::MLIRContext ctx;
 			// current MLIR module.
@@ -79,13 +77,14 @@ namespace grb {
 			std::queue< GemmNode > queue;
 			// cache for already inserted functions in the module.
 			llvm::DenseMap< mlir::FunctionType, mlir::FlatSymbolRefAttr > fnInModule;
+			// hard-coded flag to generate ranked but unknown dimensions.
+			bool castToUnknownDims = false;
 
-      // build a call op to a matmul func. 
-      mlir::func::CallOp buildMatmulImpl( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType );
+			// build a call op to a matmul func.
+			mlir::func::CallOp buildMatmulImpl( mlir::OpBuilder & builder, mlir::ValueRange operands, mlir::TypeRange resultType );
 
-      // build or return a func with name 'fnName'.
-      mlir::FlatSymbolRefAttr buildOrGetFunc( mlir::OpBuilder &builder, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName );
-
+			// build or return a func with name 'fnName'.
+			mlir::FlatSymbolRefAttr buildOrGetFunc( mlir::OpBuilder & builder, mlir::ValueRange operands, mlir::TypeRange resultType, std::string fnName );
 		};
 
 	} // end namespace jit
