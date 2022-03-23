@@ -28,8 +28,7 @@ namespace grb {
 	namespace jit {
 
 		template< typename T >
-		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
-			
+		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {	
       // read the execution tactic.
       std::string errorMessage;
       auto memoryBuffer = mlir::openInputFile( "pdl.txt", &errorMessage );
@@ -46,6 +45,9 @@ namespace grb {
       mlir::OpBuilder builder( &ctx );
 			mlir::OpBuilder::InsertionGuard guard( builder );
 			builder.setInsertionPointToEnd( module->getBody() );
+
+      // TODO: Can we avoid this copy?
+      // See: runTransformModuleOnOperation on the sanbox.
 			// clone into original module.
 			for( mlir::Operation & op : moduleTactic->getBody()->getOperations() )
 				builder.clone( op );
