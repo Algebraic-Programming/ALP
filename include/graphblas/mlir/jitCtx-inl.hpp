@@ -6,8 +6,8 @@
 #include <llvm/IR/LegacyPassNameParser.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/InitLLVM.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/TargetSelect.h>
 #include <mlir/Dialect/PDL/IR/PDLOps.h>
 #include <mlir/ExecutionEngine/ExecutionEngine.h>
 #include <mlir/ExecutionEngine/OptUtils.h>
@@ -15,8 +15,8 @@
 #include <mlir/InitAllPasses.h>
 #include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
-#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Support/FileUtilities.h>
+#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 
 struct Options {
 	llvm::cl::OptionCategory optFlags { "opt-like flags" };
@@ -28,26 +28,25 @@ namespace grb {
 	namespace jit {
 
 		template< typename T >
-		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {	
-      // read the execution tactic.
-      std::string errorMessage;
-      auto memoryBuffer = mlir::openInputFile( "pdl.txt", &errorMessage );
-      if (!memoryBuffer) {
-        llvm::errs() << errorMessage << "\n";
-        return FAILED;
-      }
-      // Tell sourceMgr about this buffer, the parser will pick it up.
-      llvm::SourceMgr sourceMgr;
-      sourceMgr.AddNewSourceBuffer(std::move(memoryBuffer), llvm::SMLoc());
-      mlir::OwningOpRef<mlir::ModuleOp> moduleTactic(
-        mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &ctx));
-			
-      mlir::OpBuilder builder( &ctx );
+		RC JitContext::executeFn( llvm::StringRef funcName, llvm::SmallVector< T > args ) {
+			// read the execution tactic.
+			std::string errorMessage;
+			auto memoryBuffer = mlir::openInputFile( "pdl.txt", &errorMessage );
+			if( ! memoryBuffer ) {
+				llvm::errs() << errorMessage << "\n";
+				return FAILED;
+			}
+			// Tell sourceMgr about this buffer, the parser will pick it up.
+			llvm::SourceMgr sourceMgr;
+			sourceMgr.AddNewSourceBuffer( std::move( memoryBuffer ), llvm::SMLoc() );
+			mlir::OwningOpRef< mlir::ModuleOp > moduleTactic( mlir::parseSourceFile< mlir::ModuleOp >( sourceMgr, &ctx ) );
+
+			mlir::OpBuilder builder( &ctx );
 			mlir::OpBuilder::InsertionGuard guard( builder );
 			builder.setInsertionPointToEnd( module->getBody() );
 
-      // TODO: Can we avoid this copy?
-      // See: runTransformModuleOnOperation on the sanbox.
+			// TODO: Can we avoid this copy?
+			// See: runTransformModuleOnOperation on the sanbox.
 			// clone into original module.
 			for( mlir::Operation & op : moduleTactic->getBody()->getOperations() )
 				builder.clone( op );
