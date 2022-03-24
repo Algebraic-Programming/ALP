@@ -57,13 +57,13 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";
 
-	for( int i = 0; i < 5; i++ ) {
+	//for( int i = 0; i < 5; i++ ) {
 		rc = grb::mxm( C, A, B, ring );
 		if( rc != SUCCESS ) {
 			std::cerr << "Call to grb::mxm FAILED\n";
 			return;
 		}
-	}
+	//}
 
 	auto deepCopy = internal::getFull( C );
 	for( size_t i = 0; i < n; i++ ) {

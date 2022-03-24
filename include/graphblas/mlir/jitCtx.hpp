@@ -46,6 +46,7 @@ namespace grb {
 				ctx.getOrLoadDialect< mlir::LLVM::LLVMDialect >();
 				ctx.getOrLoadDialect< mlir::memref::MemRefDialect >();
 				ctx.getOrLoadDialect< mlir::linalg::LinalgDialect >();
+        ctx.getOrLoadDialect< mlir::vector::VectorDialect >();
 				ctx.getOrLoadDialect< mlir::pdl_interp::PDLInterpDialect >();
 				ctx.getOrLoadDialect< mlir::linalg::transform::LinalgTransformDialect >();
 			};
