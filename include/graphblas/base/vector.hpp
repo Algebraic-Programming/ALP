@@ -894,10 +894,9 @@ namespace grb {
 			 */
 			lambda_reference operator[]( const size_t i ) {
 				(void)i;
-			#ifndef _GRB_NO_EXCEPTIONS
-				throw std::runtime_error( "Requesting lambda reference of unimplemented "
-										  "Vector backend." );
-			#endif
+#ifndef _GRB_NO_EXCEPTIONS
+				assert( false ); // Requesting lambda reference of unimplemented Vector backend.
+#endif
 			}
 };
 

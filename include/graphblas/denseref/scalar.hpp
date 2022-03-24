@@ -77,6 +77,9 @@ namespace grb {
 			/** @see Vector::value_type. */
 			typedef T value_type;
 
+			/** @see Vector::lambda_reference */
+			typedef T& lambda_reference;
+
 			/**
 			 * The main ALP scalar constructor.
 			 *
@@ -180,6 +183,18 @@ namespace grb {
 			 */
 			Scalar( Scalar &&other ) : value( other.value ), initialized( other.initialized ) {
 				other.initialized = false;
+			}
+
+			/** \internal No implementation notes. */
+			lambda_reference operator*() noexcept {
+				assert( getInitialized( *this ) );
+				return value;
+			}
+
+			/** \internal No implementation notes. */
+			const lambda_reference operator*() const noexcept {
+				assert( getInitialized( *this ) );
+				return value;
 			}
 
 	}; // class Scalar with physical container
