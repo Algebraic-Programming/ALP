@@ -406,9 +406,26 @@ namespace grb {
 		/** @see Vector::value_type. */
 		using value_type = T;
 
+		/** @see Vector::lambda_reference */
+		typedef T& lambda_reference;
+
 		VectorView( const size_t length, const size_t cap = 0 ) :
 			v( std::make_unique< Vector< T, reference_dense, internal::DefaultCoordinates > >( length, cap ) ),
 			imf( std::make_shared< imf::Id >( length ) ) {}
+
+		/** \internal No implementation notes. */
+		lambda_reference operator[]( const size_t i ) noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *v ) );
+			// TODO implement;
+		}
+
+		/** \internal No implementation notes. */
+		const lambda_reference operator[]( const size_t i ) const noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *v ) );
+			// TODO implement;
+		}
 
 	}; // class VectorView with physical container
 
@@ -450,6 +467,9 @@ namespace grb {
 		/** Exposes the element type. */
 		using value_type = T;
 
+		/** @see Vector::lambda_reference */
+		typedef T& lambda_reference;
+
 		/** Constructor for creating a view over a given target vector */
 		VectorView( target_type & vec_view ) : ref( vec_view ), imf( nullptr ) {
 			
@@ -463,6 +483,20 @@ namespace grb {
 			if( getLength( vec_view ) != imf->N ) {
 				throw std::length_error( "VectorView(vec_view, * imf): IMF range differs from target's vector length." );
 			}
+		}
+
+		/** \internal No implementation notes. */
+		lambda_reference operator[]( const size_t i ) noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *ref ) );
+			// TODO implement;
+		}
+
+		/** \internal No implementation notes. */
+		const lambda_reference operator[]( const size_t i ) const noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *ref ) );
+			// TODO implement;
 		}
 
 	}; // Original VectorView
@@ -500,11 +534,28 @@ namespace grb {
 		/** Exposes the element type. */
 		using value_type = T;
 
+		/** @see Vector::lambda_reference */
+		typedef T& lambda_reference;
+
 		VectorView( target_type & struct_mat ) : ref( struct_mat ), imf( nullptr ) {
 			
 			size_t _length = view::Diagonal< target_type >::getLength( dims( ref ) );
 			imf = std::make_shared< imf::Id >( _length  );
 
+		}
+
+		/** \internal No implementation notes. */
+		lambda_reference operator[]( const size_t i ) noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *ref ) );
+			// TODO implement;
+		}
+
+		/** \internal No implementation notes. */
+		const lambda_reference operator[]( const size_t i ) const noexcept {
+			assert( i < _length() );
+			assert( getInitialized( *ref ) );
+			// TODO implement;
 		}
 
 	}; // Diagonal Vector view
