@@ -436,7 +436,8 @@ namespace grb {
 		friend size_t getLength<>( const self_type & ) noexcept;
 
 		/** Reference to a target vector to which this vector view points to */
-		std::shared_ptr< target_type > ref;
+		// std::shared_ptr< target_type > ref;
+		target_type & ref;
 
 		/** Index-mapping function. @see IMF */
 		std::shared_ptr<imf::IMF> imf;
@@ -450,15 +451,15 @@ namespace grb {
 		using value_type = T;
 
 		/** Constructor for creating a view over a given target vector */
-		VectorView( target_type & vec_view ) : ref( &vec_view ), imf( nullptr ) {
+		VectorView( target_type & vec_view ) : ref( vec_view ), imf( nullptr ) {
 			
-			imf = std::make_shared< imf::Id >( getLength( *ref ) );
+			imf = std::make_shared< imf::Id >( getLength( ref ) );
 
 		}
 
 		/** Constructor for creating a view over a given target vector and
 		 * applying the given index mapping function */
-		VectorView( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( & vec_view ), imf( imf ) {
+		VectorView( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( vec_view ), imf( imf ) {
 			if( getLength( vec_view ) != imf->N ) {
 				throw std::length_error( "VectorView(vec_view, * imf): IMF range differs from target's vector length." );
 			}
@@ -486,7 +487,7 @@ namespace grb {
 		friend size_t getLength<>( const self_type & ) noexcept;
 
 		/** Pointer to a VectorView object upon which this view is created */
-		std::shared_ptr< target_type > ref;
+		target_type & ref;
 
 		/** @see IMF */
 		std::shared_ptr<imf::IMF> imf;
@@ -499,9 +500,9 @@ namespace grb {
 		/** Exposes the element type. */
 		using value_type = T;
 
-		VectorView( target_type & struct_mat ) : ref( &struct_mat ), imf( nullptr ) {
+		VectorView( target_type & struct_mat ) : ref( struct_mat ), imf( nullptr ) {
 			
-			size_t _length = view::Diagonal< target_type >::getLength( dims( *ref ) );
+			size_t _length = view::Diagonal< target_type >::getLength( dims( ref ) );
 			imf = std::make_shared< imf::Id >( _length  );
 
 		}
