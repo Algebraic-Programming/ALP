@@ -67,6 +67,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	std::cout << "v_diag( " << grb::getLength( v_diag ) << " )" << std::endl;
 	std::cout << "v_view( " << grb::getLength( v_view ) << " )" << std::endl;
 
+	grb::StructuredMatrix< float, grb::structures::Band< grb::Interval<-2, 5> > > BM0( n, n );
+	grb::StructuredMatrix< float, grb::structures::Band< grb::RightOpenInterval<-2> > > BM1( n, n );
+	grb::StructuredMatrix< float, grb::structures::Band< grb::LeftOpenInterval<-2> > > BM2( n, n );
+	grb::StructuredMatrix< double, grb::structures::Band< grb::Interval<-2>, grb::Interval<1>, grb::Interval<3> > > BM3( n, n );
 	rc = grb::SUCCESS;
 }
 
