@@ -100,36 +100,41 @@ namespace grb {
 	}
 
 	/**
-	 * Resizes the nonzero capacity of this matrix. Any current contents of the
-	 * matrix are \em not retained.
+	 * Resizes the matrix to have at least the given number of nonzeroes.
+	 * The contents of the matrix are not retained.
 	 *
-	 * The dimension of this matrix is fixed. Only the number of nonzeroes that
-	 * may be stored can change. If the matrix has row or column dimension size
-	 * zero, all calls to this function are ignored. A request for less capacity
-	 * than currently already may be allocated, may be ignored by the
-	 * implementation.
+	 * Resizing of dense containers is not allowed as the capacity is determined
+	 * by the container dimensions and the storage scheme. Therefore, this
+	 * function will not change the capacity of the matrix.
 	 *
+	 * Even though the capacity remains unchanged, the contents of the matrix
+	 * are not retained to maintain compatibility with the general specification.
+	 * However, the actual memory will not be reallocated. Rather, the matrix
+	 * will be marked as uninitialized.
+	 *
+	 * @param[in] A         The matrix to be resized.
 	 * @param[in] nonzeroes The number of nonzeroes this matrix is to contain.
 	 *
-	 * @return OUTOFMEM When no memory could be allocated to store this matrix.
-	 * @return PANIC    When allocation fails for any other reason.
-	 * @return SUCCESS  When a valid GraphBLAS matrix has been constructed.
+	 * @return SUCCESS   If \a new_nz is not larger than the current capacity
+	 *                   of the matrix.
+	 *         ILLEGAL   If \a new_nz is larger than the current capacity of
+	 *                   the matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \mathcal{O}(\mathit{nz} \f$ work.
-	 *        -# This function allocates \f$ \mathcal{O}(\mathit{nz}+m+n+1) \f$
+	 *        -$ This function consitutes \f$ \Theta(1) \f$ work.
+	 *        -# This function allocates \f$ \Theta(0) \f$
 	 *           bytes of dynamic memory.
-	 *        -# This function will likely make system calls.
+	 *        -# This function does not make system calls.
 	 * \endparblock
-	 *
-	 * \warning This is an expensive function. Use sparingly and only when
-	 *          absolutely necessary
 	 */
 	template< typename InputType >
 	RC resize( StructuredMatrix< InputType, InputStructure, InputStorage, InputView, reference_dense > & A, const size_t new_nz ) noexcept {
-		// delegate
-		return A.resize( new_nz );
+		(void)A;
+		(void)new_nz;
+		// TODO implement
+		// setInitialized( A, false );
+		return PANIC;
 	}
 
 	/** \internal Delegates to fully masked variant */
