@@ -43,15 +43,14 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	std::cout << "\tStarting structured matrices test with size: " << n << "\n";
 
 	// initialize test
-	grb::StructuredMatrix< float, grb::structures::General > M( n, 2 * n );
+	grb::StructuredMatrix< float, grb::structures::General > M( n, n );
 	grb::StructuredMatrix< float, grb::structures::Square > A( n );
 	grb::StructuredMatrix< float, grb::structures::NonSingular > B( n, n );
 	grb::StructuredMatrix< float, grb::structures::FullRank > C( n, 2 * n );
-	auto At = grb::transpose( A );
-	auto Mt = grb::transpose( M );
-
-	auto Mview = grb::get_view( M );
-	auto Sq_Mref = grb::get_view< grb::structures::Square > ( A );
+	auto At = grb::get_view< grb::view::transpose >( A );
+	auto Mt = grb::get_view< grb::view::transpose >( M );
+	auto Mview = grb::get_view( M, grb::utils::range(0,4), grb::utils::range(0,4) );
+	auto Sq_Mref = grb::get_view< grb::structures::Square > ( M );
 
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
@@ -61,11 +60,14 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	ask_questions( At, "At" );
 	ask_questions( Mt, "Mt" );
 	ask_questions( Mview, "Mview" );
-	
-	auto v_diag = grb::diagonal( M );
-	auto v_view = grb::get_view( v_diag, std::make_shared< grb::imf::Strided >( 2, 5, 1, 1 ) );
+	ask_questions( Sq_Mref, "Sq_Mref" );
+
+	auto v_diag = grb::get_view< grb::view::diagonal >( M );
+	auto v_view1 = grb::get_view( v_diag );
+	auto v_view2 = grb::get_view( v_diag, grb::utils::range(1,2) );
 	std::cout << "v_diag( " << grb::getLength( v_diag ) << " )" << std::endl;
-	std::cout << "v_view( " << grb::getLength( v_view ) << " )" << std::endl;
+	std::cout << "v_view1( " << grb::getLength( v_view1 ) << " )" << std::endl;
+	std::cout << "v_view2( " << grb::getLength( v_view2 ) << " )" << std::endl;
 
 	grb::StructuredMatrix< float, grb::structures::Band< grb::Interval<-2, 5> > > BM0( n, n );
 	grb::StructuredMatrix< float, grb::structures::Band< grb::RightOpenInterval<-2> > > BM1( n, n );
