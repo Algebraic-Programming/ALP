@@ -17,30 +17,28 @@
 
 /*
  * @author A. N. Yzelman
- * @date 2nd of February, 2017
+ * @date 24th of January, 2017
  */
 
-#include <graphblas/denseref/init.hpp>
+#ifndef _H_GRB_INIT
+#define _H_GRB_INIT
 
-template<>
-grb::RC grb::init< grb::reference_dense >( const size_t s, const size_t P, void * const data ) {
-	// we don't use any implementation-specific init data
-	(void)data;
-	// print output
-	std::cerr << "Info: grb::init (reference_dense) called.\n";
-	// sanity checks
-	if( P > 1 ) {
-		return grb::UNSUPPORTED;
-	}
-	if( s > 0 ) {
-		return grb::PANIC;
-	}
-	// done
-	return grb::SUCCESS;
-}
+#include "backends.hpp"
+#include "base/init.hpp"
 
+// include all implementations
+#ifdef _GRB_WITH_REFERENCE
+ #include "graphblas/reference/init.hpp"
+#endif
+#ifdef _GRB_WITH_DENSEREF
+ #include "graphblas/denseref/init.hpp"
+#endif
+#ifdef _GRB_WITH_LPF
+ #include "graphblas/bsp1d/init.hpp"
+#endif
+#ifdef _GRB_WITH_BANSHEE
+ #include "graphblas/banshee/init.hpp"
+#endif
 
-template<>
-grb::RC grb::finalize< grb::reference_dense >() {
-	return grb::SUCCESS;
-}
+#endif // end ``_H_GRB_INIT''
+

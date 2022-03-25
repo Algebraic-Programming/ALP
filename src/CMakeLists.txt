@@ -21,6 +21,7 @@
 
 ### ADD BACKENDS
 add_subdirectory( graphblas )
+add_subdirectory( alp )
 
 
 ### BUILD WRAPPER SCRIPTS FOR INSTALLATION
