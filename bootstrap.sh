@@ -73,7 +73,7 @@ print_help() {
 the location where LPF is installed"
 	echo "  --with-banshee=<path/>              - path to the the tools to compile the banshee backend"
 	echo "  --with-snitch=<path/>               - path to the tools for Snitch support within the banshee backend"
-	echo "  --no-dense                          - to compile without support for dense algebraic programming"
+	echo "  --no-alp-reference                  - to compile without support for dense algebraic programming"
 	echo "  --no-reference                      - disables the reference and reference_omp backends"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
@@ -93,7 +93,7 @@ the location where LPF is installed"
 reference=yes
 banshee=no
 lpf=no
-dense=yes
+alp_reference=yes
 show=no
 FLAGS=$''
 LPF_INSTALL_PATH=
@@ -145,8 +145,8 @@ or assume default paths (--with-lpf)"
 			SNITCH_PATH="${arg#--with-snitch=}"
 			banshee=yes
 			;;
-	--no-dense)
-			dense=no
+	--no-alp-reference)
+			alp_reference=no
 			;;
 	--no-reference)
 			reference=no
@@ -292,10 +292,10 @@ the current directory before invocation or confirm the deletion of its content w
 	if [[ "${reference}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_REFERENCE_BACKEND=OFF -DWITH_OMP_BACKEND=OFF"
 	fi
-	if [[ "${dense}" == "no" ]]; then
-		CMAKE_OPTS+=" -DWITH_DENSEREF_BACKEND=OFF"
+	if [[ "${alp_reference}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=OFF"
 	else
-		CMAKE_OPTS+=" -DWITH_DENSEREF_BACKEND=ON"
+		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=ON"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"

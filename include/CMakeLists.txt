@@ -21,9 +21,6 @@
 # and definitions to compile against each backend, but MUST explicitly
 # set a default backend (if they want to do so).
 #
-assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS LPF_INCLUDE_DEFS
-	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
-)
 assert_valid_variables( INCLUDE_INSTALL_DIR NO_NUMA_DEF )
 
 # basic graphblas includes all backends depend on
@@ -76,12 +73,6 @@ target_include_directories( alp_utils_headers INTERFACE
 	$<INSTALL_INTERFACE:.>
 )
 
-# copy utils headers
-install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/utils/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/utils"
-	FILES_MATCHING REGEX "${HEADERS_REGEX}"
-)
-
 # everybody needs the math library
 target_link_libraries( backend_headers_nodefs INTERFACE LibM::LibM )
 
@@ -104,81 +95,12 @@ install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
 
+if( WITH_ALP_REFERENCE_BACKEND_HEADERS )
+	add_subdirectory( alp )
+endif()
 
 if( WITH_REFERENCE_BACKEND_HEADERS )
-	add_library( backend_reference_headers INTERFACE )
-	target_link_libraries( backend_reference_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_reference_headers INTERFACE "${REFERENCE_INCLUDE_DEFS}" )
-	# currently, the OMP header files and definitions are required also for the reference backend
-	# TODO: "dis-entangle" code from OMP backend dependence and remove this
-	target_compile_definitions( backend_reference_headers INTERFACE "${REFERENCE_OMP_INCLUDE_DEFS}" )
-	target_link_libraries( backend_reference_headers INTERFACE OpenMP::OpenMP_CXX )
-
-	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
-endif()
-
-if( WITH_DENSEREF_BACKEND )
-	add_library( backend_reference_dense_headers INTERFACE )
-	target_link_libraries( backend_reference_dense_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_reference_dense_headers INTERFACE "${DENSEREF_INCLUDE_DEFS}" )
-	install( TARGETS backend_reference_dense_headers EXPORT GraphBLASTargets )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/denseref"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/denseref"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-endif()
-
-if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/reference/"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/reference"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-endif()
-
-if( WITH_OMP_BACKEND_HEADERS )
-	add_library( backend_reference_omp_headers INTERFACE )
-	target_link_libraries( backend_reference_omp_headers INTERFACE backend_headers_nodefs )
-	target_link_libraries( backend_reference_omp_headers INTERFACE OpenMP::OpenMP_CXX )
-	target_compile_definitions( backend_reference_omp_headers INTERFACE
-		"${REFERENCE_INCLUDE_DEFS}" "${REFERENCE_OMP_INCLUDE_DEFS}"
-	)
-
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/omp/"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/omp"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-	install( TARGETS backend_reference_omp_headers EXPORT GraphBLASTargets )
-
-endif()
-
-
-if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
-	# copy headers, which are common to both distributed backends
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/bsp/"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/bsp"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/bsp1d/"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/bsp1d"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-endif()
-
-if( WITH_BSP1D_BACKEND )
-	add_library( backend_bsp1d_headers INTERFACE )
-	target_link_libraries( backend_bsp1d_headers INTERFACE Numa::Numa backend_reference_headers )
-	target_compile_definitions( backend_bsp1d_headers INTERFACE "${LPF_INCLUDE_DEFS}" )
-
-	install( TARGETS backend_bsp1d_headers EXPORT GraphBLASTargets )
-endif()
-
-if( WITH_HYBRID_BACKEND )
-	add_library( backend_hybrid_headers INTERFACE )
-	# the hybrid backend needs OMP by design
-	target_link_libraries( backend_hybrid_headers INTERFACE Numa::Numa backend_reference_omp_headers )
-	target_compile_definitions( backend_hybrid_headers INTERFACE "${LPF_INCLUDE_DEFS}" )
-
-	install( TARGETS backend_hybrid_headers EXPORT GraphBLASTargets )
+	add_subdirectory( graphblas )
 endif()
 
 # this target lists the algorithms implemented on top of the generic functionalities,

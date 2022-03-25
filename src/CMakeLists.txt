@@ -21,6 +21,7 @@
 
 ### ADD BACKENDS
 add_subdirectory( graphblas )
+add_subdirectory( alp )
 
 ### Add transition path targets
 add_subdirectory( transition )

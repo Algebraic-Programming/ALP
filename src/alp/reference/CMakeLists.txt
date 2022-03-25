@@ -15,40 +15,40 @@
 #
 
 assert_valid_variables( BACKEND_LIBRARY_OUTPUT_NAME VERSION
-	DENSEREF_BACKEND_INSTALL_DIR INCLUDE_INSTALL_DIR
-	DENSEREF_BACKEND_DEFAULT_NAME
-	DENSEREF_SELECTION_DEFS 
+	ALP_REFERENCE_BACKEND_INSTALL_DIR INCLUDE_INSTALL_DIR
+	ALP_REFERENCE_BACKEND_DEFAULT_NAME
+	ALP_REFERENCE_SELECTION_DEFS 
 )
 
-# sources for dense reference backend
-set( backend_reference_dense_srcs
+# sources for ALP reference backend
+set( backend_alp_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/../descriptors.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/../rc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
 )
 
-add_library( backend_reference_dense_static STATIC "${backend_reference_dense_srcs}" )
+add_library( backend_alp_reference_static STATIC "${backend_alp_reference_srcs}" )
 
-target_link_libraries( backend_reference_dense_static PUBLIC backend_reference_dense_headers )
+target_link_libraries( backend_alp_reference_static PUBLIC backend_alp_reference_headers )
 
-set_target_properties( backend_reference_dense_static PROPERTIES
+set_target_properties( backend_alp_reference_static PROPERTIES
 	OUTPUT_NAME "${BACKEND_LIBRARY_OUTPUT_NAME}"
 )
 
-set_target_properties( backend_reference_dense_static PROPERTIES
-	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/reference_dense"
+set_target_properties( backend_alp_reference_static PROPERTIES
+	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/reference"
 )
 
-target_compile_definitions( backend_reference_dense_static PUBLIC "${DENSEREF_SELECTION_DEFS}" )
-target_link_libraries( backend_reference_dense_static PRIVATE backend_flags )
+target_compile_definitions( backend_alp_reference_static PUBLIC "${ALP_REFERENCE_SELECTION_DEFS}" )
+target_link_libraries( backend_alp_reference_static PRIVATE backend_flags )
 
-add_dependencies( libs backend_reference_dense_static )
+add_dependencies( libs backend_alp_reference_static )
 
-install( TARGETS backend_reference_dense_static
+install( TARGETS backend_alp_reference_static
 	EXPORT GraphBLASTargets
-	ARCHIVE DESTINATION "${DENSEREF_BACKEND_INSTALL_DIR}"
+	ARCHIVE DESTINATION "${ALP_REFERENCE_BACKEND_INSTALL_DIR}"
 	)
 
 # this is an alias for add_grb_executables() to select the backend to link against
 # DO NOT CHANGE THE ALIAS NAME!
-add_library( "${DENSEREF_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_dense_static )
+add_library( "${ALP_REFERENCE_BACKEND_DEFAULT_NAME}" ALIAS backend_alp_reference_static )

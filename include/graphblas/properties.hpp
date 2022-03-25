@@ -30,9 +30,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/properties.hpp>
 #endif
-#ifdef _GRB_WITH_DENSE
- #include <graphblas/denseref/properties.hpp>
-#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/properties.hpp>
 #endif
