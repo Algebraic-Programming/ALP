@@ -20,25 +20,16 @@
  * @date 24th of January, 2017
  */
 
-#ifndef _H_GRB_INIT
-#define _H_GRB_INIT
+#ifndef _H_ALP_INIT
+#define _H_ALP_INIT
 
 #include "backends.hpp"
 #include "base/init.hpp"
 
 // include all implementations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/init.hpp"
-#endif
-#ifdef _GRB_WITH_DENSEREF
- #include "graphblas/denseref/init.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/init.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/init.hpp"
+#ifdef _ALP_WITH_REFERENCE
+ #include "alp/reference/init.hpp"
 #endif
 
-#endif // end ``_H_GRB_INIT''
+#endif // end ``_H_ALP_INIT''
 

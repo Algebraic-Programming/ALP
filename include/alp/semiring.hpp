@@ -20,23 +20,23 @@
  * @date 15th of March, 2016
  */
 
-#ifndef _H_GRB_SEMIRING
-#define _H_GRB_SEMIRING
+#ifndef _H_ALP_SEMIRING
+#define _H_ALP_SEMIRING
 
-#include <graphblas/identities.hpp>
-#include <graphblas/monoid.hpp>
-#include <graphblas/ops.hpp>
+#include <alp/identities.hpp>
+#include <alp/monoid.hpp>
+#include <alp/ops.hpp>
 
 /**
  * The main GraphBLAS namespace.
  */
-namespace grb {
+namespace alp {
 
 	/**
 	 * A generalised semiring.
 	 *
-	 * This semiring works with the standard operators provided in grb::operators
-	 * as well as with standard identities provided in grb::identities.
+	 * This semiring works with the standard operators provided in alp::operators
+	 * as well as with standard identities provided in alp::identities.
 	 *
 	 * \par Operators
 	 *
@@ -49,7 +49,7 @@ namespace grb {
 	 *   -# \f$ \oplus: \ D_1 \times D_2 \to D_3 \f$, and
 	 *   -# \f$ \otimes:\ D_4 \times D_5 \to D_6 \f$.
 	 *
-	 * By convention, primitives such as grb::mxv will feed the output of the
+	 * By convention, primitives such as alp::mxv will feed the output of the
 	 * multiplicative operation to the additive operator as left-hand side input;
 	 * hence, a valid semiring must have \f$ D_6 = D_1 \f$. Should the additive
 	 * operator reduce several multiplicative outputs, the thus-far accumulated
@@ -79,29 +79,29 @@ namespace grb {
 	 * \par Standard examples
 	 *
 	 * An example of the standard semiring would be:
-	 *    grb::Semiring<
-	 *        grb::operators::add< double, double, double >,
-	 *        grb::operators::mul< double, double, double >,
-	 *        grb::identities::zero,
-	 *        grb::identitites::one
+	 *    alp::Semiring<
+	 *        alp::operators::add< double, double, double >,
+	 *        alp::operators::mul< double, double, double >,
+	 *        alp::identities::zero,
+	 *        alp::identitites::one
 	 *    > realSemiring;
 	 * In this standard case, all domains the operators the semiring comprises are
 	 * equal to one another. GraphBLAS supports the following shorthand for this
 	 * special case:
-	 *    grb::Semiring<
-	 *        grb::operators::add< double >,
-	 *        grb::operators::mul< double >,
-	 *        grb::identities::zero,
-	 *        grb::identities::one
+	 *    alp::Semiring<
+	 *        alp::operators::add< double >,
+	 *        alp::operators::mul< double >,
+	 *        alp::identities::zero,
+	 *        alp::identities::one
 	 *    > realSemiring;
 	 *
 	 * As another example, consider min-plus algebras. These may be used, for
 	 * example, for deriving shortest paths through an edge-weighted graph:
-	 *    grb::Semiring<
-	 *        grb::operators::min< unsigned int >,
-	 *        grb::operators::add< unsigned int >,
-	 *        grb::identities::negative_infinity,
-	 *        grb::identities::zero
+	 *    alp::Semiring<
+	 *        alp::operators::min< unsigned int >,
+	 *        alp::operators::add< unsigned int >,
+	 *        alp::identities::negative_infinity,
+	 *        alp::identities::zero
 	 *    > minPlus;
 	 *
 	 * \par CMonoid-categories
@@ -191,15 +191,15 @@ namespace grb {
 			"The right-hand input type of the additive operator must match its "
 			"output type" );
 
-		static_assert( grb::is_associative< _OP1 >::value,
+		static_assert( alp::is_associative< _OP1 >::value,
 			"Cannot construct a semiring using a non-associative additive "
 			"operator" );
 
-		static_assert( grb::is_associative< _OP2 >::value,
+		static_assert( alp::is_associative< _OP2 >::value,
 			"Cannot construct a semiring using a non-associative multiplicative "
 			"operator" );
 
-		static_assert( grb::is_commutative< _OP1 >::value,
+		static_assert( alp::is_commutative< _OP1 >::value,
 			"Cannot construct a semiring using a non-commutative additive "
 			"operator" );
 
@@ -243,10 +243,10 @@ namespace grb {
 		using One = _ID2< OneType >;
 
 	private:
-		static constexpr size_t D1_bsz = grb::config::SIMD_BLOCKSIZE< D1 >::value();
-		static constexpr size_t D2_bsz = grb::config::SIMD_BLOCKSIZE< D2 >::value();
-		static constexpr size_t D3_bsz = grb::config::SIMD_BLOCKSIZE< D3 >::value();
-		static constexpr size_t D4_bsz = grb::config::SIMD_BLOCKSIZE< D4 >::value();
+		static constexpr size_t D1_bsz = alp::config::SIMD_BLOCKSIZE< D1 >::value();
+		static constexpr size_t D2_bsz = alp::config::SIMD_BLOCKSIZE< D2 >::value();
+		static constexpr size_t D3_bsz = alp::config::SIMD_BLOCKSIZE< D3 >::value();
+		static constexpr size_t D4_bsz = alp::config::SIMD_BLOCKSIZE< D4 >::value();
 		static constexpr size_t mul_input_bsz = D1_bsz < D2_bsz ? D1_bsz : D2_bsz;
 
 		/** The additive monoid. */
@@ -344,10 +344,10 @@ namespace grb {
 
 	template< class _OP1, class _OP2, template< typename > class _ID1, template< typename > class _ID2 >
 	struct has_immutable_nonzeroes< Semiring< _OP1, _OP2, _ID1, _ID2 > > {
-		static const constexpr bool value = grb::is_semiring< Semiring< _OP1, _OP2, _ID1, _ID2 > >::value &&
-			std::is_same< _OP1, typename grb::operators::logical_or< typename _OP1::D1, typename _OP1::D2, typename _OP1::D3 > >::value;
+		static const constexpr bool value = alp::is_semiring< Semiring< _OP1, _OP2, _ID1, _ID2 > >::value &&
+			std::is_same< _OP1, typename alp::operators::logical_or< typename _OP1::D1, typename _OP1::D2, typename _OP1::D3 > >::value;
 	};
 
-} // namespace grb
+} // namespace alp
 
 #endif

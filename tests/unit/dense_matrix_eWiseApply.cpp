@@ -19,34 +19,34 @@
 #include <sstream>
 #include <vector>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
-using namespace grb;
+using namespace alp;
 
 template< typename Structure >
-void print_matrix( const grb::StructuredMatrix< double, Structure > & A) {
+void print_matrix( const alp::Matrix< double, Structure > & A) {
 	(void)A;
-	// if( ! grb::internal::getInitialized< double >( A ) ) {
+	// if( ! alp::internal::getInitialized< double >( A ) ) {
 	// 	std::cout << "Matrix is uninitialized, nothing to print.\n";
 	// 	return;
 	// }
-	// const double * Araw = grb::getRaw( internal::getContainer( A ) );
-	// for( size_t row = 0; row < grb::nrows( A ); ++row ) {
-	// 	for( size_t col = 0; col < grb::ncols( A ); ++col ) {
-	// 		std::cout << Araw[row * grb::ncols( A ) + col] << " ";
+	// const double * Araw = alp::getRaw( internal::getContainer( A ) );
+	// for( size_t row = 0; row < alp::nrows( A ); ++row ) {
+	// 	for( size_t col = 0; col < alp::ncols( A ); ++col ) {
+	// 		std::cout << Araw[row * alp::ncols( A ) + col] << " ";
 	// 	}
 	// 	std::cout << "\n";
 	// }
 }
 
-void grb_program( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+void alp_program( const size_t & n, alp::RC & rc ) {
+	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting dense mxm\n";
 	// initialize test
-	grb::StructuredMatrix< double, structures::General > A( n, n );
-	grb::StructuredMatrix< double, structures::General > B( n, n );
-	grb::StructuredMatrix< double, structures::General > C( n, n );
+	alp::Matrix< double, structures::General > A( n, n );
+	alp::Matrix< double, structures::General > B( n, n );
+	alp::Matrix< double, structures::General > C( n, n );
 	std::vector< double > A_data( n * n, 1 );
 	std::vector< double > B_data( n * n, 2 );
 
@@ -54,9 +54,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	double beta = 20;
 
 	// Initialize input matrices
-	rc = grb::buildMatrix( A, A_data.begin(), A_data.end() );
+	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
 	if( rc == SUCCESS ) {
-		rc = grb::buildMatrix( B, B_data.begin(), B_data.end() );
+		rc = alp::buildMatrix( B, B_data.begin(), B_data.end() );
 	}
 	
 
@@ -64,17 +64,17 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// C = A + B
 	if( rc == SUCCESS ) {
-		rc = grb::eWiseApply( C, A, B, ring.getAdditiveMonoid());
+		rc = alp::eWiseApply( C, A, B, ring.getAdditiveMonoid());
 	}
 
 	// C = alpha . B
 	if ( rc == SUCCESS ) {
-		rc = grb::eWiseApply( C, alpha, B, ring.getMultiplicativeMonoid());
+		rc = alp::eWiseApply( C, alpha, B, ring.getMultiplicativeMonoid());
 	}
 
 	// C = A . beta
 	if( rc == SUCCESS ) {
-		rc = grb::eWiseApply( C, A, beta, ring.getMultiplicativeMonoid());
+		rc = alp::eWiseApply( C, A, beta, ring.getMultiplicativeMonoid());
 	}
 
 }
@@ -113,14 +113,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	alp::Launcher< AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

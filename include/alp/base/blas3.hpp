@@ -19,16 +19,16 @@
  * @author A. N. Yzelman
  */
 
-#ifndef _H_GRB_BLAS3_BASE
-#define _H_GRB_BLAS3_BASE
+#ifndef _H_ALP_BLAS3_BASE
+#define _H_ALP_BLAS3_BASE
 
-#include <graphblas/backends.hpp>
-#include <graphblas/phase.hpp>
+#include <alp/backends.hpp>
+#include <alp/phase.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup BLAS3 The Level-3 Basic Linear Algebra Subroutines (BLAS)
@@ -54,7 +54,7 @@ namespace grb {
 	 *
 	 * @returns SUCCESS If the computation completed as intended.
 	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  #grb::resize( C, A, B ); \em and the current capacity of
+	 *                  #alp::resize( C, A, B ); \em and the current capacity of
 	 *                  \a C was insufficient to store the multiplication of \a A
 	 *                  and \a B. The contents of \a C shall be undefined (which
 	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
@@ -74,14 +74,14 @@ namespace grb {
 		class Semiring,
 		Backend backend
 	>
-	RC mxm( Matrix< OutputType, backend > &C,
-		const Matrix< InputType1, backend > &A, const Matrix< InputType2, backend > &B,
+	RC mxm( internal::Matrix< OutputType, backend > &C,
+		const internal::Matrix< InputType1, backend > &A, const internal::Matrix< InputType2, backend > &B,
 		const Semiring &ring = Semiring(),
 		const PHASE &phase = NUMERICAL
 	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::mxm (semiring version)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::mxm (semiring version)\n";
  #endif
 #endif
 		(void)C;
@@ -104,7 +104,7 @@ namespace grb {
 	 * given vectors x, y, and z encode, or ILLEGAL shall be returned.
 	 *
 	 * \note A call to this function hence must be preceded by a successful
-	 *       call to grb::resize( matrix, nnz );
+	 *       call to alp::resize( matrix, nnz );
 	 *
 	 * @param[out] A The output matrix
 	 * @param[in]  x A vector of row indices.
@@ -126,35 +126,35 @@ namespace grb {
 	 * @returns ILLEGAL  If the capacity of A was insufficient to store the
 	 *                   given sparsity pattern.
 	 *
-	 * @see grb::resize
+	 * @see alp::resize
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, Backend backend, typename Coords >
-	RC zip( Matrix< OutputType, backend > & A, const Vector< InputType1, backend, Coords > & x, const Vector< InputType2, backend, Coords > & y, const Vector< InputType3, backend, Coords > & z ) {
+	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, Backend backend >
+	RC zip( internal::Matrix< OutputType, backend > & A, const internal::Vector< InputType1, backend > & x, const internal::Vector< InputType2, backend > & y, const internal::Vector< InputType3, backend > & z ) {
 		(void)x;
 		(void)y;
 		(void)z;
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::zip (vectors into matrices, non-void)\n";
  #endif
 #endif
-		const RC ret = grb::clear( A );
+		const RC ret = alp::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
 	/**
-	 * Specialisation of grb::zip for void output matrices.
+	 * Specialisation of alp::zip for void output matrices.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename InputType3, Backend backend, typename Coords >
-	RC zip( Matrix< void, backend > & A, const Vector< InputType1, backend, Coords > & x, const Vector< InputType2, backend, Coords > & y ) {
+	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename InputType3, Backend backend >
+	RC zip( internal::Matrix< void, backend > & A, const internal::Vector< InputType1, backend > & x, const internal::Vector< InputType2, backend > & y ) {
 		(void)x;
 		(void)y;
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::zip (vectors into matrices, void)\n";
  #endif
 #endif
-		const RC ret = grb::clear( A );
+		const RC ret = alp::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
@@ -162,6 +162,6 @@ namespace grb {
 	 * @}
 	 */
 
-} // namespace grb
+} // namespace alp
 
-#endif // end _H_GRB_BLAS3_BASE
+#endif // end _H_ALP_BLAS3_BASE

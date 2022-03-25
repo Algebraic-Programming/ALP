@@ -20,24 +20,15 @@
  * @date 8th of August, 2016
  */
 
-#ifndef _H_GRB_CONFIG
-#define _H_GRB_CONFIG
+#ifndef _H_ALP_CONFIG
+#define _H_ALP_CONFIG
 
 #include "base/config.hpp"
 
 // include all active configurations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/config.hpp"
-#endif
-#ifdef _GRB_WITH_OMP
- #include "graphblas/omp/config.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/config.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/config.hpp"
+#ifdef _ALP_WITH_REFERENCE
+ #include "alp/reference/config.hpp"
 #endif
 
-#endif // end ``_H_GRB_CONFIG''
+#endif // end ``_H_ALP_CONFIG''
 

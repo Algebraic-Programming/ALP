@@ -20,27 +20,18 @@
  * @date 29th of March 2017
  */
 
-#ifndef _H_GRB_BLAS1
-#define _H_GRB_BLAS1
+#ifndef _H_ALP_BLAS1
+#define _H_ALP_BLAS1
 
-#include <graphblas/backends.hpp>
-#include <graphblas/config.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/type_traits.hpp>
+#include <alp/backends.hpp>
+#include <alp/config.hpp>
+#include <alp/rc.hpp>
+#include <alp/type_traits.hpp>
 
 #include "base/vector.hpp"
 
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/blas1.hpp>
+#ifdef _ALP_WITH_REFERENCE
+ #include <alp/reference/blas1.hpp>
 #endif
 
 // the remainder implements several backend-agnostic short-cuts
@@ -68,13 +59,13 @@
 		"************************************************************************" \
 		"**********************\n" );
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * A standard vector to use for mask parameters. Indicates no mask shall be
 	 * used.
 	 */
-	#define NO_MASK Vector< bool >( 0 )
+	#define NO_MASK internal::Vector< bool >( 0 )
 
 	/**
 	 * Executes an arbitrary element-wise user-defined function \a f using any
@@ -82,7 +73,7 @@ namespace grb {
 	 * given vector \a x.
 	 *
 	 * The user-defined function is passed as a lambda which can capture, at
-	 * the very least, other instances of type grb::Vector. Use of this function
+	 * the very least, other instances of type alp::Vector. Use of this function
 	 * is preferable whenever multiple element-wise operations are requested that
 	 * use one or more identical input vectors. Performing the computation one
 	 * after the other in blocking mode would require the same vector to be
@@ -90,32 +81,32 @@ namespace grb {
 	 * fused explicitly instead.
 	 *
 	 * It shall always be legal to capture non-GraphBLAS objects for read access
-	 * only. It shall \em not be legal to capture instances of type grb::Matrix
+	 * only. It shall \em not be legal to capture instances of type alp::Matrix
 	 * for read and/or write access.
 	 *
-	 * If grb::Properties::writableCaptured evaluates true then captured
+	 * If alp::Properties::writableCaptured evaluates true then captured
 	 * non-GraphBLAS objects can also be written to, not just read from. The
 	 * captured variable is, however, completely local to the calling user process
 	 * only-- it will not be synchronised between user processes.
 	 * As a rule of thumb, data-centric GraphBLAS implementations \em cannot
-	 * support this and will thus have grb::Properties::writableCaptured evaluate
+	 * support this and will thus have alp::Properties::writableCaptured evaluate
 	 * to false. A portable GraphBLAS algorithm should provide a different code
 	 * path to handle this case.
 	 * When it is legal to write to captured scalar, this function can, e.g., be
 	 * used to perform reduction-like operations on any number of equally sized
 	 * input vectors.  This would be preferable to a chained number of calls to
-	 * grb::dot in case where some vectors are shared between subsequent calls,
+	 * alp::dot in case where some vectors are shared between subsequent calls,
 	 * for example; the shared vectors are streamed only once using this lambda-
 	 * enabled function.
 	 *
 	 * \warning The lambda shall only be executed on the data local to the user
 	 *          process calling this function! This is different from the various
-	 *          fold functions, or grb::dot, in that the semantics of those
+	 *          fold functions, or alp::dot, in that the semantics of those
 	 *          functions always end with a globally synchronised result. To
 	 *          achieve the same effect with user-defined lambdas, the users
 	 *          should manually prescribe how to combine the local results into
 	 *          global ones, for instance, by a subsequent call to
-	 *          grb::collectives<>::allreduce.
+	 *          alp::collectives<>::allreduce.
 	 *
 	 * \note This is an addition to the GraphBLAS. It is alike user-defined
 	 *       operators, monoids, and semirings, except it allows execution on
@@ -142,9 +133,9 @@ namespace grb {
 	 *              \a f.
 	 * @param[in] args All vectors the lambda is to access elements of. Must be of
 	 *                 the same length as \a x. If this constraint is violated,
-	 *                 grb::MISMATCH shall be returned. <em>This is a variadic
+	 *                 alp::MISMATCH shall be returned. <em>This is a variadic
 	 *                 argument and can contain any number of containers of type
-	 *                 grb::Vector, passed as though they were separate
+	 *                 alp::Vector, passed as though they were separate
 	 *                 arguments.</em>
 	 *
 	 * \note In future GraphBLAS implementations, \a args, apart from doing
@@ -153,7 +144,7 @@ namespace grb {
 	 *       implementations do not require this since they use the same static
 	 *       distribution for all containers.
 	 *
-	 * \warning Using a grb::Vector inside a lambda passed to this function while
+	 * \warning Using a alp::Vector inside a lambda passed to this function while
 	 *          not passing that same vector into \a args, will result in undefined
 	 *          behaviour.
 	 *
@@ -165,8 +156,8 @@ namespace grb {
 	 *          of \a f: <code>x[i] += x[i+1]</code>. Vectors can only be
 	 *          dereferenced at position \a i and \a i alone.
 	 *
-	 * @return grb::SUCCESS  When the lambda is successfully executed.
-	 * @return grb::MISMATCH When two or more vectors passed to \a args are not of
+	 * @return alp::SUCCESS  When the lambda is successfully executed.
+	 * @return alp::MISMATCH When two or more vectors passed to \a args are not of
 	 *                       equal length.
 	 *
 	 * \parblock
@@ -177,25 +168,25 @@ namespace grb {
 	 * \code
 	 * void f(
 	 *      double &alpha,
-	 *      grb::Vector< double > &y,
+	 *      alp::Vector< double > &y,
 	 *      const double beta,
-	 *      const grb::Vector< double > &x,
-	 *      const grb::Semiring< double > ring
+	 *      const alp::Vector< double > &x,
+	 *      const alp::Semiring< double > ring
 	 * ) {
-	 *      assert( grb::size(x) == grb::size(y) );
-	 *      assert( grb::nnz(x) == grb::size(x) );
-	 *      assert( grb::nnz(y) == grb::size(y) );
+	 *      assert( alp::size(x) == alp::size(y) );
+	 *      assert( alp::nnz(x) == alp::size(x) );
+	 *      assert( alp::nnz(y) == alp::size(y) );
 	 *      alpha = ring.getZero();
-	 *      grb::eWiseLambda(
+	 *      alp::eWiseLambda(
 	 *          [&alpha,beta,&x,&y,ring]( const size_t i ) {
 	 *              double mul;
 	 *              const auto mul_op = ring.getMultiplicativeOperator();
 	 *              const auto add_op = ring.getAdditiveOperator();
-	 *              grb::apply( y[i], beta, x[i], mul_op );
-	 *              grb::apply( mul, x[i], y[i], mul_op );
-	 *              grb::foldl( alpha, mul, add_op );
+	 *              alp::apply( y[i], beta, x[i], mul_op );
+	 *              alp::apply( mul, x[i], y[i], mul_op );
+	 *              alp::foldl( alpha, mul, add_op );
 	 *      }, x, y );
-	 *      grb::collectives::allreduce( alpha, add_op );
+	 *      alp::collectives::allreduce( alpha, add_op );
 	 * }
 	 * \endcode
 	 *
@@ -209,8 +200,8 @@ namespace grb {
 	 * equivalent to:
 	 *
 	 * \code
-	 * grb::eWiseMul( y, beta, x, ring );
-	 * grb::dot( alpha, x, y, ring );
+	 * alp::eWiseMul( y, beta, x, ring );
+	 * alp::dot( alpha, x, y, ring );
 	 * \endcode
 	 *
 	 * The version using the lambdas, however, is expected to execute
@@ -222,12 +213,12 @@ namespace grb {
 	 *          \code
 	 *              template< class Operator >
 	 *              void f(
-	 *                   grb::Vector< double > &x,
+	 *                   alp::Vector< double > &x,
 	 *                   const Operator op
 	 *              ) {
-	 *                   grb::eWiseLambda(
+	 *                   alp::eWiseLambda(
 	 *                       [&x,&op]( const size_t i ) {
-	 *                           grb::apply( x[i], x[i], x[i+1], op );
+	 *                           alp::apply( x[i], x[i], x[i+1], op );
 	 *                   }, x );
 	 *              }
 	 *          \endcode
@@ -247,12 +238,11 @@ namespace grb {
 		typename Func,
 		typename DataType,
 		Backend backend,
-		typename Coords,
 		typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Vector< DataType, backend, Coords > & x, Args...
+		const internal::Vector< DataType, backend > & x, Args...
 	) {
 		(void)f;
 		(void)x;
@@ -269,18 +259,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename IOType, typename InputType,
-		Backend backend,
-		typename Coords
+		Backend backend
 	>
 	RC foldl( IOType &x,
-		const Vector< InputType, backend, Coords > &y,
+		const internal::Vector< InputType, backend > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
-			grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< !alp::is_object< IOType >::value &&
+			alp::is_monoid< Monoid >::value,
 		void >::type * const = NULL
 	) {
 		// create empty mask
-		Vector< bool, backend, Coords > mask( 0 );
+		internal::Vector< bool, backend > mask( 0 );
 		// call regular reduce function
 		return foldl< descr >( x, y, mask, monoid );
 	}
@@ -295,17 +284,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class OP,
 		typename IOType, typename InputType,
-		Backend backend, typename Coords
+		Backend backend
 	>
 	RC foldl( IOType &x,
-		const Vector< InputType, backend, Coords > &y,
+		const internal::Vector< InputType, backend > &y,
 		const OP &op = OP(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
-			grb::is_operator< OP >::value,
+		const typename std::enable_if< !alp::is_object< IOType >::value &&
+			alp::is_operator< OP >::value,
 		void >::type * const = NULL
 	) {
 		// create empty mask
-		Vector< bool, backend, Coords > mask( 0 );
+		internal::Vector< bool, backend > mask( 0 );
 		// call regular reduce function
 		return foldl< descr >( x, y, mask, op );
 	}
@@ -316,25 +305,25 @@ namespace grb {
 	 * with any multiplicative operator.
 	 *
 	 * For return codes, exception behaviour, performance semantics, template
-	 * and non-template arguments, @see grb::dot.
+	 * and non-template arguments, @see alp::dot.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType, typename InputType1, typename InputType2,
-		Backend backend, typename Coords
+		Backend backend
 	>
 	RC dot( IOType &x,
-		const Vector< InputType1, backend, Coords > &left,
-		const Vector< InputType2, backend, Coords > &right,
+		const internal::Vector< InputType1, backend > &left,
+		const internal::Vector< InputType2, backend > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< IOType >::value &&
-			grb::is_semiring< Ring >::value,
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			!alp::is_object< IOType >::value &&
+			alp::is_semiring< Ring >::value,
 		void >::type * const = NULL
 	) {
-		return grb::dot< descr >( x,
+		return alp::dot< descr >( x,
 			left, right,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator()
@@ -350,7 +339,7 @@ namespace grb {
 	 * This function is only available when the output type is floating point.
 	 *
 	 * For return codes, exception behaviour, performance semantics, template
-	 * and non-template arguments, @see grb::dot.
+	 * and non-template arguments, @see alp::dot.
 	 *
 	 * @param[out] x The 2-norm of \a y. The input value of \a x will be ignored.
 	 * @param[in]  y The vector to compute the norm of.
@@ -367,16 +356,16 @@ namespace grb {
 	// template<
 	// 	Descriptor descr = descriptors::no_operation, class Ring,
 	// 	typename InputType, typename OutputType, typename OutputStructure,
-	// 	Backend backend, typename Coords
+	// 	Backend backend
 	// >
 	// RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
-	// 	const Vector< InputType, backend, Coords > &y,
+	// 	const internal::Vector< InputType, backend > &y,
 	// 	const Ring &ring = Ring(),
 	// 	const typename std::enable_if<
 	// 		std::is_floating_point< OutputType >::value,
 	// 	void >::type * const = NULL
 	// ) {
-	// 	RC ret = grb::dot< descr >( x, y, y, ring );
+	// 	RC ret = alp::dot< descr >( x, y, y, ring );
 	// 	if( ret == SUCCESS ) {
 	// 		x = sqrt( x );
 	// 	}
@@ -387,16 +376,16 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType, typename OutputType,
-		Backend backend, typename Coords
+		Backend backend
 	>
 	RC norm2( OutputType &x,
-		const Vector< InputType, backend, Coords > &y,
+		const internal::Vector< InputType, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
 		void >::type * const = NULL
 	) {
-		RC ret = grb::dot< descr >( x, y, y, ring );
+		RC ret = alp::dot< descr >( x, y, y, ring );
 		if( ret == SUCCESS ) {
 			x = sqrt( x );
 		}
@@ -404,9 +393,9 @@ namespace grb {
 	}
 
 
-} // namespace grb
+} // namespace alp
 
 #undef NO_CAST_RING_ASSERT
 
-#endif // end ``_H_GRB_BLAS1''
+#endif // end ``_H_ALP_BLAS1''
 

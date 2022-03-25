@@ -20,18 +20,18 @@
  * @date 14th of January, 2022
  */
 
-#ifndef _H_GRB_DENSEREF_SPMD
-#define _H_GRB_DENSEREF_SPMD
+#ifndef _H_ALP_REFERENCE_SPMD
+#define _H_ALP_REFERENCE_SPMD
 
 #include <cstddef> //size_t
 
-#include <graphblas/base/spmd.hpp>
+#include <alp/base/spmd.hpp>
 
-namespace grb {
+namespace alp {
 
 	/** \internal This is a single-process back-end. */
 	template<>
-	class spmd< reference_dense > {
+	class spmd< reference > {
 
 	public:
 
@@ -56,15 +56,15 @@ namespace grb {
 		/**
 		 * In this backend, corresponds to a no-op.
 		 *
-		 * @return grb::SUCCESS.
+		 * @return alp::SUCCESS.
 		 */
 		static RC barrier() noexcept {
 			return SUCCESS;
 		}
 
-	}; // end class ``spmd'' reference_dense implementation
+	}; // end class ``spmd'' reference implementation
 
-} // namespace grb
+} // namespace alp
 
-#endif // end _H_GRB_DENSEREF_SPMD
+#endif // end _H_ALP_REFERENCE_SPMD
 

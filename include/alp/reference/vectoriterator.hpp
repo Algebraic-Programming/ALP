@@ -20,25 +20,25 @@
  * @date 17th of January, 2022
  */
 
-#ifndef _H_GRB_DENSEREF_VECTOR_ITERATOR
-#define _H_GRB_DENSEREF_VECTOR_ITERATOR
+#ifndef _H_ALP_REFERENCE_VECTOR_ITERATOR
+#define _H_ALP_REFERENCE_VECTOR_ITERATOR
 
-#include <graphblas/backends.hpp>
+#include <alp/backends.hpp>
 
 #include <iterator>
 
 
-namespace grb {
+namespace alp {
 
 	namespace internal {
 
-		template< typename T, Backend spmd_backend = reference_dense >
+		template< typename T, Backend spmd_backend = reference >
 		class ConstDenserefVectorIterator : public std::iterator<
 			std::random_access_iterator_tag,
 			std::pair< const size_t, const T >,
 			size_t
 		> {
-			friend class Vector< T, reference_dense, void >;
+			friend class Vector< T, reference, void >;
 
 			private:
 
@@ -220,9 +220,9 @@ namespace grb {
 
 		};
 
-	} // end namespace ``grb::internal''
+	} // end namespace ``alp::internal''
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_VECTOR_ITERATOR''
+#endif // end ``_H_ALP_REFERENCE_VECTOR_ITERATOR''
 

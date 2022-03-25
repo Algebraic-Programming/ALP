@@ -24,24 +24,15 @@
  * @date: 30th of March 2017.
  */
 
-#ifndef _H_GRB_BLAS2
-#define _H_GRB_BLAS2
+#ifndef _H_ALP_BLAS2
+#define _H_ALP_BLAS2
 
 #include "base/blas2.hpp"
 
 // now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/blas2.hpp>
-#endif
-#ifdef _GRB_WITH_DENSE
- #include <graphblas/denseref/blas2.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/blas2.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/blas2.hpp>
+#ifdef _ALP_WITH_REFERENCE
+ #include <alp/reference/blas2.hpp>
 #endif
 
-#endif // end ``_H_GRB_BLAS2''
+#endif // end ``_H_ALP_BLAS2''
 

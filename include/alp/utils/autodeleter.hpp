@@ -24,18 +24,18 @@
  * @date 22nd of April, 2017
  */
 
-#ifndef _H_GRB_UTILS_AUTO_DELETER
-#define _H_GRB_UTILS_AUTO_DELETER
+#ifndef _H_ALP_UTILS_AUTO_DELETER
+#define _H_ALP_UTILS_AUTO_DELETER
 
-#ifndef _GRB_NO_LIBNUMA
+#ifndef _ALP_NO_LIBNUMA
 #include <numa.h>
 #endif
 
 #include <memory>
 
-#include "graphblas/config.hpp"
+#include "alp/config.hpp"
 
-namespace grb {
+namespace alp {
 
 	namespace utils {
 
@@ -56,7 +56,7 @@ namespace grb {
 					}
 				}
 
-#ifndef _GRB_NO_LIBNUMA
+#ifndef _ALP_NO_LIBNUMA
 				/** \todo documentation */
 				template< typename T >
 				class safe_numa_free {
@@ -76,10 +76,10 @@ namespace grb {
 
 	} // namespace utils
 
-} // namespace grb
+} // namespace alp
 
 // now define user API:
-namespace grb {
+namespace alp {
 
 	namespace utils {
 
@@ -123,7 +123,7 @@ namespace grb {
 			 * @throws std::bad_alloc If the system cannot allocate enough memory.
 			 */
 			AutoDeleter( T * const pointer = NULL, const size_t size = 0 ) {
-#ifdef _GRB_NO_LIBNUMA
+#ifdef _ALP_NO_LIBNUMA
 				(void)size;
 				const auto free_p = &( functions::template safe_free< T > );
 				_shPtr = std::shared_ptr< T >( pointer, free_p );
@@ -181,12 +181,7 @@ namespace grb {
 
 	} // namespace utils
 
-} // namespace grb
-
-// include specialised DeleterFunctions
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/deleters.hpp"
-#endif
+} // namespace alp
 
 #endif
 

@@ -20,13 +20,13 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_BLAS3
-#define _H_GRB_DENSEREF_BLAS3
+#ifndef _H_ALP_REFERENCE_BLAS3
+#define _H_ALP_REFERENCE_BLAS3
 
 #include <type_traits> //for std::enable_if
 
-#include <graphblas/base/blas3.hpp>
-#include <graphblas/descriptors.hpp>
+#include <alp/base/blas3.hpp>
+#include <alp/descriptors.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -57,7 +57,7 @@
 		"******************************\n" );
 #endif
 
-namespace grb {
+namespace alp {
 	namespace internal {
 
 		/**
@@ -69,17 +69,17 @@ namespace grb {
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid
 		>
-		RC mxm_generic( Matrix< OutputType, reference_dense > &C,
-			const Matrix< InputType1, reference_dense > &A,
-			const Matrix< InputType2, reference_dense > &B,
+		RC mxm_generic( Matrix< OutputType, reference > &C,
+			const Matrix< InputType1, reference > &A,
+			const Matrix< InputType2, reference > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value && !
-				grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value &&
-				grb::is_monoid< Monoid >::value,
+			const typename std::enable_if< !alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value && !
+				alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
 			(void)oper;
@@ -89,30 +89,30 @@ namespace grb {
 				( !(
 					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
 				) ),
-				"grb::mxm_generic: the operator-monoid version of mxm cannot be "
+				"alp::mxm_generic: the operator-monoid version of mxm cannot be "
 				"used if either of the input matrices is a pattern matrix (of type "
 				"void)"
 			);
 
 #ifdef _DEBUG
-			std::cout << "In grb::internal::mxm_generic (reference_dense, unmasked)\n";
+			std::cout << "In alp::internal::mxm_generic (reference, unmasked)\n";
 #endif
 
 			// run-time checks
-			const size_t m = grb::nrows( C );
-			const size_t n = grb::ncols( C );
-			const size_t m_A = grb::nrows( A );
-			const size_t k = grb::ncols( A );
-			const size_t k_B = grb::nrows( B );
-			const size_t n_B = grb::ncols( B );
+			const size_t m = nrows( C );
+			const size_t n = ncols( C );
+			const size_t m_A = nrows( A );
+			const size_t k = ncols( A );
+			const size_t k_B = nrows( B );
+			const size_t n_B = ncols( B );
 
 			if( m != m_A || k != k_B || n != n_B ) {
 				return MISMATCH;
 			}
 
-			const auto A_raw = grb::internal::getRaw( A );
-			const auto B_raw = grb::internal::getRaw( B );
-			auto C_raw = grb::internal::getRaw( C );
+			const auto A_raw = getRaw( A );
+			const auto B_raw = getRaw( B );
+			auto C_raw = getRaw( C );
 
 			std::cout << "Multiplying dense matrices.\n";
 
@@ -121,12 +121,12 @@ namespace grb {
 					C_raw[ row * k + col] = monoid.template getIdentity< OutputType >();
 					for( size_t i = 0; i < k; ++ i ) {
 						OutputType temp = monoid.template getIdentity< OutputType >();
-						(void)grb::apply( temp, A_raw[ row * k + i ], B_raw[ i * n_B + col ], oper );
-						(void)grb::foldl( C_raw[ row * k + col], temp, monoid.getOperator() );
+						(void)alp::apply( temp, A_raw[ row * k + i ], B_raw[ i * n_B + col ], oper );
+						(void)alp::foldl( C_raw[ row * k + col], temp, monoid.getOperator() );
 					}
 				}
 			}
-			grb::internal::setInitialized( C, true );
+			alp::internal::setInitialized( C, true );
 			// done
 			return SUCCESS;
 		}
@@ -143,17 +143,17 @@ namespace grb {
 			  
 			typename OutputView, typename InputView1, typename InputView2
 		>
-		RC mxm_generic( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > &C,
-			const StructuredMatrix< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &A,
-			const StructuredMatrix< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &B,
+		RC mxm_generic( alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value && !
-				grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value &&
-				grb::is_monoid< Monoid >::value,
+			const typename std::enable_if< !alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value && !
+				alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
 			(void)C;
@@ -165,7 +165,7 @@ namespace grb {
 			// TODO; Implement this as a backup version that works for any structure and storage.
 			// Even though the performance does not have to be optimal, we guarantee that any two matrices can be multiplied
 			// To provide better performing mxm, one should implement a function with specialized template elements
-			// This currently cannot work as we do not have a generic way to access elements in a given StructuredMatrix
+			// This currently cannot work as we do not have a generic way to access elements in a given Matrix
 			return UNSUPPORTED;
 		}
 
@@ -179,17 +179,17 @@ namespace grb {
 			class Operator, class Monoid,
 			typename OutputView = view::Original< void >, typename InputView1 = view::Original< void >, typename InputView2 = view::Original< void >
 		>
-		RC mxm_generic( StructuredMatrix< OutputType, structures::General, Density::Dense, OutputView, reference_dense > &C,
-			const StructuredMatrix< InputType1, structures::General, Density::Dense, InputView1, reference_dense > &A,
-			const StructuredMatrix< InputType2, structures::General, Density::Dense, InputView2, reference_dense > &B,
+		RC mxm_generic( alp::Matrix< OutputType, structures::General, Density::Dense, OutputView, reference > &C,
+			const alp::Matrix< InputType1, structures::General, Density::Dense, InputView1, reference > &A,
+			const alp::Matrix< InputType2, structures::General, Density::Dense, InputView2, reference > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value && !
-				grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value &&
-				grb::is_monoid< Monoid >::value,
+			const typename std::enable_if< !alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value && !
+				alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
 			(void)oper;
@@ -199,40 +199,40 @@ namespace grb {
 				( !(
 					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
 				) ),
-				"grb::mxm_generic: the operator-monoid version of mxm cannot be "
+				"alp::mxm_generic: the operator-monoid version of mxm cannot be "
 				"used if either of the input matrices is a pattern matrix (of type "
 				"void)"
 			);
 
 #ifdef _DEBUG
-			std::cout << "In grb::internal::mxm_generic (reference_dense, unmasked)\n";
+			std::cout << "In alp::internal::mxm_generic (reference, unmasked)\n";
 #endif
 
 			// How to handle combinations of different storage schemes?
 			// For example for C<dense:full> = A<dense::full> * B<dense:full> we can directly call mxm for Matrix<> containers
 			// run-time checks
-			const size_t m = grb::nrows( C );
-			const size_t n = grb::ncols( C );
-			const size_t m_A = grb::nrows( A );
-			const size_t k = grb::ncols( A );
-			const size_t k_B = grb::nrows( B );
-			const size_t n_B = grb::ncols( B );
+			const size_t m = alp::nrows( C );
+			const size_t n = alp::ncols( C );
+			const size_t m_A = alp::nrows( A );
+			const size_t k = alp::ncols( A );
+			const size_t k_B = alp::nrows( B );
+			const size_t n_B = alp::ncols( B );
 			// Maybe we can offload these checks to mxm call later in this function
 
 			if( m != m_A || k != k_B || n != n_B ) {
 				return MISMATCH;
 			}
 
-			const auto A_container = grb::internal::getContainer( A );
-			const auto B_container = grb::internal::getContainer( B );
-			auto C_container = grb::internal::getContainer( C );
+			const auto A_container = alp::internal::getContainer( A );
+			const auto B_container = alp::internal::getContainer( B );
+			auto C_container = alp::internal::getContainer( C );
 
 			std::cout << "Multiplying dense matrices.\n";
 
 			RC rc = mxm_generic< true >( C_container, A_container, B_container, oper, monoid, mulMonoid );
 
 			if ( rc == SUCCESS ) {
-				// grb::internal::setInitialized( C, true );
+				// alp::internal::setInitialized( C, true );
 			}
 
 			// done
@@ -257,7 +257,7 @@ namespace grb {
 	 *
 	 * @returns SUCCESS If the computation completed as intended.
 	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  #grb::resize( C, A, B ); \em and the current capacity of
+	 *                  #alp::resize( C, A, B ); \em and the current capacity of
 	 *                  \a C was insufficient to store the multiplication of \a A
 	 *                  and \a B. The contents of \a C shall be undefined (which
 	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
@@ -274,16 +274,16 @@ namespace grb {
 	template< Descriptor descr = descriptors::no_operation,
 			  typename OutputType, typename InputType1, typename InputType2, 
 			  class Semiring >
-	RC mxm( Matrix< OutputType, reference_dense > & C,
-		const Matrix< InputType1, reference_dense > & A,
-		const Matrix< InputType2, reference_dense > & B,
+	RC mxm( internal::Matrix< OutputType, reference > & C,
+		const internal::Matrix< InputType1, reference > & A,
+		const internal::Matrix< InputType2, reference > & B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
 
 #ifdef _DEBUG
-		std::cout << "In grb::mxm (reference_dense, unmasked, semiring)\n";
+		std::cout << "In alp::mxm (reference, unmasked, semiring)\n";
 #endif
 
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
@@ -326,7 +326,7 @@ namespace grb {
 		const InputStructMatT2 & B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value && grb::is_semiring< Semiring >::value,
+		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
 		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
@@ -347,8 +347,8 @@ namespace grb {
 		const Operator & mulOp,
 		const Monoid & addM,
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value &&
-		                               grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value &&
+		                               alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
@@ -372,19 +372,19 @@ namespace grb {
 			typename OutputView, typename InputView1, typename InputView2,
 			class Operator
 		>
-		RC eWiseApply_matrix_generic( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > *C,
-			const StructuredMatrix< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > *A,
+		RC eWiseApply_matrix_generic( alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > *A,
 			const InputType1 *alpha,
-			const StructuredMatrix< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > *B,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > *B,
 			const InputType1 *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
 			const PHASE &phase,
 			const typename std::enable_if<
-				!grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value &&
-				!grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value,
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value,
 			void >::type * const = NULL
 		) {
 			(void)C;
@@ -399,12 +399,12 @@ namespace grb {
 				     std::is_same< InputType1, void >::value ||
 				     std::is_same< InputType2, void >::value
 				) ),
-				"grb::internal::eWiseApply_matrix_generic: the non-monoid version of "
+				"alp::internal::eWiseApply_matrix_generic: the non-monoid version of "
 				"elementwise mxm can only be used if neither of the input matrices "
 				"is a pattern matrix (of type void)" );
 
 #ifdef _DEBUG
-			std::cout << "In grb::internal::eWiseApply_matrix_generic\n";
+			std::cout << "In alp::internal::eWiseApply_matrix_generic\n";
 #endif
 
 			// get whether the matrices should be transposed prior to execution
@@ -413,12 +413,12 @@ namespace grb {
 
 			// run-time checks
 			// TODO: support left/right_scalar
-			// const size_t m = grb::nrows( *C );
-			// const size_t n = grb::ncols( *C );
-			// const size_t m_A = !trans_left ? grb::nrows( *A ) : grb::ncols( *A );
-			// const size_t n_A = !trans_left ? grb::ncols( *A ) : grb::nrows( *A );
-			// const size_t m_B = !trans_right ? grb::nrows( *B ) : grb::ncols( *B );
-			// const size_t n_B = !trans_right ? grb::ncols( *B ) : grb::nrows( *B );
+			// const size_t m = alp::nrows( *C );
+			// const size_t n = alp::ncols( *C );
+			// const size_t m_A = !trans_left ? alp::nrows( *A ) : alp::ncols( *A );
+			// const size_t n_A = !trans_left ? alp::ncols( *A ) : alp::nrows( *A );
+			// const size_t m_B = !trans_right ? alp::nrows( *B ) : alp::ncols( *B );
+			// const size_t n_B = !trans_right ? alp::ncols( *B ) : alp::nrows( *B );
 
 			// if( m != m_A || m != m_B || n != n_A || n != n_B ) {
 			// 	return MISMATCH;
@@ -467,11 +467,11 @@ namespace grb {
 	 * @param mulmono 	The monoid used in the element-wise operation
 	 * @param phase 	The execution phase 
 	 * 
-	 * @return grb::MISMATCH Whenever the structures or dimensions of \a A, \a B, and \a C do
+	 * @return alp::MISMATCH Whenever the structures or dimensions of \a A, \a B, and \a C do
 	 *                       not match. All input data containers are left
 	 *                       untouched if this exit code is returned; it will be
 	 *                       as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
  	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -480,39 +480,39 @@ namespace grb {
 		  
 		typename OutputView, typename InputView1, typename InputView2,
 		class MulMonoid >
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > &C,
-		const StructuredMatrix< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &A,
-		const StructuredMatrix< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &B,
+	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > &A,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
+		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value,
 		void >::type * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
-			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
-			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a postfactor input matrix B that does not match the "
 			"second domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D3, OutputType >::value ),
-			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with an output matrix C that does not match the output domain "
 			"of the monoid operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
+		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
 		return internal::eWiseApply_matrix_generic< true, false, false, descr >(
@@ -533,42 +533,42 @@ namespace grb {
 		 
 		typename OutputView, typename InputView2,
 		class MulMonoid >
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > &C,
+	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
 		const InputType1 &alpha,
-		const StructuredMatrix< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &B,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
+		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value,
 		void >::type * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a postfactor input matrix B that does not match the "
 			"second domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D3, OutputType >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with an output matrix C that does not match the output domain "
 			"of the monoid operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
+		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType1, structures::General, Density::Dense, view::Original< void >, reference_dense > * no_matrix = nullptr;
+		const Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, reference > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
 			&C,
 			no_matrix,
@@ -591,42 +591,42 @@ namespace grb {
 		 
 		typename OutputView, typename InputView1,
 		class MulMonoid >
-	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > &C,
-		const StructuredMatrix< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &A,
+	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > &A,
 		const InputType2 &beta,
 		const MulMonoid &mulmono,
 		const PHASE phase = NUMERICAL,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
+		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value,
 		void >::type * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with a postfactor input matrix B that does not match the "
 			"second domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D3, OutputType >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"alp::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
 			"called with an output matrix C that does not match the output domain "
 			"of the monoid operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
+		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType2, structures::General, Density::Dense, view::Original< void >, reference_dense > * no_matrix = nullptr;
+		const Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, reference > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
 			&C,
 			&A,
@@ -664,11 +664,11 @@ namespace grb {
 	 * @param[in] ring The generalized semiring under which to perform this
 	 *                 element-wise operation.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
+	 * @return alp::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
 	 *                       not match. All input data containers are left
 	 *                       untouched; it will be as though this call was never
 	 *                       made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 * 
@@ -706,24 +706,24 @@ namespace grb {
 		  
 		typename OutputView, typename InputView1, typename InputView2,
 		typename Ring>
-	RC eWiseAdd( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > &C,
-		const StructuredMatrix< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &A,
-		const StructuredMatrix< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &B,
+	RC eWiseAdd( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > &A,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the fourth domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, StrMat <- StrMat + StrMat) dispatches to eWiseApply( reference_dense, StrMat <- StrMat . StrMat ) using additive monoid\n";
+		std::cout << "eWiseAdd (reference, StrMat <- StrMat + StrMat) dispatches to eWiseApply( reference, StrMat <- StrMat . StrMat ) using additive monoid\n";
 	#endif
 		return eWiseApply< descr >( C, A, B, ring.getAdditiveMonoid() );
 	}
@@ -750,65 +750,65 @@ namespace grb {
 	 * @param mul 	 The operator
 	 * @param phase  The execution phase 
 	 * 
-	 * @return grb::MISMATCH Whenever the structures or dimensions of \a A, \a u, and \a v do
+	 * @return alp::MISMATCH Whenever the structures or dimensions of \a A, \a u, and \a v do
 	 *                       not match. All input data containers are left
 	 *                       untouched if this exit code is returned; it will be
 	 *                       as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename InputView1, typename InputView2, class Operator >
-	RC outer( StructuredMatrix< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & A,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & u,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & v,
+	RC outer( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & u,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & v,
 		const Operator & mul = Operator(),
-		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
+		const typename std::enable_if< alp::is_operator< Operator >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< OutputType >::value,
 			void >::type * const = NULL ) {
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "alp::outerProduct",
 			"called with a prefactor vector that does not match the first domain "
 			"of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "alp::outerProduct",
 			"called with a postfactor vector that does not match the first domain "
 			"of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::outerProduct",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "alp::outerProduct",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
 
 		const size_t nrows = getLength( u );
 		const size_t ncols = getLength( v );
 
-		if( nrows != grb::nrows( A ) ) {
+		if( nrows != alp::nrows( A ) ) {
 			return MISMATCH;
 		}
 
-		if( ncols != grb::ncols( A ) ) {
+		if( ncols != alp::ncols( A ) ) {
 			return MISMATCH;
 		}
 
-		grb::StructuredMatrix< InputType1, structures::General, Density::Dense, view::Original< void >, reference_dense > u_matrix( nrows, 1 );
-		grb::StructuredMatrix< InputType2, structures::General, Density::Dense, view::Original< void >, reference_dense > v_matrix( 1, ncols );
+		alp::Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, reference > u_matrix( nrows, 1 );
+		alp::Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, reference > v_matrix( 1, ncols );
 
-		// auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
+		// auto u_converter = alp::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
 		// 	return std::make_pair( std::make_pair( ind, 0 ), val );
 		// } );
 
-		// grb::buildMatrixUnique( u_matrix, u_converter.begin(), u_converter.end(), PARALLEL );
+		// alp::buildMatrixUnique( u_matrix, u_converter.begin(), u_converter.end(), PARALLEL );
 
-		// auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t & ind, const InputType2 & val ) {
+		// auto v_converter = alp::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t & ind, const InputType2 & val ) {
 		// 	return std::make_pair( std::make_pair( 0, ind ), val );
 		// } );
-		// grb::buildMatrixUnique( v_matrix, v_converter.begin(), v_converter.end(), PARALLEL );
+		// alp::buildMatrixUnique( v_matrix, v_converter.begin(), v_converter.end(), PARALLEL );
 
-		grb::Monoid< grb::operators::left_assign< OutputType >, grb::identities::zero > mono;
+		alp::Monoid< alp::operators::left_assign< OutputType >, alp::identities::zero > mono;
 
-		return grb::mxm( A, u_matrix, v_matrix, mul, mono );
+		return alp::mxm( A, u_matrix, v_matrix, mul, mono );
 	}
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_BLAS3''
+#endif // end ``_H_ALP_REFERENCE_BLAS3''
 

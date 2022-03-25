@@ -20,20 +20,20 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_EXEC
-#define _H_GRB_DENSEREF_EXEC
+#ifndef _H_ALP_REFERENCE_EXEC
+#define _H_ALP_REFERENCE_EXEC
 
-#include <graphblas/backends.hpp>
-#include <graphblas/base/exec.hpp>
-#include <graphblas/denseref/init.hpp>
+#include <alp/backends.hpp>
+#include <alp/base/exec.hpp>
+#include <alp/reference/init.hpp>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \internal No implementation notes.
 	 */
 	template< EXEC_MODE mode >
-	class Launcher< mode, reference_dense > {
+	class Launcher< mode, reference > {
 
 		public:
 
@@ -58,7 +58,7 @@ namespace grb {
 			/** \internal No implementation notes. */
 			template< typename U >
 			RC exec(
-				void ( *grb_program )( const void *, const size_t, U & ),
+				void ( *alp_program )( const void *, const size_t, U & ),
 				const void *data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
@@ -68,7 +68,7 @@ namespace grb {
 				RC ret = init();
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
-					( *grb_program )( data_in, in_size, data_out );
+					( *alp_program )( data_in, in_size, data_out );
 				}
 				// finalise the GraphBLAS
 				if( ret == SUCCESS ) {
@@ -81,7 +81,7 @@ namespace grb {
 			/** \internal No implementation notes. */
 			template< typename T, typename U >
 			RC exec(
-				void ( *grb_program )( const T &, U & ),
+				void ( *alp_program )( const T &, U & ),
 				const T &data_in, U &data_out,
 				const bool broadcast = false
 			) {
@@ -90,7 +90,7 @@ namespace grb {
 				RC ret = init();
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
-					( *grb_program )( data_in, data_out );
+					( *alp_program )( data_in, data_out );
 				}
 				// finalise the GraphBLAS
 				if( ret == SUCCESS ) {
@@ -107,7 +107,7 @@ namespace grb {
 
 	};
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_EXEC''
+#endif // end ``_H_ALP_REFERENCE_EXEC''
 

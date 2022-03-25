@@ -20,22 +20,22 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_INIT
-#define _H_GRB_DENSEREF_INIT
+#ifndef _H_ALP_REFERENCE_INIT
+#define _H_ALP_REFERENCE_INIT
 
-#include <graphblas/base/init.hpp>
+#include <alp/base/init.hpp>
 
-namespace grb {
-
-	/** \internal No-op init */
-	template<>
-	RC init< reference_dense >( const size_t, const size_t, void * const );
+namespace alp {
 
 	/** \internal No-op init */
 	template<>
-	RC finalize< reference_dense >();
+	RC init< reference >( const size_t, const size_t, void * const );
 
-} // end namespace ``grb''
+	/** \internal No-op init */
+	template<>
+	RC finalize< reference >();
 
-#endif // end ``_H_GRB_DENSEREF_INIT''
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_REFERENCE_INIT''
 

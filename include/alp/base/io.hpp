@@ -20,17 +20,17 @@
  * @date 21st of February, 2017
  */
 
-#ifndef _H_GRB_IO_BASE
-#define _H_GRB_IO_BASE
+#ifndef _H_ALP_IO_BASE
+#define _H_ALP_IO_BASE
 
-#include <graphblas/iomode.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+#include <alp/iomode.hpp>
+#include <alp/rc.hpp>
+#include <alp/utils/SynchronizedNonzeroIterator.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup IO Data Ingestion and Extraction.
@@ -38,26 +38,26 @@ namespace grb {
 	 * and provides functions for extracting data from opaque GraphBLAS objects.
 	 *
 	 * The GraphBLAS operates on opaque data objects. Users can input data using
-	 * grb::buildVector and/or grb::buildMatrixUnique. This group provides free
+	 * alp::buildVector and/or alp::buildMatrixUnique. This group provides free
 	 * functions that automatically dispatch to those variants.
 	 *
-	 * The standard output methods are provided by grb::Vector::cbegin and
-	 * grb::Vector::cend, and similarly for grb::Matrix. Iterators provide
+	 * The standard output methods are provided by alp::Vector::cbegin and
+	 * alp::Vector::cend, and similarly for alp::Matrix. Iterators provide
 	 * parallel output (see #IOMode for a discussion on parallel versus
 	 * sequential IO).
 	 *
 	 * Sometimes it is desired to have direct access to a GraphBLAS memory
 	 * area, and to have that memory available even after the GraphBLAS
-	 * context has been closed (via grb::finalize). This functionality is
-	 * provided by grb::pin_memory.
+	 * context has been closed (via alp::finalize). This functionality is
+	 * provided by alp::pin_memory.
 	 *
 	 * @{
 	 */
 
 	/**
-	 * Constructs a dense vector from a container of exactly grb::size(x)
+	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
-	 * an accumulator, using grb::operators::right_assign (thus overwriting
+	 * an accumulator, using alp::operators::right_assign (thus overwriting
 	 * any old contents).
 	 */
 	template<
@@ -66,7 +66,7 @@ namespace grb {
 		Backend backend, typename Coords
 	>
 	RC buildVector(
-		Vector< InputType, backend, Coords > &x,
+		internal::Vector< InputType, backend > &x,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -77,7 +77,7 @@ namespace grb {
 	/**
 	 * Ingests possibly sparse input from a container to which iterators are
 	 * provided. This function dispatches to the buildVector routine that
-	 * includes an accumulator, here set to grb::operators::right_assign.
+	 * includes an accumulator, here set to alp::operators::right_assign.
 	 * Any existing values in \a x that overlap with newer values will hence
 	 * be overwritten.
 	 */
@@ -87,7 +87,7 @@ namespace grb {
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVector( Vector< InputType, backend, Coords > & x,
+	RC buildVector( internal::Vector< InputType, backend > & x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode, const Merger & merger = Merger()
@@ -147,9 +147,9 @@ namespace grb {
 	 *      is \f$ (p-1)g + l \f$.
 	 * \endparblock
 	 *
-	 * @returns grb::SUCCESS When ingestion has completed successfully.
-	 * @returns grb::ILLEGAL When a nonzero has an index larger than grb::size(x).
-	 * @returns grb::PANIC   If an unmitigable error has occured during ingestion.
+	 * @returns alp::SUCCESS When ingestion has completed successfully.
+	 * @returns alp::ILLEGAL When a nonzero has an index larger than alp::size(x).
+	 * @returns alp::PANIC   If an unmitigable error has occured during ingestion.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename InputType,
@@ -157,7 +157,7 @@ namespace grb {
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVectorUnique( Vector< InputType, backend, Coords > & x,
+	RC buildVectorUnique( internal::Vector< InputType, backend > & x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode
@@ -180,7 +180,7 @@ namespace grb {
 	 *          lead to undefined behaviour.
 	 *
 	 * @tparam descr         The descriptor used. The default is
-	 *                       #grb::descriptors::no_operation, which means that
+	 *                       #alp::descriptors::no_operation, which means that
 	 *                       no pre- or post-processing of input or input is
 	 *                       performed.
 	 * @tparam fwd_iterator1 The type of the row index iterator.
@@ -195,7 +195,7 @@ namespace grb {
 	 * @param[in] V  A forward iterator to \a cap nonzero values.
 	 * @param[in] nz The number of items pointed to by \a I, \a J, \em and \a V.
 	 *
-	 * @return grb::MISMATCH -# when an element from \a I dereferences to a value
+	 * @return alp::MISMATCH -# when an element from \a I dereferences to a value
 	 *                          larger than the row dimension of this matrix, or
 	 *                       -# when an element from \a J dereferences to a value
 	 *                          larger than the column dimension of this matrix.
@@ -204,7 +204,7 @@ namespace grb {
 	 *                       called; however, the given forward iterators may
 	 *                       have been copied and the copied iterators may have
 	 *                       incurred multiple increments and dereferences.
-	 * @return grb::OVERFLW  When the internal data type used for storing the
+	 * @return alp::OVERFLW  When the internal data type used for storing the
 	 *                       number of nonzeroes is not large enough to store
 	 *                       the number of nonzeroes the user wants to assign.
 	 *                       When this error code is returned the state of this
@@ -212,7 +212,7 @@ namespace grb {
 	 *                       called; however, the given forward iterators may
 	 *                       have been copied and the copied iterators may have
 	 *                       incurred multiple increments and dereferences.
-	 * @return grb::SUCCESS  When the function completes successfully.
+	 * @return alp::SUCCESS  When the function completes successfully.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -257,7 +257,7 @@ namespace grb {
 		typename length_type = size_t,
 		Backend implementation = config::default_backend >
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > & A,
+		internal::Matrix< InputType, implementation > & A,
 		fwd_iterator1 I, fwd_iterator1 I_end,
 		fwd_iterator2 J, fwd_iterator2 J_end,
 		fwd_iterator3 V, fwd_iterator3 V_end,
@@ -282,7 +282,7 @@ namespace grb {
 		typename fwd_iterator3 = const InputType * __restrict__,
 		typename length_type = size_t,
 		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( Matrix< InputType, implementation > &A,
+	RC buildMatrixUnique( internal::Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
@@ -301,7 +301,7 @@ namespace grb {
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
 		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( Matrix< InputType, implementation > & A, fwd_iterator1 I, fwd_iterator2 J, const length_type nz, const IOMode mode ) {
+	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A, fwd_iterator1 I, fwd_iterator2 J, const length_type nz, const IOMode mode ) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
 		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
@@ -342,7 +342,7 @@ namespace grb {
 	 *  -# <tt>fwd_iterator::nonzero_value_type</tt>
 	 *
 	 * This means a specialised iterator is required for use with this function.
-	 * See, for example, grb::utils::internal::MatrixFileIterator.
+	 * See, for example, alp::utils::internal::MatrixFileIterator.
 	 *
 	 * @param[out]   A   The matrix to be filled with nonzeroes from \a start to
 	 *                   \a end.
@@ -354,7 +354,7 @@ namespace grb {
 		typename InputType, typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
-	RC buildMatrixUnique( Matrix< InputType, implementation > & A,
+	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -367,7 +367,7 @@ namespace grb {
 
 	/** @} */
 
-} // namespace grb
+} // namespace alp
 
-#endif // end _H_GRB_IO_BASE
+#endif // end _H_ALP_IO_BASE
 

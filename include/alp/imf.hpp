@@ -42,8 +42,8 @@
  *       
  */
 
-#ifndef _H_GRB_IMF
-#define _H_GRB_IMF
+#ifndef _H_ALP_IMF
+#define _H_ALP_IMF
 
 #include <memory>
 #include <vector>
@@ -51,7 +51,7 @@
 #include <stdexcept>
 
 
-namespace grb {
+namespace alp {
 
 	namespace imf {
 
@@ -154,6 +154,6 @@ namespace grb {
 
 	}; // namespace imf
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_IMF
+#endif // _H_ALP_IMF

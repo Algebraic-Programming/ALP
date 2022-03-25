@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_SCALAR_BASE
-#define _H_GRB_SCALAR_BASE
+#ifndef _H_ALP_SCALAR_BASE
+#define _H_ALP_SCALAR_BASE
 
 #include <cstdlib>  //size_t
 #include <stdexcept>
 
-#include <graphblas/backends.hpp>
-#include <graphblas/descriptors.hpp>
-#include <graphblas/ops.hpp>
-#include <graphblas/rc.hpp>
+#include <alp/backends.hpp>
+#include <alp/descriptors.hpp>
+#include <alp/ops.hpp>
+#include <alp/rc.hpp>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \brief An ALP scalar.
@@ -41,7 +41,7 @@ namespace grb {
 	 *                   for example, randomizing the scalar value on each
 	 *                   interaction with the scalar.
 	 *
-	 * \warning Creating a grb::Scalar of other ALP types is
+	 * \warning Creating a alp::Scalar of other ALP types is
 	 *                <em>not allowed</em>.
 	 *          Passing a ALP type as template parameter will lead to
 	 *          undefined behaviour.
@@ -175,7 +175,7 @@ namespace grb {
 			 * context, scalar is considered to have a nonzero value \em iff initialized.
 			 *
 			 * A lambda reference to the value of this scalar is only valid when used
-			 * inside a lambda function evaluated via grb::eWiseLambda. Outside this
+			 * inside a lambda function evaluated via alp::eWiseLambda. Outside this
 			 * scope the returned reference incurs undefined behaviour.
 			 *
 			 *
@@ -198,16 +198,16 @@ namespace grb {
 			 * @return      A lambda reference to the value of this scalar
 			 *
 			 * \par Example.
-			 * See grb::eWiseLambda() for a practical and useful example.
+			 * See alp::eWiseLambda() for a practical and useful example.
 			 *
 			 * \warning There is no similar concept in the official GraphBLAS specs.
 			 *
 			 * @see lambda_reference For more details on the returned reference type.
-			 * @see grb::eWiseLambda For one legal way in which to use the returned
+			 * @see alp::eWiseLambda For one legal way in which to use the returned
 			 *      #lambda_reference.
 			 */
 			lambda_reference operator*() noexcept {
-#ifndef _GRB_NO_EXCEPTIONS
+#ifndef _ALP_NO_EXCEPTIONS
 				assert( false ); // Requesting lambda reference of unimplemented Scalar backend.
 #endif
 			}
@@ -216,13 +216,13 @@ namespace grb {
 			 * See the non-constant variant for further details.
 			 */
 			const lambda_reference operator*() const noexcept {
-#ifndef _GRB_NO_EXCEPTIONS
+#ifndef _ALP_NO_EXCEPTIONS
 				assert( false ); // Requesting lambda reference of unimplemented Scalar backend.
 #endif
 			}
 
 	}; // class Scalar
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_SCALAR_BASE
+#endif // _H_ALP_SCALAR_BASE

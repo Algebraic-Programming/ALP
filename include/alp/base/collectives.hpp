@@ -20,20 +20,20 @@
  * @date 20th of February, 2017
  */
 
-#ifndef _H_GRB_COLL_BASE
-#define _H_GRB_COLL_BASE
+#ifndef _H_ALP_COLL_BASE
+#define _H_ALP_COLL_BASE
 
-#include <graphblas/backends.hpp>
-#include <graphblas/descriptors.hpp>
-#include <graphblas/rc.hpp>
+#include <alp/backends.hpp>
+#include <alp/descriptors.hpp>
+#include <alp/rc.hpp>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * A static class defining various collective operations on scalars. This
 	 * class is templated in terms of the backends that are implemented-- each
 	 * implementation provides its own mechanisms to handle collective
-	 * communications. These are required for users employing grb::eWiseLambda,
+	 * communications. These are required for users employing alp::eWiseLambda,
 	 * or for users who perform explicit SPMD programming.
 	 */
 	template< enum Backend implementation >
@@ -68,11 +68,11 @@ namespace grb {
 		 * does \em not mean that the order of addition is fixed.
 		 *
 		 * Since each user process supplies but one value, there is no difference
-		 * between a reduce-to-the-left versus a reduce-to-the-right (see grb::reducel
-		 * and grb::reducer).
+		 * between a reduce-to-the-left versus a reduce-to-the-right (see alp::reducel
+		 * and alp::reducer).
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
-		 *                  Default is grb::descriptors::no_operation.
+		 *                  Default is alp::descriptors::no_operation.
 		 * @tparam Operator Which operator to use for reduction.
 		 * @tparam IOType   The type of the to-be reduced value.
 		 *
@@ -84,15 +84,15 @@ namespace grb {
 		 *       allreduce algorithm, as long as it is documented well enough so that
 		 *       its cost can be quantified.
 		 *
-		 * @returns grb::SUCCESS When the operation succeeds as planned.
-		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
+		 * @returns alp::SUCCESS When the operation succeeds as planned.
+		 * @returns alp::PANIC   When the communication layer unexpectedly fails. When
 		 *                       this error code is returned, the library enters an
 		 *                       undefined state.
 		 *
 		 * \parblock
 		 * \par Valid descriptors:
-		 * -# grb::descriptors::no_operation
-		 * -# grb::descriptors::no_casting
+		 * -# alp::descriptors::no_operation
+		 * -# alp::descriptors::no_casting
 		 *  Any other descriptors will be ignored.
 		 *  \endparblock
 		 *
@@ -133,11 +133,11 @@ namespace grb {
 		 * fixed.
 		 *
 		 * Since each user process supplies but one value, there is no difference
-		 * between a reduce-to-the-left versus a reduce-to-the-right (see grb::reducel
-		 * and grb::reducer).
+		 * between a reduce-to-the-left versus a reduce-to-the-right (see alp::reducel
+		 * and alp::reducer).
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
-		 *                  Default is grb::descriptors::no_operation.
+		 *                  Default is alp::descriptors::no_operation.
 		 * @tparam Operator Which operator to use for reduction.
 		 * @tparam IOType   The type of the to-be reduced value.
 		 *
@@ -252,7 +252,7 @@ namespace grb {
 
 	}; // end class ``collectives''
 
-} // end namespace grb
+} // end namespace alp
 
-#endif // end _H_GRB_COLL_BASE
+#endif // end _H_ALP_COLL_BASE
 

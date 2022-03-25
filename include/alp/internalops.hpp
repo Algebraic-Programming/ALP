@@ -20,17 +20,13 @@
  * @date 8 of August, 2016
  */
 
-#ifndef _H_GRB_INTERNAL_OPERATORS
-#define _H_GRB_INTERNAL_OPERATORS
+#ifndef _H_ALP_INTERNAL_OPERATORS
+#define _H_ALP_INTERNAL_OPERATORS
 
 // certain backends may want to specialize these functionalities,
 // e.g., for specific targets, e.g. to exploit dedicated hardware
 // features
 #include "base/internalops.hpp"
-
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/internalops.hpp>
-#endif
 
 #endif
 

@@ -20,10 +20,10 @@
  * @date 25th of March, 2019
  */
 
-#ifndef _H_GRB_TYPE_TRAITS
-#define _H_GRB_TYPE_TRAITS
+#ifndef _H_ALP_TYPE_TRAITS
+#define _H_ALP_TYPE_TRAITS
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Used to inspect whether a given type is a GraphBLAS container.
@@ -31,8 +31,8 @@ namespace grb {
 	 * @tparam T The type to inspect.
 	 *
 	 * There are only two GraphBLAS containers:
-	 *  -# grb::Vector, and
-	 *  -# grb::Matrix.
+	 *  -# alp::Vector, and
+	 *  -# alp::Matrix.
 	 */
 	template< typename T >
 	struct is_container {
@@ -101,11 +101,11 @@ namespace grb {
 	 * @tparam T The operator to inspect.
 	 *
 	 * An example of an idempotent operator is the logical OR,
-	 * #grb::operators::logical_or.
+	 * #alp::operators::logical_or.
 	 */
 	template< typename T >
 	struct is_idempotent {
-		static_assert( is_operator< T >::value, "Template argument to grb::is_idempotent must be an operator!" );
+		static_assert( is_operator< T >::value, "Template argument to alp::is_idempotent must be an operator!" );
 		static const constexpr bool value = false;
 	};
 
@@ -116,12 +116,12 @@ namespace grb {
 	 * @tparam T The semiring to inspect.
 	 *
 	 * An example of a monoid with an immutable identity is the logical OR,
-	 * #grb::operators::logical_or.
+	 * #alp::operators::logical_or.
 	 */
 	template< typename T >
 	struct has_immutable_nonzeroes {
 		static_assert( is_semiring< T >::value,
-			"Template argument to grb::has_immutable_nonzeroes must be a "
+			"Template argument to alp::has_immutable_nonzeroes must be a "
 			"semiring!" );
 		static const constexpr bool value = false;
 	};
@@ -131,11 +131,11 @@ namespace grb {
 		/**
 		 * Whether or not a given operator could translate to a no-op;
 		 * i.e., leave its outputs unmodified. This can be relevant
-		 * because it indicates situations where grb::apply could leave
+		 * because it indicates situations where alp::apply could leave
 		 * the output uninitialised, which may well not be as intended.
 		 *
 		 * An example of an operator that non-trivially may result in a
-		 * no-op is grb::operators::left_assign_if. Such operators must
+		 * no-op is alp::operators::left_assign_if. Such operators must
 		 * overload this internal type trait.
 		 */
 		template< typename OP >
@@ -146,8 +146,8 @@ namespace grb {
 			static const constexpr bool value = false;
 		};
 
-	} // end namespace grb::internal
+	} // end namespace alp::internal
 
-} // namespace grb
+} // namespace alp
 
 #endif
