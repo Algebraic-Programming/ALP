@@ -20,14 +20,14 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_BLAS1
-#define _H_GRB_DENSEREF_BLAS1
+#ifndef _H_ALP_REFERENCE_BLAS1
+#define _H_ALP_REFERENCE_BLAS1
 
-#include <graphblas/backends.hpp>
-#include <graphblas/config.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/scalar.hpp>
-#include <graphblas/density.hpp>
+#include <alp/backends.hpp>
+#include <alp/config.hpp>
+#include <alp/rc.hpp>
+#include <alp/scalar.hpp>
+#include <alp/density.hpp>
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -49,7 +49,7 @@
 #endif
 
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup BLAS1 The Level-1 Basic Linear Algebra Subroutines (BLAS)
@@ -57,8 +57,8 @@ namespace grb {
 	 * A collection of functions that allow ALP/GraphBLAS operators, monoids, and
 	 * semirings work on a mix of zero-dimensional and one-dimensional containers;
 	 * i.e., allows various linear algebra operations on scalars (both built-in
-	 * C++ scalars and objects of type grb::Scalar) and objects of type
-	 * grb::VectorView.
+	 * C++ scalars and objects of type alp::Scalar) and objects of type
+	 * alp::Vector.
 	 *
 	 * C++ built-in scalars are all scalar types that can be
 	 * passed to BLAS functions. This includes simple types (e.g. double) and
@@ -66,52 +66,52 @@ namespace grb {
 	 * Such types are referred to as C++ scalars or built-in scalars.
 	 *
 	 * Operations producing scalars are specialized to both C++ built-in scalars
-	 * and grb::Scalars. Functions taking scalars as inputs are specialized only
-	 * to grb::Scalars. Depending on backend's Scalar implementation, the
-	 * conversion from C++ scalar to grb::Scalar can be implicit or explicit.
+	 * and alp::Scalars. Functions taking scalars as inputs are specialized only
+	 * to alp::Scalars. Depending on backend's Scalar implementation, the
+	 * conversion from C++ scalar to alp::Scalar can be implicit or explicit.
 	 *
-	 * All functions except for grb::size and grb::nnz return an error code of
-	 * the enum-type grb::RC. The two functions for retrieving the size and the
+	 * All functions except for alp::size and alp::nnz return an error code of
+	 * the enum-type alp::RC. The two functions for retrieving the size and the
 	 * nonzeroes of two vectors are excluded from this because they are never
 	 * allowed to fail.
 	 *
 	 * Operations which require a single input vector only and produce scalar
 	 * output:
-	 *   -# grb::size,
-	 *   -# grb::nnz, and
-	 *   -# grb::set (three variants).
+	 *   -# alp::size,
+	 *   -# alp::nnz, and
+	 *   -# alp::set (three variants).
 	 * These do not require an operator, monoid, nor semiring. The following
 	 * require an operator:
-	 *   -# grb::foldr (reduction to the right),
-	 *   -# grb::foldl (reduction to the left).
+	 *   -# alp::foldr (reduction to the right),
+	 *   -# alp::foldl (reduction to the left).
 	 * Operators can only be applied on \em dense vectors. Operations on sparse
 	 * vectors require a well-defined way to handle missing vector elements. The
 	 * following functions require a monoid instead of an operator and are able
 	 * to handle sparse vectors by interpreting missing items as an identity
 	 * value:
-	 *   -# grb::reducer (reduction to the right),
-	 *   -# grb::reducel (reduction to the left).
+	 *   -# alp::reducer (reduction to the right),
+	 *   -# alp::reducel (reduction to the left).
 	 *
 	 * Operations which require two input vectors and produce scalar output:
-	 *   -# grb::dot   (dot product-- requires a semiring).
+	 *   -# alp::dot   (dot product-- requires a semiring).
 	//  * Sparse vectors under a semiring have their missing values interpreted as a
 	//  * zero element under the given semiring; i.e., the identity of the additive
 	//  * operator.
 	 *
 	 * Operations which require one input vector and one input/output vector for
 	 * full and efficient in-place operations:
-	 *   -# grb::foldr (reduction to the right-- requires an operator),
-	 *   -# grb::foldl (reduction to the left-- requires an operator).
-	 * For grb::foldr, the left-hand side input vector may be replaced by an
-	 * input scalar. For grb::foldl, the right-hand side input vector may be
+	 *   -# alp::foldr (reduction to the right-- requires an operator),
+	 *   -# alp::foldl (reduction to the left-- requires an operator).
+	 * For alp::foldr, the left-hand side input vector may be replaced by an
+	 * input scalar. For alp::foldl, the right-hand side input vector may be
 	 * replaced by an input scalar. In either of those cases, the reduction
 	 * is equivalent to an in-place vector scaling.
 	 *
 	 * Operations which require two input vectors and one output vector for
 	 * out-of-place operations:
-	 *   -# grb::eWiseApply (requires an operator),
-	 *   -# grb::eWiseMul   (requires a semiring),
-	 *   -# grb::eWiseAdd   (requires a semiring).
+	 *   -# alp::eWiseApply (requires an operator),
+	 *   -# alp::eWiseMul   (requires a semiring),
+	 *   -# alp::eWiseAdd   (requires a semiring).
 	 * Note that multiplication will consider any zero elements as an annihilator
 	 * to the multiplicative operator. Therefore, the operator will only be
 	 * applied at vector indices where both input vectors have nonzeroes. This is
@@ -121,27 +121,27 @@ namespace grb {
 	 *
 	 * Operations which require three input vectors and one output vector for
 	 * out-of-place operations:
-	 *   -# grb::eWiseMulAdd (requires a semiring).
-	 * This function can be emulated by first successive calls to grb::eWiseMul
-	 * and grb::eWiseAdd. This specialised function, however, has better
+	 *   -# alp::eWiseMulAdd (requires a semiring).
+	 * This function can be emulated by first successive calls to alp::eWiseMul
+	 * and alp::eWiseAdd. This specialised function, however, has better
 	 * performance semantics. This function is closest to the standard axpy
 	 * BLAS1 call, with out-of-place semantics. The first input vector may be
 	 * replaced by a scalar.
 	 *
-	 * Again, each of grb::eWiseMul, grb::eWiseAdd, grb::eWiseMulAdd accept sparse
+	 * Again, each of alp::eWiseMul, alp::eWiseAdd, alp::eWiseMulAdd accept sparse
 	 * vectors as input and output (since they operate on semirings), while
-	 * grb::eWiseApply.
+	 * alp::eWiseApply.
 	 *
 	 * For fusing multiple BLAS-1 style operations on any number of inputs and
 	 * outputs, users can pass their own operator function to be executed for
 	 * every index \a i.
-	 *   -# grb::eWiseLambda.
+	 *   -# alp::eWiseLambda.
 	 * This requires manual application of operators, monoids, and/or semirings
-	 * via the BLAS-0 interface (see grb::apply, grb::foldl, and grb::foldr).
+	 * via the BLAS-0 interface (see alp::apply, alp::foldl, and alp::foldr).
 	 *
 	 * For all of these functions, the element types of input and output types
 	 * do not have to match the domains of the given operator, monoid, or
-	 * semiring unless the grb::descriptors::no_casting descriptor was passed.
+	 * semiring unless the alp::descriptors::no_casting descriptor was passed.
 	 *
 	 * An implementation, whether blocking or non-blocking, should have clear
 	 * performance semantics for every sequence of graphBLAS calls, no matter
@@ -156,7 +156,7 @@ namespace grb {
 	 * At the end of this operation, the number of nonzero elements in this vector
 	 * will be zero. The size of the vector remains unchanged.
 	 *
-	 * @return grb::SUCCESS When the vector is successfully cleared.
+	 * @return alp::SUCCESS When the vector is successfully cleared.
 	 *
 	 * \note This function cannot fail.
 	 *
@@ -173,28 +173,28 @@ namespace grb {
 	//  * \endparblock
 	 */
 	template<
-		typename DataType, typename DataStructure, typename View
+		typename DataType, typename DataStructure,  typename View
 	>
 	RC clear(
-		VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > &x
+		Vector< DataType, DataStructure, Density::Dense, View, reference > & x
 	) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
 	}
 
 	/**
-	 * Request the size (dimension) of a given VectorView.
+	 * Request the size (dimension) of a given Vector.
 	 *
-	 * The dimension is set at construction of the given VectorView and cannot
+	 * The dimension is set at construction of the given Vector and cannot
 	 * be changed. A call to this function shall always succeed.
 	 *
 	 * @tparam DataType      The type of elements contained in the vector \a x.
 	 * @tparam DataStructure The structure of the vector \a x.
 	 * @tparam View          The view type applied to the vector \a x.
 	 *
-	 * @param[in] x The VectorView of which to retrieve the size.
+	 * @param[in] x The Vector of which to retrieve the size.
 	 *
-	 * @return The size of the VectorView \a x.
+	 * @return The size of the Vector \a x.
 	 *
 	//  * \parblock
 	//  * \par Performance semantics
@@ -206,12 +206,12 @@ namespace grb {
 	//  * \endparblock
 	 */
 	template< typename DataType, typename DataStructure,  typename View >
-	size_t size( const VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > & x ) noexcept {
+	size_t size( const Vector< DataType, DataStructure, Density::Dense, View, reference > & x ) noexcept {
 		return getLength( x );
 	}
 
 	/**
-	 * Request the number of nonzeroes in a given VectorView.
+	 * Request the number of nonzeroes in a given Vector.
 	 *
 	 * A call to this function always succeeds.
 	 *
@@ -219,7 +219,7 @@ namespace grb {
 	 * @tparam DataStructure The structure of the vector \a x.
 	 * @tparam View          The view type applied to the vector \a x.
 	 *
-	 * @param[in] x The VectorView of which to retrieve the number of nonzeroes.
+	 * @param[in] x The Vector of which to retrieve the number of nonzeroes.
 	 *
 	 * @return The number of nonzeroes in \a x.
 	 *
@@ -233,7 +233,7 @@ namespace grb {
 	//  * \endparblock
 	 */
 	template< typename DataType, typename DataStructure,  typename View >
-	size_t nnz( const VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > & x ) noexcept {
+	size_t nnz( const Vector< DataType, DataStructure, Density::Dense, View, reference > & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation." );
 		return 0;
 	}
@@ -250,7 +250,7 @@ namespace grb {
 	 * However, the actual memory will not be reallocated. Rather, the vector
 	 * will be marked as uninitialized.
 	 *
-	 * @param[in] x      The VectorView to be resized.
+	 * @param[in] x      The Vector to be resized.
 	 * @param[in] new_nz The number of nonzeroes this vector is to contain.
 	 *
 	 * @return SUCCESS   If \a new_nz is not larger than the current capacity
@@ -268,7 +268,7 @@ namespace grb {
 	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
 	 */
 	template< typename InputType, typename InputStructure, typename View, typename length_type >
-	RC resize( VectorView< InputType, InputStructure, Density::Dense, View, reference_dense > &x, const length_type new_nz ) {
+	RC resize( Vector< InputType, InputStructure, Density::Dense, View, reference > &x, const length_type new_nz ) {
 		(void)x;
 		(void)new_nz;
 		// TODO implement
@@ -277,15 +277,15 @@ namespace grb {
 	}
 
 	/**
-	 * Sets all elements of a VectorView to the given value. Can be masked.
+	 * Sets all elements of a Vector to the given value. Can be masked.
 	 *
 	 * This function is functionally equivalent to
 	 * \code
-	 * grb::operators::right_assign< DataType > op;
+	 * alp::operators::right_assign< DataType > op;
 	 * return foldl< descr >( x, val, op );
 	 * \endcode,
 	 * \code
-	 * grb::operators::left_assign< DataType > op;
+	 * alp::operators::left_assign< DataType > op;
 	 * return foldr< descr >( val, x, op );
 	 * \endcode, and the following pseudocode
 	 * \code
@@ -301,17 +301,17 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
 	 * \endparblock
 	 *
-	 * @param[in,out] x The VectorView of which every element is to be set to equal
+	 * @param[in,out] x The Vector of which every element is to be set to equal
 	 *                  \a val.
 	 * @param[in]   val The value to set each element of \a x equal to.
 	 *
 	 * @returns SUCCESS       When the call completes successfully.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
 	//  * \parblock
@@ -323,24 +323,24 @@ namespace grb {
 	//  *   -# shall not make any system calls.
 	//  * \endparblock
 	 *
-	 * @see grb::foldl.
-	 * @see grb::foldr.
-	 * @see grb::operators::left_assign.
-	 * @see grb::operators::right_assign.
-	 * @see grb::setElement.
+	 * @see alp::foldl.
+	 * @see alp::foldr.
+	 * @see alp::operators::left_assign.
+	 * @see alp::operators::right_assign.
+	 * @see alp::setElement.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC set( VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > & x,
-		const Scalar< T, ValStructure, reference_dense > val,
+	RC set( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
+		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if<
-			!grb::is_object< DataType >::value &&
-			!grb::is_object< T >::value,
+			!alp::is_object< DataType >::value &&
+			!alp::is_object< T >::value,
 		void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector, unmasked)",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -350,15 +350,15 @@ namespace grb {
 	}
 
 	/**
-	 * Sets all elements of a VectorView to the given value. Masked variant.
+	 * Sets all elements of a Vector to the given value. Masked variant.
 	 *
 	 * This function is functionally equivalent to
 	 * \code
-	 * grb::operators::right_assign< DataType > op;
+	 * alp::operators::right_assign< DataType > op;
 	 * return foldl< descr >( x, mask, val, op );
 	 * \endcode,
 	 * \code
-	 * grb::operators::left_assign< DataType > op;
+	 * alp::operators::left_assign< DataType > op;
 	 * return foldr< descr >( val, x, mask, op );
 	 * \endcode, and the following pseudocode
 	 * \code
@@ -374,19 +374,19 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
-	 *   -# grb::descriptors::invert_mask
-	 *   -# grb::descriptors::structural_mask
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
+	 *   -# alp::descriptors::invert_mask
+	 *   -# alp::descriptors::structural_mask
 	 * \endparblock
 	 *
-	 * @param[in,out] x The VectorView of which every element is to be set to equal
+	 * @param[in,out] x The Vector of which every element is to be set to equal
 	 *                  \a val.
 	 * @param[in]   val The value to set each element of \a x equal to.
 	 *
 	 * @returns SUCCESS       When the call completes successfully.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
 	//  * \parblock
@@ -396,29 +396,29 @@ namespace grb {
 	//  *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
 	//  *   -# does not allocate nor free any dynamic memory;
 	//  *   -# shall not make any system calls.
-	//  * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
+	//  * If alp::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
 	//  * above shall be interpreted as \f$ size( m ) \f$ instead.
 	//  * \endparblock
 	 *
-	 * @see grb::foldl.
-	 * @see grb::foldr.
-	 * @see grb::operators::left_assign.
-	 * @see grb::operators::right_assign.
-	 * @see grb::setElement.
+	 * @see alp::foldl.
+	 * @see alp::foldr.
+	 * @see alp::operators::left_assign.
+	 * @see alp::operators::right_assign.
+	 * @see alp::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename DataType, typename DataView, typename DataStructure, 
 		typename MaskStructure,  typename MaskType, typename MaskView,
 		typename T, typename ValStructure >
-	RC set( VectorView< DataType, DataStructure, Density::Dense, DataView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< T, ValStructure, reference_dense > val,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< T, ValStructure, reference > val,
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
-		std::cout << "In grb::set (vector-to-value, masked)\n";
+		std::cout << "In alp::set (vector-to-value, masked)\n";
 #endif
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector to scalar, masked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
 
@@ -446,26 +446,26 @@ namespace grb {
 		typename DataType, typename DataView, typename DataStructure, 
 		typename MaskStructure,  typename MaskType, typename MaskView,
 		typename T >
-	RC set( VectorView< DataType, DataStructure, Density::Dense, DataView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
+	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
 		const T val,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
-		std::cout << "In grb::set (vector-to-value, masked)\n";
+		std::cout << "In alp::set (vector-to-value, masked)\n";
 #endif
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector to scalar, masked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
 
-		// delegate to grb::Scalar version
+		// delegate to alp::Scalar version
 		return set( x, m, Scalar< T >( val ) );
 	}
 
 	/**
-	 * Sets the element of a given VectorView at a given position to a given value.
+	 * Sets the element of a given Vector at a given position to a given value.
 	 *
-	 * If the input VectorView \a x already has an element \f$ x_i \f$, that element
+	 * If the input Vector \a x already has an element \f$ x_i \f$, that element
 	 * is overwritten to the given value \a val. If no such element existed, it
 	 * is added and set equal to \a val. The number of nonzeroes in \a x may thus
 	 * be increased by one due to a call to this function.
@@ -483,17 +483,17 @@ namespace grb {
 	 * @param[in]   val The value \f$ x_i \f$ should read after function exit.
 	 * @param[in]     i The index of the element of \a x to set.
 	 *
-	 * @return grb::SUCCESS   Upon successful execution of this operation.
-	 * @return grb::MISMATCH  If \a i is greater or equal than the dimension of
+	 * @return alp::SUCCESS   Upon successful execution of this operation.
+	 * @return alp::MISMATCH  If \a i is greater or equal than the dimension of
 	 *                        \a x.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
 	 * \endparblock
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
 	//  * \parblock
@@ -506,14 +506,14 @@ namespace grb {
 	//  * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC setElement( VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > & x,
-		const Scalar< T, ValStructure, reference_dense > val,
+	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
+		const Scalar< T, ValStructure, reference > val,
 		const size_t i,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (VectorView, at index)",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
 			"called with a value type that does not match that of the given "
-			"VectorView" );
+			"Vector" );
 
 		throw std::runtime_error( "Needs an implementation." );
 
@@ -523,14 +523,14 @@ namespace grb {
 
 	/** C++ scalar variant */
 	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC setElement( VectorView< DataType, DataStructure, Density::Dense, View, reference_dense > & x,
+	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
 		const T val,
 		const size_t i,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "grb::set (VectorView, at index)",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
 			"called with a value type that does not match that of the given "
-			"VectorView" );
+			"Vector" );
 
 		// delegate
 		return setElement( x, Scalar< T >( val ), i );
@@ -542,12 +542,12 @@ namespace grb {
 	 *
 	 * This operation is functionally equivalent to
 	 * \code
-	 * grb::operators::right_assign< T > op;
-	 * grb::foldl( x, y, op );
+	 * alp::operators::right_assign< T > op;
+	 * alp::foldl( x, y, op );
 	 * \endcode,
 	 * \code
-	 * grb::operators::left_assign < T > op;
-	 * grb::foldr( y, x, op );
+	 * alp::operators::left_assign < T > op;
+	 * alp::foldr( y, x, op );
 	 * \endcode, as well as the following pseudocode
 	 * \code
 	 * for( each nonzero in y ) {
@@ -559,8 +559,8 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
 	 * \endparblock
 	 *
 	 * @tparam descr           The descriptor of the operation.
@@ -574,7 +574,7 @@ namespace grb {
 	 * @param[in,out] x The vector to be set.
 	 * @param[in]     y The source vector.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * When \a descr includes alp::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
 	//  * \parblock
@@ -586,24 +586,24 @@ namespace grb {
 	//  *   -# shall not make any system calls.
 	//  * \endparblock
 	 *
-	 * @see grb::foldl.
-	 * @see grb::foldr.
-	 * @see grb::operators::left_assign.
-	 * @see grb::operators::right_assign.
-	 * @see grb::setElement.
+	 * @see alp::foldl.
+	 * @see alp::foldr.
+	 * @see alp::operators::left_assign.
+	 * @see alp::operators::right_assign.
+	 * @see alp::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputStructure,  typename InputStructure,  typename OutputView, typename InputView >
-	RC set( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & x, const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y ) {
+	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & x, const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "grb::copy (Vector)", "called with vector parameters whose element data types do not match" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
 		constexpr bool in_is_void = std::is_void< OutputType >::value;
 		static_assert( ! in_is_void || out_is_void,
-			"grb::set (reference, VectorView <- VectorView, masked): "
+			"alp::set (reference, Vector <- Vector, masked): "
 			"if input is void, then the output must be also" );
 		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
-			"grb::set (reference, VectorView <- VectorView, masked): "
+			"alp::set (reference, Vector <- Vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
 		// check contract
@@ -623,12 +623,12 @@ namespace grb {
 	 *
 	 * This operation is functionally equivalent to
 	 * \code
-	 * grb::operators::right_assign< T > op;
-	 * grb::foldl( x, mask, y, op );
+	 * alp::operators::right_assign< T > op;
+	 * alp::foldl( x, mask, y, op );
 	 * \endcode,
 	 * \code
-	 * grb::operators::left_assign < T > op;
-	 * grb::foldr( y, x, mask, op );
+	 * alp::operators::left_assign < T > op;
+	 * alp::foldr( y, x, mask, op );
 	 * \endcode, as well as the following pseudocode
 	 * \code
 	 * for( each nonzero in y ) {
@@ -653,17 +653,17 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
-	 *   -# grb::descriptors::invert_mask
-	 *   -# grb::descriptors::structural_mask
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
+	 *   -# alp::descriptors::invert_mask
+	 *   -# alp::descriptors::structural_mask
 	 * \endparblock
 	 *
 	 * @param[in,out] x The vector to be set.
 	 * @param[in]  mask The output mask.
 	 * @param[in]     y The source vector.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * When \a descr includes alp::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
 	//  * \parblock
@@ -673,37 +673,37 @@ namespace grb {
 	//  *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
 	//  *   -# does not allocate nor free any dynamic memory;
 	//  *   -# shall not make any system calls.
-	//  * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
+	//  * If alp::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
 	//  * above shall be considered equal to \f$ nnz( y ) \f$.
 	//  * \endparblock
 	 *
-	 * @see grb::foldl.
-	 * @see grb::foldr.
-	 * @see grb::operators::left_assign.
-	 * @see grb::operators::right_assign.
-	 * @see grb::setElement.
+	 * @see alp::foldl.
+	 * @see alp::foldr.
+	 * @see alp::operators::left_assign.
+	 * @see alp::operators::right_assign.
+	 * @see alp::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
 		typename OutputStructure, typename MaskStructure, typename InputStructure,
 		  
 		typename OutputView, typename MaskView, typename InputView >
-	RC set( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * const = NULL ) {
+	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * const = NULL ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "grb::set (VectorView)", "called with vector parameters whose element data types do not match" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::set (VectorView)", "called with non-bool mask element types" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::set (Vector)", "called with vector parameters whose element data types do not match" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::set (Vector)", "called with non-bool mask element types" );
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
 		constexpr bool in_is_void = std::is_void< OutputType >::value;
 		static_assert( ! in_is_void || out_is_void,
-			"grb::set (reference, VectorView <- VectorView, masked): "
+			"alp::set (reference, Vector <- Vector, masked): "
 			"if input is void, then the output must be also" );
 		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
-			"grb::set (reference, VectorView <- VectorView, masked): "
-			"use_index descriptor cannot be set if output VectorView is void" );
+			"alp::set (reference, Vector <- Vector, masked): "
+			"use_index descriptor cannot be set if output Vector is void" );
 
 		// catch contract violations
 		if( reinterpret_cast< void * >( &x ) == reinterpret_cast< const void * >( &y ) ) {
@@ -717,18 +717,18 @@ namespace grb {
 	}
 
 	/**
-	 * Folds all elements in a ALP VectorView \a x into a single value \a beta.
+	 * Folds all elements in a ALP Vector \a x into a single value \a beta.
 	 *
 	 * The original value of \a beta is used as the right-hand side input of the
 	 * operator \a op. A left-hand side input for \a op is retrieved from the
-	 * input VectorView \a x. The result of the operation is stored in \a beta.
+	 * input Vector \a x. The result of the operation is stored in \a beta.
 	 * This process is repeated for every element in \a x.
 	 *
 	 * At function exit, \a beta will equal
 	 * \f$ \beta \odot x_0 \odot x_1 \odot \ldots x_{n-1} \f$.
 	 *
 	 * @tparam descr     The descriptor used for evaluating this function. By
-	 *                   default, this is grb::descriptors::no_operation.
+	 *                   default, this is alp::descriptors::no_operation.
 	 * @tparam OP        The type of the operator to be applied.
 	 *                   The operator must be associative.
 	 * @tparam InputType The type of the elements of \a x.
@@ -736,8 +736,8 @@ namespace grb {
 	 * @tparam InputStructure The structure of the vector \a x.
 	 * @tparam InputView      The view type applied to the vector \a x.
 	 *
-	 * @param[in]     x    The input VectorView \a x that will not be modified.
-	 *                     This input VectorView must be dense.
+	 * @param[in]     x    The input Vector \a x that will not be modified.
+	 *                     This input Vector must be dense.
 	 * @param[in,out] beta On function entry: the initial value to be applied to
 	 *                     \a op from the right-hand side.
 	 *                     On function exit: the result of repeated applications
@@ -746,22 +746,22 @@ namespace grb {
 	 *
 	 * \note We only define fold under monoids, not under plain operators.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
-	 * @returns grb::ILLEGAL When a sparse VectorView is passed. In this case, the
+	 * @returns alp::SUCCESS This function always succeeds.
+	 * @returns alp::ILLEGAL When a sparse Vector is passed. In this case, the
 	 *                       call to this function will have no other effects.
 	 *
 	 * \warning Since this function folds from left-to-right using binary
 	 *          operators, this function \em cannot take sparse vectors as input--
 	 *          a monoid is required to give meaning to missing vector entries.
-	 *          See grb::reducer for use with sparse vectors instead.
+	 *          See alp::reducer for use with sparse vectors instead.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -793,15 +793,15 @@ namespace grb {
 	//  *         operators.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename InputStructure,  typename InputView, typename IOType, typename IOStructure >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
-		Scalar< IOType, IOStructure, reference_dense > & beta,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+		Scalar< IOType, IOStructure, reference > & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -810,16 +810,16 @@ namespace grb {
 	/** C++ scalar variant */
 	template< Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename InputStructure,  typename InputView, typename IOType >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		
 		return foldr( x, Scalar< IOType >( beta ), monoid );
 	}
 
 	/**
-	 * For all elements in a ALP VectorView \a y, fold the value \f$ \alpha \f$
+	 * For all elements in a ALP Vector \a y, fold the value \f$ \alpha \f$
 	 * into each element.
 	 *
 	 * The original value of \f$ \alpha \f$ is used as the left-hand side input
@@ -831,7 +831,7 @@ namespace grb {
 	 * \f$ \alpha \odot y_i \f$, for all \f$ i \in \{ 0, 1, \dots, n - 1 \} \f$.
 	 *
 	 * @tparam descr         The descriptor used for evaluating this function.
-	 *                       By default, this is grb::descriptors::no_operation.
+	 *                       By default, this is alp::descriptors::no_operation.
 	 * @tparam OP            The type of the operator to be applied.
 	 * @tparam InputType     The type of \a alpha.
 	 * @tparam IOType        The type of the elements in \a y.
@@ -845,17 +845,17 @@ namespace grb {
 	 *                      On function exit: the output data.
 	 * @param[in]     op    The monoid under which to perform this left-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note We only define fold under monoids, not under plain operators.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -886,22 +886,22 @@ namespace grb {
 	//  *         bytes of data movement.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
-	RC foldr( const Scalar< InputType, InputStructure, reference_dense > & alpha,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -915,18 +915,18 @@ namespace grb {
 	 * Specialisation for scalar \a x.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
-	RC foldr( const Scalar< InputType, InputStructure, reference_dense > & alpha,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_operator< OP >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< OP >::value, void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -935,14 +935,14 @@ namespace grb {
 	}
 
 	/**
-	 * Folds all elements in a ALP VectorView \a x into the corresponding
+	 * Folds all elements in a ALP Vector \a x into the corresponding
 	 * elements from an input/output vector \a y. The vectors must be of equal
 	 * size \f$ n \f$. For all \f$ i \in \{0,1,\ldots,n-1\} \f$, the new value
 	 * of at the i-th index of \a y after a call to this function thus equals
 	 * \f$ x_i \odot y_i \f$.
 	 *
 	 * @tparam descr     The descriptor used for evaluating this function. By
-	 *                   default, this is grb::descriptors::no_operation.
+	 *                   default, this is alp::descriptors::no_operation.
 	 * @tparam OP        The type of the operator to be applied.
 	 * @tparam IOType         The type of the elements of \a y.
 	 * @tparam InputType      The type of the elements of \a x.
@@ -958,17 +958,17 @@ namespace grb {
 	 *                   from the right-hand side using elements from \a y.
 	 * @param[in]     op The operator under which to perform this right-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note The element-wise fold is also defined for monoids.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a InputType, 2) the second domain of \a op must match
 	 * \a IOType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1003,7 +1003,7 @@ namespace grb {
 	//  *         operators whenever allowed.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP,
@@ -1011,18 +1011,18 @@ namespace grb {
 		typename IOStructure, typename InputStructure,
 		 
 		typename IOView, typename InputView >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
+		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, InputType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, InputType >::value ), "alp::eWiseFoldr",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -1044,23 +1044,23 @@ namespace grb {
 		typename IOStructure, typename MaskStructure, typename InputStructure,
 		  
 		typename IOView, typename MaskView, typename InputView >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< IOType >::value, void >::type * =
+		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< IOType >::value, void >::type * =
 			NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, InputType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, InputType >::value ), "alp::eWiseFoldr",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the third domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseFoldr", "called with a non-Boolean mask" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseFoldr", "called with a non-Boolean mask" );
 
 		if( size( m ) == 0 ) {
 			return foldr< descr >( x, y, op );
@@ -1076,14 +1076,14 @@ namespace grb {
 	}
 
 	/**
-	 * Folds all elements in a ALP VectorView \a x into the corresponding
+	 * Folds all elements in a ALP Vector \a x into the corresponding
 	 * elements from an input/output vector \a y. The vectors must be of equal
 	 * size \f$ n \f$. For all \f$ i \in \{0,1,\ldots,n-1\} \f$, the new value
 	 * of at the i-th index of \a y after a call to this function thus equals
 	 * \f$ x_i \odot y_i \f$.
 	 *
 	 * @tparam descr     The descriptor used for evaluating this function. By
-	 *                   default, this is grb::descriptors::no_operation.
+	 *                   default, this is alp::descriptors::no_operation.
 	 * @tparam Monoid    The type of the monoid to be applied.
 	 * @tparam IOType         The type of the elements of \a y.
 	 * @tparam InputType      The type of the elements of \a x.
@@ -1099,17 +1099,17 @@ namespace grb {
 	 *                       from the right-hand side using elements from \a y.
 	 * @param[in]     monoid The monoid under which to perform this right-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note The element-wise fold is also defined for operators.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a InputType, 2) the second domain of \a op must match
 	 * \a IOType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1144,7 +1144,7 @@ namespace grb {
 	//  *         operators whenever allowed.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid,
@@ -1152,18 +1152,18 @@ namespace grb {
 		typename IOStructure, typename InputStructure,
 		 
 		typename IOView, typename InputView >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
+		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ), "alp::eWiseFoldr",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the third domain "
 			"of the given monoid" );
 
@@ -1187,23 +1187,23 @@ namespace grb {
 		typename IOStructure, typename MaskStructure, typename InputStructure,
 		  
 		typename IOView, typename MaskView, typename InputView >
-	RC foldr( const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & y,
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * =
+		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * =
 			NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ), "alp::eWiseFoldr",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::eWiseFoldr",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::eWiseFoldr",
 			"called on a vector y of a type that does not match the third domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseFoldr", "called with a mask of non-Boolean type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseFoldr", "called with a mask of non-Boolean type" );
 
 		// check empty mask
 		if( size( m ) == 0 ) {
@@ -1221,7 +1221,7 @@ namespace grb {
 	}
 
 	/**
-	 * For all elements in a ALP VectorView \a x, fold the value \f$ \beta \f$
+	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
 	 * The original value of \f$ \beta \f$ is used as the right-hand side input
@@ -1234,7 +1234,7 @@ namespace grb {
 	 * \f$ x_i \odot \beta \f$, for all \f$ i \in \{ 0, 1, \dots, n - 1 \} \f$.
 	 *
 	 * @tparam descr       The descriptor used for evaluating this function. By
-	 *                     default, this is grb::descriptors::no_operation.
+	 *                     default, this is alp::descriptors::no_operation.
 	 * @tparam OP          The type of the operator to be applied.
 	 * @tparam IOType      The type of the value \a beta.
 	 * @tparam InputType   The type of the elements of \a x.
@@ -1249,7 +1249,7 @@ namespace grb {
 	 *                     to \a op.
 	 * @param[in]     op   The operator under which to perform this left-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note This function is also defined for monoids.
 	 *
@@ -1258,11 +1258,11 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1293,22 +1293,22 @@ namespace grb {
 	//  *         bytes of data movement.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const Scalar< InputType, InputStructure, reference_dense > beta,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Scalar< InputType, InputStructure, reference > beta,
 		const Op & op = Op(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_operator< Op >::value, void >::type * = NULL ) {
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -1317,7 +1317,7 @@ namespace grb {
 	}
 
 	/**
-	 * For all elements in a ALP VectorView \a x, fold the value \f$ \beta \f$
+	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
 	 * Masked operator variant.
@@ -1327,23 +1327,23 @@ namespace grb {
 		typename IOStructure, typename MaskStructure, typename InputStructure,
 		 
 		typename IOView, typename MaskView, typename InputView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType, InputStructure, reference_dense > &beta,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType, InputStructure, reference > &beta,
 		const Op & op = Op(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_operator< Op >::value, void >::type * = NULL ) {
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::foldl (reference_dense, vector <- scalar, masked)", "provided mask does not have boolean entries" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked)", "provided mask does not have boolean entries" );
 		if( size( m ) == 0 ) {
 			return foldl< descr >( x, beta, op );
 		}
@@ -1352,7 +1352,7 @@ namespace grb {
 	}
 
 	/**
-	 * For all elements in a ALP VectorView \a x, fold the value \f$ \beta \f$
+	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
 	 * The original value of \f$ \beta \f$ is used as the right-hand side input
@@ -1365,7 +1365,7 @@ namespace grb {
 	 * \f$ x_i \odot \beta \f$, for all \f$ i \in \{ 0, 1, \dots, n - 1 \} \f$.
 	 *
 	 * @tparam descr       The descriptor used for evaluating this function. By
-	 *                     default, this is grb::descriptors::no_operation.
+	 *                     default, this is alp::descriptors::no_operation.
 	 * @tparam Monoid      The type of the monoid to be applied.
 	 * @tparam IOType      The type of the elements of \a x.
 	 * @tparam InputType   The type of the value \a beta.
@@ -1379,17 +1379,17 @@ namespace grb {
 	 *                     to \a op.
 	 * @param[in]   monoid The monoid under which to perform this left-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note This function is also defined for operators.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1420,22 +1420,22 @@ namespace grb {
 	//  *         bytes of data movement.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOStructure,  typename IOView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL ) {
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given monoid" );
 
@@ -1444,7 +1444,7 @@ namespace grb {
 	}
 
 	/**
-	 * For all elements in a ALP VectorView \a x, fold the value \f$ \beta \f$
+	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
 	 * Masked monoid variant.
@@ -1454,24 +1454,24 @@ namespace grb {
 		typename IOStructure, typename MaskStructure,
 		 
 		typename IOView, typename MaskView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * =
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * =
 			NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given monoid" );
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::foldl (reference_dense, vector <- scalar, masked, monoid)", "provided mask does not have boolean entries" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked, monoid)", "provided mask does not have boolean entries" );
 		if( size( m ) == 0 ) {
 			return foldl< descr >( x, beta, monoid );
 		}
@@ -1481,14 +1481,14 @@ namespace grb {
 	}
 
 	/**
-	 * Folds all elements in a ALP VectorView \a y into the corresponding
+	 * Folds all elements in a ALP Vector \a y into the corresponding
 	 * elements from an input/output vector \a x. The vectors must be of equal
 	 * size \f$ n \f$. For all \f$ i \in \{0,1,\ldots,n-1\} \f$, the new value
 	 * of at the i-th index of \a x after a call to this function thus equals
 	 * \f$ x_i \odot y_i \f$.
 	 *
 	 * @tparam descr          The descriptor used for evaluating this function. By
-	 *                        default, this is grb::descriptors::no_operation.
+	 *                        default, this is alp::descriptors::no_operation.
 	 * @tparam OP             The type of the operator to be applied.
 	 * @tparam IOType         The type of the value \a x.
 	 * @tparam InputType      The type of the elements of \a y.
@@ -1505,17 +1505,17 @@ namespace grb {
 	 *                  to \a op as right-hand side input.
 	 * @param[in]    op The operator under which to perform this left-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note This function is also defined for monoids.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1551,25 +1551,25 @@ namespace grb {
 	//  *         domain, and the operator used allow for this.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP,
 		typename IOType, typename InputType,
 		typename IOStructure, typename InputStructure,
 		typename IOView, typename InputView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
+		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -1584,14 +1584,14 @@ namespace grb {
 	}
 
 	/**
-	 * Folds all elements in a ALP VectorView \a y into the corresponding
+	 * Folds all elements in a ALP Vector \a y into the corresponding
 	 * elements from an input/output vector \a x. The vectors must be of equal
 	 * size \f$ n \f$. For all \f$ i \in \{0,1,\ldots,n-1\} \f$, the new value
 	 * of at the i-th index of \a x after a call to this function thus equals
 	 * \f$ x_i \odot y_i \f$.
 	 *
 	 * @tparam descr          The descriptor used for evaluating this function. By
-	 *                        default, this is grb::descriptors::no_operation.
+	 *                        default, this is alp::descriptors::no_operation.
 	 * @tparam Monoid         The type of the monoid to be applied.
 	 * @tparam IOType         The type of the value \a x.
 	 * @tparam InputType      The type of the elements of \a y.
@@ -1608,17 +1608,17 @@ namespace grb {
 	 *                      to \a op as right-hand side input.
 	 * @param[in]    monoid The operator under which to perform this left-folding.
 	 *
-	 * @returns grb::SUCCESS This function always succeeds.
+	 * @returns alp::SUCCESS This function always succeeds.
 	 *
 	 * \note This function is also defined for operators.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a op must match \a IOType, 2) the second domain of \a op must match
 	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
 	 * is not true, the code shall not compile.
@@ -1654,7 +1654,7 @@ namespace grb {
 	//  *         domain, and the operator used allow for this.
 	//  * \endparblock
 	 *
-	 * @see grb::operators::internal::Operator for a discussion on when in-place
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid,
@@ -1662,18 +1662,18 @@ namespace grb {
 		typename IOStructure, typename InputStructure,
 		 
 		typename IOView, typename InputView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
+		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
@@ -1697,23 +1697,23 @@ namespace grb {
 		typename IOStructure, typename MaskStructure, typename InputStructure,
 		  
 		typename IOView, typename MaskView, typename InputView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * =
+		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
 			NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::foldl", "called with a mask that does not have boolean entries " );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl", "called with a mask that does not have boolean entries " );
 
 		// catch empty mask
 		if( size( m ) == 0 ) {
@@ -1740,23 +1740,23 @@ namespace grb {
 		typename IOStructure, typename MaskStructure, typename InputStructure,
 		  
 		typename IOView, typename MaskView, typename InputView >
-	RC foldl( VectorView< IOType, IOStructure, Density::Dense, IOView, reference_dense > & x,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * =
+		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
 			NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "grb::foldl",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::foldl", "called with a mask that does not have boolean entries " );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl", "called with a mask that does not have boolean entries " );
 
 		// catch empty mask
 		if( size( m ) == 0 ) {
@@ -1816,11 +1816,11 @@ namespace grb {
 	 * @param[out]  z   The pre-allocated output vector.
 	 * @param[in]   op  The operator to use.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x and \a z do not
+	 * @return alp::MISMATCH Whenever the dimensions of \a x and \a z do not
 	 *                       match. All input data containers are left untouched
 	 *                       if this exit code is returned; it will be as though
 	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	//  * \parblock
 	//  * \par Performance semantics
@@ -1849,11 +1849,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView1 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-T3), operator variant\n";
@@ -1872,11 +1872,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		
 		typename OutputView >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), operator variant\n";
@@ -1897,11 +1897,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		
 		typename OutputView >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), monoid variant\n";
@@ -1920,13 +1920,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using operator)\n";
@@ -1949,11 +1949,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
@@ -1972,11 +1972,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
@@ -1995,11 +1995,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView1 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
@@ -2018,13 +2018,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
@@ -2043,13 +2043,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
@@ -2068,13 +2068,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
@@ -2123,11 +2123,11 @@ namespace grb {
 	 * @param[out]  z    The pre-allocated output vector.
 	 * @param[in]   op   The operator to use.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a y and \a z do not
+	 * @return alp::MISMATCH Whenever the dimensions of \a y and \a z do not
 	 *                       match. All input data containers are left untouched
 	 *                       if this exit code is returned; it will be as though
 	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	//  * \parblock
 	//  * \par Performance semantics
@@ -2156,11 +2156,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator variant\n";
@@ -2179,13 +2179,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], operator variant)\n";
@@ -2237,12 +2237,12 @@ namespace grb {
 	 * @param[out] z  The pre-allocated output vector.
 	 * @param[in]  op The operator to use.
 	 *
-	 * @return grb::ILLEGAL  When \a x equals \a y.
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z
+	 * @return alp::ILLEGAL  When \a x equals \a y.
+	 * @return alp::MISMATCH Whenever the dimensions of \a x, \a y, and \a z
 	 *                       do not match. All input data containers are left
 	 *                       untouched if this exit code is returned; it will
 	 *                       be as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	//  * \parblock
 	//  * \par Performance semantics
@@ -2273,11 +2273,11 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
@@ -2296,13 +2296,13 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseApply( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using operator)\n";
@@ -2341,20 +2341,20 @@ namespace grb {
 	 * @param[in] ring The generalized semiring under which to perform this
 	 *                 element-wise multiplication.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
+	 * @return alp::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
 	 *                       not match. All input data containers are left
 	 *                       untouched; it will be as though this call was never
 	 *                       made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting,
+	 * alp::descriptors::dense.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the third domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the third domain of
 	 * \a ring must match \a InputType1, 2) the fourth domain of \a ring must match
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
@@ -2394,24 +2394,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the fourth domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- vector + vector) dispatches to eWiseApply( reference_dense, vector <- vector . vector ) using additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + vector) dispatches to eWiseApply( reference, vector <- vector . vector ) using additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, x, y, ring.getAdditiveMonoid() );
 	}
@@ -2427,24 +2427,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView2 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- scalar + vector) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- scalar + vector) dispatches to eWiseApply with additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, alpha, y, ring.getAdditiveMonoid() );
 	}
@@ -2460,24 +2460,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView1 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- vector + scalar) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + scalar) dispatches to eWiseApply with additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, x, beta, ring.getAdditiveMonoid() );
 	}
@@ -2493,24 +2493,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		
 		typename OutputView >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- scalar + scalar) dispatches to foldl with precomputed scalar and additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- scalar + scalar) dispatches to foldl with precomputed scalar and additive monoid\n";
 	#endif
 		const typename Ring::D4 add;
 		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
@@ -2528,28 +2528,28 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the fourth domain of the given semiring" );
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::eWiseAdd (vector <- vector + vector, masked)", "called with non-bool mask element types" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::eWiseAdd (vector <- vector + vector, masked)", "called with non-bool mask element types" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- vector + vector, masked) dispatches to eWiseApply( reference_dense, vector <- vector . vector ) using additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + vector, masked) dispatches to eWiseApply( reference, vector <- vector . vector ) using additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, m, x, y, ring.getAdditiveMonoid() );
 	}
@@ -2565,28 +2565,28 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::eWiseAdd (vector <- scalar + vector, masked)", "called with non-bool mask element types" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::eWiseAdd (vector <- scalar + vector, masked)", "called with non-bool mask element types" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- scalar + vector, masked) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- scalar + vector, masked) dispatches to eWiseApply with additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, m, alpha, y, ring.getAdditiveMonoid() );
 	}
@@ -2602,28 +2602,28 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::eWiseAdd (vector <- vector + scalar, masked)", "called with non-bool mask element types" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::eWiseAdd (vector <- vector + scalar, masked)", "called with non-bool mask element types" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- vector + scalar, masked) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + scalar, masked) dispatches to eWiseApply with additive monoid\n";
 	#endif
 		return eWiseApply< descr >( z, m, x, beta, ring.getAdditiveMonoid() );
 	}
@@ -2639,28 +2639,28 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename MaskView >
-	RC eWiseAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::eWiseAdd (vector <- scalar + scalar, masked)", "called with non-bool mask element types" );
+			( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::eWiseAdd (vector <- scalar + scalar, masked)", "called with non-bool mask element types" );
 	#ifdef _DEBUG
-		std::cout << "eWiseAdd (reference_dense, vector <- scalar + scalar, masked) dispatches to foldl with precomputed scalar and additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- scalar + scalar, masked) dispatches to foldl with precomputed scalar and additive monoid\n";
 	#endif
 		const typename Ring::D4 add;
 		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
@@ -2677,25 +2677,25 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -2713,25 +2713,25 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename InputView1, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const Scalar< InputType2, InputStructure2, reference_dense> &chi,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Scalar< InputType2, InputStructure2, reference> &chi,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -2748,25 +2748,25 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const Scalar< InputType3, InputStructure3, reference_dense > &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -2783,25 +2783,25 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		 
 		typename OutputView, typename InputView1 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
-		const Scalar< InputType3, InputStructure3, reference_dense> &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
+		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -2818,25 +2818,25 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		 
 		typename OutputView, typename InputView2 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const Scalar< InputType3, InputStructure3, reference_dense > &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -2855,33 +2855,33 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		 
 		typename OutputView, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMulAdd (reference_dense, vector <- scalar x scalar + vector) precomputes scalar multiply and dispatches to eWiseAdd (reference_dense, vector <- scalar + vector)\n";
+		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + vector) precomputes scalar multiply and dispatches to eWiseAdd (reference, vector <- scalar + vector)\n";
 	#endif
 		typename Ring::D3 mul_result;
-		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
+		RC rc = alp::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#else
 						assert( rc == SUCCESS );
 	#endif
-		return grb::eWiseAdd( z, mul_result, y, ring );
+		return alp::eWiseAdd( z, mul_result, y, ring );
 	}
 
 	/**
@@ -2896,38 +2896,38 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		
 		typename OutputView >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
-		const Scalar< InputType3, InputStructure3, reference_dense> &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
+		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMulAdd (reference_dense, vector <- scalar x scalar + scalar) precomputes scalar operations and dispatches to set (reference_dense)\n";
+		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + scalar) precomputes scalar operations and dispatches to set (reference)\n";
 	#endif
 		typename Ring::D3 mul_result;
-		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
+		RC rc = alp::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
-		rc = grb::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
+		rc = alp::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#endif
 		assert( rc == SUCCESS );
-		return grb::set( z, add_result );
+		return alp::set( z, add_result );
 	}
 
 	/**
@@ -2980,26 +2980,26 @@ namespace grb {
 	 * @param[in]  _y  The elements for right-hand size addition.
 	 * @param[in] ring The ring to perform the eWiseMulAdd under.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a _a, \a _x, \a _y, and
+	 * @return alp::MISMATCH Whenever the dimensions of \a _a, \a _x, \a _y, and
 	 *                       \a z do not match. In this case, all input data
 	 *                       containers are left untouched and it will simply be
 	 *                       as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	 * \warning An implementation is not obligated to detect overlap whenever
 	 *          it occurs. If part of \a z overlaps with \a x, \a y, or \a a,
 	 *          undefined behaviour will occur \em unless this function returns
-	 *          grb::OVERLAP. In other words: an implementation which returns
+	 *          alp::OVERLAP. In other words: an implementation which returns
 	 *          erroneous results when vectors overlap and still returns
-	 *          grb::SUCCESS thus is also a valid GraphBLAS implementation!
+	 *          alp::SUCCESS thus is also a valid GraphBLAS implementation!
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a ring must match \a InputType1, 2) the second domain of \a ring must match
 	 * \a InputType2, 3) the third domain of \a ring must match \a InputType3,
 	 * 4) the fourth domain of \a ring must match \a OutputType. If one of these is
@@ -3035,26 +3035,26 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		   
 		typename OutputView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		(void)ring;
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand vector _a with an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		throw std::runtime_error( "Needs an implementation." );
@@ -3097,19 +3097,19 @@ namespace grb {
 	 * @param[in] ring The generalized semiring under which to perform this
 	 *                 element-wise multiplication.
 	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
+	 * @return alp::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
 	 *                       not match. All input data containers are left
 	 *                       untouched if this exit code is returned; it will be
 	 *                       as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a ring must match \a InputType1, 2) the second domain of \a ring must match
 	 * \a InputType2, 3) the third domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
@@ -3149,24 +3149,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		  
 		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
+		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
 	#endif
 		return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
 	}
@@ -3181,24 +3181,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView2 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense, vector <- scalar x vector) dispatches to eWiseMulAdd (vector <- scalar x vector + 0)\n";
+		std::cout << "eWiseMul (reference, vector <- scalar x vector) dispatches to eWiseMulAdd (vector <- scalar x vector + 0)\n";
 	#endif
 		return eWiseMulAdd< descr >( z, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
 	}
@@ -3213,24 +3213,24 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename OutputView, typename InputView1 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense) dispatches to eWiseMulAdd with 0.0 as additive scalar\n";
+		std::cout << "eWiseMul (reference) dispatches to eWiseMulAdd with 0.0 as additive scalar\n";
 	#endif
 		return eWiseMulAdd< descr >( z, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
 	}
@@ -3245,29 +3245,29 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		   
 		typename OutputView, typename MaskView, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3283,29 +3283,29 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const Scalar< InputType2, InputStructure2, reference_dense> &chi,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Scalar< InputType2, InputStructure2, reference> &chi,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3320,29 +3320,29 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const Scalar< InputType3, InputStructure3, reference_dense > &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3357,29 +3357,29 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
-		const Scalar< InputType3, InputStructure3, reference_dense> &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
+		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3394,29 +3394,29 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const Scalar< InputType3, InputStructure3, reference_dense > &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3431,30 +3431,30 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		    
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & _z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & _m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & _a,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & _x,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & _y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
 		(void)ring;
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd",
 			"called with a left-hand vector _a with an element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3473,27 +3473,27 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		    
 		typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense, vector <- vector x vector, masked) dispatches to eWiseMulAdd (vector <- vector x vector + 0, masked)\n";
+		std::cout << "eWiseMul (reference, vector <- vector x vector, masked) dispatches to eWiseMulAdd (vector <- vector x vector + 0, masked)\n";
 	#endif
 		return eWiseMulAdd< descr >( z, m, x, y, ring.template getZero< Ring::D4 >(), ring );
 	}
@@ -3510,27 +3510,27 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure2, typename InputStructure3,
 		  typename InputStructure1,  
 		typename OutputView, typename MaskView, typename InputView2, typename InputView3 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > & y,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense, vector <- scalar x vector, masked) dispatches to eWiseMulAdd (vector <- scalar x vector + 0, masked)\n";
+		std::cout << "eWiseMul (reference, vector <- scalar x vector, masked) dispatches to eWiseMulAdd (vector <- scalar x vector + 0, masked)\n";
 	#endif
 		return eWiseMulAdd< descr >( z, m, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
 	}
@@ -3547,27 +3547,27 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		   
 		typename OutputView, typename MaskView, typename InputView1, typename InputView3 >
-	RC eWiseMul( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > & x,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector _m with a non-bool element type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference_dense, masked) dispatches to masked eWiseMulAdd with 0.0 as additive scalar\n";
+		std::cout << "eWiseMul (reference, masked) dispatches to masked eWiseMulAdd with 0.0 as additive scalar\n";
 	#endif
 		return eWiseMulAdd< descr >( z, m, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
 	}
@@ -3584,35 +3584,35 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		  
 		typename OutputView, typename MaskView, typename InputView3 >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType1, InputStructure1, reference_dense > &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense > &beta,
-		const VectorView< InputType3, InputStructure3, Density::Dense, InputView3, reference_dense > & y,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value && ! grb::is_object< MaskType >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
 			void >::type * const = NULL ) {
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMulAdd (reference_dense, vector <- scalar x scalar + vector, masked) precomputes scalar multiply and dispatches to eWiseAdd (reference_dense, vector <- scalar + vector, masked)\n";
+		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + vector, masked) precomputes scalar multiply and dispatches to eWiseAdd (reference, vector <- scalar + vector, masked)\n";
 	#endif
 		typename Ring::D3 mul_result;
-		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
+		RC rc = alp::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#else
 						assert( rc == SUCCESS );
 	#endif
-		return grb::eWiseAdd( z, m, mul_result, y, ring );
+		return alp::eWiseAdd( z, m, mul_result, y, ring );
 	}
 
 	/**
@@ -3627,46 +3627,46 @@ namespace grb {
 		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
 		 
 		typename OutputView, typename MaskView >
-	RC eWiseMulAdd( VectorView< OutputType, OutputStructure, Density::Dense, OutputView, reference_dense > & z,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & m,
-		const Scalar< InputType1, InputStructure1, reference_dense> &alpha,
-		const Scalar< InputType2, InputStructure2, reference_dense> &beta,
-		const Scalar< InputType3, InputStructure3, reference_dense> &gamma,
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+		const Scalar< InputType1, InputStructure1, reference> &alpha,
+		const Scalar< InputType2, InputStructure2, reference> &beta,
+		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-				grb::is_semiring< Ring >::value,
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
+				alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, InputType3 >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::eWiseMulAdd", "called with a mask vector with a non-bool element type" );
 	#ifdef _DEBUG
-		std::cout << "eWiseMulAdd (reference_dense, vector <- scalar x scalar + scalar, masked) precomputes scalar operations and dispatches to set (reference_dense, masked)\n";
+		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + scalar, masked) precomputes scalar operations and dispatches to set (reference, masked)\n";
 	#endif
 		typename Ring::D3 mul_result;
-		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
+		RC rc = alp::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
-		rc = grb::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
+		rc = alp::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
 	#ifdef NDEBUG
 		(void)rc;
 	#endif
 		assert( rc == SUCCESS );
-		return grb::set( z, m, add_result );
+		return alp::set( z, m, add_result );
 	}
 
-	// internal namespace for implementation of grb::dot
+	// internal namespace for implementation of alp::dot
 	namespace internal {
 
-		/** @see grb::dot */
+		/** @see alp::dot */
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class AddMonoid, class AnyOp,
@@ -3674,9 +3674,9 @@ namespace grb {
 			typename OutputStructure, typename InputStructure1, typename InputStructure2,
 			 
 			typename InputView1, typename InputView2 >
-		RC dot_generic( Scalar< OutputType, OutputStructure, reference_dense > &z,
-			const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &x,
-			const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &y,
+		RC dot_generic( Scalar< OutputType, OutputStructure, reference > &z,
+			const alp::Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
+			const alp::Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
 			const AddMonoid &addMonoid = AddMonoid(),
 			const AnyOp &anyOp = AnyOp()
 		) {
@@ -3715,11 +3715,11 @@ namespace grb {
 	 * any binary operator, it follows that a dot-product under any semiring can be
 	 * trivially reduced to a call to this version instead.
 	 *
-	 * @return grb::MISMATCH When the dimensions of \a x and \a y do not match. All
+	 * @return alp::MISMATCH When the dimensions of \a x and \a y do not match. All
 	 *                       input data containers are left untouched if this exit
 	 *                       code is returned; it will be as though this call was
 	 *                       never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * @return alp::SUCCESS  On successful completion of this call.
 	 *
 	//  * \parblock
 	//  * \par Performance semantics
@@ -3751,12 +3751,12 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
-	 *   -# grb::descriptors::dense
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
+	 *   -# alp::descriptors::dense
 	 * \endparblock
 	 *
-	 * If the dense descriptor is set, this implementation returns grb::ILLEGAL if
+	 * If the dense descriptor is set, this implementation returns alp::ILLEGAL if
 	 * it was detected that either \a x or \a y was sparse. In this case, it shall
 	 * otherwise be as though the call to this function had not occurred (no side
 	 * effects).
@@ -3772,35 +3772,35 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		 
 		typename InputView1, typename InputView2 >
-	RC dot( Scalar< OutputType, OutputStructure, reference_dense > &z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &y,
+	RC dot( Scalar< OutputType, OutputStructure, reference > &z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< AddMonoid >::value &&
-			grb::is_operator< AnyOp >::value,
+		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< AddMonoid >::value &&
+			alp::is_operator< AnyOp >::value,
 		void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
 			"called with a left-hand vector value type that does not match the first "
 			"domain of the given multiplicative operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "alp::dot",
 			"called with a right-hand vector value type that does not match the second "
 			"domain of the given multiplicative operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "alp::dot",
 			"called with a multiplicative operator output domain that does not match "
 			"the first domain of the given additive operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "alp::dot",
 			"called with an output vector value type that does not match the second "
 			"domain of the given additive operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "alp::dot",
 			"called with an additive operator whose output domain does not match its "
 			"second input domain" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "alp::dot",
 			"called with an output vector value type that does not match the third "
 			"domain of the given additive operator" );
 		(void)z;
@@ -3821,37 +3821,37 @@ namespace grb {
 		 
 		typename InputView1, typename InputView2 >
 	RC dot( OutputType &z,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, reference_dense > &x,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, reference_dense > &y,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< AddMonoid >::value &&
-			grb::is_operator< AnyOp >::value,
+		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< AddMonoid >::value &&
+			alp::is_operator< AnyOp >::value,
 		void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
 			"called with a left-hand vector value type that does not match the first "
 			"domain of the given multiplicative operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType2, typename AnyOp::D2 >::value ), "alp::dot",
 			"called with a right-hand vector value type that does not match the second "
 			"domain of the given multiplicative operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AnyOp::D1 >::value ), "alp::dot",
 			"called with a multiplicative operator output domain that does not match "
 			"the first domain of the given additive operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D2 >::value ), "alp::dot",
 			"called with an output vector value type that does not match the second "
 			"domain of the given additive operator" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename AddMonoid::D3, typename AddMonoid::D2 >::value ), "alp::dot",
 			"called with an additive operator whose output domain does not match its "
 			"second input domain" );
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "grb::dot",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< OutputType, typename AddMonoid::D3 >::value ), "alp::dot",
 			"called with an output vector value type that does not match the third "
 			"domain of the given additive operator" );
-		Scalar< OutputType, structures::General, reference_dense > res( z );
+		Scalar< OutputType, structures::General, reference > res( z );
 		RC rc = dot( res, x, y, addMonoid, anyOp );
 		if( rc != SUCCESS ) {
 			return rc;
@@ -3866,7 +3866,7 @@ namespace grb {
 	 * with any multiplicative operator.
 	 *
 	 * For return codes, exception behaviour, performance semantics, template
-	 * and non-template arguments, @see grb::dot.
+	 * and non-template arguments, @see alp::dot.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -3875,18 +3875,18 @@ namespace grb {
 		typename InputView1, typename InputView2,
 		Backend backend >
 	RC dot( Scalar< IOType, IOStructure, backend > &x,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< IOType >::value &&
-			grb::is_semiring< Ring >::value,
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			!alp::is_object< IOType >::value &&
+			alp::is_semiring< Ring >::value,
 		void >::type * const = NULL
 	) {
-		return grb::dot< descr >( x,
-		// return grb::dot( x,
+		return alp::dot< descr >( x,
+		// return alp::dot( x,
 			left, right,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator()
@@ -3902,18 +3902,18 @@ namespace grb {
 		typename InputView1, typename InputView2,
 		Backend backend >
 	RC dot( IOType &x,
-		const VectorView< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
-		const VectorView< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< IOType >::value &&
-			grb::is_semiring< Ring >::value,
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			!alp::is_object< IOType >::value &&
+			alp::is_semiring< Ring >::value,
 		void >::type * const = NULL
 	) {
 		Scalar< IOType, structures::General, backend > res( x );
-		RC rc = grb::dot< descr >( x,
+		RC rc = alp::dot< descr >( x,
 			left, right,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator()
@@ -3927,7 +3927,7 @@ namespace grb {
 
 	/** No implementation notes. */
 	template< typename Func, typename DataType, typename DataStructure,  typename DataView >
-	RC eWiseMap( const Func f, VectorView< DataType, DataStructure, Density::Dense, DataView, reference_dense > & x ) {
+	RC eWiseMap( const Func f, Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x ) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3935,20 +3935,20 @@ namespace grb {
 	/**
 	 * This is the eWiseLambda that performs length checking by recursion.
 	 *
-	 * in the reference_dense implementation all vectors are distributed equally, so no
+	 * in the reference implementation all vectors are distributed equally, so no
 	 * need to synchronise any data structures. We do need to do error checking
-	 * though, to see when to return grb::MISMATCH. That's this function.
+	 * though, to see when to return alp::MISMATCH. That's this function.
 	 *
-	 * @see VectorView::operator[]()
-	 * @see VectorView::lambda_reference
+	 * @see Vector::operator[]()
+	 * @see Vector::lambda_reference
 	 */
 	template< typename Func, typename DataType1, typename DataType2,
 		typename DataStructure1, typename DataStructure2,
 		typename DataView1, typename DataView2,
 		typename... Args >
 	RC eWiseLambda( const Func f,
-		const VectorView< DataType1, DataStructure1, Density::Dense, DataView1, reference_dense > & x,
-		const VectorView< DataType2, DataStructure2, Density::Dense, DataView2, reference_dense > & y,
+		const Vector< DataType1, DataStructure1, Density::Dense, DataView1, reference > & x,
+		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, reference > & y,
 		Args const &... args ) {
 		// catch mismatch
 		if( size( x ) != size( y ) ) {
@@ -3959,14 +3959,14 @@ namespace grb {
 	}
 
 	/**
-	 * No implementation notes. This is the `real' implementation on reference_dense
+	 * No implementation notes. This is the `real' implementation on reference
 	 * vectors.
 	 *
-	 * @see VectorView::operator[]()
-	 * @see VectorView::lambda_reference
+	 * @see Vector::operator[]()
+	 * @see Vector::lambda_reference
 	 */
 	template< typename Func, typename DataType, typename DataStructure,  typename DataView >
-	RC eWiseLambda( const Func f, const VectorView< DataType, DataStructure, Density::Dense, DataView, reference_dense > & x ) {
+	RC eWiseLambda( const Func f, const Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x ) {
 	#ifdef _DEBUG
 		std::cout << "Info: entering eWiseLambda function on vectors.\n";
 	#endif
@@ -4015,18 +4015,18 @@ namespace grb {
 	 * @param[in]    y   A valid GraphBLAS vector. This vector may be sparse.
 	 * @param[in] monoid The monoid under which to perform this reduction.
 	 *
-	 * @return grb::SUCCESS When the call completed successfully.
-	 * @return grb::ILLEGAL If the provided input vector \a y was not dense.
-	 * @return grb::ILLEGAL If the provided input vector \a y was empty.
+	 * @return alp::SUCCESS When the call completed successfully.
+	 * @return alp::ILLEGAL If the provided input vector \a y was not dense.
+	 * @return alp::ILLEGAL If the provided input vector \a y was empty.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting,
+	 * alp::descriptors::dense
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
 	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
 	 * \a IOType, and 3) the third domain must match \a IOType. If one of
 	 * these is not true, the code shall not compile.
@@ -4053,18 +4053,18 @@ namespace grb {
 	//  *         bytes of data movement.
 	//  * \endparblock
 	 *
-	 * @see grb::foldl provides similar functionality.
+	 * @see alp::foldl provides similar functionality.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename IOType, typename MaskType,
 		typename IOStructure, typename InputStructure, typename MaskStructure,
 		 
 		typename InputView, typename MaskView >
-	RC foldl( Scalar< IOType, IOStructure, reference_dense > &x,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, reference_dense > & y,
-		const VectorView< MaskType, MaskStructure, Density::Dense, MaskView, reference_dense > & mask,
+	RC foldl( Scalar< IOType, IOStructure, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value && grb::is_monoid< Monoid >::value,
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && ! alp::is_object< MaskType >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a mask of size " << size( mask ) << " with "
@@ -4072,17 +4072,17 @@ namespace grb {
 	#endif
 
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, InputType >::value ), "grb::reduce", "called with a scalar IO type that does not match the input vector type" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D1 >::value ), "grb::reduce",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, InputType >::value ), "alp::reduce", "called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D1 >::value ), "alp::reduce",
 			"called with an input vector value type that does not match the first "
 			"domain of the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D2 >::value ), "grb::reduce",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D2 >::value ), "alp::reduce",
 			"called with an input vector type that does not match the second domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "alp::reduce",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "grb::reduce", "called with a vector mask type that is not boolean" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::reduce", "called with a vector mask type that is not boolean" );
 
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -4104,8 +4104,8 @@ namespace grb {
 		typename ValueType, typename ValueStructure, typename ValueView,
 		typename Compare >
 	RC sort(
-		VectorView< IndexType, IndexStructure, Density::Dense, IndexView, reference_dense > &permutation,
-		const VectorView< ValueType, ValueStructure, Density::Dense, ValueView, reference_dense > &toSort,
+		Vector< IndexType, IndexStructure, Density::Dense, IndexView, reference > &permutation,
+		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, reference > &toSort,
 		Compare cmp
 		//PHASE &phase = EXECUTE
 	) noexcept {
@@ -4121,7 +4121,7 @@ namespace grb {
 	 * This function is only available when the output type is floating point.
 	 *
 	 * For return codes, exception behaviour, performance semantics, template
-	 * and non-template arguments, @see grb::dot.
+	 * and non-template arguments, @see alp::dot.
 	 *
 	 * @param[out] x The 2-norm of \a y. The input value of \a x will be ignored.
 	 * @param[in]  y The vector to compute the norm of.
@@ -4143,13 +4143,13 @@ namespace grb {
 		typename InputView,
 		Backend backend >
 	RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, backend > &y,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
 		void >::type * const = NULL
 	) {
-		RC ret = grb::dot< descr >( x, y, y, ring );
+		RC ret = alp::dot< descr >( x, y, y, ring );
 		if( ret == SUCCESS ) {
 			x = sqrt( x );
 		}
@@ -4167,13 +4167,13 @@ namespace grb {
 	>
 	RC norm2(
 		OutputType &x,
-		const VectorView< InputType, InputStructure, Density::Dense, InputView, backend > &y,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
 		void >::type * const = nullptr
 	) {
-		Scalar< OutputType, structures::General, reference_dense > res( x );
+		Scalar< OutputType, structures::General, reference > res( x );
 		RC rc = norm2( res, y, ring );
 		if( rc != SUCCESS ) {
 			return rc;
@@ -4182,7 +4182,7 @@ namespace grb {
 		return SUCCESS;
 	}
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_BLAS1''
+#endif // end ``_H_ALP_REFERENCE_BLAS1''
 

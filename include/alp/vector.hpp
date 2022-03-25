@@ -20,38 +20,30 @@
  * @date 10th of August, 2016
  */
 
-#ifndef _H_GRB_VECTOR
-#define _H_GRB_VECTOR
+#ifndef _H_ALP_VECTOR
+#define _H_ALP_VECTOR
 
 #include "base/config.hpp"
 #include "base/vector.hpp"
-#include "coordinates.hpp"
 
 // now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/vector.hpp>
-#endif
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/vector.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/vector.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/vector.hpp>
+#ifdef _ALP_WITH_REFERENCE
+ #include <alp/reference/vector.hpp>
 #endif
 
 // specify default only if requested during compilation
-#ifdef _GRB_BACKEND
-namespace grb {
-	template< typename D, Backend implementation = config::default_backend, typename C = internal::DefaultCoordinates >
-	class Vector;
+#ifdef _ALP_BACKEND
+namespace alp {
+	namespace internal {
+		template< typename D, Backend implementation = config::default_backend >
+		class Vector;
+	} // namespace internal
 
 	/*
 	 * The default value of \a density could also be made conditional (Dense or Sparse) depending on \a config::default_backend
 	 */
 	template< typename T, typename Structure = structures::General, enum Density density = Density::Dense, typename View = view::Original< void >, enum Backend backend = config::default_backend >
-	class VectorView;
+	class Vector;
 
 }
 #endif

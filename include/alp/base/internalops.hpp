@@ -20,25 +20,25 @@
  * @date 8th of August, 2016
  */
 
-#ifndef _H_GRB_INTERNAL_OPERATORS_BASE
-#define _H_GRB_INTERNAL_OPERATORS_BASE
+#ifndef _H_ALP_INTERNAL_OPERATORS_BASE
+#define _H_ALP_INTERNAL_OPERATORS_BASE
 
-#include <graphblas/utils/suppressions.h>
+#include <alp/utils/suppressions.h>
 
 #include <type_traits>
 #include <utility>
 
-#include <graphblas/type_traits.hpp>
-#include <graphblas/utils.hpp>
+#include <alp/type_traits.hpp>
+#include <alp/utils.hpp>
 
 #include "config.hpp"
 
 
-namespace grb {
+namespace alp {
 
 	namespace operators {
 
-		/** Core implementations of the standard operators in #grb::operators. */
+		/** Core implementations of the standard operators in #alp::operators. */
 		namespace internal {
 
 			/**
@@ -639,10 +639,10 @@ namespace grb {
 					const right_type * __restrict__ const b,
 					result_type * __restrict__ const c
 				) {
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					ALP_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see internal issue 306 for rationale
 					*c = *a + *b;
-					GRB_UTIL_RESTORE_WARNINGS
+					ALP_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -743,10 +743,10 @@ namespace grb {
 						const right_type * __restrict__ const b,
 						result_type * __restrict__ const c
 				) {
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					ALP_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see internal issue 306 for rationale
 					*c = *a * *b;
-					GRB_UTIL_RESTORE_WARNINGS
+					ALP_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -1285,14 +1285,14 @@ namespace grb {
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
 				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					ALP_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see internal issue 306 for rationale
 					if( *a != *b ) {
 						*c = static_cast< OUT >( true );
 					} else {
 						*c = static_cast< OUT >( false );
 					}
-					GRB_UTIL_RESTORE_WARNINGS
+					ALP_UTIL_RESTORE_WARNINGS
 				}
 
 				/**
@@ -1830,8 +1830,8 @@ namespace grb {
 
 			protected:
 				/** The block size that should be used during map-like operations. */
-				static constexpr size_t blocksize = grb::utils::static_min( grb::config::SIMD_BLOCKSIZE< typename OP::left_type >::value(),
-					grb::utils::static_min( grb::config::SIMD_BLOCKSIZE< typename OP::right_type >::value(), grb::config::SIMD_BLOCKSIZE< typename OP::result_type >::value() ) );
+				static constexpr size_t blocksize = alp::utils::static_min( alp::config::SIMD_BLOCKSIZE< typename OP::left_type >::value(),
+					alp::utils::static_min( alp::config::SIMD_BLOCKSIZE< typename OP::right_type >::value(), alp::config::SIMD_BLOCKSIZE< typename OP::result_type >::value() ) );
 
 				/** The left-hand side input domain. */
 				typedef typename OP::left_type D1;
@@ -2237,7 +2237,7 @@ namespace grb {
 				 *
 				 * \warning The first casting behaviour may not be what you want. The two
 				 *          other casting behaviours are allowed by the GraphBLAS unless
-				 *          the grb::descriptor::no_casting is given.
+				 *          the alp::descriptor::no_casting is given.
 				 *
 				 * \note By default, this GraphBLAS implementation will only use this
 				 *       code when \a D2 matches \a D3 and OP::has_foldr is \a true.
@@ -2261,7 +2261,7 @@ namespace grb {
 				template< typename InputType1, typename InputType2, typename OutputType >
 				static void eWiseApply( const InputType1 * x, const InputType2 * y, OutputType * __restrict__ z, const size_t n ) {
 #ifdef _DEBUG
-#ifdef D_GRB_NO_STDIO
+#ifdef D_ALP_NO_STDIO
 					std::cout << "In OperatorFR::eWiseApply\n";
 #endif
 #endif
@@ -2708,7 +2708,7 @@ namespace grb {
 				 *
 				 * \warning The first casting behaviour may not be what you want. The two
 				 *          other casting behaviours are allowed by the GraphBLAS unless
-				 *          the grb::descriptor::no_casting is given.
+				 *          the alp::descriptor::no_casting is given.
 				 *
 				 * \note By default, this GraphBLAS implementation will only use this
 				 *       code when \a D1 matches \a D3 and OP::has_foldr is \a true.
@@ -2734,7 +2734,7 @@ namespace grb {
 				template< typename InputType1, typename InputType2, typename OutputType >
 				static void eWiseApply( const InputType1 * x, const InputType2 * y, OutputType * __restrict__ z, const size_t n ) {
 #ifdef _DEBUG
-#ifdef D_GRB_NO_STDIO
+#ifdef D_ALP_NO_STDIO
 					std::cout << "In OperatorNoFR::eWiseApply\n";
 #endif
 #endif
@@ -2874,10 +2874,10 @@ namespace grb {
 				 * writing them back to \a z.
 				 *
 				 * \note The GraphBLAS can explicitly control all \em three of this
-				 *       casting behaviours via grb::descriptors::no_casting.
+				 *       casting behaviours via alp::descriptors::no_casting.
 				 *
 				 * \warning With the in-place variants of this code, unwanted behaviour
-				 *          cannot be prevented by use of grb::descriptors::no_casting.
+				 *          cannot be prevented by use of alp::descriptors::no_casting.
 				 *          Therefore the current implementation only calls the in-place
 				 *          variants when \a D1 equals \a D3 (for foldl-based in-place),
 				 *          or when \a D2 equals \a D3 (for foldr-based ones).
@@ -2899,7 +2899,7 @@ namespace grb {
 				template< typename InputType1, typename InputType2, typename OutputType >
 				static void eWiseApply( const InputType1 * x, const InputType2 * y, OutputType * __restrict__ z, const size_t n ) {
 #ifdef _DEBUG
-#ifdef D_GRB_NO_STDIO
+#ifdef D_ALP_NO_STDIO
 					std::cout << "In OperatorNoFRFL::eWiseApply\n";
 #endif
 #endif
@@ -2951,7 +2951,7 @@ namespace grb {
 			 *          While very easily possible to create non-associative operators
 			 *          using this interface, passing them to GraphBLAS functions,
 			 *          either explicitly or indirectly (by, e.g., including them in a
-			 *          grb::Monoid or grb::Semiring), will lead to undefined
+			 *          alp::Monoid or alp::Semiring), will lead to undefined
 			 *          behaviour.
 			 *
 			 * This class wraps around a base operator of type \a OP we denote by
@@ -2986,8 +2986,8 @@ namespace grb {
 			 *      \f$ z \in D_1 \subseteq D_3 \f$ and \f$ y \in D_2 \f$ and stores in
 			 *      \a z the result of \f$ z \odot y \f$.
 			 *
-			 * For examples of these base operators, see grb::operators::internal::max
-			 * or grb::operators::internal::mul. An example of a full implementation,
+			 * For examples of these base operators, see alp::operators::internal::max
+			 * or alp::operators::internal::mul. An example of a full implementation,
 			 * in this case for numerical addition, is the following:
 			 *
 			 * \snippet internalops.hpp Example Base Operator Implementation
@@ -3055,7 +3055,7 @@ namespace grb {
 			 *
 			 * New operators are easily added to this
 			 * GraphBLAS implementation by providing a base operator and wrapping this
-			 * class around it, as illustrated, e.g., by grb::operators::add as follows:
+			 * class around it, as illustrated, e.g., by alp::operators::add as follows:
 			 *
 			 * \snippet ops.hpp Operator Wrapping
 			 *
@@ -3174,7 +3174,7 @@ namespace grb {
 
 	} // namespace operators
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_INTERNAL_OPERATORS_BASE
+#endif // _H_ALP_INTERNAL_OPERATORS_BASE
 

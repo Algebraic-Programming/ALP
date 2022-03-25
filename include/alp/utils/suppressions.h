@@ -28,23 +28,23 @@
  * @date 19th of January 2022
  */
 
-#ifndef _H_GRB_UTILS_SUPRESSIONS
-#define _H_GRB_UTILS_SUPRESSIONS
+#ifndef _H_ALP_UTILS_SUPRESSIONS
+#define _H_ALP_UTILS_SUPRESSIONS
 
 #if defined(__GNUC__) && __GNUC__ >= 4
  // here are the macros for GCC
- #define GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED \
+ #define ALP_UTIL_IGNORE_MAYBE_UNINITIALIZED \
   _Pragma( "GCC diagnostic push" ) ;\
   _Pragma( "GCC diagnostic ignored \"-Wmaybe-uninitialized\"" );\
 
- #define GRB_UTIL_RESTORE_WARNINGS \
+ #define ALP_UTIL_RESTORE_WARNINGS \
   _Pragma( "GCC diagnostic pop" );\
 
 #else
  // here are empty default macros
- #define GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
- #define GRB_UTIL_RESTORE_WARNINGS
+ #define ALP_UTIL_IGNORE_MAYBE_UNINITIALIZED
+ #define ALP_UTIL_RESTORE_WARNINGS
 #endif
 
-#endif // end ``_H_GRB_REFERENCE_BLAS2''
+#endif // end ``_H_ALP_REFERENCE_BLAS2''
 

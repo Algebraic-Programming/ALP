@@ -20,32 +20,23 @@
  * @date 17th of April, 2017
  */
 
-#ifndef _H_GRB_EXEC
-#define _H_GRB_EXEC
+#ifndef _H_ALP_EXEC
+#define _H_ALP_EXEC
 
 #include "base/config.hpp"
 #include "base/exec.hpp"
 
 // include template specialisations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/exec.hpp"
-#endif
-#ifdef _GRB_WITH_DENSEREF
- #include "graphblas/denseref/exec.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/exec.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/exec.hpp"
+#ifdef _ALP_WITH_REFERENCE
+ #include "alp/reference/exec.hpp"
 #endif
 
-#ifdef _GRB_BACKEND
-namespace grb {
+#ifdef _ALP_BACKEND
+namespace alp {
 	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
 	class Launcher;
 }
 #endif
 
-#endif // end ``_H_GRB_EXEC''
+#endif // end ``_H_ALP_EXEC''
 

@@ -20,8 +20,8 @@
  * @date 8th of August, 2016
  */
 
-#ifndef _H_GRB_CONFIG_BASE
-#define _H_GRB_CONFIG_BASE
+#ifndef _H_ALP_CONFIG_BASE
+#define _H_ALP_CONFIG_BASE
 
 #include <cstddef> //size_t
 #include <string>
@@ -29,16 +29,16 @@
 #include <assert.h>
 #include <unistd.h> //sysconf
 
-#include <graphblas/backends.hpp>
+#include <alp/backends.hpp>
 
-#ifndef _GRB_NO_STDIO
+#ifndef _ALP_NO_STDIO
  #include <iostream> //std::cout
 #endif
 
-// if the user did not define _GRB_BACKEND, set it to the default sequential
+// if the user did not define _ALP_BACKEND, set it to the default sequential
 // implementation
-#ifndef _GRB_BACKEND
- #define _GRB_BACKEND reference
+#ifndef _ALP_BACKEND
+ #define _ALP_BACKEND reference
 #endif
 
 /**
@@ -46,13 +46,13 @@
  *
  * All GraphBLAS functions and objects are defined within.
  */
-namespace grb {
+namespace alp {
 
 	/** Contains compile-time configuration constants. */
 	namespace config {
 
 		/** The default backend to be selected for an end user. */
-		static constexpr grb::Backend default_backend = _GRB_BACKEND;
+		static constexpr alp::Backend default_backend = _ALP_BACKEND;
 
 		/** The cache line size, in bytes. */
 		class CACHE_LINE_SIZE {
@@ -67,7 +67,7 @@ namespace grb {
 		public:
 			/**
 			 * @return The cache line size in bytes.
-			 * @see grb::config::CACHE_LINE_SIZE::bytes
+			 * @see alp::config::CACHE_LINE_SIZE::bytes
 			 */
 			static constexpr size_t value() {
 				return bytes;
@@ -87,7 +87,7 @@ namespace grb {
 		public:
 			/**
 			 * @return The SIMD size in bytes.
-			 * @see grb::config::SIMD_SIZE::bytes
+			 * @see alp::config::SIMD_SIZE::bytes
 			 */
 			static constexpr size_t value() {
 				return bytes;
@@ -211,7 +211,7 @@ namespace grb {
 			 * @returns true if and only if this function printed information to stdout.
 			 */
 			static bool report( const std::string prefix, const std::string action, const size_t size, const bool printNewline = true ) {
-#ifdef _GRB_NO_STDIO
+#ifdef _ALP_NO_STDIO
 				(void)prefix;
 				(void)action;
 				(void)size;
@@ -295,6 +295,6 @@ namespace grb {
 
 	} // namespace config
 
-} // namespace grb
+} // namespace alp
 
-#endif // end _H_GRB_CONFIG_BASE
+#endif // end _H_ALP_CONFIG_BASE

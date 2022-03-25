@@ -20,13 +20,13 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_IO
-#define _H_GRB_DENSEREF_IO
+#ifndef _H_ALP_REFERENCE_IO
+#define _H_ALP_REFERENCE_IO
 
-#include <graphblas/base/io.hpp>
+#include <alp/base/io.hpp>
 #include "matrix.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Assigns elements to a matrix from an iterator.
@@ -51,14 +51,14 @@ namespace grb {
 	 * @param[in]  _start Iterator pointing to the first element to be added.
 	 * @param[in]  _end   Iterator pointing past the last element to be added.
 	 * 
-	 * @return grb::MISMATCH -# the dimension of the input and output containers
+	 * @return alp::MISMATCH -# the dimension of the input and output containers
 	 *                          do not match.
 	 *                       When this error code is returned the state of this
 	 *                       container will be as though this function was never
 	 *                       called; however, the given forward iterators may
 	 *                       have been copied and the copied iterators may have
 	 *                       incurred multiple increments and dereferences.
-	 * @return grb::SUCCESS  When the function completes successfully.
+	 * @return alp::SUCCESS  When the function completes successfully.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -76,18 +76,18 @@ namespace grb {
 	 *
 	 */
 	template< typename InputType, typename fwd_iterator >
-	RC buildMatrixUnique( Matrix< InputType, reference_dense > & A, fwd_iterator start, const fwd_iterator end ) {
+	RC buildMatrixUnique( internal::Matrix< InputType, reference > & A, fwd_iterator start, const fwd_iterator end ) {
 		return A.template buildMatrixUnique( start, end );
 	}
 
 	/**
 	 * @brief \a buildMatrix version. The semantics of this function equals the one of
-	 *        \a buildMatrixUnique for the \a reference_dense backend.
+	 *        \a buildMatrixUnique for the \a reference backend.
 	 * 
-	 * @see grb::buildMatrix
+	 * @see alp::buildMatrix
 	 */
 	template< typename InputType, typename fwd_iterator >
-	RC buildMatrix( Matrix< InputType, reference_dense > & A, fwd_iterator start, const fwd_iterator end ) {
+	RC buildMatrix( internal::Matrix< InputType, reference > & A, fwd_iterator start, const fwd_iterator end ) {
 		return A.template buildMatrixUnique( start, end );
 	}
 
@@ -95,7 +95,7 @@ namespace grb {
 	/**
 	 * Assigns elements to a structured matrix from an iterator.
 	 *
-	 * @tparam StructuredMatrixT The structured matrix type.
+	 * @tparam MatrixT The structured matrix type.
 	 * @tparam fwd_iterator   The source iterator type.
 	 *
 	 * The iterator \a fwd_iterator must be  STL-compatible, may
@@ -115,14 +115,14 @@ namespace grb {
 	 * @param[in]  _start Iterator pointing to the first element to be added.
 	 * @param[in]  _end   Iterator pointing past the last element to be added.
 	 * 
-	 * @return grb::MISMATCH -# the dimension of the input and output containers
+	 * @return alp::MISMATCH -# the dimension of the input and output containers
 	 *                          do not match.
 	 *                       When this error code is returned the state of this
 	 *                       container will be as though this function was never
 	 *                       called; however, the given forward iterators may
 	 *                       have been copied and the copied iterators may have
 	 *                       incurred multiple increments and dereferences.
-	 * @return grb::SUCCESS  When the function completes successfully.
+	 * @return alp::SUCCESS  When the function completes successfully.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -139,8 +139,8 @@ namespace grb {
 	 *          absolutely necessary.
 	 *
 	 */
-	template< typename StructuredMatrixT, typename fwd_iterator >
-	RC buildMatrixUnique( StructuredMatrixT & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
+	template< typename MatrixT, typename fwd_iterator >
+	RC buildMatrixUnique( MatrixT & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
 		(void)A;
 		(void)start;
 		(void)end;
@@ -150,12 +150,12 @@ namespace grb {
 
 	/**
 	 * @brief \a buildMatrix version. The semantics of this function equals the one of
-	 *        \a buildMatrixUnique for the \a reference_dense backend.
+	 *        \a buildMatrixUnique for the \a reference backend.
 	 * 
-	 * @see grb::buildMatrix
+	 * @see alp::buildMatrix
 	 */
 	template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-	RC buildMatrix( StructuredMatrix< InputType, Structure, Density::Dense, View, reference_dense > & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
+	RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, reference > & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
 		(void)A;
 		(void)start;
 		(void)end;
@@ -163,7 +163,7 @@ namespace grb {
 		// return A.template buildMatrixUnique( start, end );
 	}
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_IO''
+#endif // end ``_H_ALP_REFERENCE_IO''
 

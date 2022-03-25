@@ -24,22 +24,22 @@
  * @date 30th of March 2017
  */
 
-#ifndef _H_GRB_BLAS2_BASE
-#define _H_GRB_BLAS2_BASE
+#ifndef _H_ALP_BLAS2_BASE
+#define _H_ALP_BLAS2_BASE
 
 #include <assert.h>
 
-#include <graphblas/backends.hpp>
-#include <graphblas/blas1.hpp>
-#include <graphblas/descriptors.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/semiring.hpp>
+#include <alp/backends.hpp>
+#include <alp/blas1.hpp>
+#include <alp/descriptors.hpp>
+#include <alp/rc.hpp>
+#include <alp/semiring.hpp>
 
 #include "config.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup BLAS2 The Level-2 Basic Linear Algebra Subroutines (BLAS)
@@ -49,7 +49,7 @@ namespace grb {
 	 * two-dimensional containers.
 	 *
 	 * That is, these functions allow various linear algebra operations on
-	 * scalars, objects of type grb::Vector, and objects of type grb::Matrix.
+	 * scalars, objects of type alp::Vector, and objects of type alp::Matrix.
 	 *
 	 * \note The backends of each opaque data type should match.
 	 *
@@ -59,9 +59,9 @@ namespace grb {
 	/**
 	 * Right-handed sparse matrix times vector multiplication, \f$ u = Av \f$.
 	 *
-	 * Let \f$ u \f$ and \f$ \mathit{mask} \f$ each be a #grb::Vector of #grb::size
-	 * \f$ m \f$, \f$ v \f$ be a #grb::Vector of #grb::size \f$ n \f$, and let
-	 * \f$ A \f$ be a #Matrix with #grb::nrows \f$ m \f$ and #grb::ncols \f$ n \f$.
+	 * Let \f$ u \f$ and \f$ \mathit{mask} \f$ each be a #alp::Vector of #alp::size
+	 * \f$ m \f$, \f$ v \f$ be a #alp::Vector of #alp::size \f$ n \f$, and let
+	 * \f$ A \f$ be a #Matrix with #alp::nrows \f$ m \f$ and #alp::ncols \f$ n \f$.
 	 * Let furthermore \f$ z \f$ be an interal vector of size \f$ m \f$.
 	 * A call to this function first computes \f$ z = Av \f$ over the provided
 	 * \a ring. It then left-folds \f$ z \f$ into \f$ u \f$ using the provided
@@ -100,8 +100,8 @@ namespace grb {
 	 *       in \f$ \Theta(m) \f$ data movement and may only be warrented when
 	 *       \f$ A \f$ has many nonzeroes per row and \f$ v \f$ is dense.
 	 *
-	 * @tparam descr    Any combination of one or more #grb::descriptors. When
-	 *                  ommitted, the default #grb::descriptors:no_operation will
+	 * @tparam descr    Any combination of one or more #alp::descriptors. When
+	 *                  ommitted, the default #alp::descriptors:no_operation will
 	 *                  be assumed.
 	 * @tparam Ring     The generalised semi-ring the matrix--vector multiplication
 	 *                  is to be executed under.
@@ -109,35 +109,35 @@ namespace grb {
 	 * @tparam InputType1 The type of the elements of the input vector \a v.
 	 * @tparam InputType2 The type of the elements of the input matrix \a A.
 	 * @tparam Operator The type of the \a accumulator. Must be a GraphBLAS
-	 *                  operator; see also #grb::operators.
+	 *                  operator; see also #alp::operators.
 	 * @tparam InputType3 The type of the elements of the mask vector \a mask.
 	 * @tparam implementation Which back-end the given vectors and matrices belong
 	 *                        to. These must all belong to the same back-end.
 	 *
 	 * @param[in,out] u The output vector. Depending on the provided
 	 *                  \a accumulator, old vector values may affect new values.
-	 * @param[in]  mask The mask vector. The vector #grb::size must be equal to
+	 * @param[in]  mask The mask vector. The vector #alp::size must be equal to
 	 *                  that of \a u, \em or it must be equal to zero. A \a mask
-	 *                  of grb::size zero will be ignored (assumed <tt>true</tt>
+	 *                  of alp::size zero will be ignored (assumed <tt>true</tt>
 	 *                  always.
 	 * @param[in] accumulator The operator \f$ \bigodot \f$ in the above
 	 *                        description.
-	 * @param[in] A     The input matrix. Its #grb::nrows must equal the
-	 *                  #grb::size of \a u.
-	 * @param[in] v     The input vector. Its #grb::size must equal the
-	 *                  #grb::ncols of \a A.
+	 * @param[in] A     The input matrix. Its #alp::nrows must equal the
+	 *                  #alp::size of \a u.
+	 * @param[in] v     The input vector. Its #alp::size must equal the
+	 *                  #alp::ncols of \a A.
 	 * @param[in] ring  The semiring to perform the matrix--vector multiplication
-	 *                  under. Unless #grb::descriptors::no_casting is defined,
+	 *                  under. Unless #alp::descriptors::no_casting is defined,
 	 *                  elements from \a u, \a A, and \a v will be cast to the
 	 *                  domains of the additive and multiplicative operators of
 	 *                  \a ring as they are applied during the multiplication.
 	 *
-	 * \warning Even if #grb::operators::right_assign is provided as accumulator,
+	 * \warning Even if #alp::operators::right_assign is provided as accumulator,
 	 *          old values of \a u may \em not be overwritten if the computation
 	 *          ends up not writing any new values to those values. To throw away
-	 *          old vector values use grb::descriptors::explicit_zero (for dense
+	 *          old vector values use alp::descriptors::explicit_zero (for dense
 	 *          vectors only if you wish to retain sparsity of the output vector),
-	 *          or first simply use grb::clear on \a u.
+	 *          or first simply use alp::clear on \a u.
 	 *
 	 * The above semantics may be changed by the following descriptors:
 	 *   * #descriptors::invert_mask: \f$ u_i^\mathit{out} \f$ will be written to
@@ -203,7 +203,7 @@ namespace grb {
 	 *     to maintain).
 	 *   * #descriptors::structural: removes \f$ \Theta(|I|) \f$ data movement
 	 *     costs as the mask values need no longer be touched.
-	 *   * #descriptors::add_identity: adds, at most, the costs of grb::foldl
+	 *   * #descriptors::add_identity: adds, at most, the costs of alp::foldl
 	 *     (on vectors) to all performance metrics.
 	 *   * #descriptors::use_index: removes \f$ \Theta(n) \f$ or
 	 *     \f$ \Theta(|J|) \f$ data movement costs as the input vector values need
@@ -220,36 +220,36 @@ namespace grb {
 	 * movement between then.
 	 * \endparblock
 	 *
-	 * @returns grb::SUCCESS  If the computation completed successfully.
-	 * @returns grb::MISMATCH If there is at least one mismatch between vector
+	 * @returns alp::SUCCESS  If the computation completed successfully.
+	 * @returns alp::MISMATCH If there is at least one mismatch between vector
 	 *                        dimensions or between vectors and the given matrix.
-	 * @returns grb::OVERLAP  If two or more provided vectors refer to the same
+	 * @returns alp::OVERLAP  If two or more provided vectors refer to the same
 	 *                        vector.
 	 *
 	 * When a non-SUCCESS error code is returned, it shall be as though the call
 	 * was never made. Note that all GraphBLAS functions may additionally return
-	 * #grb::PANIC, which indicates the library has entered an undefined state; if
+	 * #alp::PANIC, which indicates the library has entered an undefined state; if
 	 * this error code is returned, the only sensible thing a user can do is exit,
 	 * or at least refrain from using any GraphBLAS functions for the remainder of
 	 * the application.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template< 
 		class Ring,
 		typename IOType,
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename Coords,
+		Descriptor descr = descriptors::no_operation,
 		enum Backend implementation = config::default_backend >
-	RC mxv( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Matrix< InputType2, implementation > & A,
-		const Vector< InputType1, implementation, Coords > & v,
+	RC mxv( internal::Vector< IOType, implementation > & u,
+		const internal::Vector< InputType3, implementation > & mask,
+		const internal::Matrix< InputType2, implementation > & A,
+		const internal::Vector< InputType1, implementation > & v,
 		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+		typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::mxv (output-masked)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::mxv (output-masked)\n";
  #endif
 #endif
 		(void)u;
@@ -261,21 +261,21 @@ namespace grb {
 	}
 
 	/**
-	 * A short-hand for an unmasked #grb::mxv.
+	 * A short-hand for an unmasked #alp::mxv.
 	 *
-	 * @see grb::mxv for the full documentation.
+	 * @see alp::mxv for the full documentation.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename Coords, Backend implementation = config::default_backend >
-	RC mxv( Vector< IOType, implementation, Coords > & u,
-		const Matrix< InputType2, implementation > & A,
-		const Vector< InputType1, implementation, Coords > & v,
+	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, Backend implementation = config::default_backend >
+	RC mxv( internal::Vector< IOType, implementation > & u,
+		const internal::Matrix< InputType2, implementation > & A,
+		const internal::Vector< InputType1, implementation > & v,
 		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+		typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::mxv\n";
+#ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::mxv\n";
 #else
-		printf( "Selected backend does not implement grb::mxv\n" );
+		printf( "Selected backend does not implement alp::mxv\n" );
 #endif
 #endif
 		(void)u;
@@ -288,14 +288,14 @@ namespace grb {
 	/**
 	 * Left-handed sparse matrix times vector multiplication, \f$ u = vA \f$.
 	 *
-	 * If \a descr does not have #grb::descriptors::transpose_matrix defined, the
+	 * If \a descr does not have #alp::descriptors::transpose_matrix defined, the
 	 * semantics and performance semantics of this function are exactly that of
-	 * grb::mxv with the #grb::descriptors::transpose_matrix set.
+	 * alp::mxv with the #alp::descriptors::transpose_matrix set.
 	 * In the other case, the functional and performance semantics of this function
-	 * are exactly that of grb::mxv without the #grb::descriptors::transpose_matrix
+	 * are exactly that of alp::mxv without the #alp::descriptors::transpose_matrix
 	 * set.
 	 *
-	 * @see grb::mxv for the full documentation.
+	 * @see alp::mxv for the full documentation.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -303,17 +303,16 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename Coords,
 		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
+	RC vxm( internal::Vector< IOType, implementation > & u,
+		const internal::Vector< InputType3, implementation > & mask,
+		const internal::Vector< InputType1, implementation > & v,
+		const internal::Matrix< InputType2, implementation > & A,
 		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+		typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::vxm (output-masked)\n";
  #endif
 #endif
 		(void)u;
@@ -325,25 +324,24 @@ namespace grb {
 	}
 
 	/**
-	 * A short-hand for an unmasked grb::vxm.
+	 * A short-hand for an unmasked alp::vxm.
 	 *
-	 * @see grb::vxm for the full documentation.
+	 * @see alp::vxm for the full documentation.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType,
 		typename InputType1,
 		typename InputType2,
-		typename Coords,
 		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
+	RC vxm( internal::Vector< IOType, implementation > & u,
+		const internal::Vector< InputType1, implementation > & v,
+		const internal::Matrix< InputType2, implementation > & A,
 		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+		typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * = NULL ) {
 #ifdef _DEBUG
-  #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::vxm\n";
+  #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::vxm\n";
  #endif
 #endif
 		(void)u;
@@ -362,21 +360,20 @@ namespace grb {
 		typename InputType2,
 		typename InputType3,
 		typename InputType4,
-		typename Coords,
 		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Vector< InputType1, backend, Coords > & v,
-		const Vector< InputType4, backend, Coords > & v_mask,
-		const Matrix< InputType2, backend > & A,
+	RC vxm( internal::Vector< IOType, backend > & u,
+		const internal::Vector< InputType3, backend > & mask,
+		const internal::Vector< InputType1, backend > & v,
+		const internal::Vector< InputType4, backend > & v_mask,
+		const internal::Matrix< InputType2, backend > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
+		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 		std::cerr << "Selected backend does not implement vxm (doubly-masked)\n";
  #endif
 #endif
@@ -399,21 +396,20 @@ namespace grb {
 		typename InputType2,
 		typename InputType3,
 		typename InputType4,
-		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
-		const Vector< InputType4, backend, Coords > & v_mask,
+	RC mxv( internal::Vector< IOType, backend > & u,
+		const internal::Vector< InputType3, backend > & mask,
+		const internal::Matrix< InputType2, backend > & A,
+		const internal::Vector< InputType1, backend > & v,
+		const internal::Vector< InputType4, backend > & v_mask,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
+		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 		std::cerr << "Selected backend does not implement mxv (doubly-masked)\n";
  #endif
 #endif
@@ -435,16 +431,15 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
+	RC mxv( internal::Vector< IOType, backend > & u,
+		const internal::Vector< InputType3, backend > & mask,
+		const internal::Matrix< InputType2, backend > & A,
+		const internal::Vector< InputType1, backend > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
+		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 		(void)u;
 		(void)mask;
@@ -462,18 +457,17 @@ namespace grb {
 		typename IOType,
 		typename InputType1,
 		typename InputType2,
-		typename Coords,
 		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType1, backend, Coords > & v,
-		const Matrix< InputType2, backend > & A,
+	RC vxm( internal::Vector< IOType, backend > & u,
+		const internal::Vector< InputType1, backend > & v,
+		const internal::Matrix< InputType2, backend > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
+		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 		std::cerr << "Selected backend does not implement vxm (unmasked)\n";
  #endif
 #endif
@@ -493,20 +487,19 @@ namespace grb {
 		typename InputType1,
 		typename InputType2,
 		typename InputType3,
-		typename Coords,
 		Backend implementation >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
+	RC vxm( internal::Vector< IOType, implementation > & u,
+		const internal::Vector< InputType3, implementation > & mask,
+		const internal::Vector< InputType1, implementation > & v,
+		const internal::Matrix< InputType2, implementation > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
+		typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::vxm (output-masked)\n";
  #endif
 #endif
 		(void)u;
@@ -525,19 +518,18 @@ namespace grb {
 		typename IOType,
 		typename InputType1,
 		typename InputType2,
-		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
+	RC mxv( internal::Vector< IOType, backend > & u,
+		const internal::Matrix< InputType2, backend > & A,
+		const internal::Vector< InputType1, backend > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
+		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::mxv (unmasked)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::mxv (unmasked)\n";
  #endif
 #endif
 		(void)u;
@@ -553,7 +545,7 @@ namespace grb {
 	 * nonzero elements of a given matrix \a A.
 	 *
 	 * The user-defined function is passed as a lambda which can capture whatever
-	 * the user would like, including one or multiple grb::Vector instances, or
+	 * the user would like, including one or multiple alp::Vector instances, or
 	 * multiple scalars. When capturing vectors, these should also be passed as a
 	 * additional arguments to this functions so to make sure those vectors are
 	 * synchronised for access on all row- and column- indices corresponding to
@@ -568,12 +560,12 @@ namespace grb {
 	 *
 	 * \warning The lambda shall only be executed on the data local to the user
 	 *          process calling this function! This is different from the various
-	 *          fold functions, or grb::dot, in that the semantics of those
+	 *          fold functions, or alp::dot, in that the semantics of those
 	 *          functions always result in globally synchronised result. To
 	 *          achieve the same effect with user-defined lambdas, the users
 	 *          should manually prescribe how to combine the local results into
 	 *          global ones, for instance, by subsequent calls to
-	 *          grb::collectives.
+	 *          alp::collectives.
 	 *
 	 * \note This is an addition to the GraphBLAS. It is alike user-defined
 	 *       operators, monoids, and semirings, except it allows execution on
@@ -607,16 +599,16 @@ namespace grb {
 	 * @param[in] A The matrix the lambda is to access the elements of.
 	 * @param[in] args All vectors the lambda is to access elements of. Must be of
 	 *                 the same length as \a nrows(A) or \a ncols(A). If this
-	 *                 constraint is violated, grb::MISMATCH shall be returned. If
+	 *                 constraint is violated, alp::MISMATCH shall be returned. If
 	 *                 the vector length equals \a nrows(A), the vector shall be
 	 *                 synchronized for access on \a i. If the vector length equals
 	 *                 \a ncols(A), the vector shall be synchronized for access on
 	 *                 \a j. If \a A is square, the vectors will be synchronised for
 	 *                 access on both \a x and \a y. <em>This is a variadic argument
-	 *                 and can contain any number of containers of type grb::Vector,
+	 *                 and can contain any number of containers of type alp::Vector,
 	 *                 passed as though they were separate arguments.</em>
 	 *
-	 * \warning Using a grb::Vector inside a lambda passed to this function while
+	 * \warning Using a alp::Vector inside a lambda passed to this function while
 	 *          not passing that same vector into \a args, will result in undefined
 	 *          behaviour.
 	 *
@@ -627,8 +619,8 @@ namespace grb {
 	 *          access using \a j. For square matrices, however, the following
 	 *          code in the body is accepted, however: <code>x[i] += x[j]</code>.
 	 *
-	 * @return grb::SUCCESS  When the lambda is successfully executed.
-	 * @return grb::MISMATCH When two or more vectors passed to \a args are not of
+	 * @return alp::SUCCESS  When the lambda is successfully executed.
+	 * @return alp::MISMATCH When two or more vectors passed to \a args are not of
 	 *                       appropriate length.
 	 *
 	 * \warning Captured scalars will be local to the user process executing the
@@ -640,10 +632,10 @@ namespace grb {
 	 * @see Vector::lambda_reference
 	 */
 	template< typename Func, typename DataType, Backend implementation = config::default_backend, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType, implementation > & A, Args... /*args*/ ) {
+	RC eWiseLambda( const Func f, const internal::Matrix< DataType, implementation > & A, Args... /*args*/ ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement grb::eWiseLambda (matrices)\n";
+ #ifndef _ALP_NO_STDIO
+		std::cerr << "Selected backend does not implement alp::eWiseLambda (matrices)\n";
  #endif
 #endif
 		(void)f;
@@ -653,6 +645,6 @@ namespace grb {
 
 	/** @} */
 
-} // namespace grb
+} // namespace alp
 
-#endif // end _H_GRB_BLAS2_BASE
+#endif // end _H_ALP_BLAS2_BASE

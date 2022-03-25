@@ -20,10 +20,10 @@
  * @date 21st of February, 2017
  */
 
-#ifndef _H_GRB_IOMODE
-#define _H_GRB_IOMODE
+#ifndef _H_ALP_IOMODE
+#define _H_ALP_IOMODE
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * The GraphBLAS input and output functionalities can either be used in a
@@ -53,10 +53,10 @@ namespace grb {
 	 *       corresponds to all elements in the GraphBLAS container.
 	 *
 	 * See the respective functions and classes for full details:
-	 *   -# grb::buildVector;
-	 *   -# grb::buildMatrixUnique;
-	 *   -# grb::Vector::const_iterator;
-	 *   -# grb::Matrix::const_iterator.
+	 *   -# alp::buildVector;
+	 *   -# alp::buildMatrixUnique;
+	 *   -# alp::Vector::const_iterator;
+	 *   -# alp::Matrix::const_iterator.
 	 */
 	enum IOMode {
 
@@ -88,6 +88,6 @@ namespace grb {
 
 	/** @} */
 
-} // namespace grb
+} // namespace alp
 
-#endif // end ``_H_GRB_IOMODE''
+#endif // end ``_H_ALP_IOMODE''

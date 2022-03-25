@@ -23,13 +23,13 @@
  * 
  */
 
-#ifndef _H_GRB_DENSITY
-#define _H_GRB_DENSITY
+#ifndef _H_ALP_DENSITY
+#define _H_ALP_DENSITY
 
 #include <tuple>
 #include <type_traits>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Specifies whether an ALP container is dense or sparse.
@@ -59,6 +59,6 @@ namespace grb {
 		Sparse
 	}; // enum Density
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_DENSITY
+#endif // _H_ALP_DENSITY

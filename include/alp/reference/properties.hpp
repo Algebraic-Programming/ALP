@@ -20,22 +20,22 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_PROPERTIES
-#define _H_GRB_DENSEREF_PROPERTIES
+#ifndef _H_ALP_REFERENCE_PROPERTIES
+#define _H_ALP_REFERENCE_PROPERTIES
 
-#include <graphblas/base/properties.hpp>
+#include <alp/base/properties.hpp>
 
-namespace grb {
+namespace alp {
 
 	/** \internal No implementation notes. */
 	template<>
-	class Properties< reference_dense > {
+	class Properties< reference > {
 	public:
 		/** No implementation notes. */
 		constexpr static bool writableCaptured = true;
 	};
 
-} // namespace grb
+} // namespace alp
 
-#endif // end `_H_GRB_DENSEREF_PROPERTIES''
+#endif // end `_H_ALP_REFERENCE_PROPERTIES''
 

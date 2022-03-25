@@ -20,13 +20,13 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_BLAS0
-#define _H_GRB_DENSEREF_BLAS0
+#ifndef _H_ALP_REFERENCE_BLAS0
+#define _H_ALP_REFERENCE_BLAS0
 
-#include <graphblas/backends.hpp>
-#include <graphblas/config.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/storage.hpp>
+#include <alp/backends.hpp>
+#include <alp/config.hpp>
+#include <alp/rc.hpp>
+#include <alp/storage.hpp>
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -47,7 +47,7 @@
 		"******************************\n" );
 #endif
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup BLAS0 The Level-0 Basic Linear Algebra Subroutines (BLAS)
@@ -56,28 +56,28 @@ namespace grb {
 	 * zero-dimensional containers, i.e., on scalars.
 	 *
 	 * The GraphBLAS uses opaque data types and defines several standard functions
-	 * to operate on these data types. Examples types are grb::Vector and
-	 * grb::Matrix, example functions are grb::dot and grb::vxm.
+	 * to operate on these data types. Examples types are alp::Vector and
+	 * alp::Matrix, example functions are alp::dot and alp::vxm.
 	 *
 	 * To input data into an opaque GraphBLAS type, each opaque type defines a
-	 * member function \a build: grb::Vector::build() and grb::Matrix::build().
+	 * member function \a build: alp::Vector::build() and alp::Matrix::build().
 	 *
 	 * To extract data from opaque GraphBLAS types, each opaque type provides
 	 * \em iterators that may be obtained via the STL standard \a begin and \a end
 	 * functions:
-	 *   - grb::Vector::begin or grb::Vector::cbegin
-	 *   - grb::Vector::end or grb::Vector::cend
-	 *   - grb::Matrix::begin or grb::Matrix::cbegin
-	 *   - grb::Matrix::end or grb::Matrix::cend
+	 *   - alp::Vector::begin or alp::Vector::cbegin
+	 *   - alp::Vector::end or alp::Vector::cend
+	 *   - alp::Matrix::begin or alp::Matrix::cbegin
+	 *   - alp::Matrix::end or alp::Matrix::cend
 	 *
 	 * Some GraphBLAS functions, however, reduce all elements in a GraphBLAS
-	 * container into a single element of a given type. So for instance, grb::dot
-	 * on two vectors of type grb::Vector<double> using the regular real semiring
-	 * grb::Semiring<double> will store its output in a variable of type \a double.
+	 * container into a single element of a given type. So for instance, alp::dot
+	 * on two vectors of type alp::Vector<double> using the regular real semiring
+	 * alp::Semiring<double> will store its output in a variable of type \a double.
 	 *
 	 * When parametrising GraphBLAS functions in terms of arbitrary Semirings,
 	 * Monoids, Operators, and object types, it is useful to have a way to apply
-	 * the same operators on whatever type they make functions like grb::dot
+	 * the same operators on whatever type they make functions like alp::dot
 	 * produce-- that is, we require functions that enable the application of
 	 * GraphBLAS operators on single elements.
 	 *
@@ -117,7 +117,7 @@ namespace grb {
 	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
 	 */
 	template< typename InputType, typename InputStructure, typename length_type >
-	RC resize( Scalar< InputType, InputStructure, reference_dense > & s, const length_type new_nz ) {
+	RC resize( Scalar< InputType, InputStructure, reference > & s, const length_type new_nz ) {
 		if( new_nz <= 1 ) {
 			setInitialized( s, false );
 			return SUCCESS;
@@ -128,7 +128,7 @@ namespace grb {
 
 	/** @} */
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_BLAS0''
+#endif // end ``_H_ALP_REFERENCE_BLAS0''
 

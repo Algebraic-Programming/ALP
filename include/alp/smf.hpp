@@ -23,12 +23,12 @@
  *
  */
 
-#ifndef _H_GRB_SMF
-#define _H_GRB_SMF
+#ifndef _H_ALP_SMF
+#define _H_ALP_SMF
 
 #include <memory>
 
-namespace grb {
+namespace alp {
 
 	namespace smf {
 
@@ -51,6 +51,6 @@ namespace grb {
 
 	}; // namespace smf
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_SMF
+#endif // _H_ALP_SMF

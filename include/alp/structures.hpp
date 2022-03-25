@@ -26,15 +26,15 @@
  * A structure 
  */
 
-#ifndef _H_GRB_STRUCTURES
-#define _H_GRB_STRUCTURES
+#ifndef _H_ALP_STRUCTURES
+#define _H_ALP_STRUCTURES
 
 #include <tuple>
 #include <type_traits>
 
 #include "imf.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * @brief Compile-time interval [ _left, _right )
@@ -182,18 +182,18 @@ namespace grb {
 			 */
 
 			template< typename SrcStructure >
-			static bool isInstantiableFrom( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+			static bool isInstantiableFrom( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
 				return false;
 			}
 		};
 
 		template<>
-		inline bool General::isInstantiableFrom< UpperTriangular >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+		inline bool General::isInstantiableFrom< UpperTriangular >( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
 			return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
 		}
 
 		template<>
-		inline bool General::isInstantiableFrom< General >( grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+		inline bool General::isInstantiableFrom< General >( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
 			(void)imf_l;
 			(void)imf_r;
 			return true;
@@ -215,11 +215,11 @@ namespace grb {
 		 *        main diagonal the smaller the position) while superdiagonals 
 		 *        have positive ones (the farer from the main diagonal the 
 		 *        larger the position).
-		 *        E.g., <tt>Band< grb::Interval<-1, 2> ></tt> is a band 
+		 *        E.g., <tt>Band< alp::Interval<-1, 2> ></tt> is a band 
 		 *        structure that can be used to describe a tridiagonal matrix.
 		 *
-		 *        \note <tt>grb::Interval<a, b></tt> uses a past-the-end 
-		 *        notation for the intervals [a, b). @see grb::Interval.
+		 *        \note <tt>alp::Interval<a, b></tt> uses a past-the-end 
+		 *        notation for the intervals [a, b). @see alp::Interval.
 		 *
 		 *        The first value of the left-most (second value of the right-
 		 *        most) interval in the sequence is the lower (upper, resp.) 
@@ -236,12 +236,12 @@ namespace grb {
 		 *        (e.g., checking if a matrix is a Band matrix irrespective 
 		 *        of specific bands in the structure).
 		 *
-		 * @tparam Intervals One or more \a grb::Interval types specifying the 
+		 * @tparam Intervals One or more \a alp::Interval types specifying the 
 		 *                   bands of the structure. These intervals should be 
 		 *                   non-overlapping and sorted according to the above 
 		 *                   assumption that all intervals are defined assuming 
 		 *                   the main diagonal has position zero.
-		 *                   \a grb::LeftOpenInterval ( \a grb::RightOpenInterval) 
+		 *                   \a alp::LeftOpenInterval ( \a alp::RightOpenInterval) 
 		 *                   can be used to indicate that the left bandwidth 
 		 *                   (right bandwidth, respectively) is defined by the 
 		 *                   size of the matrix at runtime.
@@ -252,7 +252,7 @@ namespace grb {
 
 			typedef std::tuple< Intervals... > band_intervals;
 
-			static_assert( grb::internal::is_tuple_sorted_non_overlapping< band_intervals >::value );
+			static_assert( alp::internal::is_tuple_sorted_non_overlapping< band_intervals >::value );
 
 			typedef typename structures::tuple_cat< std::tuple< Band< Intervals... > >, General::inferred_structures >::type inferred_structures;
 		};
@@ -283,7 +283,7 @@ namespace grb {
 			// For example, in all cases we should check if IMFs do not overflow the original container.
 			// (if it is actually necessary. Maybe we want to assume that the user knows what he is doing)
 			template< typename SrcStructure >
-			static bool isInstantiableFrom( const grb::imf::IMF & imf_l, const grb::imf::IMF & imf_r ) {
+			static bool isInstantiableFrom( const alp::imf::IMF & imf_l, const alp::imf::IMF & imf_r ) {
 
 				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
 
@@ -357,6 +357,6 @@ namespace grb {
 
 	} // namespace structures
 
-} // namespace grb
+} // namespace alp
 
 #endif

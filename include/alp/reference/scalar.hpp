@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_DENSEREF_SCALAR
-#define _H_GRB_DENSEREF_SCALAR
+#ifndef _H_ALP_REFERENCE_SCALAR
+#define _H_ALP_REFERENCE_SCALAR
 
 
 #include <stdexcept>
@@ -24,24 +24,24 @@
 
 #include <assert.h>
 
-#include <graphblas/rc.hpp>
-#include <graphblas/backends.hpp>
+#include <alp/rc.hpp>
+#include <alp/backends.hpp>
 
-#include <graphblas/density.hpp>
-#include <graphblas/structures.hpp>
-#include <graphblas/views.hpp>
+#include <alp/density.hpp>
+#include <alp/structures.hpp>
+#include <alp/views.hpp>
 
-#include <graphblas/base/scalar.hpp>
+#include <alp/base/scalar.hpp>
 
-namespace grb {
+namespace alp {
 
 	namespace internal {
 		template< typename T, typename Structure >
-		bool getInitialized( Scalar< T, Structure, reference_dense > & ) noexcept;
+		bool getInitialized( Scalar< T, Structure, reference > & ) noexcept;
 
 		template< typename T, typename Structure >
-		void setInitialized( Scalar< T, Structure, reference_dense > &, bool ) noexcept;
-	} // end namespace ``grb::internal''
+		void setInitialized( Scalar< T, Structure, reference > &, bool ) noexcept;
+	} // end namespace ``alp::internal''
 
 	/**
 	 * \brief An ALP scalar.
@@ -52,16 +52,16 @@ namespace grb {
 	 *                           be a ALP type.
 	 * @tparam Structure         One of the structures.
 	 *
-	 * \warning Creating a grb::Scalar of other ALP types is
+	 * \warning Creating a alp::Scalar of other ALP types is
 	 *                <em>not allowed</em>.
 	 *          Passing a ALP type as template parameter will lead to
 	 *          undefined behaviour.
 	 *
 	 */
 	template< typename T, typename Structure >
-	class Scalar< T, Structure, reference_dense > {
+	class Scalar< T, Structure, reference > {
 		private:
-			typedef Scalar< T, Structure, reference_dense > self_type;
+			typedef Scalar< T, Structure, reference > self_type;
 
 			friend bool internal::getInitialized<>( self_type & ) noexcept;
 
@@ -162,7 +162,7 @@ namespace grb {
 			Scalar( const Scalar &other ) {
 				// const RC rc = set( *this, other ); // note: initialized will be set as part of this call
 				// if( rc != SUCCESS ) {
-				// 	throw std::runtime_error( "grb::Scalar< T, Structure, Density::Dense, View::Original< void >, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
+				// 	throw std::runtime_error( "alp::Scalar< T, Structure, Density::Dense, View::Original< void >, reference > (copy constructor): error during call to alp::set (" + toString( rc ) + ")" );
 				// }
 			}
 
@@ -199,26 +199,26 @@ namespace grb {
 
 	}; // class Scalar with physical container
 
-	/** Identifies any reference_dense scalar as an ALP scalar. */
+	/** Identifies any reference scalar as an ALP scalar. */
 	template< typename T, typename Structure >
-	struct is_container< Scalar< T, Structure, reference_dense > > {
+	struct is_container< Scalar< T, Structure, reference > > {
 		/** A scalar is an ALP object. */
 		static const constexpr bool value = true;
 	};
 
 	namespace internal {
 		template< typename T, typename Structure >
-		bool getInitialized( Scalar< T, Structure, reference_dense > &s ) noexcept {
+		bool getInitialized( Scalar< T, Structure, reference > &s ) noexcept {
 			return s.initialized;
 		}
 
 		template< typename T, typename Structure >
-		void setInitialized( Scalar< T, Structure, reference_dense > &s, bool initialized ) noexcept {
+		void setInitialized( Scalar< T, Structure, reference > &s, bool initialized ) noexcept {
 			s.initialized = s;
 		}
-	} // end namespace ``grb::internal''
+	} // end namespace ``alp::internal''
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_SCALAR''
+#endif // end ``_H_ALP_REFERENCE_SCALAR''
 

@@ -25,12 +25,12 @@
  * @date 14th of January 2022.
  */
 
-#ifndef _H_GRB_DENSEREF_CONFIG
-#define _H_GRB_DENSEREF_CONFIG
+#ifndef _H_ALP_REFERENCE_CONFIG
+#define _H_ALP_REFERENCE_CONFIG
 
-#include <graphblas/base/config.hpp>
+#include <alp/base/config.hpp>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * \defgroup reference The reference backend implementation
@@ -48,7 +48,7 @@ namespace grb {
 
 	/** @} */
 
-} // namespace grb
+} // namespace alp
 
-#endif // end ``_H_GRB_DENSEREF_CONFIG''
+#endif // end ``_H_ALP_REFERENCE_CONFIG''
 
