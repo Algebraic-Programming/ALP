@@ -36,6 +36,11 @@ namespace grb {
 
 	namespace view {
 
+		enum Views {
+			original,
+			transpose,
+			diagonal
+		};
 		template< typename OriginalType >
 		struct Original {
 

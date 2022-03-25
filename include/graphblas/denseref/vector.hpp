@@ -350,11 +350,6 @@ namespace grb {
 	 * Vector View defined as views on other vectors do not instantiate a
 	 * new container but refer to the one used by their targets.
 	 *
-	 * Finally, a vector view can be declared as temporary, in which case the ALP
-	 * framework has the freedom to decide whether a container should be allocated in practice
-	 * or not. For example, a JIT backend may optimize away the use of such vector which
-	 * would make memory allocation for such vector unnecessary.
-	 *
 	 * @tparam T				 The type of the vector elements. \a T shall not be a GraphBLAS
 	 *              			 type.
 	 * @tparam Structure		 Structure introduced to match the template
@@ -370,8 +365,6 @@ namespace grb {
 	 * 							 accessible via functions.
 	 * @tparam StorageSchemeType Either \em enum \a storage::Dense or \em enum
 	 * 	                         \a storage::Sparse.
-	 * 		   					 \a VectorView will be allowed to pick storage schemes
-	 *         					 defined within their specified \a StorageSchemeType.
 	 *
 	 */
 	template< typename T, typename Structure, typename View >
@@ -408,6 +401,14 @@ namespace grb {
 
 		/** @see Vector::lambda_reference */
 		typedef T& lambda_reference;
+
+		template < view::Views view_tag, bool d=false >
+		struct view_type;
+
+		template < bool d >
+		struct view_type< view::original, d > {
+			using type = VectorView< T, Structure, storage::Dense, view::Original< self_type >, reference_dense >;
+		};
 
 		VectorView( const size_t length, const size_t cap = 0 ) :
 			v( std::make_unique< Vector< T, reference_dense, internal::DefaultCoordinates > >( length, cap ) ),
@@ -452,8 +453,7 @@ namespace grb {
 
 		friend size_t getLength<>( const self_type & ) noexcept;
 
-		/** Reference to a target vector to which this vector view points to */
-		// std::shared_ptr< target_type > ref;
+		/** Reference to VectorView object upon which this view is applied */
 		target_type & ref;
 
 		/** Index-mapping function. @see IMF */
@@ -469,6 +469,14 @@ namespace grb {
 
 		/** @see Vector::lambda_reference */
 		typedef T& lambda_reference;
+		
+		template < view::Views view_tag, bool d=false >
+		struct view_type;
+
+		template < bool d >
+		struct view_type< view::original, d > {
+			using type = VectorView< T, Structure, storage::Dense, view::Original< self_type >, reference_dense >;
+		};
 
 		/** Constructor for creating a view over a given target vector */
 		VectorView( target_type & vec_view ) : ref( vec_view ), imf( nullptr ) {
@@ -520,7 +528,7 @@ namespace grb {
 
 		friend size_t getLength<>( const self_type & ) noexcept;
 
-		/** Pointer to a VectorView object upon which this view is created */
+		/** Reference to VectorView object upon which this view is applied */
 		target_type & ref;
 
 		/** @see IMF */
@@ -536,6 +544,14 @@ namespace grb {
 
 		/** @see Vector::lambda_reference */
 		typedef T& lambda_reference;
+		
+		template < view::Views view_tag, bool d=false >
+		struct view_type;
+
+		template < bool d >
+		struct view_type< view::original, d > {
+			using type = VectorView< T, Structure, storage::Dense, view::Original< self_type >, reference_dense >;
+		};
 
 		VectorView( target_type & struct_mat ) : ref( struct_mat ), imf( nullptr ) {
 			
@@ -560,55 +576,73 @@ namespace grb {
 
 	}; // Diagonal Vector view
 
-	/** Creates a Diagonal Vector View over a given \a StructuredMatrix
-	 * 
-	 * @paramt StructuredMatrixT    Type of the StructuredMatrix over which the
-	 *                              view is created.
-	 * @param[in] smat              StructuredMatrix object over which the view
-	 *                              is created.
-	 * 
-	 * @returns                     A VectorView object.
-	 * */
-	template< typename StructuredMatrixT >
-	VectorView< typename StructuredMatrixT::value_type, typename StructuredMatrixT::structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense >
-	diagonal( StructuredMatrixT &smat ) {
-
-		VectorView< typename StructuredMatrixT::value_type, typename StructuredMatrixT::structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense > smat_diag( smat );
-
-		return smat_diag;
-	}
-
 	/**
-	 * Generate an original view of a VectorView.
-	 * 
+	 * @brief  Generate an original view of the input VectorView. The function guarantees 
+	 *         the created view is non-overlapping with other existing views only when the
+	 *         check can be performed in constant time. 
+	 *
+	 * @tparam T                  The vector's elements type
+	 * @tparam Structure          The structure of the source and target vector view
+	 * @tparam StorageSchemeType  The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
+	 * @tparam View               The source's View type
+	 * @tparam backend            The target backend
+	 *
 	 * @param[in] source The VectorView object over which the view is created.
-	 * 
-	 * @returns          A VectorView object.
+	 *
+	 * @returns A new vector VectorView object.
+	 *
+     * \parblock
+     * \par Performance semantics.
+     *        -# This function performs
+     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 *           of available views of \a source.
+     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+     *           of memory beyond the memory in use at the function call entry.
+     *        -# This function may make system calls.
+     * \endparblock
+	 *
 	 */
-	template< typename T, typename Structure, typename View, typename StorageSchemeType, enum Backend backend >
-	VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( VectorView< T, Structure, View, StorageSchemeType, backend > &source ) {
+	template< 
+		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+	typename VectorView< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type
+	get_view( VectorView< T, Structure, StorageSchemeType, View, backend > & source ) {
 
-		VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, View, StorageSchemeType, backend > >, backend > vec_view( source );
+		using source_vec_t = VectorView< T, Structure, StorageSchemeType, View, backend >;
+		using target_vec_t = typename source_vec_t::template view_type< view::original >::type;
+
+		target_vec_t vec_view( source );
 
 		return vec_view;
 	}
 
 	/**
-	 * Implement a gather through a View over compatible Structure using
-	 * provided Index Mapping Functions.
+	 * @brief Version of get_view over vectors where a range of elements are selected to form a new view. 
+	 * 		  The function guarantees the created view is non-overlapping with other existing views only when the
+	 * 		  check can be performed in constant time. 
 	 * 
 	 * @param[in] source The VectorView object over which the view is created.
-	 * @param[in] imf Index-mapping function applied to the created view.
+	 * @param[in] rng 	 A valid range of elements
 	 * 
 	 * @returns          A VectorView object.
+	 * 
+     * \parblock
+     * \par Performance semantics.
+     *        -# This function performs
+     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 * 			 of available views of \a source.
+     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+     *           of memory beyond the memory in use at the function call entry.
+     *        -# This function may make system calls.
+     * \endparblock
+	 * 
 	 */
 
 	template< typename T, typename Structure, typename View, typename StorageSchemeType, enum Backend backend >
-	VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( VectorView< T, Structure, StorageSchemeType, View, backend > &source, std::shared_ptr< imf::IMF > imf ) {
+	typename VectorView< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type
+	get_view( VectorView< T, Structure, StorageSchemeType, View, backend > &source, const utils::range& rng ) {
 
-		VectorView< T, Structure, StorageSchemeType, view::Original< VectorView< T, Structure, StorageSchemeType, View, backend > >, backend > vec_view( source, imf );
+		auto imf_v = std::make_shared< imf::Strided >( rng.count(), getLength( source ), rng.start, rng.stride );
+		typename VectorView< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type vec_view( source, imf_v );
 
 		return vec_view;
 	}
