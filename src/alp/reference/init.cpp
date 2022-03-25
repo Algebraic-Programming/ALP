@@ -16,6 +16,7 @@
  */
 
 #include <alp/reference/init.hpp>
+#include <alp/rc.hpp>
 
 template<>
 alp::RC alp::init< alp::reference >( const size_t s, const size_t P, void * const data ) {

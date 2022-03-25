@@ -19,31 +19,31 @@
 #include <sstream>
 #include <vector>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
-using namespace grb;
+using namespace alp;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+void alp_program( const size_t & n, alp::RC & rc ) {
+	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting dense Identity and Zero matrices\n";
 	// initialize test
-	grb::StructuredMatrix< double, structures::Square > A( n );
-	grb::StructuredMatrix< double, structures::Square > C( n );
-	auto I = grb::I< double >( n );
-	auto Zero = grb::Zero< double >( n, n );
+	alp::Matrix< double, structures::Square > A( n );
+	alp::Matrix< double, structures::Square > C( n );
+	auto I = alp::I< double >( n );
+	auto Zero = alp::Zero< double >( n, n );
 
 	// Initialize input matrix
 	std::vector< double > A_data( n * n, 1 );
-	rc = grb::buildMatrix( A, A_data.begin(), A_data.end() );
+	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
 
 	if( rc == SUCCESS ) {
-		grb::mxm( C, A, I, ring );
+		alp::mxm( C, A, I, ring );
 		// C should be equal to A
 	}
 
 	if (rc == SUCCESS ) {
-		grb::mxm( C, A, Zero, ring );
+		alp::mxm( C, A, Zero, ring );
 		// C should be a zero
 	}
 }
@@ -82,14 +82,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	alp::Launcher< AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

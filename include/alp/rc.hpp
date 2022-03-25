@@ -24,12 +24,12 @@
  * @date 9--11 August, 2016
  */
 
-#ifndef _H_GRB_RC
-#define _H_GRB_RC
+#ifndef _H_ALP_RC
+#define _H_ALP_RC
 
 #include <string>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Return codes of public functions.
@@ -42,7 +42,7 @@ namespace grb {
 		 * All GraphBLAS functions may return this error code even if not explicitly
 		 * documented. Any non-SUCCESS error code shall have no side effects; if a
 		 * call fails, it shall be as though the call was never made. The only
-		 * exception is #grb::PANIC.
+		 * exception is #alp::PANIC.
 		 */
 		SUCCESS = 0,
 
@@ -59,7 +59,7 @@ namespace grb {
 		 *
 		 * Rationale: instead of using <tt>assert</tt> within GraphBLAS
 		 * implementations which would crash the entire application, implementations
-		 * should instead simply return #grb::PANIC and let the GraphBLAS user shut
+		 * should instead simply return #alp::PANIC and let the GraphBLAS user shut
 		 * down his or her application as gracefully as possible.
 		 *
 		 * All GraphBLAS functions may return this error code even if not explicitly
@@ -132,7 +132,7 @@ namespace grb {
 		ILLEGAL,
 
 		/**
-		 * Indicates when one of the grb::algorithms has failed to achieve its
+		 * Indicates when one of the alp::algorithms has failed to achieve its
 		 * intended result, for instance, when an iterative method failed to
 		 * converged within its alloted resources.
 		 *
@@ -145,6 +145,6 @@ namespace grb {
 	/** @returns A string describing the given error code. */
 	std::string toString( const RC code );
 
-} // namespace grb
+} // namespace alp
 
 #endif

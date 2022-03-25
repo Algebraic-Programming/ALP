@@ -20,24 +20,24 @@
  * @date 8th of August, 2016
  */
 
-#ifndef _H_GRB_OPERATORS
-#define _H_GRB_OPERATORS
+#ifndef _H_ALP_OPERATORS
+#define _H_ALP_OPERATORS
 
 #include "internalops.hpp"
 #include "type_traits.hpp"
 
-namespace grb {
+namespace alp {
 
 	/**
-	 * This namespace holds various standard operators such as #grb::operators::add
-	 * and #grb::operators::mul.
+	 * This namespace holds various standard operators such as #alp::operators::add
+	 * and #alp::operators::mul.
 	 */
 	namespace operators {
 
 		/**
 		 * This operator discards all right-hand side input and simply copies the
 		 * left-hand side input to the output variable. It exposes the complete
-		 * interface detailed in grb::operators::internal::Operator. This operator
+		 * interface detailed in alp::operators::internal::Operator. This operator
 		 * can be passed to any GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \f$.
@@ -70,7 +70,7 @@ namespace grb {
 		/**
 		 * This operator discards all left-hand side input and simply copies the
 		 * right-hand side input to the output variable. It exposes the complete
-		 * interface detailed in grb::operators::internal::Operator. This operator
+		 * interface detailed in alp::operators::internal::Operator. This operator
 		 * can be passed to any GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ y \f$.
@@ -103,7 +103,7 @@ namespace grb {
 		/**
 		 * This operator takes the sum of the two input parameters and writes it to
 		 * the output variable. It exposes the complete interface detailed in
-		 * grb::operators::internal::Operator. This operator can be passed to any
+		 * alp::operators::internal::Operator. This operator can be passed to any
 		 * GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x + y \f$.
@@ -133,7 +133,7 @@ namespace grb {
 		/**
 		 * This operator multiplies the two input parameters and writes the result to
 		 * the output variable. It exposes the complete interface detailed in
-		 * grb::operators::internal::Operator. This operator can be passed to any
+		 * alp::operators::internal::Operator. This operator can be passed to any
 		 * GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \cdot y \f$.
@@ -161,7 +161,7 @@ namespace grb {
 		/**
 		 * This operator takes the maximum of the two input parameters and writes
 		 * the result to the output variable. It exposes the complete interface
-		 * detailed in grb::operators::internal::Operator. This operator can be
+		 * detailed in alp::operators::internal::Operator. This operator can be
 		 * passed to any GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \max(x,y)\ \to\ \begin{cases}
@@ -190,7 +190,7 @@ namespace grb {
 		/**
 		 * This operator takes the minimum of the two input parameters and writes
 		 * the result to the output variable. It exposes the complete interface
-		 * detailed in grb::operators::internal::Operator. This operator can be
+		 * detailed in alp::operators::internal::Operator. This operator can be
 		 * passed to any GraphBLAS function or object constructor.
 		 *
 		 * Mathematical notation: \f$ \max(x,y)\ \to\ \begin{cases}
@@ -540,9 +540,9 @@ namespace grb {
 			static const constexpr bool value = true;
 		};
 
-	} // namespace grb::internal
+	} // namespace alp::internal
 
-} // namespace grb
+} // namespace alp
 
 #ifdef __DOXYGEN__
  /**
@@ -562,5 +562,5 @@ namespace grb {
  #endif
 #endif
 
-#endif // end ``_H_GRB_OPERATORS''
+#endif // end ``_H_ALP_OPERATORS''
 

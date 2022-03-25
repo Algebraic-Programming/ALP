@@ -27,10 +27,10 @@
 #include <sstream>
 #include <string>
 
-#ifndef _H_GRB_DESCRIPTOR
-#define _H_GRB_DESCRIPTOR
+#ifndef _H_ALP_DESCRIPTOR
+#define _H_ALP_DESCRIPTOR
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Descriptors indicate pre- or post-processing for some or all of the
@@ -203,6 +203,6 @@ namespace grb {
 		static constexpr Descriptor MAX_DESCRIPTOR_VALUE = 8191;
 	} // namespace internal
 
-} // namespace grb
+} // namespace alp
 
 #endif

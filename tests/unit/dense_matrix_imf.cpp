@@ -21,7 +21,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
 void buildUpperTriangularRawArray( std::vector< double > & v, int n ) {
 	for (int i = 0; i < n; ++i ) {
@@ -35,15 +35,15 @@ void buildUpperTriangularRawArray( std::vector< double > & v, int n ) {
 	}
 }
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void alp_program( const size_t & n, alp::RC & rc ) {
 	// initialize test
 	// using General Views over General Structured Matrix
-	grb::StructuredMatrix< double, grb::structures::General > A( n, n );
-	std::cout << "General gather from a general StructuredMatrix (expect success)\n";
+	alp::Matrix< double, alp::structures::General > A( n, n );
+	std::cout << "General gather from a general Matrix (expect success)\n";
 	try {
-		auto Aview = grb::get_view< grb::structures::General >(
+		auto Aview = alp::get_view< alp::structures::General >(
 			A,
-			grb::utils::range(1,3), grb::utils::range(1,5)
+			alp::utils::range(1,3), alp::utils::range(1,5)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
@@ -52,13 +52,13 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 
 	// using Upper Triangular Structured Matrix
-	grb::StructuredMatrix< double, grb::structures::UpperTriangular > U( n, n );
+	alp::Matrix< double, alp::structures::UpperTriangular > U( n, n );
 
-	// Initialize StructuredMatrix
+	// Initialize Matrix
 	std::vector< double > Mdata ( n * n, 1 );
 	buildUpperTriangularRawArray( Mdata, n );
-	rc = grb::buildMatrix( U, Mdata.begin(), Mdata.end() );
-	if( rc != grb::SUCCESS ) {
+	rc = alp::buildMatrix( U, Mdata.begin(), Mdata.end() );
+	if( rc != alp::SUCCESS ) {
 		return;
 	}
 
@@ -71,9 +71,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	"|.  .  .  .  x  x|\n"
 	"|.  .  .  .  .  x|\n";
 	try {
-		auto Uview1 = grb::get_view< grb::structures::UpperTriangular >(
+		auto Uview1 = alp::get_view< alp::structures::UpperTriangular >(
 			U,
-			grb::utils::range(1,3), grb::utils::range(1,3)
+			alp::utils::range(1,3), alp::utils::range(1,3)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
@@ -89,9 +89,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	"|.  .  .  .  x  x|\n"
 	"|.  .  .  .  .  x|\n";
 	try {
-		auto Uview2 = grb::get_view< grb::structures::General >(
+		auto Uview2 = alp::get_view< alp::structures::General >(
 			U,
-			grb::utils::range(0,2), grb::utils::range(3,5)
+			alp::utils::range(0,2), alp::utils::range(3,5)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
@@ -107,9 +107,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	"|.  .  .  .  x  x|\n"
 	"|.  .  .  .  .  x|\n";
 	try {
-		auto Uview3 = grb::get_view< grb::structures::UpperTriangular >(
+		auto Uview3 = alp::get_view< alp::structures::UpperTriangular >(
 			U,
-			grb::utils::range(1,3), grb::utils::range(1,5)
+			alp::utils::range(1,3), alp::utils::range(1,5)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
@@ -125,16 +125,16 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	"|A  A  .  .  x  x|\n"
 	"|A  A  .  .  .  x|\n";
 	try {
-		auto Uview4 = grb::get_view< grb::structures::General >(
+		auto Uview4 = alp::get_view< alp::structures::General >(
 			U,
-			grb::utils::range(4,n), grb::utils::range(0,2)
+			alp::utils::range(4,n), alp::utils::range(0,2)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
 	}
 
-	rc = grb::SUCCESS;
+	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {
@@ -174,14 +174,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< grb::AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
+	alp::Launcher< alp::AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != alp::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
-	if( out != grb::SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+	if( out != alp::SUCCESS ) {
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

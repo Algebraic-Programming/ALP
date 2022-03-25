@@ -18,10 +18,10 @@
 #include <utility>
 #include <iostream>
 
-#include "graphblas.hpp"
+#include "alp.hpp"
 
 
-using namespace grb;
+using namespace alp;
 
 // sample data
 static const double vec1_vals[ 3 ] = { 1, 2, 3 };
@@ -35,8 +35,8 @@ static const double test1_expect[ 3 ] = { 24, 30, 36 };
 static const double test2_in[ 3 ] = { 1, 1, 1 };
 static const double test2_expect[ 3 ] = { 15, 30, 45 };
 
-// graphblas program
-void grbProgram( const void *, const size_t in_size, int &error ) {
+// alp program
+void alpProgram( const void *, const size_t in_size, int &error ) {
 	/** \internal TODO: Implement initialization and result checking.
 	 * Currently only serves as the interface showcase.
 	 * */
@@ -49,25 +49,25 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	// allocate
-	grb::VectorView< double > u( 3 );
-	grb::VectorView< double > v( 3 );
-	grb::StructuredMatrix< double, structures::General > M( 3, 3 );
-	// grb::Vector< double > test1( 3 );
-	// grb::Vector< double > out1( 3 );
-	// grb::Vector< double > test2( 3 );
-	// grb::Vector< double > out2( 3 );
+	alp::Vector< double > u( 3 );
+	alp::Vector< double > v( 3 );
+	alp::Matrix< double, structures::General > M( 3, 3 );
+	// alp::Vector< double > test1( 3 );
+	// alp::Vector< double > out1( 3 );
+	// alp::Vector< double > test2( 3 );
+	// alp::Vector< double > out2( 3 );
 
 	// semiring
-	grb::Semiring<
-		grb::operators::add< double >, grb::operators::mul< double >,
-		grb::identities::zero, grb::identities::one
+	alp::Semiring<
+		alp::operators::add< double >, alp::operators::mul< double >,
+		alp::identities::zero, alp::identities::one
 	> ring;
 
-	grb::RC rc;
+	alp::RC rc;
 
 	// initialise vec
 	// const double * vec_iter = &(vec1_vals[ 0 ]);
-	// grb::RC rc = grb::buildVector( u, vec_iter, vec_iter + 3, SEQUENTIAL );
+	// alp::RC rc = alp::buildVector( u, vec_iter, vec_iter + 3, SEQUENTIAL );
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t initial buildVector FAILED\n";
 	// 	error = 5;
@@ -75,7 +75,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 
 	// if( !error ) {
 	// 	vec_iter = &(vec2_vals[ 0 ]);
-	// 	rc = grb::buildVector( v, vec_iter, vec_iter + 3, SEQUENTIAL );
+	// 	rc = alp::buildVector( v, vec_iter, vec_iter + 3, SEQUENTIAL );
 	// }
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t initial buildVector FAILED\n";
@@ -83,8 +83,8 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	// }
 
 	if( !error ) {
-		rc = grb::outer( M, u, v, ring.getMultiplicativeOperator());
-		rc = rc ? rc : grb::outer( M, u, v, ring.getMultiplicativeOperator() );
+		rc = alp::outer( M, u, v, ring.getMultiplicativeOperator());
+		rc = rc ? rc : alp::outer( M, u, v, ring.getMultiplicativeOperator() );
 	}
 
 }
@@ -94,8 +94,8 @@ int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	int error;
-	grb::Launcher< AUTOMATIC > launcher;
-	if( launcher.exec( &grbProgram, NULL, 0, error ) != SUCCESS ) {
+	alp::Launcher< AUTOMATIC > launcher;
+	if( launcher.exec( &alpProgram, NULL, 0, error ) != SUCCESS ) {
 		std::cerr << "Test failed to launch\n";
 		error = 255;
 	}

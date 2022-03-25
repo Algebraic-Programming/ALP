@@ -20,12 +20,12 @@
  * @date 22nd of January, 2021
  */
 
-#ifndef _H_GRB_DENSEREF_ALLOC
-#define _H_GRB_DENSEREF_ALLOC
+#ifndef _H_ALP_REFERENCE_ALLOC
+#define _H_ALP_REFERENCE_ALLOC
 
 
-namespace grb {
+namespace alp {
 
-} // namespace grb
+} // namespace alp
 
 #endif

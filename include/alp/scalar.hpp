@@ -15,20 +15,20 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_SCALAR
-#define _H_GRB_SCALAR
+#ifndef _H_ALP_SCALAR
+#define _H_ALP_SCALAR
 
 #include "base/config.hpp"
 #include "base/scalar.hpp"
 
 // now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/scalar.hpp>
+#ifdef _ALP_WITH_REFERENCE
+ #include <alp/reference/scalar.hpp>
 #endif
 
 // specify default only if requested during compilation
-#ifdef _GRB_BACKEND
-namespace grb {
+#ifdef _ALP_BACKEND
+namespace alp {
 
 	template< typename T, typename Structure = structures::General, enum Backend backend = config::default_backend >
 	class Scalar;
@@ -36,5 +36,5 @@ namespace grb {
 }
 #endif
 
-#endif // end ``_H_GRB_SCALAR''
+#endif // end ``_H_ALP_SCALAR''
 

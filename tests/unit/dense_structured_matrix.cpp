@@ -22,35 +22,35 @@
 #include <vector>
 #include <memory>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
 template< typename StructuredMat >
 void ask_questions( const StructuredMat & M, std::string name ) {
 
 	using M_type = typename std::remove_const< typename std::remove_reference< decltype( M ) >::type >::type;
 
-	std::cout << name << "( " << grb::nrows( M ) << ", " << grb::ncols( M ) << " )" << std::endl;
+	std::cout << name << "( " << alp::nrows( M ) << ", " << alp::ncols( M ) << " )" << std::endl;
 	std::cout << "Is " << name << ":" << std::endl;
-	std::cout << "\ta structured Matrix? " << grb::is_structured_matrix< M_type >::value << std::endl;
-	std::cout << "\tgeneral? " << grb::structures::is_a< M_type, grb::structures::General >::value << std::endl;
-	std::cout << "\tsquare? " << grb::structures::is_a< M_type, grb::structures::Square >::value << std::endl;
-	std::cout << "\tfull rank? " << grb::structures::is_a< M_type, grb::structures::FullRank >::value << std::endl;
-	std::cout << "\tnon-singular? " << grb::structures::is_a< M_type, grb::structures::NonSingular >::value << std::endl;
+	std::cout << "\ta structured Matrix? " << alp::is_structured_matrix< M_type >::value << std::endl;
+	std::cout << "\tgeneral? " << alp::structures::is_a< M_type, alp::structures::General >::value << std::endl;
+	std::cout << "\tsquare? " << alp::structures::is_a< M_type, alp::structures::Square >::value << std::endl;
+	std::cout << "\tfull rank? " << alp::structures::is_a< M_type, alp::structures::FullRank >::value << std::endl;
+	std::cout << "\tnon-singular? " << alp::structures::is_a< M_type, alp::structures::NonSingular >::value << std::endl;
 }
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void alp_program( const size_t & n, alp::RC & rc ) {
 
 	std::cout << "\tStarting structured matrices test with size: " << n << "\n";
 
 	// initialize test
-	grb::StructuredMatrix< float, grb::structures::General > M( n, n );
-	grb::StructuredMatrix< float, grb::structures::Square > A( n );
-	grb::StructuredMatrix< float, grb::structures::NonSingular > B( n, n );
-	grb::StructuredMatrix< float, grb::structures::FullRank > C( n, 2 * n );
-	auto At = grb::get_view< grb::view::transpose >( A );
-	auto Mt = grb::get_view< grb::view::transpose >( M );
-	auto Mview = grb::get_view( M, grb::utils::range(0,4), grb::utils::range(0,4) );
-	auto Sq_Mref = grb::get_view< grb::structures::Square > ( M );
+	alp::Matrix< float, alp::structures::General > M( n, n );
+	alp::Matrix< float, alp::structures::Square > A( n );
+	alp::Matrix< float, alp::structures::NonSingular > B( n, n );
+	alp::Matrix< float, alp::structures::FullRank > C( n, 2 * n );
+	auto At = alp::get_view< alp::view::transpose >( A );
+	auto Mt = alp::get_view< alp::view::transpose >( M );
+	auto Mview = alp::get_view( M, alp::utils::range(0,4), alp::utils::range(0,4) );
+	auto Sq_Mref = alp::get_view< alp::structures::Square > ( M );
 
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
@@ -62,18 +62,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	ask_questions( Mview, "Mview" );
 	ask_questions( Sq_Mref, "Sq_Mref" );
 
-	auto v_diag = grb::get_view< grb::view::diagonal >( M );
-	auto v_view1 = grb::get_view( v_diag );
-	auto v_view2 = grb::get_view( v_diag, grb::utils::range(1,2) );
-	std::cout << "v_diag( " << grb::getLength( v_diag ) << " )" << std::endl;
-	std::cout << "v_view1( " << grb::getLength( v_view1 ) << " )" << std::endl;
-	std::cout << "v_view2( " << grb::getLength( v_view2 ) << " )" << std::endl;
+	auto v_diag = alp::get_view< alp::view::diagonal >( M );
+	auto v_view1 = alp::get_view( v_diag );
+	auto v_view2 = alp::get_view( v_diag, alp::utils::range(1,2) );
+	std::cout << "v_diag( " << alp::getLength( v_diag ) << " )" << std::endl;
+	std::cout << "v_view1( " << alp::getLength( v_view1 ) << " )" << std::endl;
+	std::cout << "v_view2( " << alp::getLength( v_view2 ) << " )" << std::endl;
 
-	grb::StructuredMatrix< float, grb::structures::Band< grb::Interval<-2, 5> > > BM0( n, n );
-	grb::StructuredMatrix< float, grb::structures::Band< grb::RightOpenInterval<-2> > > BM1( n, n );
-	grb::StructuredMatrix< float, grb::structures::Band< grb::LeftOpenInterval<-2> > > BM2( n, n );
-	grb::StructuredMatrix< double, grb::structures::Band< grb::Interval<-2>, grb::Interval<1>, grb::Interval<3> > > BM3( n, n );
-	rc = grb::SUCCESS;
+	alp::Matrix< float, alp::structures::Band< alp::Interval<-2, 5> > > BM0( n, n );
+	alp::Matrix< float, alp::structures::Band< alp::RightOpenInterval<-2> > > BM1( n, n );
+	alp::Matrix< float, alp::structures::Band< alp::LeftOpenInterval<-2> > > BM2( n, n );
+	alp::Matrix< double, alp::structures::Band< alp::Interval<-2>, alp::Interval<1>, alp::Interval<3> > > BM3( n, n );
+	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {
@@ -110,14 +110,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< grb::AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
+	alp::Launcher< alp::AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != alp::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
-	if( out != grb::SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+	if( out != alp::SUCCESS ) {
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

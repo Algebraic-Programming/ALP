@@ -20,19 +20,19 @@
  * @date 17th of April, 2017
  */
 
-#ifndef _H_GRB_EXEC_BASE
-#define _H_GRB_EXEC_BASE
+#ifndef _H_ALP_EXEC_BASE
+#define _H_ALP_EXEC_BASE
 
 #include <stdexcept>
 #include <string>
 
-#include <graphblas/backends.hpp>
-#include <graphblas/rc.hpp>
-#ifndef _GRB_NO_STDIO
+#include <alp/backends.hpp>
+#include <alp/rc.hpp>
+#ifndef _ALP_NO_STDIO
 #include <iostream>
 #endif
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * The various ways in which the #Launcher can be used
@@ -75,7 +75,7 @@ namespace grb {
 	 * same type. For implementations that support multiple user processes, the
 	 * caller may explicitly set the process ID and total number of user processes.
 	 *
-	 * The intended use is to `just call' grb::exec which should, in its most
+	 * The intended use is to `just call' alp::exec which should, in its most
 	 * trivial form, compile regardless of which backend is selected.
 	 *
 	 * @tparam mode           Which #EXEC_MODE the Launcher should adhere to.
@@ -128,7 +128,7 @@ namespace grb {
 		                                                  // so accept (and ignore) anything
 				(void)hostname; (void)port;
 
-#ifndef _GRB_NO_EXCEPTIONS
+#ifndef _ALP_NO_EXCEPTIONS
 				// sanity checks on process_id and nprocs
 				if( nprocs == 0 ) { throw std::invalid_argument( "Total number of user "
 																 "processes must be "
@@ -139,21 +139,21 @@ namespace grb {
 									 "total number of user processes." );
 	}
 #endif
-} // namespace grb
+} // namespace alp
 
 /**
  * Executes the given GraphBLAS program. This function, depending on whether
  * GraphBLAS is compiled in automatic or in manual mode, will either
  * \em spawn the maximum number of available user processes or will connect
  * exactly \a nprocs existing processes, respectively, to execute the given
- * \a grb_program.
+ * \a alp_program.
  *
  * This is a collective function call.
  *
  * @tparam T The type of the data to pass to the GraphBLAS program.
  * @tparam U The type of the output data to pass back to the user.
  *
- * @param[in]  grb_program User GraphBLAS program to be executed.
+ * @param[in]  alp_program User GraphBLAS program to be executed.
  * @param[in]  data_in     Input data of user-defined type \a T.
  *                         When in automatic mode, the data will only be
  *                         available at user process 0 only. When in
@@ -179,11 +179,11 @@ namespace grb {
  * All aforementioned default values shall always be legal.
  */
 template< typename T, typename U >
-RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+RC exec( void ( *alp_program )( const T &, U & ), // user GraphBLAS program
 	const T & data_in,
 	U & data_out, // input & output data
 	const bool broadcast = false ) const {
-	(void)grb_program;
+	(void)alp_program;
 	(void)data_in;
 	(void)data_out;
 	(void)broadcast;
@@ -205,8 +205,8 @@ RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
  * \todo more documentation
  */
 template< typename U >
-RC exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const bool broadcast = false ) const {
-	(void)grb_program;
+RC exec( void ( *alp_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const bool broadcast = false ) const {
+	(void)alp_program;
 	(void)data_in;
 	(void)in_size;
 	(void)data_out;
@@ -226,6 +226,6 @@ static RC finalize() {
 }
 ; // end class `Launcher'
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end _H_GRB_EXEC_BASE
+#endif // end _H_ALP_EXEC_BASE

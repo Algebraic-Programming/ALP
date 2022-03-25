@@ -20,12 +20,12 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_PINNEDVECTOR
-#define _H_GRB_DENSEREF_PINNEDVECTOR
+#ifndef _H_ALP_REFERENCE_PINNEDVECTOR
+#define _H_ALP_REFERENCE_PINNEDVECTOR
 
-namespace grb {
+namespace alp {
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_PINNEDVECTOR''
+#endif // end ``_H_ALP_REFERENCE_PINNEDVECTOR''
 

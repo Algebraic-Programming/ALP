@@ -19,10 +19,10 @@
  * @author A. N. Yzelman
  */
 
-#ifndef _H_GRB_PHASE
-#define _H_GRB_PHASE
+#ifndef _H_ALP_PHASE
+#define _H_ALP_PHASE
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Some primitives may require a symbolic phase prior to executing a numeric
@@ -65,6 +65,6 @@ namespace grb {
 		NUMERICAL
 	};
 
-} // namespace grb
+} // namespace alp
 
-#endif // end ``_H_GRB_PHASE''
+#endif // end ``_H_ALP_PHASE''

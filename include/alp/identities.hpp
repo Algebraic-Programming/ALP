@@ -20,19 +20,19 @@
  * @date 11th of August, 2016
  */
 
-#ifndef _H_GRB_IDENTITIES
-#define _H_GRB_IDENTITIES
+#ifndef _H_ALP_IDENTITIES
+#define _H_ALP_IDENTITIES
 
 #include <limits>
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Standard identities common to many operators.
 	 *
 	 * The most commonly used identities are
-	 *   - #grb::identities::zero, and
-	 *   - #grb::identities::one.
+	 *   - #alp::identities::zero, and
+	 *   - #alp::identities::one.
 	 *
 	 * A stateful identity should expose the same public interface as the
 	 * identities collected here, which is class which exposes at least one public
@@ -192,6 +192,6 @@ namespace grb {
 		};
 
 	} // namespace identities
-} // namespace grb
+} // namespace alp
 
 #endif

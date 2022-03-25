@@ -26,13 +26,13 @@
  *       including its type (member type \a applied_to), or how read its dimensions.
  */
 
-#ifndef _H_GRB_VIEWS
-#define _H_GRB_VIEWS
+#ifndef _H_ALP_VIEWS
+#define _H_ALP_VIEWS
 
 #include <algorithm>
 #include <utility>
 
-namespace grb {
+namespace alp {
 
 	namespace view {
 
@@ -73,6 +73,6 @@ namespace grb {
 
 	}; // namespace view
 
-} // namespace grb
+} // namespace alp
 
-#endif // _H_GRB_VIEWS
+#endif // _H_ALP_VIEWS

@@ -20,17 +20,17 @@
  * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_DENSEREF_COLL
-#define _H_GRB_DENSEREF_COLL
+#ifndef _H_ALP_REFERENCE_COLL
+#define _H_ALP_REFERENCE_COLL
 
-namespace grb {
+namespace alp {
 
 	/** 
 	 * \internal Since this backend only has a single user process, the below only
 	 *           contains trivial implementations.
 	 */
 	template<>
-	class collectives< reference_dense > {
+	class collectives< reference > {
 
 		private:
 
@@ -70,7 +70,7 @@ namespace grb {
 
 	};
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_COLL''
+#endif // end ``_H_ALP_REFERENCE_COLL''
 

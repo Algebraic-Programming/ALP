@@ -20,8 +20,8 @@
  * @date 15 March, 2016
  */
 
-#ifndef _H_GRB_MONOID
-#define _H_GRB_MONOID
+#ifndef _H_ALP_MONOID
+#define _H_ALP_MONOID
 
 #ifdef _DEBUG
 #include <cstdio>
@@ -33,9 +33,9 @@
 
 #include <assert.h>
 
-#include <graphblas/identities.hpp>
-#include <graphblas/ops.hpp>
-#include <graphblas/type_traits.hpp>
+#include <alp/identities.hpp>
+#include <alp/ops.hpp>
+#include <alp/type_traits.hpp>
 
 /**
  * The main Sparse Library namespace.
@@ -43,7 +43,7 @@
  * All classes, enums, constants, and functions are declared in this namespace.
  * This source file only contains testing code outside this namespace.
  */
-namespace grb {
+namespace alp {
 
 	/**
 	 * A generalised monoid.
@@ -54,9 +54,9 @@ namespace grb {
 	template< class _OP, template< typename > class _ID >
 	class Monoid {
 
-		static_assert( grb::is_operator< _OP >::value, "First template argument to Monoid must be a GraphBLAS operator" );
+		static_assert( alp::is_operator< _OP >::value, "First template argument to Monoid must be a GraphBLAS operator" );
 
-		static_assert( grb::is_associative< _OP >::value,
+		static_assert( alp::is_associative< _OP >::value,
 			"Cannot form a monoid using the given operator since it is not "
 			"associative" );
 
@@ -129,10 +129,10 @@ namespace grb {
 
 	template< class OP, template< typename > class ID >
 	struct has_immutable_nonzeroes< Monoid< OP, ID > > {
-		static const constexpr bool value = grb::is_monoid< Monoid< OP, ID > >::value &&
-			std::is_same< OP, typename grb::operators::logical_or< typename OP::D1, typename OP::D2, typename OP::D3 > >::value;
+		static const constexpr bool value = alp::is_monoid< Monoid< OP, ID > >::value &&
+			std::is_same< OP, typename alp::operators::logical_or< typename OP::D1, typename OP::D2, typename OP::D3 > >::value;
 	};
 
-} // namespace grb
+} // namespace alp
 
 #endif

@@ -20,8 +20,8 @@
  * @date 8th of August, 2016
  */
 
-#ifndef _H_GRB_UTILITIES
-#define _H_GRB_UTILITIES
+#ifndef _H_ALP_UTILITIES
+#define _H_ALP_UTILITIES
 
 #include <assert.h>
 
@@ -29,10 +29,10 @@
 #include <limits> //numeric_limits
 #include <type_traits>
 
-#include <graphblas/descriptors.hpp>
+#include <alp/descriptors.hpp>
 
 
-namespace grb {
+namespace alp {
 
 	/**
 	 * Some utility classes used that may be used throughout this GraphBLAS
@@ -90,7 +90,7 @@ namespace grb {
 			// if they are bit-wise equal, it's easy
 			if( a == b ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 				std::cout << "\t Bit-wise equal\n";
  #else
 				printf( "\t Bit-wise equal\n" );
@@ -117,7 +117,7 @@ namespace grb {
 			// The same is true if a or b are zero.
 			if( a == 0 || b == 0 || absPlus < min ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 				std::cout << "\t Zero or close to zero difference\n";
  #else
 				printf( "\t Zero or close to zero difference\n" );
@@ -131,7 +131,7 @@ namespace grb {
 			if( absA > absB ) {
 				if( absB > max - absA ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 					std::cout << "\t Normalising absolute difference by max (I)\n";
  #else
 					printf( "\t Normalising absolute difference by max (I)\n" );
@@ -142,7 +142,7 @@ namespace grb {
 			} else {
 				if( absA > max - absB ) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 					std::cout << "\t Normalising absolute difference by max (II)\n";
  #else
 					printf( "\t Normalising absolute difference by max (II)\n" );
@@ -153,7 +153,7 @@ namespace grb {
 			}
 			// use of relative error should be safe
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
+ #ifndef _ALP_NO_STDIO
 			std::cout << "\t Using relative error\n";
  #else
 			printf( "\t Using relative error\n" );
@@ -215,25 +215,25 @@ namespace grb {
 		 * The memory area pointed to by \a val shall not be dereferenced if
 		 * \a assigned is false.
 		 *
-		 * @return If the descriptor includes grb::descriptors::structoral,
-		 *         returns \a assigned. If additionally grb::descriptors::invert_mask
+		 * @return If the descriptor includes alp::descriptors::structoral,
+		 *         returns \a assigned. If additionally alp::descriptors::invert_mask
 		 *         was defined, instead returns the negation of \a assigned.
-		 * @return If the descriptor includes grb::descriptors::structural_complement,
+		 * @return If the descriptor includes alp::descriptors::structural_complement,
 		 *         returns the negation of \a assigned. If additionally
-		 *         grb::descriptors::invert_mask was defined, instead returns
+		 *         alp::descriptors::invert_mask was defined, instead returns
 		 *         \a assigned.
-		 * @return If the descriptor does not include grb::descriptors::structural
-		 *         nor grb::descriptors::structural_complement and if \a assigned
+		 * @return If the descriptor does not include alp::descriptors::structural
+		 *         nor alp::descriptors::structural_complement and if \a assigned
 		 *         is false, then the entry is ignored and uninterpreted, thus
 		 *         returning \a false.
-		 * @return If the descriptor includes grb::descriptors::invert_mask,
+		 * @return If the descriptor includes alp::descriptors::invert_mask,
 		 *         returns the negation of the dereferenced value of \a val
 		 *         which is first cast to a \a bool.
 		 * @return Otherwise, returns the dereferenced value of \a val,
 		 *         cast to a \a bool.
 		 *
-		 * If \a descriptor contains both grb::descriptors::structural and
-		 * grb::descriptors::structural_complement, the code shall not
+		 * If \a descriptor contains both alp::descriptors::structural and
+		 * alp::descriptors::structural_complement, the code shall not
 		 * compile.
 		 */
 		template< Descriptor descriptor, typename T >
@@ -298,6 +298,6 @@ namespace grb {
 
 	} // namespace utils
 
-} // namespace grb
+} // namespace alp
 
 #endif

@@ -20,20 +20,20 @@
  * @date 2nd of August, 2017
  */
 
-#ifndef _H_SYNCHRONIZEDNONZEROITERATOR
-#define _H_SYNCHRONIZEDNONZEROITERATOR
+#ifndef _H_ALP_SYNCHRONIZEDNONZEROITERATOR
+#define _H_ALP_SYNCHRONIZEDNONZEROITERATOR
 
 #include <utility> //std::pair
 
 #include <assert.h>
 
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+#ifndef _ALP_NO_STDIO
 #include <iostream>
 #endif
 #endif
 
-namespace grb {
+namespace alp {
 	namespace utils {
 
 		template< typename S1, typename S2, typename V, typename fwd_it1, typename fwd_it2, typename fwd_it3 >
@@ -318,7 +318,7 @@ namespace grb {
 		template< typename S1, typename S2 >
 		SynchronizedNonzeroIterator< S1, S2, void, const S1 *, const S2 *, void > makeSynchronized( const S1 * const it1, const S2 * const it2, const S1 * const it1_end, const S2 * const it2_end ) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
+#ifndef _ALP_NO_STDIO
 			std::cout << "SynchronizedNonzeroIterator::makeSynchronized "
 						 "received iterators "
 					  << it1 << " (start) and " << it2 << " (end)\n";
@@ -351,6 +351,6 @@ namespace grb {
 		}
 
 	} // namespace utils
-} // namespace grb
+} // namespace alp
 
-#endif // end ``_H_SYNCHRONIZEDNONZEROITERATOR''
+#endif // end ``_H_ALP_SYNCHRONIZEDNONZEROITERATOR''

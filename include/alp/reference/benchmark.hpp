@@ -20,15 +20,15 @@
  * @date 14th of January, 2022
  */
 
-#ifndef _H_GRB_DENSEREF_BENCH
-#define _H_GRB_DENSEREF_BENCH
+#ifndef _H_ALP_REFERENCE_BENCH
+#define _H_ALP_REFERENCE_BENCH
 
-#include <graphblas/rc.hpp>
-#include <graphblas/base/benchmark.hpp>
+#include <alp/rc.hpp>
+#include <alp/base/benchmark.hpp>
 
-namespace grb {
+namespace alp {
 
-} // end namespace ``grb''
+} // end namespace ``alp''
 
-#endif // end ``_H_GRB_DENSEREF_BENCH''
+#endif // end ``_H_ALP_REFERENCE_BENCH''
 

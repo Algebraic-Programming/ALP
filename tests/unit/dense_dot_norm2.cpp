@@ -18,23 +18,23 @@
 #include <iostream>
 #include <sstream>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
-using namespace grb;
+using namespace alp;
 
-void grb_program( const size_t &n, grb::RC &rc ) {
+void alp_program( const size_t &n, alp::RC &rc ) {
 
 	// repeatedly used containers
-	grb::VectorView< double > left( n );
-	grb::VectorView< double > right( n );
+	alp::Vector< double > left( n );
+	alp::Vector< double > right( n );
 
 	// test 1, init
-	grb::Semiring<
-		grb::operators::add< double >, grb::operators::mul< double >,
-		grb::identities::zero, grb::identities::one
+	alp::Semiring<
+		alp::operators::add< double >, alp::operators::mul< double >,
+		alp::identities::zero, alp::identities::one
 	> ring;
-	// rc = grb::set( left, 1.5 ); // left = 1.5 everywhere
-	// rc = rc ? rc : grb::set( right, -1.0 );
+	// rc = alp::set( left, 1.5 ); // left = 1.5 everywhere
+	// rc = rc ? rc : alp::set( right, -1.0 );
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
 	// 	return;
@@ -42,7 +42,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	Scalar< double > out( 2.55 );
 
 	// test 1, exec
-	rc = grb::dot( out, left, right, ring );
+	rc = alp::dot( out, left, right, ring );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
 		return;
@@ -62,15 +62,15 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// }
 
 	// test 2, init
-	// grb::Semiring<
-	// 	grb::operators::add< double >, grb::operators::left_assign_if< double, bool, double >,
-	// 	grb::identities::zero, grb::identities::logical_true
+	// alp::Semiring<
+	// 	alp::operators::add< double >, alp::operators::left_assign_if< double, bool, double >,
+	// 	alp::identities::zero, alp::identities::logical_true
 	// > pattern_sum_if;
-	// rc = grb::clear( left );
-	// rc = rc ? rc : grb::clear( right );
+	// rc = alp::clear( left );
+	// rc = rc ? rc : alp::clear( right );
 	// for( size_t i = 0; 2 * i < n; ++i ) {
-	// 	rc = rc ? rc : grb::setElement( left, 2.0, 2 * i );
-	// 	rc = rc ? rc : grb::setElement( right, 1.0, 2 * i );
+	// 	rc = rc ? rc : alp::setElement( left, 2.0, 2 * i );
+	// 	rc = rc ? rc : alp::setElement( right, 1.0, 2 * i );
 	// }
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) initialisation FAILED\n";
@@ -79,7 +79,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// out = 0;
 
 	// // test 2, exec
-	// rc = grb::dot( out, left, right, pattern_sum_if );
+	// rc = alp::dot( out, left, right, pattern_sum_if );
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
 	// 	return;
@@ -95,22 +95,22 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// }
 
 	// // test 3, init
-	// grb::Semiring<
-	// 	grb::operators::add< int >, grb::operators::mul< int >,
-	// 	grb::identities::zero, grb::identities::one
+	// alp::Semiring<
+	// 	alp::operators::add< int >, alp::operators::mul< int >,
+	// 	alp::identities::zero, alp::identities::one
 	// > intRing;
-	// grb::Vector< int > x( n ), y( n );
-	// rc = grb::set( x, 1 );
-	// rc = rc ? rc : grb::set( y, 2 );
-	// if( rc != grb::SUCCESS ) {
+	// alp::Vector< int > x( n ), y( n );
+	// rc = alp::set( x, 1 );
+	// rc = rc ? rc : alp::set( y, 2 );
+	// if( rc != alp::SUCCESS ) {
 	// 	std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
 	// 	return;
 	// }
 	// int alpha = 0;
 
 	// // test 3, exec
-	// rc = grb::dot( alpha, x, y, intRing );
-	// if( rc != grb::SUCCESS ) {
+	// rc = alp::dot( alpha, x, y, intRing );
+	// if( rc != alp::SUCCESS ) {
 	// 	std::cerr << "\t test 3 (dense integer vectors) dot FAILED\n";
 	// 	return;
 	// }
@@ -124,11 +124,11 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// }
 
 	// // test 4, init
-	// grb::Vector< int > empty_left( 0 ), empty_right( 0 );
+	// alp::Vector< int > empty_left( 0 ), empty_right( 0 );
 	// // retain old value of alpha
 
 	// // test 4, exec
-	// rc = grb::dot( alpha, empty_left, empty_right, intRing );
+	// rc = alp::dot( alpha, empty_left, empty_right, intRing );
 	// if( rc != SUCCESS ) {
 	// 	std::cerr << "\t test 4 (empty vectors) dot FAILED\n";
 	// 	return;
@@ -178,14 +178,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	alp::Launcher< AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}
