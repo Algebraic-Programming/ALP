@@ -184,7 +184,7 @@ namespace grb {
 				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
 			}
 
-			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, SYMBOLIC );
+			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, RESIZE );
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
 
 			if ( ret != SUCCESS ) {
@@ -493,7 +493,8 @@ namespace grb {
 
 				ret = ret ? ret : grb::set( clusters_and_distances_prev, clusters_and_distances );
 
-				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid, SYMBOLIC );
+				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid,
+					RESIZE );
 				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid );
 
 				ret = ret ? ret : vxm(
@@ -507,18 +508,25 @@ namespace grb {
 					return std::make_pair( pair.first, ind );
 				} );
 
-				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+				ret = ret ? ret : grb::buildMatrixUnique( M,
+					converter.begin(), converter.end(), PARALLEL );
 
-				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum, SYMBOLIC );
-				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum );
+				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X,
+					pattern_sum, RESIZE );
+				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X,
+					pattern_sum );
 
 				ret = ret ? ret : grb::mxv( sizes, M, n_ones, pattern_count );
 
-				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC );
-				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >() );
+				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones,
+					operators::left_assign_if< IOType, bool, IOType >(), RESIZE );
+				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones,
+					operators::left_assign_if< IOType, bool, IOType >() );
 
-				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >(), SYMBOLIC );
-				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >() );
+				ret = ret ? ret : eWiseApply( K, V_aux, K_aux,
+					operators::divide_reverse< size_t, IOType, IOType >(), RESIZE );
+				ret = ret ? ret : eWiseApply( K, V_aux, K_aux,
+					operators::divide_reverse< size_t, IOType, IOType >() );
 
 				converged = true;
 				ret = ret ? ret : grb::dot(

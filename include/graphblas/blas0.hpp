@@ -365,14 +365,20 @@ namespace grb {
 	 *      capable operators and on stateful operators.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename InputType, typename IOType >
-	static RC foldl( IOType & x,
-		const InputType & y,
-		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
+	static RC foldl( IOType &x,
+		const InputType &y,
+		const OP &op = OP(),
+		const typename std::enable_if< grb::is_operator< OP >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< IOType >::value, void
+		>::type * = nullptr
+	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) ||
-							( std::is_same< IOType, typename OP::D1 >::value && std::is_same< InputType, typename OP::D2 >::value && std::is_same< IOType, typename OP::D3 >::value ) ),
-			"grb::foldl (BLAS level 0)",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) || (
+				std::is_same< IOType, typename OP::D1 >::value &&
+				std::is_same< InputType, typename OP::D2 >::value &&
+				std::is_same< IOType, typename OP::D3 >::value
+			) ), "grb::foldl (BLAS level 0)",
 			"Argument value types do not match operator domains while no_casting "
 			"descriptor was set" );
 

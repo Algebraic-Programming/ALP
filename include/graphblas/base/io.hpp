@@ -23,8 +23,9 @@
 #ifndef _H_GRB_IO_BASE
 #define _H_GRB_IO_BASE
 
-#include <graphblas/iomode.hpp>
 #include <graphblas/rc.hpp>
+#include <graphblas/phase.hpp>
+#include <graphblas/iomode.hpp>
 #include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
 #include "matrix.hpp"
@@ -681,6 +682,371 @@ namespace grb {
 	}
 
 	/**
+	 * Sets all elements of a vector to the given value.
+	 *
+	 * Unmasked variant.
+	 *
+	 * @tparam descr    The descriptor used for this operation.
+	 * @tparam DataType The type of each element in the given vector.
+	 * @tparam T        The type of the given value.
+	 * @tparam backend  The backend that implements this function.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * @param[in,out] x The vector of which every element is to be set to equal
+	 *                  \a val. On output, the number of elements shall be equal
+	 *                  to the size of \a x.
+	 * @param[in]   val The value to set each element of \a x to.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::Phase::EXECUTE.
+	 *
+	 * In #grb::Phase::RESIZE mode:
+	 *
+	 * @returns #grb::OUTOFMEM When \a x could not be resized to hold the
+	 *                         requested output, and the current capacity was
+	 *                         insufficient.
+	 * @returns #grb::SUCCESS  When the capacity of \a x was resized to guarantee
+	 *                         the output of this operation can be contained.
+	 *
+	 * In #grb::Phase::EXECUTE mode:
+	 *
+	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 *                        vector \a x on exit shall be cleared.
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * In #grb::Phase::TRY mode (experimental and may not be supported):
+	 *
+	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 *                        vector \a x on exit will have contents defined as
+	 *                        described for #grb::Phase::TRY.
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A backend must define, for each phase:
+	 *    -# cost in terms of work
+	 *    -# intra-process data movement costs
+	 *    -# inter-process data movement costs
+	 *    -# memory storage requirements and may define this in terms of \a new_nz.
+	 *    -# whether system calls may be made.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename T,
+		typename Coords, Backend backend
+	>
+	RC set(
+		Vector< DataType, backend, Coords > &x, const T val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_set = false;
+		assert( should_not_call_base_vector_set );
+#endif
+		(void) x;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all elements of a vector to the given value whenever the given mask
+	 * evaluates <tt>true</tt>.
+	 *
+	 * @tparam descr    The descriptor used for this operation.
+	 * @tparam DataType The type of each element in the given vector.
+	 * @tparam T        The type of the given value.
+	 * @tparam backend  The backend that implements this function.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *   -# grb::descriptors::invert_mask
+	 *   -# grb::descriptors::structural_mask
+	 * \endparblock
+	 *
+	 * @param[in,out] x The vector of which elements are to be set to \a val. 
+	 *                  On output, the number of elements shall depend on \a mask.
+	 * @param[in]  mask The given mask. How the sparsity structure and values are
+	 *                  evaluated depends on the given \a desc.
+	 * @param[in]   val The value to set elements of \a x to.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::Phase::EXECUTE.
+	 *
+	 * \warning An empty \a mask, meaning #grb::size( \a mask ) is zero, shall
+	 *          be interpreted as though no mask argument was given. In particular,
+	 *          any descriptors pertaining to the interpretation of \a mask shall
+	 *          be ignored.
+	 *         
+	 * In #grb::Phase::RESIZE mode:
+	 *
+	 * @returns #grb::OUTOFMEM When \a x could not be resized to hold the
+	 *                         requested output, and the current capacity was
+	 *                         insufficient.
+	 * @returns #grb::SUCCESS  When the capacity of \a x was resized to guarantee
+	 *                         the output of this operation can be contained.
+	 *
+	 * In #grb::Phase::EXECUTE mode:
+	 *
+	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 *                        vector \a x on exit shall be cleared.
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * In #grb::Phase::TRY mode (experimental and may not be supported):
+	 *
+	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 *                        vector \a x on exit will have contents defined as
+	 *                        described for #grb::Phase::TRY.
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A backend must define, for each phase:
+	 *    -# cost in terms of work;
+	 *    -# intra-process data movement costs;
+	 *    -# inter-process data movement costs;
+	 *    -# inter-process synchronisation costs;
+	 *    -# memory storage requirements and may define this in terms of \a new_nz;
+	 *    -# whether system calls may be made.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename MaskType, typename T,
+		Backend backend, typename Coords
+	>
+	RC set( Vector< DataType, reference, Coords > &x,
+		const Vector< MaskType, backend, Coords > &mask,
+		const T val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value && !grb::is_object< T >::value,
+		void >::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_vector_set = false;
+		assert( should_not_call_base_masked_vector_set );
+#endif
+		(void) x;
+		(void) mask;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets the content of a given vector \a x to be equal to that of another given
+	 * vector \a y.
+	 *
+	 * Unmasked variant.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * @tparam descr The descriptor of the operation.
+	 * @tparam OutputType The type of each element in the output vector.
+	 * @tparam InputType  The type of each element in the input vector.
+	 *
+	 * @param[in,out] x The vector to be set.
+	 * @param[in]     y The source vector.
+	 *
+	 * The vector \a x may not be the same as \a y.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta(n) \f$ work;
+	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * \endparblock
+	 *
+	 * @see grb::foldl.
+	 * @see grb::foldr.
+	 * @see grb::operators::left_assign.
+	 * @see grb::operators::right_assign.
+	 * @see grb::setElement.
+	 *
+	 * \todo Revise specification regarding recent changes on phases, performance
+	 *       semantics, and capacities.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType,
+		Backend backend, typename Coords
+	>
+	RC set( Vector<
+		OutputType, backend, Coords > &x,
+		const Vector< InputType, backend, Coords > &y,
+		const Phase &phase = EXECUTE
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_set_copy = false;
+		assert( should_not_call_base_vector_set_copy );
+#endif
+		(void) x;
+		(void) y;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets the content of a given vector \a x to be equal to that of
+	 * another given vector \a y.
+	 *
+	 * Masked variant.
+	 *
+	 * The vector \a x may not equal \a y.
+	 *
+	 * @tparam descr The descriptor of the operation.
+	 * @tparam OutputType The type of each element in the output vector.
+	 * @tparam MaskType   The type of each element in the mask vector.
+	 * @tparam InputType  The type of each element in the input vector.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *   -# grb::descriptors::invert_mask
+	 *   -# grb::descriptors::structural_mask
+	 * \endparblock
+	 *
+	 * @param[in,out] x The vector to be set.
+	 * @param[in]  mask The output mask.
+	 * @param[in]     y The source vector.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
+	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
+	 * above shall be considered equal to \f$ nnz( y ) \f$.
+	 * \endparblock
+	 *
+	 * \todo Revise specification regarding recent changes on phases, performance
+	 *       semantics, and capacities.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		Backend backend, typename Coords
+	>
+	RC set( Vector< OutputType, backend, Coords > &x,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Vector< InputType, backend, Coords > &y,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_vector_set_copy_masked = false;
+		assert( should_not_call_base_vector_set_copy_masked );
+#endif
+		(void) x;
+		(void) mask;
+		(void) y;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets the element of a given vector at a given position to a given value.
+	 *
+	 * If the input vector \a x already has an element \f$ x_i \f$, that element
+	 * is overwritten to the given value \a val. If no such element existed, it
+	 * is added and set equal to \a val. The number of nonzeroes in \a x may thus
+	 * be increased by one due to a call to this function.
+	 *
+	 * The parameter \a i may not be greater or equal than the size of \a x.
+	 *
+	 * @tparam descr    The descriptor to be used during evaluation of this
+	 *                  function.
+	 * @tparam DataType The type of the elements of \a x.
+	 * @tparam T        The type of the value to be set.
+	 *
+	 * @param[in,out] x The vector to be modified.
+	 * @param[in]   val The value \f$ x_i \f$ should read after function exit.
+	 * @param[in]     i The index of the element of \a x to set.
+	 *
+	 * @return grb::SUCCESS   Upon successful execution of this operation.
+	 * @return grb::MISMATCH  If \a i is greater or equal than the dimension of
+	 *                        \a x.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta(1) \f$ work;
+	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * \endparblock
+	 *
+	 * \todo Revise specification regarding recent changes on phases, performance
+	 *       semantics, and capacities.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename T,
+		Backend backend, typename Coords
+	>
+	RC setElement( Vector< DataType, backend, Coords > &x,
+		const T val,
+		const size_t i,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value, void >::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_setElement = false;
+		assert( should_not_call_base_setElement );
+#endif
+		(void) x;
+		(void) val;
+		(void) i;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Constructs a dense vector from a container of exactly grb::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
 	 * an accumulator, using grb::operators::right_assign (thus overwriting
@@ -719,7 +1085,8 @@ namespace grb {
 		const IOMode mode, const Merger & merger = Merger()
 	) {
 		operators::right_assign< InputType > accum;
-		return buildVector< descr >( x, accum, ind_start, ind_end, val_start, val_end, mode, merger );
+		return buildVector< descr >( x, accum, ind_start, ind_end, val_start, val_end,
+			mode, merger );
 	}
 
 	/**
@@ -891,7 +1258,8 @@ namespace grb {
 	) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end );
-		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end );
+		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end,
+			V_end );
 
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
@@ -921,13 +1289,19 @@ namespace grb {
 	}
 
 	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( Matrix< InputType, implementation > & A, fwd_iterator1 I, fwd_iterator2 J, const length_type nz, const IOMode mode ) {
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, implementation > &A,
+		fwd_iterator1 I, fwd_iterator2 J,
+		const length_type nz, const IOMode mode
+	) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
 		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
@@ -980,7 +1354,8 @@ namespace grb {
 		typename InputType, typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
-	RC buildMatrixUnique( Matrix< InputType, implementation > & A,
+	RC buildMatrixUnique(
+		Matrix< InputType, implementation > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -1051,7 +1426,9 @@ namespace grb {
 		typename ElementType, typename Coords,
 		Backend implementation = config::default_backend
 	>
-	uintptr_t getID( const Vector< ElementType, implementation, Coords > &x ) {
+	uintptr_t getID(
+		const Vector< ElementType, implementation, Coords > &x
+	) {
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
 #endif

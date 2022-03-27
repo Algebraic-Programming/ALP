@@ -22,8 +22,11 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+void grb_program( const size_t &n, grb::RC &rc ) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	// initialize test
 	grb::Matrix< double > A( n, n );
@@ -59,7 +62,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";
 
-	rc = grb::mxm( C, A, B, ring, SYMBOLIC );
+	rc = grb::mxm( C, A, B, ring, RESIZE );
 	if( rc == SUCCESS ) {
 		rc = grb::mxm( C, A, B, ring );
 		if( rc != SUCCESS ) {
@@ -77,17 +80,21 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	for( size_t i = 0; i < n; ++i ) {
 		const size_t entries = crs1.col_start[ i + 1 ] - crs1.col_start[ i ];
 		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries << ", expected 1 (CRS).\n";
+			std::cerr << "Error: unexpected number of entries " << entries << ", "
+				<< "expected 1 (CRS).\n";
 			rc = FAILED;
 		}
 		for( size_t k = crs1.col_start[ i ]; k < crs1.col_start[ i + 1 ]; ++k ) {
 			const size_t expect = i == n - 1 ? 0 : i + 1;
 			if( crs1.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << i << ", " << crs1.row_index[ k ] << " ), expected one at ( " << i << ", " << ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
+				std::cerr << "Error: unexpected entry at ( " << i << ", "
+					<< crs1.row_index[ k ] << " ), expected one at ( "
+					<< i << ", " << ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
 				rc = FAILED;
 			}
 			if( crs1.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << crs1.values[ k ] << "; expected 2 (CRS).\n";
+				std::cerr << "Error: unexpected value " << crs1.values[ k ]
+					<< "; expected 2 (CRS).\n";
 				rc = FAILED;
 			}
 		}
@@ -98,17 +105,21 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	for( size_t j = 0; j < n; ++j ) {
 		const size_t entries = ccs1.col_start[ j + 1 ] - ccs1.col_start[ j ];
 		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries << ", expected 1 (CCS).\n";
+			std::cerr << "Error: unexpected number of entries " << entries
+				<< ", expected 1 (CCS).\n";
 			rc = FAILED;
 		}
 		for( size_t k = ccs1.col_start[ j ]; k < ccs1.col_start[ j + 1 ]; ++k ) {
 			const size_t expect = j == 0 ? n - 1 : j - 1;
 			if( ccs1.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << ccs1.row_index[ k ] << ", " << j << " ), expected one at ( " << expect << ", " << j << " ) instead (CCS).\n";
+				std::cerr << "Error: unexpected entry at ( " << ccs1.row_index[ k ] << ", "
+					<< j << " ), expected one at ( " << expect << ", " << j
+					<< " ) instead (CCS).\n";
 				rc = FAILED;
 			}
 			if( ccs1.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << ccs1.values[ k ] << "; expected 2 (CCS).\n";
+				std::cerr << "Error: unexpected value " << ccs1.values[ k ]
+					<< "; expected 2 (CCS).\n";
 				rc = FAILED;
 			}
 		}
@@ -117,9 +128,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// compute with the operator-monoid mxm
 	std::cout << "\tVerifying the operator-monoid version of mxm\n";
 
-	rc = grb::mxm( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), SYMBOLIC );
+	rc = grb::mxm(
+		C, A, B,
+		ring.getMultiplicativeOperator(),
+		ring.getAdditiveMonoid(),
+		RESIZE
+	);
 	if( rc == SUCCESS ) {
-		rc = grb::mxm( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
+		rc = grb::mxm(
+			C, A, B,
+			ring.getMultiplicativeOperator(),
+			ring.getAdditiveMonoid()
+		);
 		if( rc != SUCCESS ) {
 			std::cerr << "Call to grb::mxm FAILED\n";
 		}
@@ -135,17 +155,21 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	for( size_t i = 0; i < n; ++i ) {
 		const size_t entries = crs2.col_start[ i + 1 ] - crs2.col_start[ i ];
 		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries << ", expected 1 (CRS).\n";
+			std::cerr << "Error: unexpected number of entries " << entries
+				<< ", expected 1 (CRS).\n";
 			rc = FAILED;
 		}
 		for( size_t k = crs2.col_start[ i ]; k < crs2.col_start[ i + 1 ]; ++k ) {
 			const size_t expect = i == n - 1 ? 0 : i + 1;
 			if( crs2.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << i << ", " << crs2.row_index[ k ] << " ), expected one at ( " << i << ", " << ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
+				std::cerr << "Error: unexpected entry at ( " << i << ", "
+					<< crs2.row_index[ k ] << " ), expected one at ( " << i << ", "
+					<< ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
 				rc = FAILED;
 			}
 			if( crs2.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << crs2.values[ k ] << "; expected 2 (CRS).\n";
+				std::cerr << "Error: unexpected value " << crs2.values[ k ]
+					<< "; expected 2 (CRS).\n";
 				rc = FAILED;
 			}
 		}
@@ -156,17 +180,21 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	for( size_t j = 0; j < n; ++j ) {
 		const size_t entries = ccs2.col_start[ j + 1 ] - ccs2.col_start[ j ];
 		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries << ", expected 1 (CCS).\n";
+			std::cerr << "Error: unexpected number of entries " << entries
+				<< ", expected 1 (CCS).\n";
 			rc = FAILED;
 		}
 		for( size_t k = ccs2.col_start[ j ]; k < ccs2.col_start[ j + 1 ]; ++k ) {
 			const size_t expect = j == 0 ? n - 1 : j - 1;
 			if( ccs2.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << ccs2.row_index[ k ] << ", " << j << " ), expected one at ( " << expect << ", " << j << " ) instead (CCS).\n";
+				std::cerr << "Error: unexpected entry at ( " << ccs2.row_index[ k ] << ", "
+					<< j << " ), expected one at ( " << expect << ", " << j
+					<< " ) instead (CCS).\n";
 				rc = FAILED;
 			}
 			if( ccs2.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << ccs2.values[ k ] << "; expected 2 (CCS).\n";
+				std::cerr << "Error: unexpected value " << ccs2.values[ k ]
+					<< "; expected 2 (CCS).\n";
 				rc = FAILED;
 			}
 		}

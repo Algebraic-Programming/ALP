@@ -78,7 +78,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		rc = grb::outer( M, u, v, ring.getMultiplicativeOperator(), SYMBOLIC );
+		rc = grb::outer( M, u, v, ring.getMultiplicativeOperator(), RESIZE );
 		rc = rc ? rc : grb::outer( M, u, v, ring.getMultiplicativeOperator() );
 	}
 	if( rc != grb::SUCCESS ) {

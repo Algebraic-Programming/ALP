@@ -94,10 +94,10 @@ namespace grb {
 						grb::identities::logical_true
 					> leftAssignAndAdd;
 					grb::Matrix< size_t > tmp( small_m, n );
-					ret = ret ? ret : grb::mxm( tmp, P, in, leftAssignAndAdd, SYMBOLIC );
-					ret = ret ? ret : grb::mxm( tmp, P, in, leftAssignAndAdd, NUMERICAL );
-					ret = ret ? ret : grb::mxm( out, tmp, Q, leftAssignAndAdd, SYMBOLIC );
-					ret = ret ? ret : grb::mxm( out, tmp, Q, leftAssignAndAdd, NUMERICAL );
+					ret = ret ? ret : grb::mxm( tmp, P, in, leftAssignAndAdd, RESIZE );
+					ret = ret ? ret : grb::mxm( tmp, P, in, leftAssignAndAdd, EXECUTE );
+					ret = ret ? ret : grb::mxm( out, tmp, Q, leftAssignAndAdd, RESIZE );
+					ret = ret ? ret : grb::mxm( out, tmp, Q, leftAssignAndAdd, EXECUTE );
 				} else {
 					grb::Semiring<
 						grb::operators::add< size_t >,
@@ -106,10 +106,10 @@ namespace grb {
 						grb::identities::logical_true
 					> rightAssignAndAdd;
 					grb::Matrix< size_t > tmp( m, small_n );
-					ret = ret ? ret : grb::mxm( tmp, in, Q, rightAssignAndAdd, SYMBOLIC );
-					ret = ret ? ret : grb::mxm( tmp, in, Q, rightAssignAndAdd, NUMERICAL );
-					ret = ret ? ret : grb::mxm( out, P, tmp, rightAssignAndAdd, SYMBOLIC );
-					ret = ret ? ret : grb::mxm( out, P, tmp, rightAssignAndAdd, NUMERICAL );
+					ret = ret ? ret : grb::mxm( tmp, in, Q, rightAssignAndAdd, RESIZE );
+					ret = ret ? ret : grb::mxm( tmp, in, Q, rightAssignAndAdd, EXECUTE );
+					ret = ret ? ret : grb::mxm( out, P, tmp, rightAssignAndAdd, RESIZE );
+					ret = ret ? ret : grb::mxm( out, P, tmp, rightAssignAndAdd, EXECUTE );
 				}
 
 				if( ret == SUCCESS && normalize ) {

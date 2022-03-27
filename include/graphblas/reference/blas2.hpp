@@ -77,12 +77,13 @@ namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
 		/**
-		 * Class that during an SpMV is reponsible for resolving the add_identity descriptor.
+		 * Class that during an SpMV is reponsible for resolving the add_identity
+		 * descriptor.
 		 *
-		 * This base class assumes the SpMV was requested using an impure semiring-- i.e.,
-		 * by using an additive monoid with any binary operator, and thus without the
-		 * concept of one. In this case it is illegal to use the add_identity descriptor,
-		 * and hence the below-defined apply is a no-op.
+		 * This base class assumes the SpMV was requested using an impure semiring--
+		 * i.e., by using an additive monoid with any binary operator, and thus
+		 * without the concept of one. In this case it is illegal to use the
+		 * add_identity descriptor, and hence the below-defined apply is a no-op.
 		 */
 		template<
 			grb::Backend backend, bool from_semiring,
@@ -92,7 +93,9 @@ namespace grb {
 			typename Coords
 		>
 		class addIdentityDuringMV {
+
 			public:
+
 				inline static void apply(
 					Vector< IOType, backend, Coords > &,
 					IOType * __restrict__ const &,
@@ -106,6 +109,7 @@ namespace grb {
 				) {
 					return;
 				}
+
 		};
 
 		/**
@@ -121,27 +125,37 @@ namespace grb {
 		/** \internal Specialisation for left-sided multiplication. */
 		template< typename D3, typename D1, typename D2, class OP >
 		class leftOrRightHandedMul< true, D3, D1, D2, OP > {
+
 			public:
-				static void mul( D3 &out, const D1 &vector_element, const D2 &nonzero, const OP &mul ) {
-#ifdef NDEBUG
+
+				static void mul(
+					D3 &out, const D1 &vector_element, const D2 &nonzero, const OP &mul
+				) {
+ #ifdef NDEBUG
 					(void) apply( out, vector_element, nonzero, mul );
-#else
+ #else
 					assert( apply( out, vector_element, nonzero, mul ) == grb::SUCCESS );
-#endif
+ #endif
 				}
+
 		};
 
 		/** \internal Specialisation for right-sided multiplication. */
 		template< typename D3, typename D1, typename D2, class OP >
 		class leftOrRightHandedMul< false, D3, D1, D2, OP > {
+
 			public:
-				static void mul( D3 &out, const D1 &vector_element, const D2 &nonzero, const OP &mul ) {
-#ifdef NDEBUG
+
+				static void mul(
+					D3 &out, const D1 &vector_element, const D2 &nonzero, const OP &mul
+				) {
+ #ifdef NDEBUG
 					(void) apply( out, nonzero, vector_element, mul );
-#else
+ #else
 					assert( apply( out, nonzero, vector_element, mul ) == grb::SUCCESS );
-#endif
+ #endif
 				}
+
 		};
 #endif
 
@@ -156,11 +170,17 @@ namespace grb {
 			typename IOType, typename InputType, typename SourceType,
 			typename Coords
 		>
-		class addIdentityDuringMV< reference, true, output_dense, left_handed, AdditiveMonoid, Multiplication, One, IOType, InputType, SourceType, Coords > {
+		class addIdentityDuringMV<
+			reference, true, output_dense, left_handed,
+			AdditiveMonoid, Multiplication, One,
+			IOType, InputType, SourceType, Coords
+		> {
+
 			public:
+
 				static void apply(
-					Vector< IOType, reference, Coords > & destination_vector,
-					IOType * __restrict__ const & destination,
+					Vector< IOType, reference, Coords > &destination_vector,
+					IOType * __restrict__ const &destination,
 					const size_t &destination_range,
 					const size_t &source_index,
 					const AdditiveMonoid &add,
@@ -172,23 +192,34 @@ namespace grb {
 					const size_t global_location = src_local_to_global( source_index );
 					const size_t id_location = dst_global_to_local( global_location );
 #ifdef _DEBUG
-					std::cout << "\t add_identity descriptor: input location == " << source_index << " -> " << global_location << " -> " << id_location <<
+					std::cout << "\t add_identity descriptor: input location == "
+						<< source_index << " -> " << global_location << " -> " << id_location <<
 						" == output location ?<? " << destination_range << "\n";
 #endif
 					if( id_location < destination_range ) {
 						typename Multiplication::D3 temp;
-						internal::CopyOrApplyWithIdentity< ! left_handed, typename Multiplication::D3, InputType, One >::set( temp, input_element, mul );
-						if( output_dense || internal::getCoordinates( destination_vector ).assign( id_location ) ) {
+						internal::CopyOrApplyWithIdentity<
+							!left_handed, typename Multiplication::D3, InputType, One
+						>::set(
+							temp, input_element, mul
+						);
+						if( output_dense ||
+							internal::getCoordinates( destination_vector ).assign( id_location ) ) {
 #ifdef NDEBUG
 							(void) foldl( destination[ id_location ], temp, add.getOperator() );
 #else
-							assert( foldl( destination[ id_location ], temp, add.getOperator() ) == grb::SUCCESS );
+							assert( foldl( destination[ id_location ], temp, add.getOperator() )
+								== grb::SUCCESS );
 #endif
 						} else {
-							internal::CopyOrApplyWithIdentity< false, IOType, typename Multiplication::D3, AdditiveMonoid::template Identity >::set( destination[ id_location ], temp, add );
+							internal::CopyOrApplyWithIdentity<
+								false, IOType, typename Multiplication::D3,
+								AdditiveMonoid::template Identity
+							>::set( destination[ id_location ], temp, add );
 						}
 					}
 				}
+
 		};
 
 		/**
@@ -248,7 +279,8 @@ namespace grb {
 		 * both CRS and CCS inputs. Type checking, dimension checking, etc. should
 		 * all be done by the caller function.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool masked, // TODO issue #69
 			bool input_masked, bool left_handed,
 			template< typename > class One,
@@ -258,7 +290,8 @@ namespace grb {
 			typename Coords,
 			typename RowColType, typename NonzeroType
 		>
-		inline void vxm_inner_kernel_gather( RC &rc,
+		inline void vxm_inner_kernel_gather(
+			RC &rc,
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 			internal::Coordinates< reference >::Update &local_update,
 			size_t &asyncAssigns,
@@ -269,16 +302,17 @@ namespace grb {
 			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType >
+				&matrix,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, reference, Coords > &source_mask_vector,
 			const InputType4 * __restrict__ const &source_mask,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
-			const std::function< size_t( size_t ) > & src_local_to_global,
-			const std::function< size_t( size_t ) > & src_global_to_local,
-			const std::function< size_t( size_t ) > & dst_local_to_global
+			const std::function< size_t( size_t ) > &src_local_to_global,
+			const std::function< size_t( size_t ) > &src_global_to_local,
+			const std::function< size_t( size_t ) > &dst_local_to_global
 		) {
 			constexpr bool add_identity = descr & descriptors::add_identity;
 			constexpr bool dense_hint = descr & descriptors::dense;
@@ -290,7 +324,8 @@ namespace grb {
 
 			// check whether we should compute output here
 			if( masked ) {
-				if( ! internal::getCoordinates( mask_vector ).template mask< descr >( destination_index, mask ) ) {
+				if( !internal::getCoordinates( mask_vector ).template
+					mask< descr >( destination_index, mask ) ) {
 #ifdef _DEBUG
 					std::cout << "Masks says to skip processing destination index " <<
 						destination_index << "\n";
@@ -300,43 +335,74 @@ namespace grb {
 			}
 
 			// take shortcut, if possible
-			if( grb::has_immutable_nonzeroes< AdditiveMonoid >::value && internal::getCoordinates( destination_vector ).assigned( destination_index ) &&
-				destination_element != add.template getIdentity< IOType >() ) {
+			if( grb::has_immutable_nonzeroes< AdditiveMonoid >::value &&
+				internal::getCoordinates( destination_vector ).
+					assigned( destination_index ) &&
+				destination_element != add.template getIdentity< IOType >()
+			) {
 				return;
 			}
 
 			// start output
-			typename AdditiveMonoid::D3 output = add.template getIdentity< typename AdditiveMonoid::D3 >();
+			typename AdditiveMonoid::D3 output =
+				add.template getIdentity< typename AdditiveMonoid::D3 >();
 			bool set = false;
 
 			// if we need to add identity, do so first:
 			if( add_identity ) {
-				const size_t id_location = src_global_to_local( dst_local_to_global( destination_index ) );
-				if( ( !input_masked || internal::getCoordinates( source_mask_vector ).template mask< descr >( id_location, source_mask ) ) && id_location < source_range ) {
-					if( dense_hint || internal::getCoordinates( source_vector ).assigned( id_location ) ) {
+				const size_t id_location = src_global_to_local(
+					dst_local_to_global( destination_index )
+				);
+				if( ( !input_masked ||
+						internal::getCoordinates( source_mask_vector ).template
+							mask< descr >( id_location, source_mask )
+					) && id_location < source_range
+				) {
+					if( dense_hint ||
+						internal::getCoordinates( source_vector ).assigned( id_location )
+					) {
 						typename AdditiveMonoid::D1 temp;
-						internal::CopyOrApplyWithIdentity< ! left_handed, typename AdditiveMonoid::D1, InputType1, One >::set( temp, source_vector[ id_location ], mul );
-						internal::CopyOrApplyWithIdentity< false, typename AdditiveMonoid::D3, typename AdditiveMonoid::D1, AdditiveMonoid::template Identity >::set( output, temp, add );
+						internal::CopyOrApplyWithIdentity<
+							!left_handed, typename AdditiveMonoid::D1, InputType1, One
+						>::set( temp, source_vector[ id_location ], mul );
+						internal::CopyOrApplyWithIdentity<
+							false, typename AdditiveMonoid::D3, typename AdditiveMonoid::D1,
+							AdditiveMonoid::template Identity
+						>::set( output, temp, add );
 						set = true;
 					}
 				}
 			}
 
 			// handle row or column at destination_index
-			// NOTE: This /em could be parallelised, but will probably only slow things down
+			// NOTE: This /em could be parallelised, but will probably only slow things
+			//       down
 #ifdef _DEBUG
-			std::cout << "vxm_gather: processing destination index " << destination_index << " / " << internal::getCoordinates( destination_vector ).size() << ". Input matrix has "
-				  << ( matrix.col_start[ destination_index + 1 ] - matrix.col_start[ destination_index ] ) << " nonzeroes.\n";
+			std::cout << "vxm_gather: processing destination index "
+				<< destination_index << " / "
+				<< internal::getCoordinates( destination_vector ).size()
+				<< ". Input matrix has " << ( matrix.col_start[ destination_index + 1 ] -
+					matrix.col_start[ destination_index ] ) << " nonzeroes.\n";
 #endif
-			for( size_t k = matrix.col_start[ destination_index ]; rc == SUCCESS && k < static_cast< size_t >( matrix.col_start[ destination_index + 1 ] ); ++k ) {
+			for(
+				size_t k = matrix.col_start[ destination_index ];
+				rc == SUCCESS && k < static_cast< size_t >(
+					matrix.col_start[ destination_index + 1 ]
+				);
+				++k
+			) {
 				// declare multiplication output field
-				typename Multiplication::D3 result = add.template getIdentity< typename AdditiveMonoid::D3 >();
+				typename Multiplication::D3 result = add.template
+					getIdentity< typename AdditiveMonoid::D3 >();
 				// get source index
 				const size_t source_index = matrix.row_index[ k ];
 				// check mask
-				if( input_masked && !internal::getCoordinates( source_mask_vector ).template mask< descr >( source_index, source_mask ) ) {
+				if( input_masked && !internal::getCoordinates( source_mask_vector ).template
+					mask< descr >( source_index, source_mask )
+				) {
 #ifdef _DEBUG
-					std::cout << "\t vxm_gather: skipping source index " << source_index << " due to input mask\n";
+					std::cout << "\t vxm_gather: skipping source index " << source_index
+						<< " due to input mask\n";
 #endif
 					continue;
 				}
@@ -344,21 +410,30 @@ namespace grb {
 				if( !dense_hint ) {
 					if( !internal::getCoordinates( source_vector ).assigned( source_index ) ) {
 #ifdef _DEBUG
-						std::cout << "\t vxm_gather: Skipping out of computation with source index "
-							<< source_index << " since it does not contain a nonzero\n";
+						std::cout << "\t vxm_gather: Skipping out of computation with source "
+							<< "index " << source_index << " since it does not contain a nonzero\n";
 #endif
 						continue;
 					}
 				}
 				// get nonzero
-				typedef typename std::conditional< left_handed, typename Multiplication::D2, typename Multiplication::D1 >::type RingNonzeroType;
-				const RingNonzeroType nonzero = matrix.template getValue( k, One< RingNonzeroType >::value() );
+				typedef typename std::conditional<
+					left_handed, typename Multiplication::D2, typename Multiplication::D1
+				>::type RingNonzeroType;
+				const RingNonzeroType nonzero = matrix.template
+					getValue( k, One< RingNonzeroType >::value() );
 #ifdef _DEBUG
-				std::cout << "\t vxm_gather: interpreted nonzero is " << nonzero << ", which is the " << k << "-th nonzero and has source index " << source_index << "\n";
+				std::cout << "\t vxm_gather: interpreted nonzero is " << nonzero << ", "
+					<< "which is the " << k << "-th nonzero and has source index "
+					<< source_index << "\n";
 #endif
 				// check if we use source element or whether we use its index value instead
-				typedef typename std::conditional< left_handed, typename Multiplication::D1, typename Multiplication::D2 >::type SourceType;
-				const SourceType apply_source = internal::ValueOrIndex< descr, SourceType, InputType1 >::getFromArray( source, src_local_to_global, source_index );
+				typedef typename std::conditional<
+					left_handed, typename Multiplication::D1, typename Multiplication::D2
+				>::type SourceType;
+				const SourceType apply_source = internal::ValueOrIndex<
+					descr, SourceType, InputType1
+				>::getFromArray( source, src_local_to_global, source_index );
 #ifdef _DEBUG
 				if( use_index ) {
 					std::cout << "\t vxm_gather (use_index descriptor): "
@@ -372,18 +447,24 @@ namespace grb {
 				std::cout << " output, " << nonzero << ", "  << source << ", * )\n";
 #endif
 				//multiply
-				internal::leftOrRightHandedMul< left_handed, typename Multiplication::D3, SourceType, RingNonzeroType, Multiplication >::mul( result, apply_source, nonzero, mul );
+				internal::leftOrRightHandedMul<
+					left_handed,
+					typename Multiplication::D3, SourceType, RingNonzeroType,
+					Multiplication
+				>::mul( result, apply_source, nonzero, mul );
 #ifdef _DEBUG
 				std::cout << "\t vxm_gather: output (this nonzero) = " << result << "\n";
 #endif
 
 				// accumulate
 #ifdef _DEBUG
-				std::cout << "\t vxm_gather: foldr( " << result << ", " << output << ", + );\n";
+				std::cout << "\t vxm_gather: foldr( " << result << ", " << output
+					<< ", + );\n";
 #endif
 				rc = foldr( result, output, add.getOperator() );
 #ifdef _DEBUG
-				std::cout << "\t vxm_gather: output (sum at destination) = " << output << "\n";
+				std::cout << "\t vxm_gather: output (sum at destination) = " << output
+					<< "\n";
 #endif
 				set = true;
 				// sanity check (but apply cannot fail)
@@ -392,16 +473,21 @@ namespace grb {
 
 #ifdef _DEBUG
 			if( set ) {
-				std::cout << "\t vxm_gather: local contribution to this output element at index "
-					<< destination_index << " will be " << output
-					<< " and this corresponds to an explicitly set nonzero.\n";
+				std::cout << "\t vxm_gather: local contribution to this output element at "
+					<< "index " << destination_index << " will be " << output << " "
+					<< "and this corresponds to an explicitly set nonzero.\n";
 			} else {
-				std::cout << "\t vxm_gather: local contribution to this output element at index "
-					<< destination_index << " will be " << output << " and this is an unset value.\n";
-				if( internal::getCoordinates( destination_vector ).assigned( destination_index ) ) {
-					std::cout << "\t(old value " << destination_element << " will remain unmodified.)\n";
+				std::cout << "\t vxm_gather: local contribution to this output element at "
+					<< "index " << destination_index << " will be " << output << " and this "
+					<< "is an unset value.\n";
+				if( internal::getCoordinates( destination_vector ).assigned(
+					destination_index )
+				) {
+					std::cout << "\t(old value " << destination_element << " will remain "
+						<< "unmodified.)\n";
 				} else {
-					std::cout << "\t(no old value existed so the output vector will remain unset at this index.)\n";
+					std::cout << "\t(no old value existed so the output vector will remain "
+						<< "unset at this index.)\n";
 				}
 			}
 #endif
@@ -411,16 +497,21 @@ namespace grb {
 				std::cout << "\taccumulating " << output << " into output vector...\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				const bool was_already_assigned = internal::getCoordinates( destination_vector ).asyncAssign( destination_index, local_update );
-				if( ! was_already_assigned ) {
+				const bool was_already_assigned = internal::getCoordinates(
+					destination_vector
+				).asyncAssign( destination_index, local_update );
+				if( !was_already_assigned ) {
 					(void)asyncAssigns++;
 				}
 #else
-				const bool was_already_assigned = internal::getCoordinates( destination_vector ).assign( destination_index );
+				const bool was_already_assigned = internal::getCoordinates(
+						destination_vector
+					).assign( destination_index );
 #endif
 				if( dense_hint || was_already_assigned ) {
 #ifdef _DEBUG
-					std::cout << "\tfoldl( " << destination_element << ", " << output << ", add.getOperator() );, destination_element = ";
+					std::cout << "\tfoldl( " << destination_element << ", " << output << ", "
+					       << "add.getOperator() );, destination_element = ";
 #endif
 					rc = foldl( destination_element, output, add.getOperator() );
 #ifdef _DEBUG
@@ -428,8 +519,9 @@ namespace grb {
 #endif
 				} else {
 #ifdef _DEBUG
-					std::cout << "\toutput vector element was previously not set. Old (possibly uninitialised value) "
-						  << destination_element << " will now be set to " << output << ", result (after, possibly, casting): ";
+					std::cout << "\toutput vector element was previously not set. Old "
+						<< "(possibly uninitialised value) " << destination_element << " will "
+						<< "now be set to " << output << ", result (after, possibly, casting): ";
 #endif
 					destination_element = static_cast< IOType >( output );
 #ifdef _DEBUG
@@ -503,21 +595,16 @@ namespace grb {
 		 * both CRS and CCS inputs. Type checking, dimension checking, etc. should
 		 * all be done by the caller function.
 		 */
-		template< Descriptor descr,
-			bool input_dense,
-			bool output_dense,
-			bool masked,
-			bool left_handed,
+		template<
+			Descriptor descr,
+			bool input_dense, bool output_dense,
+			bool masked, bool left_handed,
 			bool using_semiring,
 			template< typename > class One,
 			typename IOType,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename RowColType,
-			typename NonzeroType,
+			class AdditiveMonoid, class Multiplication,
+			typename InputType1, typename InputType2, typename InputType3,
+			typename RowColType, typename NonzeroType,
 			typename Coords
 		>
 		inline void vxm_inner_kernel_scatter( RC &rc,
@@ -527,7 +614,8 @@ namespace grb {
 			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_index,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType >
+				&matrix,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const AdditiveMonoid &add,
@@ -542,15 +630,21 @@ namespace grb {
 			(void) source_vector;
 #endif
 
-
 			// mask did not fall through, so get current element
-			typedef typename std::conditional< left_handed, typename Multiplication::D1, typename Multiplication::D2 >::type SourceType;
-			const SourceType input_element = internal::ValueOrIndex< descr, SourceType, InputType1 >::getFromArray( source, src_local_to_global, source_index );
+			typedef typename std::conditional<
+				left_handed, typename Multiplication::D1, typename Multiplication::D2
+			>::type SourceType;
+			const SourceType input_element = internal::ValueOrIndex<
+				descr, SourceType, InputType1
+			>::getFromArray( source, src_local_to_global, source_index );
 
 			// if we need to add identity, do so first:
 			if( add_identity ) {
 				internal::addIdentityDuringMV<
-					reference, using_semiring, output_dense, left_handed, AdditiveMonoid, Multiplication, One, IOType, InputType1, SourceType, Coords
+					reference, using_semiring,
+					output_dense, left_handed,
+					AdditiveMonoid, Multiplication, One,
+					IOType, InputType1, SourceType, Coords
 				>::apply(
 					destination_vector, destination, destination_range,
 					source_index,
@@ -561,49 +655,79 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
-			std::cout << "vxm_scatter, source index " << source_index << " has " << ( matrix.col_start[ source_index + 1 ] - matrix.col_start[ source_index ] ) << " nonzeroes.\n";
+			std::cout << "vxm_scatter, source index " << source_index << " has "
+				<< (matrix.col_start[ source_index + 1 ] - matrix.col_start[ source_index ])
+			       	<< " nonzeroes.\n";
 #endif
 			// handle row or column at source_index
-			for( size_t k = matrix.col_start[ source_index ]; rc == SUCCESS && k < static_cast< size_t >( matrix.col_start[ source_index + 1 ] ); ++k ) {
+			for(
+				size_t k = matrix.col_start[ source_index ];
+				rc == SUCCESS && k < static_cast< size_t >(
+					matrix.col_start[ source_index + 1 ]
+				);
+				++k
+			) {
 				// get output index
 				const size_t destination_index = matrix.row_index[ k ];
 				// check mask
 				if( masked ) {
-					if( ! internal::getCoordinates( mask_vector ).template mask< descr >( destination_index, mask ) ) {
+					if( !internal::getCoordinates( mask_vector ).template mask< descr >(
+						destination_index, mask )
+					) {
 #ifdef _DEBUG
-						std::cout << "\t output to index " << destination_index << " ignored due to output masking\n";
+						std::cout << "\t output to index " << destination_index
+							<< " ignored due to output masking\n";
 #endif
 						continue;
 					}
 				}
 				// get nonzero
-				typedef typename std::conditional< left_handed, typename Multiplication::D2, typename Multiplication::D1 >::type RingNonzeroType;
-				const RingNonzeroType nonzero = matrix.template getValue( k, One< RingNonzeroType >::value() );
+				typedef typename std::conditional<
+					left_handed, typename Multiplication::D2, typename Multiplication::D1
+				>::type RingNonzeroType;
+				const RingNonzeroType nonzero = matrix.template
+					getValue( k, One< RingNonzeroType >::value() );
 
 				// do multiply
-				typename Multiplication::D3 result = add.template getIdentity< typename Multiplication::D3 >();
+				typename Multiplication::D3 result = add.template
+					getIdentity< typename Multiplication::D3 >();
 #ifdef _DEBUG
-				std::cout << "\t multiplying input vector element " << input_element << " with matrix nonzero " << nonzero << "...\n";
+				std::cout << "\t multiplying input vector element " << input_element
+					<< " with matrix nonzero " << nonzero << "...\n";
 #endif
-				internal::leftOrRightHandedMul< left_handed, typename Multiplication::D3, SourceType, RingNonzeroType, Multiplication >::mul( result, input_element, nonzero, mul );
+				internal::leftOrRightHandedMul<
+					left_handed,
+					typename Multiplication::D3, SourceType, RingNonzeroType,
+					Multiplication
+				>::mul( result, input_element, nonzero, mul );
 
 				// do add
 #ifdef _DEBUG
-				std::cout << "\t adding the result " << result << " to the output vector at index " << destination_index << "\n";
+				std::cout << "\t adding the result " << result
+					<< " to the output vector at index " << destination_index << "\n";
 #endif
-				if( rc == SUCCESS && internal::getCoordinates( destination_vector ).assign( destination_index ) ) {
+				if( rc == SUCCESS && internal::getCoordinates(
+						destination_vector
+					).assign( destination_index )
+				) {
 #ifdef _DEBUG
-					std::cout << "\t the result will be accumulated into the pre-existing value of " << destination[ destination_index ] << " which after accumulation now equals ";
+					std::cout << "\t the result will be accumulated into the pre-existing "
+						<< "value of " << destination[ destination_index ] << " which after "
+						<< "accumulation now equals ";
 #endif
 					rc = foldl( destination[ destination_index ], result, add.getOperator() );
 #ifdef _DEBUG
-					std::cout << destination[ destination_index ] << " (at index " << destination_index << ")\n";
+					std::cout << destination[ destination_index ] << " (at index "
+						<< destination_index << ")\n";
 #endif
 				} else {
 #ifdef _DEBUG
-					std::cout << "\t since no entry existed at this position previously, destination[ " << destination_index << " ] now equals " << result << "\n";
+					std::cout << "\t since no entry existed at this position previously, "
+						<< "destination[ " << destination_index << " ] now equals "
+						<< result << "\n";
 #endif
-					destination[ destination_index ] = static_cast< typename AdditiveMonoid::D3 >( result );
+					destination[ destination_index ] =
+						static_cast< typename AdditiveMonoid::D3 >( result );
 				}
 			}
 		}
@@ -697,50 +821,62 @@ namespace grb {
 		 *       above performance semantics cannot be met.
 		 */
 		template< Descriptor descr,
-			bool masked,
-			bool input_masked,
-			bool left_handed,
-			bool using_semiring,
+			bool masked, bool input_masked,
+			bool left_handed, bool using_semiring,
 			template< typename > class One,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
-		RC vxm_generic( Vector< IOType, reference, Coords > & u,
-			const Vector< InputType3, reference, Coords > & mask,
-			const Vector< InputType1, reference, Coords > & v,
-			const Vector< InputType4, reference, Coords > & v_mask,
-			const Matrix< InputType2, reference > & A,
-			const AdditiveMonoid & add,
-			const Multiplication & mul,
-			const std::function< size_t( size_t ) > & row_l2g,
-			const std::function< size_t( size_t ) > & row_g2l,
-			const std::function< size_t( size_t ) > & col_l2g,
-			const std::function< size_t( size_t ) > & col_g2l ) {
+			class AdditiveMonoid, class Multiplication,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
+		RC vxm_generic(
+			Vector< IOType, reference, Coords > &u,
+			const Vector< InputType3, reference, Coords > &mask,
+			const Vector< InputType1, reference, Coords > &v,
+			const Vector< InputType4, reference, Coords > &v_mask,
+			const Matrix< InputType2, reference > &A,
+			const AdditiveMonoid &add,
+			const Multiplication &mul,
+			const Phase &phase,
+			const std::function< size_t( size_t ) > &row_l2g,
+			const std::function< size_t( size_t ) > &row_g2l,
+			const std::function< size_t( size_t ) > &col_l2g,
+			const std::function< size_t( size_t ) > &col_g2l
+		) {
 			// type sanity checking
-			NO_CAST_ASSERT(
-				( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || std::is_same< InputType3, bool >::value ), "vxm (any variant)", "Mask type is not boolean" );
-			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || ! left_handed || std::is_same< InputType1, typename Multiplication::D1 >::value ),
-				"vxm (any variant)",
+			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE ||
+					!(descr & descriptors::no_casting) ||
+					std::is_same< InputType3, bool >::value
+				), "vxm (any variant)",
+				"Mask type is not boolean" );
+			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE ||
+					!(descr & descriptors::no_casting) ||
+					!left_handed ||
+					std::is_same< InputType1, typename Multiplication::D1 >::value
+				), "vxm (any variant)",
 				"Input vector type does not match multiplicative operator first "
 				"input domain" );
-			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || left_handed || std::is_same< InputType2, typename Multiplication::D1 >::value ),
-				"vxm (any variant)",
+			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE ||
+					!(descr & descriptors::no_casting) ||
+					left_handed ||
+					std::is_same< InputType2, typename Multiplication::D1 >::value
+				), "vxm (any variant)",
 				"Input vector type does not match multiplicative operator second "
 				"input domain" );
-			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || ! left_handed || std::is_same< InputType2, typename Multiplication::D2 >::value ),
-				"vxm (any variant)",
+			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE ||
+					!(descr & descriptors::no_casting) ||
+					!left_handed ||
+					std::is_same< InputType2, typename Multiplication::D2 >::value
+				), "vxm (any variant)",
 				"Input matrix type does not match multiplicative operator second "
 				"input domain" );
-			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE || ! ( descr & descriptors::no_casting ) || left_handed || std::is_same< InputType1, typename Multiplication::D2 >::value ),
-				"vxm (any variant)",
+			NO_CAST_ASSERT( ( descr > internal::MAX_DESCRIPTOR_VALUE ||
+					!(descr & descriptors::no_casting) ||
+					left_handed ||
+					std::is_same< InputType1, typename Multiplication::D2 >::value
+				), "vxm (any variant)",
 				"Input matrix type does not match multiplicative operator first "
 				"input domain" );
-
 #ifdef _DEBUG
 			const auto s = spmd< reference >::pid();
 			std::cout << s << ": reference vxm called with a " << descriptors::toString( descr ) << "\n";
@@ -758,74 +894,103 @@ namespace grb {
 			constexpr bool dense_hint = descr & descriptors::dense;
 
 			// check for dimension mismatch
-			if( ( transposed && ( n != ncols( A ) || m != nrows( A ) ) ) || ( ! transposed && ( n != nrows( A ) || m != ncols( A ) ) ) ) {
+			if( ( transposed && ( n != ncols( A ) || m != nrows( A ) ) ) ||
+				( ! transposed && ( n != nrows( A ) || m != ncols( A ) ) )
+			) {
 #ifdef _DEBUG
-				(void)printf( "Mismatch of columns (%zd vs. %zd) or rows (%zd "
-							  "vs. %zd) with transposed value %d\n",
-					n, ncols( A ), m, nrows( A ), (int)transposed );
+				std::cout << "Mismatch of columns ( " << n << " vs. " << ncols( A )
+					<< " ) or rows ( " << m << " vs. " << nrows( A ) << " ) with "
+					<< "transposed value " << ((int)transposed) << "\n";
 #endif
 				return MISMATCH;
 			}
 
 			// check mask
 			if( masked ) {
-				if( ( transposed && internal::getCoordinates( mask ).size() != nrows( A ) ) || ( ! transposed && internal::getCoordinates( mask ).size() != ncols( A ) ) ) {
+				if( (transposed && internal::getCoordinates( mask ).size() != nrows( A )) ||
+					( !transposed && internal::getCoordinates( mask ).size() != ncols( A ) )
+				) {
 #ifdef _DEBUG
-					(void)printf( "Mismatch of mask size (%zd) versus matrix "
-								  "rows or columns (%zd or %zd) with "
-								  "transposed value %d\n",
-						internal::getCoordinates( mask ).size(), nrows( A ), ncols( A ), (int)transposed );
+					std::cout << "Mismatch of mask size ( "
+						<< internal::getCoordinates( mask ).size() << " ) versus matrix rows "
+						<< "or columns ( " << nrows( A ) << " or " << ncols( A ) << " with "
+						<< "transposed value " << ((int)transposed) << "\n";
 #endif
 					return MISMATCH;
 				}
 			}
 
+			// handle resize phase
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+
 			// get raw pointers
+			assert( phase == EXECUTE );
 			const InputType1 * __restrict__ const x = internal::getRaw( v );
 			const InputType3 * __restrict__ const z = internal::getRaw( mask );
 			const InputType4 * __restrict__ const vm = internal::getRaw( v_mask );
 			IOType * __restrict__ const y = internal::getRaw( u );
 
 			// first handle trivial cases
-			if( internal::getCoordinates( v ).nonzeroes() == 0 || ncols( A ) == 0 || nrows( A ) == 0 || nnz( A ) == 0 ||
-				( masked && internal::getCoordinates( mask ).nonzeroes() == 0 && ! ( descr & descriptors::invert_mask ) ) ||
-				( input_masked && internal::getCoordinates( v_mask ).nonzeroes() == 0 && ! ( descr & descriptors::invert_mask ) ) ) {
+			if( internal::getCoordinates( v ).nonzeroes() == 0 ||
+				ncols( A ) == 0 || nrows( A ) == 0 || nnz( A ) == 0 || (
+					masked && internal::getCoordinates( mask ).nonzeroes() == 0 &&
+					!(descr & descriptors::invert_mask)
+				) || (
+					input_masked && internal::getCoordinates( v_mask ).nonzeroes() == 0 &&
+					!(descr & descriptors::invert_mask)
+				)
+			) {
 				// then the output must be empty
 				for( size_t i = 0; i < m; ++i ) {
 					if( internal::getCoordinates( u ).assigned( i ) ) {
-						if( foldl( y[ i ], add.template getIdentity< IOType >(), add.getOperator() ) != SUCCESS ) {
+						if(
+							foldl( y[ i ],
+							add.template getIdentity< IOType >(), add.getOperator()
+						) != SUCCESS ) {
 							return PANIC;
 						}
 					} else if( descr & descriptors::explicit_zero ) {
-						if( setElement( u, add.template getIdentity< IOType >(), i ) != SUCCESS ) {
+						if( setElement(
+							u,
+							add.template getIdentity< IOType >(),
+							i
+						) != SUCCESS ) {
 							return PANIC;
 						}
 					}
 				}
 #ifdef _DEBUG
-				std::cout << s
-						  << ": trivial operation requested; exiting without "
-							 "any ops. Input nonzeroes: "
-						  << internal::getCoordinates( v ).nonzeroes() << ", matrix size " << nrows( A ) << " by " << ncols( A ) << " with " << nnz( A ) << " nonzeroes.\n";
+				std::cout << s << ": trivial operation requested; exiting without any ops. "
+					<< "Input nonzeroes: " << internal::getCoordinates( v ).nonzeroes()
+					<< ", matrix size " << nrows( A ) << " by " << ncols( A ) << " with "
+					<< nnz( A ) << " nonzeroes.\n";
 #endif
 				// done
 				return SUCCESS;
 			}
 
 			// check for illegal arguments
-			if( ! ( descr & descriptors::safe_overlap ) && reinterpret_cast< const void * >( y ) == reinterpret_cast< const void * >( x ) ) {
+			if( !(descr & descriptors::safe_overlap) &&
+				reinterpret_cast< const void * >( y ) ==
+					reinterpret_cast< const void * >( x )
+			) {
 				std::cerr << "Warning: grb::internal::vxm_generic called with "
-							 "overlapping input and output vectors.\n";
+					"overlapping input and output vectors.\n";
 				return OVERLAP;
 			}
 			/*if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
-			    std::cerr << "Warning: grb::internal::vxm_generic called with overlapping mask and output vectors.\n";
-			    return OVERLAP;
+				std::cerr << "Warning: grb::internal::vxm_generic called with "
+					"overlapping mask and output vectors.\n";
+				return OVERLAP;
 			}*/
 
 #ifdef _DEBUG
-			std::cout << s << ": performing SpMV / SpMSpV using an " << nrows( A ) << " by " << ncols( A ) << " matrix holding " << nnz( A ) << " nonzeroes. The input vector holds "
-					  << internal::getCoordinates( v ).nonzeroes() << " nonzeroes.\n";
+			std::cout << s << ": performing SpMV / SpMSpV using an " << nrows( A )
+				<< " by " << ncols( A ) << " matrix holding " << nnz( A ) << " nonzeroes. "
+				<< "The input vector holds " << internal::getCoordinates( v ).nonzeroes()
+				<< " nonzeroes.\n";
 #endif
 
 			// whether the input mask should be the container used for
@@ -835,22 +1000,32 @@ namespace grb {
 			// Abbreviations:
 			// - emiim: effective mask is input mask
 			// -   eim: effective input mask
-			const bool emiim = input_masked ? ( ( descr & descriptors::invert_mask ) || nnz( v ) < nnz( v_mask ) ? false : true ) : false;
-			const auto & eim = emiim ? internal::getCoordinates( v_mask ) : internal::getCoordinates( v );
+			const bool emiim = input_masked ? (
+					( descr & descriptors::invert_mask ) || nnz( v ) < nnz( v_mask ) ?
+					false :
+					true
+				) :
+				false;
+			const auto &eim = emiim ?
+				internal::getCoordinates( v_mask ) :
+				internal::getCoordinates( v );
 #ifdef _DEBUG
 			if( emiim ) {
 				std::cout << s << ": effective mask is input mask\n";
 			}
 #endif
 
-			// global return code. This will be updated by each thread from within a critical section.
+			// global return code. This will be updated by each thread from within a
+			// critical section.
 			RC global_rc = SUCCESS;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 			#pragma omp parallel
 			{
-				internal::Coordinates< reference >::Update local_update = internal::getCoordinates( u ).EMPTY_UPDATE();
-				const size_t maxAsyncAssigns = internal::getCoordinates( u ).maxAsyncAssigns();
+				internal::Coordinates< reference >::Update local_update =
+					internal::getCoordinates( u ).EMPTY_UPDATE();
+				const size_t maxAsyncAssigns =
+					internal::getCoordinates( u ).maxAsyncAssigns();
 				size_t asyncAssigns = 0;
 #endif
 				// local return code
@@ -865,7 +1040,9 @@ namespace grb {
 					// parallelised without major pre-processing (or atomics), both of which
 					// are significant overheads. We only choose it if we expect a sequential
 					// execution to be faster compared to a parallel one.
-					const size_t CRS_loop_size = masked ? std::min( nrows( A ), 2 * nnz( mask ) ) : nrows( A );
+					const size_t CRS_loop_size = masked ?
+						std::min( nrows( A ), 2 * nnz( mask ) ) :
+						nrows( A );
 					const size_t CCS_seq_loop_size = !dense_hint ?
 			                        std::min( ncols( A ), (
 							input_masked && !( descr & descriptors::invert_mask ) ?
@@ -875,9 +1052,11 @@ namespace grb {
 						) :
 			                        ncols( A );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-					// This variant plays it safe and always revert to a parallel mechanism, even if we could mask on input
+					// This variant plays it safe and always revert to a parallel mechanism,
+					// even if we could mask on input
 					// const size_t CCS_loop_size = CRS_loop_size + 1;
-					// This variant modifies the sequential loop size to be P times more expensive
+					// This variant modifies the sequential loop size to be P times more
+					// expensive
 					const size_t CCS_loop_size = omp_get_num_threads() * CCS_seq_loop_size;
 #else
 					const size_t CCS_loop_size = CCS_seq_loop_size;
@@ -888,7 +1067,7 @@ namespace grb {
 						#pragma omp single
 						{
 #endif
-							if( ! input_masked && ( dense_hint || nnz( v ) == ncols( A ) ) ) {
+							if( !input_masked && (dense_hint || nnz( v ) == ncols( A )) ) {
 								// start u=vA^T using CCS
 #ifdef _DEBUG
 								std::cout << s << ": in full CCS variant (scatter)\n";
@@ -896,55 +1075,71 @@ namespace grb {
 								// even though transposed, use CCS representation.
 								// To avoid write conflicts, we keep things sequential.
 								for( size_t j = 0; rc == SUCCESS && j < ncols( A ); ++j ) {
-									if( input_masked && !internal::getCoordinates( v_mask ).template mask< descr >( j, vm ) ) {
+									if( input_masked &&
+										!internal::getCoordinates( v_mask ).template mask< descr >( j, vm )
+									) {
 #ifdef _DEBUG
-										std::cout << "\t mask at index " << j << " evaluates false; skipping\n";
+										std::cout << "\t mask at index " << j << " evaluates false; "
+											<< "skipping\n";
 #endif
 										continue;
 									}
 									if( !internal::getCoordinates( v ).assigned( j ) ) {
 #ifdef _DEBUG
-										std::cout << "\t no input vector element at index " << j << "; skipping\n";
+										std::cout << "\t no input vector element at index " << j << "; "
+											<< "skipping\n";
 #endif
 										continue;
 									}
 #ifdef _DEBUG
 									std::cout << "\t processing index " << j << "\n";
 #endif
-									vxm_inner_kernel_scatter< descr, dense_hint, dense_hint, masked, left_handed, using_semiring, One >(
-										rc, u, y, nrows( A ), v, x, j, internal::getCCS( A ), mask, z, add, mul, col_l2g, row_g2l
+									vxm_inner_kernel_scatter<
+										descr, dense_hint, dense_hint, masked, left_handed, using_semiring,
+										One
+									>(
+										rc,
+										u, y, nrows( A ),
+										v, x, j, internal::getCCS( A ),
+										mask, z,
+										add, mul,
+										col_l2g, row_g2l
 									);
 								}
 							} else {
 #ifdef _DEBUG
-								std::cout << s
-										  << ": in input-masked CCS variant "
-											 "(scatter)\n";
+								std::cout << s << ": in input-masked CCS variant (scatter)\n";
 #endif
 								// we know the exact sparsity pattern of the input vector
 								// use it to call the inner kernel on those columns of A only
 								for( size_t k = 0; k < eim.nonzeroes(); ++k ) {
 									const size_t j = eim.index( k );
-									if( input_masked && !internal::getCoordinates( v_mask ).template mask< descr >( j, vm ) ) {
+									if( input_masked && !internal::getCoordinates( v_mask ).template
+										mask< descr >( j, vm )
+									) {
 #ifdef _DEBUG
-										std::cout << s << "\t: input index " << j
-											<< " will not be processed due to being unmasked.\n";
+										std::cout << s << "\t: input index " << j << " will not be processed "
+											<< "due to being unmasked.\n";
 #endif
 										continue;
 									}
-									if( (!input_masked || emiim) && !internal::getCoordinates( v ).assigned( j ) ) {
+									if( (!input_masked || emiim) &&
+										!internal::getCoordinates( v ).assigned( j )
+									) {
 #ifdef _DEBUG
-										std::cout << s << "\t: input index " << j
-											<< " will not be processed due to having no corresponding "
-											<< "input vector element.\n";
+										std::cout << s << "\t: input index " << j << " will not be processed "
+											<< "due to having no corresponding input vector element.\n";
 #endif
 										continue;
 									}
 #ifdef _DEBUG
 									std::cout << s << ": processing input vector element " << j << "\n";
 #endif
-									vxm_inner_kernel_scatter< descr, false, dense_hint, masked, left_handed, using_semiring, One >(
-										rc, u, y, nrows( A ), v, x, j, internal::getCCS( A ), mask, z, add, mul, col_l2g, row_g2l
+									vxm_inner_kernel_scatter<
+										descr, false, dense_hint, masked, left_handed, using_semiring, One
+									>(
+										rc, u, y, nrows( A ), v, x, j, internal::getCCS( A ), mask, z,
+										add, mul, col_l2g, row_g2l
 									);
 								}
 							}
@@ -956,21 +1151,26 @@ namespace grb {
 						// start u=vA^T using CRS
 						// matrix = &(A.CRS);
 						// TODO internal issue #193
-						if( ! masked || ( descr & descriptors::invert_mask ) ) {
+						if( !masked || (descr & descriptors::invert_mask) ) {
 							// loop over all columns of the input matrix (can be done in parallel):
 #ifdef _DEBUG
 							std::cout << s << ": in full CRS variant (gather)\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) \
-		nowait
+							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 							for( size_t i = 0; i < nrows( A ); ++i ) {
-								vxm_inner_kernel_gather< descr, masked, input_masked, left_handed, One >( rc,
+								vxm_inner_kernel_gather<
+									descr, masked, input_masked, left_handed, One
+								>(
+									rc,
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 									local_update, asyncAssigns,
 #endif
-									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm, add, mul, row_l2g, col_l2g, col_g2l );
+									u, y[ i ], i, v, x,
+									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									add, mul, row_l2g, col_l2g, col_g2l
+								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
@@ -982,26 +1182,39 @@ namespace grb {
 							}
 						} else {
 #ifdef _DEBUG
-							std::cout << s << ": in masked CRS variant (gather). Mask has " << internal::getCoordinates( mask ).nonzeroes() << " nonzeroes and size "
-									  << internal::getCoordinates( mask ).size() << ":\n";
-							for( size_t k = 0; k < internal::getCoordinates( mask ).nonzeroes(); ++k ) {
+							std::cout << s << ": in masked CRS variant (gather). Mask has "
+								<< internal::getCoordinates( mask ).nonzeroes()
+								<< " nonzeroes and size " << internal::getCoordinates( mask ).size()
+								<< ":\n";
+							for(
+								size_t k = 0;
+								k < internal::getCoordinates( mask ).nonzeroes();
+								++k
+							) {
 								std::cout << " " << internal::getCoordinates( mask ).index( k );
 							}
 							std::cout << "\n";
 #endif
 							// loop only over the nonzero masks (can still be done in parallel!)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) \
-		nowait
+							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
-							for( size_t k = 0; k < internal::getCoordinates( mask ).nonzeroes(); ++k ) {
+							for(
+								size_t k = 0;
+								k < internal::getCoordinates( mask ).nonzeroes();
+								++k
+							) {
 								const size_t i = internal::getCoordinates( mask ).index( k );
 								assert( i < nrows( A ) );
-								vxm_inner_kernel_gather< descr, false, input_masked, left_handed, One >( rc,
+								vxm_inner_kernel_gather< descr, false, input_masked, left_handed, One >(
+									rc,
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 									local_update, asyncAssigns,
 #endif
-									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm, add, mul, row_l2g, col_l2g, col_g2l );
+									u, y[ i ], i, v, x,
+									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									add, mul, row_l2g, col_l2g, col_g2l
+								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
@@ -1020,15 +1233,22 @@ namespace grb {
 					std::cout << s << ": in u=vA=A^Tv variant\n";
 #endif
 					// start computing u=vA
-					const size_t CCS_loop_size = masked ? std::min( ncols( A ), 2 * nnz( mask ) ) : ncols( A );
+					const size_t CCS_loop_size = masked ?
+						std::min( ncols( A ), 2 * nnz( mask ) ) :
+						ncols( A );
 					const size_t CRS_seq_loop_size = !dense_hint ?
-			                        std::min( nrows( A ),
-							( input_masked && !( descr & descriptors::invert_mask ) ? 2 * std::min( nnz( v_mask ), nnz( v ) ) : 2 * nnz( v ) )
-						) : nrows( A );
+			                        std::min( nrows( A ), (
+							input_masked &&
+							!( descr & descriptors::invert_mask ) ?
+								2 * std::min( nnz( v_mask ), nnz( v ) ) :
+								2 * nnz( v )
+						) ) :
+						nrows( A );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 					// This variant ensures always choosing the parallel variant
 					// const size_t CRS_loop_size = CCS_loop_size + 1;
-					// This variant estimates this non-parallel variant's cost at a factor P more
+					// This variant estimates this non-parallel variant's cost at a factor P
+					// more
 					const size_t CRS_loop_size = omp_get_num_threads() * CRS_seq_loop_size;
 #else
 					const size_t CRS_loop_size = CRS_seq_loop_size;
@@ -1046,8 +1266,8 @@ namespace grb {
 							// start u=vA using CRS, sequential implementation only
 							if( !dense_hint && nnz( v ) < nrows( A ) ) {
 #ifdef _DEBUG
-								std::cout << "\t looping over nonzeroes of the input vector or mask (whichever has fewer nonzeroes), "
-									<< "calling scatter for each\n";
+								std::cout << "\t looping over nonzeroes of the input vector or mask "
+									<< "(whichever has fewer nonzeroes), calling scatter for each\n";
 #endif
 								// loop over nonzeroes of v only
 								for( size_t k = 0; rc == SUCCESS && k < eim.nonzeroes(); ++k ) {
@@ -1055,46 +1275,66 @@ namespace grb {
 									if( input_masked ) {
 										if( !eim.template mask< descr >( i, vm ) ) {
 #ifdef _DEBUG
-											std::cout << "\t mask at position " << i << " evaluates false; skipping\n";
+											std::cout << "\t mask at position " << i
+												<< " evaluates false; skipping\n";
 #endif
 											continue;
 										}
 										if( emiim && !internal::getCoordinates( v ).assigned( i ) ) {
 #ifdef _DEBUG
-											std::cout << "\t input vector has no element at position " << i << "; skipping\n";
+											std::cout << "\t input vector has no element at position " << i
+												<< "; skipping\n";
 #endif
 											continue;
 										}
 									}
 #ifdef _DEBUG
-									std::cout << "\t processing input vector element at position " << i << "\n";
+									std::cout << "\t processing input vector element at position " << i
+										<< "\n";
 #endif
-									vxm_inner_kernel_scatter< descr, false, dense_hint, masked, left_handed, using_semiring, One >(
-										rc, u, y, ncols( A ), v, x, i, internal::getCRS( A ), mask, z, add, mul, row_l2g, col_g2l );
+									vxm_inner_kernel_scatter<
+										descr, false, dense_hint, masked, left_handed, using_semiring, One
+									>(
+										rc,
+										u, y, ncols( A ), v, x, i,
+										internal::getCRS( A ), mask, z,
+										add, mul, row_l2g, col_g2l
+									);
 								}
 							} else {
 								// use straight for-loop over rows of A
 #ifdef _DEBUG
-								std::cout << "\t looping over rows of the input matrix, calling scatter for each\n";
+								std::cout << "\t looping over rows of the input matrix, "
+									<< "calling scatter for each\n";
 #endif
 								for( size_t i = 0; rc == SUCCESS && i < nrows( A ); ++i ) {
-									if( input_masked && !internal::getCoordinates( v_mask ).template mask< descr >( i, vm ) ) {
+									if( input_masked && !internal::getCoordinates( v_mask ).template
+										mask< descr >( i, vm )
+									) {
 #ifdef _DEBUG
-										std::cout << "\t input mask evaluates false at position " << i << "; skipping\n";
+										std::cout << "\t input mask evaluates false at position " << i
+											<< "; skipping\n";
 #endif
 										continue;
 									}
 									if( !dense_hint && !internal::getCoordinates( v ).assigned( i ) ) {
 #ifdef _DEBUG
-										std::cout << "\t no input vector entry at position " << i << "; skipping\n";
+										std::cout << "\t no input vector entry at position " << i
+											<< "; skipping\n";
 #endif
 										continue;
 									}
 #ifdef _DEBUG
 									std::cout << "\t processing entry " << i << "\n";
 #endif
-									vxm_inner_kernel_scatter< descr, dense_hint, dense_hint, masked, left_handed, using_semiring, One >(
-										rc, u, y, ncols( A ), v, x, i, internal::getCRS( A ), mask, z, add, mul, row_l2g, col_g2l
+									vxm_inner_kernel_scatter<
+										descr, dense_hint, dense_hint, masked, left_handed, using_semiring,
+										One
+									>(
+										rc,
+										u, y, ncols( A ), v, x, i,
+										internal::getCRS( A ), mask, z,
+										add, mul, row_l2g, col_g2l
 									);
 								}
 							}
@@ -1119,7 +1359,10 @@ namespace grb {
 							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 							for( size_t j = 0; j < ncols( A ); ++j ) {
-								vxm_inner_kernel_gather< descr, masked, input_masked, left_handed, One >( rc,
+								vxm_inner_kernel_gather<
+									descr, masked, input_masked, left_handed, One
+								>(
+									rc,
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 									local_update, asyncAssigns,
 #endif
@@ -1145,16 +1388,25 @@ namespace grb {
 							std::cout << s << ": loop over mask indices\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) \
-		nowait
+							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
-							for( size_t k = 0; k < internal::getCoordinates( mask ).nonzeroes(); ++k ) {
+							for(
+								size_t k = 0;
+								k < internal::getCoordinates( mask ).nonzeroes();
+								++k
+							) {
 								const size_t j = internal::getCoordinates( mask ).index( k );
-								vxm_inner_kernel_gather< descr, masked, input_masked, left_handed, One >( rc,
+								vxm_inner_kernel_gather<
+									descr, masked, input_masked, left_handed, One
+								>(
+									rc,
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 									local_update, asyncAssigns,
 #endif
-									u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ), mask, z, v_mask, vm, add, mul, row_l2g, row_g2l, col_l2g );
+									u, y[ j ], j, v, x,
+									nrows( A ), internal::getCCS( A ), mask, z, v_mask, vm,
+									add, mul, row_l2g, row_g2l, col_l2g
+								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
@@ -1171,7 +1423,7 @@ namespace grb {
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				while( ! internal::getCoordinates( u ).joinUpdate( local_update ) ) {}
+				while( !internal::getCoordinates( u ).joinUpdate( local_update ) ) {}
 #endif
 				if( rc != SUCCESS ) {
 					global_rc = rc;
@@ -1183,47 +1435,67 @@ namespace grb {
 			assert( internal::getCoordinates( u ).nonzeroes() <= m );
 
 #ifdef _DEBUG
-			std::cout << s << ": exiting SpMV / SpMSpV. Output vector contains " << nnz( u ) << " nonzeroes.\n";
-			fflush( stdout );
+			std::cout << s << ": exiting SpMV / SpMSpV. Output vector contains "
+				<< nnz( u ) << " nonzeroes.\n" << std::flush;
 #endif
 
 			// done!
 			return global_rc;
 		}
+
 	} // namespace internal
 
 	/** \internal Delegates to fully masked variant */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Vector< InputType1, reference, Coords > & v,
-		const Matrix< InputType2, reference > & A,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename IOType, typename InputType1,
+		typename InputType2, typename InputType3,
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Vector< InputType1, reference, Coords > &v,
+		const Matrix< InputType2, reference > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, reference, Coords > empty_mask( 0 );
-		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
+		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring, phase );
 	}
 
 	/** \internal Delegates to fully masked variant */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Vector< InputType1, reference, Coords > & v,
-		const Matrix< InputType2, reference > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1,
+		typename InputType2, typename InputType3,
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Vector< InputType1, reference, Coords > &v,
+		const Matrix< InputType2, reference > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!std::is_same< InputType2, void >::value,
+			void
+		>::type * const = nullptr
+	) {
 		const grb::Vector< bool, reference, Coords > empty_mask( 0 );
-		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
+		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul,
+			phase );
 	}
 
 	/** \internal Delegates to vxm_generic. */
@@ -1232,22 +1504,30 @@ namespace grb {
 		bool input_may_be_masked = true,
 		class Ring,
 		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Vector< InputType1, reference, Coords > & v,
-		const Vector< InputType4, reference, Coords > & v_mask,
-		const Matrix< InputType2, reference > & A,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Vector< InputType1, reference, Coords > &v,
+		const Vector< InputType4, reference, Coords > &v_mask,
+		const Matrix< InputType2, reference > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		constexpr bool left_sided = true;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
-			return internal::vxm_generic< descr, true, false, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			return internal::vxm_generic<
+				descr, true, false, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1261,8 +1541,12 @@ namespace grb {
 					return i;
 				} );
 		} else if( input_may_be_masked && size( mask ) == 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< descr, false, true, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			return internal::vxm_generic<
+				descr, false, true, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1275,9 +1559,17 @@ namespace grb {
 				[]( const size_t i ) {
 					return i;
 				} );
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< descr, true, true, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+		} else if( output_may_be_masked &&
+			input_may_be_masked &&
+			size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+				descr, true, true, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1293,8 +1585,12 @@ namespace grb {
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic< descr, false, false, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			return internal::vxm_generic<
+				descr, false, false, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1311,76 +1607,111 @@ namespace grb {
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType1, reference, Coords > & v,
-		const Matrix< InputType2, reference > & A,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC vxm( Vector< IOType, reference, Coords > &u,
+		const Vector< InputType1, reference, Coords > &v,
+		const Matrix< InputType2, reference > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, reference, Coords > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
+		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring,
+			phase );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType1, reference, Coords > & v,
-		const Matrix< InputType2, reference > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator, typename IOType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType1, reference, Coords > &v,
+		const Matrix< InputType2, reference > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value, void
+		>::type * const = nullptr
+	) {
 		const grb::Vector< bool, reference, Coords > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
+		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul,
+			phase );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
-		typename Coords >
-	RC mxv( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Matrix< InputType2, reference > & A,
-		const Vector< InputType1, reference, Coords > & v,
-		const Ring & ring,
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC mxv( Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Matrix< InputType2, reference > &A,
+		const Vector< InputType1, reference, Coords > &v,
+		const Ring &ring,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, reference, Coords > empty_mask( 0 );
-		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
+		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring, phase );
 	}
 
 	/** \internal Delegates to vxm_generic */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
 		class Ring,
 		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords >
-	RC mxv( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Matrix< InputType2, reference > & A,
-		const Vector< InputType1, reference, Coords > & v,
-		const Vector< InputType4, reference, Coords > & v_mask,
-		const Ring & ring,
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords
+	>
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Matrix< InputType2, reference > &A,
+		const Vector< InputType1, reference, Coords > &v,
+		const Vector< InputType4, reference, Coords > &v_mask,
+		const Ring &ring,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		constexpr Descriptor new_descr = descr ^ descriptors::transpose_matrix;
 		constexpr bool left_sided = false;
 		if( output_may_be_masked && ( size( v_mask ) == 0 && size( mask ) > 0 ) ) {
-			return internal::vxm_generic< new_descr, true, false, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			return internal::vxm_generic<
+				new_descr, true, false, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1393,9 +1724,15 @@ namespace grb {
 				[]( const size_t i ) {
 					return i;
 				} );
-		} else if( input_may_be_masked && ( size( mask ) == 0 && size( v_mask ) > 0 ) ) {
-			return internal::vxm_generic< new_descr, false, true, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+		} else if( input_may_be_masked && (
+			size( mask ) == 0 && size( v_mask ) > 0 )
+		) {
+			return internal::vxm_generic<
+				new_descr, false, true, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1408,9 +1745,15 @@ namespace grb {
 				[]( const size_t i ) {
 					return i;
 				} );
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< new_descr, true, true, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+				new_descr, true, true, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1426,8 +1769,12 @@ namespace grb {
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic< new_descr, false, false, left_sided, true, Ring::template One >(
-				u, mask, v, v_mask, A, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			return internal::vxm_generic<
+				new_descr, false, false, left_sided, true, Ring::template One
+			>(
+				u, mask, v, v_mask, A,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+				phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1446,65 +1793,98 @@ namespace grb {
 	/**
 	 * \internal Delegates to fully masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename Coords >
-	RC mxv( Vector< IOType, reference, Coords > & u,
-		const Matrix< InputType2, reference > & A,
-		const Vector< InputType1, reference, Coords > & v,
-		const Ring & ring,
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
+		const Matrix< InputType2, reference > &A,
+		const Vector< InputType1, reference, Coords > &v,
+		const Ring &ring,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, reference, Coords > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
+		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring,
+			phase );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords >
-	RC mxv( Vector< IOType, reference, Coords > & u,
-		const Matrix< InputType2, reference > & A,
-		const Vector< InputType1, reference, Coords > & v,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC mxv( Vector< IOType, reference, Coords > &u,
+		const Matrix< InputType2, reference > &A,
+		const Vector< InputType1, reference, Coords > &v,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value, void
+		>::type * const = nullptr
+	) {
 		const grb::Vector< bool, reference, Coords > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
+		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul,
+			phase );
 	}
 
 	/**
 	 * \internal Delegates to vxm_generic
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
+		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords >
-	RC vxm( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Vector< InputType1, reference, Coords > & v,
-		const Vector< InputType4, reference, Coords > & v_mask,
-		const Matrix< InputType2, reference > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
-		static_assert( !(descr & descriptors::add_identity), "Cannot add an identity if no concept of `one' is known. Suggested fix: use a semiring instead." );
+		typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Vector< InputType1, reference, Coords > &v,
+		const Vector< InputType4, reference, Coords > &v_mask,
+		const Matrix< InputType2, reference > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2, void >::value, void
+		>::type * const = nullptr
+	) {
+		static_assert( !(descr & descriptors::add_identity), "Cannot add an "
+			"identity if no concept of `one' is known. Suggested fix: use a semiring "
+			"instead." );
 		constexpr bool left_sided = true;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
-			return internal::vxm_generic< descr, true, false, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				descr, true, false, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1518,8 +1898,10 @@ namespace grb {
 					return i;
 				} );
 		} else if( input_may_be_masked && size( v_mask ) > 0 && size( mask ) == 0 ) {
-			return internal::vxm_generic< descr, false, true, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				descr, false, true, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1532,9 +1914,13 @@ namespace grb {
 				[]( const size_t i ) {
 					return i;
 				} );
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< descr, true, true, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+				descr, true, true, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1550,8 +1936,10 @@ namespace grb {
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic< descr, false, false, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				descr, false, false, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1570,34 +1958,46 @@ namespace grb {
 	/**
 	 * \internal Delegates to vxm_generic.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
+		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords >
-	RC mxv( Vector< IOType, reference, Coords > & u,
-		const Vector< InputType3, reference, Coords > & mask,
-		const Matrix< InputType2, reference > & A,
-		const Vector< InputType1, reference, Coords > & v,
-		const Vector< InputType4, reference, Coords > & v_mask,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
-		static_assert( !(descr & descriptors::add_identity), "Cannot add an identity if no concept of `1' is known. Suggested fix: use a semiring instead." );
+		typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords
+	>
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
+		const Vector< InputType3, reference, Coords > &mask,
+		const Matrix< InputType2, reference > &A,
+		const Vector< InputType1, reference, Coords > &v,
+		const Vector< InputType4, reference, Coords > &v_mask,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2, void >::value, void
+		>::type * const = nullptr
+	) {
+		static_assert( !(descr & descriptors::add_identity), "Cannot add an identity "
+			"if no concept of `1' is known. Suggested fix: use a semiring "
+			"instead." );
 		constexpr Descriptor new_descr = descr ^ descriptors::transpose_matrix;
 		constexpr bool left_sided = false;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
-			return internal::vxm_generic< new_descr, true, false, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				new_descr, true, false, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1611,8 +2011,10 @@ namespace grb {
 					return i;
 				} );
 		} else if( input_may_be_masked && size( mask ) == 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< new_descr, false, true, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				new_descr, false, true, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1625,9 +2027,13 @@ namespace grb {
 				[]( const size_t i ) {
 					return i;
 				} );
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic< new_descr, true, true, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+				new_descr, true, true, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1643,8 +2049,10 @@ namespace grb {
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic< new_descr, false, false, left_sided, false, AdditiveMonoid::template Identity >(
-				u, mask, v, v_mask, A, add, mul,
+			return internal::vxm_generic<
+				new_descr, false, false, left_sided, false, AdditiveMonoid::template Identity
+			>(
+				u, mask, v, v_mask, A, add, mul, phase,
 				[]( const size_t i ) {
 					return i;
 				},
@@ -1680,7 +2088,9 @@ namespace grb {
 		 */
 		template< typename VType, typename = void >
 		class eWiseLambdaNonzero {
+
 			private:
+
 				typedef typename grb::config::RowIndexType RType;
 				typedef typename grb::config::ColIndexType CType;
 				RType _i;
@@ -1696,20 +2106,35 @@ namespace grb {
 				}
 
 			public:
-				eWiseLambdaNonzero( const RType i, const CType j, const VType &v ) : _i( i ), _j( j ), _v( &v ) {}
-				eWiseLambdaNonzero( const eWiseLambdaNonzero< VType > &other ) : _i( other._i ), _j( other._j ), _v( other._v ) {}
+
+				eWiseLambdaNonzero( const RType i, const CType j, const VType &v ) :
+					_i( i ), _j( j ), _v( &v )
+				{}
+
+				eWiseLambdaNonzero( const eWiseLambdaNonzero< VType > &other ) :
+					_i( other._i ), _j( other._j ), _v( other._v )
+				{}
+
 				eWiseLambdaNonzero( eWiseLambdaNonzero< VType > &&other ) {
 					swap( other );
 				}
-				eWiseLambdaNonzero< VType >& operator=( const eWiseLambdaNonzero< VType >& other ) {
+
+				eWiseLambdaNonzero< VType >& operator=(
+					const eWiseLambdaNonzero< VType >& other
+				) {
 					eWiseLambdaNonzero< VType > tmp( other );
 					swap( tmp );
 					return *this;
 				}
+
 				RType i() const { return _i; }
+
 				CType j() const { return _j; }
+
 				const VType& v() const { return *_v; }
+
 		};
+
 		/**
 		 * \internal This is a specialisation for where the value types are thus small
 		 *           that pointer indirection is not worth it also for value types.
@@ -1720,13 +2145,18 @@ namespace grb {
 		 *           sizeofs are `safe'
 		 */
 		template< typename VType >
-		class eWiseLambdaNonzero< VType, typename std::enable_if< sizeof(VType) <= 2 * sizeof(size_t) >::type > {
+		class eWiseLambdaNonzero<
+			VType, typename std::enable_if< sizeof(VType) <= 2 * sizeof(size_t) >::type
+		> {
+
 			private:
+
 				typedef typename grb::config::RowIndexType RType;
 				typedef typename grb::config::ColIndexType CType;
 				RType _i;
 				CType _j;
 				VType _v;
+
 				void swap( eWiseLambdaNonzero< VType > &other ) {
 					_i = other._i;
 					_j = other._j;
@@ -1735,20 +2165,35 @@ namespace grb {
 					other._j = std::numeric_limits< CType >::max();
 				}
 
+
 			public:
-				eWiseLambdaNonzero( const RType i, const CType j, const VType &v ) : _i( i ), _j( j ), _v( v ) {}
-				eWiseLambdaNonzero( const eWiseLambdaNonzero< VType > &other ) : _i( other._i ), _j( other._j ), _v( other._v ) {}
+
+				eWiseLambdaNonzero( const RType i, const CType j, const VType &v ) :
+					_i( i ), _j( j ), _v( v )
+				{}
+
+				eWiseLambdaNonzero( const eWiseLambdaNonzero< VType > &other ) :
+					_i( other._i ), _j( other._j ), _v( other._v )
+				{}
+
 				eWiseLambdaNonzero( eWiseLambdaNonzero< VType > &&other ) {
 					swap( other );
 				}
-				eWiseLambdaNonzero< VType >& operator=( const eWiseLambdaNonzero< VType >& other ) {
+
+				eWiseLambdaNonzero< VType >& operator=(
+					const eWiseLambdaNonzero< VType >& other
+				) {
 					eWiseLambdaNonzero< VType > tmp( other );
 					swap( tmp );
 					return *this;
 				}
+
 				RType i() const { return _i; }
+
 				CType j() const { return _j; }
+
 				const VType& v() const { return _v; }
+
 		};
 #endif
 
@@ -1775,59 +2220,75 @@ namespace grb {
 		 * @param[in]  end  The end iterator to the collection of nonzeroes.
 		 */
 		template< typename DataType, typename fwd_iterator >
-		void addToCRS( const Matrix< DataType, reference > &A, const fwd_iterator start, const fwd_iterator end ) {
+		void addToCRS(
+			const Matrix< DataType, reference > &A,
+			const fwd_iterator start, const fwd_iterator end
+		) {
 			auto &CRS = internal::getCRS( A );
 #ifdef _DEBUG
 			std::cout << "Pre-sorting: \n";
 			for( fwd_iterator k = start; k != end; ++k ) {
 				typename internal::eWiseLambdaNonzero< DataType > &nonzero = *k;
-				std::cout << "\t( " << nonzero.i() << ", " << nonzero.j() << ", " << nonzero.v() << " )\n";
+				std::cout << "\t( " << nonzero.i() << ", " << nonzero.j() << ", "
+					<< nonzero.v() << " )\n";
 			}
 #endif
-			std::sort( start, end, []( const internal::eWiseLambdaNonzero< DataType > &left, const internal::eWiseLambdaNonzero< DataType > &right ) {
-				return (left.i()) < (right.i());
-			} );
+			std::sort( start, end, [](
+					const internal::eWiseLambdaNonzero< DataType > &left,
+					const internal::eWiseLambdaNonzero< DataType > &right
+				) {
+					return (left.i()) < (right.i());
+				} );
 #ifdef _DEBUG
 			std::cout << "Post-sort: \n";
 			for( fwd_iterator k = start; k != end; ++k ) {
 				typename internal::eWiseLambdaNonzero< DataType > &nonzero = *k;
-				std::cout << "\t( " << nonzero.i() << ", " << nonzero.j() << ", " << nonzero.v() << " )\n";
+				std::cout << "\t( " << nonzero.i() << ", " << nonzero.j() << ", "
+					<< nonzero.v() << " )\n";
 			}
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 			// Rationale, because the critical section here may *seem* like a bad idea.
 			//
 			// First some facts:
-			//   1. chunks are load balanced, processing each chunk costs roughly the same
-			//   2. there are many calls to this function, one for each cache-sized chunk
-			//   3. typically, the number of chunks will be much larger than the number of cores
-			//   4. while the below loop is Theta( nz ), what precedes costs Theta( nz log(nz) )
-			// here, nz is the number of nonzeroes per chunk (and thus also per call to this function).
+			//   1. chunks are load balanced, processing each chunk costs roughly the
+			//      same
+			//   2. there are many calls to this function, one for each cache-sized
+			//      chunk
+			//   3. typically, the number of chunks will be much larger than the number
+			//      of cores
+			//   4. while the below loop is Theta( nz ), what precedes costs
+			//      Theta( nz log(nz) )
+			// here, nz is the number of nonzeroes per chunk (and thus also per call to
+			// this function).
 			//
-			// Following from these four points, the below will naturally lead to a skewed pipelined execution.
-			// Parallel resources will only not be fully utilised only during the initial ramp-up and final
-			// wind-down.
+			// Following from these four points, the below will naturally lead to a
+			// skewed pipelined execution. Parallel resources will only not be fully
+			// utilised only during the initial ramp-up and final wind-down.
 			//
 			// Ramp-up:
-			//   initially and ideally, all T threads will arrive at the below critical section simultaneously.
-			//   Thus T-1 threads will have to wait on one thread processing the below, followed by T-2 thread
-			//   waiting, then by T-3 threads waiting, and so on.
+			//   initially and ideally, all T threads will arrive at the below critical
+			//   section simultaneously. Thus T-1 threads will have to wait on one thread
+			//   processing the below, followed by T-2 thread waiting, then by T-3
+			//   threads waiting, and so on.
 			//
 			// Steady-state:
-			//   Due to fact #4, we expect the contentions on the below critical section to all but disappear
-			//   after processing the first T chunks.
+			//   Due to fact #4, we expect the contentions on the below critical section
+			//   to all but disappear after processing the first T chunks.
 			//
 			// Wind-down:
-			//   Parallel resources will not be fully utilised when processing the last T chunks.
+			//   Parallel resources will not be fully utilised when processing the last
+			//   T chunks.
 			//
 			// Trade-off:
-			//   To keep the inefficiency from the ramp-up and wind-down stages low, we want many more chunks
-			//   then the number of active threads. To keep the inefficiency arising from the locking mechanism
-			//   low, we want the number of nonzeroes nz per chunk large enough.
+			//   To keep the inefficiency from the ramp-up and wind-down stages low, we
+			//   want many more chunks then the number of active threads. To keep the
+			//   inefficiency arising from the locking mechanism low, we want the number
+			//   of nonzeroes nz per chunk large enough.
 			//
 			// Current policy:
-			//   Select nonzeroes nz per chunk to fit a private cache but utilise the full number of threads
-			//   that GraphBLAS has been given.
+			//   Select nonzeroes nz per chunk to fit a private cache but utilise the
+			//   full number of threads that GraphBLAS has been given.
 			#pragma omp critical
 #endif
 			{
@@ -1846,9 +2307,15 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template< class ActiveDistribution, typename Func, typename DataType >
-	RC eWiseLambda( const Func f, const Matrix< DataType, reference > & A, const size_t s, const size_t P ) {
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType, reference > &A,
+		const size_t s, const size_t P
+	) {
 #ifdef _DEBUG
-		std::cout << "entering grb::eWiseLambda (matrices, reference ). A is " << grb::nrows( A ) << " by " << grb::ncols( A ) << " and holds " << grb::nnz( A ) << " nonzeroes.\n";
+		std::cout << "entering grb::eWiseLambda (matrices, reference ). A is "
+			<< grb::nrows( A ) << " by " << grb::ncols( A ) << " and holds "
+			<< grb::nnz( A ) << " nonzeroes.\n";
 #endif
 		// check for trivial call
 		if( grb::nrows( A ) == 0 || grb::ncols( A ) == 0 || grb::nnz( A ) == 0 ) {
@@ -1908,21 +2375,27 @@ namespace grb {
 			config::OMP::localRange( start, end, 0, A.CCS.col_start[ A.n ] );
 #endif
 
-			// while we guarantee a lower bound through the constructors of matrix given as an argument, we dynamically request
-			// the maximum chunk size for ingesting into CRS to exploit the possibility that larger buffers were requested by
-			// other matrices' constructors.
-			size_t maxChunkSize = internal::reference_bufsize / sizeof( internal::eWiseLambdaNonzero< DataType > );
+			// while we guarantee a lower bound through the constructors of matrix given
+			// as an argument, we dynamically request the maximum chunk size for
+			// ingesting into CRS to exploit the possibility that larger buffers were
+			// requested by other matrices' constructors.
+			size_t maxChunkSize = internal::reference_bufsize /
+				sizeof( internal::eWiseLambdaNonzero< DataType > );
 			assert( maxChunkSize > 0 );
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
 			const size_t maxLocalChunkSize = maxChunkSize;
 			typename internal::eWiseLambdaNonzero< DataType > * nonzeroes =
-				internal::template getReferenceBuffer< typename internal::eWiseLambdaNonzero< DataType > >( maxChunkSize );
+				internal::template getReferenceBuffer<
+					typename internal::eWiseLambdaNonzero< DataType >
+				>( maxChunkSize );
 #else
 			typename internal::eWiseLambdaNonzero< DataType > * nonzeroes = nullptr;
 			size_t maxLocalChunkSize = 0;
 			{
 				typename internal::eWiseLambdaNonzero< DataType > * nonzero_buffer =
-					internal::template getReferenceBuffer< typename internal::eWiseLambdaNonzero< DataType > >( maxChunkSize );
+					internal::template getReferenceBuffer<
+						typename internal::eWiseLambdaNonzero< DataType >
+					>( maxChunkSize );
 				size_t my_buffer_start = 0, my_buffer_end = maxChunkSize;
 				config::OMP::localRange( my_buffer_start, my_buffer_end, 0, maxChunkSize );
 				maxLocalChunkSize = my_buffer_end - my_buffer_start;
@@ -1936,7 +2409,8 @@ namespace grb {
 			#pragma omp critical
  #endif
 			std::cout << "\t processing range " << start << "--" << end << ".\n";
-			std::cout << "\t COO buffer for updating CRS (we loop over nonzeroes in CCS) has a maximum size of " << maxChunkSize << "\n";
+			std::cout << "\t COO buffer for updating CRS (we loop over nonzeroes in "
+				<< "CCS) has a maximum size of " << maxChunkSize << "\n";
 #endif
 
 			size_t j_start, j_end;
@@ -1946,13 +2420,18 @@ namespace grb {
 				size_t j_right_range = A.n;
 				j_start = A.n / 2;
 				assert( A.n > 0 );
-				while( j_start < A.n && ! ( A.CCS.col_start[ j_start ] <= start && start < A.CCS.col_start[ j_start + 1 ] ) ) {
+				while( j_start < A.n && !(
+					A.CCS.col_start[ j_start ] <=
+						start && start < A.CCS.col_start[ j_start + 1 ]
+				) ) {
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 					#pragma omp critical
  #endif
-					std::cout << "\t binary search for " << start << " in [ " << j_left_range << ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ] << ", "
-							  << A.CCS.col_start[ j_right_range ] << " ). Currently tried and failed at " << j_start << "\n";
+					std::cout << "\t binary search for " << start << " in [ " << j_left_range
+						<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
+						<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
+						<< "Currently tried and failed at " << j_start << "\n";
 #endif
 					if( j_right_range == j_left_range ) {
 						assert( false );
@@ -1968,23 +2447,28 @@ namespace grb {
 					j_start += j_left_range;
 				}
 #ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp critical
 				std::cout << "\t selected j_start = " << j_start << "\n";
-#endif
+ #endif
 #endif
 				// find my end column
 				j_left_range = 0;
 				j_right_range = A.n;
 				j_end = A.n / 2;
 				if( j_end < A.CCS.col_start[ A.n ] ) {
-					while( j_end < A.n && ! ( A.CCS.col_start[ j_end ] <= end && end < A.CCS.col_start[ j_end + 1 ] ) ) {
+					while( j_end < A.n && !(
+						A.CCS.col_start[ j_end ] <= end &&
+						end < A.CCS.col_start[ j_end + 1 ]
+					) ) {
 #ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 						#pragma omp critical
-#endif
-						std::cout << "\t binary search for " << end << " in [ " << j_left_range << ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ] << ", "
-								  << A.CCS.col_start[ j_right_range ] << " ). Currently tried and failed at " << j_end << "\n";
+ #endif
+						std::cout << "\t binary search for " << end << " in [ " << j_left_range
+							<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
+							<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
+							<< "Currently tried and failed at " << j_end << "\n";
 #endif
 						if( j_right_range == j_left_range ) {
 							assert( false );
@@ -2004,10 +2488,10 @@ namespace grb {
 					j_start = j_end;
 				}
 #ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp critical
 				std::cout << "\t selected j_end = " << j_end << "\n";
-#endif
+ #endif
 #endif
 #ifndef NDEBUG
 				assert( j_end <= A.n );
@@ -2023,36 +2507,56 @@ namespace grb {
 
 				// prepare fields for in-place CRS update
 				size_t pos = 0;
-				constexpr size_t chunkSize_c = grb::config::MEMORY::l1_cache_size() / sizeof( internal::eWiseLambdaNonzero< DataType > );
+				constexpr size_t chunkSize_c = grb::config::MEMORY::l1_cache_size() /
+					sizeof( internal::eWiseLambdaNonzero< DataType > );
 				constexpr size_t minChunkSize = chunkSize_c == 0 ? 1 : chunkSize_c;
-				const size_t chunkSize = minChunkSize > maxLocalChunkSize ? maxLocalChunkSize : minChunkSize;
+				const size_t chunkSize = minChunkSize > maxLocalChunkSize ?
+					maxLocalChunkSize :
+					minChunkSize;
 
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp critical
  #endif
 				{
-					std::cout << "\t elected chunk size for updating the CRS structure is " << chunkSize << "\n";
+					std::cout << "\t elected chunk size for updating the CRS structure is "
+						<< chunkSize << "\n";
 				}
 #endif
 
 				// preamble
-				for( size_t k = start; k < std::min( static_cast< size_t >( A.CCS.col_start[ j_start + 1 ] ), end ); ++k ) {
+				for(
+					size_t k = start;
+					k < std::min(
+						static_cast< size_t >( A.CCS.col_start[ j_start + 1 ] ), end
+					);
+					++k
+				) {
 					// get row index
 					const size_t i = A.CCS.row_index[ k ];
 #ifdef _DEBUG
 					std::cout << "Processing nonzero at ( " << i << ", " << j_start << " )\n";
 #endif
 					// execute lambda on nonzero
-					const size_t col_pid = ActiveDistribution::offset_to_pid( j_start, A.n, P );
-					const size_t col_off = ActiveDistribution::local_offset( A.n, col_pid, P );
-					const size_t global_i = ActiveDistribution::local_index_to_global( i, A.m, s, P );
-					const size_t global_j = ActiveDistribution::local_index_to_global( j_start - col_off, A.n, col_pid, P );
+					const size_t col_pid = ActiveDistribution::offset_to_pid(
+						j_start, A.n, P
+					);
+					const size_t col_off = ActiveDistribution::local_offset(
+						A.n, col_pid, P
+					);
+					const size_t global_i = ActiveDistribution::local_index_to_global(
+						i, A.m, s, P
+					);
+					const size_t global_j = ActiveDistribution::local_index_to_global(
+						j_start - col_off, A.n, col_pid, P
+					);
 					assert( k < A.CCS.col_start[ A.n ] );
 					f( global_i, global_j, A.CCS.values[ k ] );
 
 					// update CRS
-					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >( A.CCS.row_index[ k ], j_start, A.CCS.values[ k ] );
+					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+						A.CCS.row_index[ k ], j_start, A.CCS.values[ k ]
+					);
 					if( pos  == chunkSize ) {
 						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 						pos = 0;
@@ -2061,7 +2565,11 @@ namespace grb {
 				// main loop
 				if( j_start != j_end ) {
 					for( size_t j = j_start + 1; j < j_end; ++j ) {
-						for( size_t k = A.CCS.col_start[ j ]; k < static_cast< size_t >( A.CCS.col_start[ j + 1 ] ); ++k ) {
+						for(
+							size_t k = A.CCS.col_start[ j ];
+							k < static_cast< size_t >( A.CCS.col_start[ j + 1 ] );
+							++k
+						) {
 							// get row index
 							const size_t i = A.CCS.row_index[ k ];
 #ifdef _DEBUG
@@ -2069,14 +2577,22 @@ namespace grb {
 #endif
 							// execute lambda on nonzero
 							const size_t col_pid = ActiveDistribution::offset_to_pid( j, A.n, P );
-							const size_t col_off = ActiveDistribution::local_offset( A.n, col_pid, P );
-							const size_t global_i = ActiveDistribution::local_index_to_global( i, A.m, s, P );
-							const size_t global_j = ActiveDistribution::local_index_to_global( j - col_off, A.n, col_pid, P );
+							const size_t col_off = ActiveDistribution::local_offset(
+								A.n, col_pid, P
+							);
+							const size_t global_i = ActiveDistribution::local_index_to_global(
+								i, A.m, s, P
+							);
+							const size_t global_j = ActiveDistribution::local_index_to_global(
+								j - col_off, A.n, col_pid, P
+							);
 							assert( k < A.CCS.col_start[ A.n ] );
 							f( global_i, global_j, A.CCS.values[ k ] );
 
 							// update CRS
-							nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >( A.CCS.row_index[ k ], j, A.CCS.values[ k ] );
+							nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+								A.CCS.row_index[ k ], j, A.CCS.values[ k ]
+							);
 							if( pos == chunkSize ) {
 								internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 								pos = 0;
@@ -2095,13 +2611,19 @@ namespace grb {
 					// execute lambda on nonzero
 					const size_t col_pid = ActiveDistribution::offset_to_pid( j_end, A.n, P );
 					const size_t col_off = ActiveDistribution::local_offset( A.n, col_pid, P );
-					const size_t global_i = ActiveDistribution::local_index_to_global( i, A.m, s, P );
-					const size_t global_j = ActiveDistribution::local_index_to_global( j_end - col_off, A.n, col_pid, P );
+					const size_t global_i = ActiveDistribution::local_index_to_global(
+						i, A.m, s, P
+					);
+					const size_t global_j = ActiveDistribution::local_index_to_global(
+						j_end - col_off, A.n, col_pid, P
+					);
 					assert( k < A.CCS.col_start[ A.n ] );
 					f( global_i, global_j, A.CCS.values[ k ] );
 
 					// update CRS
-					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >( A.CCS.row_index[ k ], j_end, A.CCS.values[ k ] );
+					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+						A.CCS.row_index[ k ], j_end, A.CCS.values[ k ]
+					);
 					if( pos == chunkSize ) {
 						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 						pos = 0;
@@ -2116,8 +2638,7 @@ namespace grb {
 		} // end pragma omp parallel
 
 #ifdef _DEBUG
-		std::cout << "\t exiting grb::eWiseLambda (matrices, reference). "
-					 "Contents:\n";
+		std::cout << "\t exiting grb::eWiseLambda (matrices, reference). Contents:\n";
 		std::cout << "\t\t CRS row start = { ";
 		for( size_t i = 0; i <= A.m; ++i ) {
 			std::cout << A.CRS.col_start[ i ] << " ";
@@ -2125,7 +2646,8 @@ namespace grb {
 		std::cout << "}\n";
 		for( size_t i = 0; i < A.m; ++i ) {
 			for( size_t k = A.CRS.col_start[ i ]; k < A.CRS.col_start[ i + 1 ]; ++k ) {
-				std::cout << "\t\t ( " << i << ", " << A.CRS.row_index[ k ] << " ) = " << A.CRS.values[ k ] << "\n";
+				std::cout << "\t\t ( " << i << ", " << A.CRS.row_index[ k ] << " ) = "
+					<< A.CRS.values[ k ] << "\n";
 			}
 		}
 		std::cout << "\t\t CCS col start = { ";
@@ -2135,7 +2657,8 @@ namespace grb {
 		std::cout << "}\n";
 		for( size_t j = 0; j < A.n; ++j ) {
 			for( size_t k = A.CCS.col_start[ j ]; k < A.CCS.col_start[ j + 1 ]; ++k ) {
-				std::cout << "\t\t ( " << A.CCS.row_index[ k ] << ", " << j << " ) = " << A.CCS.values[ k ] << "\n";
+				std::cout << "\t\t ( " << A.CCS.row_index[ k ] << ", " << j << " ) = "
+					<< A.CCS.values[ k ] << "\n";
 			}
 		}
 #endif

@@ -62,15 +62,6 @@ namespace grb {
 		/**
 		 * Configuration parameters that may depend on the implementation.
 		 *
-		 * Empty by default so to ensure no-one implicitly relies on implicit
-		 * defaults.
-		 */
-		template< grb::Backend implementation = default_backend >
-		class IMPLEMENTATION {};
-
-		/**
-		 * Configuration parameters that may depend on the implementation.
-		 *
 		 * \todo Internal issue #98.
 		 */
 		template<>
@@ -86,6 +77,14 @@ namespace grb {
 				/** How to allocate shared memory segments. */
 				static constexpr ALLOC_MODE sharedAllocMode() {
 					return ALLOC_MODE::ALIGNED;
+				}
+
+				/**
+				 * Whether the backend has vector capacities always fixed to their
+				 * defaults.
+				 */
+				static constexpr bool fixedVectorCapacities() {
+					return true;
 				}
 
 				/**
@@ -185,6 +184,14 @@ namespace grb {
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return reference_omp;
+				}
+
+				/**
+				 * Whether the backend has vector capacities always fixed to their
+				 * defaults.
+				 */
+				static constexpr bool fixedVectorCapacities() {
+					return true;
 				}
 
 				/**

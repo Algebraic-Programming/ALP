@@ -25,6 +25,7 @@
 
 #include <graphblas/backends.hpp>
 
+
 namespace grb {
 
 	/**
@@ -38,30 +39,33 @@ namespace grb {
 	template< enum Backend implementation >
 	class Properties {
 
-	public:
-		/**
-		 * Whether a non-GraphBLAS object captured by a lambda-function and passed to
-		 * grb::eWiseLambda can be written to.
-		 *
-		 * If the implementation backend is fully Single Program, Multiple Data
-		 * (SPMD), then this is expected to be legal and result in user-process local
-		 * updates. This function would thus return \a true.
-		 *
-		 * If the implementaiton backend is parallel but supports only a single user
-		 * processes, i.e., for a \em data-centric backend, writing to a shared
-		 * object results in race conditions and thus is technically impossible. This
-		 * function would thus return \a false.
-		 *
-		 * @return A boolean \a true if and only if capturing a non-GraphBLAS object
-		 *         inside a lambda-function for write access, and passing it to
-		 *         grb::eWiseLambda would yield valid user process local results. If
-		 *         not, \a false is returned instead.
-		 *
-		 * @see grb::eWiseLambda()
-		 */
-		static constexpr bool writableCaptured = true;
-	};
+		public:
+
+			/**
+			 * Whether a non-GraphBLAS object captured by a lambda-function and passed to
+			 * grb::eWiseLambda can be written to.
+			 *
+			 * If the implementation backend is fully Single Program, Multiple Data
+			 * (SPMD), then this is expected to be legal and result in user-process local
+			 * updates. This function would thus return \a true.
+			 *
+			 * If the implementaiton backend is parallel but supports only a single user
+			 * processes, i.e., for a \em data-centric backend, writing to a shared
+			 * object results in race conditions and thus is technically impossible. This
+			 * function would thus return \a false.
+			 *
+			 * @return A boolean \a true if and only if capturing a non-GraphBLAS object
+			 *         inside a lambda-function for write access, and passing it to
+			 *         grb::eWiseLambda would yield valid user process local results. If
+			 *         not, \a false is returned instead.
+			 *
+			 * @see grb::eWiseLambda()
+			 */
+			static constexpr bool writableCaptured = true;
+
+		};
 
 } // namespace grb
 
 #endif // end _H_GRB_PROPERTIES_BASE
+

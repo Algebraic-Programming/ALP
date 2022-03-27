@@ -29,6 +29,7 @@
 
 #include <lpf/core.h>
 
+#include <graphblas/phase.hpp>
 #include <graphblas/backends.hpp>
 #include <graphblas/base/pinnedvector.hpp>
 #include <graphblas/collectives.hpp>
@@ -45,8 +46,9 @@
 #include "init.hpp"
 
 #ifdef _DEBUG
-#include "spmd.hpp"
+ #include "spmd.hpp"
 #endif
+
 
 namespace grb {
 
@@ -190,11 +192,18 @@ namespace grb {
 		 *                  communications layer.
 		 */
 		template< typename DataType, typename Coords >
-		RC updateNnz( Vector< DataType, BSP1D, Coords > & x );
+		RC updateNnz( Vector< DataType, BSP1D, Coords > &x );
+
+		/**
+		 * Updates the global capacity after local capacities may have changed.
+		 */
+		template< typename DataType, typename Coords >
+		RC updateCap( Vector< DataType, BSP1D, Coords > &x );
 
 		/** TODO documentation */
 		template< typename DataType, typename Coords >
-		void setDense( Vector< DataType, BSP1D, Coords > & x );
+		void setDense( Vector< DataType, BSP1D, Coords > &x );
+
 	} // namespace internal
 
 	// BLAS1 forward declaration of friends
@@ -242,7 +251,8 @@ namespace grb {
 		>
 		friend RC set(
 			Vector< OutputType, BSP1D, Coords > &,
-			const Vector< InputType, BSP1D, Coords > &
+			const Vector< InputType, BSP1D, Coords > &,
+			const Phase &
 		);
 
 		template<
@@ -269,10 +279,10 @@ namespace grb {
 			const IOMode, const Dup &
 		);
 
-		// template< typename DataType >
 		friend RC internal::updateNnz< D, C >( Vector< D, BSP1D, C > & );
 
-		// template< typename DataType >
+		friend RC internal::updateCap< D, C >( Vector< D, BSP1D, C > & );
+
 		friend void internal::setDense< D, C >( Vector< D, BSP1D, C > & );
 
 		template<
@@ -289,7 +299,7 @@ namespace grb {
 			const Matrix< InputType2, BSP1D > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Ring &
+			const Ring &, const Phase &
 		);
 
 		template<
@@ -306,7 +316,7 @@ namespace grb {
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
 			const Matrix< InputType2, BSP1D > &,
-			const Ring &
+			const Ring &, const Phase &
 		);
 
 		friend Vector<
@@ -2604,6 +2614,63 @@ namespace grb {
 		void signalLocalChange( Vector< DataType, BSP1D, Coords > &x ) {
 			x._global_is_dirty = true;
 			x._nnz_is_dirty = true;
+		}
+
+		template< typename DataType, typename Coords >
+		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > &
+		getLocal( Vector< DataType, BSP1D, Coords > &x ) {
+			return x._local;
+		}
+
+		template< typename DataType, typename Coords >
+		const Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > &
+		getLocal( const Vector< DataType, BSP1D, Coords > &x ) {
+			return x._local;
+		}
+
+		template< typename DataType, typename Coords >
+		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > &
+		getGlobal( Vector< DataType, BSP1D, Coords > &x ) {
+			return x._global;
+		}
+
+		template< typename DataType, typename Coords >
+		const Vector<
+			DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND >
+		> & getGlobal( const Vector< DataType, BSP1D, Coords > &x ) {
+			return x._global;
+		}
+
+		template< typename DataType, typename Coords >
+		RC updateNnz( Vector< DataType, BSP1D, Coords > &x ) {
+			x._became_dense = false;
+			x._cleared = false;
+			x._nnz_is_dirty = true;
+			return x.updateNnz();
+		}
+
+		template< typename DataType, typename Coords >
+		RC updateCap( Vector< DataType, BSP1D, Coords > &x ) {
+			size_t new_cap = capacity( internal::getLocal( x ) );
+			RC ret = collectives< BSP1D >::allreduce( new_cap,
+				grb::operators::add< size_t >() );
+			if( ret != SUCCESS ) {
+				ret = PANIC;
+			} else {
+#ifdef _DEBUG
+				std::cerr << "\t new global capacity: " << new_cap << "\n";
+#endif
+				x._cap = new_cap;
+			}
+			return ret;
+		}
+
+		template< typename DataType, typename Coords >
+		void setDense( Vector< DataType, BSP1D, Coords > &x ) {
+			x._became_dense = x._nnz < x._n;
+			x._cleared = false;
+			x._nnz_is_dirty = false;
+			x._nnz = x._n;
 		}
 
 	} // namespace internal

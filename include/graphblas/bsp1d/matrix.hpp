@@ -90,7 +90,7 @@ namespace grb {
 			const Matrix< InputType2, BSP1D > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Ring & );
+			const Ring &, const Phase & );
 
 		template<
 			Descriptor descr, bool, bool, bool, class Ring,
@@ -103,7 +103,7 @@ namespace grb {
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
 			const Matrix< InputType2, BSP1D > &,
-			const Ring & );
+			const Ring &, const Phase & );
 
 		template< Descriptor descr, typename InputType, typename fwd_iterator >
 		friend RC buildMatrixUnique(

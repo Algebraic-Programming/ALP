@@ -55,12 +55,25 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+
 namespace grb {
 
 	/**
 	 * \defgroup IO Data Ingestion -- BSP1D backend
 	 * @{
 	 */
+
+	/** \internal No implementation details. */
+	template< typename InputType, typename Coords >
+	uintptr_t getID( const Vector< InputType, BSP1D, Coords > &x ) {
+		return x._id;
+	}
+
+	/** \internal No implementation details. */
+	template< typename InputType >
+	uintptr_t getID( const Matrix< InputType, BSP1D > &A ) {
+		return A._id;
+	}
 
 	/** \internal No implementation notes. */
 	template< typename DataType, typename Coords >
@@ -215,7 +228,10 @@ namespace grb {
 	 * then delegate to the underlying backend.
 	 */
 	template< typename InputType, typename Coords >
-	RC resize( Vector< InputType, BSP1D, Coords > &x, const size_t new_nz ) noexcept {
+	RC resize(
+		Vector< InputType, BSP1D, Coords > &x,
+		const size_t new_nz
+	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, BSP1D)\n"
 			<< "\t vector size is " << size(x) << "\n"
@@ -262,15 +278,8 @@ namespace grb {
 		}
 
 		// we have success, so get actual new global capacity
-		size_t new_cap = local_new_nz;
-		rc = collectives< BSP1D >::allreduce(
-			new_cap, grb::operators::add< size_t >()
-		);
-		if( rc != grb::SUCCESS ) { return PANIC; }
-#ifdef _DEBUG
-		std::cerr << "\t new global capacity: " << new_cap << "\n";
-#endif
-		x._cap = new_cap;
+		rc = internal::updateCap( x );
+		if( rc != SUCCESS ) { return PANIC; }
 		x._nnz = 0;
 		x._cleared = true;
 		x._global_is_dirty = true;
@@ -399,6 +408,323 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "\t new global capacity is " << new_global_cap << "\n";
 #endif
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires no inter-process communication. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Coords,
+		typename T
+	>
+	RC set(
+		Vector< DataType, BSP1D, Coords > &x,
+		const T val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< T >::value, void
+		>::type * const = nullptr
+	) noexcept {
+		const size_t n = size( x );
+		const size_t old_nnz = nnz( x );
+		if( capacity( x ) < n ) {
+			if( phase == RESIZE ) {
+				return resize( x, n );
+			} else {
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return FAILED;
+				}
+			}
+		}
+
+		assert( capacity( x ) == n );
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		assert( phase == EXECUTE );
+		RC ret = SUCCESS;
+		if( descr & descriptors::use_index ) {
+			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+			const auto p = data.P;
+			const auto s = data.s;
+			const auto n = grb::size( x );
+			if( old_nnz < size( x ) ) {
+				internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+			}
+			ret = eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
+				x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
+						i, n, s, p
+					);
+				}, x );
+		} else {
+			ret = set< descr >( internal::getLocal( x ), val );
+		}
+		if( ret == SUCCESS ) {
+			internal::setDense( x );
+		}
+		return ret;
+	}
+
+	/**
+	 * \internal Delegates to underlying backend iff index-to-process translation
+	 * indicates ownership.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Coords,
+		typename T
+	>
+	RC setElement(
+		Vector< DataType, BSP1D, Coords > &x,
+		const T val,
+		const size_t i,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value, void
+		>::type * const = nullptr
+	) {
+		const size_t n = size( x );
+		// sanity check
+		if( i >= n ) {
+			return MISMATCH;
+		}
+
+		// prepare return code and get access to BSP1D data
+		RC ret = SUCCESS;
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+
+		// check if local
+		// if( (i / x._b) % data.P != data.s ) {
+		if( internal::Distribution< BSP1D >::global_index_to_process_id(
+				i, n, data.P
+			) == data.s
+		) {
+			// local, so translate index and perform requested operation
+			const size_t local_index =
+				internal::Distribution< BSP1D >::global_index_to_local( i, n, data.P );
+#ifdef _DEBUG
+			std::cout << data.s << ", grb::setElement translates global index "
+				<< i << " to " << local_index << "\n";
+#endif
+			ret = setElement< descr >( internal::getLocal( x ), val, local_index,
+				phase );
+		}
+
+		// Gather remote error state
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+				// on successful local resize, sync new global capacity
+				ret = internal::updateCap( x );
+			} else if( ret == FAILED ) {
+				// on any failed local resize, clear vector
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) { ret = PANIC; }
+			} else {
+				assert( ret == PANIC );
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+				// on successful execute, sync new nnz count
+				ret = internal::updateNnz( x );
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal No implementation notes. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType,
+		typename Coords
+	>
+	RC set(
+		Vector< OutputType, BSP1D, Coords > &x,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Phase &phase = EXECUTE
+	) {
+		// sanity check
+		if( size( y ) != size( x ) ) {
+			return MISMATCH;
+		}
+
+		// capacity check
+		if( capacity( x ) < nnz( y ) ) {
+			if( phase == EXECUTE ) {
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return FAILED;
+				}
+			}
+		}
+
+		// all OK, try to do assignment
+		RC ret = set< descr >( internal::getLocal( x ),
+			internal::getLocal( y ), phase );
+
+		// in resize mode, we hit two collectives and otherwise none
+		if( phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+				!= SUCCESS
+			) {
+				return PANIC;
+			}
+			const RC update_rc = internal::updateCap( x );
+			if( ret == SUCCESS ) {
+				ret = update_rc;
+			} else {
+				if( update_rc != SUCCESS ) {
+					return PANIC;
+				}
+			}
+		} else {
+			assert( phase == EXECUTE );
+			// if successful, update nonzero count
+			if( ret == SUCCESS ) {
+				// reset nonzero count flags
+				x._nnz = y._nnz;
+				x._nnz_is_dirty = y._nnz_is_dirty;
+				x._became_dense = y._became_dense;
+				x._global_is_dirty = y._global_is_dirty;
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires sync on nonzero structure. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename Coords
+	>
+	RC set(
+		Vector< OutputType, BSP1D, Coords > &x,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Phase &phase = EXECUTE
+	) {
+		// check dispatch to simpler variant
+		if( size( mask ) == 0 ) {
+			return set< descr >( x, y, phase );
+		}
+
+		// sanity check
+		if( grb::size( y ) != grb::size( x ) ) {
+			return MISMATCH;
+		}
+		if( grb::size( mask ) != grb::size( x ) ) {
+			return MISMATCH;
+		}
+
+		// cannot do capacity pre-check in EXECUTE mode due to the mask and descr;
+		// or, rather, the check is possible but only for some combinations, so we
+		// rather keep it simple and provide just the generic implementation here
+
+		// all OK, try to do assignment
+		RC ret = set< descr >(
+			internal::getLocal( x ), internal::getLocal( mask ),
+			internal::getLocal( y ),
+			phase
+		);
+
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = updateCap( x );
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) {
+					ret = PANIC;
+				}
+			} else {
+				assert( ret == PANIC );
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires sync on nonzero structure. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename Coords
+	>
+	RC set(
+		Vector< OutputType, BSP1D, Coords > &x,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const InputType &y,
+		const Phase &phase = EXECUTE
+	) {
+		// check dispatch to simpler variant
+		if( size( mask ) == 0 ) {
+			return set< descr >( x, y, phase );
+		}
+
+		// sanity check
+		if( grb::size( mask ) != grb::size( x ) ) {
+			return MISMATCH;
+		}
+
+		// on capacity pre-check, see above
+
+		// all OK, try to do assignment
+		RC ret = set< descr >( internal::getLocal( x ),
+			internal::getLocal( mask ), y, phase );
+
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateCap( x );
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) {
+					ret = PANIC;
+				}
+			} else {
+				assert( ret == PANIC );
+			}
+		}
 
 		// done
 		return ret;
@@ -1035,18 +1361,6 @@ namespace grb {
 #endif
 
 		return ret;
-	}
-
-	/** \internal No implementation details. */
-	template< typename InputType, typename Coords >
-	uintptr_t getID( const Vector< InputType, BSP1D, Coords > &x ) {
-		return x._id;
-	}
-
-	/** \internal No implementation details. */
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, BSP1D > &A ) {
-		return A._id;
 	}
 
 	/** @} */
