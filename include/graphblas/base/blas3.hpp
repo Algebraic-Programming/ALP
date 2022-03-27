@@ -77,12 +77,14 @@ namespace grb {
 	RC mxm( Matrix< OutputType, backend > &C,
 		const Matrix< InputType1, backend > &A, const Matrix< InputType2, backend > &B,
 		const Semiring &ring = Semiring(),
-		const PHASE &phase = NUMERICAL
+		const Phase &phase = EXECUTE
 	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::mxm (semiring version)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_mxm = false;
+		assert( selected_backend_does_not_support_mxm );
 #endif
 		(void)C;
 		(void)A;
@@ -128,15 +130,28 @@ namespace grb {
 	 *
 	 * @see grb::resize
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, Backend backend, typename Coords >
-	RC zip( Matrix< OutputType, backend > & A, const Vector< InputType1, backend, Coords > & x, const Vector< InputType2, backend, Coords > & y, const Vector< InputType3, backend, Coords > & z ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+		Backend backend, typename Coords
+	>
+	RC zip(
+		Matrix< OutputType, backend > &A,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const Vector< InputType3, backend, Coords > &z,
+		const Phase &phase = EXECUTE
+	) {
 		(void)x;
 		(void)y;
 		(void)z;
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_zip_from_vectors_to_matrix
+			= false;
+		assert( selected_backend_does_not_support_zip_from_vectors_to_matrix );
 #endif
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
@@ -145,14 +160,27 @@ namespace grb {
 	/**
 	 * Specialisation of grb::zip for void output matrices.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename InputType3, Backend backend, typename Coords >
-	RC zip( Matrix< void, backend > & A, const Vector< InputType1, backend, Coords > & x, const Vector< InputType2, backend, Coords > & y ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2, typename InputType3,
+		Backend backend,
+		typename Coords
+	>
+	RC zip(
+		Matrix< void, backend > &A,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const Phase &phase = EXECUTE
+	) {
 		(void)x;
 		(void)y;
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_zip_from_vectors_to_void_matrix
+			= false;
+		assert( selected_backend_does_not_support_zip_from_vectors_to_void_matrix );
 #endif
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
@@ -165,3 +193,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_BLAS3_BASE
+

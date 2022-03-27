@@ -167,8 +167,10 @@ namespace grb {
 				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
 			}
 
-			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, SYMBOLIC );
-			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
+			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X,
+				pattern_sum, RESIZE );
+			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X,
+				pattern_sum );
 
 			if( ret != SUCCESS ) {
 				std::cout << "\tkpp finished with unexpected return code!" << std::endl;
@@ -276,32 +278,48 @@ namespace grb {
 
 				ret = ret ? ret : grb::set( clusters_and_distances_prev, clusters_and_distances );
 
-				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid, SYMBOLIC );
+				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid,
+					RESIZE );
 				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid );
 
-				ret = ret ? ret : vxm( clusters_and_distances, labels, Dist, argmin_monoid, operators::zip< size_t, IOType >() );
+				ret = ret ? ret : vxm( clusters_and_distances, labels, Dist, argmin_monoid,
+					operators::zip< size_t, IOType >() );
 
-				auto converter = grb::utils::makeVectorToMatrixConverter< void, indexIOType >( clusters_and_distances, []( const size_t & ind, const indexIOType & pair ) {
-					return std::make_pair( pair.first, ind );
-				} );
+				auto converter = grb::utils::makeVectorToMatrixConverter<
+					void, indexIOType
+				>(
+					clusters_and_distances,
+					[]( const size_t & ind, const indexIOType & pair ) {
+						return std::make_pair( pair.first, ind );
+					}
+				);
 
-				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+				ret = ret ? ret : grb::buildMatrixUnique( M,
+					converter.begin(), converter.end(), PARALLEL );
 
-				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum, SYMBOLIC );
-				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum );
+				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X,
+					pattern_sum, RESIZE );
+				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X,
+					pattern_sum );
 
 				ret = ret ? ret : grb::mxv( sizes, M, n_ones, pattern_count );
 
-				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC );
-				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >() );
+				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones,
+					operators::left_assign_if< IOType, bool, IOType >(), RESIZE );
+				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones,
+					operators::left_assign_if< IOType, bool, IOType >() );
 
-				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >(), SYMBOLIC );
-				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >() );
+				ret = ret ? ret : eWiseApply( K, V_aux, K_aux,
+					operators::divide_reverse< size_t, IOType, IOType >(), RESIZE );
+				ret = ret ? ret : eWiseApply( K, V_aux, K_aux,
+					operators::divide_reverse< size_t, IOType, IOType >() );
 
 				converged = true;
 				ret = ret ? ret : grb::dot(
-					converged, clusters_and_distances_prev, clusters_and_distances,
-					comparison_monoid, grb::operators::equal_first< indexIOType, indexIOType, bool >()
+					converged,
+					clusters_and_distances_prev, clusters_and_distances,
+					comparison_monoid,
+					grb::operators::equal_first< indexIOType, indexIOType, bool >()
 				);
 
 			} while( ret == SUCCESS && !converged && iter < max_iter );
@@ -311,7 +329,8 @@ namespace grb {
 				return FAILED;
 			}
 			if( converged ) {
-				std::cout << "\tkmeans converged successfully after " << iter << " iterations." << std::endl;
+				std::cout << "\tkmeans converged successfully after " << iter
+					<< " iterations." << std::endl;
 				return SUCCESS;
 			}
 
@@ -324,3 +343,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_KMEANS
+

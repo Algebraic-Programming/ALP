@@ -50,191 +50,29 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+
 namespace grb {
 
-	namespace internal {
-
-		template< typename DataType, typename Coords >
-		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getLocal( Vector< DataType, BSP1D, Coords > & x ) {
-			return x._local;
-		}
-
-		template< typename DataType, typename Coords >
-		const Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getLocal( const Vector< DataType, BSP1D, Coords > & x ) {
-			return x._local;
-		}
-
-		template< typename DataType, typename Coords >
-		Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getGlobal( Vector< DataType, BSP1D, Coords > & x ) {
-			return x._global;
-		}
-
-		template< typename DataType, typename Coords >
-		const Vector< DataType, _GRB_BSP1D_BACKEND, Coordinates< _GRB_BSP1D_BACKEND > > & getGlobal( const Vector< DataType, BSP1D, Coords > & x ) {
-			return x._global;
-		}
-
-		template< typename DataType, typename Coords >
-		RC updateNnz( Vector< DataType, BSP1D, Coords > & x ) {
-			x._became_dense = false;
-			x._cleared = false;
-			x._nnz_is_dirty = true;
-			return x.updateNnz();
-		}
-
-		template< typename DataType, typename Coords >
-		void setDense( Vector< DataType, BSP1D, Coords > & x ) {
-			x._became_dense = x._nnz < x._n;
-			x._cleared = false;
-			x._nnz_is_dirty = false;
-			x._nnz = x._n;
-		}
-
-	} // namespace internal
-
-	/** \internal Requires no inter-process communication. */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename Coords, typename T >
-	RC set( Vector< DataType, BSP1D, Coords > & x, const T val, const typename std::enable_if< ! grb::is_object< T >::value, void >::type * const = NULL ) noexcept {
-		const size_t old_nnz = nnz( x );
-		RC ret = SUCCESS;
-		if( descr & descriptors::use_index ) {
-			const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
-			const auto p = data.P;
-			const auto s = data.s;
-			const auto n = grb::size( x );
-			if( old_nnz < size( x ) ) {
-				internal::getCoordinates( internal::getLocal( x ) ).assignAll();
-			}
-			ret = eWiseLambda(
-				[ &x, &n, &s, &p ]( const size_t i ) {
-					x[ i ] = internal::Distribution< BSP1D >::local_index_to_global( i, n, s, p );
-				},
-				x );
-		} else {
-			ret = set< descr >( internal::getLocal( x ), val );
-		}
-		if( ret == SUCCESS ) {
-			internal::setDense( x );
-		}
-		return ret;
-	}
-
 	/**
-	 * \internal Delegates to underlying backend iff index-to-process translation
-	 * indicates ownership.
+	 * \defgroup BLAS1_REF The Level-1 ALP/GraphBLAS routines -- BSP1D backend
+	 *
+	 * @{
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename Coords, typename T >
-	RC setElement( Vector< DataType, BSP1D, Coords > & x,
-		const T val,
-		const size_t i,
-		const typename std::enable_if< ! grb::is_object< DataType >::value && ! grb::is_object< T >::value, void >::type * const = NULL ) {
-		const size_t n = size( x );
-		// sanity check
-		if( i >= n ) {
-			return MISMATCH;
-		}
-
-		// prepare return code and get access to BSP1D data
-		RC ret = SUCCESS;
-		const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
-
-		// check if local
-		// if( (i / x._b) % data.P != data.s ) {
-		if( internal::Distribution< BSP1D >::global_index_to_process_id( i, n, data.P ) == data.s ) {
-			// local, so translate index and perform requested operation
-			const size_t local_index = internal::Distribution< BSP1D >::global_index_to_local( i, n, data.P );
-#ifdef _DEBUG
-			std::cout << data.s << ", grb::setElement translates global index " << i << " to " << local_index << "\n";
-#endif
-			ret = setElement< descr >( internal::getLocal( x ), val, local_index );
-		}
-
-		// I cannot predict if a sibling process will change the total nnz, so flag nnz dirty
-		if( ret == SUCCESS ) {
-			internal::signalLocalChange( x );
-		}
-		// done
-		return ret;
-	}
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType,
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType,
 		typename Coords
 	>
-	RC set(
-		Vector< OutputType, BSP1D, Coords > &x,
-		const Vector< InputType, BSP1D, Coords > &y
+	RC foldr(
+		const Vector< InputType, BSP1D, Coords > &x,
+		IOType &beta,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
 	) {
-		// sanity check
-		if( size( y ) != size( x ) ) {
-			return MISMATCH;
-		}
-
-		// all OK, try to do assignment
-		const RC ret = set< descr >( internal::getLocal( x ), internal::getLocal( y ) );
-
-		// if successful, update nonzero count
-		if( ret == SUCCESS ) {
-			// reset nonzero count flags
-			x._nnz = y._nnz;
-			x._nnz_is_dirty = y._nnz_is_dirty;
-			x._became_dense = y._became_dense;
-			x._global_is_dirty = y._global_is_dirty;
-		}
-
-		// done
-		return ret;
-	}
-
-	/** \internal Requires sync on nonzero structure. */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename Coords >
-	RC set( Vector< OutputType, BSP1D, Coords > & x, const Vector< MaskType, BSP1D, Coords > & mask, const Vector< InputType, BSP1D, Coords > & y ) {
-		// sanity check
-		if( grb::size( y ) != grb::size( x ) ) {
-			return MISMATCH;
-		}
-		if( grb::size( mask ) != grb::size( x ) ) {
-			return MISMATCH;
-		}
-
-		// all OK, try to do assignment
-		const RC ret = set< descr >( internal::getLocal( x ), internal::getLocal( mask ), internal::getLocal( y ) );
-
-		if( ret == SUCCESS ) {
-			internal::signalLocalChange( x );
-		}
-
-		// done
-		return ret;
-	}
-
-	/** \internal Requires sync on nonzero structure. */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename MaskType, typename InputType, typename Coords >
-	RC set( Vector< OutputType, BSP1D, Coords > & x, const Vector< MaskType, BSP1D, Coords > & mask, const InputType & y ) {
-		// sanity check
-		if( grb::size( mask ) != grb::size( x ) ) {
-			return MISMATCH;
-		}
-
-		// all OK, try to do assignment
-		const RC ret = set< descr >( internal::getLocal( x ), internal::getLocal( mask ), y );
-
-		if( ret == SUCCESS ) {
-			internal::signalLocalChange( x );
-		}
-
-		// done
-		return ret;
-	}
-
-	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename Coords, typename IOType >
-	RC foldr( const Vector< InputType, BSP1D, Coords > & x,
-		IOType & beta,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		// cache local result
 		IOType local = monoid.template getIdentity< IOType >();
 
@@ -256,28 +94,42 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename MaskType, typename Coords >
-	RC foldl( IOType & alpha,
-		const Vector< InputType, BSP1D, Coords > & y,
-		const Vector< MaskType, BSP1D, Coords > & mask,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename InputType, typename MaskType,
+		typename Coords
+	>
+	RC foldl(
+		IOType &alpha,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array has size "
-				  << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a mask of size "
-				  << size( mask ) << " with " << nnz( mask ) << " nonzeroes." << std::endl;
+		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array has "
+			<< "size " << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a "
+			<< "mask of size " << size( mask ) << " with " << nnz( mask )
+			<< " nonzeroes." << std::endl;
 #endif
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the first domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the second "
 			"domain of the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldl",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the third domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "grb::foldl",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::foldl",
 			"called with a non-bool mask vector type while no_casting descriptor "
 			"was set" );
 
@@ -291,11 +143,12 @@ namespace grb {
 
 		// do local foldr
 		IOType local = monoid.template getIdentity< IOType >();
-		RC rc = foldl< descr >( local, internal::getLocal( y ), internal::getLocal( mask ), monoid );
+		RC rc = foldl< descr >( local, internal::getLocal( y ),
+			internal::getLocal( mask ), monoid );
 
 #ifdef _DEBUG
-		std::cout << "After process-local delegation, local value has become " << local << ". Entering allreduce..." << std::endl;
-		;
+		std::cout << "After process-local delegation, local value has become "
+			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
 		// do allreduce using \a op
@@ -312,56 +165,154 @@ namespace grb {
 		return SUCCESS;
 	}
 
+	/**
+	 * Folds a vector into a scalar.
+	 *
+	 * Unmasked variant.
+	 *
+	 * For performance semantics, see the masked variant of this primitive.
+	 *
+	 * \internal Dispatches to the masked variant, using an empty mask.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename Coords
+	>
+	RC foldl(
+		IOType &x,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		Vector< bool, BSP1D, Coords > empty_mask( 0 );
+		return foldl< descr >( x, y, empty_mask, monoid );
+	}
+
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename Coords, typename InputType >
-	RC foldr( const InputType & alpha,
-		Vector< IOType, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename Coords, typename InputType
+	>
+	RC foldr(
+		const InputType &alpha,
+		Vector< IOType, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
 		// simply delegate to reference implementation will yield correct result
-		RC ret = foldr< descr >( alpha, internal::getLocal( y ), monoid );
-		if( ret == SUCCESS ) {
+		RC ret = foldr< descr >( alpha, internal::getLocal( y ), monoid, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
 			internal::getCoordinates( internal::getGlobal( y ) ).assignAll();
 		}
 		return ret;
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType, typename InputType, typename Coords >
-	RC foldr( const Vector< InputType, BSP1D, Coords > & x,
-		Vector< IOType, BSP1D, Coords > & y,
-		const Operator & op,
-		const typename std::enable_if< grb::is_operator< Operator >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Operator,
+		typename IOType, typename InputType, typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, BSP1D, Coords > &x,
+		Vector< IOType, BSP1D, Coords > &y,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
 		// simply delegating will yield the correct result
 		const size_t old_nnz = nnz( internal::getLocal( y ) );
-		RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ), op );
-		if( ret == SUCCESS && old_nnz != nnz( internal::getLocal( y ) ) ) {
-			internal::signalLocalChange( y );
+		RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ),
+			op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+		if( ret == SUCCESS && phase != RESIZE ) {
+			internal::updateNnz( y );
 		}
 		return ret;
 	}
 
 	/** No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename Coords, typename InputType >
-	RC foldl( Vector< IOType, BSP1D, Coords > & x,
-		const InputType & beta,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< InputType >::value && grb::is_operator< OP >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename Coords, typename InputType
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const InputType &beta,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
 		if( nnz( x ) < size( x ) ) {
 			return ILLEGAL;
 		}
-		return foldl< descr >( internal::getLocal( x ), beta, op );
+		return foldl< descr >( internal::getLocal( x ), beta, op, phase );
 	}
 
 	/** No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename Coords, typename InputType >
-	RC foldl( Vector< IOType, BSP1D, Coords > & x,
-		const InputType & beta,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
-		RC ret = foldl< descr >( internal::getLocal( x ), beta, monoid );
-		if( ret == SUCCESS ) {
-			internal::signalLocalChange( x );
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename Coords, typename InputType
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const InputType &beta,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = foldl< descr >( internal::getLocal( x ), beta, monoid, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			internal::updateNnz( x );
 		}
 		return ret;
 	}
@@ -370,11 +321,19 @@ namespace grb {
 	 * \internal Number of nonzeroes in \a x cannot change, hence no
 	 * synchronisation required.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename Coords >
-	RC foldl( Vector< IOType, BSP1D, Coords > & x,
-		const Vector< InputType, BSP1D, Coords > & y,
-		const OP & op,
-		const typename std::enable_if< grb::is_operator< OP >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename InputType, typename Coords
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = size( x );
 
 		// runtime sanity checks
@@ -383,45 +342,79 @@ namespace grb {
 		}
 
 		// simply delegating will yield the correct result
-		const RC ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ), op );
+		const RC ret = foldl< descr >( internal::getLocal( x ),
+			internal::getLocal( y ), op, phase );
 		return ret;
 	}
 
 	/** \internal Requires synchronisation of output vector nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename Coords >
-	RC foldl( Vector< IOType, BSP1D, Coords > & x,
-		const Vector< InputType, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename InputType,
+		typename Coords
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = size( x );
 
 		// runtime sanity checks
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
-		// dense check
-		if( ( descr | descriptors::dense ) || ( ( nnz( x ) == n ) && ( nnz( y ) == n ) ) ) {
-			return foldl( x, y, monoid.getOperator() );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
 		}
-		// simply delegating will yield the correct result
-		RC ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ), monoid );
-		if( ret == SUCCESS ) {
+
+		RC ret = SUCCESS;
+		if( (descr | descriptors::dense) || ((nnz( x ) == n) && (nnz( y ) == n)) ) {
+			// dense case
+			ret = foldl( x, y, monoid.getOperator(), phase );
+		} else {
+			// otherwise simply delegating will yield the correct result
+			ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ),
+				monoid, phase );
+		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+		if( ret == SUCCESS && phase != RESIZE ) {
 			internal::updateNnz( x );
 		}
 		return ret;
 	}
 
 	/** \internal No communication necessary. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
-					 "[T1]<-[T2]<-T3\n";
+			"[T1]<-[T2]<-T3\n";
 #endif
 		const size_t n = size( z );
 		if( size( x ) != n ) {
@@ -430,24 +423,45 @@ namespace grb {
 		if( nnz( x ) < n ) {
 			return ILLEGAL;
 		}
-
-		RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( x ), beta, op );
-		if( ret == SUCCESS ) {
-			internal::setDense( z );
-			return ret;
-		} else {
-			return ret;
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
 		}
+
+		RC ret = eWiseApply< descr >( internal::getLocal( z ),
+			internal::getLocal( x ), beta, op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
+			internal::setDense( z );
+		}
+		return ret;
 	}
 
 	/** \internal No communication necessary. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
 					 "[T1]<-T2<-[T3]\n";
@@ -459,23 +473,45 @@ namespace grb {
 		if( nnz( y ) < n ) {
 			return ILLEGAL;
 		}
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha, internal::getLocal( y ), op );
-		if( ret == SUCCESS ) {
-			internal::setDense( z );
-			return ret;
-		} else {
-			return ret;
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
 		}
+
+		RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha,
+			internal::getLocal( y ), op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
+			internal::setDense( z );
+		}
+		return ret;
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-[T3]\n";
@@ -513,31 +549,55 @@ namespace grb {
 #endif
 			return ILLEGAL;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ), op );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >( internal::getLocal( z ),
+			internal::getLocal( x ), internal::getLocal( y ), op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
 			internal::setDense( z );
 		}
 		return ret;
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-T2<-[T3]\n";
 #endif
 		const size_t n = size( mask );
 		if( n == 0 ) {
-			return eWiseApply< descr >( z, alpha, y, op );
+			return eWiseApply< descr >( z, alpha, y, op, phase );
 		}
 		if( size( y ) != n ) {
 			return MISMATCH;
@@ -552,9 +612,21 @@ namespace grb {
 #endif
 			return ILLEGAL;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), alpha, internal::getLocal( y ), op );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >( internal::getLocal( z ),
+			internal::getLocal( mask ), alpha, internal::getLocal( y ), op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -562,22 +634,32 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
-		const Vector< InputType1, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1,
+		typename InputType2, typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-T3\n";
 #endif
 		const size_t n = size( mask );
 		if( n == 0 ) {
-			return eWiseApply< descr >( z, x, beta, op );
+			return eWiseApply< descr >( z, x, beta, op, phase );
 		}
 		if( size( x ) != n ) {
 			return MISMATCH;
@@ -592,8 +674,21 @@ namespace grb {
 #endif
 			return ILLEGAL;
 		}
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), internal::getLocal( x ), beta, op );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseApply< descr >( internal::getLocal( z ),
+			internal::getLocal( mask ), internal::getLocal( x ), beta, op, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -601,15 +696,26 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to update global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const OP & op,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const OP &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-[T3]\n";
@@ -641,9 +747,24 @@ namespace grb {
 #endif
 			return ILLEGAL;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), internal::getLocal( x ), internal::getLocal( y ), op );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( z ), internal::getLocal( mask ),
+			internal::getLocal( x ), internal::getLocal( y ),
+			op, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -651,13 +772,23 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-T3\n";
@@ -665,8 +796,8 @@ namespace grb {
 		const size_t n = size( z );
 
 		// check if can delegate to dense variant
-		if( ( descr & descriptors::dense ) || nnz( x ) == n ) {
-			return eWiseApply< descr >( z, x, beta, monoid.getOperator() );
+		if( (descr & descriptors::dense) || nnz( x ) == n ) {
+			return eWiseApply< descr >( z, x, beta, monoid.getOperator(), phase );
 		}
 
 		// run-time checks
@@ -674,21 +805,45 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( x ), beta, monoid );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseApply< descr >( internal::getLocal( z ),
+			internal::getLocal( x ), beta, monoid, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
 			internal::setDense( z );
 		}
 		return ret;
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
 					 "[T1]<-T2<-[T3]\n";
@@ -696,30 +851,53 @@ namespace grb {
 		const size_t n = size( z );
 
 		// check if can delegate to dense variant
-		if( ( descr & descriptors::dense ) || nnz( y ) == n ) {
-			return eWiseApply< descr >( z, alpha, y, monoid.getOperator() );
+		if( (descr & descriptors::dense) || nnz( y ) == n ) {
+			return eWiseApply< descr >( z, alpha, y, monoid.getOperator(), phase );
 		}
 
 		// run-time checks
 		if( size( y ) != n ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha, internal::getLocal( y ), monoid );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha,
+			internal::getLocal( y ), monoid, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
+			assert( phase == EXECUTE );
 			internal::setDense( z );
 		}
 		return ret;
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-[T3]\n";
@@ -727,8 +905,8 @@ namespace grb {
 		const size_t n = size( z );
 
 		// check if we can delegate to dense variant
-		if( ( descr & descriptors::dense ) || ( nnz( x ) == n && nnz( y ) == n ) ) {
-			return eWiseApply< descr >( z, x, y, monoid.getOperator() );
+		if( (descr & descriptors::dense) || (nnz( x ) == n && nnz( y ) == n) ) {
+			return eWiseApply< descr >( z, x, y, monoid.getOperator(), phase );
 		}
 
 		// run-time checks
@@ -748,10 +926,23 @@ namespace grb {
 #endif
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ), monoid );
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ),
+			monoid, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
 
-		if( ret == SUCCESS ) {
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -759,22 +950,33 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename Coords, typename InputType1, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-T2<-[T3]\n";
 #endif
 		const size_t n = size( mask );
 		if( n == 0 ) {
-			return eWiseApply< descr >( z, alpha, y, monoid );
+			return eWiseApply< descr >( z, alpha, y, monoid, phase );
 		}
 		if( size( y ) != n ) {
 			return MISMATCH;
@@ -782,9 +984,24 @@ namespace grb {
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), alpha, internal::getLocal( y ), monoid );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( z ), internal::getLocal( mask ),
+			alpha, internal::getLocal( y ),
+			monoid, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -792,22 +1009,33 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
-		const Vector< InputType1, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-T3\n";
 #endif
 		const size_t n = size( mask );
 		if( n == 0 ) {
-			return eWiseApply< descr >( z, x, beta, monoid );
+			return eWiseApply< descr >( z, x, beta, monoid, phase );
 		}
 		if( size( x ) != n ) {
 			return MISMATCH;
@@ -815,9 +1043,24 @@ namespace grb {
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
 
-		RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), internal::getLocal( x ), beta, monoid );
-		if( ret == SUCCESS ) {
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( z ), internal::getLocal( mask ),
+			internal::getLocal( x ), beta,
+			monoid, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -825,22 +1068,33 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & mask,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Monoid & monoid,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-[T3]\n";
 #endif
 		const size_t n = size( mask );
 		if( n == 0 ) {
-			return eWiseApply< descr >( z, x, y, monoid );
+			return eWiseApply< descr >( z, x, y, monoid, phase );
 		}
 		if( size( x ) != n ) {
 			return MISMATCH;
@@ -851,8 +1105,24 @@ namespace grb {
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
-		const RC ret = eWiseApply< descr >( internal::getLocal( z ), internal::getLocal( mask ), internal::getLocal( x ), internal::getLocal( y ), monoid );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( z ), internal::getLocal( mask ),
+			internal::getLocal( x ), internal::getLocal( y ),
+			monoid, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -860,15 +1130,26 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & a,
-		const Vector< InputType2, BSP1D, Coords > & x,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &a,
+		const Vector< InputType2, BSP1D, Coords > &x,
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -879,12 +1160,30 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const bool sparse = grb::nnz( a ) != n || grb::nnz( x ) != n || grb::nnz( y ) != n;
-		if( ! sparse ) {
-			internal::setDense( z );
-			return grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ), ring );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ), ring );
+		if( phase == RESIZE ) {
+			return resize( z, n );
+		}
+		assert( phase == EXECUTE );
+
+		const bool sparse = grb::nnz( a ) != n ||
+			grb::nnz( x ) != n ||
+			grb::nnz( y ) != n;
+		if( !sparse ) {
+			internal::setDense( z );
+			return grb::eWiseMulAdd< descr >(
+				internal::getLocal( z ),
+				internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ),
+				ring
+			);
+		}
+		const RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ),
+			internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ),
+			ring
+		);
 		if( ret == SUCCESS ) {
 			return internal::updateNnz( z );
 		} else {
@@ -893,19 +1192,42 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename Coords, typename OutputType >
-	RC eWiseAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const InputType1 & alpha,
-		const Vector< InputType2, BSP1D, Coords > & x,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const InputType1 &alpha,
+		const Vector< InputType2, BSP1D, Coords > &x,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseAdd< descr >( internal::getLocal( z ), alpha, internal::getLocal( x ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseAdd< descr >( internal::getLocal( z ), alpha,
+			internal::getLocal( x ), ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -913,15 +1235,26 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const InputType1 & alpha,
-		const Vector< InputType2, BSP1D, Coords > & x,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const InputType1 &alpha,
+		const Vector< InputType2, BSP1D, Coords > &x,
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
@@ -929,8 +1262,21 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha, internal::getLocal( x ), internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha,
+			internal::getLocal( x ), internal::getLocal( y ), ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return updateNnz( z );
 		} else {
 			return ret;
@@ -938,15 +1284,26 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & a,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &a,
 		const InputType2 chi,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -954,8 +1311,21 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( a ), chi, internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ),
+			internal::getLocal( a ), chi, internal::getLocal( y ), ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -963,15 +1333,25 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & a,
-		const Vector< InputType2, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &a,
+		const Vector< InputType2, BSP1D, Coords > &x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -979,86 +1359,188 @@ namespace grb {
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, n );
+		}
+
+		assert( phase == EXECUTE );
 		internal::setDense( z );
-		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( a ), internal::getLocal( x ), gamma, ring );
+		return grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ),
+			internal::getLocal( a ), internal::getLocal( x ), gamma,
+			ring
+		);
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & a,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &a,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, n );
+		}
+
+		assert( phase == EXECUTE );
 		internal::setDense( z );
-		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( a ), beta, gamma, ring );
+		return grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ),
+			internal::getLocal( a ), beta, gamma,
+			ring
+		);
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & x,
+		const Vector< InputType2, BSP1D, Coords > &x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, n );
+		}
+
+		assert( phase == EXECUTE );
 		internal::setDense( z );
-		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha, internal::getLocal( x ), gamma, ring );
+		return grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ),
+			alpha, internal::getLocal( x ), gamma,
+			ring
+		);
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename Coords
+	>
+	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, n );
+		}
+
+		assert( phase == EXECUTE );
 		internal::setDense( z );
-		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha, beta, internal::getLocal( y ), ring );
+		return grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), alpha, beta, internal::getLocal( y ), ring
+		);
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename Coords
+	>
+	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
+	) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, size( z ) );
+		}
+		assert( phase == EXECUTE );
 		internal::setDense( z );
-		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha, beta, gamma, ring );
+		return grb::eWiseMulAdd< descr >( internal::getLocal( z ), alpha, beta,
+			gamma, ring );
 	}
 
 	/** \internal Requires syncing of output nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename Coords >
-	RC eWiseMul( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
@@ -1066,8 +1548,24 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const RC ret = eWiseMul< descr >( internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ),
+			internal::getLocal( x ), internal::getLocal( y ),
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			ret = internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1075,19 +1573,42 @@ namespace grb {
 	}
 
 	/** \internal Requires syncing of output nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename Coords >
-	RC eWiseMul( Vector< OutputType, BSP1D, Coords > & z,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const RC ret = eWiseMul< descr >( internal::getLocal( z ), alpha, internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseMul< descr >( internal::getLocal( z ), alpha,
+			internal::getLocal( y ), ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1095,19 +1616,42 @@ namespace grb {
 	}
 
 	/** \internal Requires syncing of output nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename OutputType, typename Coords >
-	RC eWiseMul( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< InputType1, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
-		const RC ret = eWiseMul< descr >( internal::getLocal( z ), internal::getLocal( x ), beta, ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = eWiseMul< descr >( internal::getLocal( z ),
+			internal::getLocal( x ), beta, ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1115,19 +1659,35 @@ namespace grb {
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
-		const Vector< InputType1, BSP1D, Coords > & a,
-		const Vector< InputType2, BSP1D, Coords > & x,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3, typename OutputType,
+		typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &a,
+		const Vector< InputType2, BSP1D, Coords > &x,
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, a, x, y, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, a, x, y, ring, phase );
 		}
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -1141,8 +1701,24 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ),
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1150,16 +1726,29 @@ namespace grb {
 	}
 
 	/** \internal Does not require communication. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
-		const InputType1 & alpha,
-		const Vector< InputType2, BSP1D, Coords > & x,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2,
+		typename InputType3,
+		typename OutputType, typename MaskType,
+		typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const InputType1 &alpha,
+		const Vector< InputType2, BSP1D, Coords > &x,
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
@@ -1167,8 +1756,24 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), alpha, internal::getLocal( x ), internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, internal::getLocal( x ), internal::getLocal( y ),
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return updateNnz( z );
 		} else {
 			return ret;
@@ -1176,19 +1781,35 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
-		const Vector< InputType1, BSP1D, Coords > & a,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType,
+		typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &a,
 		const InputType2 chi,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, a, chi, y, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, a, chi, y, ring, phase );
 		}
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -1199,8 +1820,24 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), internal::getLocal( a ), chi, internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( a ), chi, internal::getLocal( y ),
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1208,19 +1845,34 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
-		const Vector< InputType1, BSP1D, Coords > & a,
-		const Vector< InputType2, BSP1D, Coords > & x,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &a,
+		const Vector< InputType2, BSP1D, Coords > &x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, a, x, gamma, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, a, x, gamma, ring, phase );
 		}
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -1231,8 +1883,17 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), internal::getLocal( a ), internal::getLocal( x ), gamma, ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		const RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( a ), internal::getLocal( x ), gamma,
+			ring, phase
+		);
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1240,19 +1901,34 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
-		const Vector< InputType1, BSP1D, Coords > & a,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &a,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, a, beta, gamma, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, a, beta, gamma, ring, phase );
 		}
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
@@ -1260,8 +1936,24 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), internal::getLocal( a ), beta, gamma, ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( a ), beta, gamma,
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1269,19 +1961,34 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
 		const InputType1 alpha,
-		const Vector< InputType2, BSP1D, Coords > & x,
+		const Vector< InputType2, BSP1D, Coords > &x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, alpha, x, gamma, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, alpha, x, gamma, ring, phase );
 		}
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
@@ -1289,8 +1996,24 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), alpha, internal::getLocal( x ), gamma, ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, internal::getLocal( x ), gamma,
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1298,19 +2021,34 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
 		const InputType1 alpha,
 		const InputType2 beta,
-		const Vector< InputType3, BSP1D, Coords > & y,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Vector< InputType3, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, alpha, beta, y, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, alpha, beta, y, ring, phase );
 		}
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
@@ -1318,8 +2056,24 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), alpha, beta, internal::getLocal( y ), ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, beta, internal::getLocal( y ),
+			ring, phase
+		);
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1327,25 +2081,53 @@ namespace grb {
 	}
 
 	/** \internal Requires synchronisation of global number of nonzeroes. */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, typename InputType3, typename Coords, typename OutputType, typename MaskType >
-	RC eWiseMulAdd( Vector< OutputType, BSP1D, Coords > & z,
-		const Vector< MaskType, BSP1D, Coords > & m,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename MaskType, typename Coords
+	>
+	RC eWiseMulAdd(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-				! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const size_t n = grb::size( z );
-		if( grb::size( m ) == 0 || ( grb::nnz( m ) == n && ( descr & descriptors::structural ) && ! ( descr & descriptors::invert_mask ) ) ) {
-			return eWiseMulAdd< descr >( z, alpha, beta, gamma, ring );
+		if( grb::size( m ) == 0 || (
+			grb::nnz( m ) == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) ) {
+			return eWiseMulAdd< descr >( z, alpha, beta, gamma, ring, phase );
 		}
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		const RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ), internal::getLocal( m ), alpha, beta, gamma, ring );
-		if( ret == SUCCESS ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ),
+			internal::getLocal( m ), alpha, beta, gamma, ring, phase );
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		if( ret == SUCCESS && phase != RESIZE ) {
 			return internal::updateNnz( z );
 		} else {
 			return ret;
@@ -1419,7 +2201,8 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC dot( OutputType &z,
+	RC dot(
+		OutputType &z,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const AddMonoid &addMonoid,
@@ -1428,8 +2211,8 @@ namespace grb {
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< OutputType >::value &&
 			grb::is_monoid< AddMonoid >::value &&
-			grb::is_operator< AnyOp >::value,
-		void >::type * const = nullptr
+			grb::is_operator< AnyOp >::value, void
+		>::type * const = nullptr
 	) {
 		// sanity check
 		if( size( y ) != size( x ) ) {
@@ -1448,9 +2231,44 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * \internal
+	 * Provides a generic implementation of the dot computation on semirings by
+	 * translating it into a dot computation on an additive commutative monoid
+	 * with any multiplicative operator.
+	 * \endinternal
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC dot(
+		IOType &x,
+		const Vector< InputType1, BSP1D, Coords > &left,
+		const Vector< InputType2, BSP1D, Coords > &right,
+		const Ring &ring = Ring(),
+		const typename std::enable_if<
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< IOType >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::dot (BSP1D, semiring version)\n"
+			<< "\t dispatches to monoid-operator version\n";
+#endif
+		return grb::dot< descr >( x,
+			left, right,
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeOperator()
+		);
+	}
+
 	/** \internal No implementation notes. */
 	template< typename Func, typename DataType, typename Coords >
-	RC eWiseMap( const Func f, const Vector< DataType, BSP1D, Coords > & x ) {
+	RC eWiseMap( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
 		return eWiseMap( f, internal::getLocal( x ) );
 	}
 
@@ -1462,31 +2280,62 @@ namespace grb {
 	 * never be a mismatch in globally known vector sizes.
 	 */
 	template< typename Func, typename DataType, typename Coords >
-	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > & x ) {
+	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
 		// rely on local lambda
 		return eWiseLambda( f, internal::getLocal( x ) );
 		// note the sparsity structure will not change by the above call
 	}
 
 	/** \internal No implementation notes. */
-	template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const Vector< DataType1, BSP1D, Coords > & x, const Vector< DataType2, BSP1D, Coords > & y, Args const &... args ) {
+	template<
+		typename Func,
+		typename DataType1, typename DataType2, typename Coords,
+		typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Vector< DataType1, BSP1D, Coords > &x,
+		const Vector< DataType2, BSP1D, Coords > &y,
+		Args const &... args
+	) {
 		// check dimension mismatch
 		if( size( x ) != size( y ) ) {
 			return MISMATCH;
 		}
-		// in this implementation, the distributions are equal so no need for any synchronisation
+		// in this implementation, the distributions are equal so no need for any
+		// synchronisation
 		return eWiseLambda( f, x, args... );
 		// note the sparsity structure will not change by the above call
 	}
 
 	/** \internal No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords >
-	RC zip( Vector< std::pair< T, U >, BSP1D, Coords > & z,
-		const Vector< T, BSP1D, Coords > & x,
-		const Vector< U, BSP1D, Coords > & y,
-		const typename std::enable_if< ! grb::is_object< T >::value && ! grb::is_object< U >::value, void >::type * const = NULL ) {
-		const RC ret = zip( internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ) );
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename T, typename U, typename Coords
+	>
+	RC zip(
+		Vector< std::pair< T, U >, BSP1D, Coords > &z,
+		const Vector< T, BSP1D, Coords > &x,
+		const Vector< U, BSP1D, Coords > &y,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< T >::value &&
+			!grb::is_object< U >::value, void
+		>::type * const = nullptr
+	) {
+		const size_t n = size( z );
+		if( size( x ) != n || n != size( y ) ) {
+			return MISMATCH;
+		}
+		if( nnz( x ) != nnz( y ) ) {
+			return ILLEGAL;
+		}
+		if( phase == RESIZE ) {
+			return resize( z, nnz( x ) );
+		}
+
+		assert( phase == EXECUTE );
+		const RC ret = zip( internal::getLocal( z ),
+			internal::getLocal( x ), internal::getLocal( y ) );
 		if( ret == SUCCESS ) {
 			return internal::updateNnz( z );
 		} else {
@@ -1495,12 +2344,46 @@ namespace grb {
 	}
 
 	/** No implementation notes. */
-	template< Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords >
-	RC unzip( Vector< T, BSP1D, Coords > & x,
-		Vector< U, BSP1D, Coords > & y,
-		const Vector< std::pair< T, U >, BSP1D, Coords > & in,
-		const typename std::enable_if< ! grb::is_object< T >::value && ! grb::is_object< U >::value, void >::type * const = NULL ) {
-		RC ret = unzip( internal::getLocal( x ), internal::getLocal( y ), internal::getLocal( in ) );
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename T, typename U, typename Coords
+	>
+	RC unzip(
+		Vector< T, BSP1D, Coords > &x,
+		Vector< U, BSP1D, Coords > &y,
+		const Vector< std::pair< T, U >, BSP1D, Coords > &in,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< T >::value &&
+			!grb::is_object< U >::value, void
+		>::type * const = nullptr
+	) {
+		const size_t n = size( in );
+		if( size( x ) != n && n != size( y ) ) {
+			return MISMATCH;
+		}
+		RC ret = SUCCESS;
+
+		if( phase == RESIZE ) {
+			const size_t target = nnz( in );
+			ret = resize( x, target );
+			if( ret == SUCCESS ) {
+				ret = resize( y, target );
+			}
+			if( ret != SUCCESS ) {
+				ret = clear( x );
+				ret = ret ? ret : clear( y );
+				if( ret != SUCCESS ) {
+					ret = PANIC;
+				}
+			}
+			return ret;
+		}
+
+		assert( phase == EXECUTE );
+		ret = unzip(
+			internal::getLocal( x ), internal::getLocal( y ),
+			internal::getLocal( in )
+		);
 		if( ret == SUCCESS ) {
 			ret = internal::updateNnz( x );
 		}
@@ -1510,8 +2393,11 @@ namespace grb {
 		return ret;
 	}
 
+	/** @} */
+
 }; // namespace grb
 
 #undef NO_CAST_ASSERT
 
 #endif
+

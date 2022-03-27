@@ -40,10 +40,13 @@ void grb_program( const int &, grb::RC &rc ) {
 		rc = grb::buildMatrixUnique( A, I, J, V, 2000000, SEQUENTIAL );
 		rc = rc ? rc : grb::buildMatrixUnique( B, I, J, V, 2000000, SEQUENTIAL );
 		rc = rc ? rc : grb::buildMatrixUnique( C, I, J, V, 2000000, SEQUENTIAL );
-		rc = rc ? rc : grb::eWiseApply( C, A, B, grb::operators::add< float, size_t, char >(), SYMBOLIC );
-		rc = rc ? rc : grb::eWiseApply( C, A, B, grb::operators::add< float, size_t, char >() );
+		rc = rc ? rc : grb::eWiseApply( C, A, B,
+			grb::operators::add< float, size_t, char >(), RESIZE );
+		rc = rc ? rc : grb::eWiseApply( C, A, B,
+			grb::operators::add< float, size_t, char >() );
 		if( rc != SUCCESS ) {
-			std::cout << "Error on executing large non-square mixed-domain matrix check\n";
+			std::cout << "Error on executing large non-square "
+				<< "mixed-domain matrix check\n";
 			return;
 		}
 		for( const auto &triple : C ) {
@@ -51,17 +54,20 @@ void grb_program( const int &, grb::RC &rc ) {
 			const size_t &j = triple.first.second;
 			const size_t &v = triple.second;
 			if( i != j ) {
-				std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) -- only expected entries on the diagonal\n";
+				std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
+					<< "-- only expected entries on the diagonal\n";
 				rc = FAILED;
 			}
 			if( v != 4 ) {
-				std::cout << "Unexpected value at position ( " << i << ", " << j << " ) = " << v << " -- expected 4\n";
+				std::cout << "Unexpected value at position ( " << i << ", " << j << " ) "
+					<< "= " << v << " -- expected 4\n";
 				rc = FAILED;
 			}
 		}
 	}
 	if( rc != SUCCESS ) {
-		std::cout << "Error detected in large non-square mixed-domain matrix check -- exiting\n";
+		std::cout << "Error detected in large non-square mixed-domain matrix check "
+			<< "-- exiting\n";
 		return;
 	}
 }

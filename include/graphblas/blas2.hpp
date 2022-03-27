@@ -31,13 +31,14 @@
 
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/blas2.hpp>
+ #include <graphblas/reference/blas2.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/blas2.hpp>
+ #include <graphblas/banshee/blas2.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/blas2.hpp>
+ #include <graphblas/bsp1d/blas2.hpp>
 #endif
 
 #endif // end ``_H_GRB_BLAS2''
+

@@ -250,6 +250,15 @@ namespace grb {
 		};
 
 		/**
+		 * Configuration parameters that may depend on the backend.
+		 *
+		 * Empty by default so to ensure no-one implicitly relies on implicit
+		 * defaults.
+		 */
+		template< grb::Backend implementation = default_backend >
+		class IMPLEMENTATION {};
+
+		/**
 		 * What data type should be used to store row indices.
 		 *
 		 * Some uses cases may require this to be set to <tt>size_t</tt>-- others may

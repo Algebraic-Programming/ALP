@@ -24,6 +24,8 @@
 #define _H_GRB_COSSIM
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/norm.hpp>
+
 
 #define NO_CAST_ASSERT( x, y, z )                                                                       \
 	static_assert( x,                                                                                   \
@@ -38,6 +40,7 @@
 		"* Possible fix 3 | Provide a compatible semiring where all domains match those of the input\n" \
 		"*                  parameters, as specified in the documentation of the function.\n"           \
 		"*******************************************************************************************\n" );
+
 
 namespace grb {
 
@@ -168,13 +171,15 @@ namespace grb {
 					x, y );
 				denominator = sqrt( norm1 ) * sqrt( norm2 );
 			} else {
-				// cannot stream each vector once, stream each one twice instead using standard grb functions
+				// cannot stream each vector once, stream each one twice instead using
+				// standard grb functions
 				rc = grb::norm2( nominator, x, ring );
 				if( rc == SUCCESS ) {
 					rc = grb::norm2( denominator, y, ring );
 				}
 				if( rc == SUCCESS ) {
-					rc = grb::foldl( denominator, nominator, ring.getMultiplicativeOperator() );
+					rc = grb::foldl( denominator, nominator,
+						ring.getMultiplicativeOperator() );
 				}
 				if( rc == SUCCESS ) {
 					rc = grb::dot( nominator, x, y, ring );

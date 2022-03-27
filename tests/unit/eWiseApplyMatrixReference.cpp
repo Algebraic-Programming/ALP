@@ -158,7 +158,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	// test 1: compute with the monoid mxm_elementwise
 	std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 		<< "A and B value matrices\n";
-	rc = grb::eWiseApply( C, A, B, mulmono, grb::SYMBOLIC );
+	rc = grb::eWiseApply( C, A, B, mulmono, grb::RESIZE );
 	rc = rc ? rc : grb::eWiseApply( C, A, B, mulmono );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::eWiseApply FAILED\n";
@@ -174,7 +174,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	// test 2: compute with the monoid mxm_elementwise, A value matrix, B pattern matrix \n";
 	std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 		<< "A value matrix, B pattern matrix\n";
-	rc = grb::eWiseApply( C, A, B_pattern, mulmono, grb::SYMBOLIC );
+	rc = grb::eWiseApply( C, A, B_pattern, mulmono, grb::RESIZE );
 	rc = rc ? rc : grb::eWiseApply( C, A, B_pattern, mulmono );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::eWiseApply FAILED\n";
@@ -190,7 +190,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	// test 3: compute with the monoid mxm_elementwise, A pattern matrix, B value matrix \n";
 	std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 		<< "A pattern matrix, B value matrix\n";
-	rc = grb::eWiseApply( C, A_pattern, B, mulmono, grb::SYMBOLIC );
+	rc = grb::eWiseApply( C, A_pattern, B, mulmono, grb::RESIZE );
 	rc = rc ? rc : grb::eWiseApply( C, A_pattern, B, mulmono );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::eWiseApply FAILED\n";
@@ -206,7 +206,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	// test 4: compute with the monoid mxm_elementwise, A pattern matrix, B pattern matrix \n";
 	std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 		<< "A pattern matrix, B pattern matrix\n";
-	rc = grb::eWiseApply( C, A_pattern, B_pattern, mulmono, grb::SYMBOLIC );
+	rc = grb::eWiseApply( C, A_pattern, B_pattern, mulmono, grb::RESIZE );
 	rc = rc ? rc : grb::eWiseApply( C, A_pattern, B_pattern, mulmono );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::eWiseApply FAILED\n";
@@ -222,7 +222,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	// test 5: compute with the operator mxm_elementwise (pattern matrices not allowed) \n";
 	std::cout << "\t Verifying the operator version of mxm_elementwise "
 		<< "(only value matrices)\n";
-	rc = grb::eWiseApply( C, A, B, mulmono.getOperator(), grb::SYMBOLIC );
+	rc = grb::eWiseApply( C, A, B, mulmono.getOperator(), grb::RESIZE );
 	rc = rc ? rc : grb::eWiseApply( C, A, B, mulmono.getOperator() );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::eWiseApply FAILED\n";
