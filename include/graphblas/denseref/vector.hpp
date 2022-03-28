@@ -377,6 +377,7 @@ namespace grb {
 	class VectorView< T, Structure, storage::Dense, view::Original< void >, reference_dense > {
 
 	private:
+
 		using self_type = VectorView< T, Structure, storage::Dense, view::Original< void >, reference_dense >;
 
 		/*********************
@@ -395,7 +396,9 @@ namespace grb {
 			return imf->n;
 		}
 
+
 	public:
+
 		/** @see Vector::value_type. */
 		using value_type = T;
 
@@ -444,6 +447,7 @@ namespace grb {
 	class VectorView< T, Structure, storage::Dense, view::Original< VectorViewT >, reference_dense > {
 
 	private:
+
 		using self_type = VectorView< T, Structure, storage::Dense, view::Original< VectorViewT >, reference_dense >;
 		using target_type = VectorViewT;
 
@@ -464,6 +468,7 @@ namespace grb {
 		}
 
 	public:
+
 		/** Exposes the element type. */
 		using value_type = T;
 
@@ -517,6 +522,7 @@ namespace grb {
 	class VectorView< T, Structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense > {
 
 	private:
+
 		/** Exposes the own type and the type of the VectorView object over
 		 * which this view is created. */
 		using self_type = VectorView< T, Structure, storage::Dense, view::Diagonal< StructuredMatrixT >, reference_dense >;
@@ -539,6 +545,7 @@ namespace grb {
 		}
 
 	public:
+
 		/** Exposes the element type. */
 		using value_type = T;
 
@@ -591,19 +598,20 @@ namespace grb {
 	 *
 	 * @returns A new vector VectorView object.
 	 *
-     * \parblock
-     * \par Performance semantics.
-     *        -# This function performs
-     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
 	 *           of available views of \a source.
-     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
-     *           of memory beyond the memory in use at the function call entry.
-     *        -# This function may make system calls.
-     * \endparblock
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
 	 *
 	 */
 	template< 
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend
+	>
 	typename VectorView< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type
 	get_view( VectorView< T, Structure, StorageSchemeType, View, backend > & source ) {
 
@@ -625,18 +633,17 @@ namespace grb {
 	 * 
 	 * @returns          A VectorView object.
 	 * 
-     * \parblock
-     * \par Performance semantics.
-     *        -# This function performs
-     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
 	 * 			 of available views of \a source.
-     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
-     *           of memory beyond the memory in use at the function call entry.
-     *        -# This function may make system calls.
-     * \endparblock
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
 	 * 
 	 */
-
 	template< typename T, typename Structure, typename View, typename StorageSchemeType, enum Backend backend >
 	typename VectorView< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type
 	get_view( VectorView< T, Structure, StorageSchemeType, View, backend > &source, const utils::range& rng ) {
@@ -646,8 +653,6 @@ namespace grb {
 
 		return vec_view;
 	}
-
-
 
 } // end namespace ``grb''
 
