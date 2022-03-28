@@ -115,6 +115,9 @@ namespace grb {
 	 * This implementation does not support multiple user processes.
 	 *
 	 * @see grb::init for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	RC init< reference >( const size_t, const size_t, void * const );
@@ -156,6 +159,9 @@ namespace grb {
 	 * does not allocate nor free any memory, and does not make any system calls.
 	 *
 	 * @see grb::finalize() for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	RC finalize< reference >();

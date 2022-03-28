@@ -4561,6 +4561,12 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4605,6 +4611,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a x.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4648,6 +4660,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a y.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4690,6 +4708,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a x and \a y.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4735,6 +4759,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Masked version.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4786,6 +4816,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a x, masked version
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4835,6 +4871,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a y, masked version.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4884,6 +4926,12 @@ namespace grb {
 	 * under the given semiring.
 	 *
 	 * Specialisation for scalar \a x and \a y, masked version.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -5544,8 +5592,10 @@ namespace grb {
 		}
 
 		/**
+		 * \internal
 		 * Depending on sparsity patterns, there are many variants of eWiseMulAdd.
 		 * This function identifies and calls the most opportune variants.
+		 * \endinternal
 		 */
 		template<
 			Descriptor descr,
@@ -5723,6 +5773,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a a is a scalar.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -5819,6 +5873,10 @@ namespace grb {
 	 * this semiring.
 	 *
 	 * Specialisation for when \a x is a scalar.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -5915,6 +5973,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a y is a scalar.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6013,6 +6075,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a x and \a y are scalar.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6108,6 +6174,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a a and \a y are scalar.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6198,6 +6268,10 @@ namespace grb {
 	 * Specialisation for when \a a and \a x are scalar.
 	 *
 	 * \internal Dispatches to eWiseAdd.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6256,6 +6330,10 @@ namespace grb {
 	 * Specialisation for when \a a, \a x, and \a y are scalar.
 	 *
 	 * \internal Dispatches to set.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6392,6 +6470,10 @@ namespace grb {
 	 *         operators in-place, whenever the input domains, the output domain,
 	 *         and the operators used allow for this.
 	 * \endparblock
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6491,6 +6573,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a a is a scalar, masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6605,6 +6691,10 @@ namespace grb {
 	 * this semiring.
 	 *
 	 * Specialisation for when \a x is a scalar, masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6721,6 +6811,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a y is a scalar, masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6836,6 +6930,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a x and \a y are scalar, masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -6950,6 +7048,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Specialisation for when \a a and \a y are scalar, masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -7056,6 +7158,10 @@ namespace grb {
 	 * Calculates the axpy, \f$ z = a * x .+ y \f$, under this semiring.
 	 *
 	 * Masked version.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -7173,6 +7279,10 @@ namespace grb {
 	 * Specialisation for scalar \a a and \a x, masked version.
 	 *
 	 * \internal Dispatches to masked eWiseAdd.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -7237,6 +7347,10 @@ namespace grb {
 	 * Specialisation for scalar \a a, \a x, and \a y, masked version.
 	 *
 	 * \internal Dispatches to masked set.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
