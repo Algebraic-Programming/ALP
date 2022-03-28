@@ -26,15 +26,17 @@
 #include "backends.hpp"
 #include "base/init.hpp"
 
+
 // include all implementations
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/init.hpp"
+ #include "graphblas/reference/init.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/init.hpp"
+ #include "graphblas/bsp1d/init.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/init.hpp"
+ #include "graphblas/banshee/init.hpp"
 #endif
 
 #endif // end ``_H_GRB_INIT''
+

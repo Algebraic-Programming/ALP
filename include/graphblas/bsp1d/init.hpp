@@ -388,6 +388,9 @@ namespace grb {
 	 *                       corresponding call to the lpf_hook.
 	 *
 	 * @see grb::init() for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	grb::RC init< BSP1D >( const size_t s, const size_t P, const lpf_t lpf );
@@ -396,6 +399,9 @@ namespace grb {
 	 * This implementation employs this function to free and deregister buffers.
 	 *
 	 * @see grb::finalize() for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	grb::RC finalize< BSP1D >();

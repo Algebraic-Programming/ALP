@@ -1129,7 +1129,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires communication to sync global nonzero count. */
+	/**
+	 * \internal Requires communication to sync global nonzero count.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1191,7 +1197,15 @@ namespace grb {
 		}
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          any use of this operation to an equivalent one using a sequence of
+	 *          folds using the additive monoid if \a z is used in-place, or in the
+	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
+	 *          the additive monoid.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
@@ -1234,7 +1248,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1283,7 +1303,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1332,7 +1358,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1375,7 +1407,13 @@ namespace grb {
 		);
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1415,7 +1453,13 @@ namespace grb {
 		);
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1455,7 +1499,13 @@ namespace grb {
 		);
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1492,7 +1542,13 @@ namespace grb {
 		);
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1658,7 +1714,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires communication to sync global nonzero count. */
+	/**
+	 * \internal Requires communication to sync global nonzero count.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1725,7 +1787,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Does not require communication. */
+	/**
+	 * \internal Does not require communication.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2,
@@ -1780,7 +1848,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1844,7 +1918,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1900,7 +1980,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -1960,7 +2046,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -2020,7 +2112,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
@@ -2080,7 +2178,13 @@ namespace grb {
 		}
 	}
 
-	/** \internal Requires synchronisation of global number of nonzeroes. */
+	/**
+	 * \internal Requires synchronisation of global number of nonzeroes.
+	 *
+	 * \warning This function has been deprecated since version 0.5. If required,
+	 *          consider instead a sequence of grb::foldl using the additive
+	 *          monoid, followed by a call to grb::eWiseMul.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
