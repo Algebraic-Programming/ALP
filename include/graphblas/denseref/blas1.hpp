@@ -48,6 +48,7 @@
 		"******************************\n" );
 #endif
 
+
 namespace grb {
 
 	/**
@@ -171,8 +172,13 @@ namespace grb {
 	//  *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
 	//  * \endparblock
 	 */
-	template< typename DataType, typename DataStructure, typename DataStorage, typename View >
-	RC clear( VectorView< DataType, DataStructure, DataStorage, View, reference_dense > & x ) noexcept {
+	template<
+		typename DataType, typename DataStructure, typename DataStorage,
+		typename View
+	>
+	RC clear(
+		VectorView< DataType, DataStructure, DataStorage, View, reference_dense > &x
+	) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
 	}
@@ -3905,7 +3911,7 @@ namespace grb {
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		/** \internal \todo: extract res.value into z */ 
+		/** \internal \todo: extract res.value into z */
 		return SUCCESS;
 	}
 
@@ -4183,6 +4189,25 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * Sort vectors, function available to user, e.g. to sort eigenvectors
+	 *
+	 * @param[in] toSort vector of indices to sort, should not be modified
+	 * @param[in] cmp function with strict weak ordering relation between indices, eg bool cmp(const Type1 &a, const Type2 &b)
+	 *            cmp must not modify the objects passed to it
+	 *
+	 * @param[out] permutation iterator over index permutations which sort toSort vector
+	 *
+	 * Complexity should be lower than O(n*log(n)), and space complexity should be lower than \Theta(n+T+P)
+	 */
+	template< typename IndexType, typename ValueType, typename Compare >
+	RC sort(
+		Vector< IndexType > &permutation, const Vector< ValueType > &toSort,
+		Compare cmp, PHASE &phase = EXECUTE
+	) noexcept {
+		return SUCCESS;
+	}
+
 	/** C++ scalar version */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -4190,13 +4215,15 @@ namespace grb {
 		typename InputStructure,
 		typename InputStorage,
 		typename InputView,
-		Backend backend >
-	RC norm2( OutputType &x,
+		Backend backend
+	>
+	RC norm2(
+		OutputType &x,
 		const VectorView< InputType, InputStructure, InputStorage, InputView, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
 		Scalar< OutputType, structures::General, reference_dense > res( x );
 		RC rc = norm2( res, y, ring );
