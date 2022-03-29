@@ -39,7 +39,7 @@
 //#include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
 #include <graphblas/vector.hpp>
 #include <graphblas/structures.hpp>
-#include <graphblas/storage.hpp>
+#include <graphblas/density.hpp>
 #include <graphblas/views.hpp>
 #include <graphblas/imf.hpp>
 
@@ -339,13 +339,13 @@ namespace grb {
 		Matrix< T, reference_dense > & getContainer( MatrixContainer< T > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
-		template< typename T, typename Structure, typename Storage, typename View >
-		const Matrix< T, reference_dense > & getContainer( const StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+		template< typename T, typename Structure, enum Density density, typename View >
+		const Matrix< T, reference_dense > & getContainer( const StructuredMatrix< T, Structure, density, View, reference_dense > & A ) {
 			return getContainer( A );
 		}
 
-		template< typename T, typename Structure, typename Storage, typename View >
-		Matrix< T, reference_dense > & getContainer( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) {
+		template< typename T, typename Structure, enum Density density, typename View >
+		Matrix< T, reference_dense > & getContainer( StructuredMatrix< T, Structure, density, View, reference_dense > & A ) {
 			return getContainer( A );
 		}
 
@@ -362,29 +362,29 @@ namespace grb {
 
 		void getInitialized( MatrixBase &, bool ) noexcept;
 
-		template< typename T, typename Structure, typename Storage, typename View >
-		bool getInitialized( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A ) noexcept {
+		template< typename T, typename Structure, enum Density density, typename View >
+		bool getInitialized( StructuredMatrix< T, Structure, density, View, reference_dense > & A ) noexcept {
 			return getInitialized( A );
 		}
 
-		template< typename T, typename Structure, typename Storage, typename View >
-		void setInitialized( StructuredMatrix< T, Structure, Storage, View, reference_dense > & A, bool initialized ) noexcept {
+		template< typename T, typename Structure, enum Density density, typename View >
+		void setInitialized( StructuredMatrix< T, Structure, density, View, reference_dense > & A, bool initialized ) noexcept {
 			setInitialized( A, initialized );
 		}
 	} // namespace internal
 
 	template< typename D, typename Structure, typename View >
-	size_t nrows( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
+	size_t nrows( const StructuredMatrix< D, Structure, Density::Dense, View, reference_dense > & A ) noexcept {
 		return internal::nrows( A );
 	}
 
 	template< typename D, typename Structure, typename View >
-	size_t ncols( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
+	size_t ncols( const StructuredMatrix< D, Structure, Density::Dense, View, reference_dense > & A ) noexcept {
 		return internal::ncols( A );
 	}
 
 	template< typename D, typename Structure, typename View >
-	std::pair< size_t, size_t > dims( const StructuredMatrix< D, Structure, storage::Dense, View, reference_dense > & A ) noexcept {
+	std::pair< size_t, size_t > dims( const StructuredMatrix< D, Structure, Density::Dense, View, reference_dense > & A ) noexcept {
 		return internal::dims( A );
 	}
 
@@ -478,8 +478,9 @@ namespace grb {
 			 * made depending on whether a decision about instantiating the matrix is made by the framework.
 			 * 
 			 * The specific storage scheme choice depends on the chosen backend and the structure of the matrix.
+			 * \internal \todo Revisit this when introducing storage mapping functions.
 			 */
-			storage::Dense storage_scheme;
+			// Storage storage_scheme;
 
 			/**
 			 * @brief Construct a new structured matrix container object.
@@ -494,8 +495,7 @@ namespace grb {
 			 */
 			MatrixContainer( size_t rows, size_t cols, size_t cap = 0 ) :
 				MatrixBase( rows, cols ),
-				_container( new Matrix< T, reference_dense >( rows, cols, cap ) ),
-				storage_scheme( storage::full ) {}
+				_container( new Matrix< T, reference_dense >( rows, cols, cap ) ) {}
 
 		};
 
@@ -530,8 +530,13 @@ namespace grb {
 	 * The logical layout of a structured matrix maps to a physical counterpart via 
 	 * a storage scheme which typically depends on the chosen structure and the selected 
 	 * backend. grb::Matrix and grb::Vector may be used as interfaces to such a physical
-	 * layout, where the interpration of their content is a function of the structure 
-	 * information.
+	 * layout.
+	 * To visualize this, you may think of a band matrix. Using a 
+	 * full dense or a banded storage schemes would require
+	 * the use of a \a grb::Matrix container (see include/graphblas/density.hpp for
+	 * more details about the supported storage schemes). However, the interpration of its 
+	 * content would differ in the two cases being a function of both the Structure 
+	 * information and the storage scheme combined.
 	 * 
 	 * Views can be used to create logical \em perspectives on top of a container. 
 	 * For example, one may decide to refer to the transpose of a matrix or to treat 
@@ -545,38 +550,36 @@ namespace grb {
 	 * Structured matrices defined as views on other matrices do not instantiate a
 	 * new container but refer to the one used by their targets.
 	 * See the two specializations 
-	 * \a StructuredMatrix<T, structures::General, storage::Dense, View, reference_dense >
-	 * and \a StructuredMatrix<T, structures::General, storage::Dense, view::Indentity<void>, reference_dense > 
+	 * \a StructuredMatrix<T, structures::General, Density::Dense, View, reference_dense >
+	 * and \a StructuredMatrix<T, structures::General, Density::Dense, view::Indentity<void>, reference_dense > 
 	 * as examples of structured matrix types without and with physical container, respectively.
 	 *
 	 * 
-	 * @tparam T				 The type of the matrix elements. \a T shall not be a GraphBLAS
-	 *              			 type.
-	 * @tparam Structure	     One of the matrix structures defined in \a grb::structures.
-	 * @tparam StorageSchemeType Either \em enum \a storage::Dense or \em enum 
-	 * 	                         \a storage::Sparse.
-	 * 		   					 \a StructuredMatrix will be allowed to use storage schemes 
-	 *         					 defined within their specified \a StorageSchemeType.
-	 * @tparam View  			 One of the matrix views in \a grb::view.
-	 * 		   					 All static views except for \a view::Original (via 
-	 *         					 \a view::Original<void> cannot instantiate a new container 
-	 * 							 and only allow to refer to a previously defined 
-	 * 							 \a StructuredMatrix.  
-	 *         					 The \a View parameter should not be used directly 
-	 * 							 by the user but selected via \a get_view function. 
-	 * 						     
+	 * @tparam T         The type of the matrix elements. \a T shall not be a GraphBLAS
+	 *                   type.
+	 * @tparam Structure One of the matrix structures defined in \a grb::structures.
+	 * @tparam density   Either \em enum \a Density::Dense or \em enum
+	 *                   \a storage::Sparse.
+	 * @tparam View      One of the matrix views in \a grb::view.
+	 *                   All static views except for \a view::Original (via
+	 *                   \a view::Original<void> cannot instantiate a new container
+	 *                   and only allow to refer to a previously defined
+	 *                   \a StructuredMatrix.
+	 *                   The \a View parameter should not be used directly
+	 *                   by the user but selected via \a get_view function.
+	 *
 	 * See examples of StructuredMatrix definitions within \a include/graphblas/denseref/matrix.hpp 
 	 * and the \a dense_structured_matrix.cpp unit test.
 	 *
 	 */
-	template< typename T, typename Structure, typename StorageSchemeType, typename View >
-	class StructuredMatrix<T, Structure, StorageSchemeType, View, reference_dense> { };
+	template< typename T, typename Structure, enum Density density, typename View >
+	class StructuredMatrix<T, Structure, density, View, reference_dense> { };
 
 	/**
 	 * @brief General matrix with physical container. 
 	 */
 	template< typename T >
-	class StructuredMatrix< T, structures::General, storage::Dense, view::Original< void >, reference_dense > :
+	class StructuredMatrix< T, structures::General, Density::Dense, view::Original< void >, reference_dense > :
 		public internal::MatrixContainer< T > {
 
 	private:
@@ -584,12 +587,12 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
-		using self_type = StructuredMatrix< T, structures::General, storage::Dense, view::Original< void >, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::General, Density::Dense, view::Original< void >, reference_dense >;
 
 		// template< typename fwd_iterator >
-		// friend RC buildMatrix( StructuredMatrix< T, structures::General, storage::Dense, view::Original< void >, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end );
+		// friend RC buildMatrix( StructuredMatrix< T, structures::General, Density::Dense, view::Original< void >, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end );
 		template< typename fwd_iterator >
-		friend RC buildMatrix( StructuredMatrix< T, structures::General, storage::Dense, view::Original< void >, reference_dense > & A, const fwd_iterator & start, const fwd_iterator & end );
+		friend RC buildMatrix( StructuredMatrix< T, structures::General, Density::Dense, view::Original< void >, reference_dense > & A, const fwd_iterator & start, const fwd_iterator & end );
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -609,17 +612,17 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::General, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::General, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::General, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::diagonal, d > {
-			using type = VectorView< T, structures::General, storage::Dense, view::Diagonal< self_type >, reference_dense >;
+			using type = VectorView< T, structures::General, Density::Dense, view::Diagonal< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
@@ -632,11 +635,11 @@ namespace grb {
 	 * View of a general Matrix.
 	 */
 	template< typename T, typename View >
-	class StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense > :
+	class StructuredMatrix< T, structures::General, Density::Dense, View, reference_dense > :
 		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
-		using self_type = StructuredMatrix< T, structures::General, storage::Dense, View, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::General, Density::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -649,12 +652,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::General, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::General, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::General, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::General, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( ) : internal::MatrixBase( 0, 0 ) {}
@@ -667,7 +670,7 @@ namespace grb {
 	}; // StructuredMatrix General reference
 
 	template< typename T, typename Structure >
-	class StructuredMatrix< T, Structure, storage::Dense, view::Original< void >, reference_dense > :
+	class StructuredMatrix< T, Structure, Density::Dense, view::Original< void >, reference_dense > :
 		public internal::MatrixContainer< T > {
 
 	private:
@@ -675,10 +678,10 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
-		using self_type = StructuredMatrix< T, Structure, storage::Dense, view::Original< void >, reference_dense >;
+		using self_type = StructuredMatrix< T, Structure, Density::Dense, view::Original< void >, reference_dense >;
 
 		template< typename fwd_iterator >
-		friend RC buildMatrix( StructuredMatrix< T, Structure, storage::Dense, view::Original< void >, reference_dense > &, const fwd_iterator &, const fwd_iterator ) noexcept;
+		friend RC buildMatrix( StructuredMatrix< T, Structure, Density::Dense, view::Original< void >, reference_dense > &, const fwd_iterator &, const fwd_iterator ) noexcept;
 
 	public:
 		using value_type = T;
@@ -690,7 +693,7 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, Structure, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, Structure, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
@@ -698,14 +701,14 @@ namespace grb {
 	}; // class StructuredMatrix
 
 	template< typename T >
-	class StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense > :
+	class StructuredMatrix< T, structures::Square, Density::Dense, view::Original< void >, reference_dense > :
 		public internal::MatrixContainer< T > {
 
 	private:
-		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::Square, Density::Dense, view::Original< void >, reference_dense >;
 
-		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
-		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Density::Dense, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -723,12 +726,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::Square, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Square, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( const size_t rows, const size_t cap = 0 ) :
@@ -737,11 +740,11 @@ namespace grb {
 	}; // StructuredMatrix Square, container
 
 	template< typename T, typename View >
-	class StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense > :
+	class StructuredMatrix< T, structures::Square, Density::Dense, View, reference_dense > :
 		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
-		using self_type = StructuredMatrix< T, structures::Square, storage::Dense, View, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::Square, Density::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -754,12 +757,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::Square, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Square, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::Square, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		// ref to empty matrix
@@ -775,7 +778,7 @@ namespace grb {
 
 	// StructuredMatrix UpperTriangular, container
 	template< typename T >
-	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< void >, reference_dense > :
+	class StructuredMatrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, reference_dense > :
 		public internal::MatrixContainer< T > {
 
 	private:
@@ -783,10 +786,10 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
-		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< void >, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, reference_dense >;
 
-		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
-		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Density::Dense, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -804,12 +807,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
@@ -819,11 +822,11 @@ namespace grb {
 
 	// StructuredMatrix UpperTriangular, reference
 	template< typename T, typename View >
-	class StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense > :
+	class StructuredMatrix< T, structures::UpperTriangular, Density::Dense, View, reference_dense > :
 		public internal::MatrixReference< typename View::applied_to > {
 
 	private:
-		using self_type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, View, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::UpperTriangular, Density::Dense, View, reference_dense >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -836,12 +839,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::UpperTriangular, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::LowerTriangular, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		// ref to empty matrix
@@ -859,7 +862,7 @@ namespace grb {
 	// StructuredMatrix Identity, container
 	// Should Identity be a MatrixContainer?
 	template< typename T >
-	class StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< void >, reference_dense > :
+	class StructuredMatrix< T, structures::Identity, Density::Dense, view::Original< void >, reference_dense > :
 		public internal::MatrixContainer< T > {
 
 	private:
@@ -867,10 +870,10 @@ namespace grb {
 		    Storage info friends
 		******************** */
 
-		using self_type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< void >, reference_dense >;
+		using self_type = StructuredMatrix< T, structures::Identity, Density::Dense, view::Original< void >, reference_dense >;
 
-		template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
-		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
+		friend RC buildMatrix( StructuredMatrix< InputType, Structure, Density::Dense, View, reference_dense > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -888,12 +891,12 @@ namespace grb {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Identity, Density::Dense, view::Original< self_type >, reference_dense >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Transpose< self_type >, reference_dense >;
+			using type = StructuredMatrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, reference_dense >;
 		};
 
 		StructuredMatrix( const size_t rows, const size_t cap = 0 ) :
@@ -925,13 +928,13 @@ namespace grb {
 	 * 		  The function guarantees the created view is non-overlapping with other 
 	 *        existing views only when the check can be performed in constant time. 
 	 * 
-	 * @tparam T 					The matrix' elements type
-	 * @tparam Structure 			The structure of the source and target matrix view
-	 * @tparam StorageSchemeType 	The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
-	 * @tparam View 				The source's View type
-	 * @tparam backend 				The target backend
+	 * @tparam T         The matrix' elements type
+	 * @tparam Structure The structure of the source and target matrix view
+	 * @tparam density   The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View      The source's View type
+	 * @tparam backend   The target backend
 	 * 
-	 * @param source 				The source matrix
+	 * @param source     The source matrix
 	 * 
 	 * @return A new original view over the source structured matrix.
 	 * 
@@ -947,11 +950,11 @@ namespace grb {
 	 * 
 	 */
 	template< 
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	typename StructuredMatrix< T, Structure, StorageSchemeType, View, backend >::template view_type< view::original >::type
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > & source ) {
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	typename StructuredMatrix< T, Structure, density, View, backend >::template view_type< view::original >::type
+	get_view( StructuredMatrix< T, Structure, density, View, backend > & source ) {
 
-		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
+		using source_strmat_t = StructuredMatrix< T, Structure, density, View, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< view::original >::type;
 
 		target_strmat_t target( source );
@@ -966,14 +969,14 @@ namespace grb {
 	 * 		  The function guarantees the created view is non-overlapping with other 
 	 *        existing views only when the check can be performed in constant time. 
 	 * 
-	 * @tparam target_view 			One of the supported views listed in \a view::Views
-	 * @tparam T 					The matrix' elements type
-	 * @tparam Structure 			The structure of the source and target matrix view
-	 * @tparam StorageSchemeType 	The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
-	 * @tparam View 				The source's View type
-	 * @tparam backend 				The target backend
+	 * @tparam target_view  One of the supported views listed in \a view::Views
+	 * @tparam T            The matrix' elements type
+	 * @tparam Structure    The structure of the source and target matrix view
+	 * @tparam density      The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View         The source's View type
+	 * @tparam backend      The target backend
 	 * 
-	 * @param source 				The source structured matrix
+	 * @param source        The source structured matrix
 	 * 
 	 * @return A new \a target_view view over the source matrix.
 
@@ -990,11 +993,11 @@ namespace grb {
 	 */
 	template< 
 		enum view::Views target_view,
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	typename StructuredMatrix< T, Structure, StorageSchemeType, View, backend >::template view_type< target_view >::type
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	typename StructuredMatrix< T, Structure, density, View, backend >::template view_type< target_view >::type
+	get_view( StructuredMatrix< T, Structure, density, View, backend > &source ) {
 
-		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
+		using source_strmat_t = StructuredMatrix< T, Structure, density, View, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< target_view >::type;
 
 		target_strmat_t target( source );
@@ -1012,15 +1015,15 @@ namespace grb {
 	 * 		  The function guarantees the created view is non-overlapping with other existing views only when the
 	 * 		  check can be performed in constant time. 
 	 * 
-	 * @tparam TargetStructure 		The target structure of the new view. It should verify 
-	 * 								<code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T 					The matrix's elements type
-	 * @tparam Structure 			The structure of the source and target matrix view
-	 * @tparam StorageSchemeType 	The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
-	 * @tparam View 				The source's View type
-	 * @tparam backend 				The target backend
+	 * @tparam TargetStructure  The target structure of the new view. It should verify
+	 *                          <code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
+	 * @tparam T                The matrix's elements type
+	 * @tparam Structure        The structure of the source and target matrix view
+	 * @tparam density          The type (i.e., \a grb::Density:Dense or \a grb::Density:Sparse) of storage scheme
+	 * @tparam View             The source's View type
+	 * @tparam backend          The target backend
 	 * 
-	 * @param source 				The source structured matrix
+	 * @param source            The source structured matrix
 	 * 
 	 * @return A new original view over the source structured matrix.
 	 * 
@@ -1037,15 +1040,15 @@ namespace grb {
 	 */
 	template< 
 		typename TargetStructure, 
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	StructuredMatrix< T, TargetStructure, density, view::Original< StructuredMatrix< T, Structure, density, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, density, View, backend > &source ) {
 
 		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
 			"Can only create a view when the target structure is compatible with the source." );
 
-		using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
-		using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< source_strmat_t >, backend >;
+		using source_strmat_t = StructuredMatrix< T, Structure, density, View, backend >;
+		using target_strmat_t = StructuredMatrix< T, TargetStructure, density, view::Original< source_strmat_t >, backend >;
 
 		target_strmat_t target( source );
 
@@ -1060,9 +1063,9 @@ namespace grb {
 
 		template< 
 			typename TargetStructure, 
-			typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-		StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+			typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+		StructuredMatrix< T, TargetStructure, density, view::Original< StructuredMatrix< T, Structure, density, View, backend > >, backend > 
+		get_view( StructuredMatrix< T, Structure, density, View, backend > &source,
 				std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
 			
 			if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
@@ -1073,8 +1076,8 @@ namespace grb {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using source_strmat_t = StructuredMatrix< T, Structure, StorageSchemeType, View, backend >;
-			using target_strmat_t = StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< source_strmat_t >, backend >;
+			using source_strmat_t = StructuredMatrix< T, Structure, density, View, backend >;
+			using target_strmat_t = StructuredMatrix< T, TargetStructure, density, view::Original< source_strmat_t >, backend >;
 
 			target_strmat_t target( source, imf_r, imf_c );
 
@@ -1091,17 +1094,17 @@ namespace grb {
 	 * A structural check of this kind as well as non-overlapping checks with existing views of \a source 
 	 * are guaranteed only when each one of them incurs constant time work.  
 	 * 
-	 * @tparam TargetStructure 		The target structure of the new view. It should verify 
-	 * 								<code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T 					The matrix' elements type
-	 * @tparam Structure 			The structure of the source and target matrix view
-	 * @tparam StorageSchemeType 	The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
-	 * @tparam View 				The source's View type
-	 * @tparam backend 				The target backend
+	 * @tparam TargetStructure  The target structure of the new view. It should verify
+	 *                          <code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
+	 * @tparam T                The matrix' elements type
+	 * @tparam Structure        The structure of the source and target matrix view
+	 * @tparam density          The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View             The source's View type
+	 * @tparam backend          The target backend
 	 * 
-	 * @param source 				The source structured matrix
-	 * @param rng_r 				A valid range of rows 
-	 * @param rng_c 				A valid range of columns
+	 * @param source            The source structured matrix
+	 * @param rng_r             A valid range of rows
+	 * @param rng_c             A valid range of columns
 	 * 
 	 * @return A new original view over the source structured matrix.
 	 * 
@@ -1118,15 +1121,15 @@ namespace grb {
 	 */
 	template< 
 		typename TargetStructure, 
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	StructuredMatrix< T, TargetStructure, density, view::Original< StructuredMatrix< T, Structure, density, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, density, View, backend > &source,
 			const utils::range& rng_r, const utils::range& rng_c ) {
 		
 		auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
 		auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
 
-		return internal::get_view<TargetStructure, T, Structure, StorageSchemeType, View, backend >( source, imf_r, imf_c );
+		return internal::get_view<TargetStructure, T, Structure, density, View, backend >( source, imf_r, imf_c );
 	}
 
 	/**
@@ -1137,15 +1140,15 @@ namespace grb {
 	 * A structure preserving check as well as non-overlapping checks with existing views of \a source 
 	 * are guaranteed only when each one of them incurs constant time work.  
 	 * 
-	 * @tparam T 					The matrix' elements type
-	 * @tparam Structure 			The structure of the source and target matrix view
-	 * @tparam StorageSchemeType 	The type (i.e., \a grb::storage:Dense or \a grb::storage:Sparse) of storage scheme
-	 * @tparam View 				The source's View type
-	 * @tparam backend 				The target backend
+	 * @tparam T          The matrix' elements type
+	 * @tparam Structure  The structure of the source and target matrix view
+	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View       The source's View type
+	 * @tparam backend    The target backend
 	 * 
-	 * @param source 				The source matrix
-	 * @param rng_r 				A valid range of rows 
-	 * @param rng_c 				A valid range of columns
+	 * @param source      The source matrix
+	 * @param rng_r       A valid range of rows
+	 * @param rng_c       A valid range of columns
 	 * 
 	 * @return A new original view over the source structured matrix.
 	 * 
@@ -1162,15 +1165,15 @@ namespace grb {
 	 */
 
 	template< 
-		typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-	StructuredMatrix< T, Structure, StorageSchemeType, view::Original< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-	get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	StructuredMatrix< T, Structure, density, view::Original< StructuredMatrix< T, Structure, density, View, backend > >, backend > 
+	get_view( StructuredMatrix< T, Structure, density, View, backend > &source,
 			const utils::range& rng_r, const utils::range& rng_c ) {
 		
 		auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
 		auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
 
-		return internal::get_view<Structure, T, Structure, StorageSchemeType, View, backend >( source, imf_r, imf_c );
+		return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, imf_c );
 	}
 
 	namespace internal {
@@ -1183,49 +1186,49 @@ namespace grb {
 		 * \warning WIP interface. Checking the structural correctness is a costly runtime operation for a 
 		 * 			general vector selection. 
 		 * 
-		 * @tparam TargetStructure 		The target structure of the new view. It should verify 
-		 * 								<code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
-		 * @tparam T 					The matrix' elements type
-		 * @tparam Structure 			The structure of the source and target matrix view
-		 * @tparam StorageSchemeType 	The type (i.e., sparse or dense) of storage scheme
-		 * @tparam View 				The source's View type
-		 * @tparam backend 				The target backend
+		 * @tparam TargetStructure The target structure of the new view. It should verify
+		 *                         <code> grb::is_in<Structure, TargetStructure::inferred_structures> </code>.
+		 * @tparam T               The matrix' elements type
+		 * @tparam Structure       The structure of the source and target matrix view
+		 * @tparam density         The type (i.e., sparse or dense) of storage scheme
+		 * @tparam View            The source's View type
+		 * @tparam backend         The target backend
 		 * 
-		 * @param source 				The source structured matrix
-		 * @param sel_r 				A valid vector of row indeces (possibly in any permuted order and with repetition) 
-		 * @param sel_c 				A valid vector of column indeces (possibly in any permuted order and with repetition)
+		 * @param source           The source structured matrix
+		 * @param sel_r            A valid vector of row indeces (possibly in any permuted order and with repetition) 
+		 * @param sel_c            A valid vector of column indeces (possibly in any permuted order and with repetition)
 		 * 
 		 * @return A new original view over the source structured matrix.
 		 * 
 		 */
 		template< 
 			typename TargetStructure, 
-			typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-		StructuredMatrix< T, TargetStructure, StorageSchemeType, view::Original< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > >, backend > 
-		get_view( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > &source,
+			typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+		StructuredMatrix< T, TargetStructure, density, view::Original< StructuredMatrix< T, Structure, density, View, backend > >, backend > 
+		get_view( StructuredMatrix< T, Structure, density, View, backend > &source,
 				const std::vector< size_t >& sel_r, const std::vector< size_t >& sel_c ) {
 			
 			auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
 			auto imf_c = std::make_shared< imf::Select >( ncols(source), sel_c );
 
-			return internal::get_view<TargetStructure, T, Structure, StorageSchemeType, View, backend>( source, imf_r, imf_c );
+			return internal::get_view<TargetStructure, T, Structure, density, View, backend>( source, imf_r, imf_c );
 		}
 	} //namespace internal
 
 	/** Returns a constant reference to an Identity matrix of the provided size */
 	template< typename T >
-	const StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< void >, reference_dense > &
+	const StructuredMatrix< T, structures::Identity, Density::Dense, view::Original< void >, reference_dense > &
 	I( const size_t n ) {
-		using return_type = StructuredMatrix< T, structures::Identity, storage::Dense, view::Original< void >, reference_dense >;
+		using return_type = StructuredMatrix< T, structures::Identity, Density::Dense, view::Original< void >, reference_dense >;
 		return_type * ret = new return_type( n );
 		return * ret;
 	}
 
 	/** Returns a constant reference to a Zero matrix of the provided size */
 	template< typename T >
-	const StructuredMatrix< T, structures::Zero, storage::Dense, view::Original< void >, reference_dense > &
+	const StructuredMatrix< T, structures::Zero, Density::Dense, view::Original< void >, reference_dense > &
 	Zero( const size_t rows, const size_t cols ) {
-		using return_type = StructuredMatrix< T, structures::Zero, storage::Dense, view::Original< void >, reference_dense >;
+		using return_type = StructuredMatrix< T, structures::Zero, Density::Dense, view::Original< void >, reference_dense >;
 		return_type * ret = new return_type( rows, cols );
 		return * ret;
 	}
@@ -1235,9 +1238,9 @@ namespace grb {
 	 * s = sin( theta ) and c = cos( theta )
 	 */
 	template< typename T >
-	const StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense > &
+	const StructuredMatrix< T, structures::Square, Density::Dense, view::Original< void >, reference_dense > &
 	Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
-		using return_type = const StructuredMatrix< T, structures::Square, storage::Dense, view::Original< void >, reference_dense >;
+		using return_type = const StructuredMatrix< T, structures::Square, Density::Dense, view::Original< void >, reference_dense >;
 		return_type * ret = new return_type( n );
 		// TODO: initialize matrix values according to the provided parameters
 		return * ret;
