@@ -32,6 +32,7 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
+#include <graphblas/density.hpp>
 
 namespace grb {
 
@@ -900,7 +901,7 @@ namespace grb {
 			}
 };
 
-	template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+	template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
 	class VectorView { };
 
 }
