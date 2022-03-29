@@ -8463,6 +8463,11 @@ namespace grb {
 		if( size( mask ) > 0 && size( mask ) != size( y ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) != size( y ) ) {
+				return ILLEGAL;
+			}
+		}
 
 		// do minimal work
 		RC ret = SUCCESS;

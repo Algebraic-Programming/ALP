@@ -88,6 +88,17 @@ namespace grb {
 			) {
 				return SUCCESS;
 			}
+			if( descr & descriptors::dense ) {
+				if( nnz( v ) < size( v ) ) {
+					return ILLEGAL;
+				}
+				if( size( u_mask ) > 0 && nnz( u_mask ) < size( u_mask ) ) {
+					return ILLEGAL;
+				}
+				if( size( v_mask ) > 0 && nnz( v_mask ) < size( v_mask ) ) {
+					return ILLEGAL;
+				}
+			}
 			assert( phase == EXECUTE );
 
 #ifdef _DEBUG
@@ -218,6 +229,17 @@ namespace grb {
 				phase == RESIZE
 			) {
 				return SUCCESS;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( v ) < size( v ) ) {
+					return ILLEGAL;
+				}
+				if( size( u_mask ) > 0 && nnz( u_mask ) < size( u_mask ) ) {
+					return ILLEGAL;
+				}
+				if( size( v_mask ) > 0 && nnz( v_mask ) < size( v_mask ) ) {
+					return ILLEGAL;
+				}
 			}
 			assert( phase == EXECUTE );
 

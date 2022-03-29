@@ -895,7 +895,7 @@ namespace grb {
 
 			// check for dimension mismatch
 			if( ( transposed && ( n != ncols( A ) || m != nrows( A ) ) ) ||
-				( ! transposed && ( n != nrows( A ) || m != ncols( A ) ) )
+				( !transposed && ( n != nrows( A ) || m != ncols( A ) ) )
 			) {
 #ifdef _DEBUG
 				std::cout << "Mismatch of columns ( " << n << " vs. " << ncols( A )
@@ -903,6 +903,30 @@ namespace grb {
 					<< "transposed value " << ((int)transposed) << "\n";
 #endif
 				return MISMATCH;
+			}
+
+			// check density
+			if( descr & descriptors::dense ) {
+				if( nnz( v ) < size( v ) ) {
+#ifdef _DEBUG
+					std::cout << "\t Dense descriptor given but input vector was sparse\n";
+#endif
+					return ILLEGAL;
+				}
+				if( size( mask ) > 0 && nnz( mask ) < size( mask ) ) {
+#ifdef _DEBUG
+					std::cout << "\t Dense descriptor given but output mask has sparse "
+						<< "structure\n";
+#endif
+					return ILLEGAL;
+				}
+				if( size( v_mask ) > 0 && nnz( v_mask ) < size( v_mask ) ) {
+#ifdef _DEBUG
+					std::cout << "\t Dense descriptor given but input mask has sparse "
+						<< "structure\n";
+#endif
+					return ILLEGAL;
+				}
 			}
 
 			// check mask

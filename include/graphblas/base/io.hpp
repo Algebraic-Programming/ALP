@@ -86,6 +86,94 @@ namespace grb {
 	 */
 
 	/**
+	 * Function that returns a unique ID for a given non-empty container.
+	 *
+	 * \note An empty container is either a vector of size 0 or a matrix with one
+	 *       of its dimensions equal to 0.
+	 *
+	 * The ID is unique across all currently valid container instances. If
+	 * \f$ n \f$ is the number of such valid instances, the returned ID
+	 * may \em not be strictly smaller than \f$ n \f$ -- i.e., implementations
+	 * are not required to maintain consecutive IDs (nor would this be possible
+	 * if IDs are to be reused).
+	 *
+	 * The use of <tt>uintptr_t</tt> to represent IDs guarantees that, at any time
+	 * during execution, there can never be more initialised containers than can be
+	 * assigned an ID. Therefore this specification demands that a call to this
+	 * function never fails.
+	 *
+	 * An ID, once given, may never change during the life-time of the given
+	 * container. I.e., multiple calls to this function using the same argument
+	 * must return the same ID.
+	 *
+	 * If the program calling this function is deterministic, then it must assign
+	 * the exact same IDs across different runs.
+	 *
+	 * If the backend supports multiple user processes, the IDs obtained for the
+	 * same containers but across different processes, may differ. However, across
+	 * the same run of a deterministic program, the IDs returned within any single
+	 * user process must, as per the preceding requirement, be the same across
+	 * different runs that are executed using the same number of user processes.
+	 *
+	 * @param[in] x A valid non-empty ALP container to retrieve a unique ID for.
+	 *
+	 * \note If \a x is invalid or empty then a call to this function results in
+	 *       undefined behaviour.
+	 *
+	 * @returns The unique ID corresponding to \a x.
+	 *
+	 * \warning The returned ID is not the same as a pointer to \a x, since, for
+	 *          example, two containers may be swapped via <tt>std::swap</tt>. In
+	 *          such a case, the IDs of the two containers are swapped also.
+	 *
+	 * \note Another example is when move semantics are invoked, e.g., when a
+	 *       temporary container is copied into another just before it would be
+	 *       destroyed. Via move semantics the remaining container is in fact not a
+	 *       copy of the temporary one, which would have caused their IDs to be
+	 *       different. Instead, the remaining container has taken over the
+	 *       ownership of the to-be destroyed one, retaining its ID.
+	 *
+	 * \note For the purposes of defining determinism of ALP programs, and perhaps
+	 *       superfluously, two program which only differ by one program
+	 *       constructing a matrix while the other program constructing a vector,
+	 *       are not considered to be the same program; i.e., implementations are
+	 *       allowed to assign vector IDs differently from matrix IDs. However,
+	 *       implementations are not allowed to run out of IDs to assign as a
+	 *       result of using such a mechanism.
+	 */
+	template<
+		typename ElementType, typename Coords,
+		Backend implementation = config::default_backend
+	>
+	uintptr_t getID(
+		const Vector< ElementType, implementation, Coords > &x
+	) {
+#ifndef NDEBUG
+		const bool this_is_an_invalid_default_implementation = false;
+#endif
+		assert( this_is_an_invalid_default_implementation );
+		return static_cast< uintptr_t >(-1);
+	}
+
+	/**
+	 * Specialisation of #getID for matrix containers. The same specification
+	 * applies.
+	 *
+	 * @see getID
+	 */
+	template<
+		typename ElementType,
+		Backend implementation = config::default_backend
+	>
+	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+#ifndef NDEBUG
+		const bool this_is_an_invalid_default_implementation = false;
+#endif
+		assert( this_is_an_invalid_default_implementation );
+		return static_cast< uintptr_t >(-1);
+	}
+
+	/**
 	 * Request the size of a given vector.
 	 *
 	 * The dimension is set at construction of the given vector and cannot be
@@ -778,7 +866,7 @@ namespace grb {
 	 *   -# grb::descriptors::structural_mask
 	 * \endparblock
 	 *
-	 * @param[in,out] x The vector of which elements are to be set to \a val. 
+	 * @param[in,out] x The vector of which elements are to be set to \a val.
 	 *                  On output, the number of elements shall depend on \a mask.
 	 * @param[in]  mask The given mask. How the sparsity structure and values are
 	 *                  evaluated depends on the given \a desc.
@@ -790,7 +878,7 @@ namespace grb {
 	 *          be interpreted as though no mask argument was given. In particular,
 	 *          any descriptors pertaining to the interpretation of \a mask shall
 	 *          be ignored.
-	 *         
+	 *
 	 * In #grb::Phase::RESIZE mode:
 	 *
 	 * @returns #grb::OUTOFMEM When \a x could not be resized to hold the
@@ -1367,91 +1455,137 @@ namespace grb {
 	}
 
 	/**
-	 * Function that returns a unique ID for a given non-empty container.
+	 * Depending on the backend, ALP/GraphBLAS primitives may be non-blocking,
+	 * meaning that the operation immediately returns even though the requested
+	 * computation has not been performed.
 	 *
-	 * \note An empty container is either a vector of size 0 or a matrix with one
-	 *       of its dimensions equal to 0.
+	 * More formally, while run-time checks that result in #grb::MISMATCH must be
+	 * performed immediately even when a primitive is non-blocking, the detection
+	 * of other error codes (such as for example the illegal use of a sparse
+	 * vector) may in fact be deferred, as is of course any attempt to actually
+	 * perform the requested computation.
 	 *
-	 * The ID is unique across all currently valid container instances. If
-	 * \f$ n \f$ is the number of such valid instances, the returned ID
-	 * may \em not be strictly smaller than \f$ n \f$ -- i.e., implementations
-	 * are not required to maintain consecutive IDs (nor would this be possible
-	 * if IDs are to be reused).
+	 * A sequence of nonblocking calls may be forced to execute by a call to this
+	 * primitive, at which point any non-success error code that would have
+	 * normally been returned by a nonblocking call, will instead be returned by
+	 * this primitive. If all requested nonblocking calls have executed
+	 * successfully, then a call to this function shall return #grb::SUCCESS.
 	 *
-	 * The use of <tt>uintptr_t</tt> to represent IDs guarantees that, at any time
-	 * during execution, there can never be more initialised containers than can be
-	 * assigned an ID. Therefore this specification demands that a call to this
-	 * function never fails.
+	 * The are several other cases in which the computation of nonblocking
+	 * primtives is forced:
+	 *   -# whenever an output iterator of an output container of any of the non-
+	 *      blocking primitives is requested; and
+	 *   -# whenever an output container of any of the non-blocking primitives is
+	 *      input to an ALP/GraphBLAS primitive that has scalar output (e.g.,
+	 *      #grb::dot or folds from a vector into a scalar).
+	 * A backend may specify additional such <em>trigger points</em>.
 	 *
-	 * An ID, once given, may never change during the life-time of the given
-	 * container. I.e., multiple calls to this function using the same argument
-	 * must return the same ID.
+	 * If a trigger point has no #grb::RC return type, then any deferred
+	 * non-SUCCESS error codes shall materialise as thrown C++ exceptions.
 	 *
-	 * If the program calling this function is deterministic, then it must assign
-	 * the exact same IDs across different runs.
+	 * The performance semantics of a trigger point correspond to a sum of the
+	 * performance semantics of each of the nonblocking primitives it executes.
 	 *
-	 * If the backend supports multiple user processes, the IDs obtained for the
-	 * same containers but across different processes, may differ. However, across
-	 * the same run of a deterministic program, the IDs returned within any single
-	 * user process must, as per the preceding requirement, be the same across
-	 * different runs that are executed using the same number of user processes.
+	 * \note A good nonblocking backend will in fact incur less data movement by,
+	 *       e.g., fusing low arithmetic intensity operations, whenever possible.
+	 *       Hence the summed performance semantics typically correspond to worst-
+	 *       case bounds.
 	 *
-	 * @param[in] x A valid non-empty ALP container to retrieve a unique ID for.
+	 * \note If automated decisions by a nonblocking backend is unacceptable in
+	 *       certain (parts of a) code base, then manual fusion is preferable.
+	 *       ALP/GraphBLAS provides #grb::eWiseLambda for this purpose.
 	 *
-	 * \note If \a x is invalid or empty then a call to this function results in
-	 *       undefined behaviour.
-	 *
-	 * @returns The unique ID corresponding to \a x.
-	 *
-	 * \warning The returned ID is not the same as a pointer to \a x, since, for
-	 *          example, two containers may be swapped via <tt>std::swap</tt>. In
-	 *          such a case, the IDs of the two containers are swapped also.
-	 *
-	 * \note Another example is when move semantics are invoked, e.g., when a
-	 *       temporary container is copied into another just before it would be
-	 *       destroyed. Via move semantics the remaining container is in fact not a
-	 *       copy of the temporary one, which would have caused their IDs to be
-	 *       different. Instead, the remaining container has taken over the
-	 *       ownership of the to-be destroyed one, retaining its ID.
-	 *
-	 * \note For the purposes of defining determinism of ALP programs, and perhaps
-	 *       superfluously, two program which only differ by one constructing a
-	 *       matrix instead of the other constructing a vector, are not considered
-	 *       to be the same program; i.e., implementations are allowed to assign
-	 *       vector IDs differently from matrix IDs.
-	 *       However, as per the guarantee in the preceding, implementations are
-	 *       not allowed to run out of IDs to assign by any use of such mechanism.
+	 * @returns #grb::SUCCESS If all queued non-blocking primitives are executed
+	 *                        successfully. If not, any error code prescribed by
+	 *                        the non-blocking primitives requested may be
+	 *                        returned instead.
 	 */
-	template<
-		typename ElementType, typename Coords,
-		Backend implementation = config::default_backend
-	>
-	uintptr_t getID(
-		const Vector< ElementType, implementation, Coords > &x
-	) {
+	template< Backend backend = config::default_backend >
+	RC wait() {
 #ifndef NDEBUG
-		const bool this_is_an_invalid_default_implementation = false;
+		const bool should_not_call_base_wait = false;
+		assert( should_not_call_base_wait );
 #endif
-		assert( this_is_an_invalid_default_implementation );
-		return static_cast< uintptr_t >(-1);
+		return UNSUPPORTED;
 	}
 
 	/**
-	 * Specialisation of #getID for matrix containers. The same specification
-	 * applies.
+	 * A variant of #grb::wait that executes, at minimum, all nonblocking
+	 * primitives required for computing a given output vector as well as,
+	 * optionally, for any additional output containers given in the variadic
+	 * argument list.
 	 *
-	 * @see getID
+	 * Implementations may elect to execute more than strictly required. In
+	 * particular, a valid implementation of this variant simply calls #grb::wait.
+	 *
+	 * @param[in] x The output container which, after a call to this function
+	 *              returns, must be fully computed.
+	 *
+	 * More formally, after a call to this function, retrieving an output iterator
+	 * of \a x no longer requires triggering any corresponding nonblocking
+	 * primitives.
+	 *
+	 * @param[in] args Any additional containers whose output must be fully
+	 *                 computed after a call to this function.
+	 *
+	 * @returns #grb::SUCCESS If the queued non-blocking primitives that are
+	 *                        executed as part of a call to this function have
+	 *                        executed successfully. If not, any error code
+	 *                        prescribed by the non-blocking primitives whose
+	 *                        execution was attempted may be returned instead.
 	 */
 	template<
-		typename ElementType,
-		Backend implementation = config::default_backend
+		Backend backend, typename InputType, typename Coords,
+		typename... Args
 	>
-	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+	RC wait(
+		const Vector< InputType, backend, Coords > &x,
+		const Args &... args
+	) {
 #ifndef NDEBUG
-		const bool this_is_an_invalid_default_implementation = false;
+		const bool should_not_call_base_vector_wait = false;
+		assert( should_not_call_base_vector_wait );
 #endif
-		assert( this_is_an_invalid_default_implementation );
-		return static_cast< uintptr_t >(-1);
+		(void) x;
+		return wait( args... );
+	}
+
+	/**
+	 * A variant of #grb::wait that executes, at minimum, all nonblocking
+	 * primitives required for computing a given output matrix as well as,
+	 * optionally, for any additional output containers given in the variadic
+	 * argument list.
+	 *
+	 * Implementations may elect to execute more than strictly required. In
+	 * particular, a valid implementation of this variant simply calls #grb::wait.
+	 *
+	 * @param[in] A The output container which, after a call to this function
+	 *              returns, must be fully computed.
+	 *
+	 * More formally, after a call to this function, retrieving an output iterator
+	 * of \a A no longer requires triggering any corresponding nonblocking
+	 * primitives.
+	 *
+	 * @param[in] args Any additional containers whose output must be fully
+	 *                 computed after a call to this function.
+	 *
+	 * @returns #grb::SUCCESS If the queued non-blocking primitives that are
+	 *                        executed as part of a call to this function have
+	 *                        executed successfully. If not, any error code
+	 *                        prescribed by the non-blocking primitives whose
+	 *                        execution was attempted may be returned instead.
+	 */
+	template< Backend backend, typename InputType, typename... Args >
+	RC wait(
+		const Matrix< InputType, backend > &A,
+		const Args &... args
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_wait = false;
+		assert( should_not_call_base_matrix_wait );
+#endif
+		(void) A;
+		return wait( args... );
 	}
 
 	/** @} */
