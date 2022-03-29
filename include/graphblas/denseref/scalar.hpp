@@ -27,7 +27,7 @@
 #include <graphblas/rc.hpp>
 #include <graphblas/backends.hpp>
 
-#include <graphblas/storage.hpp>
+#include <graphblas/density.hpp>
 #include <graphblas/structures.hpp>
 #include <graphblas/views.hpp>
 
@@ -162,7 +162,7 @@ namespace grb {
 			Scalar( const Scalar &other ) {
 				// const RC rc = set( *this, other ); // note: initialized will be set as part of this call
 				// if( rc != SUCCESS ) {
-				// 	throw std::runtime_error( "grb::Scalar< T, Structure, storage::Dense, View::Original< void >, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
+				// 	throw std::runtime_error( "grb::Scalar< T, Structure, Density::Dense, View::Original< void >, reference_dense > (copy constructor): error during call to grb::set (" + toString( rc ) + ")" );
 				// }
 			}
 

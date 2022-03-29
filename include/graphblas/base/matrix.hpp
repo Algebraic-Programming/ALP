@@ -33,7 +33,7 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
-#include <graphblas/storage.hpp>
+#include <graphblas/density.hpp>
 #include <graphblas/structures.hpp>
 #include <graphblas/utils.hpp>
 #include <graphblas/views.hpp>
@@ -440,7 +440,7 @@ RC clear( Matrix< InputType, backend > & A ) noexcept {
 	return UNSUPPORTED;
 }
 
-template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
+template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
 class StructuredMatrix {
 
 	/**
@@ -473,10 +473,12 @@ class StructuredMatrix {
 	 * If \a backend is set to \a mlir then the scheme could be fixed by the JIT compiler to effectively
 	 * support its optimization strategy.
 	 * At construction time and until the moment the scheme decision is made it may be set to
-	 * an appropriate default choice, e.g. if \a StorageSchemeType is \a storage::Dense then
-	 * \a storage::Dense::full could be used.
+	 * an appropriate default choice, e.g. if \a density is \a Density::Dense then
+	 * \a Density::Dense::full could be used.
+	 * \internal \todo Revisit this. The change of storage scheme type to enum (dense/sparse) and
+	 * implementing storage mapping functions requires a change of this spec.
 	 */
-	StorageSchemeType storage_scheme;
+	// Storage storage_scheme;
 
 	/**
 	 * When a structured matrix defines a View over another matrix, it contains a pointer
@@ -489,9 +491,9 @@ class StructuredMatrix {
 
 	StructuredMatrix( const size_t m, const size_t n );
 
-	StructuredMatrix( const StructuredMatrix< T, Structure, StorageSchemeType, View, backend > & other );
+	StructuredMatrix( const StructuredMatrix< T, Structure, density, View, backend > & other );
 
-	StructuredMatrix( StructuredMatrix< T, Structure, StorageSchemeType, View, backend > && other );
+	StructuredMatrix( StructuredMatrix< T, Structure, density, View, backend > && other );
 
 	~StructuredMatrix();
 
@@ -502,8 +504,8 @@ class StructuredMatrix {
  */
 template< typename T >
 struct is_structured_matrix : std::false_type {};
-template< typename T, typename Structure, typename StorageSchemeType, typename View, enum Backend backend >
-struct is_structured_matrix< StructuredMatrix< T, Structure, StorageSchemeType, View, backend > > : std::true_type {};
+template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+struct is_structured_matrix< StructuredMatrix< T, Structure, density, View, backend > > : std::true_type {};
 
 } // end namespace ``grb''
 

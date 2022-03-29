@@ -47,9 +47,9 @@ namespace grb {
 	class Matrix;
 
 	/*
-	 * The default value of \a StorageSchemeType could also be made conditional (Dense or Sparse) depending on \a config::default_backend
+	 * The default value of \a density could also be made conditional (Dense or Sparse) depending on \a config::default_backend
 	 */
-	template< typename T, typename Structure, typename StorageSchemeType = storage::Dense, typename View = view::Original< void >, enum Backend backend = config::default_backend >
+	template< typename T, typename Structure, enum Density density = Density::Dense, typename View = view::Original< void >, enum Backend backend = config::default_backend >
 	class StructuredMatrix;
 
 } // namespace grb
