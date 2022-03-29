@@ -558,9 +558,14 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
-		// sanity check
+		// dynamic checks
 		if( size( y ) != size( x ) ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) ) {
+				return ILLEGAL;
+			}
 		}
 
 		// capacity check
@@ -627,12 +632,17 @@ namespace grb {
 			return set< descr >( x, y, phase );
 		}
 
-		// sanity check
+		// dynamic checks
 		if( grb::size( y ) != grb::size( x ) ) {
 			return MISMATCH;
 		}
 		if( grb::size( mask ) != grb::size( x ) ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) || nnz( mask ) < size( mask ) ) {
+				return ILLEGAL;
+			}
 		}
 
 		// cannot do capacity pre-check in EXECUTE mode due to the mask and descr;
@@ -1361,6 +1371,32 @@ namespace grb {
 #endif
 
 		return ret;
+	}
+
+	template<>
+	RC wait< BSP1D >();
+
+	/** \internal Dispatch to base wait implementation */
+	template<
+		typename InputType, typename Coords,
+		typename... Args
+	>
+	RC wait(
+		const Vector< InputType, BSP1D, Coords > &x,
+		const Args &... args
+	) {
+		(void) x;
+		return wait( args... );
+	}
+
+	/** \internal Dispatch to base wait implementation */
+	template< typename InputType, typename... Args >
+	RC wait(
+		const Matrix< InputType, BSP1D > &A,
+		const Args &... args
+	) {
+		(void) A;
+		return wait( args... );
 	}
 
 	/** @} */

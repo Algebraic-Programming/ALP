@@ -71,6 +71,7 @@ set( backend_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/reference/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/reference/config.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/reference/io.cpp
 )
 
 # the only source file common to all BSP-based backends

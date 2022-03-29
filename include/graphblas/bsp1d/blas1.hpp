@@ -140,6 +140,14 @@ namespace grb {
 		if( size( y ) == 0 ) {
 			return ILLEGAL;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) ) {
+				return ILLEGAL;
+			}
+			if( size( mask ) > 0 && nnz( mask ) < size( mask ) ) {
+				return ILLEGAL;
+			}
+		}
 
 		// do local foldr
 		IOType local = monoid.template getIdentity< IOType >();

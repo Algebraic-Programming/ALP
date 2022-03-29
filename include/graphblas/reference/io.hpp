@@ -357,8 +357,8 @@ namespace grb {
 		typename DataType, typename T,
 		typename Coords
 	>
-	RC set( Vector<
-		DataType, reference, Coords > &x, const T val,
+	RC set(
+		Vector< DataType, reference, Coords > &x, const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
@@ -423,7 +423,8 @@ namespace grb {
 		typename DataType, typename MaskType, typename T,
 		typename Coords
 	>
-	RC set( Vector< DataType, reference, Coords > &x,
+	RC set(
+		Vector< DataType, reference, Coords > &x,
 		const Vector< MaskType, reference, Coords > &m,
 		const T val,
 		const Phase &phase = EXECUTE,
@@ -588,8 +589,8 @@ namespace grb {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType, typename Coords >
-	RC set( Vector<
-		OutputType, reference, Coords > &x,
+	RC set(
+		Vector< OutputType, reference, Coords > &x,
 		const Vector< InputType, reference, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
@@ -617,6 +618,11 @@ namespace grb {
 		}
 		if( getID( x ) == getID( y ) ) {
 			return ILLEGAL;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) ) {
+				return ILLEGAL;
+			}
 		}
 
 		// on resize
@@ -699,7 +705,8 @@ namespace grb {
 		typename OutputType, typename MaskType, typename InputType,
 		typename Coords
 	>
-	RC set( Vector< OutputType, reference, Coords > &x,
+	RC set(
+		Vector< OutputType, reference, Coords > &x,
 		const Vector< MaskType, reference, Coords > &mask,
 		const Vector< InputType, reference, Coords > &y,
 		const Phase &phase = EXECUTE,
@@ -719,10 +726,10 @@ namespace grb {
 			"called with non-bool mask element types" );
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
 		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( ! in_is_void || out_is_void,
+		static_assert( !in_is_void || out_is_void,
 			"grb::set (reference, vector <- vector, masked): "
 			"if input is void, then the output must be also" );
-		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
+		static_assert( !(descr & descriptors::use_index) || !out_is_void,
 			"grb::set (reference, vector <- vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
@@ -736,6 +743,11 @@ namespace grb {
 		}
 		if( getID( x ) == getID( y ) ) {
 			return ILLEGAL;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < grb::size( y ) || nnz( mask ) < grb::size( mask ) ) {
+				return ILLEGAL;
+			}
 		}
 
 		// delegate if possible
@@ -844,7 +856,8 @@ namespace grb {
 			typename OutputType, typename InputType1,
 			typename InputType2 = const OutputType
 		>
-		RC set( Matrix< OutputType, reference > &C,
+		RC set(
+			Matrix< OutputType, reference > &C,
 			const Matrix< InputType1, reference > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
@@ -1421,6 +1434,32 @@ namespace grb {
 			<< "\t returning deterministic ID " << ret << "\n";
 #endif
 		return ret;
+	}
+
+	template<>
+	RC wait< reference >();
+
+	/** \internal Dispatch to base wait implementation */
+	template<
+		typename InputType, typename Coords,
+		typename ... Args
+	>
+	RC wait(
+		const Vector< InputType, reference, Coords > &x,
+		const Args &... args
+	) {
+		(void) x;
+		return wait( args... );
+	}
+
+	/** \internal Dispatch to base wait implementation */
+	template< typename InputType, typename... Args >
+	RC wait(
+		const Matrix< InputType, reference > &A,
+		const Args &... args
+	) {
+		(void) A;
+		return wait( args... );
 	}
 
 	/** @} */
