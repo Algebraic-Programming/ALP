@@ -31,6 +31,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::Vector< double > y( n );
 	grb::Vector< double > z( n );
 	grb::Vector< bool > m( n );
+	grb::Vector< size_t > t( n );
 	rc = grb::set( a, alpha );
 	if( rc == SUCCESS ) {
 		rc = grb::set( x, beta );
@@ -38,15 +39,24 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	if( rc == SUCCESS ) {
 		rc = grb::set( y, gamma );
 	}
-	for( size_t i = 0; rc == SUCCESS && i < n; i += 2 ) {
-		rc = grb::setElement( m, true, i );
-	}
+	rc = grb::set< grb::descriptors::use_index >( t, 0 );
+	rc = rc ? rc : grb::eWiseLambda( [&t] (const size_t i) {
+			if( t[ i ] % 2 == 0 ) {
+				t[ i ] = 1;
+			} else {
+				t[ i ] = 0;
+			}
+		}, t );
+	rc = rc ? rc : grb::set( m, t, true );
 	if( rc != SUCCESS ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		return;
 	}
 
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	// Test 1: vector-vector-vector-vector
 	rc = grb::eWiseMulAdd( z, m, a, x, y, ring );

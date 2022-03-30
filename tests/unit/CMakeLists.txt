@@ -235,6 +235,10 @@ add_grb_executables( capacity capacity.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+add_grb_executables( wait wait.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
