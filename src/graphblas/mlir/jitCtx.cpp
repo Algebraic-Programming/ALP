@@ -20,28 +20,37 @@ static mlir::Type getTensorType( Matrix< float, Backend::mlir > & buff, mlir::Op
 	return mlir::RankedTensorType::get( dims, builder.getF32Type() );
 }
 
+// insert timing utils at the start of 'block'. Note modify insertion point.
+mlir::Value insertStartTimer(mlir::OpBuilder &builder, mlir::Block &block, mlir::ModuleOp module, mlir::Location loc) {
+    mlir::OpBuilder::InsertionGuard guard( builder );
+    builder.setInsertionPointToEnd( module.getBody() );
+    auto fnType = mlir::FunctionType::get( builder.getContext(), {}, builder.getF64Type() );
+    mlir::FuncOp funcOp = builder.create<mlir::FuncOp>( loc, "rtclock", fnType, llvm::ArrayRef< mlir::NamedAttribute> {});
+    mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
+    builder.setInsertionPointToStart(&block); 
+    mlir::Value start = builder.create<mlir::func::CallOp>(loc, mlir::SymbolRefAttr::get(builder.getContext(), "rtclock"), builder.getF64Type()).getResult(0);
+    return start;
+}
+
+void insertStopTimer(mlir::OpBuilder &builder, mlir::Value start, mlir::Location loc) {
+  mlir::Value end = builder.create<mlir::func::CallOp>(loc, mlir::SymbolRefAttr::get(builder.getContext(), "rtclock"), builder.getF64Type()).getResult(0);
+  mlir::Value time = builder.create<mlir::arith::SubFOp>(loc, end, start);
+  builder.create<mlir::vector::PrintOp>(loc, time);
+}
+
 // build mxm (aka linalg.matmul).
 static void buildMxmBody( mlir::OpBuilder & builder, mlir::Location loc, mlir::FuncOp fn, mlir::Block * block, bool timing = false ) {
   mlir::linalg::MatmulOp op;
   if (timing) {
-    mlir::OpBuilder::InsertionGuard guard( builder );
-    builder.setInsertionPointToEnd( fn->getParentOfType<mlir::ModuleOp>().getBody() );
-    auto fnType = mlir::FunctionType::get( builder.getContext(), {}, builder.getF64Type() );
-    mlir::FuncOp funcOp = builder.create<mlir::FuncOp>( loc, "rtclock", fnType, llvm::ArrayRef< mlir::NamedAttribute> {});
-    mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
-    mlir::Block &entryBlock = fn.front();
-    builder.setInsertionPointToStart(&entryBlock);
-    mlir::Value zero = builder.create<mlir::arith::ConstantIndexOp>(loc, 0);
+    mlir::Value start = insertStartTimer(builder, fn.front(), fn->getParentOfType<mlir::ModuleOp>(), loc);
+     mlir::Value zero = builder.create<mlir::arith::ConstantIndexOp>(loc, 0);
     mlir::Value five = builder.create<mlir::arith::ConstantIndexOp>(loc, 5);
     mlir::Value one = builder.create<mlir::arith::ConstantIndexOp>(loc, 1);
-    mlir::Value start = builder.create<mlir::func::CallOp>(loc, mlir::SymbolRefAttr::get(builder.getContext(), "rtclock"), builder.getF64Type()).getResult(0);
     mlir::scf::ForOp loop = builder.create<mlir::scf::ForOp>(loc, zero, five, one, fn.getArgument(2), [&](mlir::OpBuilder &b, mlir::Location loc, mlir::Value iv, mlir::ValueRange args) {
-      op = builder.create<mlir::linalg::MatmulOp>(loc, mlir::ValueRange{fn.getArgument(0), fn.getArgument(1)}, args[0]);
-      builder.create<mlir::scf::YieldOp>(loc, op.getResult(0));
-    }); 
-    mlir::Value end = builder.create<mlir::func::CallOp>(loc, mlir::SymbolRefAttr::get(builder.getContext(), "rtclock"), builder.getF64Type()).getResult(0);
-    mlir::Value time = builder.create<mlir::arith::SubFOp>(loc, end, start);
-    builder.create<mlir::vector::PrintOp>(loc, time);
+    op = builder.create<mlir::linalg::MatmulOp>(loc, mlir::ValueRange{fn.getArgument(0), fn.getArgument(1)}, args[0]);
+    builder.create<mlir::scf::YieldOp>(loc, op.getResult(0));
+    });
+    insertStopTimer(builder, start, loc); 
     builder.create<mlir::func::ReturnOp>(loc, loop.getResult(0));
   }
   else {
@@ -139,6 +148,9 @@ RC JitContext::buildAndExecute() {
 	mlir::SymbolTable::setSymbolVisibility( funcOp, mlir::SymbolTable::Visibility::Private );
 	mlir::Block * entryBlock = funcOp.addEntryBlock();
 	builder.setInsertionPointToStart( entryBlock );
+
+  mlir::Value start = insertStartTimer(builder, *entryBlock, module.get(), builder.getUnknownLoc());  
+
 	mlir::Location loc = module->getLoc();
 	mlir::Value ret = nullptr;
 	while( ! newQueue.empty() ) {
@@ -150,7 +162,7 @@ RC JitContext::buildAndExecute() {
 		size_t posB = symTab.lookup( basePtr );
 		basePtr = &*( curr.A.storage )->basePtr;
 		size_t posA = symTab.lookup( basePtr );
-		mlir::func::CallOp mxm;
+		mlir::linalg::MatmulOp mxm;
 		// Look for indirections of the arguments
 		auto A = changeMap.lookup( posA );
 		if( ! A )
@@ -171,11 +183,15 @@ RC JitContext::buildAndExecute() {
 			A = builder.create< mlir::tensor::CastOp >( loc, toCast, A );
 			B = builder.create< mlir::tensor::CastOp >( loc, toCast, B );
 		}
-		mxm = buildMatmulImpl( builder, mlir::ValueRange { A, B, C }, C.getType() );
+		//mxm = buildMatmulImpl( builder, mlir::ValueRange { A, B, C }, C.getType() );
+    mxm = builder.create< mlir::linalg::MatmulOp >( loc, mlir::ValueRange { A, B }, C );
 		ret = mxm.getResult( 0 );
 		// Update the indirection of the output
 		changeMap.insert( posC, ret );
 	}
+ 
+  insertStopTimer(builder, start, builder.getUnknownLoc());
+ 
 	// Return the last computation
 	builder.create< mlir::func::ReturnOp >( loc, mlir::ValueRange { ret } );
 	llvm::errs() << "------Module pre optimization/lowering------\n";
