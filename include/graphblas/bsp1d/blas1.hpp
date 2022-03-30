@@ -73,6 +73,27 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic checks
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) ) {
+				return ILLEGAL;
+			}
+		}
+
 		// cache local result
 		IOType local = monoid.template getIdentity< IOType >();
 
@@ -125,7 +146,7 @@ namespace grb {
 			"called with an input vector value type that does not match the second "
 			"domain of the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldl",
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the third domain of "
 			"the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
@@ -216,13 +237,35 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
-			return SUCCESS;
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic checks
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) ) {
+				return ILLEGAL;
+			}
 		}
 
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
 		// simply delegate to reference implementation will yield correct result
 		RC ret = foldr< descr >( alpha, internal::getLocal( y ), monoid, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -230,10 +273,19 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			internal::getCoordinates( internal::getGlobal( y ) ).assignAll();
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				internal::setDense( y );
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				const RC subrc = internal::updateNnz( y );
+				if( subrc != SUCCESS ) { ret = FAILED; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
@@ -251,45 +303,89 @@ namespace grb {
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
-			return SUCCESS;
-		}
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D2 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the second domain of "
+			"the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Operator::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the third domain of "
+			"the given operator" );
 
-		// simply delegating will yield the correct result
-		const size_t old_nnz = nnz( internal::getLocal( y ) );
-		RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ),
-			op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
-			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::any_or< RC >()
-			) != SUCCESS ) {
-				return PANIC;
+		// dynamic checks
+		if( size( x ) != size( y ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) || nnz( y ) < size( y ) ) {
+				return ILLEGAL;
 			}
 		}
-		if( ret == SUCCESS && phase != RESIZE ) {
-			internal::updateNnz( y );
+
+		// in RESIZE phase, this operation does nothing as there cannot be fill-in
+		if( phase == RESIZE ) { return SUCCESS; }
+
+		// simply delegating will yield the correct result
+		assert( phase == EXECUTE );
+		const size_t old_nnz = nnz( internal::getLocal( y ) );
+		const RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ),
+			op, phase );
+		assert( ret == SUCCESS );
+		if( ret != SUCCESS ) {
+			// this implementation does not handle other error cases, which as per the
+			// spec should not occur
+			ret = PANIC;
 		}
 		return ret;
 	}
 
 	/** No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename IOType, typename Coords, typename InputType
 	>
 	RC foldl(
 		Vector< IOType, BSP1D, Coords > &x,
 		const InputType &beta,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< InputType >::value &&
-			grb::is_operator< OP >::value, void
+			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given operator" );
+
+		// dynamic checks
 		if( nnz( x ) < size( x ) ) {
+			// note: this illegal no matter whether the dense descriptor is given
 			return ILLEGAL;
 		}
-		return foldl< descr >( internal::getLocal( x ), beta, op, phase );
+
+		// nonzero structure remains unchanged, so just dispatch
+		RC ret = foldl< descr >( internal::getLocal( x ), beta, op, phase );
+		assert( ret == SUCCESS );
+		if( ret != SUCCESS ) {
+			ret = PANIC;
+		}
+		return ret;
 	}
 
 	/** No implementation notes. */
@@ -306,12 +402,37 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic checks
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) ) {
+				return ILLEGAL;
+			}
+		}
+
+		// check for trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = foldl< descr >( internal::getLocal( x ), beta, monoid, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -319,9 +440,17 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			internal::updateNnz( x );
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				internal::setDense( x );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( x );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
@@ -330,34 +459,62 @@ namespace grb {
 	 * synchronisation required.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename IOType, typename InputType, typename Coords
 	>
 	RC foldl(
 		Vector< IOType, BSP1D, Coords > &x,
 		const Vector< InputType, BSP1D, Coords > &y,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			grb::is_operator< OP >::value, void
+			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
-		const size_t n = size( x );
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given operator" );
 
-		// runtime sanity checks
+		// dynamic checks
+		const size_t n = size( x );
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// resize is a no-op since nnz of x cannot change
+		if( phase == RESIZE ) { return SUCCESS; }
 
 		// simply delegating will yield the correct result
 		const RC ret = foldl< descr >( internal::getLocal( x ),
 			internal::getLocal( y ), op, phase );
+
+		// the spec forbids that this call can fail, so assert success
+		assert( ret == SUCCESS);
+
+		// done
 		return ret;
 	}
 
 	/** \internal Requires synchronisation of output vector nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename InputType,
 		typename Coords
 	>
@@ -370,16 +527,39 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		const size_t n = size( x );
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
 
-		// runtime sanity checks
+		// dynamic checks
+		const size_t n = size( x );
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = SUCCESS;
 		if( (descr | descriptors::dense) || ((nnz( x ) == n) && (nnz( y ) == n)) ) {
 			// dense case
@@ -389,22 +569,32 @@ namespace grb {
 			ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ),
 				monoid, phase );
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
 				return PANIC;
 			}
 		}
-		if( ret == SUCCESS && phase != RESIZE ) {
-			internal::updateNnz( x );
+
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( x );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
-	/** \internal No communication necessary. */
+	/** \internal No communication necessary, output is guaranteed dense. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -412,18 +602,37 @@ namespace grb {
 		Vector< OutputType, BSP1D, Coords > &z,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value,
-		void >::type * const = nullptr
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
 			"[T1]<-[T2]<-T3\n";
 #endif
+
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+
+		// dynamic checks
 		const size_t n = size( z );
 		if( size( x ) != n ) {
 			return MISMATCH;
@@ -431,13 +640,18 @@ namespace grb {
 		if( nnz( x ) < n ) {
 			return ILLEGAL;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ),
 			internal::getLocal( x ), beta, op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -445,16 +659,32 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			internal::setDense( z );
+		// handle try and execute
+		if( phase == TRY ) {
+			if( ret == SUCCESS || ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) {
+					if( ret == SUCCESS ) { ret = subrc; }
+					else { ret = PANIC; }
+				}
+			}
+		} else if( phase == EXECUTE ) {
+			if( ret == SUCCESS ) {
+				internal::setDense( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
-	/** \internal No communication necessary. */
+	/** \internal No communication necessary, output is guaranteed dense. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -462,32 +692,56 @@ namespace grb {
 		Vector< OutputType, BSP1D, Coords > &z,
 		const InputType1 alpha,
 		const Vector< InputType2, BSP1D, Coords > &y,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value,
+			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
 					 "[T1]<-T2<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+
+		// dynamic checks
 		const size_t n = size( z );
 		if( size( y ) != n ) {
 			return MISMATCH;
 		}
 		if( nnz( y ) < n ) {
+			// note: this is illegal regardless of whether the dense descriptor was given
 			return ILLEGAL;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+
+		// check for trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha,
 			internal::getLocal( y ), op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -495,16 +749,34 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			internal::setDense( z );
+		// handle try and execute
+		if( phase == TRY ) {
+			if( ret == SUCCESS || ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) {
+					if( ret == SUCCESS ) { ret = subrc; }
+					else { ret = PANIC; }
+				}
+			}
+		} else if( phase == EXECUTE ) {
+			if( ret == SUCCESS ) {
+				internal::setDense( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
-	/** \internal No implementation notes. */
+	/**
+	 * \internal Requires communication in case of sparse vectors.
+	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -512,58 +784,81 @@ namespace grb {
 		Vector< OutputType, BSP1D, Coords > &z,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const Vector< InputType2, BSP1D, Coords > &y,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value,
+			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+
+		// dynamic checks
 		const size_t n = size( z );
 		if( size( x ) != n ) {
 #ifdef _DEBUG
-			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because size(x) != size(z) -- "
-					  << size( x ) << " != " << n << "\n";
+			std::cerr << "Warning: call to z = x + y (eWiseApply) fails because size(x) "
+				<< "!= size(z) -- " << size( x ) << " != " << n << "\n";
 #endif
 			return MISMATCH;
 		}
 		if( size( y ) != n ) {
 #ifdef _DEBUG
-			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because size(y) != size(z) -- "
-					  << size( y ) << " != " << n << "\n";
+			std::cerr << "Warning: call to z = x + y (eWiseApply) fails because size(y) "
+				<< "!= size(z) -- " << size( y ) << " != " << n << "\n";
 #endif
 			return MISMATCH;
 		}
-		if( nnz( x ) < n ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
 #ifdef _DEBUG
-			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because x is sparse -- nnz(x) = "
-					  << nnz( x ) << "\n";
+				std::cerr << "Warning: call to z = x + y (eWiseApply) fails because x is "
+					<< "sparse -- nnz(x) = " << nnz( x ) << " -- while the dense "
+					<< "descriptor was given\n";
 #endif
-			return ILLEGAL;
-		}
-		if( nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( y ) < n ) {
 #ifdef _DEBUG
-			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because y is sparse -- nnz(y) = "
-					  << nnz( y ) << "\n";
+				std::cerr << "Warning: call to z = x + y (eWiseApply) fails because y is "
+					<< "sparse -- nnz(y) = " << nnz( y ) << " -- while the dense "
+					<< "descriptor was given\n";
 #endif
-			return ILLEGAL;
+				return ILLEGAL;
+			}
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ),
 			internal::getLocal( x ), internal::getLocal( y ), op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -571,16 +866,29 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
+		// catch execute
+		if( phase != RESIZE ) {
 			assert( phase == EXECUTE );
-			internal::setDense( z );
+			if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			} else if( ret == SUCCESS ) {
+				if( !(descr & descriptors::dense) ) {
+					ret = internal::updateNnz( z );
+				} else {
+					internal::setDense( z );
+				}
+			}
 		}
+
+		// done
 		return ret;
 	}
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -590,23 +898,46 @@ namespace grb {
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const InputType1 alpha,
 		const Vector< InputType2, BSP1D, Coords > &y,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value, void
+			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-T2<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not bool" );
+
+		// check dispatch to simpler variant
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, alpha, y, op, phase );
 		}
+
+		// dynamic checks
 		if( size( y ) != n ) {
 			return MISMATCH;
 		}
@@ -614,19 +945,26 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( nnz( y ) < n ) {
-#ifdef _DEBUG
-			std::cerr << "\t right-hand vector is sparse but using "
-						 "operator-based eWiseApply\n";
-#endif
+			// note that this is illegal regardless of whether dense descriptor is used
 			return ILLEGAL;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ),
 			internal::getLocal( mask ), alpha, internal::getLocal( y ), op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -634,16 +972,24 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires communication to sync nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename MaskType, typename InputType1,
 		typename InputType2, typename Coords
 	>
@@ -652,23 +998,46 @@ namespace grb {
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value,
+			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-T3\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not bool" );
+
+		// check dispatch to simpler variant
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, x, beta, op, phase );
 		}
+
+		// dynamic checks
 		if( size( x ) != n ) {
 			return MISMATCH;
 		}
@@ -676,19 +1045,26 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( nnz( x ) < n ) {
-#ifdef _DEBUG
-			std::cerr << "\t left-hand vector is sparse but using "
-						 "operator-based eWiseApply\n";
-#endif
+			// note this is illegal regardless of whether a dense descriptor is passed
 			return ILLEGAL;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ),
 			internal::getLocal( mask ), internal::getLocal( x ), beta, op, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -696,16 +1072,24 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires communication to update global nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -715,23 +1099,47 @@ namespace grb {
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const Vector< InputType2, BSP1D, Coords > &y,
-		const OP &op,
+		const Operator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< OP >::value,
+			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
 					 "[T1]<-[T2]<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not bool" );
+
+
+		// check if we can dispatch to simpler variant
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, x, y, op );
 		}
+
+		// dynamic checks
 		if( size( x ) != n ) {
 			return MISMATCH;
 		}
@@ -741,30 +1149,33 @@ namespace grb {
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
-		if( nnz( x ) < n ) {
-#ifdef _DEBUG
-			std::cerr << "\t left-hand vector is sparse but using "
-						 "operator-based eWiseApply\n";
-#endif
-			return ILLEGAL;
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
 		}
-		if( nnz( y ) < n ) {
-#ifdef _DEBUG
-			std::cerr << "\t right-hand vector is sparse but using "
-						 "operator-based eWiseApply\n";
-#endif
-			return ILLEGAL;
-		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+
+		// check for trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			(descr & descriptors::dense) &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( z ), internal::getLocal( mask ),
 			internal::getLocal( x ), internal::getLocal( y ),
 			op, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -772,11 +1183,19 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			}
+			if( ret == FAILED ) {
+				const RC update_rc = internal::updateNnz( z );
+				if( update_rc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Does not require communication. */
@@ -801,25 +1220,52 @@ namespace grb {
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-T3\n";
 #endif
-		const size_t n = size( z );
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with an output vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input scalar type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
 
 		// check if can delegate to dense variant
+		const size_t n = size( z );
 		if( (descr & descriptors::dense) || nnz( x ) == n ) {
-			return eWiseApply< descr >( z, x, beta, monoid.getOperator(), phase );
+			return eWiseApply< descr | descriptors::dense >(
+				z, x, beta, monoid.getOperator(), phase
+			);
 		}
 
-		// run-time checks
+		// dynamic checks
 		if( size( x ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+		}
 
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		// handle for trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ),
 			internal::getLocal( x ), beta, monoid, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -827,16 +1273,23 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
+		// handle execute phase
+		if( phase != RESIZE ) {
 			assert( phase == EXECUTE );
-			internal::setDense( z );
+			if( ret == SUCCESS ) {
+				internal::setDense( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
 		return ret;
 	}
 
 	/** \internal Does not require communication. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -854,26 +1307,54 @@ namespace grb {
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
-					 "[T1]<-T2<-[T3]\n";
+			"[T1]<-T2<-[T3]\n";
 #endif
-		const size_t n = size( z );
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input scalar type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
 
 		// check if can delegate to dense variant
+		const size_t n = size( z );
 		if( (descr & descriptors::dense) || nnz( y ) == n ) {
-			return eWiseApply< descr >( z, alpha, y, monoid.getOperator(), phase );
+			return eWiseApply< descr | descriptors::dense >(
+				z, alpha, y, monoid.getOperator(), phase
+			);
 		}
 
-		// run-time checks
+		// dynamic checks
 		if( size( y ) != n ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >( internal::getLocal( z ), alpha,
 			internal::getLocal( y ), monoid, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -881,16 +1362,25 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
+		// handle execute
+		if( phase != RESIZE ) {
 			assert( phase == EXECUTE );
-			internal::setDense( z );
+			if( ret == SUCCESS ) {
+				internal::setDense( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
 		return ret;
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -910,39 +1400,60 @@ namespace grb {
 		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-[T3]\n";
 #endif
-		const size_t n = size( z );
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
 
 		// check if we can delegate to dense variant
+		const size_t n = size( z );
 		if( (descr & descriptors::dense) || (nnz( x ) == n && nnz( y ) == n) ) {
-			return eWiseApply< descr >( z, x, y, monoid.getOperator(), phase );
+			return eWiseApply< descr | descriptors::dense >(
+				z, x, y, monoid.getOperator(), phase
+			);
 		}
 
 		// run-time checks
 		if( size( x ) != n ) {
 #ifdef _DEBUG
 			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because size(x) != size(z) -- "
-					  << size( x ) << " != " << n << "\n";
+				"because size(x) != size(z) -- " << size( x ) << " != " << n << "\n";
 #endif
 			return MISMATCH;
 		}
 		if( size( y ) != n ) {
 #ifdef _DEBUG
 			std::cerr << "Warning: call to z = x + y (eWiseApply) fails "
-						 "because size(y) != size(z) -- "
-					  << size( y ) << " != " << n << "\n";
+				"because size(y) != size(z) -- " << size( y ) << " != " << n << "\n";
 #endif
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( z ), internal::getLocal( x ), internal::getLocal( y ),
 			monoid, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -950,16 +1461,24 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -982,26 +1501,59 @@ namespace grb {
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-T2<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not a bool" );
+
+		// check dispatch to unmasked variant
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, alpha, y, monoid, phase );
 		}
+
+		// dynamic checks
 		if( size( y ) != n ) {
 			return MISMATCH;
 		}
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < n || nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// check trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( z ), internal::getLocal( mask ),
 			alpha, internal::getLocal( y ),
 			monoid, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1009,16 +1561,24 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle execute and try phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1034,33 +1594,69 @@ namespace grb {
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< Monoid >::value,
-		void >::type * const = nullptr
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-T3\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input vector value type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not a bool" );
+
+		// check delegate to unmaked variant
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, x, beta, monoid, phase );
 		}
+
+		// dynamic checks
 		if( size( x ) != n ) {
 			return MISMATCH;
 		}
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( z ), internal::getLocal( mask ),
 			internal::getLocal( x ), beta,
 			monoid, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1068,16 +1664,24 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle execute and try phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires communication to sync global nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1093,17 +1697,40 @@ namespace grb {
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< Monoid >::value,
-		void >::type * const = nullptr
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
 					 "[T1]<-[T2]<-[T3]\n";
 #endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input vector value type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::eWiseApply",
+			"called with a mask value type that is not a bool" );
+
+		// delegate to unmasked if possible
 		const size_t n = size( mask );
 		if( n == 0 ) {
 			return eWiseApply< descr >( z, x, y, monoid, phase );
 		}
+
+		// dynamic checks
 		if( size( x ) != n ) {
 			return MISMATCH;
 		}
@@ -1113,16 +1740,29 @@ namespace grb {
 		if( size( z ) != n ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// check for trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( z ), internal::getLocal( mask ),
 			internal::getLocal( x ), internal::getLocal( y ),
 			monoid, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1130,11 +1770,18 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/**
@@ -1605,6 +2252,7 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
@@ -1612,16 +2260,26 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseMul< descr >(
 			internal::getLocal( z ),
 			internal::getLocal( x ), internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1629,11 +2287,18 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			ret = internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires syncing of output nonzero count. */
@@ -1654,17 +2319,28 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseMul< descr >( internal::getLocal( z ), alpha,
 			internal::getLocal( y ), ring, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1672,11 +2348,18 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle execute and try phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/** \internal Requires syncing of output nonzero count. */
@@ -1697,17 +2380,28 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
+		// delegate
 		RC ret = eWiseMul< descr >( internal::getLocal( z ),
 			internal::getLocal( x ), beta, ring, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -1715,11 +2409,18 @@ namespace grb {
 			}
 		}
 
-		if( ret == SUCCESS && phase != RESIZE ) {
-			return internal::updateNnz( z );
-		} else {
-			return ret;
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = FAILED; }
+			}
 		}
+
+		// done
+		return ret;
 	}
 
 	/**
@@ -2231,7 +2932,7 @@ namespace grb {
 
 		RC ret = grb::eWiseMulAdd< descr >( internal::getLocal( z ),
 			internal::getLocal( m ), alpha, beta, gamma, ring, phase );
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -2330,13 +3031,22 @@ namespace grb {
 		if( size( y ) != size( x ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
+				return ILLEGAL;
+			}
+		}
 
 		// get field for out-of-place dot
 		OutputType oop = addMonoid.template getIdentity< OutputType >();
 
 		// all OK, try to do assignment
-		RC ret = grb::dot< descr >( oop, internal::getLocal( x ), internal::getLocal( y ), addMonoid, anyOp );
-		ret = ret ? ret : collectives< BSP1D >::allreduce( oop, addMonoid.getOperator() );
+		RC ret = grb::dot< descr >( oop,
+			internal::getLocal( x ), internal::getLocal( y ),
+			addMonoid, anyOp
+		);
+		ret = ret ? ret : collectives< BSP1D >::allreduce(
+			oop, addMonoid.getOperator() );
 
 		// fold out-of-place dot product into existing value and exit
 		ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
