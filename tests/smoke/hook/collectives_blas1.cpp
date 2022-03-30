@@ -78,9 +78,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// gather: large
-	for( size_t i = 0; i < n; i++ ) {
-		(void)grb::setElement( vLarge, pi * s + i, i );
-	}
+	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
+	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
 	rc = grb::internal::gather( vLarge, vLarger, root );
 	if( rc != SUCCESS ) {
 		(void)fprintf( stderr, "grb::internal::gather (large) returns bad error code (%d).\n", (int)rc );
@@ -141,9 +140,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// scatter: large
 	if( s == root ) {
-		for( size_t i = 0; i < n * P; i++ ) {
-			(void)grb::setElement( vLarger, pi * i, i );
-		}
+		(void) grb::set< grb::descriptors::use_index >( vLarger, 0 );
+		(void) grb::foldr( pi, vLarger, grb::operators::mul< double >() );
 	}
 
 	rc = grb::internal::scatter( vLarger, vLarge, root );
@@ -207,9 +205,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// combine: large
-	for( size_t i = 0; i < n; i++ ) {
-		(void)grb::setElement( vLarge, pi * s + i, i );
-	}
+	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
+	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
 	rc = grb::internal::combine( vLarge, oper, root );
 	if( rc != SUCCESS ) {
 		(void)fprintf( stderr, "grb::internal::combine (large) returns bad error code (%d).\n", (int)rc );
@@ -232,9 +229,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// reduce: large
-	for( size_t i = 0; i < n; i++ ) {
-		(void)grb::setElement( vLarge, pi * s + i, i );
-	}
+	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
+	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
 	d = 0;
 	rc = grb::internal::reduce( vLarge, d, oper, root );
 	if( rc != SUCCESS ) {
@@ -256,9 +252,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// allreduce: large
-	for( size_t i = 0; i < n; i++ ) {
-		(void)grb::setElement( vLarge, pi * s + i, i );
-	}
+	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
+	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
 	d = 0;
 	rc = grb::internal::allreduce( vLarge, d, oper );
 	if( rc != SUCCESS ) {
@@ -279,9 +274,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// broadcast: large
 	if( s == root ) {
-		for( size_t i = 0; i < n; i++ ) {
-			(void)grb::setElement( vLarge, pi * s + i, i );
-		}
+		(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
+		(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
 	}
 	rc = grb::internal::broadcast( vLarge, root );
 	if( rc != SUCCESS ) {

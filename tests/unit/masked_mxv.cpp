@@ -34,8 +34,9 @@ int main( int argc, char ** argv ) {
 	// sanity check against metabugs
 	int error = 0;
 	for( size_t i = 0; i < 15; ++i ) {
-		if( ! grb::utils::equals( data1[ i ] * data2[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr, "Sanity check error at position %zd: %d + %d does not equal %d.\n", i, data1[ i ], data2[ i ], chk[ i ] );
+		if( !grb::utils::equals( data1[ i ] * data2[ i ], chk[ i ] ) ) {
+			std::cerr << "Sanity check error at position " << i << ": " << data1[ i ]
+				<< " + " << data2[ i ] << " does not equal " << chk[ i ] << ".\n";
 			error = 1;
 		}
 	}
@@ -43,15 +44,15 @@ int main( int argc, char ** argv ) {
 	// initialise
 	enum grb::RC rc = grb::init();
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from grb::init: %d.\n", (int)rc );
+		std::cerr << "Unexpected return code from grb::init: "
+			<< grb::toString( rc ) << ".\n";
 		error = 2;
 	}
 
 	// exit early if failure detected as this point
 	if( error ) {
-		(void)printf( "Test FAILED.\n\n" );
-		(void)fflush( stderr );
-		(void)fflush( stdout );
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 		return error;
 	}
 
@@ -64,16 +65,18 @@ int main( int argc, char ** argv ) {
 	// resize for 15 elements
 	rc = resize( A, 15 );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix constructor: %d.\n", (int)rc );
+		std::cerr << "Unexpected return code from Matrix constructor: "
+			<< grb::toString( rc ) << ".\n";
 		error = 3;
 	}
 
 	// initialise x
-	if( ! error ) {
+	if( !error ) {
 		const int * iterator = &( data1[ 0 ] );
 		rc = grb::buildVector( x, iterator, iterator + 15, SEQUENTIAL );
 		if( rc != grb::SUCCESS ) {
-			(void)fprintf( stderr, "Unexpected return code from Vector build (x): %d.\n", (int)rc );
+			std::cerr << "nexpected return code from Vector build (x): "
+				<< grb::toString( rc ) << ".\n";
 			error = 4;
 		}
 	}
@@ -84,148 +87,155 @@ int main( int argc, char ** argv ) {
 	// initialise A
 	rc = grb::buildMatrixUnique( A, I, J, data2, 15, SEQUENTIAL );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix buildMatrixUnique: %d.\n", (int)rc );
+		std::cerr << "Unexpected return code from Matrix buildMatrixUnique: "
+			<< grb::toString( rc ) << ".\n";
 		error = 5;
 	}
 
 	// get a semiring where multiplication is addition, and addition is multiplication
 	// this also tests if the proper identity is used
-	typename grb::Semiring< grb::operators::add< int >, grb::operators::mul< int >, grb::identities::zero, grb::identities::one > integers;
+	typename grb::Semiring<
+		grb::operators::add< int >, grb::operators::mul< int >,
+		grb::identities::zero, grb::identities::one
+	> integers;
 
 	// do masked mxv for 14 different mask combinations
-	for( unsigned int i = 0; ! error && i < 15; ++i ) {
+	for( unsigned int i = 0; !error && i < 15; ++i ) {
 		if( i == 3 )
 			continue;
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::clear( mask );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector clear (mask): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector clear (mask): "
+					<< grb::toString( rc ) << ".\n";
 				error = 10;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::clear( y );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector clear (y): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector clear (y): "
+					<< grb::toString( rc ) << ".\n";
 				error = 11;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::setElement( mask, true, 3 );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector set (mask): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector set (mask): "
+					<< grb::toString( rc ) << ".\n";
 				error = 12;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::setElement( mask, true, i );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector set (mask, in-loop): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector set (mask, in-loop): "
+					<< grb::toString( rc ) << ".\n";
 				error = 13;
 			}
 		}
 
 		// execute what amounts to elementwise vector addition
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::mxv( y, mask, A, x, integers );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::mxv: %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::mxv: "
+					<< grb::toString( rc ) << ".\n";
 				error = 14;
 			}
 		}
 
 		// check
-		if( ! error && ! ( grb::nnz( y ) == 2 ) ) {
-			(void)fprintf( stderr, "Output vector number of elements mismatch: %zd, but expected 2.\n", grb::nnz( y ) );
+		if( !error && !(grb::nnz( y ) == 2) ) {
+			std::cerr << "Output vector number of elements mismatch: " << grb::nnz( y )
+				<< ", but expected 2.\n";
 			error = 15;
-		} else if( ! error && ! grb::utils::equals( chk[ 3 ], against[ 3 ] ) ) {
-			(void)fprintf( stderr,
-				"Output vector element mismatch at position 3: %d does not equal "
-				"%d.\n",
-				chk[ i ], against[ i ] );
+		} else if( !error && !grb::utils::equals( chk[ 3 ], against[ 3 ] ) ) {
+			std::cerr << "Output vector element mismatch at position 3: " << chk[ i ] << " "
+				<< "does not equal " << against[ i ] << ".\n";
 			error = 16;
-		} else if( ! error && ! grb::utils::equals( chk[ i ], against[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Output vector element mismatch at position %d: %d does not equal "
-				"%d.\n",
-				i, chk[ i ], against[ i ] );
+		} else if( !error && !grb::utils::equals( chk[ i ], against[ i ] ) ) {
+			std::cerr << "Output vector element mismatch at position " << i << ": "
+				<< chk[ i ] << " does not equal " << against[ i ] << ".\n";
 			error = 17;
 		}
 	}
 
 	// do masked mxv for 14 different mask combinations
-	for( unsigned int i = 0; ! error && i < 15; ++i ) {
-		if( i == 3 )
+	for( unsigned int i = 0; !error && i < 15; ++i ) {
+		if( i == 3 ) {
 			continue;
+		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::clear( mask );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector clear (mask): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector clear (mask): "
+					<< grb::toString( rc ) << ".\n";
 				error = 20;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::clear( y );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector clear (y): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector clear (y): "
+					<< grb::toString( rc ) << ".\n";
 				error = 21;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::setElement( mask, true, 3 );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector set (mask): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector set (mask): "
+					<< grb::toString( rc ) << ".\n";
 				error = 22;
 			}
 		}
 
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::setElement( mask, true, i );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from Vector set (mask, in-loop): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from Vector set (mask, in-loop): "
+					<< grb::toString( rc ) << ".\n";
 				error = 23;
 			}
 		}
 
 		// execute what amounts to elementwise vector addition
-		if( ! error ) {
+		if( !error ) {
 			rc = grb::mxv( y, mask, A, x, integers );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::mxv: %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::mxv: "
+					<< grb::toString( rc ) << ".\n";
 				error = 24;
 			}
 		}
 
-		if( ! error && ! ( grb::nnz( y ) == 2 ) ) {
-			(void)fprintf( stderr, "Output vector number of elements mismatch: %zd, but expected 2.\n", grb::nnz( y ) );
+		if( !error && !(grb::nnz( y ) == 2) ) {
+			std::cerr << "Output vector number of elements mismatch: " << grb::nnz( y )
+				<< ", but expected 2.\n";
 			error = 25;
-		} else if( ! error && ! grb::utils::equals( chk[ 3 ], against[ 3 ] ) ) {
-			(void)fprintf( stderr,
-				"Output vector element mismatch at position 3: %d does not equal "
-				"%d.\n",
-				chk[ i ], against[ i ] );
+		} else if( !error && !grb::utils::equals( chk[ 3 ], against[ 3 ] ) ) {
+			std::cerr << "Output vector element mismatch at position 3: " << chk[ i ]
+				<< " does not equal " << against[ i ] << ".\n";
 			error = 26;
-		} else if( ! error && ! grb::utils::equals( chk[ i ], against[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Output vector element mismatch at position %d: %d does not equal "
-				"%d.\n",
-				i, chk[ i ], against[ i ] );
+		} else if( !error && !grb::utils::equals( chk[ i ], against[ i ] ) ) {
+			std::cerr << "Output vector element mismatch at position " << i << ": "
+				<< chk[ i ] << " does not equal " << against[ i ] << ".\n";
 			error = 27;
 		}
-		for( auto pair : y ) {
-			if( ! error && pair.second ) {
+		for( const auto &pair : y ) {
+			if( !error && pair.second ) {
 				if( pair.first != 3 && pair.first != i ) {
-					(void)fprintf( stderr,
-						"Output vector element %zd is assigned; only element %d or "
-						"3 should be assigned.\n",
-						pair.first, i );
+					std::cerr << "Output vector element " << pair.first << " is assigned; "
+						<< "only element " << i << " or 3 should be assigned.\n",
 					error = 28;
 				}
 			}
@@ -234,19 +244,22 @@ int main( int argc, char ** argv ) {
 
 	// finalize
 	rc = grb::finalize();
-	if( ! error ) {
+	if( !error ) {
 		if( rc != grb::SUCCESS ) {
-			(void)fprintf( stderr, "Unexpected return code from grb::finalize: %d.\n", (int)rc );
+			std::cerr << "Unexpected return code from grb::finalize: "
+				<< grb::toString( rc ) << ".\n";
 			error = 6;
 		}
 	}
 
-	if( ! error ) {
-		(void)printf( "Test OK.\n\n" );
+	if( !error ) {
+		std::cerr << std::flush;
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		(void)printf( "Test FAILED.\n\n" );
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 
 	// done
 	return error;
 }
+

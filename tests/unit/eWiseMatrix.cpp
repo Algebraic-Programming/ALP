@@ -45,20 +45,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< unsigned int > B( n, n );
 	grb::Vector< unsigned int > u( n );
 	grb::Vector< unsigned int > v( n );
-	for( size_t i = 0; i < n; ++i ) {
-		grb::setElement( u, i * n, i );
-		grb::setElement( v, i * n * n, i );
-	}
-	rc = grb::resize( A, 15 );
-	if( rc == SUCCESS ) {
-		rc = grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
-	}
-	if( rc == SUCCESS ) {
-		rc = grb::resize( B, 15 );
-	}
-	if( rc == SUCCESS ) {
-		rc = grb::set( B, A );
-	}
+	rc = grb::set< grb::descriptors::use_index >( u, 0 );
+	rc = rc ? rc : foldl( u, n, grb::operators::mul< unsigned int >() );
+	rc = rc ? rc : eWiseApply( v, u, n, grb::operators::mul< unsigned int >() );
+	rc = rc ? rc : grb::resize( A, 15 );
+	rc = rc ? rc : grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
+	rc = rc ? rc : grb::resize( B, 15 );
+	rc = rc ? rc : grb::set( B, A );
 	if( rc != SUCCESS || grb::nnz( A ) != 15 || grb::nnz( B ) != 15 ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		return;
@@ -77,19 +70,25 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// checks
 	if( grb::nnz( B ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( B ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( B )
+			<< " ), expected 15.\n";
 		rc = FAILED;
 	}
-	for( const auto & triplet : B ) {
+	for( const auto &triplet : B ) {
 		if( triplet.first.first >= 10 || triplet.first.second >= 10 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ).\n";
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ).\n";
 			rc = FAILED;
-		} else if( chk[ triplet.first.first ][ triplet.first.second ] - 1 != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+		} else if( chk[ triplet.first.first ][ triplet.first.second ] - 1 !=
+			triplet.second
+		) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ) with value " << triplet.second;
 			if( chk[ triplet.first.first ][ triplet.first.second ] == 0 ) {
 				std::cerr << ", expected no entry here.\n";
 			} else {
-				std::cerr << ", expected value " << ( chk[ triplet.first.first ][ triplet.first.second ] - 1 ) << ".\n";
+				std::cerr << ", expected value "
+					<< (chk[ triplet.first.first ][ triplet.first.second ] - 1 ) << ".\n";
 			}
 			rc = FAILED;
 		}
@@ -99,7 +98,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	rc = grb::eWiseLambda(
-		[ &u, &v ]( const size_t i, const size_t j, unsigned int & val ) {
+		[ &u, &v ]( const size_t i, const size_t j, unsigned int &val ) {
 			val = val + 1 + u[ i ] + v[ j ];
 		},
 		B, u, v );
@@ -110,17 +109,23 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// checks
 	if( grb::nnz( B ) != 15 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( B ) << " ), expected 15.\n";
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( B )
+			<< " ), expected 15.\n";
 		rc = FAILED;
 	}
 	for( const auto & triplet : B ) {
 		if( triplet.first.first >= 10 || triplet.first.second >= 10 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ).\n";
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ).\n";
 			rc = FAILED;
 		} else {
-			const unsigned int expected = chk[ triplet.first.first ][ triplet.first.second ] + triplet.first.first * n + triplet.first.second * n * n;
+			const unsigned int expected =
+				chk[ triplet.first.first ][ triplet.first.second ] +
+				triplet.first.first * n +
+				triplet.first.second * n * n;
 			if( expected != triplet.second ) {
-				std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+				std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+					<< triplet.first.second << " ) with value " << triplet.second;
 				if( chk[ triplet.first.first ][ triplet.first.second ] == 0 ) {
 					std::cerr << ", expected no entry here.\n";
 				} else {
@@ -139,23 +144,24 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::resize( W, 6 );
 	rc = rc ? rc : grb::buildMatrixUnique( W, I2, J2, data2, 6, SEQUENTIAL );
 	rc = rc ? rc : grb::buildVector( vec, testv, testv + 3, SEQUENTIAL );
-	rc = rc ? rc :
-              grb::eWiseLambda(
-				  [ &vec ]( const size_t i, const size_t j, double & v ) {
-					  v *= vec[ i ] - vec[ j ];
-				  },
-				  W );
+	rc = rc ? rc : grb::eWiseLambda(
+			  [ &vec ]( const size_t i, const size_t j, double &v ) {
+				  v *= vec[ i ] - vec[ j ];
+			  }, W
+		);
 	if( grb::nnz( W ) != 6 ) {
-		std::cout << "Unexpected number of nonzeroes in W: " << grb::nnz( W ) << ", expected 6.\n";
+		std::cout << "Unexpected number of nonzeroes in W: " << grb::nnz( W )
+			<< ", expected 6.\n";
 		rc = FAILED;
 	}
-	for( const std::pair< std::pair< size_t, size_t >, double > & triple : W ) {
-		const size_t & i = triple.first.first;
-		const size_t & j = triple.first.second;
-		const double & v = triple.second;
+	for( const std::pair< std::pair< size_t, size_t >, double > &triple : W ) {
+		const size_t &i = triple.first.first;
+		const size_t &j = triple.first.second;
+		const double &v = triple.second;
 		const double ex = testv[ i ] - testv[ j ];
 		if( v != ex ) {
-			std::cout << "Unexpected value at position ( " << i << ", " << j << " ) in W: " << v << ", expected " << ex << ".\n";
+			std::cout << "Unexpected value at position ( " << i << ", " << j << " ) "
+				<< "in W: " << v << ", expected " << ex << ".\n";
 			rc = FAILED;
 		}
 	}
@@ -192,8 +198,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, the test "
+			<< "size.\n";
 		return 1;
 	}
 
@@ -212,3 +218,4 @@ int main( int argc, char ** argv ) {
 		return 0;
 	}
 }
+
