@@ -2678,7 +2678,7 @@ namespace grb {
 							(void)
 #endif
 								z_coors.joinUpdate( update );
-							assert( ! was_empty );
+							assert( !was_empty );
 							asyncAssigns = 0;
 						}
 #endif
@@ -3401,7 +3401,7 @@ namespace grb {
 		assert( phase == EXECUTE );
 
 		const Coords * const no_coordinates = nullptr;
-		if( nnz( x ) == nnz( z ) && nnz( x ) == n ) {
+		if( nnz( x ) == n ) {
 			// call dense apply
 			z_coors.assignAll();
 			return internal::dense_apply_generic<
