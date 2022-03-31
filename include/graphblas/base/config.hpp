@@ -57,64 +57,72 @@ namespace grb {
 		/** The cache line size, in bytes. */
 		class CACHE_LINE_SIZE {
 
-		private:
-			/**
-			 * The cache line size in bytes. Update this value at compile time to
-			 * reflect the target architecture.
-			 */
-			static constexpr size_t bytes = 64;
+			private:
 
-		public:
-			/**
-			 * @return The cache line size in bytes.
-			 * @see grb::config::CACHE_LINE_SIZE::bytes
-			 */
-			static constexpr size_t value() {
-				return bytes;
-			}
+				/**
+				 * The cache line size in bytes. Update this value at compile time to
+				 * reflect the target architecture.
+				 */
+				static constexpr size_t bytes = 64;
+
+			public:
+
+				/**
+				 * @return The cache line size in bytes.
+				 * @see grb::config::CACHE_LINE_SIZE::bytes
+				 */
+				static constexpr size_t value() {
+					return bytes;
+				}
 		};
 
 		/** The SIMD size, in bytes. */
 		class SIMD_SIZE {
 
-		private:
-			/**
-			 * The SIMD size, in bytes. Update this value at compile time to reflect
-			 * the target architecture.
-			 */
-			static constexpr size_t bytes = 32;
+			private:
 
-		public:
-			/**
-			 * @return The SIMD size in bytes.
-			 * @see grb::config::SIMD_SIZE::bytes
-			 */
-			static constexpr size_t value() {
-				return bytes;
-			}
+				/**
+				 * The SIMD size, in bytes. Update this value at compile time to reflect
+				 * the target architecture.
+				 */
+				static constexpr size_t bytes = 64;
+
+			public:
+
+				/**
+				 * @return The SIMD size in bytes.
+				 * @see grb::config::SIMD_SIZE::bytes
+				 */
+				static constexpr size_t value() {
+					return bytes;
+				}
+
 		};
 
 		/** How many elements of a given data type fit into a SIMD register. */
 		template< typename T >
 		class SIMD_BLOCKSIZE {
-		public:
-			/**
-			 * Calculates the block size this operator should use.
-			 *
-			 * \warning This rounds down. If instances of T are too large, this could
-			 *          result in a zero value. See #value for a correction.
-			 */
-			static constexpr size_t unsafe_value() {
-				return SIMD_SIZE::value() / sizeof( T );
-			}
 
-			/**
-			 * The maximum of one and the number of elements that fit into a single
-			 * cache line.
-			 */
-			static constexpr size_t value() {
-				return unsafe_value() > 0 ? unsafe_value() : 1;
-			}
+			public:
+
+				/**
+				 * Calculates the block size this operator should use.
+				 *
+				 * \warning This rounds down. If instances of T are too large, this could
+				 *          result in a zero value. See #value for a correction.
+				 */
+				static constexpr size_t unsafe_value() {
+					return SIMD_SIZE::value() / sizeof( T );
+				}
+
+				/**
+				 * The maximum of one and the number of elements that fit into a single
+				 * cache line.
+				 */
+				static constexpr size_t value() {
+					return unsafe_value() > 0 ? unsafe_value() : 1;
+				}
+
 		};
 
 		/**
@@ -125,128 +133,138 @@ namespace grb {
 		 *          thus does not necessarily equal the number of cores available.
 		 */
 		class HARDWARE_THREADS {
-		public:
-			/**
-			 * Returns the number of online hardware threads as reported by the OS.
-			 *
-			 * \warning This is a UNIX system call.
-			 *
-			 * @returns The number of hardware threads currently online. The return
-			 *          type is specified by the UNIX standard.
-			 */
-			static long value() {
-				return sysconf( _SC_NPROCESSORS_ONLN );
-			}
-		};
+
+			public:
+
+				/**
+				 * Returns the number of online hardware threads as reported by the OS.
+				 *
+				 * \warning This is a UNIX system call.
+				 *
+				 * @returns The number of hardware threads currently online. The return
+				 *          type is specified by the UNIX standard.
+				 */
+				static long value() {
+					return sysconf( _SC_NPROCESSORS_ONLN );
+				}
+
+			};
 
 		/** Benchmarking defaults. */
 		class BENCHMARKING {
-		public:
-			/** The default number of inner repititions. */
-			static constexpr size_t inner() {
-				return 1;
-			}
 
-			/** The default number of outer repititions. */
-			static constexpr size_t outer() {
-				return 10;
-			}
+			public:
+
+				/** The default number of inner repititions. */
+				static constexpr size_t inner() {
+					return 1;
+				}
+
+				/** The default number of outer repititions. */
+				static constexpr size_t outer() {
+					return 10;
+				}
+
 		};
 
 		/** Memory defaults. */
 		class MEMORY {
-		public:
 
-			/** The private L1 data cache size, in bytes. */
-			static constexpr size_t l1_cache_size() {
-				return 32768;
-			}
+			public:
 
-			/** What is considered a lot of memory, in 2-log of bytes. */
-			static constexpr size_t big_memory() {
-				return 31;
-			} // 2GB
-
-			/**
-			 * The memory speed under random accesses of 8-byte words.
-			 *
-			 * @returns The requested speed in MiB/s/process.
-			 *
-			 * @note The default value was measured on a two-socket Ivy Bridge node
-			 *       with 128GB quad-channel DDR4 memory at 1600 MHz per socket.
-			 *
-			 * @note In the intended use of these variables, it is the ratio between
-			 *       #stream_memspeed and #random_access_memspeed that matters. While
-			 *       untested, it is reasonable to think the ratios do not change too
-			 *       much between architectures. Nevertheless, for best results, these
-			 *       numbers are best set to benchmarked values on the deployment
-			 *       hardware.
-			 */
-			static constexpr double random_access_memspeed() {
-				return 147.298;
-			}
-
-			/**
-			 * The memory speed under a limited number of streams of uncached data.
-			 *
-			 * @returns The requested speed in MiB/s/process.
-			 *
-			 * @note The default value was measured on a two-socket Ivy Bridge node
-			 *       with 128GB quad-channel DDR4 memory at 1600 MHz per socket.
-			 *
-			 * @note In the intended use of these variables, it is the ratio between
-			 *       #stream_memspeed and #random_access_memspeed that matters. While
-			 *       untested, it is reasonable to think the ratios do not change too
-			 *       much between architectures. Nevertheless, for best results, these
-			 *       numbers are best set to benchmarked values on the deployment
-			 *       hardware.
-			 */
-			static constexpr double stream_memspeed() {
-				return 1931.264;
-			}
-
-			/**
-			 * Prints memory usage info to stdout, but only for big memory allocations.
-			 *
-			 * @returns true if and only if this function printed information to stdout.
-			 */
-			static bool report( const std::string prefix, const std::string action, const size_t size, const bool printNewline = true ) {
-#ifdef _GRB_NO_STDIO
-				(void)prefix;
-				(void)action;
-				(void)size;
-				(void)printNewline;
-				return false;
-#else
-				constexpr size_t big =
- #ifdef _DEBUG
-					true;
- #else
-					( 1ul << big_memory() );
- #endif
-				if( size >= big ) {
-					std::cout << "Info: ";
-					std::cout << prefix << " ";
-					std::cout << action << " ";
-					if( sizeof( size_t ) * 8 > 40 && ( size >> 40 ) > 2 ) {
-						std::cout << ( size >> 40 ) << " TB of memory";
-					} else if( sizeof( size_t ) * 8 > 30 && ( size >> 30 ) > 2 ) {
-						std::cout << ( size >> 30 ) << " GB of memory";
-					} else if( sizeof( size_t ) * 8 > 20 && ( size >> 20 ) > 2 ) {
-						std::cout << ( size >> 20 ) << " MB of memory";
-					} else if( sizeof( size_t ) * 8 > 10 && ( size >> 10 ) > 2 ) {
-						std::cout << ( size >> 10 ) << " kB of memory";
-					} else {
-						std::cout << size << " bytes of memory";
-					}
-					if( printNewline ) {
-						std::cout << ".\n";
-					}
-					return true;
+				/** The private L1 data cache size, in bytes. */
+				static constexpr size_t l1_cache_size() {
+					return 32768;
 				}
-				return false;
+
+				/** What is considered a lot of memory, in 2-log of bytes. */
+				static constexpr size_t big_memory() {
+					return 31;
+				} // 2GB
+
+				/**
+				 * The memory speed under random accesses of 8-byte words.
+				 *
+				 * @returns The requested speed in MiB/s/process.
+				 *
+				 * @note The default value was measured on a two-socket Ivy Bridge node
+				 *       with 128GB quad-channel DDR4 memory at 1600 MHz per socket.
+				 *
+				 * @note In the intended use of these variables, it is the ratio between
+				 *       #stream_memspeed and #random_access_memspeed that matters. While
+				 *       untested, it is reasonable to think the ratios do not change too
+				 *       much between architectures. Nevertheless, for best results, these
+				 *       numbers are best set to benchmarked values on the deployment
+				 *       hardware.
+				 */
+				static constexpr double random_access_memspeed() {
+					return 147.298;
+				}
+
+				/**
+				 * The memory speed under a limited number of streams of uncached data.
+				 *
+				 * @returns The requested speed in MiB/s/process.
+				 *
+				 * @note The default value was measured on a two-socket Ivy Bridge node
+				 *       with 128GB quad-channel DDR4 memory at 1600 MHz per socket.
+				 *
+				 * @note In the intended use of these variables, it is the ratio between
+				 *       #stream_memspeed and #random_access_memspeed that matters. While
+				 *       untested, it is reasonable to think the ratios do not change too
+				 *       much between architectures. Nevertheless, for best results, these
+				 *       numbers are best set to benchmarked values on the deployment
+				 *       hardware.
+				 */
+				static constexpr double stream_memspeed() {
+					return 1931.264;
+				}
+
+				/**
+				 * Prints memory usage info to stdout, but only for big memory allocations.
+				 *
+				 * @returns true if and only if this function printed information to stdout.
+				 */
+				static bool report(
+					const std::string prefix, const std::string action,
+					const size_t size, const bool printNewline = true
+				) {
+#ifdef _GRB_NO_STDIO
+					(void) prefix;
+					(void) action;
+					(void) size;
+					(void) printNewline;
+					return false;
+#else
+					constexpr size_t big =
+ #ifdef _DEBUG
+						true;
+ #else
+						( 1ul << big_memory() );
+ #endif
+					if( size >= big ) {
+						std::cout << "Info: ";
+						std::cout << prefix << " ";
+						std::cout << action << " ";
+						if( sizeof( size_t ) * 8 > 40 && ( size >> 40 ) > 2 ) {
+							std::cout << ( size >> 40 ) << " TB of memory";
+						} else if( sizeof( size_t ) * 8 > 30 && ( size >> 30 ) > 2 ) {
+							std::cout << ( size >> 30 ) << " GB of memory";
+						} else if( sizeof( size_t ) * 8 > 20 && ( size >> 20 ) > 2 ) {
+							std::cout << ( size >> 20 ) << " MB of memory";
+						} else if( sizeof( size_t ) * 8 > 10 && ( size >> 10 ) > 2 ) {
+							std::cout << ( size >> 10 ) << " kB of memory";
+						} else {
+							std::cout << size << " bytes of memory";
+						}
+						if( printNewline ) {
+							std::cout << ".\n";
+						}
+						return true;
+					}
+					return false;
 #endif
-			}
+				}
 		};
 
 		/**
@@ -307,3 +325,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_CONFIG_BASE
+

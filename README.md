@@ -232,13 +232,11 @@ movement cost this incurs shall be linear to the byte size of `U`.
 
 ### Compilation
 
-Note that our sequential reference backend auto-vectorises.
-For best results, please edit `include/graphblas/config.hpp` prior to
-compilation.
-Also note that both the shared-memory parallel reference_omp backend as well as
-the distributed-memory parallel bsp1d and hybrid backends rely on the same
-auto-vectorisation mechanism and would benefit of correct parameters present in
-the configuration file.
+Our backends auto-vectorise.
+For best results, please edit the `include/graphblas/base/config.hpp` file prior
+to compilation and installation. Most critically, ensure that
+`config::SIMD_SIZE::bytes` defined in that file is set correctly with respect to
+the target architecture.
 
 The program may be compiled using the compiler wrapper `grbcxx` generated during
 installation; for more options on using ALP/GraphBLAS in external projects, you
@@ -249,23 +247,30 @@ When using the LPF-enabled distributed-memory backend to ALP/GraphBLAS, for
 example, simply use
 
 ```bash
-grbcxx -b bsp1d
+grbcxx -b hybrid
 ```
 as the compiler command.
 Use
 
 ```bash
-grbcxx -b bsp1d --show <your regular compilation command>
+grbcxx -b hybrid --show <your regular compilation command>
 ```
 to show all flags that the wrapper passes on.
 
-This backend is also one example backend that is capable of spawning multiple
-ALP/GraphBLAS user processes. In contrast, compilation using
+This backend is one example that is capable of spawning multiple ALP/GraphBLAS
+user processes. In contrast, compilation using
 
 ```bash
 grbcxx -b reference
 ```
-will produce a sequential binary based on the same ALP/GraphBLAS code instead.
+produces a sequential binary, while
+
+```bash
+grbcxx -b reference_omp
+```
+produces a shared-memory parallel binary instead.
+
+The same ALP/GraphBLAS source code needs never change.
 
 ### Linking
 
