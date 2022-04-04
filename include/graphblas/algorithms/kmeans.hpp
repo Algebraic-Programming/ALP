@@ -278,9 +278,9 @@ namespace grb {
 
 				ret = ret ? ret : grb::set( clusters_and_distances_prev, clusters_and_distances );
 
-				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid,
+				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op,
 					RESIZE );
-				ret = ret ? ret : mxm( Dist, K, X, dist_op, add_monoid );
+				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op );
 
 				ret = ret ? ret : vxm( clusters_and_distances, labels, Dist, argmin_monoid,
 					operators::zip< size_t, IOType >() );

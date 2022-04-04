@@ -130,15 +130,15 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	rc = grb::mxm(
 		C, A, B,
-		ring.getMultiplicativeOperator(),
 		ring.getAdditiveMonoid(),
+		ring.getMultiplicativeOperator(),
 		RESIZE
 	);
 	if( rc == SUCCESS ) {
 		rc = grb::mxm(
 			C, A, B,
-			ring.getMultiplicativeOperator(),
-			ring.getAdditiveMonoid()
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeOperator()
 		);
 		if( rc != SUCCESS ) {
 			std::cerr << "Call to grb::mxm FAILED\n";
