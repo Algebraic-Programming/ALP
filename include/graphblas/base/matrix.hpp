@@ -64,9 +64,9 @@ namespace grb {
 
 			/**
 			 * A standard iterator for an ALP/GraphBLAS matrix.
-		  	 *
-		  	 * This iterator is used for data extraction only. Hence only this const
-		  	 * version is specified.
+			 *
+			 * This iterator is used for data extraction only. Hence only this const
+			 * version is specified.
 			 *
 			 * Dereferencing an iterator of this type that is not in end position yields
 			 * a pair \f$ (c,v) \f$. The value \a v is of type \a D and corresponds to
@@ -157,7 +157,7 @@ namespace grb {
 						return *this;
 					}
 
-			}; 
+			};
 
 			/** The value type of elements stored in this matrix. */
 			typedef D value_type;
