@@ -487,10 +487,15 @@ namespace grb {
 				nullptr, nullptr, nullptr, nullptr,
 				nullptr, nullptr, nullptr, nullptr
 			};
-			if( !internal::template ensureReferenceBufsize< char >(
-					(std::max( m, n ) + 1) * globalBufferUnitSize
-				)
-			) {
+			if( !internal::template ensureReferenceBufsize< char >( std::max(
+					(std::max( m, n ) + 1) * globalBufferUnitSize,
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
+						utils::SizeOf< D >::value
+#else
+					static_cast< size_t >( 0 )
+#endif
+			) ) ) {
 				throw std::runtime_error( "Could not resize global buffer" );
 			}
 			if( m > 0 && n > 0 ) {
