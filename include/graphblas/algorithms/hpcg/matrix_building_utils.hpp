@@ -91,7 +91,7 @@ namespace grb {
 		 * @param M the matrix to be initialized; it must be already constructed with proper dimensions
 		 * @param coarser_sizes sizes of the coarser system
 		 * @param finer_sizes sizes of the finer system; each one \b must be a multiple of the corresponding value
-		 * 			in \p coarser_size , otherwise an exception is thrown
+		 *                    in \p coarser_size , otherwise an exception is thrown
 		 * @return grb::RC the success value returned when trying to build the matrix
 		 */
 		template< std::size_t DIMS, typename T, enum grb::Backend B >

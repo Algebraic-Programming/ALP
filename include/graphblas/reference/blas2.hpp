@@ -657,7 +657,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "vxm_scatter, source index " << source_index << " has "
 				<< (matrix.col_start[ source_index + 1 ] - matrix.col_start[ source_index ])
-			       	<< " nonzeroes.\n";
+				<< " nonzeroes.\n";
 #endif
 			// handle row or column at source_index
 			for(

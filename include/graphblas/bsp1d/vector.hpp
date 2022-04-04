@@ -1740,7 +1740,7 @@ namespace grb {
 #ifdef _DEBUG
 				for( size_t i = 0; i < P; ++i ) {
 					std::cout << "\t" << s << ": local_offset[ " << i << " ] is "
-					       	<< local_offset[ i ] << "\n";
+					      << local_offset[ i ] << "\n";
 				}
 #endif
 #ifndef NDEBUG
@@ -2114,9 +2114,9 @@ namespace grb {
 					<< internal::getCoordinates( _local ).nonzeroes() << " / "
 					<< internal::getCoordinates( _local ).size() << " nonzeroes.\n";
 				// std::cout << "\t" << s << ": local assigned array is at "
-				// 	<< local_coordinates._assigned << ", global one is at "
-				// 	<< global_coordinates._assigned << ". Global plus offset is "
-				// 	<< global_coordinates._assigned + _offset << "\n";
+				//	<< local_coordinates._assigned << ", global one is at "
+				//	<< global_coordinates._assigned << ". Global plus offset is "
+				//	<< global_coordinates._assigned + _offset << "\n";
 #endif
 				// rebuild local stack
 				local_coordinates.rebuild( false );
