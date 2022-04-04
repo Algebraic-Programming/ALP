@@ -275,7 +275,7 @@ namespace grb {
 	RC mxm( Matrix< OutputType, reference > &C,
 		const Matrix< InputType1, reference > &A,
 		const Matrix< InputType2, reference > &B,
-		const Semiring & ring = Semiring(),
+		const Semiring &ring = Semiring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
@@ -325,8 +325,8 @@ namespace grb {
 	RC mxm( Matrix< OutputType, reference > &C,
 		const Matrix< InputType1, reference > &A,
 		const Matrix< InputType2, reference > &B,
-		const Operator &mulOp,
 		const Monoid &addM,
+		const Operator &mulOp,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
@@ -777,7 +777,7 @@ namespace grb {
 			ret = grb::clear( A );
 		}
 		assert( nnz( A ) == 0 );
-		ret = ret ? ret : grb::mxm( A, u_matrix, v_matrix, mul, mono, phase );
+		ret = ret ? ret : grb::mxm( A, u_matrix, v_matrix, mono, mul, phase );
 		return ret;
 	}
 
