@@ -44,200 +44,91 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <cstddef>
+#include <iterator>
+
+#include <graphblas/utils/geometry/linearized_halo_ndim_system.hpp>
+
+#include <graphblas/utils/geometry/linearized_ndim_system.hpp>
+#include <graphblas/utils/geometry/linearized_ndim_iterator.hpp>
+#include <graphblas/utils/geometry/array_vector_storage.hpp>
+
 
 
 namespace grb {
 
 	namespace algorithms {
 
-		/**
-		 * @brief Base class that iterates on DIMS dimensions starting from the first one.
-		 *
-		 * The coordinates are assumed to generate the row number in a matrix whose number of rows is
-		 * the product of all sizes. This class generates row numbers for physical problems described as
-		 * systems of linear equations in an n-dimensional space.
-		 *
-		 * Example of iterations in a 3D (x, y, z) system of size (4,3,2), with generated row numbers
-		 * reported as '=> ROW':
-		 * - z[0]
-		 * - y[0]
-		 * - x[0] => 0, x[1] => 1, x[2] => 2, x[3] => 3
-		 * - y[1]
-		 * - x[0] => 4, x[1] => 5, x[2] => 6, x[3] => 7
-		 * - y[2]
-		 * - x[0] => 8, x[1] => 9, x[2] => 10, x[3] => 11
-		 * - z[1]
-		 * - y[0]
-		 * - x[0] => 12, x[1] => 13, x[2] => 14, x[3] => 15
-		 * - y[1]
-		 * - x[0] => 16, x[1] => 17, x[2] => 18, x[3] => 19
-		 * - y[2]
-		 * - x[0] => 20, x[1] => 21, x[2] => 22, x[3] => 23
-		 *
-		 * The main goal of this class is to be derived by other classes to generate matrices in an
-		 * STL-iterator-fashion; hence, this class contains all the code for basic coordinate-to-row-column
-		 * conversion in \p DIM dimensions and the basic logic to increment the row number.
-		 *
-		 * @tparam DIMS number os dimensions of the system
-		 */
-		template< std::size_t DIMS >
-		struct row_generator {
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		class hpcg_builder;
 
-			using RowIndexType = std::size_t; ///< numeric type of rows
-			using array_t = std::array< RowIndexType,
-				DIMS >; ///< type for the array storing the coordinates.
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		struct matrix_generator_iterator {
 
-			const array_t physical_sizes; ///< size of each dimension, starting from the one to be explored first
-
-			/**
-			 * @brief Construct a new row generator object
-			 * @param[in] _sizes array of sizes of each dimension; no dimension should be 0, otherwise an exception
-			 *                   is thrown
-			 * @param[in] first_row first row to iterate from; it is allowed to be beyond the matrix size, e.g. to create
-			 *                      an end iterator (no check occurs)
-			 */
-			row_generator( const array_t & _sizes, RowIndexType first_row ) : physical_sizes( _sizes ) {
-				static_assert( DIMS > 0, "DIMS should be higher than 0" );
-				for( const auto i : _sizes ) {
-					if( i == static_cast< RowIndexType >( 0U ) ) {
-						throw std::invalid_argument( "All dimension sizes must "
-													 "be > 0" );
-					}
-				}
-				row_to_coords( first_row );
-			}
-
-			row_generator( const row_generator & o ) = default;
-
-			row_generator( row_generator && o ) = default;
-
-		protected:
-			// x: row_coords[0], y: row_coords[1], z: row_coords[2], ...
-			array_t row_coords; ///< n-D coordinates from which to compute the row
-
-			/**
-			 * @brief converts a row number into a n-D coordinates according to the sizes in #physical_sizes
-			 *
-			 * In case the input is higher than the nunber of rows, the last coordinate is allowed to
-			 * go beyond its physical size. E.g., if the system has size (4,3,2) and \p rowcol is 24,
-			 * the coordinates are (0,0,3).
-			 *
-			 * @param[in] rowcol row number to convert; it can be any number
-			 */
-			void row_to_coords( RowIndexType rowcol ) {
-				std::size_t s = 1;
-				for( std::size_t i { 0 }; i < row_coords.size() - 1; i++ )
-					s *= physical_sizes[ i ];
-
-				for( typename array_t::size_type i { row_coords.size() - 1 }; i > 0; i-- ) {
-					row_coords[ i ] = rowcol / s;
-					rowcol -= row_coords[ i ] * s;
-					s /= physical_sizes[ i ];
-				}
-				row_coords[ 0 ] = rowcol % physical_sizes[ 0 ];
-			}
-
-			/**
-			 * @brief Pure function converting an array of coordinates into a row number, based on #physical_sizes.
-			 * @param a the #array_t array of coordinates to convert
-			 * @return #RowIndexType the row corresponding to the coordinates in \p a
-			 */
-			RowIndexType coords_to_rowcol( const array_t & a ) const {
-				RowIndexType row { 0 };
-				RowIndexType s { 1 };
-				for( typename array_t::size_type i { 0 }; i < a.size(); i++ ) {
-					row += s * a[ i ];
-					s *= physical_sizes[ i ];
-				}
-				return row;
-			}
-
-			/**
-			 * @brief Increment #row_coords in order to move to the next coordinate (according to the
-			 * n-dimensional iteration order) and update #current_row accordingly.
-			 *
-			 * To be used by derived classes in order to generate the matrix, e.g. via the \c operator()++
-			 * operator prescribed for STL-like iterators.
-			 */
-			void increment_row() {
-				bool rewind;
-				typename array_t::size_type i { 0 };
-				do {
-					typename array_t::value_type & coord = row_coords[ i ];
-					// must rewind dimension if we wrap-around
-					typename array_t::value_type new_coord = ( coord + 1 ) % physical_sizes[ i ];
-					rewind = new_coord < coord;
-					coord = new_coord;
-					++i;
-				} while( rewind && i < row_coords.size() - 1 ); // rewind only the first N-1 coordinates
-
-				// if we still have to rewind, increment the last coordinate, which is unbounded
-				if( rewind ) {
-					row_coords.back()++;
-				}
-			}
-		};
-
-		// ===============================================================
-
-		/**
-		 * @brief STL-like iterable class to generate the values for a matrix by iterating in an n-dimensional
-		 * space along the coordinates.
-		 *
-		 * For each \f$ X=(x0, x1, ...,xn) \f$ point of the underlying (n+1)-dimensional space,
-		 * this class iterates through the points of the n-dimensional halo of radius \p halo around \f$ X \f$,
-		 * generating the row number corresponding to \f$ X \f$ and the column number corresponding to
-		 * each halo point. At each coordinate \code (row, col) \endcode generated this way, the corresponding matrix value
-		 * being generated depends on whether \code row == col \endcode.
-		 *
-		 * @tparam DIMS number of dimensions of the system
-		 * @tparam HALO halo size, determining the number of points to iterate around and thus the column coordinates
-		 * @tparam T type of matrix values
-		 */
-		template< std::size_t DIMS, typename T = double >
-		struct matrix_generator_iterator : public row_generator< DIMS > {
-
-			using RowIndexType = typename row_generator< DIMS >::RowIndexType;
-			using ColumnIndexType = typename row_generator< DIMS >::RowIndexType;
+			using RowIndexType = CoordT; ///< numeric type of rows
+			using ColumnIndexType = CoordT;
 			using ValueType = T;
-			using array_t = typename row_generator< DIMS >::array_t;
-			using value_type = std::pair< std::pair< RowIndexType, ColumnIndexType >, T >;
+			friend hpcg_builder< DIMS, CoordT, T >;
 
-			// halo may in future become a DIM-size array to iterate in arbitrary shapes
-			const RowIndexType halo;              ///< number of points per dimension to iterate around
-			const ValueType diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
-			const ValueType non_diagonal_value; ///< value to emit outside of the diagonal
+			using linear_system_t = grb::utils::geometry::linearized_halo_ndim_system< RowIndexType, DIMS >;
+			using __iter_t = typename linear_system_t::iterator;
+			using self_t = matrix_generator_iterator< DIMS, CoordT, T >;
 
-			/**
-			 * @brief Construct a new \c matrix_generator_iterator object, setting the current row as \p row
-			 * and emitting \p diag if the iterator has moved on the diagonal, \p non_diag otherwise.
-			 *
-			 * @param sizes array with the sizes along the dimensions
-			 * @param row current row to initialize the matrix on
-			 * @param _halo halo of points to iterate around; must be > 0
-			 * @param diag value to emit when on the diagonal
-			 * @param non_diag value to emit outside the diagonal
-			 */
-			matrix_generator_iterator( const array_t & sizes, RowIndexType row, RowIndexType _halo, ValueType diag, ValueType non_diag ) :
-				row_generator< DIMS >( sizes, row ), halo( _halo ), diagonal_value( diag ), non_diagonal_value( non_diag ) {
-				if( halo <= 0 ) {
-					throw std::invalid_argument( "halo should be higher than 0" );
+			struct __value {
+
+				friend self_t;
+
+				__value(
+					ValueType diag,
+					ValueType non_diag,
+					RowIndexType i,
+					ColumnIndexType j
+				) noexcept :
+					diagonal_value( diag ),
+					non_diagonal_value( non_diag ),
+					_i( i ),
+					_j( j )
+				{}
+
+				__value( const __value & ) = default;
+
+				__value & operator=( const __value & ) = default;
+
+				inline RowIndexType i() const { return _i; }
+				inline ColumnIndexType j() const { return _j; }
+				inline ValueType v() const {
+					return j() == i() ? diagonal_value : non_diagonal_value;
 				}
-				for( const auto i : sizes ) {
-					if( i < static_cast< RowIndexType >( 2 * halo + 1 ) ) {
-						throw std::invalid_argument( "Iteration halo goes beyond system sizes" );
-					}
-				}
-				current_values.first.first = row;
-				update_column_max_values();
-				reset_all_columns();
-				current_values.first.second = this->coords_to_rowcol( col_coords );
-				current_values.second = v();
-			}
 
-			matrix_generator_iterator( const matrix_generator_iterator & o ) = default;
+			private:
+				ValueType diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
+				ValueType non_diagonal_value; ///< value to emit outside of the diagonal
+				RowIndexType _i;
+				ColumnIndexType _j;
+			};
 
-			matrix_generator_iterator( matrix_generator_iterator && o ) = default;
+			// interface for std::random_access_iterator
+			using iterator_category = std::random_access_iterator_tag;
+			using value_type = __value;
+			using pointer = value_type;
+			using reference = value_type;
+			using difference_type = typename __iter_t::difference_type;
+
+			matrix_generator_iterator( const self_t & ) = default;
+
+			matrix_generator_iterator( self_t && ) = default;
+
+			self_t & operator=( const self_t & ) = default;
+
+			self_t & operator=( self_t && ) = default;
 
 			/**
 			 * @brief Increments the iterator by moving coordinates to the next (row, column) to iterate on.
@@ -248,20 +139,20 @@ namespace grb {
 			 *
 			 * @return matrix_generator_iterator<DIMS, T>& \c this object, with the updated state
 			 */
-			matrix_generator_iterator< DIMS, T > & operator++() {
-				bool must_rewind = increment_column();
-				if( must_rewind ) {
-					this->increment_row();
-					// after changing row, we must find the first non-zero column
-					reset_all_columns();
-					current_values.first.first = this->coords_to_rowcol( this->row_coords );
-					update_column_max_values();
-				}
-				// trigger column update after row update, as a row update
-				// triggers a column update
-				current_values.first.second = this->coords_to_rowcol( col_coords );
-				current_values.second = this->v();
+			self_t & operator++() noexcept {
+				(void) ++_sys_iter;
+				update_coords();
 				return *this;
+			}
+
+			self_t & operator+=( size_t offset ) {
+				_sys_iter += offset;
+				update_coords();
+				return *this;
+			}
+
+			difference_type operator-( const self_t &other ) const {
+				return this->_sys_iter - other._sys_iter;
 			}
 
 			/**
@@ -271,11 +162,8 @@ namespace grb {
 			 * @return true of the row or the column is different between \p o and \c this
 			 * @return false if both row and column of \p o and \c this are equal
 			 */
-			bool operator!=( const matrix_generator_iterator< DIMS, T > & o ) const {
-				if( o.i() != this->i() ) {
-					return true;
-				}
-				return o.j() != this->j();
+			bool operator!=( const self_t &o ) const {
+				return this->_sys_iter != o._sys_iter;
 			}
 
 			/**
@@ -285,8 +173,8 @@ namespace grb {
 			 * @return true of the row or the column is different between \p o and \c this
 			 * @return false if both row and column of \p o and \c this are equal
 			 */
-			bool operator==( const matrix_generator_iterator< DIMS, T > & o ) const {
-				return o.i() == this->i() && o.j() == this->j();
+			bool operator==( const self_t &o ) const {
+				return ! operator!=( o );
 			}
 
 			/**
@@ -295,22 +183,26 @@ namespace grb {
 			 * Useful when building the matrix by copying the triple of coordinates and value,
 			 * like for the BSP1D backend.
 			 */
-			const value_type & operator*() const {
-				return current_values;
+			reference operator*() const {
+				return _val;
+			}
+
+			pointer operator->() const {
+				return &_val;
 			}
 
 			/**
 			 * @brief Returns current row.
 			 */
 			inline RowIndexType i() const {
-				return current_values.first.first;
+				return _val.i();
 			}
 
 			/**
 			 * @brief Returns current column.
 			 */
 			inline ColumnIndexType j() const {
-				return current_values.first.second;
+				return _val.j();
 			}
 
 			/**
@@ -320,80 +212,143 @@ namespace grb {
 			 * #i() \code == \endcode \code this-> \endcode #j()), #non_diagonal_value otherwise
 			 */
 			inline ValueType v() const {
-				return j() == i() ? diagonal_value : non_diagonal_value;
+				return _val.v();
 			}
 
 		private:
-			// offsets w.r.t. rows
-			array_t col_coords;        ///< coordinates corresponding to current column
-			array_t column_max_values; ///< maximum values for the column coordinates, to stop column increment
-			//// and reset the column coordinates
-			value_type current_values; ///< triple storing the current value for row, column and matrix element
+			value_type _val;
+			const linear_system_t *_lin_system;
+			__iter_t _sys_iter;
 
 			/**
-			 * @brief Updates the maximum values each column coordinate can reach, according to the row coordinates.
+			 * @brief Construct a new \c matrix_generator_iterator object, setting the current row as \p row
+			 * and emitting \p diag if the iterator has moved on the diagonal, \p non_diag otherwise.
 			 *
-			 * To be called after each row coordinates update.
+			 * @param sizes array with the sizes along the dimensions
+			 * @param _halo halo of points to iterate around; must be > 0
+			 * @param diag value to emit when on the diagonal
+			 * @param non_diag value to emit outside the diagonal
 			 */
-			void update_column_max_values() {
-				for( std::size_t i { 0 }; i < column_max_values.size(); i++ ) {
-					column_max_values[ i ] = std::min( this->physical_sizes[ i ] - 1, this->row_coords[ i ] + halo );
-				}
+			matrix_generator_iterator(
+				const linear_system_t &system,
+				ValueType diag,
+				ValueType non_diag
+			) noexcept :
+				_val( diag, non_diag, 0, 0 ),
+				_lin_system( &system ),
+				_sys_iter( system.begin() )
+			{
+				update_coords();
 			}
 
-			/**
-			 * @brief Resets the value of column dimension \p dim to the first possible value.
-			 *
-			 * The final value of #col_coords[dim] depends on the current row (#row_coords) and on the \p halo
-			 * and is \f$ max(0, \f$ #row_coords \f$[dim])\f$.
-			 *
-			 * @param dim the dimension to reset
-			 */
-			void reset_column_coords( std::size_t dim ) {
-				// cannot use std::max because row_coords is unsigned and can wrap-around
-				col_coords[ dim ] = this->row_coords[ dim ] <= halo ? 0 : ( this->row_coords[ dim ] - halo );
-			}
-
-			/**
-			 * @brief resets all values in #col_coords to the initial coordinates,
-			 * iterating from on the current row.
-			 */
-			void reset_all_columns() {
-				for( std::size_t i { 0 }; i < col_coords.size(); i++ ) {
-					reset_column_coords( i );
-				}
-			}
-
-			/**
-			 * @brief Increment the column according to the iteration order, thus resetting the column coordinates
-			 * when the last possible column value for the current row has been reached.
-			 *
-			 * @return true if the column coordinates have been reset, and thus also the row must be incremented
-			 * @return false if the column coordinates
-			 */
-			bool increment_column() {
-				bool rewind;
-				typename array_t::size_type i { 0 };
-				do {
-					typename array_t::value_type & col = col_coords[ i ];
-					// must rewind dimension if the column offset is already at the max value
-					// or if the column coordinates are already at the max value
-					rewind = ( col == column_max_values[ i ] );
-					if( rewind ) {
-						// col = this->row_coords[i] == 0 ? 0 : this->row_coords[i] - (halo);
-						reset_column_coords( i );
-					} else {
-						++col;
-					}
-					++i;
-				} while( rewind && i < col_coords.size() );
-
-				// if we change z, then we also must reset x and y; if only y, we must reset x, and so on
-				return rewind;
+			void update_coords() {
+				_val._i = _sys_iter->get_element_linear();
+				_val._j = _sys_iter->get_neighbor_linear();
 			}
 		};
 
-		// ===============================================================
+
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		class hpcg_builder {
+
+			using system_t = grb::utils::geometry::linearized_halo_ndim_system< CoordT, DIMS >;
+
+			system_t system;
+			// const grb::utils::geometry::linearized_halo_ndim_system< CoordT, DIMS > system;
+			const CoordT halo;
+
+		public:
+
+			using hpcg_sys_iterator = matrix_generator_iterator< DIMS, CoordT, T >;
+
+			hpcg_builder(
+				const std::array< CoordT, DIMS > &sizes,
+				CoordT _halo
+			) :
+				system( sizes, _halo ),
+				halo( _halo )
+			{
+				if( _halo <= 0 ) {
+					throw std::invalid_argument( "halo should be higher than 0" );
+				}
+				for( const auto i : sizes ) {
+					if( i < 2 * _halo + 1 ) {
+						throw std::invalid_argument( "Iteration halo goes beyond system sizes" );
+					}
+				}
+			}
+
+			hpcg_builder( const hpcg_builder< DIMS, CoordT, T> & ) = delete;
+
+			hpcg_builder( hpcg_builder< DIMS, CoordT, T> && ) = delete;
+
+			hpcg_builder< DIMS, CoordT, T> & operator=( const hpcg_builder< DIMS, CoordT, T> & ) = delete;
+
+			hpcg_builder< DIMS, CoordT, T> & operator=( hpcg_builder< DIMS, CoordT, T> && ) = delete;
+
+			size_t system_size() const {
+				return system.halo_system_size();
+			}
+
+			hpcg_sys_iterator make_begin_iterator(
+				T diag,
+				T non_diag
+			) {
+				return hpcg_sys_iterator( system, diag, non_diag );
+			}
+
+			hpcg_sys_iterator make_end_iterator(
+				T diag,
+				T non_diag
+			) {
+				hpcg_sys_iterator result( system, diag, non_diag );
+				result += system_size() - 1; // do not trigger boundary checks
+				++result;
+				return result;
+			}
+
+		};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		class hpcg_coarsener_builder;
+
 
 		/**
 		 * @brief Class to generate the coarsening matrix of an underlying \p DIMS -dimensional system.
@@ -408,20 +363,145 @@ namespace grb {
 		 * @tparam DIMS number of dimensions of the system
 		 * @tparam T type of matrix values
 		 */
-		template< std::size_t DIMS, typename T = double >
-		struct coarsener_generator_iterator : public row_generator< DIMS > {
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		struct coarsener_generator_iterator {
 
-			using RowIndexType = typename row_generator< DIMS >::RowIndexType;
-			using ColumnIndexType = typename row_generator< DIMS >::RowIndexType;
+			friend hpcg_coarsener_builder< DIMS, CoordT, T >;
+
+			using RowIndexType = CoordT; ///< numeric type of rows
+			using ColumnIndexType = CoordT;
 			using ValueType = T;
-			using array_t = typename row_generator< DIMS >::array_t;
-			using value_type = std::pair< std::pair< RowIndexType, ColumnIndexType >, T >;
 
-			// the sizes to project from
-			const array_t finer_sizes; ///< the size of the finer system (columns)
-			array_t steps;             ///< array of steps, i.e. how much each column coordinate (finer system) must be
+			using lin_system_t = grb::utils::geometry::linearized_ndim_system< CoordT,
+				grb::utils::geometry::array_vector_storage< CoordT, DIMS > >;
+			using __iter_t = typename lin_system_t::iterator;
+			using self_t = coarsener_generator_iterator< DIMS, CoordT, T >;
+			using array_t = std::array< CoordT, DIMS >;
+
+			struct __value {
+
+				friend self_t;
+
+				__value(
+					RowIndexType i,
+					ColumnIndexType j
+				) noexcept :
+					_i( i ),
+					_j( j )
+				{}
+
+				__value( const __value & ) = default;
+
+				__value & operator=( const __value & ) = default;
+
+				inline RowIndexType i() const { return _i; }
+				inline ColumnIndexType j() const { return _j; }
+				inline ValueType v() const {
+					return static_cast< ValueType >( 1 );
+				}
+
+			private:
+				RowIndexType _i;
+				ColumnIndexType _j;
+			};
+
+			// interface for std::random_access_iterator
+			using iterator_category = std::random_access_iterator_tag;
+			using value_type = __value;
+			using pointer = const value_type;
+			using reference = const value_type&;
+			using difference_type = typename __iter_t::difference_type;
+
+			coarsener_generator_iterator( const self_t & o ) = default;
+
+			coarsener_generator_iterator( self_t && o ) = default;
+
+			self_t & operator=( const self_t & ) = default;
+
+			self_t & operator=( self_t && ) = default;
+
+			/**
+			 * @brief Increments the row and the column according to the respective physical sizes,
+			 * thus iterating onto the coarsening matrix coordinates.
+			 *
+			 * @return \code *this \endcode, i.e. the same object with the updates row and column
+			 */
+			self_t & operator++() noexcept {
+				(void) ++_sys_iter;
+				update_coords();
+				return *this;
+			}
+
+			self_t & operator+=( size_t offset ) {
+				_sys_iter += offset;
+				update_coords();
+				return *this;
+			}
+
+			difference_type operator-( const self_t &o ) const {
+				return this->_sys_iter - o._sys_iter;
+			}
+
+			/**
+			 * @brief Returns whether \c this and \p o differ.
+			 */
+			bool operator!=( const self_t &o ) const {
+				return this->_sys_iter != o._sys_iter;
+			}
+
+			/**
+			 * @brief Returns whether \c this and \p o are equal.
+			 */
+			bool operator==( const self_t &o ) const {
+				return ! this->operator!=( o );
+			}
+
+			/**
+			 * @brief Operator returning the triple to directly access row, column and element values.
+			 *
+			 * Useful when building the matrix by copying the triple of coordinates and value,
+			 * like for the BSP1D backend.
+			 */
+			reference operator*() const {
+				return _val;
+			}
+
+			pointer operator->() const {
+				return &_val;
+			}
+
+			/**
+			 * @brief Returns the current row, according to the coarser system.
+			 */
+			inline RowIndexType i() const {
+				return _val.i();
+			}
+
+			/**
+			 * @brief Returns the current column, according to the finer system.
+			 */
+			inline ColumnIndexType j() const {
+				return _val.j();
+			}
+
+			/**
+			 * @brief Returns always 1, as the coarsening keeps the same value.
+			 */
+			inline ValueType v() const {
+				return _val.v();
+			}
+
+		private:
 			//// incremented when incrementing the row coordinates; is is the ration between
 			//// #finer_sizes and row_generator#physical_sizes
+			const lin_system_t *_lin_sys;
+			const array_t *_steps; ///< array of steps, i.e. how much each column coordinate (finer system) must be
+			__iter_t _sys_iter;
+			value_type _val;
 
 			/**
 			 * @brief Construct a new \c coarsener_generator_iterator object from the coarser and finer sizes,
@@ -434,163 +514,103 @@ namespace grb {
 			 * @param _finer_sizes sizes of the finer system (columns)
 			 * @param _current_row row (in the coarser system) to set the iterator on
 			 */
-			coarsener_generator_iterator( const array_t & _coarser_sizes, const array_t & _finer_sizes, RowIndexType _current_row ) :
-				row_generator< DIMS >( _coarser_sizes, _current_row ), finer_sizes( _finer_sizes ), steps( { 0 } ) {
-				for( std::size_t i { 0 }; i < DIMS; i++ ) {
-					// finer size MUST be an exact multiple of coarser_size
-					typename array_t::value_type step { _finer_sizes[ i ] / _coarser_sizes[ i ] };
-					if( step == 0 || finer_sizes[ i ] / step != this->physical_sizes[ i ] ) {
-						throw std::invalid_argument( std::string( "finer size "
-																  "of "
-																  "dimension"
-																  " " ) +
-							std::to_string( i ) +
-							std::string( "is not an exact multiple of coarser "
-										 "size" ) );
-					}
-					steps[ i ] = step;
-				}
-				current_values.first.first = _current_row;
-				current_values.first.second = coords_to_finer_col();
-				current_values.second = v();
+			coarsener_generator_iterator(
+				const lin_system_t &system,
+				const array_t &steps
+			) noexcept :
+				_lin_sys( &system ),
+				_steps( &steps ),
+				_sys_iter( _lin_sys->begin() ),
+				_val(0, 0)
+			{
+				update_coords();
 			}
 
-			coarsener_generator_iterator( const coarsener_generator_iterator & o ) = default;
-
-			coarsener_generator_iterator( coarsener_generator_iterator && o ) = default;
-
-			/**
-			 * @brief Increments the row and the column according to the respective physical sizes,
-			 * thus iterating onto the coarsening matrix coordinates.
-			 *
-			 * @return \code *this \endcode, i.e. the same object with the updates row and column
-			 */
-			coarsener_generator_iterator< DIMS, T > & operator++() {
-				this->increment_row();
-				current_values.first.first = this->coords_to_rowcol( this->row_coords );
-				current_values.first.second = coords_to_finer_col();
-				current_values.second = v();
-				return *this;
+			void update_coords() noexcept {
+				_val._i = _sys_iter->get_linear_position();
+				_val._j = coarse_rows_to_finer_col();
 			}
-
-			/**
-			 * @brief Returns whether \c this and \p o differ.
-			 */
-			bool operator!=( const coarsener_generator_iterator< DIMS, T > & o ) const {
-				if( this->i() != o.i() ) {
-					return true;
-				}
-				return this->j() != o.j();
-			}
-
-			/**
-			 * @brief Returns whether \c this and \p o are equal.
-			 */
-			bool operator==( const coarsener_generator_iterator< DIMS, T > & o ) const {
-				return this->i() == o.i() && this->j() == o.j();
-			}
-
-			/**
-			 * @brief Operator returning the triple to directly access row, column and element values.
-			 *
-			 * Useful when building the matrix by copying the triple of coordinates and value,
-			 * like for the BSP1D backend.
-			 */
-			const value_type & operator*() const {
-				return current_values;
-			}
-
-			/**
-			 * @brief Returns the current row, according to the coarser system.
-			 */
-			inline RowIndexType i() const {
-				return current_values.first.first;
-			}
-
-			/**
-			 * @brief Returns the current column, according to the finer system.
-			 */
-			inline ColumnIndexType j() const {
-				return current_values.first.second;
-			}
-
-			/**
-			 * @brief Returns always 1, as the coarsening keeps the same value.
-			 */
-			inline ValueType v() const {
-				return static_cast< ValueType >( 1 );
-			}
-
-		private:
-			value_type current_values; ///< triple storing the current value for row, column and matrix element
 
 			/**
 			 * @brief Returns the row coordinates converted to the finer system, to compute
 			 * the column value.
 			 */
-			ColumnIndexType coords_to_finer_col() const {
-				ColumnIndexType row { 0 };
+			ColumnIndexType coarse_rows_to_finer_col() const noexcept {
+				ColumnIndexType finer { 0 };
 				ColumnIndexType s { 1 };
-				for( typename array_t::size_type i { 0 }; i < this->row_coords.size(); i++ ) {
-					s *= steps[ i ];
-					row += s * this->row_coords[ i ];
-					s *= this->physical_sizes[ i ];
+				for( size_t i { 0 }; i < DIMS; i++ ) {
+					s *= (*_steps)[ i ];
+					finer += s * _sys_iter->get_position()[ i ];
+					s *= _lin_sys->get_sizes()[ i ];
 				}
-				return row;
+				return finer;
 			}
 		};
 
-	} // end namespace algorithms
 
-} // end namespace grb
-
-namespace std {
-
-	/**
-	 * Specialises the standard STL iterator traits for
-	 * #grb::algorithms::matrix_generator_iterator
-	 */
-	template< size_t DIMS, typename T >
-	class iterator_traits<
-		grb::algorithms::matrix_generator_iterator< DIMS, T >
-	> {
-
-		private:
-
-			typedef grb::algorithms::matrix_generator_iterator< DIMS, T > SelfType;
-
-
+		template<
+			size_t DIMS,
+			typename CoordT,
+			typename T
+		>
+		class hpcg_coarsener_builder {
 		public:
 
-			typedef typename SelfType::ValueType value_type;
-			typedef const value_type * pointer;
-			typedef const value_type & reference;
-			typedef size_t difference_type;
-			typedef forward_iterator_tag iterator_category;
+			using array_t = std::array< CoordT, DIMS >;
+			using hpcg_coarsener_iterator = coarsener_generator_iterator< DIMS, CoordT, T >;
 
-	};
+			hpcg_coarsener_builder(
+				const array_t &_coarser_sizes,
+				const array_t &_finer_sizes
+			) : system( _coarser_sizes.begin(), _coarser_sizes.end() ) {
+				for( size_t i { 0 }; i < DIMS; i++ ) {
+					// finer size MUST be an exact multiple of coarser_size
+					size_t step { _finer_sizes[ i ] / _coarser_sizes[ i ] };
+					if( step == 0 || _finer_sizes[ i ] / step != _coarser_sizes[ i ] ) {
+						throw std::invalid_argument(
+							std::string( "finer size of dimension " ) + std::to_string( i ) +
+							std::string( "is not an exact multiple of coarser size" )
+						);
+					}
+					steps[ i ] = step;
+				}
+			}
 
-	template< size_t DIMS, typename T >
-	class iterator_traits<
-		grb::algorithms::coarsener_generator_iterator< DIMS, T >
-	> {
+			hpcg_coarsener_builder( const hpcg_coarsener_builder< DIMS, CoordT, T> & ) = delete;
+
+			hpcg_coarsener_builder( hpcg_coarsener_builder< DIMS, CoordT, T> && ) = delete;
+
+			hpcg_coarsener_builder< DIMS, CoordT, T> & operator=( const hpcg_coarsener_builder< DIMS, CoordT, T> & ) = delete;
+
+			hpcg_coarsener_builder< DIMS, CoordT, T> & operator=( hpcg_coarsener_builder< DIMS, CoordT, T> && ) = delete;
+
+			size_t system_size() const {
+				return system.system_size();
+			}
+
+			hpcg_coarsener_iterator make_begin_iterator() {
+				return hpcg_coarsener_iterator( system, steps );
+			}
+
+			hpcg_coarsener_iterator make_end_iterator() {
+				hpcg_coarsener_iterator result( system, steps );
+				result += system_size() - 1; // do not trigger boundary checks
+				++result;
+				return result;
+			}
 
 		private:
+			const grb::utils::geometry::linearized_ndim_system< CoordT,
+				grb::utils::geometry::array_vector_storage< CoordT, DIMS > > system;
 
-			typedef grb::algorithms::coarsener_generator_iterator< DIMS, T > SelfType;
+			array_t steps; ///< array of steps, i.e. how much each column coordinate (finer system) must be
+			//// incremented when incrementing the row coordinates; is is the ration between
+			//// #finer_sizes and row_generator#physical_sizes
+		};
 
 
-		public:
-
-			typedef typename SelfType::ValueType value_type;
-			typedef const value_type * pointer;
-			typedef const value_type & reference;
-			typedef size_t difference_type;
-			typedef forward_iterator_tag iterator_category;
-
-	};
-
-} // end namespace std
+	} // namespace algorithms
+} // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS
 

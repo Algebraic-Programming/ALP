@@ -38,6 +38,12 @@
 #include <graphblas/algorithms/hpcg/hpcg.hpp>
 #include <graphblas/algorithms/hpcg/system_building_utils.hpp>
 
+#include <graphblas/algorithms/hpcg/old_ndim_matrix_builders.hpp>
+
+#include <chrono>
+
+// #define TEST_ITER
+
 // here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
 #ifdef HPCG_PRINT_STEPS
 
@@ -111,6 +117,7 @@ struct simulation_input : public system_input {
 	size_t smoother_steps;
 	bool evaluation_run;
 	bool no_preconditioning;
+	bool print_iter_stats;
 };
 
 /**
@@ -197,9 +204,9 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
  */
 void grbProgram( const simulation_input & in, struct output & out ) {
 	// get user process ID
-	assert( spmd<>::pid() < spmd<>::nprocs() );
+	const size_t pid { spmd<>::pid() };
+	assert( pid < spmd<>::nprocs() );
 	grb::utils::Timer timer;
-	timer.reset();
 
 	// assume successful run
 	out.error_code = SUCCESS;
@@ -207,15 +214,24 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
+	if( pid == 0 ) {
+		thcout << "beginning input generation..." << std::endl;
+	}
+	timer.reset();
 	rc = build_3d_system( hpcg_state, in );
+	double input_duration { timer.time() };
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
 		out.error_code = rc;
 		return;
 	}
+	if( pid == 0 ) {
+		thcout << "input generation time (ms): " << input_duration << std::endl;
+	}
+
 #ifdef HPCG_PRINT_SYSTEM
-	if( spmd<>::pid() == 0 ) {
+	if( pid == 0 ) {
 		print_system( *hpcg_state );
 	}
 #endif
@@ -231,7 +247,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	set( x, 0.0 );
 
 #ifdef HPCG_PRINT_SYSTEM
-	if( spmd<>::pid() == 0 ) {
+	if( pid == 0 ) {
 		print_vector( x, 50, "X" );
 		print_vector( b, 50, "B" );
 	}
@@ -242,41 +258,77 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	const bool with_preconditioning = ! in.no_preconditioning;
 	if( in.evaluation_run ) {
 		out.test_repetitions = 0;
+		if( pid == 0 ) {
+			thcout << "beginning evaluation run..." << std::endl;
+		}
 		timer.reset();
-		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
+		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps,
+			in.max_iterations, 0.0, out.performed_iterations, out.residual, false );
 		double single_time = timer.time();
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
+		if( rc != SUCCESS ) {
+			thcerr << "error during evaluation run" << std::endl;
+			out.error_code = rc;
+			return;
+		}
 		out.times.useful = single_time;
 		out.test_repetitions = static_cast< size_t >( 1000.0 / single_time ) + 1;
-	} else {
-		// do benchmark
-		timer.reset();
-		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
-			rc = set( x, 0.0 );
-			assert( rc == SUCCESS );
-			rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-			out.test_repetitions++;
-			if( rc != SUCCESS ) {
-				break;
-			}
+
+		if( pid == 0 ) {
+			thcout << "Evaluation run" << std::endl;
 		}
-		double time_taken { timer.time() };
-		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
-		// sleep( 1 );
+
+		std::cout << "  iterations: " << out.performed_iterations << std::endl
+			<< "  computed residual: " << out.residual << std::endl
+			<< "  time taken (ms): " << out.times.useful << std::endl
+			<< "  deduced inner repetitions for 1s duration: " << out.test_repetitions << std::endl;
+		return;
 	}
+
+	// do a cold run to warm the system up
+	if( pid == 0 ) {
+		thcout << "beginning cold run..." << std::endl;
+	}
+	timer.reset();
+	rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps,
+		1, 0.0, out.performed_iterations, out.residual, false );
+	double iter_duration { timer.time() };
+	if( pid == 0 ) {
+		thcout << "cold run duration (ms): " << iter_duration << std::endl;
+	}
+
+
+	// do benchmark
+	for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
+		rc = set( x, 0.0 );
+		assert( rc == SUCCESS );
+		if( pid == 0 ) {
+			thcout << "beginning iteration: " << i << std::endl;
+		}
+		timer.reset();
+		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps,
+			in.max_iterations, 0.0, out.performed_iterations, out.residual, in.print_iter_stats );
+		iter_duration = timer.time();
+		out.times.useful += iter_duration;
+		if( pid == 0 ) {
+			thcout << "repetition,duration (ms): " << i << "," << iter_duration << std::endl;
+		}
+		out.test_repetitions++;
+		if( rc != SUCCESS ) {
+			break;
+		}
+	}
+	out.times.useful /= static_cast< double >( in.test_repetitions );
 
 	if( spmd<>::pid() == 0 ) {
 		if( rc == SUCCESS ) {
-			if( in.evaluation_run ) {
-				std::cout << "Info: cold HPCG completed within " << out.performed_iterations << " iterations. Last computed residual is " << out.residual << ". Time taken was " << out.times.useful
-						  << " ms. Deduced inner repetitions parameter of " << out.test_repetitions << " to take 1 second or more per inner benchmark." << std::endl;
-			} else {
-				std::cout << "Average time taken for each of " << out.test_repetitions << " HPCG calls (hot start): " << out.times.useful << std::endl;
-			}
+			thcout << "repetitions, average time (ms): " << out.test_repetitions
+				<< ", " << out.times.useful << std::endl;
 		} else {
-			std::cerr << "Failure: call to HPCG did not succeed (" << toString( rc ) << ")." << std::endl;
+			thcerr << "Failure: call to HPCG did not succeed (" << toString( rc )
+				<< ")." << std::endl;
 		}
 	}
 
@@ -285,7 +337,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// set error code
 	out.error_code = rc;
 
-	Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	Semiring< grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one > ring;
 	grb::set( b, 1.0 );
 	out.square_norm_diff = 0.0;
 	grb::eWiseMul( b, -1.0, x, ring );
@@ -303,10 +356,21 @@ void grbProgram( const simulation_input & in, struct output & out ) {
  */
 static void parse_arguments( simulation_input &, size_t &, double &, int, char ** );
 
+#ifdef TEST_ITER
+static void test_iters();
+static void test_iters2();
+#endif
+
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
 	size_t test_outer_iterations;
 	double max_residual_norm;
+
+#ifdef TEST_ITER
+	test_iters();
+	test_iters2();
+	return 0;
+#endif
 
 	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
 	thcout << "System size x: " << sim_in.nx << std::endl;
@@ -317,6 +381,7 @@ int main( int argc, char ** argv ) {
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
 	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run << std::noboolalpha << std::endl;
 	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning << std::noboolalpha << std::endl;
+	thcout << "Print iteration residual: " << std::boolalpha << sim_in.print_iter_stats << std::noboolalpha << std::endl;
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
 	thcout << "Maximum norm for residual: " << max_residual_norm << std::endl;
@@ -374,7 +439,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
 		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
-		.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
+		.add_optional_argument( "--max-coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
 			"maximum level for coarsening; 0 means no coarsening; note: actual "
 			"level may be limited"
 			" by the minimum system dimension" )
@@ -388,7 +453,9 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 		.add_option( "--evaluation-run", sim_in.evaluation_run, false,
 			"launch single run directly, without benchmarker (ignore "
 			"repetitions)" )
-		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" );
+		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" )
+		.add_option( "--print-iter-stats", sim_in.print_iter_stats, false, "on each iteration, print more statistics" );
+
 
 	parser.parse( argc, argv );
 
@@ -422,3 +489,186 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	}
 }
 
+
+
+
+struct NZ {
+	size_t i;
+	size_t j;
+	double v;
+
+	NZ( size_t _i, size_t _j, double _v ): i(_i), j(_j), v(_v) {}
+
+	bool operator!=( const NZ& o ) const {
+		return i != o.i || j != o.j || v != o.v;
+	}
+};
+
+#ifdef TEST_ITER
+static void test_iters() {
+
+	using clock = std::chrono::steady_clock;
+
+	constexpr size_t DIMS = 3;
+
+	std::array< unsigned, DIMS > finer_sizes{ 1024, 1024, 1024};
+	std::array< unsigned, DIMS > coarser_sizes;
+	for( size_t i = 0; i < finer_sizes.size(); i++ ) {
+		coarser_sizes[ i ] = finer_sizes[ i ] / 2;
+	}
+
+	size_t rows { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
+
+	std::array< size_t, DIMS > lfiner_sizes{ 1024, 1024, 1024};
+	std::array< size_t, DIMS > lcoarser_sizes{};
+	for( size_t i = 0; i < lfiner_sizes.size(); i++ ) {
+		lcoarser_sizes[ i ] = lfiner_sizes[ i ] / 2;
+	}
+	grb::algorithms::old::coarsener_generator_iterator< DIMS, double > sbegin( lcoarser_sizes, lfiner_sizes, 0 );
+	grb::algorithms::old::coarsener_generator_iterator< DIMS, double > send( lcoarser_sizes, lfiner_sizes, rows );
+
+
+	using citer = hpcg_coarsener_builder< DIMS, unsigned, double >::hpcg_coarsener_iterator;
+	hpcg_coarsener_builder< DIMS, unsigned, double > coarsener( coarser_sizes, finer_sizes );
+	citer pbegin( coarsener.make_begin_iterator() );
+	const citer pend( coarsener.make_end_iterator() );
+
+	size_t num_elements = pend - pbegin;
+	std::cout << "number of elements: " << num_elements << std::endl;
+
+	std::vector< NZ > svalues;
+	svalues.reserve( num_elements);
+	typename clock::time_point start( clock::now() );
+	for( ; sbegin != send; ++sbegin ) {
+		// printf( "inserting %lu %lu\n", sbegin.i(), sbegin.j() );
+		svalues.emplace_back( sbegin.i(), sbegin.j(), sbegin.v() );
+	}
+	typename clock::time_point finish( clock::now() );
+	std::cout << "sequential generation time (ms): " <<
+		std::chrono::duration< double, std::milli >( finish - start ).count() << std::endl;
+
+
+
+
+	const size_t nthreads = omp_get_max_threads();
+	size_t per_thread_num = ( num_elements + nthreads - 1 ) / nthreads;
+	std::vector< std::vector< NZ > > tvalues( nthreads );
+	for( size_t i = 0; i < nthreads; i++ ) {
+		tvalues[i].reserve( per_thread_num );
+	}
+	start = clock::now();
+	#pragma omp parallel
+	{
+
+		int t = omp_get_thread_num();
+		std::vector< NZ > &tv = tvalues[ t ];
+		// printf( "thread %d, size %lu\n", t, tv.size() );
+		#pragma omp for schedule( static )
+		for( auto it = pbegin; it != pend; ++it ) {
+			tv.emplace_back( it.i(), it.j(), it.v() );
+			// printf( "thread %d: inserting %lu %lu\n", t, it.i(), it.j() );
+		}
+	}
+	finish = clock::now();
+	std::cout << "parallel generation time (ms): " <<
+		std::chrono::duration< double, std::milli >( finish - start ).count() << std::endl;
+
+	std::vector< NZ > pvalues;
+	for( const std::vector< NZ > &tv: tvalues ) {
+		pvalues.insert( pvalues.end(), tv.cbegin(), tv.cend() );
+	}
+
+
+	if( svalues.size() != pvalues.size() ) {
+		std::cout << "different sizes!" << std::endl;
+		std::exit(-1);
+	}
+
+	for( size_t i = 0; i < svalues.size(); i++ ) {
+		if( svalues[i] != pvalues[i] ) {
+			std::cout << "error at position " << i << std::endl;
+		}
+	}
+	std::cout << "all OK" << std::endl;
+}
+
+static void test_iters2() {
+
+	using clock = std::chrono::steady_clock;
+
+	constexpr size_t DIMS = 3, halo_size = 1;
+	constexpr double diag_value = 26.0, non_diag_value = -1.0;
+
+	std::array< unsigned, DIMS > sys_sizes{ 64, 64, 64};
+	size_t n { std::accumulate( sys_sizes.cbegin(), sys_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
+
+	std::array< size_t, DIMS > large_sys_sizes{ 64, 64, 64};
+	old::matrix_generator_iterator< DIMS, double > sbegin( large_sys_sizes, 0UL, halo_size, diag_value, non_diag_value );
+	old::matrix_generator_iterator< DIMS, double > send( large_sys_sizes, n, halo_size, diag_value, non_diag_value );
+
+	hpcg_builder< DIMS, unsigned, double > hpcg_system( sys_sizes, halo_size );
+	matrix_generator_iterator< DIMS, unsigned, double > pbegin(
+		hpcg_system.make_begin_iterator( diag_value, non_diag_value ) );
+	matrix_generator_iterator< DIMS, unsigned, double > pend(
+		hpcg_system.make_end_iterator( diag_value, non_diag_value )
+	);
+
+	size_t num_elements = pend - pbegin;
+	std::cout << "number of elements: " << num_elements << std::endl;
+
+	std::vector< NZ > svalues;
+	svalues.reserve( num_elements);
+	typename clock::time_point start( clock::now() );
+	for( ; sbegin != send; ++sbegin ) {
+		svalues.emplace_back( sbegin.i(), sbegin.j(), sbegin.v() );
+	}
+	typename clock::time_point finish( clock::now() );
+	std::cout << "sequential generation time (ms): " <<
+		std::chrono::duration< double, std::milli >( finish - start ).count() << std::endl;
+
+
+
+
+	const size_t nthreads = omp_get_max_threads();
+	size_t per_thread_num = ( num_elements + nthreads - 1 ) / nthreads;
+	std::vector< std::vector< NZ > > tvalues( nthreads );
+	for( size_t i = 0; i < nthreads; i++ ) {
+		tvalues[i].reserve( per_thread_num );
+	}
+	start = clock::now();
+	#pragma omp parallel
+	{
+
+		int t = omp_get_thread_num();
+		std::vector< NZ > &tv = tvalues[ t ];
+		// printf( "thread %d, size %lu\n", t, tv.size() );
+		#pragma omp for schedule( static )
+		for( auto it = pbegin; it != pend; ++it ) {
+			tv.emplace_back( it.i(), it.j(), it.v() );
+			// printf( "thread %d: inserting %lu %lu\n", t, it.i(), it.j() );
+		}
+	}
+	finish = clock::now();
+	std::cout << "parallel generation time (ms): " <<
+		std::chrono::duration< double, std::milli >( finish - start ).count() << std::endl;
+
+	std::vector< NZ > pvalues;
+	for( const std::vector< NZ > &tv: tvalues ) {
+		pvalues.insert( pvalues.end(), tv.cbegin(), tv.cend() );
+	}
+
+
+	if( svalues.size() != pvalues.size() ) {
+		std::cout << "different sizes!" << std::endl;
+		std::exit(-1);
+	}
+
+	for( size_t i = 0; i < svalues.size(); i++ ) {
+		if( svalues[i] != pvalues[i] ) {
+			std::cout << "error at position " << i << std::endl;
+		}
+	}
+
+	std::cout << "all OK" << std::endl;
+}
+#endif // TEST_ITER

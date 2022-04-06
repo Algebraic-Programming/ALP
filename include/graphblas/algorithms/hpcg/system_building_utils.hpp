@@ -31,9 +31,15 @@
 #include <memory>
 
 #include <graphblas.hpp>
+#include <graphblas/utils/Timer.hpp>
 
 #include "hpcg_data.hpp"
 #include "matrix_building_utils.hpp"
+
+#ifndef MASTER_PRINT
+#define INTERNAL_MASTER_PRINT
+#define MASTER_PRINT( pid, txt ) if( pid == 0 ) { std::cout << txt; }
+#endif
 
 
 namespace grb {
@@ -92,17 +98,32 @@ namespace grb {
 
 			// initialize the main (=uncoarsened) system matrix
 			grb::RC rc { grb::SUCCESS };
+			const size_t pid { spmd<>::pid() };
+			grb::utils::Timer timer;
+			MASTER_PRINT( pid, "\n-- generating system matrix...\n" << std::endl );
+			grb::spmd<>::barrier();
+			timer.reset();
 			rc = build_ndims_system_matrix< DIMS, T >( data->A, params.physical_sys_sizes, params.halo_size, params.diag_value, params.non_diag_value );
+			MASTER_PRINT( pid, "\n-- generating system matrix... time (ms) " << timer.time() << std::endl );
 
 			if( rc != grb::SUCCESS ) {
-				std::cerr << "Failure to generate the initial system (" << toString( rc ) << ") of size " << n << std::endl;
+				MASTER_PRINT( pid, "Failure to generate the initial system ("
+					<< toString( rc ) << ") of size " << n << "\n" );
 				return rc;
 			}
 
-			// set values of diagonal vector
+			// set values of vectors
+			MASTER_PRINT( pid, "-- populating vectors..." );
+			timer.reset();
 			set( data->A_diagonal, params.diag_value );
+			data->zero_temp_vectors();
+			MASTER_PRINT( pid, " time (ms) " << timer.time() << std::endl );
 
+
+			MASTER_PRINT( pid, "-- generating color masks...\n" << std::endl );
+			timer.reset();
 			build_static_color_masks( data->color_masks, n, params.num_colors );
+			MASTER_PRINT( pid, "\n\n-- generating color masks... time (ms) " << timer.time() << std::endl );
 
 			// initialize coarsening with additional pointers and dimensions copies to iterate and divide
 			grb::algorithms::multi_grid_data< T, T > ** coarser = &data->coarser_level;
@@ -124,20 +145,45 @@ namespace grb {
 				grb::algorithms::multi_grid_data< double, double > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
 				// install coarser level immediately to cleanup in case of build error
 				*coarser = new_coarser;
+
+				MASTER_PRINT( pid, "-- level " << coarsening_level << "\n\tgenerating coarsening matrix...\n" );
+				timer.reset();
 				// initialize coarsener matrix, system matrix and diagonal vector for the coarser level
 				rc = build_ndims_coarsener_matrix< DIMS >( new_coarser->coarsening_matrix, coarser_sizes, previous_sizes );
 				if( rc != grb::SUCCESS ) {
-					std::cerr << "Failure to generate coarsening matrix (" << toString( rc ) << ")." << std::endl;
+					MASTER_PRINT( pid, "Failure to generate coarsening matrix (" << toString( rc ) << ").\n" );
 					return rc;
 				}
+				double coarsener_gen_time{ timer.time() };
+
+				MASTER_PRINT( pid, "\tgenerating system matrix...\n" );
+				timer.reset();
 				rc = build_ndims_system_matrix< DIMS, T >( new_coarser->A, coarser_sizes, params.halo_size, params.diag_value, params.non_diag_value );
 				if( rc != grb::SUCCESS ) {
-					std::cerr << "Failure to generate system matrix (" << toString( rc ) << ")for size " << coarser_size << std::endl;
+					MASTER_PRINT( pid, "Failure to generate system matrix (" << toString( rc )
+						<< ") for size " << coarser_size << "\n" );
 					return rc;
 				}
+				double coarse_sys_gen_time{ timer.time() };
+
+				MASTER_PRINT( pid, "\tpopulating vectors...\n" );
+				timer.reset();
 				set( new_coarser->A_diagonal, params.diag_value );
+				new_coarser->zero_temp_vectors();
+				double coarser_vec_gen_time{ timer.time() };
+
 				// build color masks for coarser level (same masks, but with coarser system size)
+				MASTER_PRINT( pid, "\tgenerating color masks..." << std::endl );
+				timer.reset();
 				rc = build_static_color_masks( new_coarser->color_masks, coarser_size, params.num_colors );
+				double coarse_masks_sys_time{ timer.time() };
+				MASTER_PRINT( pid, "-- level " << coarsening_level << "... time (ms) for "
+					"[coarsening matrix,coarse system matrix,coarser vectors,color masks]:"
+					<< coarsening_level << "," << coarsener_gen_time
+					<< "," << coarse_sys_gen_time
+					<< "," << coarser_vec_gen_time
+					<< "," << coarse_masks_sys_time << std::endl;
+				);
 
 				// prepare for new iteration
 				coarser = &new_coarser->coarser_level;
@@ -151,5 +197,10 @@ namespace grb {
 
 	} // namespace algorithms
 } // namespace grb
+
+#ifdef INTERNAL_MASTER_PRINT
+#undef INTERNAL_MASTER_PRINT
+#undef MASTER_PRINT
+#endif
 
 #endif // _H_GRB_ALGORITHMS_SYSTEM_BUILDING_UTILS

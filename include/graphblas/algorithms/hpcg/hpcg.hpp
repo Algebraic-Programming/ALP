@@ -31,6 +31,8 @@
 #include "hpcg_data.hpp"
 #include "multigrid_v_cycle.hpp"
 
+#include <graphblas/utils/Timer.hpp>
+
 
 namespace grb {
 	namespace algorithms {
@@ -102,6 +104,7 @@ namespace grb {
 			const ResidualType tolerance,
 			size_t &iterations,
 			ResidualType &norm_residual,
+			bool print_iter_stats,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
@@ -139,6 +142,8 @@ namespace grb {
 			ResidualType old_r_dot_z { 0.0 }, r_dot_z { 0.0 }, beta { 0.0 };
 			size_t iter { 0 };
 
+			grb::utils::Timer timer;
+
 #ifdef HPCG_PRINT_STEPS
 			DBG_print_norm( p, "start p" );
 			DBG_print_norm( Ap, "start Ap" );
@@ -150,8 +155,17 @@ namespace grb {
 				DBG_println( "========= iteration " << iter << " =========" );
 #endif
 				if( with_preconditioning ) {
-					ret = ret ? ret : internal::multi_grid( data, data.coarser_level, presmoother_steps, postsmoother_steps, ring, minus );
+					if( print_iter_stats ) {
+						timer.reset();
+					}
+					ret = ret ? ret : internal::multi_grid( data, data.coarser_level,
+						presmoother_steps, postsmoother_steps, ring, minus );
 					assert( ret == SUCCESS );
+					if( print_iter_stats ) {
+						double duration = timer.time();
+						std::cout << "iteration, pre-conditioner: " << iter << ","
+							<< duration << std::endl;
+					}
 				} else {
 					ret = ret ? ret : grb::set( z, r ); // z = r;
 					assert( ret == SUCCESS );
@@ -214,6 +228,10 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				norm_residual = std::sqrt( norm_residual );
+
+				if( print_iter_stats ) {
+					std::cout << "iteration, residual: " << iter << "," << norm_residual << std::endl;
+				}
 
 				++iter;
 			} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );

@@ -22,8 +22,8 @@
  * @date 2021-04-30
  */
 
-#ifndef _H_GRB_ALGORITHMS_MATRIX_BUILDING_UTILS
-#define _H_GRB_ALGORITHMS_MATRIX_BUILDING_UTILS
+#ifndef _H_GRB_ALGORITHMS_OLD_MATRIX_BUILDING_UTILS
+#define _H_GRB_ALGORITHMS_OLD_MATRIX_BUILDING_UTILS
 
 #include <algorithm>
 #include <array>
@@ -31,63 +31,15 @@
 #include <numeric>
 #include <stdexcept>
 #include <utility>
-#include <limits.h>
 
 #include <graphblas.hpp>
 
-#include "ndim_matrix_builders.hpp"
-
-
-#define PAR
-
-
-
-#ifndef PAR
-#include <graphblas/algorithms/hpcg/old_ndim_matrix_builders.hpp>
-#endif
+#include "old_ndim_matrix_builders.hpp"
 
 
 namespace grb {
 	namespace algorithms {
-
-		template< typename T > void partition_nonzeroes(
-				T num_nonzeroes,
-				T& first_offset,
-				T& last_offset
-		) {
-			const size_t num_procs{ spmd<>::nprocs() };
-			const T per_process{ ( num_nonzeroes + num_procs - 1 ) / num_procs }; // round up
-			first_offset = std::min( per_process * static_cast< T >( spmd<>::pid() ), num_nonzeroes );
-			last_offset = std::min( first_offset + per_process, num_nonzeroes );
-		}
-
-		template< typename IterT > void partition_iteration_range(
-			size_t num_nonzeroes,
-			IterT &begin,
-			IterT &end
-		) {
-			assert( num_nonzeroes == static_cast< size_t >( end - begin ) );
-			size_t first, last;
-			partition_nonzeroes( num_nonzeroes, first, last );
-			if( last < num_nonzeroes ) {
-				end = begin;
-				end += last;
-			}
-			begin += first;
-		}
-
-#ifndef PAR
-		template< typename T > void partition_rows(
-				T rows,
-				T& first_row,
-				T& last_row
-		) {
-			const size_t num_procs{ spmd<>::nprocs() };
-			const T per_process{ ( rows + num_procs - 1 ) / num_procs }; // round up
-			first_row = std::min( per_process * static_cast< T >( spmd<>::pid() ), rows );
-			last_row = std::min( first_row + per_process, rows );
-		}
-#endif
+		namespace old {
 
 
 		/**
@@ -110,36 +62,16 @@ namespace grb {
 		template< std::size_t DIMS, typename T, enum grb::Backend B >
 		grb::RC build_ndims_system_matrix( grb::Matrix< T, B > & M, const std::array< std::size_t, DIMS > & sys_sizes, std::size_t halo_size, T diag_value, T non_diag_value ) {
 			static_assert( DIMS > 0, "DIMS must be > 0" );
-			size_t n { std::accumulate( sys_sizes.cbegin(), sys_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
+			std::size_t n { std::accumulate( sys_sizes.cbegin(), sys_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 			if( grb::nrows( M ) != n || grb::nrows( M ) != grb::ncols( M ) ) {
 				throw std::invalid_argument( "wrong matrix dimensions: matrix should "
 											"be square"
 											" and in accordance with given system "
 											"sizes" );
 			}
-#ifdef PAR
-			using coord_t = unsigned;
-			if( n > std::numeric_limits< coord_t >::max() ) {
-				throw std::domain_error( "CoordT cannot store the matrix coordinates" );
-			}
-			std::array< coord_t, DIMS > _sys_sizes;
-			for( size_t i = 0; i < DIMS; i++ ) _sys_sizes[i] = sys_sizes[i];
-			grb::algorithms::hpcg_builder< DIMS, coord_t, T > hpcg_system( _sys_sizes, halo_size );
-			grb::algorithms::matrix_generator_iterator< DIMS, coord_t, T > begin(
-				hpcg_system.make_begin_iterator( diag_value, non_diag_value ) );
-			grb::algorithms::matrix_generator_iterator< DIMS, coord_t, T > end(
-				hpcg_system.make_end_iterator( diag_value, non_diag_value )
-			);
-			partition_iteration_range( hpcg_system.system_size(), begin, end );
-
-			// std::cout << "num nonzeroes " << ( end - begin ) << std::endl;
-#else
-			size_t first_row, last_row;
-			partition_rows( n, first_row, last_row );
-			grb::algorithms::old::matrix_generator_iterator< DIMS, T > begin( sys_sizes, first_row, halo_size, diag_value, non_diag_value );
-			grb::algorithms::old::matrix_generator_iterator< DIMS, T > end( sys_sizes, last_row, halo_size, diag_value, non_diag_value );
-#endif
-			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
+			grb::algorithms::matrix_generator_iterator< DIMS, T > begin( sys_sizes, 0UL, halo_size, diag_value, non_diag_value );
+			grb::algorithms::matrix_generator_iterator< DIMS, T > end( sys_sizes, n, halo_size, diag_value, non_diag_value );
+			return buildMatrixUnique( M, begin, end, grb::IOMode::SEQUENTIAL );
 		}
 
 		/**
@@ -167,7 +99,7 @@ namespace grb {
 		template< std::size_t DIMS, typename T, enum grb::Backend B >
 		grb::RC build_ndims_coarsener_matrix( grb::Matrix< T, B > & M, const std::array< std::size_t, DIMS > & coarser_sizes, const std::array< std::size_t, DIMS > & finer_sizes ) {
 			static_assert( DIMS > 0, "DIMS must be > 0" );
-			size_t const rows { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
+			std::size_t const rows { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 			for( std::size_t i { 0 }; i < coarser_sizes.size(); i++ ) {
 				std::size_t step = finer_sizes[ i ] / coarser_sizes[ i ];
 				if( step * coarser_sizes[ i ] != finer_sizes[ i ] ) {
@@ -182,32 +114,10 @@ namespace grb {
 											" with rows == <product of coarser sizes> "
 											"and cols == <product of finer sizes>" );
 			}
-#ifdef PAR
-			using coord_t = unsigned;
-			if( rows > std::numeric_limits< coord_t >::max() ) {
-				throw std::domain_error( "CoordT cannot store the row coordinates" );
-			}
-			if( cols > std::numeric_limits< coord_t >::max() ) {
-				throw std::domain_error( "CoordT cannot store the column coordinates" );
-			}
-			std::array< coord_t, DIMS > _coarser_sizes, _finer_sizes;
-			for( size_t i = 0; i < DIMS; i++ ) {
-				_coarser_sizes[i] = coarser_sizes[i];
-				_finer_sizes[i] = finer_sizes[i];
-			}
-			grb::algorithms::hpcg_coarsener_builder< DIMS, coord_t, T > coarsener( _coarser_sizes, _finer_sizes );
-			grb::algorithms::coarsener_generator_iterator< DIMS, coord_t, T > begin( coarsener.make_begin_iterator() );
-			grb::algorithms::coarsener_generator_iterator< DIMS, coord_t, T > end(
-				coarsener.make_end_iterator()
-			);
-			partition_iteration_range( coarsener.system_size(), begin, end );
-#else
-			size_t first_row, last_row;
-			partition_rows( rows, first_row, last_row );
-			grb::algorithms::old::coarsener_generator_iterator< DIMS, T > begin( coarser_sizes, finer_sizes, first_row );
-			grb::algorithms::old::coarsener_generator_iterator< DIMS, T > end( coarser_sizes, finer_sizes, last_row );
-#endif
-			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
+
+			grb::algorithms::coarsener_generator_iterator< DIMS, T > begin( coarser_sizes, finer_sizes, 0 );
+			grb::algorithms::coarsener_generator_iterator< DIMS, T > end( coarser_sizes, finer_sizes, rows );
+			return buildMatrixUnique( M, begin, end, grb::IOMode::SEQUENTIAL );
 		}
 
 		/**
@@ -256,6 +166,7 @@ namespace grb {
 			return rc;
 		}
 
+		} //namespace old
 	} // namespace algorithms
 } // namespace grb
 
