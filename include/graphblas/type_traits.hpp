@@ -126,6 +126,28 @@ namespace grb {
 		static const constexpr bool value = false;
 	};
 
+	/**
+	 * @brief Used to select the iterator tag: if no IterT::iterator_category field, it assumes
+	 * 		std::forward_iterator_tag
+	 * 
+	 * @tparam IterT iterator type
+	 */
+	template< typename IterT > class iterator_tag_selector {
+
+		template< typename It> static typename std::iterator_traits<It>::iterator_category select( int ) {
+			return typename std::iterator_traits<IterT>::iterator_category();
+		}
+
+		template< typename It> static typename std::forward_iterator_tag select( ... ) {
+			return typename std::forward_iterator_tag();
+		}
+
+	public:
+		using iterator_category = decltype( select< IterT >( 0 ) );
+
+	};
+
+
 	namespace internal {
 
 		/**

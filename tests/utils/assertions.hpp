@@ -37,10 +37,12 @@
 
 #define __PRINT_DBG_LINE_ERR( text ) __PRINT_ERR_LINE( __FILE__ << ":" << __LINE__ << "  " << text );
 
-#define __PRINT_VIOLATION( EXPR ) __PRINT_DBG_LINE_ERR( "Violated assertion:\t\"" << EXPR << "\"" )
+#define __PRINT_EXPR_VIOLATION( EXPR ) __PRINT_DBG_LINE_ERR( "Violated assertion:\t\"" << EXPR << "\"" )
+
+#define __PRINT_BOOL_FALSE( EXPR ) __PRINT_DBG_LINE_ERR( "False boolean condition:\t\"" << EXPR << "\"" )
 
 #define PRINT_ASSERT_FAILED3( a1, op, a2, __val1 )                                           \
-	__PRINT_VIOLATION( STRINGIFY( a1 ) << " " << STRINGIFY( op ) << " " << STRINGIFY( a2 ) ) \
+	__PRINT_EXPR_VIOLATION( STRINGIFY( a1 ) << " " << STRINGIFY( op ) << " " << STRINGIFY( a2 ) ) \
 	__PRINT_LINE( "-- Actual values: " << __val1 << ", " << a2 );                            \
 	__EXIT( -1 );
 
@@ -64,10 +66,17 @@
 
 #define ASSERT_GT( actual, expected ) __ASSERT_CMP( actual, >, expected )
 
+#define ASSERT_TRUE( bool_cond )				\
+	if( ! ( bool_cond ) ) {                         \
+		__PRINT_BOOL_FALSE( STRINGIFY( bool_cond ) ) \
+	}
+
+/*
 #define ASSERT( expr )                         \
 	if( ! ( expr ) ) {                         \
-		__PRINT_VIOLATION( STRINGIFY( expr ) ) \
+		__PRINT_EXPR_VIOLATION( STRINGIFY( expr ) ) \
 	}
+*/
 
 #define ASSERT_RC_SUCCESS( rc )                                                         \
 	{                                                                                   \
