@@ -428,7 +428,7 @@ namespace grb {
 #endif
 				if( ret == SUCCESS ) {
 				       if( residual < tol ) { return SUCCESS; }
-				
+
 					// go to next iteration
 					rho_old = rho;
 				}

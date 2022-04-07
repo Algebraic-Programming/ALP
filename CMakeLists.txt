@@ -27,8 +27,8 @@
 cmake_minimum_required( VERSION 3.13 )
 
 set( MAJORVERSION 0 )
-set( MINORVERSION 4 )
-set( BUGVERSION 1 )
+set( MINORVERSION 5 )
+set( BUGVERSION 0 )
 set( VERSION "${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}" )
 
 # set the project name

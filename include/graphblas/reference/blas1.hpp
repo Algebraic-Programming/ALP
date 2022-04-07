@@ -1322,7 +1322,7 @@ namespace grb {
 		}
 	}
 
-	/** 
+	/**
 	 * Fold-right from a vector into another vector.
 	 *
 	 * Masked operator variant.
@@ -2027,13 +2027,13 @@ namespace grb {
 			std::is_same< typename OP::D3, IOType >::value ), "grb::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
-	
+
 		// dynamic sanity checks
 		const size_t n = size( x );
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
-	
+
 		// all OK, execute
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		if( nnz( x ) < n || nnz( y ) < n ) {
@@ -3409,7 +3409,7 @@ namespace grb {
 			>(
 				internal::getRaw( z ), internal::getRaw( x ),
 				no_coordinates, &beta, no_coordinates,
-				op, n 
+				op, n
 			);
 		} else {
 			// since z and x may not perfectly overlap, and since the intersection is
@@ -5076,7 +5076,7 @@ namespace grb {
 				        yy[ b ] = static_cast< typename Ring::D4 >(*y);
 				    }
 				}
-	
+
 				// vectorised loop
 				while( k + Ring::blocksize < end ) {
 				    // set masks
@@ -5134,7 +5134,7 @@ namespace grb {
 				            }
 				        }
 				    }
-	    
+
 				    // do multiplication
 				    if( !a_scalar && !x_scalar ) {
 				        for( size_t b = 0; b < blocksize; ++b ) {
@@ -5819,7 +5819,7 @@ namespace grb {
 		// dynamic sanity checks
 		const size_t n = internal::getCoordinates( _z ).size();
 		if( internal::getCoordinates( _x ).size() != n ||
-			internal::getCoordinates( _y ).size() != n 
+			internal::getCoordinates( _y ).size() != n
 		) {
 			return MISMATCH;
 		}
@@ -6166,7 +6166,7 @@ namespace grb {
 		return internal::eWiseMulAdd_dispatch< descr, false, false, true, true >(
 			_z, null_mask,
 			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-			&beta, null_coors, null_y, &gamma, null_coors, n, ring 
+			&beta, null_coors, null_y, &gamma, null_coors, n, ring
 		);
 	}
 
@@ -7780,7 +7780,7 @@ namespace grb {
 		RC dot_generic( OutputType &z,
 			const Vector< InputType1, reference, Coords > &x,
 			const Vector< InputType2, reference, Coords > &y,
-			const AddMonoid &addMonoid, 
+			const AddMonoid &addMonoid,
 			const AnyOp &anyOp,
 			const Phase &phase
 		) {
