@@ -39,6 +39,7 @@
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
 #include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
+#include <graphblas/type_traits.hpp>
 
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/MatrixVectorIterator.hpp>
@@ -299,7 +300,7 @@ namespace grb {
 			#pragma omp for
 			for (size_t i=0;i<imax-imin;i++ ) CXX.col_start[ i ] =  buffer[i];
 
-		};
+		}
 		
 		template< typename elmtype, typename sizetype >
 		void prefixsum_inplace(elmtype *x, sizetype N, elmtype *rank_sum) {
@@ -329,7 +330,7 @@ namespace grb {
 		      x[i] += offset;
 		    }
 		  }
-		};
+		}
 #endif
 	  
 
@@ -1056,15 +1057,7 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		// /** @see Matrix::buildMatrixUnique */
-		// template<
-		// 	Descriptor descr = descriptors::no_operation,
-		// 	typename fwd_iterator
-		// >
-		// RC buildMatrixUnique(
-		// 	const fwd_iterator &_start,
-		// 	const fwd_iterator &_end
-		// ) { 
+		/*
 	        template< Descriptor descr = descriptors::no_operation, std::size_t DIMS, typename T>
 		RC buildMatrixUnique( const grb::algorithms::matrix_generator_iterator<DIMS, T> & _start,
 				      const grb::algorithms::matrix_generator_iterator<DIMS, T> & _end ) {
@@ -1089,26 +1082,32 @@ namespace grb {
 		  buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
 		  return SUCCESS;
 		}
+		*/
 
 	  
 	        //interface
    	        /** @see Matrix::buildMatrixUnique */
 	        template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
-		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end ) {
+		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end, const IOMode mode ) {
+
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
-		  typedef typename std::iterator_traits<fwd_iterator>::iterator_category category;
-		  buildMatrixUniqueImpl(_start, _end, category());
+			if( mode == IOMode::SEQUENTIAL ) {
+				buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
+		  		return SUCCESS;
+			}
+			typename iterator_tag_selector<fwd_iterator>::iterator_category category;
+			buildMatrixUniqueImpl(_start, _end, category);
 #else
-		  buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
+			(void)mode;
+		  	buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
 #endif
-		  return SUCCESS;
+		  	return SUCCESS;
 		}
 
 
 	        //forward iterator version
 	        template <typename fwd_iterator>
-		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {
-		  
+		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {	  
 #ifdef _DEBUG
 		        std::cout << " fwrd acces iterator " << '\n';
 		        //compilation of the next lines should fail
