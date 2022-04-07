@@ -1,4 +1,128 @@
 
+Version 0.5.0
+=============
+
+Only changes that may affect end-user codes are summarised. For full details,
+see the publicly available Git history before the v0.5 tag.
+
+New features and specification changes:
+ - New feature: all ALP/GraphBLAS containers now expose their capacities. The
+   default capacity is the minimum of the container dimension(s) and may be
+   overridden during construction; e.g., to construct a vector of size `n>>1`
+   which will hold only one nonzero, `grb::Vector< SomeType > x( n, 1 )` may
+   now be used. Capacities can be resized through `grb::resize` which already
+   existed for matrices, but now also is specified for vectors. Current
+   capacities may be inspected via the newly introduced `grb::capacity`.
+   Backends shall guarantee *at least* the requested capacity is made available;
+   if not possible, container construction or resizing shall fail. All current
+   backends implement these new primitives.
+ - Spec change: apart from work, number of operator applications, intra-process
+   data movement, inter-process data movement, inter-process synchronisations,
+   and whether system calls may be made, backends must now also specify the
+   memory storage requirements of containers and internal buffers.
+ - New feature: re-worked `grb::Phase` to now define two phases `RESIZE` and
+   `EXECUTE`, instead of the previous more classic `SYMBOLIC` and `NUMERICAL`.
+   This change 1) allows backends to implement a wider range of single-stage and
+   two-stage approaches without the interface implying the classical two-stage
+   approach, and 2) makes it clear that only the `RESIZE` stage is allowed to
+   increase (and never decrease) the capacities of output containers.
+ - Spec change: all primitives with ALP/GraphBLAS container output(s) now
+   require a `grb::Phase` argument. The default is `EXECUTE`. This notably
+   includes primitives with vector outputs. Note that if default vector capacities
+   are used, however, existing code can remain unchanged.
+ - Spec change: executing a primitive in `EXECUTE` (previously `NUMERICAL`)
+   mode while the output container did not have sufficient capacity, now results
+   in that primitive returning `FAILED` and the output containers being cleared.
+ - All current algorithms implicitly assumed vectors have capacities equal to
+   their size. Algorithms for which the assumption *must* hold have been
+   modified to check the assumption holds through the new `grb::capacity`. Note
+   that if relying on default vector capacities this assumption automatically
+   holds.
+ - Spec change: `grb::PinnedVector` can now iterate over sparse vectors in
+   `Theta(nz)` time instead of `Theta(n)`, as originally intended. All backends
+   now implement the updated specification, while all code that relied on the
+   PinnedVector has been updated.
+ - New feature: non-empty ALP/GraphBLAS containers are now assigned a unique
+   identifier that may be retrieved via `grb::getID`. For deterministic
+   programs, this identifier shall be --and for all current backends indeed is--
+   consistent across different runs.
+ - Deprecated `grb::{init,finalize}` in favour of `grb::Launcher`.
+ - Deprecated `grb::{eWiseAdd,eWiseMulAdd}` in favour of `grb::foldl` and
+   `grb::foldr` using (additive) monoids in both cases, followed by `eWiseMul`
+   for the `eWiseMulAdd`. We recommend using a nonblocking backend to effect the
+   same fusion opportunities otherwise lost with the deprecated primitives.
+ - Spec change: `grb::wait` was specified for nonblocking backends.
+ - Bugfix: one `grb::mxm` variant had the additive monoid and multiplicative
+   operator arguments switched. More level-3 primitives will be added with the
+   next release, which will complete their specification.
+
+Algorithms:
+ - BiCGstab had been requested and has been implemented. A smoke test has been
+   added that verifies the algorithm's correctness on the `gyro_m` matrix. The
+   algorithm location is `include/graphblas/algorithms/bicgstab.hpp`.
+ - The CG algorithm has been updated to support the `no_casting` descriptor, and
+   has been updated to, if given sparse initial guesses or sparse right-hand
+   sides, to ensure that vectors used during the performance-critical section
+   nonetheless become dense. This, in turn, allows for the addition of the
+   `dense` descriptor to all performance-critical primitives, thus further
+   increasing performance.
+ - k-nearest-neighbours (kNN) computation requires only one buffer, while
+   previously two were used.
+ - The HPCG benchmark is now available as an ALP/GraphBLAS algorithm, rather
+   than as a test.
+ - Bugfix: label propagation's convergence detection was broken due to an
+   erroneous adaptation to in-place semantics. The corresponding smoke test did
+   not properly check for the correct number of iterations. Both issues are
+   fixed.
+
+Testing and development:
+ - Pushed our gitlab CI configuration into the repository in hopes it is useful
+   for others. Docker images for LPF-based tests may appear in future -- at
+   current, only CI testing without LPF is enabled.
+ - Most code style issues due to a clang-format misadventure are resolved with
+   this release.
+ - Documentation on the project directory structure has been added in
+   `docs/Directory_structure.md`, which `README.md` now points to.
+ - Bugfix: `tests/utils/output_verification.hpp` now properly handles NaNs.
+
+Build system:
+ - We now support arbitrary choices for a build directory. To this end, the
+   older `configure` script has been removed and replaced with a `bootstrap.sh`
+   script. The latter takes the same arguments as the former. On how to use the
+   new `bootstrap.sh` script, please see the updated `README.md`.
+   Note that with this change, the ALP build system is now equivalent to that of
+   LPF.
+
+BSP1D and hybrid backends:
+ - Clearer instructions on how to run the test suite when relying on other MPI
+   implementations than MPICH were added to `README.md`.
+ - Bugfix: when used with an MPI-based LPF engine (which is the default), and
+   if the underlying MPI implementation was OpenMPI, then (commented) commands
+   in the `tests/pase_env.sh` and the `tests/performance/performancetests.sh`
+   did not work with the latest versions of OpenMPI, now fixed.
+ - Bugfix: should forward-declare internal getters that were previously first
+   declared as part of BSP1D friend declarations. Curiously, many compilers
+   accepted the previous erroneous code.
+ - Bugfix: empty BSP1D containers could previously leave process-local matrices
+   unitialised.
+
+Reference and reference_omp backends:
+ - Bugfix: matrix construction did not use the `alloc.hpp` mechanisms. This
+   had negative impact on the correct handling of out-of-memory errors, on
+   NUMA-aware allocation, and on code maintainability.
+
+All backends:
+ - Bugfix: `grb::Launcher` (as well as the benchmarker) did not always properly
+   finalize the ALP/GraphBLAS context after exec completed. This caused some
+   memory to not be properly freed on program exits.
+ - Bugfix: the out-of-place versions of `grb::operators::{argmin,argmax}` were
+   incorrect. All code within the repository was unaffected by this bug. The
+   corresponding unit tests were updated to also test out-of-place application.
+
+Various other bugfixes, performance bug fixes, documentation improvements,
+default configuration updates, and code structure improvements -- see Gitee MRs
+!21, !22, !38, !39, !40, and !42 for details.
+
 Version 0.4.1
 =============
 
