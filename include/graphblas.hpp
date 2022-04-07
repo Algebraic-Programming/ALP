@@ -170,10 +170,31 @@
 // clang-format re-ordering
 #if 1
 // load active configuration
-#include <graphblas/config.hpp> //defines _GRB_BACKEND and _WITH_BSP
+ #include <graphblas/config.hpp> //defines _GRB_BACKEND and _WITH_BSP
 #endif
 
 // collects the user-level includes
+// the order of these includes matter--
+//    do not modify without proper consideration!
+
+// First include all algebraic structures, which have the benefit of not
+// depending on anything else
+#include <graphblas/ops.hpp>
+#include <graphblas/monoid.hpp>
+#include <graphblas/semiring.hpp>
+
+// Then include containers. If containers rely on ALP/GraphBLAS primtives that
+// are defined as free functions, then container implementations must forward-
+// declare those.
+#include <graphblas/vector.hpp>
+#include <graphblas/matrix.hpp>
+
+// The aforementioned forward declarations must be in sync with the
+// declarations of the user primitives defined as free functions in the below.
+// The below relies on both algebraic structures/relations as well as container
+// definitions. By maintaining the current order, these do not require forward
+// declarations.
+#include <graphblas/io.hpp>
 #include <graphblas/benchmark.hpp>
 #include <graphblas/blas0.hpp>
 #include <graphblas/blas1.hpp>
@@ -182,24 +203,15 @@
 #include <graphblas/collectives.hpp>
 #include <graphblas/exec.hpp>
 #include <graphblas/init.hpp>
-#include <graphblas/io.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/pinnedvector.hpp>
 #include <graphblas/properties.hpp>
-#include <graphblas/semiring.hpp>
 #include <graphblas/spmd.hpp>
 
 #ifdef _GRB_WITH_LPF
-// collects various BSP utilities
-#include <graphblas/bsp/spmd.hpp>
-#endif
-
-#ifdef _GRB_BACKEND
-// include also the main data types in order to have the default definitions
-// but ONLY if a default backend is define; otherwise, the previous headers
-// contain the relevant definitions (without defaults)
-#include <graphblas/matrix.hpp>
-#include <graphblas/vector.hpp>
+ // collects various BSP utilities
+ #include <graphblas/bsp/spmd.hpp>
 #endif
 
 #endif // end ``_H_GRAPHBLAS''
+

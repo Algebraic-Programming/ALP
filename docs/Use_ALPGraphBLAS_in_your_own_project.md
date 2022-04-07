@@ -24,8 +24,9 @@ ALP/GraphBLAS, as described in the [main README](../README.md#quick-start).
 To summarise (also with distributed backends)
 
 ```bash
-./configure --prefix=</path/to/install/dir> --with-lpf=/path/to/lpf/installation/
+mkdir build
 cd build
+../bootstrap.sh --prefix=</path/to/install/dir> --with-lpf=</path/to/lpf/installation/>
 make -j install
 ```
 
@@ -70,7 +71,7 @@ Here too the option `--show` is available to inspect the command without running
 it.
 
 Finally, the user may add the aforementioned scripts with the related options to
-its Bash environment by sourcing the `setenv` file in the same directory, as
+her Bash environment by sourcing the `setenv` file in the same directory, as
 
 ```bash
 source </path/to/install/dir>/bin/setenv
@@ -88,8 +89,8 @@ to avoid issues due to name mangling and namespace aliasing.
 ## Via CMake
 
 The most structured way to add ALP/GraphBLAS to your own project is via CMake.
-Indeed, on installation ALP/GraphBLAS generates a CMake infrastructure to import
-the backend targets and the related dependencies.
+Indeed, on installation ALP/GraphBLAS generates a CMake infrastructure for
+consuming projects to import the backend targets and the related dependencies.
 This infrastructure is stored inside the installation directory and can be
 inspected at `</path/to/install/dir>`**`/cmake`**.
 
@@ -110,9 +111,9 @@ set( CMAKE_CXX_STANDARD_REQUIRED ON )
 option( GRB_PATH "Path to ALP/GraphBLAS" )
 
 find_package( ALPGraphBLAS # fixed name for the CMake config packaged: do not change!
-	REQUIRED             # if not found, raise an error
-  CONFIG               # search for the CMake configuration files
-  PATHS "${GRB_PATH}"  # search inside "${GRB_PATH}"
+  REQUIRED                 # if not found, raise an error
+  CONFIG                   # search for the CMake configuration files
+  PATHS "${GRB_PATH}"      # search inside "${GRB_PATH}"
 )
 message( STATUS "available backends: ${ALPGraphBLAS_AVAILABLE_BACKENDS}" ) # variable automatically added during find_package() call
 
@@ -146,8 +147,8 @@ make my_app_exe
 ```
 
 The `-DGRB_PATH=</path/to/install/dir>` argument does **not** contain any
-sub-directory, since the `find_package( ... CONFIG ... )` coal automatically
-takes care of searching for the appropriate CMake files inside, according to the
+sub-directory, since the `find_package( ... CONFIG ... )` call automatically
+takes care of searching for the appropriate CMake files within, according to the
 [Config Mode Search Procedure](https://cmake.org/cmake/help/latest/command/find_package.html#config-mode-search-procedure).
 
 In the case of the executable `my_app_exe` linked to the hybrid backend, you can

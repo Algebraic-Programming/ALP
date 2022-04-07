@@ -61,7 +61,7 @@ namespace grb {
 				) {
 					// catch trivial case
 					if( elements == 0 ) {
-						pointer = NULL;
+						pointer = nullptr;
 						return SUCCESS;
 					}
 					// non-trivial case, first compute size

@@ -26,10 +26,11 @@
 #ifndef _H_GRB_ALGORITHMS_HPCG
 #define _H_GRB_ALGORITHMS_HPCG
 
-#include <graphblas/algorithms/hpcg_data.hpp>
-#include <graphblas/algorithms/multigrid_v_cycle.hpp>
-
 #include <graphblas.hpp>
+
+#include "hpcg_data.hpp"
+#include "multigrid_v_cycle.hpp"
+
 
 namespace grb {
 	namespace algorithms {

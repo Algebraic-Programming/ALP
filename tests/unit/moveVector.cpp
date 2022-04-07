@@ -98,5 +98,7 @@ int main( int argc, char ** argv ) {
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}
+
 	return 0;
 }
+

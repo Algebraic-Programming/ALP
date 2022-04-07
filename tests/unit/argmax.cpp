@@ -57,7 +57,10 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	grb::operators::argmax< size_t, double > argmaxOp;
-	grb::Monoid< grb::operators::argmax< size_t, double >, grb::identities::negative_infinity > argmaxMonoid;
+	grb::Monoid<
+		grb::operators::argmax< size_t, double >,
+		grb::identities::negative_infinity
+	> argmaxMonoid;
 
 	// test 1
 	rc = grb::eWiseApply( out, left, right, argmaxOp );
@@ -66,22 +69,23 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( grb::nnz( out ) != n ) {
-		std::cerr << "\t element-wise argmax results in " << grb::nnz( out ) << " nonzeroes, but expected " << n << "\n";
+		std::cerr << "\t element-wise argmax results in " << grb::nnz( out )
+			<< " nonzeroes, but expected " << n << "\n";
 		rc = FAILED;
 	}
 	for( const auto & pair : out ) {
 		if( pair.second.first != n / 2 ) {
 			if( pair.second.second != 3.5 ) {
-				std::cerr << "\t element-wise argmax results in unexpected "
-							 "entry ( "
-						  << pair.first << ", [ " << pair.second.first << ", " << pair.second.second << " ] ): expected value 3.5.\n";
+				std::cerr << "\t element-wise argmax results in unexpected entry ( "
+					<< pair.first << ", [ " << pair.second.first << ", "
+					<< pair.second.second << " ] ): expected value 3.5.\n";
 				rc = FAILED;
 			}
 		} else {
 			if( pair.second.second != 1.5 ) {
-				std::cerr << "\t element-wise argmax results in unexpected "
-							 "entry ( "
-						  << pair.first << ", [ " << pair.second.first << ", " << pair.second.second << " ] ): expected value 1.5.\n";
+				std::cerr << "\t element-wise argmax results in unexpected entry ( "
+					<< pair.first << ", [ " << pair.second.first << ", "
+					<< pair.second.second << " ] ): expected value 1.5.\n";
 				rc = FAILED;
 			}
 		}
@@ -100,9 +104,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.first == n / 2 || reduced.second != 3.5 ) {
-		std::cerr << "\t reduction via argmax (left-one) has unexpected result "
-					 "( "
-				  << reduced.first << ", " << reduced.second << " ): expected entry with index anything else than " << ( n / 2 ) << " and value 3.5.\n";
+		std::cerr << "\t reduction via argmax (left-one) has unexpected result ( "
+			<< reduced.first << ", " << reduced.second << " ): expected entry with "
+			<< "index anything else than " << ( n / 2 ) << " and value 3.5.\n";
 		rc = FAILED;
 		return;
 	}
@@ -116,9 +120,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.second != 1.5 ) {
-		std::cerr << "\t reduction via argmax (right-any) has unexpected "
-					 "result ( "
-				  << reduced.first << ", " << reduced.second << " ): expected value 1.5.\n";
+		std::cerr << "\t reduction via argmax (right-any) has unexpected result ( "
+			<< reduced.first << ", " << reduced.second << " ): expected value 1.5.\n";
 		rc = FAILED;
 		return;
 	}
@@ -135,11 +138,113 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( reduced.first != n / 2 || reduced.second != 7.5 ) {
-		std::cerr << "\t reduction via argmax (right-one) has unexpected "
-					 "result ( "
-				  << reduced.first << ", " << reduced.second << " ): expected ( " << ( n / 2 ) << ", 7.5 )\n";
+		std::cerr << "\t reduction via argmax (right-one) has unexpected result ( "
+			<< reduced.first << ", " << reduced.second << " ): expected ( "
+			<< ( n / 2 ) << ", 7.5 )\n";
 		rc = FAILED;
 		return;
+	}
+
+	// test 5
+	std::pair< int, float > sevenPi = { 7, 3.1415926535 };
+	std::pair< int, float > minusOneTwo = { -1, 2 };
+	std::pair< int, float > test;
+	grb::operators::argmax< int, float > intFloatArgmax;
+	rc = apply( test, sevenPi, minusOneTwo, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t application of argmax to scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t argmax to scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 6
+	test = { 10, 10.0 };
+	rc = apply( test, minusOneTwo, sevenPi, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t application of argmax to scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t argmax to scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 7
+	test = sevenPi;
+	rc = foldl( test, minusOneTwo, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldl of scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t foldl of scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 8
+	test = sevenPi;
+	rc = foldr( minusOneTwo, test, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldr of scalars (I) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t foldr of scalars (I) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 9
+	test = minusOneTwo;
+	rc = foldl( test, sevenPi, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldl of scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t foldl of scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test 10
+	test = minusOneTwo;
+	rc = foldr( sevenPi, test, intFloatArgmax );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t foldr of scalars (II) FAILED\n";
+		rc = FAILED;
+	} else {
+		if( test.first != 7 || test.second != sevenPi.second ) {
+			std::cerr << "\t foldr of scalars (II) returns " << test.first << ", "
+				<< test.second << " instead of 7, pi\n";
+			rc = FAILED;
+		}
 	}
 
 	// done

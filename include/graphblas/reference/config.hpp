@@ -64,29 +64,46 @@ namespace grb {
 		 *
 		 * \todo Internal issue #98.
 		 */
-		template< grb::Backend implementation = default_backend >
-		class IMPLEMENTATION {
+		template<>
+		class IMPLEMENTATION< reference > {
 
-		public:
-			/** How to allocate private memory segments. */
-			static constexpr ALLOC_MODE defaultAllocMode() {
-				return ALLOC_MODE::ALIGNED;
-			}
+			public:
 
-			/** How to allocate shared memory segments. */
-			static constexpr ALLOC_MODE sharedAllocMode() {
-				return ALLOC_MODE::ALIGNED;
-			}
+				/** How to allocate private memory segments. */
+				static constexpr ALLOC_MODE defaultAllocMode() {
+					return ALLOC_MODE::ALIGNED;
+				}
 
-			/**
-			 * The buffer size for allowing parallel updates to the sparsity of a
-			 * vector of a given length. In the sequential reference implementation
-			 * such a buffer is not required, hence this function will always return
-			 * 0.
-			 */
-			static inline size_t vectorBufferSize( const size_t, const size_t ) {
-				return 0;
-			}
+				/** How to allocate shared memory segments. */
+				static constexpr ALLOC_MODE sharedAllocMode() {
+					return ALLOC_MODE::ALIGNED;
+				}
+
+				/**
+				 * Whether the backend has vector capacities always fixed to their
+				 * defaults.
+				 */
+				static constexpr bool fixedVectorCapacities() {
+					return true;
+				}
+
+				/**
+				 * The buffer size for allowing parallel updates to the sparsity of a
+				 * vector of a given length. In the sequential reference implementation
+				 * such a buffer is not required, hence this function will always return
+				 * 0.
+				 */
+				static inline size_t vectorBufferSize( const size_t, const size_t ) {
+					return 0;
+				}
+
+				/**
+				 * By default, use the coordinates of the selected backend.
+				 */
+				static constexpr Backend coordinatesBackend() {
+					return reference;
+				}
+
 		};
 
 		/**
@@ -98,100 +115,119 @@ namespace grb {
 		template<>
 		class IMPLEMENTATION< reference_omp > {
 
-		private:
-			/**
-			 * If \a N independent concurrent chunks are supported for parallel sparsity
-			 * updates, then each chunk will have the returned minimum size (in bytes).
-			 */
-			static constexpr size_t minVectorBufferChunksize() {
-				return CACHE_LINE_SIZE::value();
-			}
+			private:
 
-			/**
-			 * Vector-local buffer size for parallel sparsity updates (to vectors).
-			 *
-			 * The given buffer size is in the number of elements.
-			 *
-			 * This configuration parameter represents a space-time tradeoff; larger
-			 * buffers will allow greater parallelism, smaller buffers obviously
-			 * result in less memory use.
-			 *
-			 * Either this or relVectorBufferSize() must be set to a different value
-			 * from 0.
-			 */
-			static constexpr size_t absVectorBufferSize() {
-				return 0;
-			}
+				/**
+				 * If \a N independent concurrent chunks are supported for parallel sparsity
+				 * updates, then each chunk will have the returned minimum size (in bytes).
+				 */
+				static constexpr size_t minVectorBufferChunksize() {
+					return CACHE_LINE_SIZE::value();
+				}
 
-			/**
-			 * Vector-local buffer size for parallel sparsity updates (to vectors).
-			 *
-			 * The given buffer size is relative to the vector length.
-			 *
-			 * This configuration parameter represents a space-time tradeoff; larger
-			 * buffers will allow greater parallelism, smaller buffers obviously
-			 * result in less memory use.
-			 *
-			 * Values must be equal or larger to 0.
-			 *
-			 * Either this or absVectorBufferSize() must be set to a different value
-			 * from 0.
-			 */
-			static constexpr double relVectorBufferSize() {
-				return 1;
-			}
+				/**
+				 * Vector-local buffer size for parallel sparsity updates (to vectors).
+				 *
+				 * The given buffer size is in the number of elements.
+				 *
+				 * This configuration parameter represents a space-time tradeoff; larger
+				 * buffers will allow greater parallelism, smaller buffers obviously
+				 * result in less memory use.
+				 *
+				 * Either this or relVectorBufferSize() must be set to a different value
+				 * from 0.
+				 */
+				static constexpr size_t absVectorBufferSize() {
+					return 0;
+				}
+
+				/**
+				 * Vector-local buffer size for parallel sparsity updates (to vectors).
+				 *
+				 * The given buffer size is relative to the vector length.
+				 *
+				 * This configuration parameter represents a space-time tradeoff; larger
+				 * buffers will allow greater parallelism, smaller buffers obviously
+				 * result in less memory use.
+				 *
+				 * Values must be equal or larger to 0.
+				 *
+				 * Either this or absVectorBufferSize() must be set to a different value
+				 * from 0.
+				 */
+				static constexpr double relVectorBufferSize() {
+					return 1;
+				}
+
 
 		public:
-			/**
-			 * A private memory segment shall never be accessed by threads other than
-			 * the thread who allocates it. Therefore we choose aligned mode here.
-			 */
-			static constexpr ALLOC_MODE defaultAllocMode() {
-				return ALLOC_MODE::ALIGNED;
-			}
 
-			/**
-			 * For the reference_omp backend, a shared memory-segment should use
-			 * interleaved alloc so that any thread has uniform access on average.
-			 */
-			static constexpr ALLOC_MODE sharedAllocMode() {
-				// return ALLOC_MODE::ALIGNED; //DBG
-				return ALLOC_MODE::INTERLEAVED;
-			}
+				/**
+				 * A private memory segment shall never be accessed by threads other than
+				 * the thread who allocates it. Therefore we choose aligned mode here.
+				 */
+				static constexpr ALLOC_MODE defaultAllocMode() {
+					return ALLOC_MODE::ALIGNED;
+				}
 
-			/**
-			 * Helper function that computes the effective buffer size for a vector
-			 * of \a n elements using #absVectorBufferSize and #relVectorBufferSize
-			 * and adds \a T elements to maintain local stack sizes.
-			 *
-			 * In case of a relative buffer size, the effective buffer size returned
-			 * must perfectly divide \a T and will be rounded up.
-			 *
-			 * @param[in] n The size of the vector.
-			 * @param[in] T The maximum number of threads that need be supported.
-			 *
-			 * @returns The buffer size given the vector size, maximum number of
-			 *          threads, and the requested configuration.
-			 */
-			static inline size_t vectorBufferSize( const size_t n, const size_t T ) {
-				size_t ret;
-				if( absVectorBufferSize() > 0 ) {
-					(void)n;
-					ret = absVectorBufferSize();
-				} else {
-					constexpr const double factor = relVectorBufferSize();
-					static_assert( factor > 0, "Configuration error" );
-					ret = factor * n;
+				/**
+				 * For the reference_omp backend, a shared memory-segment should use
+				 * interleaved alloc so that any thread has uniform access on average.
+				 */
+				static constexpr ALLOC_MODE sharedAllocMode() {
+					// return ALLOC_MODE::ALIGNED; //DBG
+					return ALLOC_MODE::INTERLEAVED;
 				}
-				ret = std::max( ret, T * minVectorBufferChunksize() );
-				ret += T;
-				if( ret % T > 0 ) {
-					ret += T - ( ret % T );
+
+				/**
+				 * By default, use the coordinates of the selected backend.
+				 */
+				static constexpr Backend coordinatesBackend() {
+					return reference_omp;
 				}
-				ret = std::max( 2 * T, ret );
-				assert( ret % T == 0 );
-				return ret;
-			}
+
+				/**
+				 * Whether the backend has vector capacities always fixed to their
+				 * defaults.
+				 */
+				static constexpr bool fixedVectorCapacities() {
+					return true;
+				}
+
+				/**
+				 * Helper function that computes the effective buffer size for a vector
+				 * of \a n elements using #absVectorBufferSize and #relVectorBufferSize
+				 * and adds \a T elements to maintain local stack sizes.
+				 *
+				 * In case of a relative buffer size, the effective buffer size returned
+				 * must perfectly divide \a T and will be rounded up.
+				 *
+				 * @param[in] n The size of the vector.
+				 * @param[in] T The maximum number of threads that need be supported.
+				 *
+				 * @returns The buffer size given the vector size, maximum number of
+				 *          threads, and the requested configuration.
+				 */
+				static inline size_t vectorBufferSize( const size_t n, const size_t T ) {
+					size_t ret;
+					if( absVectorBufferSize() > 0 ) {
+						(void)n;
+						ret = absVectorBufferSize();
+					} else {
+						constexpr const double factor = relVectorBufferSize();
+						static_assert( factor > 0, "Configuration error" );
+						ret = factor * n;
+					}
+					ret = std::max( ret, T * minVectorBufferChunksize() );
+					ret += T;
+					if( ret % T > 0 ) {
+						ret += T - ( ret % T );
+					}
+					ret = std::max( 2 * T, ret );
+					assert( ret % T == 0 );
+					return ret;
+				}
+
 		};
 
 	} // namespace config

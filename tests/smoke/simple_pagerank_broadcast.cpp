@@ -187,30 +187,27 @@ int main( int argc, char ** argv ) {
 
 		std::cout << "Error code is " << pr.error_code << ".\n";
 #ifdef PINNED_OUTPUT
-		assert( pr.pinnedVector.length() > 0 );
-		std::cout << "Size of pr is " << pr.pinnedVector.length() << ".\n";
+		assert( pr.pinnedVector.size() > 0 );
+		std::cout << "Size of pr is " << pr.pinnedVector.size() << ".\n";
 #else
 		assert( pr.local_size > 0 );
 		std::cout << "Size of pr is " << pr.local_size << ".\n";
 #endif
-		std::cout << "First 10 elements of pr are: ( ";
+		std::cout << "First 10 nonzeroes of pr are: ( ";
 #ifdef PINNED_OUTPUT
-		std::cout << pr.pinnedVector[ 0 ];
-		assert( pr.pinnedVector.mask( 0 ) );
-		for( size_t i = 1; i < 10; ++i ) {
-			std::cout << ", " << pr.pinnedVector[ i ];
-			assert( pr.pinnedVector.mask( i ) );
+		for( size_t k = 0; k < 10 && k < pr.pinnedVector.nonzeroes() && k < 10; ++k ) {
+			const auto &nonzeroValue = pr.pinnedVector.getNonzeroValue( k );
+			std::cout << nonzeroValue << " ";
 		}
 #else
-		std::cout << pr.pr_values[ 0 ];
-		for( size_t i = 1; i < 10; ++i ) {
-			std::cout << ", " << pr.pr_values[ i ];
+		for( size_t i = 0; i < 10; ++i ) {
+			std::cout << pr.pr_values[ i ] << " ";
 		}
 #endif
-		std::cout << " )" << std::endl;
+		std::cout << ")" << std::endl;
 
 		// free all memory
-		delete[] data_in;
+		delete [] data_in;
 	}
 
 	if( MPI_Finalize() != MPI_SUCCESS ) {

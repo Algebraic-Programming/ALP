@@ -25,15 +25,18 @@
 
 #include <vector> //queue of HP put and get requests
 
+#include "config.hpp"
+
+#include <graphblas/base/init.hpp>
+#include <graphblas/rc.hpp>
+
+#include <graphblas/utils/DMapper.hpp>
+#include <graphblas/utils/ThreadLocalStorage.hpp>
+
 #include <assert.h> //assertions
 #include <lpf/bsmp.h>
 #include <lpf/core.h>
 
-#include <graphblas/base/init.hpp>
-#include <graphblas/rc.hpp>
-#include <graphblas/utils/ThreadLocalStorage.hpp>
-
-#include "config.hpp"
 
 namespace grb {
 
@@ -69,11 +72,13 @@ namespace grb {
 		class BSP1D_Data {
 
 		private:
+
 			/** Number of slots taken */
 			size_t regs_taken;
 
 			/** Information on the current environment. */
 			lpf_machine_t lpf_info;
+
 
 		public:
 			/** The user process ID. */
@@ -163,6 +168,9 @@ namespace grb {
 
 			/** Whether a finalize has been called. */
 			bool destroyed;
+
+			/** Mapper to assign IDs to BSP1D containers .*/
+			utils::DMapper< uintptr_t > mapper;
 
 			/**
 			 * Initialises all fields.
@@ -380,6 +388,9 @@ namespace grb {
 	 *                       corresponding call to the lpf_hook.
 	 *
 	 * @see grb::init() for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	grb::RC init< BSP1D >( const size_t s, const size_t P, const lpf_t lpf );
@@ -388,6 +399,9 @@ namespace grb {
 	 * This implementation employs this function to free and deregister buffers.
 	 *
 	 * @see grb::finalize() for the user-level specification.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template<>
 	grb::RC finalize< BSP1D >();

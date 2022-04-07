@@ -192,3 +192,4 @@ if( WITH_OMP_BACKEND )
 	add_library( "${REFERENCE_OMP_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_omp_static )
 
 endif( WITH_OMP_BACKEND )
+

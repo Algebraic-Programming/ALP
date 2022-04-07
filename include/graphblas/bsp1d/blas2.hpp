@@ -41,8 +41,9 @@
 #include "matrix.hpp"
 
 #ifdef _DEBUG
-#include "spmd.hpp"
+ #include "spmd.hpp"
 #endif
+
 
 namespace grb {
 
@@ -53,25 +54,25 @@ namespace grb {
 
 	namespace internal {
 
-		template< Descriptor descr,
-			bool output_masked,
-			bool input_masked,
-			bool left_handed,
+		template<
+			Descriptor descr,
+			bool output_masked, bool input_masked, bool left_handed,
 			class Ring,
 			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
-		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > & u,
-			const Vector< InputType3, BSP1D, Coords > & u_mask,
-			const Matrix< InputType2, BSP1D > & A,
-			const Vector< InputType1, BSP1D, Coords > & v,
-			const Vector< InputType4, BSP1D, Coords > & v_mask,
-			const Ring & ring ) {
+			typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords
+		>
+		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > &u,
+			const Vector< InputType3, BSP1D, Coords > &u_mask,
+			const Matrix< InputType2, BSP1D > &A,
+			const Vector< InputType1, BSP1D, Coords > &v,
+			const Vector< InputType4, BSP1D, Coords > &v_mask,
+			const Ring &ring,
+			const Phase &phase
+		) {
 			// transpose must be handled on higher level
-			assert( ! ( descr & descriptors::transpose_matrix ) );
+			assert( !( descr & descriptors::transpose_matrix ) );
 			// dynamic sanity checks
 			if( u._n != A._m || v._n != A._n ) {
 				return MISMATCH;
@@ -82,10 +83,28 @@ namespace grb {
 			if( input_masked && v_mask._n != A._n ) {
 				return MISMATCH;
 			}
+			if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				phase == RESIZE
+			) {
+				return SUCCESS;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( v ) < size( v ) ) {
+					return ILLEGAL;
+				}
+				if( size( u_mask ) > 0 && nnz( u_mask ) < size( u_mask ) ) {
+					return ILLEGAL;
+				}
+				if( size( v_mask ) > 0 && nnz( v_mask ) < size( v_mask ) ) {
+					return ILLEGAL;
+				}
+			}
+			assert( phase == EXECUTE );
 
 #ifdef _DEBUG
 			const auto s = spmd< BSP1D >::pid();
-			std::cout << s << ": bsp1d_mxv called with " << descriptors::toString( descr ) << "\nNow synchronising input vector...";
+			std::cout << s << ": bsp1d_mxv called with "
+				<< descriptors::toString( descr ) << "\nNow synchronising input vector...";
 #endif
 
 			// synchronise the input
@@ -101,9 +120,15 @@ namespace grb {
 
 #ifdef _DEBUG
 			if( output_masked ) {
-				std::cout << "\t " << s << ", bsp1d_mxv: output mask has " << internal::getCoordinates( u_mask._local ).nonzeroes() << " nonzeroes and size "
-						  << internal::getCoordinates( u_mask._local ).size() << ":";
-				for( size_t k = 0; k < internal::getCoordinates( u_mask._local ).nonzeroes(); ++k ) {
+				std::cout << "\t " << s << ", bsp1d_mxv: output mask has "
+					<< internal::getCoordinates( u_mask._local ).nonzeroes()
+					<< " nonzeroes and size "
+					<< internal::getCoordinates( u_mask._local ).size() << ":";
+				for(
+					size_t k = 0;
+					k < internal::getCoordinates( u_mask._local ).nonzeroes();
+					++k
+				) {
 					std::cout << " " << internal::getCoordinates( u_mask._local ).index( k );
 				}
 				std::cout << "\n";
@@ -117,17 +142,25 @@ namespace grb {
 
 			// delegate to sequential code
 			const auto data = internal::grb_BSP1D.cload();
-			const size_t offset = internal::Distribution< BSP1D >::local_offset( v._n, data.s, data.P );
+			const size_t offset = internal::Distribution< BSP1D >::local_offset(
+				v._n, data.s, data.P
+			);
 
 #ifdef _DEBUG
-			std::cout << "\t " << s << ", bsp1d_mxv: "
-					  << " calling process-local vxm using allgathered input "
-						 "vector at "
-					  << &( v._global ) << " with " << nnz( v._global ) << "/" << size( v._global ) << " nonzeroes and an output vector currently holding " << nnz( u._local ) << "/"
-					  << size( u._local ) << " nonzeroes...\n";
+			std::cout << "\t " << s << ", bsp1d_mxv: " << " calling process-local vxm "
+				<< "using allgathered input vector at " << &( v._global ) << " with "
+				<< nnz( v._global ) << "/" << size( v._global )
+				<< " nonzeroes and an output vector currently holding " << nnz( u._local )
+				<< " / " << size( u._local ) << " nonzeroes...\n";
 #endif
-			rc = internal::vxm_generic< descr ^ descriptors::transpose_matrix, output_masked, input_masked, left_handed, true, Ring::template One >(
-				u._local, u_mask._local, v._global, v_mask._global, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			rc = internal::vxm_generic<
+				descr ^ descriptors::transpose_matrix,
+				output_masked, input_masked,
+				left_handed, true,
+				Ring::template One
+			> (
+				u._local, u_mask._local, v._global, v_mask._global, A._local,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(), phase,
 				[ &offset ]( const size_t i ) {
 					return i + offset;
 				},
@@ -139,16 +172,17 @@ namespace grb {
 				},
 				[]( const size_t i ) {
 					return i;
-				} );
+				}
+			);
 
 #ifdef _DEBUG
-			std::cout << s << ": "
-					  << " call to internal::vxm_generic completed, output "
-						 "vector now holds "
-					  << nnz( u._local ) << "/" << size( u._local ) << " updating nonzeroes...\n";
+			std::cout << s << ": " << " call to internal::vxm_generic completed, output "
+				<< "vector now holds " << nnz( u._local ) << "/" << size( u._local )
+				<< " updating nonzeroes...\n";
 #endif
+
 			// update nnz since we were communicating anyway
-			if( rc == SUCCESS ) {
+			if( phase != RESIZE && rc == SUCCESS ) {
 				u._nnz_is_dirty = true;
 				rc = u.updateNnz();
 			}
@@ -156,27 +190,30 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << s << "; bsp1d_mxv done!\n";
 #endif
+
 			return rc;
 		}
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool output_masked, bool input_masked, bool left_handed,
 			class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
 			typename Coords
 		>
-		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > & u,
-			const Vector< InputType3, BSP1D, Coords > & u_mask,
-			const Vector< InputType1, BSP1D, Coords > & v,
-			const Vector< InputType4, BSP1D, Coords > & v_mask,
-			const Matrix< InputType2, BSP1D > & A,
-			const Ring & ring
+		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > &u,
+			const Vector< InputType3, BSP1D, Coords > &u_mask,
+			const Vector< InputType1, BSP1D, Coords > &v,
+			const Vector< InputType4, BSP1D, Coords > &v_mask,
+			const Matrix< InputType2, BSP1D > &A,
+			const Ring &ring,
+			const Phase &phase
 		) {
 			RC rc = SUCCESS;
 
 			// transpose must be handled on higher level
-			assert( !( descr & descriptors::transpose_matrix ) );
+			assert( !(descr & descriptors::transpose_matrix) );
 
 			// dynamic sanity checks
 			if( u._n != A._n || v._n != A._m ) {
@@ -188,18 +225,42 @@ namespace grb {
 			if( input_masked && v_mask._n != A._m ) {
 				return MISMATCH;
 			}
+			if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				phase == RESIZE
+			) {
+				return SUCCESS;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( v ) < size( v ) ) {
+					return ILLEGAL;
+				}
+				if( size( u_mask ) > 0 && nnz( u_mask ) < size( u_mask ) ) {
+					return ILLEGAL;
+				}
+				if( size( v_mask ) > 0 && nnz( v_mask ) < size( v_mask ) ) {
+					return ILLEGAL;
+				}
+			}
+			assert( phase == EXECUTE );
 
-			const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
+			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 
 #ifdef _DEBUG
 			const auto s = spmd< BSP1D >::pid();
-			std::cout << s << ": bsp1d_vxm called with " << descriptors::toString( descr ) << "\n";
+			std::cout << s << ": bsp1d_vxm called with "
+				<< descriptors::toString( descr ) << "\n";
 			std::cout << "\t" << s << ", unbuffered BSP1D vxm called\n";
-			std::cout << "\t" << s << ", bsp1d_vxm, global output vector currently contains " << internal::getCoordinates( u._global ).nonzeroes() << " / "
-				  << internal::getCoordinates( u._global ).size() << " nonzeroes. Nnz_is_dirty equals: " << u._nnz_is_dirty << ".\n";
+			std::cout << "\t" << s << ", bsp1d_vxm, global output vector currently "
+			       << "contains " << internal::getCoordinates( u._global ).nonzeroes()
+			       << " / " << internal::getCoordinates( u._global ).size() << " "
+			       << "nonzeroes. Nnz_is_dirty equals: " << u._nnz_is_dirty << ".\n";
 			if( input_masked ) {
 				std::cout << "\t" << s << ", input mask has entries at";
-				for( size_t i = 0; i < internal::getCoordinates( v_mask._local ).nonzeroes(); ++i ) {
+				for(
+					size_t i = 0;
+					i < internal::getCoordinates( v_mask._local ).nonzeroes();
+					++i
+				) {
 					std::cout << " " << internal::getCoordinates( v_mask._local ).index( i );
 				}
 				std::cout << "\n";
@@ -224,27 +285,37 @@ namespace grb {
 				local_coors.nonzeroes() << " / " << local_coors.size() << ".\n";
 #endif
 			// prepare global view of u for use. Only local values should be entries.
-			const size_t output_offset = internal::Distribution< BSP1D >::local_offset( u._n, data.s, data.P );
+			const size_t output_offset = internal::Distribution< BSP1D >::local_offset(
+				u._n, data.s, data.P
+			);
 			{
 				// assuming a `lazy' clear that does not clear value entries(!)
 				auto &global_coors = internal::getCoordinates( u._global );
-				global_coors.template rebuildGlobalSparsity< false >( local_coors, output_offset );
+				global_coors.template rebuildGlobalSparsity< false >(
+					local_coors, output_offset
+				);
 			}
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ", bsp1d_vxm: global output vector of the local vxm-to-be currently contains "
+			std::cout << "\t" << s << ", bsp1d_vxm: global output vector of the local "
+				<< "vxm-to-be currently contains "
 				<< internal::getCoordinates( u._global ).nonzeroes() << " / "
 				<< internal::getCoordinates( u._global ).size() << " nonzeroes. "
 				<< "This is the unbuffered variant.\n";
 #endif
 
-			// even if the global operation is totally dense, the process-local vxm may generate sparse output
-			// thus construct a local descriptor that strips away any dense hint
+			// even if the global operation is totally dense, the process-local vxm may
+			// generate sparse output thus construct a local descriptor that strips away
+			// any dense hint
 			constexpr Descriptor local_descr = descr & (~(descriptors::dense));
 
 			// delegate to process-local vxm
-			internal::vxm_generic< local_descr, output_masked, input_masked, left_handed, true, Ring::template One >(
-				u._global, u_mask._global, v._local, v_mask._local, A._local, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+			internal::vxm_generic<
+				local_descr, output_masked, input_masked, left_handed, true,
+				Ring::template One
+			>(
+				u._global, u_mask._global, v._local, v_mask._local, A._local,
+				ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(), phase,
 				[ &output_offset ]( const size_t i ) {
 					return i + output_offset;
 				},
@@ -258,38 +329,43 @@ namespace grb {
 					return i;
 				} );
 #ifdef _DEBUG
-			std::cout << "\t" << s <<
-				", bsp1d_vxm: global output vector of the local vxm " "now contains " <<
-				internal::getCoordinates( u._global ).nonzeroes() << " / " <<
-				internal::getCoordinates( u._global ).size() << " nonzeroes.\n";
+			std::cout << "\t" << s << ", bsp1d_vxm: global output vector of the local "
+				<< "vxm now contains "
+				<< internal::getCoordinates( u._global ).nonzeroes() << " / "
+				<< internal::getCoordinates( u._global ).size() << " nonzeroes.\n";
 #endif
 
+			if( phase != RESIZE ) {
+				assert( phase == EXECUTE );
 #ifdef _DEBUG
-			{
-				size_t num = 0;
-				const auto * const stack = internal::getCoordinates( u._global ).getStack( num );
-				std::cout << "\t" << s << ", bsp1d_vxm: global stack readout of " << num << " output elements...\n";
-				for( size_t i = 0; i < num; ++i ) {
-					std::cout << "\t\t" << stack[ i ] << "\n";
+				{
+					size_t num = 0;
+					const auto * const stack =
+						internal::getCoordinates( u._global ).getStack( num );
+					std::cout << "\t" << s << ", bsp1d_vxm: global stack readout of " << num
+						<< " output elements...\n";
+					for( size_t i = 0; i < num; ++i ) {
+						std::cout << "\t\t" << stack[ i ] << "\n";
+					}
+					std::cout << "\tend global stack readout." << std::endl;
 				}
-				std::cout << "\tend global stack readout." << std::endl;
-			}
-			std::cout << "\t" << s << "bsp1d_vxm: now combining output vector...\n";
+				std::cout << "\t" << s << "bsp1d_vxm: now combining output vector...\n";
 #endif
 
-			// allcombine output
-			assert( rc == SUCCESS );
-			if( rc == SUCCESS ) {
-				rc = u.template combine< descr >( ring.getAdditiveOperator() );
-				u._nnz_is_dirty = true;
-			}
-
-			assert( rc == SUCCESS );
+				// allcombine output
+				assert( rc == SUCCESS );
+				if( rc == SUCCESS ) {
+					rc = u.template combine< descr >( ring.getAdditiveOperator() );
+					u._nnz_is_dirty = true;
+				}
+				assert( rc == SUCCESS );
 
 #ifdef _DEBUG
-			std::cout << "\t" << s << ", bsp1d_vxm: final output vector now contains " << nnz( u ) << " / " << size( u ) << " nonzeroes.\n";
-			std::cout << "\t" << s << ", bsp1d_vxm: done, exit code " << rc << ".\n";
+				std::cout << "\t" << s << ", bsp1d_vxm: final output vector now contains "
+					<< nnz( u ) << " / " << size( u ) << " nonzeroes.\n";
+				std::cout << "\t" << s << ", bsp1d_vxm: done, exit code " << rc << ".\n";
 #endif
+			}
 
 			// done
 			return rc;
@@ -297,167 +373,166 @@ namespace grb {
 
 	} // namespace internal
 
-	/** No implementation details. */
-	template< typename DataType >
-	size_t nrows( const Matrix< DataType, BSP1D > & A ) noexcept {
-		return A._m;
-	}
-
-	/** No implementation details. */
-	template< typename DataType >
-	size_t ncols( const Matrix< DataType, BSP1D > & A ) noexcept {
-		return A._n;
-	}
-
-	/**
-	 * Implementation details: relies on grb::collectives::allreduce.
-	 *
-	 * TODO internal issue #200.
-	 *
-	 * @see grb::nnz for the user-level specification.
-	 */
-	template< typename DataType >
-	size_t nnz( const Matrix< DataType, BSP1D > & A ) noexcept {
-#ifdef _DEBUG
-		std::cout << "Called grb::nnz (matrix, BSP1D).\n";
-#endif
-		// get local number of nonzeroes
-		size_t ret = nnz( A._local );
-#ifdef _DEBUG
-		std::cout << "\t local number of nonzeroes: " << ret << std::endl;
-#endif
-		// call allreduce on it
-		collectives< BSP1D >::allreduce< descriptors::no_casting, operators::add< size_t > >( ret );
-#ifdef _DEBUG
-		std::cout << "\t global number of nonzeroes: " << ret << std::endl;
-#endif
-		// after allreduce, return sum of the local nonzeroes
-		return ret;
-	}
-
-	/**
-	 * Implementation details: reserves the given amount of space <em>at this
-	 * user process</em>. Rationale: it cannot be predicted how many nonzeroes
-	 * end up at each separate user process, thus global information cannot be
-	 * exploited to make rational process-local decisions (in general).
-	 */
-	template< typename InputType, typename length_type >
-	RC resize( Matrix< InputType, BSP1D > & A, const length_type new_nz ) {
-		// delegate
-		return resize( A._local, new_nz );
-	}
-
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename Coords >
-	RC mxv( Vector< IOType, BSP1D, Coords > & u,
-		const Matrix< InputType2, BSP1D > & A,
-		const Vector< InputType1, BSP1D, Coords > & v,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+	RC mxv(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Matrix< InputType2, BSP1D > &A,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, BSP1D, Coords > mask( 0 );
 		// transpose is delegated to vxm
 		if( descr & descriptors::transpose_matrix ) {
-			return internal::bsp1d_vxm< descr & ~( descriptors::transpose_matrix ), false, false, false >( u, mask, v, mask, A, ring );
+			return internal::bsp1d_vxm<
+				descr & ~( descriptors::transpose_matrix ), false, false, false
+			>( u, mask, v, mask, A, ring, phase );
 		} else {
-			return internal::bsp1d_mxv< descr, false, false, false >( u, mask, A, v, mask, ring );
+			return internal::bsp1d_mxv< descr, false, false, false >(
+				u, mask, A, v, mask, ring, phase
+			);
 		}
 	}
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
 		typename InputType4 = bool,
-		typename Coords >
-	RC mxv( Vector< IOType, BSP1D, Coords > & u,
-		const Vector< InputType3, BSP1D, Coords > & u_mask,
-		const Matrix< InputType2, BSP1D > & A,
-		const Vector< InputType1, BSP1D, Coords > & v,
-		const Vector< InputType4, BSP1D, Coords > & v_mask,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC mxv(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Vector< InputType3, BSP1D, Coords > &u_mask,
+		const Matrix< InputType2, BSP1D > &A,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Vector< InputType4, BSP1D, Coords > &v_mask,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		// transpose is delegated to vxm
 		if( descr & descriptors::transpose_matrix ) {
-			return internal::bsp1d_vxm< descr & ~( descriptors::transpose_matrix ), true, true, false >( u, u_mask, v, v_mask, A, ring );
+			return internal::bsp1d_vxm<
+				descr & ~( descriptors::transpose_matrix ), true, true, false
+			>( u, u_mask, v, v_mask, A, ring, phase );
 		} else {
-			return internal::bsp1d_mxv< descr, true, true, false >( u, u_mask, A, v, v_mask, ring );
+			return internal::bsp1d_mxv< descr, true, true, false >(
+				u, u_mask, A, v, v_mask, ring, phase
+			);
 		}
 	}
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
 		typename InputType4 = bool,
-		typename Coords >
-	RC mxv( Vector< IOType, BSP1D, Coords > & u,
-		const Vector< InputType3, BSP1D, Coords > & mask,
-		const Matrix< InputType2, BSP1D > & A,
-		const Vector< InputType1, BSP1D, Coords > & v,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC mxv(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Vector< InputType3, BSP1D, Coords > &mask,
+		const Matrix< InputType2, BSP1D > &A,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, BSP1D, Coords > empty_mask( 0 );
 		// transpose is delegated to vxm
 		if( descr & descriptors::transpose_matrix ) {
-			return internal::bsp1d_vxm< descr & ~( descriptors::transpose_matrix ), true, false, false >( u, mask, v, empty_mask, A, ring );
+			return internal::bsp1d_vxm<
+				descr & ~( descriptors::transpose_matrix ), true, false, false
+			>( u, mask, v, empty_mask, A, ring, phase );
 		} else {
-			return internal::bsp1d_mxv< descr, true, false, false >( u, mask, A, v, empty_mask, ring );
+			return internal::bsp1d_mxv< descr, true, false, false >(
+				u, mask, A, v, empty_mask, ring, phase
+			);
 		}
 	}
 
 	/** \internal Dispatches to bsp1d_mxv or bsp1d_vxm */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename Coords >
-	RC vxm( Vector< IOType, BSP1D, Coords > & u,
-		const Vector< InputType1, BSP1D, Coords > & v,
-		const Matrix< InputType2, BSP1D > & A,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Matrix< InputType2, BSP1D > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		const Vector< bool, BSP1D, Coords > mask( 0 );
 		// transpose is delegated to mxv
 		if( descr & descriptors::transpose_matrix ) {
-			return internal::bsp1d_mxv< descr & ~( descriptors::transpose_matrix ), false, false, true >( u, mask, A, v, mask, ring );
+			return internal::bsp1d_mxv<
+				descr & ~( descriptors::transpose_matrix ), false, false, true
+			>( u, mask, A, v, mask, ring, phase );
 		} else {
-			return internal::bsp1d_vxm< descr, false, false, true >( u, mask, v, mask, A, ring );
+			return internal::bsp1d_vxm< descr, false, false, true >(
+				u, mask, v, mask, A, ring, phase
+			);
 		}
 	}
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
 		typename InputType4 = bool,
-		typename Coords >
-	RC vxm( Vector< IOType, BSP1D, Coords > & u,
-		const Vector< InputType3, BSP1D, Coords > & u_mask,
-		const Vector< InputType1, BSP1D, Coords > & v,
-		const Vector< InputType4, BSP1D, Coords > & v_mask,
-		const Matrix< InputType2, BSP1D > & A,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		typename Coords
+	>
+	RC vxm(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Vector< InputType3, BSP1D, Coords > &u_mask,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Vector< InputType4, BSP1D, Coords > &v_mask,
+		const Matrix< InputType2, BSP1D > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
 		// transpose is delegated to mxv
 		if( descr & descriptors::transpose_matrix ) {
-			return internal::bsp1d_mxv< descr & ~( descriptors::transpose_matrix ), true, true, true >( u, u_mask, A, v, v_mask, ring );
+			return internal::bsp1d_mxv<
+				descr & ~( descriptors::transpose_matrix ), true, true, true
+			>( u, u_mask, A, v, v_mask, ring, phase );
 		} else {
-			return internal::bsp1d_vxm< descr, true, true, true >( u, u_mask, v, v_mask, A, ring );
+			return internal::bsp1d_vxm< descr, true, true, true >(
+				u, u_mask, v, v_mask, A, ring, phase
+			);
 		}
 	}
 
@@ -468,8 +543,17 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< typename Func, typename DataType1, typename DataType2, typename Coords, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, BSP1D > & A, const Vector< DataType2, BSP1D, Coords > x, Args... args ) {
+	template<
+		typename Func,
+		typename DataType1, typename DataType2,
+		typename Coords, typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, BSP1D > &A,
+		const Vector< DataType2, BSP1D, Coords > &x,
+		Args... args
+	) {
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseLambda (BSP1D, matrix, recursive/vararg)\n";
 #endif
@@ -498,13 +582,17 @@ namespace grb {
 	 * the given data type.
 	 */
 	template< typename Func, typename DataType1 >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, BSP1D > & A ) {
+	RC eWiseLambda( const Func f, const Matrix< DataType1, BSP1D > &A ) {
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseLambda (BSP1D, matrix)\n";
 #endif
 		const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
-		RC ret = eWiseLambda< internal::Distribution< BSP1D > >( f, internal::getLocal( A ), data.s, data.P );
-		collectives< BSP1D >::allreduce< grb::descriptors::no_casting, grb::operators::any_or< RC > >( ret );
+		RC ret = eWiseLambda< internal::Distribution< BSP1D > >(
+			f, internal::getLocal( A ), data.s, data.P
+		);
+		collectives< BSP1D >::allreduce<
+			grb::descriptors::no_casting, grb::operators::any_or< RC >
+		>( ret );
 		return ret;
 	}
 
@@ -513,3 +601,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_BSP1D_BLAS2'
+

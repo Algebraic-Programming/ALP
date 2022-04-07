@@ -31,78 +31,80 @@
 namespace grb {
 
 	template< enum EXEC_MODE mode >
-	class Benchmarker< mode, reference > : protected Launcher< mode, reference >, protected internal::BenchmarkerBase {
+	class Benchmarker< mode, reference > :
+		protected Launcher< mode, reference >, protected internal::BenchmarkerBase
+	{
 
-	public:
-		Benchmarker( size_t process_id = 0,     // user process ID
-			size_t nprocs = 1,                  // total number of user processes
-			std::string hostname = "localhost", // one of the user process hostnames
-			std::string port = "0"              // a free port at hostname
-			) :
-			Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
+		public:
+			Benchmarker( size_t process_id = 0,         // user process ID
+				size_t nprocs = 1,                  // total number of user processes
+				std::string hostname = "localhost", // one of the user process hostnames
+				std::string port = "0"              // a free port at hostname
+				) :
+				Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
 
-		template< typename U >
-		RC
-		exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const size_t inner, const size_t outer, const bool broadcast = false )
-			const {
-			(void)broadcast; // value doesn't matter for a single user process
-			// initialise GraphBLAS
-			RC ret = init();
-			// call graphBLAS algo
-			if( ret == SUCCESS ) {
-				benchmark< U >( grb_program, data_in, in_size, data_out, inner, outer, 0 );
-			}
-			// finalise the GraphBLAS
-			const RC frc = finalize();
-			if( ret == SUCCESS ) {
-				ret = frc;
-			}
-			// and done
-			return ret;
-		}
-
-		/** No implementation notes. */
-		template< typename T, typename U >
-		RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-			const T & data_in,
-			U & data_out, // input & output data
-			const size_t inner,
-			const size_t outer,
-			const bool broadcast = false ) {
-			(void)broadcast; // value doesn't matter for a single user process
-			// initialise GraphBLAS
-			RC ret = init();
-			// call graphBLAS algo
-			if( ret == SUCCESS ) {
+			template< typename U >
+			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+				const void * data_in, const size_t in_size,
+				U &data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) const {
+				(void)broadcast; // value doesn't matter for a single user process
+				// initialise GraphBLAS
+				RC ret = grb::init();
 				// call graphBLAS algo
-				benchmark< T, U >( grb_program, data_in, data_out, inner, outer, 0 );
+				if( ret == SUCCESS ) {
+					benchmark< U >( grb_program, data_in, in_size, data_out, inner, outer, 0 );
+				}
+				// finalise the GraphBLAS
+				const RC frc = grb::finalize();
+				if( ret == SUCCESS ) {
+					ret = frc;
+				}
+				// and done
+				return ret;
 			}
-			// finalise the GraphBLAS
-			const RC frc = finalize();
-			if( ret == SUCCESS ) {
-				ret = frc;
-			}
-			// and done
-			return ret;
-		}
 
-		/** No implementation notes. */
-		static RC finalize() {
-			return Launcher< mode, reference >::finalize();
-		}
+			/** No implementation notes. */
+			template< typename T, typename U >
+			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T & data_in, U &data_out, // input & output data
+				const size_t inner,
+				const size_t outer,
+				const bool broadcast = false
+			) {
+				(void)broadcast; // value doesn't matter for a single user process
+				// initialise GraphBLAS
+				RC ret = grb::init();
+				// call graphBLAS algo
+				if( ret == SUCCESS ) {
+					// call graphBLAS algo
+					benchmark< T, U >( grb_program, data_in, data_out, inner, outer, 0 );
+				}
+				// finalise the GraphBLAS
+				const RC frc = grb::finalize();
+				if( ret == SUCCESS ) {
+					ret = frc;
+				}
+				// and done
+				return ret;
+			}
+
 	};
 
 } // namespace grb
 
 // parse this unit again for OpenMP support
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_BENCH
-#define _H_GRB_REFERENCE_OMP_BENCH
-#define reference reference_omp
-#include "benchmark.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_BENCH
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_BENCH
+  #define _H_GRB_REFERENCE_OMP_BENCH
+  #define reference reference_omp
+  #include "benchmark.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_BENCH
+ #endif
 #endif
 
 #endif // end ``_H_GRB_REFERENCE_BENCH''
+

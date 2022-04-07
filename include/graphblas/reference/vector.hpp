@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <graphblas/init.hpp>
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/base/pinnedvector.hpp>
@@ -90,6 +91,7 @@
 		"********************************************************************"     \
 		"********************************************************************"     \
 		"******************************\n" );
+
 
 namespace grb {
 
@@ -168,6 +170,9 @@ namespace grb {
 		template< Descriptor descr, typename InputType, typename fwd_iterator1, typename fwd_iterator2, typename Coords, class Dup >
 		friend RC buildVector( Vector< InputType, reference, Coords > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
 
+		template< typename InputType, typename Coords >
+		friend uintptr_t getID( const Vector< InputType, reference, Coords > & );
+
 		friend class PinnedVector< D, reference >;
 
 		friend class PinnedVector< D, BSP1D >;
@@ -176,10 +181,20 @@ namespace grb {
 		 Auxiliary backend friends
 		   ********************* */
 #ifdef _GRB_WITH_LPF
-		friend class Vector< D, BSP1D, internal::DefaultCoordinates >;
+		friend class Vector< D, BSP1D, internal::Coordinates<
+			config::IMPLEMENTATION< BSP1D >::coordinatesBackend()
+		> >;
 #endif
 
+
 	private:
+
+		/** My ID. */
+		uintptr_t _id;
+
+		/** Whether \a id should be removed from #internal::reference_mapper */
+		bool _remove_id;
+
 		/** Pointer to the raw underlying array. */
 		D * __restrict__ _raw;
 
@@ -211,6 +226,9 @@ namespace grb {
 		 * Function to manually initialise this vector instance. This function is
 		 * to be called by constructors only.
 		 *
+		 * @param[in] id_in       A pointer where to find the identifier for this
+		 *                        container, if predefined (and <tt>nullptr</tt>
+		 *                        otherwise).
 		 * @param[in] raw_in      The raw memory area this vector should wrap
 		 *                        around. If \a NULL is passed, this function will
 		 *                        allocate a new memory region to house \a cap_in
@@ -233,11 +251,47 @@ namespace grb {
 		 *                       conditions.
 		 * @throws Runtime error When the POSIX call to get an aligned memory area
 		 *                       fails for any other reason.
+		 *
+		 * \internal Single-process backends in thhis implementation must use the same
+		 *           signature for intialisation. This class must friend the vector
+		 *           constructors of distributed-memory backends so that they may
+		 *           manually initialise process-local vectors.
 		 */
-		void initialize( D * const raw_in, void * const assigned_in, bool assigned_initialized, void * const buffer_in, const size_t cap_in ) {
+		void initialize(
+			const uintptr_t * const id_in,
+			D * const raw_in,
+			void * const assigned_in, bool assigned_initialized,
+			void * const buffer_in,
+			const size_t cap_in,
+			const size_t nz
+		) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference >::initialize( "
+				<< id_in << ", "
+				<< static_cast< void* >(raw_in) << ", "
+				<< assigned_in << ", "
+				<< assigned_initialized << ", "
+				<< buffer_in << ", "
+				<< cap_in << " )" << std::endl;
+#endif
+
+			// check arguments
+			if( nz > cap_in ) {
+#ifdef _DEBUG
+				std::cerr << "\t requested initial capacity is too large\n";
+#endif
+				throw std::runtime_error( toString( ILLEGAL ) );
+			}
+
 			// set defaults
-			_raw = NULL;
-			_coordinates.set( NULL, false, NULL, 0 );
+			if( id_in == nullptr ) {
+				_id = std::numeric_limits< uintptr_t >::max();
+			} else {
+				_id = *id_in;
+			}
+			_remove_id = id_in == nullptr;
+			_raw = nullptr;
+			_coordinates.set( nullptr, false, nullptr, 0 );
 
 			// catch trivial case: zero capacity
 			if( cap_in == 0 ) {
@@ -245,10 +299,20 @@ namespace grb {
 			}
 
 			// catch trivial case: memory areas are passed explicitly
-			if( raw_in != NULL || assigned_in != NULL || buffer_in != NULL ) {
+			if( raw_in != nullptr || assigned_in != nullptr || buffer_in != nullptr ) {
 				// raw_in and assigned_in must both be NULL or both be non-NULL in a call to
 				// grb::Vector::initialize (reference or reference_omp).
-				assert( ! ( raw_in == NULL || assigned_in == NULL || buffer_in == NULL ) );
+				assert( !( raw_in == nullptr ||
+						assigned_in == nullptr ||
+						buffer_in == nullptr
+					)
+				);
+				// assign _id
+				if( id_in == nullptr ) {
+					_id = internal::reference_mapper.insert(
+						reinterpret_cast< uintptr_t >( assigned_in )
+					);
+				}
 				_raw = raw_in;
 				_coordinates.set( assigned_in, assigned_initialized, buffer_in, cap_in );
 				return;
@@ -257,21 +321,31 @@ namespace grb {
 			}
 
 			// non-trivial case; we must allocate. First set defaults
-			char * assigned = NULL;
-			char * buffer = NULL;
+			char * assigned = nullptr;
+			char * buffer = nullptr;
 			// now allocate in one go
-			const RC rc = grb::utils::alloc( "grb::Vector< T, reference, "
-											 "MyCoordinates > (constructor)",
+			const RC rc = grb::utils::alloc(
+				"grb::Vector< T, reference, MyCoordinates > (constructor)",
 				"", _raw, cap_in, true, _raw_deleter, // values array
-				assigned, MyCoordinates::arraySize( cap_in ), true, _assigned_deleter, buffer, MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter );
+				assigned, MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
+				buffer, MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
+			);
 
 			// catch errors
 			if( rc == OUTOFMEM ) {
-				throw std::runtime_error( "Out-of-memory during reference "
-										  "Vector memory allocation" );
+				throw std::runtime_error( "Out-of-memory during reference Vector memory "
+					"allocation" );
 			} else if( rc != SUCCESS ) {
-				throw std::runtime_error( "Unhandled runtime error from Vector "
-										  "memory allocation" );
+				throw std::runtime_error( "Unhandled runtime error from Vector memory "
+					"allocation" );
+			}
+
+			// assign _id
+			assert( assigned != nullptr );
+			if( id_in == nullptr ) {
+				_id = internal::reference_mapper.insert(
+					reinterpret_cast< uintptr_t >( assigned )
+				);
 			}
 
 			// assign to _coordinates struct
@@ -288,16 +362,32 @@ namespace grb {
 		 * No implementation remarks.
 		 * @see grb::buildVector for the user-level specfication.
 		 */
-		template< Descriptor descr = descriptors::no_operation, class Dup = typename operators::right_assign< D, D, D >, typename fwd_iterator = const D * __restrict__ >
-		RC build( const Dup & dup, const fwd_iterator start, const fwd_iterator end, fwd_iterator & npos ) {
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Dup = typename operators::right_assign< D, D, D >,
+			typename fwd_iterator = const D * __restrict__
+		>
+		RC build( const Dup & dup,
+			const fwd_iterator start, const fwd_iterator end,
+			fwd_iterator &npos
+		) {
 			// compile-time sanity checks
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D1, typename std::iterator_traits< fwd_iterator >::value_type >::value ), "Vector::assign",
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+					std::is_same<
+						typename Dup::D1,
+						typename std::iterator_traits< fwd_iterator >::value_type
+					>::value
+				), "Vector::assign",
 				"called on a vector with a nonzero type that does not match the "
 				"first domain of the given duplication-resolving operator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D2, D >::value ), "Vector::assign",
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+					std::is_same< typename Dup::D2, D >::value
+				), "Vector::assign",
 				"called on a vector with a nonzero type that does not match the "
 				"second domain of the given duplication-resolving operator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D3, D >::value ), "Vector::assign",
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+					std::is_same< typename Dup::D3, D >::value
+				), "Vector::assign",
 				"called on a vector with a nonzero type that does not match the "
 				"third domain of the given duplication-resolving operator" );
 
@@ -586,12 +676,48 @@ namespace grb {
 		typedef ConstIterator< reference > const_iterator;
 
 		/**
+		 * A reference vector constructor.
+		 *
+		 * May throw exceptions.
+		 *
+		 * \parblock
+		 * \par Performance semantics
+		 * This constructor:
+		 *   -# contains \f$ \Theta( n ) \f$ work,
+		 *   -# moves \f$ \Theta( n ) \f$ data intra-process,
+		 *   -# requires \f$ \Theta( n ) \f$ storage, and
+		 *   -# will result in system calls, in particular the allocation of memory
+		 *      areas of \f$ \Theta( n ) \f$.
+		 * Here, \f$ n \f$ refers to the argument \a n. There are no costs incurred
+		 * that are proportional to \a nz.
+		 *
+		 * In the case of the #grb::reference_omp backend, the critical work path
+		 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of OpenMP
+		 * threads that are active. This assumes that memory allocation is a scalable
+		 * operation (while in reality the complexity of allocation is, of course,
+		 * undefined).
+		 * \endparblock
+		 */
+		Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference >::Vector( size_t, size_t ) constructor\n";
+#endif
+			initialize( nullptr, nullptr, nullptr, false, nullptr, n, nz );
+		}
+
+		/**
+		 * Creates a reference vector with default capacity.
+		 *
 		 * This constructor may throw exceptions.
 		 *
-		 * @see Vector for the user-level specfication.
+		 * See the documentation for the constructor with given capacities for the
+		 * performance specification of this constructor. The default capacity
+		 * inferred by this constructor is \a n, as required by the specification.
 		 */
-		Vector( const size_t n ) : _raw( NULL ) {
-			initialize( NULL, NULL, false, NULL, n );
+		Vector( const size_t n ): Vector( n, n ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference >::Vector( size_t ) constructor\n";
+#endif
 		}
 
 		/**
@@ -608,11 +734,25 @@ namespace grb {
 		 * @throws runtime_error If the call to grb::set fails, the error code is
 		 *                       caught and thrown.
 		 */
-		Vector( const Vector< D, reference, MyCoordinates > & x ) {
-			initialize( NULL, NULL, false, NULL, size( x ) );
-			const auto rc = set( *this, x );
-			if( rc != SUCCESS ) {
-				throw std::runtime_error( "grb::set inside copy-constructor: " + toString( rc ) );
+		Vector( const Vector< D, reference, MyCoordinates > &x ) : _raw( nullptr ) {
+#ifdef _DEBUG
+			std::cout << "In Vector< reference > copy-constructor\n";
+#endif
+			initialize(
+				nullptr, nullptr, nullptr, false, nullptr,
+				size( x ), capacity( x )
+			);
+			if( size( x ) > 0 ) {
+#ifdef _DEBUG
+				std::cerr << "\t non-empty source vector; "
+					<< "now performing deep copy by call to grb::set\n";
+#endif
+				const auto rc = set( *this, x );
+				if( rc != SUCCESS ) {
+					throw std::runtime_error( "grb::set inside copy-constructor: "
+						+ toString( rc )
+					);
+				}
 			}
 		}
 
@@ -620,8 +760,10 @@ namespace grb {
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		Vector( Vector< D, reference, MyCoordinates > && x ) noexcept {
+		Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
 			// copy and move
+			_id = x._id;
+			_remove_id = x._remove_id;
 			_raw = x._raw;
 			_coordinates = std::move( x._coordinates );
 			_raw_deleter = std::move( x._raw_deleter );
@@ -629,17 +771,34 @@ namespace grb {
 			_buffer_deleter = std::move( x._buffer_deleter );
 
 			// invalidate that which was not moved
-			x._raw = NULL;
+			x._id = std::numeric_limits< uintptr_t >::max();
+			x._remove_id = false;
+			x._raw = nullptr;
+		}
+
+		/** Copy-constructor. */
+		Vector< D, reference, MyCoordinates > & operator=(
+			const Vector< D, reference, MyCoordinates > &x
+		) noexcept {
+			Vector< D, reference, MyCoordinates > replace( x );
+			*this = std::move( replace );
+			return *this;
 		}
 
 		/** Assign-from-temporary. */
-		Vector< D, reference, MyCoordinates > & operator=( Vector< D, reference, MyCoordinates > && x ) noexcept {
+		Vector< D, reference, MyCoordinates > & operator=(
+			Vector< D, reference, MyCoordinates > &&x
+		) noexcept {
+			_id = x._id;
+			_remove_id = x._remove_id;
 			_raw = x._raw;
 			_coordinates = std::move( x._coordinates );
 			_raw_deleter = std::move( x._raw_deleter );
 			_assigned_deleter = std::move( x._assigned_deleter );
 			_buffer_deleter = std::move( x._buffer_deleter );
-			x._raw = NULL;
+			x._id = std::numeric_limits< uintptr_t >::max();
+			x._remove_id = false;
+			x._raw = nullptr;
 			return *this;
 		}
 
@@ -648,10 +807,21 @@ namespace grb {
 		 * @see Vector for the user-level specfication.
 		 */
 		~Vector() {
+#ifdef _DEBUG
+			std::cout << "In ~Vector (reference) of container ID " << _id << std::endl;
+#endif
 			// all frees will be handled by
 			// _raw_deleter,
 			// _buffer_deleter, and
 			// _assigned_deleter
+			if( _coordinates.size() > 0 && _remove_id ) {
+				internal::reference_mapper.remove( _id );
+				_id = std::numeric_limits< uintptr_t >::max();
+			} else {
+				if( _remove_id ) {
+					assert( _id == std::numeric_limits< uintptr_t >::max() );
+				}
+			}
 		}
 
 		/**

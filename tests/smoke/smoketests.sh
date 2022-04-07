@@ -30,7 +30,7 @@ fi
 
 
 LABELTEST_SIZES=(8 256 4096) # for size 32, the ground-truth number of iterations is 6. This size is
-RESULTS=(4 9 13)             # disabled as there is no reason why this should behave differently
+LABELTEST_RESULTS=(4 9 13)   # disabled as there is no reason why this should behave differently
                              # from size 8 (both will map to the same single thread and process).
 
 echo " "
@@ -193,6 +193,21 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
+			echo "                                 matrix gyrom_m.mtx. This test verifies against a ground-"
+			echo "                                 truth solution vector, the same as used for the earlier"
+			echo "                                 conjugate gradient test. Likewise to that one, this test"
+			echo "                                 employs the grb::Launcher in automatic mode. It uses"
+			echo "                                 direct-mode file IO."
+			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
+				$runner ${TEST_BIN_DIR}/bicgstab_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: gyro_m.mtx was not found. To enable, please provide ${INPUT_DIR}/gyro_m.mtx"
+			fi
+			echo " "
+
 			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
 			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
 			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."
@@ -220,14 +235,14 @@ for BACKEND in ${BACKENDS[@]}; do
 			for ((i=0;i<${#LABELTEST_SIZES[@]};++i));
 			do
 				LABELTEST_SIZE=${LABELTEST_SIZES[i]}
-				LABELTEST_EXPECTED_RESULT=${LABELTEST_EXPECTED_RESULTS[i]}
+				LABELTEST_EXPECTED_RESULT=${LABELTEST_RESULTS[i]}
 				echo ">>>      [x]           [ ]       Testing label propagation using a a generated dataset"
 				echo "                                 of size ${LABELTEST_SIZE} using the ${BACKEND} backend."
 				echo "                                 This test verifies the number of iterations required"
-				echo "                                 to convergence against a ground-truth value."
+				echo "                                 to convergence against the ground-truth value of ${LABELTEST_EXPECTED_RESULT}"
 				$runner ${TEST_BIN_DIR}/labeltest_${BACKEND} ${LABELTEST_SIZE} &> ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log
 				head -1 ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log
-				(grep -q "${LABELTEST_EXPECTED_RESULT} total iterations" ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log && grep -i 'test ok' ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log) || echo "Test FAILED"
+				(grep -q "converged in ${LABELTEST_EXPECTED_RESULT} iterations" ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log && grep -i 'test ok' ${TEST_OUT_DIR}/labeltest_${BACKEND}_${LABELTEST_SIZE}.log) || echo "Test FAILED"
 				echo " "
 			done
 

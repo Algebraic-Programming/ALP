@@ -116,7 +116,7 @@ namespace grb {
 			 * @see grb::Vector::operator[]()
 			 * @see grb::eWiseLambda
 			 */
-			typedef D & lambda_reference;
+			typedef D& lambda_reference;
 
 			/**
 			 * A standard iterator for the Vector< D > class.
@@ -132,13 +132,21 @@ namespace grb {
 			 *          iterator derived from it incur invalid behaviour.
 			 * \note    These are standard limitations of STL iterators.
 			 */
-			class const_iterator : public std::iterator< std::forward_iterator_tag, std::pair< const size_t, const D >, size_t > {
+			class const_iterator :
+				public std::iterator<
+					std::forward_iterator_tag,
+					std::pair< const size_t, const D >,
+					size_t
+				>
+			{
 
 				public :
 
 					/** Standard equals operator. */
-					bool
-					operator==( const const_iterator & other ) const { (void)other; return false; }
+					bool operator==( const const_iterator & other ) const {
+						(void)other;
+						return false;
+					}
 
 					/** @returns The negation of operator==(). */
 					bool operator!=( const const_iterator & other ) const {
@@ -181,25 +189,43 @@ namespace grb {
 			};
 
 			/**
-			 * The only way to create an empty GraphBLAS vector. The given dimension will
-			 * be fixed throughout the lifetime of this container.
+			 * Creates an ALP/GraphBLAS vector. The given dimension will be fixed
+			 * throughout the lifetime of this container. After instantiation, the
+			 * vector will contain no nonzeroes.
 			 *
-			 * The vector will be empty after successful construction.
+			 * @param[in] n  The dimension of this vector.
+			 * @param[in] nz The minimal initial capacity of this vector.
 			 *
-			 * @param[in]     n   The dimension of this vector.
+			 * The argument \a nz is \em optional. Its default value is \a n.
 			 *
 			 * \parblock
 			 * \par Performance semantics
-			 *        -# This constructor completes in \f$ \mathcal{O}(n) \f$ time.
-			 *        -# This constructor allocates \f$ \mathcal{O}(n) \f$ bytes of
-			 *           dynamic memory.
-			 *        -# This constructor moves at most \f$ \mathcal{O}( n ) \f$ bytes
-			 *           of data.
-			 *        -# This constructor may make system calls.
+			 * A backend must:
+			 *    -# define cost in terms of work,
+			 *    -# define intra-process data movement costs,
+			 *    -# define inter-process data movement costs,
+			 *    -# define whether inter-process synchronisations occur,
+			 *    -# define memory storage requirements and may define
+			 *       this in terms of \a n and/or \a nz, and
+			 *    -# must define whether system calls may be made, and in particular
+			 *       whether allocation or freeing of dynamic memory occurs or may
+			 *       occur.
 			 * \endparblock
 			 *
-			 * \warning Avoid the use of this constructor within performance critical
+			 * \warning Most backends will require work, intra-process data movement, and
+			 *          system calls for the dynamic allocation of memory areas, all of
+			 *          (at least the complexity of) \f$ \Omega( \mathit{nz} ) \f$. Hence
+			 *          avoid the use of this constructor within performance-critical
 			 *          code sections.
+			 */
+			Vector( const size_t n, const size_t nz ) {
+				(void)n;
+				(void)nz;
+			}
+
+			/**
+			 * Creates an ALP/GraphBLAS vector. This constructor is specified as per the
+			 * above where \a nz is to taken equal to \a n.
 			 */
 			Vector( const size_t n ) {
 				(void)n;

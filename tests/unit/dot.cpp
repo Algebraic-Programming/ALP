@@ -25,8 +25,25 @@ using namespace grb;
 void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// repeatedly used containers
+	grb::Vector< bool > even_mask( n );
+	grb::Vector< size_t > temp( n );
 	grb::Vector< double > left( n );
 	grb::Vector< double > right( n );
+
+	// create even mask
+	rc = grb::set< grb::descriptors::use_index >( temp, 0 );
+	rc = rc ? rc : grb::eWiseLambda( [&temp] (const size_t i) {
+			if( temp[ i ] % 2 == 0 ) {
+				temp[ i ] = 1;
+			} else {
+				temp[ i ] = 0;
+			}
+		}, temp );
+	rc = rc ? rc : grb::set( even_mask, temp, true );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t initialisation of mask FAILED\n";
+		return;
+	}
 
 	// test 1, init
 	grb::Semiring<
@@ -63,17 +80,17 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test 2, init
 	grb::Semiring<
-		grb::operators::add< double >, grb::operators::left_assign_if< double, bool, double >,
+		grb::operators::add< double >,
+		grb::operators::left_assign_if< double, bool, double >,
 		grb::identities::zero, grb::identities::logical_true
 	> pattern_sum_if;
 	rc = grb::clear( left );
 	rc = rc ? rc : grb::clear( right );
-	for( size_t i = 0; 2 * i < n; ++i ) {
-		rc = rc ? rc : grb::setElement( left, 2.0, 2 * i );
-		rc = rc ? rc : grb::setElement( right, 1.0, 2 * i );
-	}
+	rc = rc ? rc : grb::set( left, even_mask, 2.0 );
+	rc = rc ? rc : grb::set( right, even_mask, 1.0 );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t test 2 (sparse, non-standard semiring) initialisation FAILED\n";
+		std::cerr << "\t test 2 (sparse, non-standard semiring) "
+			<< "initialisation FAILED\n";
 		return;
 	}
 	out = 0;

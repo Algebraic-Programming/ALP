@@ -240,17 +240,23 @@ namespace grb {
 		typename InputType2,
 		typename InputType3,
 		typename Coords,
-		enum Backend implementation = config::default_backend >
-	RC mxv( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Matrix< InputType2, implementation > & A,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+		enum Backend implementation = config::default_backend
+	>
+	RC mxv( Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Matrix< InputType2, implementation > &A,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Ring &ring,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value,
+		void >::type * = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::mxv (output-masked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool backend_does_not_support_output_masked_mxv = false;
+		assert( backend_does_not_support_output_masked_mxv );
 #endif
 		(void)u;
 		(void)mask;
@@ -265,18 +271,25 @@ namespace grb {
 	 *
 	 * @see grb::mxv for the full documentation.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring, typename IOType, typename InputType1, typename InputType2, typename Coords, Backend implementation = config::default_backend >
-	RC mxv( Vector< IOType, implementation, Coords > & u,
-		const Matrix< InputType2, implementation > & A,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+	template< Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, Backend implementation = config::default_backend
+	>
+	RC mxv( Vector< IOType, implementation, Coords > &u,
+		const Matrix< InputType2, implementation > &A,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Ring &ring,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::mxv\n";
-#else
-		printf( "Selected backend does not implement grb::mxv\n" );
 #endif
+#ifndef NDEBUG
+		const bool backend_does_not_support_mxv = false;
+		assert( backend_does_not_support_mxv );
 #endif
 		(void)u;
 		(void)A;
@@ -305,16 +318,21 @@ namespace grb {
 		typename InputType3,
 		typename Coords,
 		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
-		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+	RC vxm( Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation > &A,
+		const Ring &ring,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_output_masked_vxm = false;
+		assert( selected_backend_does_not_support_output_masked_vxm );
 #endif
 		(void)u;
 		(void)mask;
@@ -336,15 +354,20 @@ namespace grb {
 		typename InputType2,
 		typename Coords,
 		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
-		const Ring & ring,
-		typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * = NULL ) {
+	RC vxm( Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation > &A,
+		const Ring &ring,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
 #ifdef _DEBUG
-  #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::vxm\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_vxm = false;
+		assert( selected_backend_does_not_support_vxm );
 #endif
 		(void)u;
 		(void)v;
@@ -364,21 +387,30 @@ namespace grb {
 		typename InputType4,
 		typename Coords,
 		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Vector< InputType1, backend, Coords > & v,
-		const Vector< InputType4, backend, Coords > & v_mask,
-		const Matrix< InputType2, backend > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	RC vxm( Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &v,
+		const Vector< InputType4, backend, Coords > &v_mask,
+		const Matrix< InputType2, backend > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement vxm (doubly-masked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_doubly_masked_vxm = false;
+		assert( selected_backed_does_not_support_doubly_masked_vxm );
 #endif
 		(void)u;
 		(void)mask;
@@ -401,21 +433,30 @@ namespace grb {
 		typename InputType4,
 		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
-		const Vector< InputType4, backend, Coords > & v_mask,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	RC mxv( Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Matrix< InputType2, backend > &A,
+		const Vector< InputType1, backend, Coords > &v,
+		const Vector< InputType4, backend, Coords > &v_mask,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2,
+		void >::value, void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement mxv (doubly-masked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_doubly_masked_mxv = false;
+		assert( selected_backed_does_not_support_doubly_masked_mxv );
 #endif
 		(void)u;
 		(void)mask;
@@ -437,15 +478,30 @@ namespace grb {
 		typename InputType3,
 		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType3, backend, Coords > & mask,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
+	RC mxv( Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Matrix< InputType2, backend > &A,
+		const Vector< InputType1, backend, Coords > &v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement "
+			<< "singly-masked monoid-op mxv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_masked_monop_mxv = false;
+		assert( selected_backed_does_not_support_masked_monop_mxv );
+#endif
 		(void)u;
 		(void)mask;
 		(void)A;
@@ -464,18 +520,27 @@ namespace grb {
 		typename InputType2,
 		typename Coords,
 		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > & u,
-		const Vector< InputType1, backend, Coords > & v,
-		const Matrix< InputType2, backend > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	RC vxm( Vector< IOType, backend, Coords > &u,
+		const Vector< InputType1, backend, Coords > &v,
+		const Matrix< InputType2, backend > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
-		std::cerr << "Selected backend does not implement vxm (unmasked)\n";
- #endif
+		std::cerr << "Selected backend does not implement vxm "
+			<< "(unmasked, monoid-op version )\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_monop_vxm = false;
+		assert( selected_backed_does_not_support_monop_vxm );
 #endif
 		(void)u;
 		(void)v;
@@ -495,19 +560,27 @@ namespace grb {
 		typename InputType3,
 		typename Coords,
 		Backend implementation >
-	RC vxm( Vector< IOType, implementation, Coords > & u,
-		const Vector< InputType3, implementation, Coords > & mask,
-		const Vector< InputType1, implementation, Coords > & v,
-		const Matrix< InputType2, implementation > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * = NULL ) {
+	RC vxm( Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_masked_monop_vxm = false;
+		assert( selected_backed_does_not_support_masked_monop_vxm );
 #endif
 		(void)u;
 		(void)mask;
@@ -527,18 +600,26 @@ namespace grb {
 		typename InputType2,
 		typename Coords,
 		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > & u,
-		const Matrix< InputType2, backend > & A,
-		const Vector< InputType1, backend, Coords > & v,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
-				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+	RC mxv( Vector< IOType, backend, Coords > &u,
+		const Matrix< InputType2, backend > &A,
+		const Vector< InputType1, backend, Coords > &v,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::mxv (unmasked)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_monop_mxv = false;
+		assert( selected_backed_does_not_support_monop_mxv );
 #endif
 		(void)u;
 		(void)A;
@@ -639,12 +720,22 @@ namespace grb {
 	 * @see Vector::operator()()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func, typename DataType, Backend implementation = config::default_backend, typename... Args >
-	RC eWiseLambda( const Func f, const Matrix< DataType, implementation > & A, Args... /*args*/ ) {
+	template<
+		typename Func, typename DataType,
+		Backend implementation = config::default_backend,
+		typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType, implementation > &A,
+		Args... /*args*/
+	) {
 #ifdef _DEBUG
- #ifndef _GRB_NO_STDIO
 		std::cerr << "Selected backend does not implement grb::eWiseLambda (matrices)\n";
- #endif
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_matrix_eWiseLamba = false;
+		assert( selected_backend_does_not_support_matrix_eWiseLamba );
 #endif
 		(void)f;
 		(void)A;
@@ -656,3 +747,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_BLAS2_BASE
+

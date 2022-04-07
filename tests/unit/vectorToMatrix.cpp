@@ -36,11 +36,20 @@ static const double test2_expect_arr[ 15 ] = { 1, 1, 2, 2, 2, 2, 1, 1, 1, 5, 5, 
 static const double test2_expect_void_arr[ 15 ] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 // converter functions
-std::pair< std::pair< size_t, size_t >, double > converter_function( const size_t & ind, const size_t & val ) {
-	return std::make_pair( std::make_pair( ind, val ), static_cast< double >( 1 + val * val ) );
+std::pair< std::pair< size_t, size_t >, double > converter_function(
+	const size_t &ind,
+	const size_t &val
+) {
+	return std::make_pair(
+		std::make_pair( ind, val ),
+		static_cast< double >( 1 + val * val )
+	);
 };
 
-std::pair< size_t, size_t > converter_function_void( const size_t & ind, const size_t & val ) {
+std::pair< size_t, size_t > converter_function_void(
+	const size_t &ind,
+	const size_t &val
+) {
 	return std::make_pair( ind, val );
 }
 
@@ -50,10 +59,10 @@ void testIterator( int &error,
 	grb::utils::VectorToMatrixConverter< OutputType, size_t > &converter,
 	grb::Matrix< OutputType > &M,
 	grb::Vector< double > &test1,
-	const double * test1_expect,
+	const double * const test1_expect,
 	grb::Vector< double > &out1,
 	grb::Vector< double > &test2,
-	const double * test2_expect,
+	const double * const test2_expect,
 	grb::Vector< double > &out2
 ) {
 	grb::Semiring<
@@ -61,10 +70,14 @@ void testIterator( int &error,
 		grb::identities::zero, grb::identities::one
 	> ring;
 
-	grb::RC rc = buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+	grb::RC rc = buildMatrixUnique( M,
+		converter.begin(), converter.end(),
+		PARALLEL
+	);
 
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix build (M): %d.\n", (int)rc );
+		std::cerr << "Unexpected return code from Matrix build (M): "
+			<< grb::toString( rc ) << ".\n";
 		error = 10;
 		return;
 	}
@@ -75,8 +88,8 @@ void testIterator( int &error,
 	}
 
 	// test that the matrix is correct by premultiplying by a vector of all ones
-	if( ! error ) {
-		const double * test1_iter = &( test1_in[ 0 ] );
+	if( !error ) {
+		const double * const test1_iter = &( test1_in[ 0 ] );
 		rc = grb::buildVector( test1, test1_iter, test1_iter + 15, SEQUENTIAL );
 		if( rc == grb::SUCCESS ) {
 			rc = grb::clear( out1 );
@@ -85,26 +98,24 @@ void testIterator( int &error,
 			rc = grb::vxm( out1, test1, M, ring );
 		}
 		if( rc != grb::SUCCESS ) {
-			(void)fprintf( stderr,
-				"Unexpected return code from premultiplying M by a vector (vxm): "
-				"%d.\n",
-				(int)rc );
+			std::cerr << "nexpected return code from premultiplying M by a vector (vxm): "
+				<< grb::toString( rc ) << ".\n";
 			error = 20;
 		}
 	}
 
-	if( ! error ) {
+	if( !error ) {
 		if( nnz( out1 ) != 3 ) {
-			std::cerr << "\t Unexpected number of nonzeroes (premultiply): " << grb::nnz( out1 ) << ", expected 3\n";
+			std::cerr << "\t Unexpected number of nonzeroes (premultiply): "
+				<< grb::nnz( out1 ) << ", expected 3\n";
 			error = 30;
 		}
-		for( const auto & pair : out1 ) {
+		for( const auto &pair : out1 ) {
 			size_t i = pair.first;
 			if( pair.second != test1_expect[ i ] ) {
-				(void)fprintf( stderr,
-					"Premultiplying M by a vector of all ones, unexpected value %d "
-					"at coordinate %zd, expected %d.\n",
-					(int)pair.second, i, (int)test1_expect[ i ] );
+				std::cerr << "Premultiplying M by a vector of all ones, unexpected value "
+					<< pair.second << " at coordinate " << i << ", expected "
+					<< test1_expect[ i ] << ".\n";
 				error = 35;
 				break;
 			}
@@ -113,8 +124,8 @@ void testIterator( int &error,
 
 	// test that the matrix is correct by postmultiplying by a vector of all ones
 
-	if( ! error ) {
-		const double * test2_iter = &( test2_in[ 0 ] );
+	if( !error ) {
+		const double * const test2_iter = &( test2_in[ 0 ] );
 		rc = grb::buildVector( test2, test2_iter, test2_iter + 3, SEQUENTIAL );
 		if( rc == grb::SUCCESS ) {
 			rc = grb::clear( out2 );
@@ -123,26 +134,24 @@ void testIterator( int &error,
 			rc = grb::vxm< grb::descriptors::transpose_matrix >( out2, test2, M, ring );
 		}
 		if( rc != grb::SUCCESS ) {
-			(void)fprintf( stderr,
-				"Unexpected return code from postmultiplying M by a vector (vxm): "
-				"%d.\n",
-				(int)rc );
+			std::cerr << "Unexpected return code from postmultiplying M by a vector "
+			       << "(vxm): " << grb::toString( rc ) << ".\n";
 			error = 40;
 		}
 	}
 
 	if( ! error ) {
 		if( grb::nnz( out2 ) != 15 ) {
-			std::cout << "\t Unexpected number of nonzeroes (postmultiply): " << grb::nnz( out2 ) << ", expected 15.\n";
+			std::cerr << "\t Unexpected number of nonzeroes (postmultiply): "
+				<< grb::nnz( out2 ) << ", expected 15.\n";
 			error = 50;
 		}
-		for( const auto & pair : out2 ) {
+		for( const auto &pair : out2 ) {
 			const size_t i = pair.first;
 			if( pair.second != test2_expect[ i ] ) {
-				(void)fprintf( stderr,
-					"Postmultiplying M by a vector of all ones, unexpected value "
-					"%d at coordinate %zd, expected %d.\n",
-					(int)( pair.second ), i, (int)test2_expect[ i ] );
+				std::cerr << "Postmultiplying M by a vector of all ones, unexpected value "
+					<< pair.second << " at coordinate " << i << ", expected "
+					<< test2_expect[ i ] << ".\n";
 				error = 55;
 				break;
 			}
@@ -151,7 +160,7 @@ void testIterator( int &error,
 }
 
 // graphblas program
-void grbProgram( const void *, const size_t in_size, int & error ) {
+void grbProgram( const void *, const size_t in_size, int &error ) {
 	error = 0;
 
 	if( in_size != 0 ) {
@@ -171,26 +180,46 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 
 	// initialise vec
 	const size_t * vec_iter = &( vec_vals[ 0 ] );
-	const grb::RC grb_rc = grb::buildVector( vec, vec_iter, vec_iter + 15, SEQUENTIAL );
+	const grb::RC grb_rc = grb::buildVector( vec,
+		vec_iter, vec_iter + 15,
+		SEQUENTIAL
+	);
 	if( grb_rc != SUCCESS ) {
 		std::cerr << "\t initial buildVector FAILED\n";
 		error = 5;
 	}
 
 	// test 1
-	std::cout << "\t Test 1: InputType size_t, OutputType double, direct "
-				 "construction...\n";
+	if( grb::spmd<>::pid() == 0 ) {
+		std::cout << "\t Test 1: InputType size_t, OutputType double, direct "
+			"construction...\n";
+	}
 	if( error == 0 ) {
-		auto converter = grb::utils::VectorToMatrixConverter< double, size_t >( vec, converter_function );
-		testIterator( error, converter, M, test1, &( test1_expect_arr[ 0 ] ), out1, test2, &( test2_expect_arr[ 0 ] ), out2 );
+		auto converter = grb::utils::VectorToMatrixConverter< double, size_t >(
+			vec.cbegin(), vec.cend(),
+			converter_function
+		);
+		testIterator(
+			error, converter, M,
+			test1, &(test1_expect_arr[ 0 ]), out1,
+			test2, &(test2_expect_arr[ 0 ]), out2
+		);
 	}
 
 	// test 2
 	if( error == 0 ) {
-		std::cout << "\t Test 2: InputType size_t, OutputType void, direct "
-					 "construction...\n";
-		auto converter = grb::utils::VectorToMatrixConverter< void, size_t >( vec, converter_function_void );
-		testIterator( error, converter, V, test1, &( test1_expect_void_arr[ 0 ] ), out1, test2, &( test2_expect_void_arr[ 0 ] ), out2 );
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "\t Test 2: InputType size_t, OutputType void, direct "
+				"construction...\n";
+		}
+		auto converter = grb::utils::VectorToMatrixConverter< void, size_t >(
+			vec.cbegin(), vec.cend(),
+			converter_function_void
+		);
+		testIterator( error, converter, V,
+			test1, &(test1_expect_void_arr[ 0 ]), out1,
+			test2, &(test2_expect_void_arr[ 0 ]), out2
+		);
 		if( error != 0 ) {
 			error += 100;
 		}
@@ -198,10 +227,16 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 
 	// test 3
 	if( error == 0 ) {
-		std::cout << "\t Test 3: InputType size_t, OutputType double, factory "
-					 "construction...\n";
-		grb::utils::VectorToMatrixConverter< double, size_t > converter = grb::utils::makeVectorToMatrixConverter< double >( vec, converter_function );
-		testIterator( error, converter, M, test1, &( test1_expect_arr[ 0 ] ), out1, test2, &( test2_expect_arr[ 0 ] ), out2 );
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "\t Test 3: InputType size_t, OutputType double, factory "
+				"construction...\n";
+		}
+		grb::utils::VectorToMatrixConverter< double, size_t > converter =
+			grb::utils::makeVectorToMatrixConverter< double >( vec, converter_function );
+		testIterator( error, converter, M,
+			test1, &(test1_expect_arr[ 0 ]), out1,
+			test2, &(test2_expect_arr[ 0 ]), out2
+		);
 		if( error != 0 ) {
 			error += 200;
 		}
@@ -209,10 +244,18 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 
 	// test 4
 	if( error == 0 ) {
-		std::cout << "\t Test 4: InputType size_t, OutputType void, factory "
-					 "construction...\n";
-		auto converter = grb::utils::makeVectorToMatrixConverter< void >( vec, converter_function_void );
-		testIterator( error, converter, V, test1, &( test1_expect_void_arr[ 0 ] ), out1, test2, &( test2_expect_void_arr[ 0 ] ), out2 );
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "\t Test 4: InputType size_t, OutputType void, factory "
+				"construction...\n";
+		}
+		auto converter = grb::utils::makeVectorToMatrixConverter< void >(
+			vec,
+			converter_function_void
+		);
+		testIterator( error, converter, V,
+			test1, &(test1_expect_void_arr[ 0 ]), out1,
+			test2, &(test2_expect_void_arr[ 0 ]), out2
+		);
 		if( error != 0 ) {
 			error += 300;
 		}
@@ -221,19 +264,19 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 
 int main( int argc, char ** argv ) {
 	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
+	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	int error;
 	grb::Launcher< AUTOMATIC > launcher;
-	if( launcher.exec( &grbProgram, NULL, 0, error ) != SUCCESS ) {
-		(void)fprintf( stderr, "Test failed to launch\n" );
+	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
+		std::cerr << "Test failed to launch\n";
 		error = 255;
 	}
 	if( error == 0 ) {
-		(void)printf( "Test OK.\n\n" );
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		fflush( stderr );
-		(void)printf( "Test FAILED.\n\n" );
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 
 	// done

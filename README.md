@@ -96,14 +96,28 @@ backends like `ninja`, which are becoming increasingly popular: instead of
 Here are the basic steps to quickly compile and install ALP/GraphBLAS for shared
 memory machines (i.e. without distributed-memory support):
 
-1. Inside ALP/GraphBLAS root directory `<ALP/GraphBLAS root>` issue
-`./configure --prefix=</path/to/install/dir>` to generate the build
-infrastructure via CMake inside the `build` directory
+
+```bash
+cd <ALP/GraphBLAS root>
+mkdir build
+cd build
+../bootstrap.sh --prefix=../install
+make -j
+```
+
+In more detail, the steps to follow are:
+
+1. Create an empty directory for building ALP/GraphBLAS and move into it:
+`mkdir build && cd build`.
+2. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
+`<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
+ current directory:
+ `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
     - note: add `--with-lpf=/path/to/lpf/install/dir` if you have LPF installed
 and would like to use it.
-2. Enter the `build` directory with `cd build` and issue `make -j` to compile
-the C++11 ALP/GraphBLAS library for shared memory.
-3. (*Optional*) To later run all unit tests, several datasets must be made
+3. Issue `make -j` to compile the C++11 ALP/GraphBLAS library for the configured
+backends.
+4. (*Optional*) To later run all unit tests, several datasets must be made
 available. Please run the `<ALP/GraphBLAS root>/tools/downloadDatasets.sh`
 script for
 
@@ -111,7 +125,7 @@ script for
 
     b. the option to automatically download them.
 
-4. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
+5. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
 generates both
 
     a. PDF documentations in `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`,
@@ -119,13 +133,21 @@ and
 
     b. HTML documentations in `<ALP/GraphBLAS root>/docs/code/html/index.html`.
 
-5. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
+6. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
-6. (*Optional*) Issue `make -j perftests` to run an exhaustive set of unit
+   If you do this with LPF enabled, and LPF was configured to use an MPI engine
+   (which is the default), and the MPI implementation used is _not_ MPICH, then
+   the default command lines the tests script uses are likely wrong. In this
+   case, please edit `tests/parse_env.sh` by searching for the MPI
+   implementation you used, and uncomment the lines directly below each
+   occurance.
+7. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
-7. Issue `make -j install` to install ALP/GraphBLAS into your install directory
-configured during step 1.
-8. Issue `source </path/to/install/dir>/bin/setenv` to make available the
+   If you do this with LPF enabled, please edit `tests/parse_env.sh` if required
+   as described in step 5.
+8. (*Optional*) Issue `make -j install` to install ALP/GraphBLAS into your
+install directory configured during step 1.
+9. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
 `grbcxx` and `grbrun` compiler wrapper and runner.
 
 Congratulations, you are now ready for developing and integrating ALP/GraphBLAS
@@ -139,7 +161,7 @@ algorithms! Any feedback, question, problem reports are most welcome at
 In-depth performance measurements may be obtained via the following additional
 and optional step:
 
-9. (*Optional*) To check in-depth performance of this ALP/GraphBLAS
+10. (*Optional*) To check in-depth performance of this ALP/GraphBLAS
 implementation, issue `make -j perftests`. This will run several algorithms in
 several ALP/GraphBLAS configurations. All output is captured in
 `<ALP/GraphBLAS root>/build/tests/performance/output`. A summary of benchmark
@@ -149,6 +171,9 @@ results are found in the following locations:
 
     b. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`.
 
+If you do this with LPF enabled, please note the remark described at step 5 and
+apply any necessary changes also to `tests/performance/performancetests.sh`.
+
 
 # Overview of the main Makefile targets
 
@@ -156,24 +181,16 @@ The following table lists the main build targets of interest:
 
 | Target                | Explanation |
 |----------------------:|---------------------------------------------------|
-| \[*default*\]         | builds the ALP/GraphBLAS libraries as well as     |
-|                       | examples programs in                              |
-|                       | `<ALP/GraphBLAS root>/build/examples/`            |
-| `install`             | this will copy the libraries, headers, and some   |
-|                       | convenience scripts to the install directory set  |
-|                       | by `./configure --prefix=<path>`                  |
+| \[*default*\]         | builds the ALP/GraphBLAS libraries and examples   |
+| `install`             | install libraries, headers and some convenience   |
+|                       | scripts into the path set as `--prefix=<path>`    |
 | `unittests`           | builds and runs all available unit tests          |
 | `smoketests`          | builds and runs all available smoke tests         |
 | `perftests`           | builds and runs all available performance tests   |
 | `tests`               | builds and runs all available unit, smoke, and    |
 |                       | performance tests                                 |
-| `docs`                | builds all HTML ALP/GraphBLAS documentation in    |
-|                       | `<ALP/GraphBLAS root>/docs/code/html/index.html`. |
-|                       | Also generates LaTeX source files in              |
-|                       | `<ALP/GraphBLAS root>/docs/code/latex`, which, if |
-|                       | `pdflatex`, `graphviz`, and other standard tools  |
-|                       | are available, are compiled into a PDF found at   |
-|                       | `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf` |
+| `docs`                | builds all HTML and LaTeX documentation out of the|
+|                       | sources inside `<ALP/GraphBLAS root>/docs/code/`  |
 
 For more information about the testing harness, please refer to the
 [related documentation](tests/Tests.md).
@@ -215,13 +232,11 @@ movement cost this incurs shall be linear to the byte size of `U`.
 
 ### Compilation
 
-Note that our sequential reference backend auto-vectorises.
-For best results, please edit `include/graphblas/config.hpp` prior to
-compilation.
-Also note that both the shared-memory parallel reference_omp backend as well as
-the distributed-memory parallel bsp1d and hybrid backends rely on the same
-auto-vectorisation mechanism and would benefit of correct parameters present in
-the configuration file.
+Our backends auto-vectorise.
+For best results, please edit the `include/graphblas/base/config.hpp` file prior
+to compilation and installation. Most critically, ensure that
+`config::SIMD_SIZE::bytes` defined in that file is set correctly with respect to
+the target architecture.
 
 The program may be compiled using the compiler wrapper `grbcxx` generated during
 installation; for more options on using ALP/GraphBLAS in external projects, you
@@ -232,23 +247,30 @@ When using the LPF-enabled distributed-memory backend to ALP/GraphBLAS, for
 example, simply use
 
 ```bash
-grbcxx -b bsp1d
+grbcxx -b hybrid
 ```
 as the compiler command.
 Use
 
 ```bash
-grbcxx -b bsp1d --show <your regular compilation command>
+grbcxx -b hybrid --show <your regular compilation command>
 ```
 to show all flags that the wrapper passes on.
 
-This backend is also one example backend that is capable of spawning multiple
-ALP/GraphBLAS user processes. In contrast, compilation using
+This backend is one example that is capable of spawning multiple ALP/GraphBLAS
+user processes. In contrast, compilation using
 
 ```bash
 grbcxx -b reference
 ```
-will produce a sequential binary based on the same ALP/GraphBLAS code instead.
+produces a sequential binary, while
+
+```bash
+grbcxx -b reference_omp
+```
+produces a shared-memory parallel binary instead.
+
+The same ALP/GraphBLAS source code needs never change.
 
 ### Linking
 

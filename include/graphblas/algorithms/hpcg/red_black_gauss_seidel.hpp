@@ -26,29 +26,13 @@
 #define _H_GRB_ALGORITHMS_RED_BLACK_GAUSS_SEIDEL
 
 #include <cassert>
-#ifdef HPCG_PRINT_STEPS
-#include <iostream>
-
-#include "tracing.hpp"
-#endif
 
 #include <graphblas.hpp>
+
 
 namespace grb {
 	namespace algorithms {
 		namespace internal {
-
-// here we define a custom macro and do not use NDEBUG since the latter is not defined for tests
-#ifdef HPCG_PRINT_STEPS
-/**
- * @brief simply prints \p args on a dedicated line.
- */
-#define DBG_println( args ) std::cout << args << std::endl;
-/**
- * @brief prints \p head and the norm of \p r.
- */
-#define DBG_print_norm( vec, head ) grb::algorithms::utils::print_norm( vec, head )
-#endif
 
 			/**
 			 * @brief Runs a single step of Red-Black Gauss-Seidel for a specific color.

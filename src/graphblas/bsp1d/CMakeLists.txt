@@ -78,6 +78,7 @@ set( backend_bsp1d_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/exec.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/io.cpp
 )
 
 if( WITH_BSP1D_BACKEND )
@@ -137,3 +138,4 @@ if( WITH_HYBRID_BACKEND )
 	add_library( "${HYBRID_BACKEND_DEFAULT_NAME}" ALIAS backend_hybrid_static )
 
 endif()
+

@@ -31,8 +31,8 @@
  * @date 2021-04-30
  */
 
-#ifndef _H_NDIM_MATRIX_BUILDERS
-#define _H_NDIM_MATRIX_BUILDERS
+#ifndef _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS
+#define _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS
 
 #include <algorithm>
 #include <array>
@@ -46,7 +46,7 @@
 #include <vector>
 
 namespace grb {
-	namespace utils {
+	namespace algorithms {
 
 		/**
 		 * @brief Base class that iterates on DIMS dimensions starting from the first one.
@@ -540,7 +540,7 @@ namespace grb {
 			}
 		};
 
-	} // namespace utils
+	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_NDIM_MATRIX_BUILDERS
+#endif // _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS

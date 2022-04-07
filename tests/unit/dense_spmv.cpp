@@ -53,7 +53,7 @@ struct output {
 };
 
 // main label propagation algorithm
-void grbProgram( const struct input & data, struct output & out ) {
+void grbProgram( const struct input &data, struct output &out ) {
 
 	grb::utils::Timer timer;
 

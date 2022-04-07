@@ -24,6 +24,7 @@
 
 using namespace grb;
 
+
 constexpr const size_t MAX_FN_LENGTH = 500;
 static_assert( MAX_FN_LENGTH > 0, "MAX_FN_LENGTH must be larger than 0" );
 
@@ -32,7 +33,7 @@ struct Input {
 	bool indirect;
 };
 
-void grb_program( const Input & in, grb::RC & rc ) {
+void grb_program( const Input &in, grb::RC &rc ) {
 	// read input file and basic checks
 	grb::utils::MatrixFileReader< double > matrixFile( in.filename, in.indirect );
 	const size_t m = matrixFile.m();
@@ -123,20 +124,25 @@ void grb_program( const Input & in, grb::RC & rc ) {
 
 	// create vectors
 	grb::Vector< double > vector( n );
+	grb::Vector< size_t > temp( n );
 	grb::Vector< bool > even_mask( n );
 	grb::Vector< bool > odd_mask( n );
 	rc = grb::set( vector, 1.5 );
-	for( size_t i = 0; rc == SUCCESS && i < n; ++i ) {
-		if( i % 2 == 0 ) {
-			rc = grb::setElement( even_mask, true, i );
-		} else {
-			rc = grb::setElement( odd_mask, true, i );
-		}
-	}
+	rc = rc ? rc : grb::set< grb::descriptors::use_index >( temp, 0 );
+	rc = rc ? rc : grb::eWiseLambda( [&temp] (const size_t i) {
+			if( temp[ i ] % 2 == 0 ) {
+				temp[ i ] = 1;
+			} else {
+				temp[ i ] = 0;
+			}
+		}, temp );
+	rc = rc ? rc : grb::set( even_mask, temp, true );
+	rc = rc ? rc : grb::set< grb::descriptors::invert_mask >( odd_mask, temp, true );
 	// build matrix
 	grb::Matrix< double > matrix( n, n );
 	if( rc == SUCCESS ) {
-		rc = grb::buildMatrixUnique( matrix, matrixFile.cbegin(), matrixFile.cend(), SEQUENTIAL );
+		rc = grb::buildMatrixUnique( matrix, matrixFile.cbegin(), matrixFile.cend(),
+			SEQUENTIAL );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\t initialisation FAILED\n";
@@ -167,7 +173,8 @@ void grb_program( const Input & in, grb::RC & rc ) {
 #endif
 		if( !grb::utils::equals( entry.second, one[ entry.first ], maxAccumOne ) ) {
 			std::cerr << "\t entry ( " << entry.first << ", " << entry.second << " ) "
-				<< "does not equal expected value " << one[ entry.first ] << " in step one\n";
+				<< "does not equal expected value " << one[ entry.first ]
+				<< " in step one\n";
 			rc = FAILED;
 		}
 	}
@@ -229,7 +236,8 @@ void grb_program( const Input & in, grb::RC & rc ) {
 #endif
 		if( !grb::utils::equals( entry.second, three[ entry.first ], maxAccumThree ) ) {
 			std::cerr << "\t entry ( " << entry.first << ", " << entry.second << " ) "
-				<< "does not equal expected value " << three[ entry.first ] << " in step 3\n";
+				<< "does not equal expected value " << three[ entry.first ]
+				<< " in step 3\n";
 			rc = FAILED;
 		}
 	}
@@ -259,8 +267,10 @@ void grb_program( const Input & in, grb::RC & rc ) {
 #endif
 		if( ! grb::utils::equals( entry.second, four[ entry.first ], maxAccumFour ) ) {
 			std::cerr << "\t entry ( " << entry.first << ", " << entry.second << " ) "
-				<< "does not equal expected value " << four[ entry.first ] << " in step 4\n";
-			std::cerr << "\t\t number of epsilons applied is " << ( 2 * maxAccumFour ) << "\n";
+				<< "does not equal expected value " << four[ entry.first ]
+				<< " in step 4\n";
+			std::cerr << "\t\t number of epsilons applied is " << ( 2 * maxAccumFour )
+				<< "\n";
 			rc = FAILED;
 		}
 	}
@@ -285,8 +295,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( argc > 1 ) {
 		if( strlen( argv[ 1 ] ) > MAX_FN_LENGTH ) {
-			std::cerr << "Given file name too long (please use a shorter path "
-						 "or increase MAX_FN_LENGTH)\n";
+			std::cerr << "Given file name too long (please use a shorter path or "
+				<< "increase MAX_FN_LENGTH)\n";
 			printUsage = true;
 		}
 	}
@@ -310,16 +320,19 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
+	grb::RC out = SUCCESS;
 	(void)strncpy( in.filename, argv[ 1 ], MAX_FN_LENGTH );
 	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (launcher error)" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
-	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		return 255;
 	}
+	std::cout << "Test OK" << std::endl;
 	return 0;
 }
+

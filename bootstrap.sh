@@ -16,6 +16,8 @@
 # limitations under the License.
 #
 
+GRB_NAME='ALP/GraphBLAS'
+
 check_cmd() {
 	cmd_path=$(command -v "${1}")
 	if [[ -z "${cmd_path}" ]]; then
@@ -60,8 +62,8 @@ validate_command_result() {
 }
 
 print_help() {
-	echo "Usage: ./configure --prefix=<path> [--with-lpf[=<path>]]\
- [--with-banshee=<path>] [--with-snitch=<path>] [--no-reference] [--debug-build] [--generator=<value>] [--show]"
+	echo "Usage: $0 --prefix=<path> [--with-lpf[=<path>]]\
+ [--with-banshee=<path>] [--with-snitch=<path>] [--no-reference] [--debug-build] [--generator=<value>] [--show] [--delete-files]"
 	echo " "
 	echo "Required arguments:"
 	echo "  --prefix=<path/to/install/directory/>"
@@ -75,14 +77,16 @@ the location where LPF is installed"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
+	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
+	echo "  --help                              - prints this help"
 	echo " "
 	echo "Notes:"
 	echo "  - If the install directory does not exist, it will be created."
 	echo "  - The --prefix path is mandatory. No make targets will execute"
 	echo "    without configuring this path first."
-	echo "  - This ./configure script is re-entrant and will simply overwrite"
+	echo "  - This $0 script is re-entrant and will simply overwrite"
 	echo "    *all* previous setting, but will not clean up anything. For best"
-	echo "    results, execute ./configure only once on a clean source directory."
+	echo "    results, execute $0 only once on a clean source directory."
 }
 
 reference=yes
@@ -95,6 +99,7 @@ BANSHEE_PATH=
 SNITCH_PATH=
 debug_build=no
 generator=
+delete_files=no
 
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
@@ -150,6 +155,9 @@ or assume default paths (--with-lpf)"
 	--show)
 			show=yes
 			;;
+	--delete-files) # useful for scripts
+			delete_files=yes
+			;;
 	*)
 			echo "Unknown argument ${arg}"
 			exit 1
@@ -178,7 +186,7 @@ parent_dir_relative=$(dirname "${prefix}")
 PARENT_DIR="$(realpath -e -q "${parent_dir_relative}")"
 validate_command_result "$?" "Parent directory path '${parent_dir_relative}' for --prefix \
 does not exist: please create it before invocation"
-BASENAME=`basename "${prefix}"`
+BASENAME=$(basename "${prefix}")
 ABSOLUTE_PREFIX="${PARENT_DIR}/${BASENAME}"
 if [[ ! -d "${ABSOLUTE_PREFIX}" ]]; then
 	echo "Warning: install directory will be created when output is written there \
@@ -216,23 +224,51 @@ please provide the path to the Banshee toolchain via --with-banshee=</path/to/ba
 please provide the path to the Snitch toolchain via --with-snitch=</path/to/snitch>"
 fi
 
-# CONFIGURE BUILDING INFRASTRUCTURE
 CURRENT_DIR="$(pwd)"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]];then
+# CONFIGURE CMAKE BUILDING INFRASTRUCTURE
+if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]]; then
+	BUILD_DIR="${CURRENT_DIR}"
+
 	printf "Checking for cmake..."
 	check_cmd "cmake"
+	echo
+	# if show==yes, do not check for in-source build or for existing files
+	# but proceed to finally show the build command
+	if [[ "${show}" == "no" ]]; then
 
-	BUILD_DIR="${CURRENT_DIR}/build"
-	if [[ -d "${BUILD_DIR}" && "${show}" = "no" ]]; then
+		if [[ "${BUILD_DIR}" == "${SCRIPT_DIR}" ]]; then
+			echo "You should not build ${GRB_NAME} inside its source directory \"${SCRIPT_DIR}\""
+			echo "Please, create a new directory anywhere, move into it and invoke this script from there"
+			echo -e "Example:\n  mkdir build\n  cd build\n  ../$(basename "$0") $@"
+			echo
+			exit -1
+		fi
+
+		files=$(ls "${BUILD_DIR}")
+		# if there are files, ask the user to delete them, unless --delete-files was given
+		if [[ ! -z "${files}" ]]; then
+
+			if [[ "${delete_files}" != "yes" ]]; then
+				read -p "The current directory \"${BUILD_DIR}\" is not empty: do you agree \
+on deleting its content [yes/No] " -r REPLY
+			else
+				REPLY="yes"
+			fi
+			if [[ "${REPLY}" != "yes" ]]; then
+				echo "You answered \"${REPLY}\", so configuration cannot proceed: you should empty \
+the current directory before invocation or confirm the deletion of its content with \"yes\""
+				echo
+				exit -1
+			fi
+			echo "Deleting the content of \"${BUILD_DIR}\"..."
+			rm -rf "'${BUILD_DIR}'/*"
+			echo
+		fi
+		echo "*** CONFIGURING CMake inside \"${BUILD_DIR}\" ***"
 		echo
-		echo "${BUILD_DIR} already exists: please, remove it to generate a new CMake build"
-		echo
-		exit -1
 	fi
-	echo
-	echo "*** CONFIGURING CMake inside ${BUILD_DIR} ***"
-	echo
 
 	CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX='${ABSOLUTE_PREFIX}'"
 
@@ -259,51 +295,48 @@ if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]];then
 		CMAKE_OPTS+=" -G '${generator}'"
 	fi
 
-	CONFIG_COMMAND="cd ${BUILD_DIR} && cmake ${CMAKE_OPTS} ../"
-	echo
-	if [[ "${show}" = "yes" ]]; then
+	CONFIG_COMMAND="cmake ${CMAKE_OPTS} ${SCRIPT_DIR}/"
+	if [[ "${show}" == "yes" ]]; then
 		echo "Configuration command:"
 		echo "${CONFIG_COMMAND}"
 	else
-		mkdir "${BUILD_DIR}"
 		bash -c "${CONFIG_COMMAND}"
 		if [[ $? -ne 0 ]]; then
 			echo "Error during generation of the CMake infrastructure"
 			echo
 			exit -1
 		fi
-		echo "*** you can build GraphBLAS inside ${BUILD_DIR} ***"
+		echo
+		echo "*** you can build ${GRB_NAME} inside \"${BUILD_DIR}\" ***"
 	fi
-	echo
 fi
 
 if [[ "${banshee}" == "yes" ]]; then
 	echo
 	echo "************************* WARNING *************************"
-	echo "You have selected the Banshee backend, which uses Makefile"
-	echo "to build and may lag behind other ALP/GraphBLAS backends"
+	echo "You have selected the _Banshee_ backend, which uses dedicated"
+	echo "Makefile to build and is considered experimental"
 	echo
-	echo "*** CONFIGURING Makefile inside ${CURRENT_DIR} ***"
+	echo "*** CONFIGURING Makefile inside ${SCRIPT_DIR} ***"
 
-	if [[ "${show}" = "yes" ]]; then
+	if [[ "${show}" == "yes" ]]; then
 		echo
 		echo "paths.mk contents:"
 		echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}"
 		echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}"
 		echo "BANSHEE_PATH=${ABSOLUTE_BANSHEE_PATH}"
 		echo "SNITCH_PATH=${ABSOLUTE_SNITCH_PATH}"
-		echo
 	else
-		echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}" > paths.mk
-		echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}" >> paths.mk
-		echo "BANSHEE_PATH=${ABSOLUTE_BANSHEE_PATH}" >> paths.mk
-		echo "SNITCH_PATH=${ABSOLUTE_SNITCH_PATH}" >> paths.mk
+		echo "GRB_INSTALL_PATH=${ABSOLUTE_PREFIX}" > "${SCRIPT_DIR}"/paths.mk
+		echo "LPF_INSTALL_PATH=${ABSOLUTE_LPF_INSTALL_PATH}" >> "${SCRIPT_DIR}"/paths.mk
+		echo "BANSHEE_PATH=${ABSOLUTE_BANSHEE_PATH}" >> "${SCRIPT_DIR}"/paths.mk
+		echo "SNITCH_PATH=${ABSOLUTE_SNITCH_PATH}" >> "${SCRIPT_DIR}"/paths.mk
 
 		echo
-		echo "*** you can build GraphBLAS here ***"
-		echo
+		echo "*** you can build ${GRB_NAME} - _Banshee_ in \"${SCRIPT_DIR}\" ***"
 	fi
 fi
 
+echo
 echo "Configure done."
 

@@ -78,7 +78,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		rc = grb::outer( M, u, v, ring.getMultiplicativeOperator(), SYMBOLIC );
+		rc = grb::outer( M, u, v, ring.getMultiplicativeOperator(), RESIZE );
 		rc = rc ? rc : grb::outer( M, u, v, ring.getMultiplicativeOperator() );
 	}
 	if( rc != grb::SUCCESS ) {
@@ -94,7 +94,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		const double * test1_iter = &( test1_in[ 0 ] );
+		const double * const test1_iter = &( test1_in[ 0 ] );
 		rc = grb::buildVector( test1, test1_iter, test1_iter + 3, SEQUENTIAL );
 		if( rc == grb::SUCCESS ) {
 			rc = grb::vxm( out1, test1, M, ring );
@@ -126,7 +126,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		const double * test2_iter = &( test2_in[ 0 ] );
+		const double * const test2_iter = &( test2_in[ 0 ] );
 		rc = grb::buildVector( test2, test2_iter, test2_iter + 3, SEQUENTIAL );
 		if( rc == grb::SUCCESS ) {
 			rc = grb::vxm< grb::descriptors::transpose_matrix >( out2, test2, M, ring );
@@ -164,7 +164,7 @@ int main( int argc, char ** argv ) {
 
 	int error;
 	grb::Launcher< AUTOMATIC > launcher;
-	if( launcher.exec( &grbProgram, NULL, 0, error ) != SUCCESS ) {
+	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
 		std::cerr << "Test failed to launch\n";
 		error = 255;
 	}

@@ -60,9 +60,12 @@ namespace grb {
 			// sanity check on type parameter
 			static_assert( std::is_integral< ValueType >::value,
 				"Template parameter ``ValueType'' to grb::utils::IndexedMap should "
-				"be of integral type." );
+				"be of integral type."
+			);
+
 
 		private:
+
 			/** Distributed word map. */
 			std::map< KeyType, ValueType > key2id;
 
@@ -78,7 +81,9 @@ namespace grb {
 			/** Disable default constructor. */
 			IndexedMap() {};
 
+
 		public:
+
 			/**
 			 * Various IO modes this Indexed Map can operate in.
 			 *
@@ -106,15 +111,17 @@ namespace grb {
 			 * A call to this constructor is collective across all user processes
 			 * executing the same program.
 			 */
-			IndexedMap( const std::string filename, const Mode mode, const bool store_inv = false, const size_t root_pid = 0 ) : inverse( store_inv ) {
+			IndexedMap( const std::string filename,
+				const Mode mode,
+				const bool store_inv = false, const size_t root_pid = 0
+			) : inverse( store_inv ) {
 				// get SPMD info
 				const size_t my_id = grb::spmd<>::pid();
 				const size_t P = grb::spmd<>::nprocs();
 				if( mode == SEQUENTIAL ) {
 					if( root_pid > P ) {
-						throw std::invalid_argument( "root PID must be in "
-													 "range of current number "
-													 "of user processes" );
+						throw std::invalid_argument( "root PID must be in range of current "
+							<< "number of user processes" );
 					}
 					root = root_pid;
 					if( root != my_id ) {
@@ -134,7 +141,8 @@ namespace grb {
 				while( input >> temp ) {
 					const auto it = key2id.find( temp );
 					if( it != key2id.end() ) {
-						std::cerr << "Warning: double-defined key found: " << temp << ". Ignoring it.\n";
+						std::cerr << "Warning: double-defined key found: " << temp
+							<< ". Ignoring it.\n";
 					} else {
 						key2id[ temp ] = counter++;
 						if( inverse ) {
@@ -150,7 +158,8 @@ namespace grb {
 			 * Translates a key to an index.
 			 *
 			 * @param[in] query The key to find.
-			 * @return If the key is found in this map, its corresponding index. Otherwise, the maximum representable index is returned instead.
+			 * @return If the key is found in this map, its corresponding index.
+			 *         Otherwise, the maximum representable index is returned instead.
 			 */
 			ValueType getIndex( const KeyType query ) const noexcept {
 				const auto it = key2id.find( query );
@@ -165,7 +174,8 @@ namespace grb {
 			 * Translates an index to a key. This is the inverse function of #getIndex.
 			 *
 			 * @param[in] query Which key to return.
-			 * @return The requested key, if this instance stores the inverse mapping and the \a query is within the valid range.
+			 * @return The requested key, if this instance stores the inverse mapping and
+			 *         the \a query is within the valid range.
 			 *
 			 * @see size()
 			 */
@@ -191,6 +201,8 @@ namespace grb {
 		}; // end class IndexedMap
 
 	} // end namespace utils
+
 } // end namespace grb
 
 #endif // end flag ``_H_GRB_UTILS_INDEXEDMAP''
+

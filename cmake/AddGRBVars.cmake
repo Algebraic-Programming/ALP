@@ -45,12 +45,11 @@ set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
 set( REFERENCE_OMP_SELECTION_DEFS "_GRB_BACKEND=reference_omp" )
 set( BSP1D_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
-		"_GRB_COORDINATES_BACKEND=reference"
+		"_GRB_BSP1D_BACKEND=reference"
 )
 set( HYBRID_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference_omp"
-		"_GRB_COORDINATES_BACKEND=reference_omp"
 )
 
 # definition to set if not depending on libnuma
@@ -85,3 +84,4 @@ if( WITH_HYBRID_BACKEND )
 endif()
 
 # add your own here!
+

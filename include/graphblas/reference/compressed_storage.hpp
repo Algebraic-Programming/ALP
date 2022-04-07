@@ -63,7 +63,9 @@ namespace grb {
 				col_start = nullptr;
 			}
 
+
 		public:
+
 			/** The value array. */
 			D * __restrict__ values;
 
@@ -72,6 +74,7 @@ namespace grb {
 
 			/** The column start indices. */
 			SIZE * __restrict__ col_start;
+
 
 		private:
 
@@ -82,6 +85,7 @@ namespace grb {
 				values = other.values;
 				other.clear();
 			}
+
 
 		public:
 
@@ -120,16 +124,25 @@ namespace grb {
 				/** Current nonzero. */
 				std::pair< std::pair< size_t, size_t >, D > nonzero;
 
+
 			public:
+
 				/** Base constructor. */
-				ConstIterator() noexcept : values( NULL ), row_index( NULL ), col_start( NULL ), k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 ) {
+				ConstIterator() noexcept : values( nullptr ),
+					row_index( nullptr ), col_start( nullptr ),
+					k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 )
+				{
 					nonzero.first.first = 1;
 					nonzero.first.second = 1;
 				}
 
 				/** Copy constructor. */
 				ConstIterator( const ConstIterator & other ) noexcept :
-					values( other.values ), row_index( other.row_index ), col_start( other.col_start ), k( other.k ), m( other.m ), n( other.n ), row( other.row ), s( other.s ), P( other.P ) {}
+					values( other.values ),
+					row_index( other.row_index ), col_start( other.col_start ),
+					k( other.k ), m( other.m ), n( other.n ),
+					row( other.row ), s( other.s ), P( other.P )
+				{}
 
 				/** Move constructor. */
 				ConstIterator( ConstIterator && other ) {
@@ -145,12 +158,20 @@ namespace grb {
 				}
 
 				/** Non-trivial constructor. */
-				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const size_t _nz, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
-					values( _storage.values ), row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ), m( _m ), n( _n ), s( _s ), P( _P ) {
+				ConstIterator(
+					const Compressed_Storage &_storage,
+					const size_t _m, const size_t _n, const size_t _nz,
+					const bool end, const size_t _s = 0, const size_t _P = 1
+				) noexcept :
+					values( _storage.values ),
+					row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ),
+					m( _m ), n( _n ),
+					s( _s ), P( _P )
+				{
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "constructor called, with storage "
-							  << ( &_storage ) << ", m " << _m << ", n " << _n << ", and end " << end << ".\n";
+					std::cout << "Compressed_Storage::Const_Iterator constructor called, "
+						<< "with storage " << ( &_storage ) << ", "
+						<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
 #endif
 					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 						row = m;
@@ -166,7 +187,9 @@ namespace grb {
 
 					if( row < m ) {
 #ifdef _DEBUG
-						std::cout << "\tInitial pair, pre-translated at " << row << ", " << row_index[ k ] << " with value " << values[ k ] << ". P = " << P << ", row = " << row << ".\n";
+						std::cout << "\tInitial pair, pre-translated at " << row << ", "
+							<< row_index[ k ] << " with value " << values[ k ] << ". "
+							<< "P = " << P << ", row = " << row << ".\n";
 #endif
 						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
@@ -174,13 +197,15 @@ namespace grb {
 						nonzero.first.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
 						nonzero.second = values[ k ];
 #ifdef _DEBUG
-						std::cout << "\tInitial pair at " << nonzero.first.first << ", " << nonzero.first.second << " with value " << nonzero.second << ". P = " << P << ", row = " << row << ".\n";
+						std::cout << "\tInitial pair at " << nonzero.first.first << ", "
+							<< nonzero.first.second << " with value " << nonzero.second << ". "
+							<< "P = " << P << ", row = " << row << ".\n";
 #endif
 					}
 				}
 
 				/** Copy assignment. */
-				ConstIterator & operator=( const ConstIterator & other ) noexcept {
+				ConstIterator & operator=( const ConstIterator &other ) noexcept {
 					values = other.values;
 					row_index = other.row_index;
 					col_start = other.col_start;
@@ -193,7 +218,7 @@ namespace grb {
 				}
 
 				/** Move assignment. */
-				ConstIterator & operator=( ConstIterator && other ) {
+				ConstIterator & operator=( ConstIterator &&other ) {
 					values = std::move( other.values );
 					row_index = std::move( other.row_index );
 					col_start = std::move( other.col_start );
@@ -206,11 +231,11 @@ namespace grb {
 				}
 
 				/** Whether two iterators compare equal. */
-				bool operator==( const ConstIterator & other ) const noexcept {
+				bool operator==( const ConstIterator &other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "operator== called with k ( "
-							  << k << ", " << other.k << " ), m ( " << m << ", " << other.m << " )\n";
+					std::cout << "Compressed_Storage::Const_Iterator operator== called "
+						<< "with k ( " << k << ", " << other.k << " ), "
+						<< " m ( " << m << ", " << other.m << " )\n";
 #endif
 					assert( values == other.values );
 					assert( row_index == other.row_index );
@@ -234,9 +259,10 @@ namespace grb {
 				/** Whether two iterators do not compare equal. */
 				bool operator!=( const ConstIterator & other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator "
-								 "operator!= called with k ( "
-							  << k << ", " << other.k << " ), row ( " << row << ", " << other.row << " ), m ( " << m << ", " << other.m << " )\n";
+					std::cout << "Compressed_Storage::Const_Iterator operator!= called "
+						<< "with k ( " << k << ", " << other.k << " ), "
+						<< "row ( " << row << ", " << other.row << " ), "
+						<< "m ( " << m << ", " << other.m << " )\n";
 #endif
 					assert( values == other.values );
 					assert( row_index == other.row_index );
@@ -271,42 +297,61 @@ namespace grb {
 					}
 					if( row < m ) {
 #ifdef _DEBUG
-						std::cout << "\tupdated triple, pre-translated at ( " << row << ", " << row_index[ k ] << " ): " << values[ k ] << "\n";
+						std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
+							<< row_index[ k ] << " ): " << values[ k ] << "\n";
 #endif
-						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
+						const size_t col_pid = ActiveDistribution::offset_to_pid(
+							row_index[ k ], n, P
+						);
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
 						assert( col_off <= row_index[ k ] );
-						nonzero.first.first = ActiveDistribution::local_index_to_global( row, m, s, P );
-						nonzero.first.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
+						nonzero.first.first = ActiveDistribution::local_index_to_global(
+							row, m, s, P
+						);
+						nonzero.first.second = ActiveDistribution::local_index_to_global(
+							row_index[ k ] - col_off, n, col_pid, P
+						);
 						nonzero.second = values[ k ];
 #ifdef _DEBUG
-						std::cout << "\tupdated triple at ( " << nonzero.first.first << ", " << nonzero.first.second << " ): " << nonzero.second << "\n";
+						std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
+							<< nonzero.first.second << " ): " << nonzero.second << "\n";
 #endif
 					}
 					return *this;
 				}
 
 				/** Return a const-reference to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > & operator*() const noexcept {
+				const std::pair< std::pair< size_t, size_t >, D > &
+				operator*() const noexcept {
 					assert( row < m );
 					return nonzero;
 				}
 
 				/** Return a pointer to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > * operator->() const noexcept {
+				const std::pair< std::pair< size_t, size_t >, D > *
+				operator->() const noexcept {
 					assert( row < m );
 					return &nonzero;
 				}
 			};
 
 			/** Base constructor (NULL-initialiser). */
-			Compressed_Storage() : values( NULL ), row_index( NULL ), col_start( NULL ) {}
+			Compressed_Storage() : values( nullptr ),
+				row_index( nullptr ), col_start( nullptr )
+			{}
 
 			/** Non-shallow copy constructor. */
-			explicit Compressed_Storage( const Compressed_Storage< D, IND, SIZE > & other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {}
+			explicit Compressed_Storage(
+				const Compressed_Storage< D, IND, SIZE > &other
+			) : values( other.values ),
+				row_index( other.row_index ), col_start( other.col_start )
+			{}
 
 			/** Move constructor. */
-			Compressed_Storage( Compressed_Storage< D, IND, SIZE > &&other ) : values( other.values ), row_index( other.row_index ), col_start( other.col_start ) {
+			Compressed_Storage( Compressed_Storage< D, IND, SIZE > &&other ) :
+				values( other.values ),
+				row_index( other.row_index ), col_start( other.col_start )
+			{
 				moveFromOther( other );
 			}
 
@@ -344,7 +389,17 @@ namespace grb {
 			}
 
 			/**
-			 * Gets the current raw pointers of the resizable arrays that are being used by this instance.
+			 * @returns Const-version of the offset array.
+			 *
+			 * \warning Does not check for <tt>NULL</tt> pointers.
+			 */
+			const SIZE * getOffsets() const noexcept {
+				return col_start;
+			}
+
+			/**
+			 * Gets the current raw pointers of the resizable arrays that are being used
+			 * by this instance.
 			 */
 			void getPointers( void ** pointers ) {
 				*pointers++ = values;
@@ -404,8 +459,16 @@ namespace grb {
 			 * disjoint ranges \a start and \a end. The copy is guaranteed to be
 			 * complete if the union of ranges spans 0 to 2nz + m + 1.
 			 */
-			template< bool use_id = false, typename InputType, typename ValueType = char >
-			void copyFrom( const Compressed_Storage< InputType, IND, SIZE > & other, const size_t nz, const size_t m, const size_t start, size_t end, const ValueType * __restrict__ id = NULL ) {
+			template<
+				bool use_id = false,
+				typename InputType, typename ValueType = char
+			>
+			void copyFrom(
+				const Compressed_Storage< InputType, IND, SIZE > &other,
+				const size_t nz, const size_t m,
+				const size_t start, size_t end,
+				const ValueType * __restrict__ id = nullptr
+			) {
 #ifdef _DEBUG
 				std::cout << "CompressedStorage::copyFrom (cast) called with "
 							 "range "
@@ -440,7 +503,10 @@ namespace grb {
 				if( k < nz ) {
 					const size_t loop_end = std::min( nz, end );
 					assert( k <= loop_end );
-					(void)std::memcpy( row_index + k, other.row_index + k, ( loop_end - k ) * sizeof( IND ) );
+					(void)std::memcpy( row_index + k,
+						other.row_index + k,
+						(loop_end - k) * sizeof( IND )
+					);
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -453,17 +519,24 @@ namespace grb {
 				if( k < m + 1 ) {
 					const size_t loop_end = std::min( m + 1, end );
 					assert( k <= loop_end );
-					(void)std::memcpy( col_start + k, other.col_start + k, ( loop_end - k ) * sizeof( SIZE ) );
+					(void)std::memcpy( col_start + k,
+						other.col_start + k,
+						(loop_end - k) * sizeof( SIZE )
+					);
 				}
 			}
 
 			/** \internal Specialisation for no cast copy */
 			template< bool use_id = false >
-			void copyFrom( const Compressed_Storage< D, IND, SIZE > & other, const size_t nz, const size_t m, const size_t start, size_t end, const D * __restrict__ id = NULL ) {
+			void copyFrom(
+				const Compressed_Storage< D, IND, SIZE > &other,
+				const size_t nz, const size_t m,
+				const size_t start, size_t end,
+				const D * __restrict__ id = nullptr
+			) {
 #ifdef _DEBUG
-				std::cout << "CompressedStorage::copyFrom (no-cast) called "
-							 "with range "
-						  << start << "--" << end;
+				std::cout << "CompressedStorage::copyFrom (no-cast) called with range "
+					<< start << "--" << end;
 				if( use_id ) {
 					std::cout << ". The identity " << (*id) << " will be used.\n";
 				} else {
@@ -480,7 +553,14 @@ namespace grb {
 					if( use_id ) {
 						std::fill( values + k, values + loop_end, *id );
 					} else {
-						(void)std::memcpy( values + k, other.values + k, ( loop_end - k ) * sizeof( D ) );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS // by the ALP spec, D can only be POD
+							                        // types. In this case raw memory copies
+										// are OK.
+						(void)std::memcpy( values + k,
+							other.values + k,
+							(loop_end - k) * sizeof( D )
+						);
+						GRB_UTIL_RESTORE_WARNINGS
 					}
 					k = 0;
 				} else {
@@ -497,7 +577,10 @@ namespace grb {
 					std::cout << "\t index range " << k << " -- " << loop_end << "\n";
 #endif
 					assert( k <= loop_end );
-					(void)std::memcpy( row_index + k, other.row_index + k, ( loop_end - k ) * sizeof( IND ) );
+					(void)std::memcpy( row_index + k,
+						other.row_index + k,
+						(loop_end - k) * sizeof( IND )
+					);
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -513,7 +596,10 @@ namespace grb {
 					std::cout << "\t start range " << k << " -- " << loop_end << "\n";
 #endif
 					assert( k <= loop_end );
-					(void)std::memcpy( col_start + k, other.col_start + k, ( loop_end - k ) * sizeof( SIZE ) );
+					(void)std::memcpy( col_start + k,
+						other.col_start + k,
+						(loop_end - k) * sizeof( SIZE )
+					);
 #ifndef NDEBUG
 					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 						assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -588,6 +674,21 @@ namespace grb {
 			inline const ReturnType getValue( const size_t k, const ReturnType & ) const noexcept {
 				return static_cast< ReturnType >( values[ k ] );
 			}
+
+#ifdef _DEBUG
+			/**
+			 * For _DEBUG tracing, define a function that prints the value to a string.
+			 *
+			 * @param[in] k The index of the value to print.
+			 *
+			 * @returns A pretty-printed version of the requested value.
+			 */
+			inline std::string getPrintValue( const size_t k ) const noexcept {
+				std::ostringstream oss;
+				oss << "values[ " << k << " ] = " << values[ k ];
+				return oss.str();
+			}
+#endif
 
 			/**
 			 * Helper function to set a nonzero value. Only records the value itself,
@@ -876,6 +977,15 @@ namespace grb {
 			}
 
 			/**
+			 * @returns Const-version of the offset array.
+			 *
+			 * \warning Does not check for <tt>NULL</tt> pointers.
+			 */
+			const SIZE * getOffsets() const noexcept {
+				return col_start;
+			}
+
+			/**
 			 * Gets the current raw pointers of the resizable arrays that are being used by this instance.
 			 */
 			void getPointers( void ** pointers ) {
@@ -1007,9 +1117,20 @@ namespace grb {
 			 *         Semiring::getOne function.
 			 */
 			template< typename ReturnType >
-			inline const ReturnType getValue( const size_t, const ReturnType & identity ) const noexcept {
+			inline const ReturnType getValue( const size_t, const ReturnType &identity ) const noexcept {
 				return identity;
 			}
+
+#ifdef _DEBUG
+			/**
+			 * For _DEBUG tracing, define a function that prints the value to a string.
+			 *
+			 * @returns A pretty-printed version of the requested value.
+			 */
+			inline std::string getPrintValue( const size_t ) const noexcept {
+				return "\"1\"";
+			}
+#endif
 
 			/**
 			 * Specialisation for void matrices: function translates to no-op.
@@ -1026,3 +1147,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end `_H_GRB_REFERENCE_COMPRESSED_STORAGE'
+

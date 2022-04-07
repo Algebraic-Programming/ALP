@@ -33,6 +33,7 @@
 
 #define MAX_LEN 1000
 
+
 using namespace grb;
 using namespace algorithms;
 
@@ -55,7 +56,7 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
-void grbProgram( const struct input & data_in, struct output & out ) {
+void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
 	const size_t s = spmd<>::pid();
@@ -71,8 +72,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	char weights_path[ MAX_LEN + 1 ];
 	if( strlen( data_in.dataset_path ) + strlen( "/WEIGHTS-HPEC" ) > MAX_LEN ) {
 		std::cerr << "Failure: given dataset path is too long (please use a "
-					 "shorter dataset path)"
-				  << std::endl;
+			"shorter dataset path)" << std::endl;
 		return;
 	}
 	strcpy( weights_path, data_in.dataset_path );
@@ -81,8 +81,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	char input_vector_path[ MAX_LEN + 1 ];
 	if( strlen( data_in.dataset_path ) + strlen( "/MNIST-HPEC" ) > MAX_LEN ) {
 		std::cerr << "Failure: given dataset path is too long (please use a "
-					 "shorter dataset path)"
-				  << std::endl;
+			<< "shorter dataset path)" << std::endl;
 		return;
 	}
 	strcpy( input_vector_path, data_in.dataset_path );
@@ -122,14 +121,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 		// get the names of the input files for all layers correct
 		std::ostringstream oss;
-		oss << weights_path << "/neuron" << data_in.neurons << "/n" << data_in.neurons << "-l" << i + 1 << ".mtx";
+		oss << weights_path << "/neuron" << data_in.neurons << "/n"
+			<< data_in.neurons << "-l" << i + 1 << ".mtx";
 		std::string filename = oss.str();
 
 		// create local parser
 		grb::utils::MatrixFileReader< double,
 			std::conditional<
-				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
-				grb::config::RowIndexType, grb::config::ColIndexType
+				(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+				grb::config::RowIndexType,
+				grb::config::ColIndexType
 			>::type
 		> parser( filename.c_str(), data_in.direct );
 		assert( parser.m() == parser.n() );
@@ -140,8 +141,15 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		L.push_back( grb::Matrix< double >( n, n ) );
 
 		{
-			const RC rc = buildMatrixUnique( L[ i ], parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
-			//			const RC rc = buildMatrixUnique( L[ i ], parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
+			const RC rc = buildMatrixUnique( L[ i ],
+				parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+				SEQUENTIAL
+			);
+			// See internal issue #342 for re-enabling the below
+			//const RC rc = buildMatrixUnique( L[ i ],
+			//	parser.begin( PARALLEL ), parser.end( PARALLEL),
+			//	PARALLEL
+			//);
 			if( rc != SUCCESS ) {
 				std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
 					<< toString( rc ) << ")." << std::endl;
@@ -154,7 +162,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 			const size_t global_nnz = nnz( L[ i ] );
 			const size_t parser_nnz = parser.nz();
 			if( global_nnz != parser_nnz ) {
-				std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal parser nnz (" << parser_nnz << ")." << std::endl;
+				std::cerr << "Failure: global nnz (" << global_nnz
+					<< ") does not equal parser nnz "
+					<< "(" << parser_nnz << ")." << std::endl;
 				return;
 			}
 		} catch( const std::runtime_error & ) {
@@ -167,32 +177,49 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// get the name of the input files for the vector correct
 	std::ostringstream oss;
-	oss << input_vector_path << "/test" << data_in.neurons << "/sparse-images-" << data_in.neurons << "_" << data_in.input_vector_offset << ".mtx";
+	oss << input_vector_path << "/test" << data_in.neurons << "/sparse-images-"
+		<< data_in.neurons << "_" << data_in.input_vector_offset << ".mtx";
 	std::string vector_filename = oss.str();
 
 	// create local parser
 	grb::utils::MatrixFileReader< double,
-		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parser( vector_filename, data_in.direct );
+		std::conditional<
+			( sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
+	> parser( vector_filename, data_in.direct );
 	assert( data_in.neurons == parser.n() );
 	n = parser.n();
 
 	// load into GraphBLAS
 	grb::Matrix< double > Lvin( n, n );
 	{
-		const RC rc = buildMatrixUnique( Lvin, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
-		//		const RC rc = buildMatrixUnique( Lvin, parser.begin( PARALLEL ), parser.end( PARALLEL), PARALLEL);
+		const RC rc = buildMatrixUnique( Lvin,
+			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+			SEQUENTIAL
+		);
+		// See internal issue #342 for re-enabling the below
+		//const RC rc = buildMatrixUnique( Lvin,
+		//	parser.begin( PARALLEL ), parser.end( PARALLEL),
+		//	PARALLEL
+		//);
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
 			return;
 		}
 	}
 
 	grb::Vector< double > vout( n ), vin( n ), temp( n );
 
-	// that's a simple way to get the input vector by reading it as a matrix using the existing
-	// parser and then apply the vxm operation on the matrix and on a vector of ones
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > realRing;
+	// this a simple way to get the input vector by reading it as a matrix using
+	// the existing parser and then apply the vxm operation on the matrix and on a
+	// vector of ones
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> realRing;
 
 	RC rc = SUCCESS;
 
@@ -213,13 +240,22 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 		if( data_in.thresholded ) {
-			rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.threshold, data_in.layers, temp );
+			rc = sparse_nn_single_inference(
+				vout, vin, L,
+				biases, data_in.threshold,
+				temp
+			);
 		} else {
-			rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+			rc = sparse_nn_single_inference(
+				vout, vin, L,
+				biases,
+				temp
+			);
 		}
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to sparse_nn_single_inference did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to sparse_nn_single_inference did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == SUCCESS ) {
@@ -232,10 +268,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
 		if( rc == SUCCESS ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold sparse_nn_single_inference completed within " << out.iterations
-						  << " iterations. Last computed residual is \" << "
-							 "out.residual << \". Time taken was "
-						  << single_time << " ms. Deduced inner repetitions parameter of " << out.rep << " to take 1 second or more per inner benchmark.\n";
+				std::cout << "Info: cold sparse_nn_single_inference completed within "
+					<< out.iterations << " iterations. Time taken was "
+					<< single_time << " ms. Deduced inner repetitions parameter of "
+					<< out.rep << " to take 1 second or more per inner benchmark.\n";
 			}
 		}
 	} else {
@@ -245,9 +281,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
 				if( data_in.thresholded ) {
-					rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.threshold, data_in.layers, temp );
+					rc = sparse_nn_single_inference(
+						vout, vin, L,
+						biases, data_in.threshold,
+						temp
+					);
 				} else {
-					rc = sparse_nn_single_inference( vout, vin, L, biases, data_in.layers, temp );
+					rc = sparse_nn_single_inference(
+						vout, vin, L,
+						biases, temp
+					);
 				}
 			}
 		}
@@ -259,7 +302,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 #ifndef NDEBUG
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " Sparse Neural Network Single Inference calls (hot start): " << out.times.useful << ". Error code is " << out.error_code << std::endl;
+			std::cout << "Time taken for a " << out.rep << " Sparse Neural Network "
+				<< "Single Inference calls (hot start): " << out.times.useful << ". "
+				<< "Error code is " << out.error_code << std::endl;
 		}
 #endif
 	}
@@ -296,12 +341,16 @@ int main( int argc, char ** argv ) {
 			<< " <thresholded: 0 (false) or 1 (true)> <threshold>"
 			<< " <direct/indirect> (inner iterations) (outer iterations)"
 			<< " (verification <truth-file>)\n";
-		std::cout << "<dataset path> <neurons> <layers> <input vector offset> <thresholded: 0 (false) or 1 (true)> <threshold> and <direct/indirect> are mandatory arguments.\n";
-		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner()
+		std::cout << "<dataset path> <neurons> <layers> <input vector offset> "
+			<< "<thresholded: 0 (false) or 1 (true)> <threshold> and "
+			<< "<direct/indirect> are mandatory arguments.\n";
+		std::cout << "(inner iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::inner()
 			<< ". If set to zero, the program will select a number of "
 			<< "iterations approximately required to take at least one "
 			<< "second to complete.\n";
-		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer()
+		std::cout << "(outer iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::outer()
 			<< ". This value must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
@@ -313,7 +362,8 @@ int main( int argc, char ** argv ) {
 
 	// get the dataset path
 	if( strlen( argv[ 1 ] ) > MAX_LEN ) {
-		std::cerr << "Given dataset path is too long (please use a shorter dataset path)" << std::endl;
+		std::cerr << "Given dataset path is too long; please use a shorter dataset "
+			<< "path)" << std::endl;
 		return 1;
 	}
 	strcpy( in.dataset_path, argv[ 1 ] );
@@ -336,7 +386,8 @@ int main( int argc, char ** argv ) {
 		// if a threshold is used, read its value
 		in.threshold = atof( argv[ 6 ] );
 	} else {
-		std::cerr << "Could not parse argument " << argv[ 5 ] << " for the usage of a threshold (accepted values are 0 and 1)." << std::endl;
+		std::cerr << "Could not parse argument " << argv[ 5 ] << " for the usage of "
+			<< "a threshold (accepted values are 0 and 1)." << std::endl;
 		return 2;
 	}
 
@@ -349,11 +400,12 @@ int main( int argc, char ** argv ) {
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-	char * end = NULL;
+	char * end = nullptr;
 	if( argc >= 9 ) {
 		in.rep = strtoumax( argv[ 8 ], &end, 10 );
 		if( argv[ 8 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 8 ] << " for number of inner experiment repititions." << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 8 ] << " "
+				<< "for number of inner experiment repititions." << std::endl;
 			return 3;
 		}
 	}
@@ -363,7 +415,8 @@ int main( int argc, char ** argv ) {
 	if( argc >= 10 ) {
 		outer = strtoumax( argv[ 9 ], &end, 10 );
 		if( argv[ 9 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 9 ] << " for number of outer experiment repititions." << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 9 ] << " "
+				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
 	}
@@ -378,17 +431,21 @@ int main( int argc, char ** argv ) {
 				(void)strncpy( truth_filename, argv[ 11 ], MAX_LEN );
 				truth_filename[ MAX_LEN ] = '\0';
 			} else {
-				std::cerr << "The verification file was not provided as an argument." << std::endl;
+				std::cerr << "The verification file was not provided as an argument."
+					<< std::endl;
 				return 5;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 10 ] << "\", the optional \"verification\" argument was expected." << std::endl;
+			std::cerr << "Could not parse argument \"" << argv[ 10 ] << "\", "
+				<< "the optional \"verification\" argument was expected." << std::endl;
 			return 5;
 		}
 	}
 
-	std::cout << "Executable called with parameters: neurons = " << in.neurons << ", layers = " << in.layers << ", input vector offset = " << in.input_vector_offset
-		<< ", inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
+	std::cout << "Executable called with parameters: neurons = " << in.neurons
+		<< ", layers = " << in.layers << ", input vector offset = "
+		<< in.input_vector_offset << ", inner repititions = " << in.rep << ", "
+		<< "and outer reptitions = " << outer << std::endl;
 
 	// the output struct
 	struct output out;
@@ -404,7 +461,8 @@ int main( int argc, char ** argv ) {
 			in.rep = out.rep;
 		}
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
 			return 6;
 		}
 	}
@@ -415,41 +473,37 @@ int main( int argc, char ** argv ) {
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "benchmarker.exec returns with non-SUCCESS error code " << grb::toString( rc ) << std::endl;
+		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
 		return 8;
 	} else if( out.error_code == 0 ) {
 		std::cout << "Benchmark completed successfully.\n";
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
-	std::cout << "Size of out is " << out.pinnedVector.length() << ".\n";
-	if( out.error_code == 0 && out.pinnedVector.length() > 0 ) {
-		std::cout << "First 10 elements of out are: ( ";
-		if( out.pinnedVector.mask( 0 ) ) {
-			std::cout << out.pinnedVector[ 0 ];
-		} else {
-			std::cout << "0";
+	std::cout << "Size of out is " << out.pinnedVector.size() << ".\n";
+	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
+		std::cout << "First 10 nonzeroes of out are: ( ";
+		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
+			const auto &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			std::cout << nonzeroValue << " ";
 		}
-		for( size_t i = 1; i < out.pinnedVector.length() && i < 10; ++i ) {
-			std::cout << ", ";
-			if( out.pinnedVector.mask( i ) ) {
-				std::cout << out.pinnedVector[ i ];
-			} else {
-				std::cout << "0";
-			}
-		}
-		std::cout << " )" << std::endl;
+		std::cout << ")" << std::endl;
 	}
 
 	if( out.error_code != 0 ) {
-		std::cout << "Test FAILED.\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n";
 	} else {
 		if( verification ) {
-			out.error_code = vector_verification( out.pinnedVector, truth_filename, C1, C2 );
+			out.error_code = vector_verification(
+				out.pinnedVector, truth_filename, C1, C2
+			);
 			if( out.error_code == 0 ) {
 				std::cout << "Output vector verificaton was successful!\n";
 				std::cout << "Test OK\n";
 			} else {
+				std::cerr << std::flush;
 				std::cout << "Verification FAILED\n";
 				std::cout << "Test FAILED\n";
 			}

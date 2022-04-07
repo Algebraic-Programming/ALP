@@ -97,9 +97,7 @@ add_grb_executables( knn knn.cpp ../unit/parser.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
-add_grb_executables( hpcg hpcg_test.cpp
-	hpcg_matrix_building_utils.hpp
-	hpcg_system_building_utils.hpp
+add_grb_executables( hpcg hpcg.cpp
 
 	BACKENDS reference reference_omp bsp1d hybrid
 	ADDITIONAL_LINK_LIBRARIES test_utils
@@ -116,6 +114,11 @@ add_grb_executables( simple_pagerank simple_pagerank.cpp
 )
 
 add_grb_executables( conjugate_gradient conjugate_gradient.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( bicgstab bicgstab.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )

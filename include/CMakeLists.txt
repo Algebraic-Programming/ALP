@@ -187,3 +187,4 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
 )
 
 install( TARGETS algorithms EXPORT GraphBLASTargets )
+

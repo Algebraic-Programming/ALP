@@ -270,8 +270,8 @@ namespace grb {
 	}
 
 	/** \todo add documentation. In particular, think about the meaning with \a P > 1. */
-	template< typename InputType, typename Coords, typename length_type >
-	RC resize( Vector< InputType, banshee, Coords > & x, const length_type new_nz ) {
+	template< typename InputType, typename Coords >
+	RC resize( Vector< InputType, banshee, Coords > & x, const size_t new_nz ) {
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 			return MISMATCH;

@@ -27,68 +27,163 @@
 
 #include "matrix.hpp"
 
+
 namespace grb {
 
-	/** \internal No implementation notes: a simple delegate yields correct behaviour. */
-	template< typename IOType >
-	RC clear( grb::Matrix< IOType, BSP1D > & A ) noexcept {
-		return grb::clear( internal::getLocal( A ) );
-	}
+	namespace internal {
+
+		/**
+		 * \internal
+		 * Given an output container \a A and a local error code \a local_rc,
+		 * will check the global error state. If there was any process with an error,
+		 * one of the raised errors will be returned while making sure that \a A is
+		 * cleared.
+		 * \endinternal
+		 */
+		template< typename DataType, Backend backend >
+		RC checkGlobalErrorStateOrClear(
+			Matrix< DataType, backend > &A,
+			const RC local_rc
+		) noexcept {
+			RC global_rc = local_rc;
+			if( collectives<>::allreduce( global_rc,
+				operators::any_or< RC >() ) != SUCCESS
+			) {
+				return PANIC;
+			}
+			if( global_rc != SUCCESS && local_rc == SUCCESS ) {
+				// a remote user process failed while we did not --
+				//   we need to clear the output and return
+				if( clear( internal::getLocal( A ) ) != SUCCESS ) {
+					return PANIC;
+				}
+			}
+			return global_rc;
+		}
+
+	} // end namespace grb::internal
+
+	// we keep the definition of set here, rather than in bsp1d/io.hpp, because
+	// of the use of the above internal convenience function
 
 	/** \internal No implementation details; simply delegates */
-	template< Descriptor descr = descriptors::no_operation, typename DataType1, typename DataType2 >
-	RC set( Matrix< DataType1, BSP1D > & out, const Matrix< DataType2, BSP1D > & in ) noexcept {
-		RC ret = grb::set< descr >( internal::getLocal( out ), internal::getLocal( in ) );
-		/*(void) collectives< BSP1D >::allreduce<
-			descriptors::no_casting,
-			operators::any_or< RC >
-		>( ret );*/ // <-- WARNING: if we allow ONCE as a mode for level-3 primitives,
-		            //              we need to be wary of local allocation errors
-		return ret;
+	template< Descriptor descr = descriptors::no_operation,
+		typename DataType1, typename DataType2 >
+	RC set(
+		Matrix< DataType1, BSP1D > &out,
+		const Matrix< DataType2, BSP1D > &in,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		assert( phase != TRY );
+		RC local_rc = SUCCESS;
+		if( phase == RESIZE ) {
+			return resize( out, nnz( in ) );
+		} else {
+			local_rc = grb::set< descr >( internal::getLocal( out ),
+				internal::getLocal( in ) );
+		}
+		return internal::checkGlobalErrorStateOrClear( out, local_rc );
 	}
 
 	/** \internal Simply delegates to process-local backend. */
-	template< Descriptor descr = descriptors::no_operation, typename DataType1, typename DataType2, typename DataType3 >
-	RC set( Matrix< DataType1, BSP1D > & out, const Matrix< DataType2, BSP1D > & mask, const DataType3 & val ) noexcept {
-		RC ret = grb::set< descr >( internal::getLocal( out ), internal::getLocal( mask ), val );
-		/*(void) collectives<>::allreduce<
-			descriptors::no_casting,
-			operators::any_or< RC >
-		>( ret );*/ // <-- WARNING: if we allow ONCE as a mode for level-3 primitives,
-		            //              we need to be wary of local allocation errors
-		return ret;
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType1, typename DataType2, typename DataType3
+	>
+	RC set(
+		Matrix< DataType1, BSP1D > &out,
+		const Matrix< DataType2, BSP1D > &mask,
+		const DataType3 &val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		assert( phase != TRY );
+		RC local_rc = SUCCESS;
+		if( phase == RESIZE ) {
+			return resize( out, nnz( mask ) );
+		} else {
+			local_rc = grb::set< descr >(
+				internal::getLocal( out ), internal::getLocal( mask ), val
+			);
+		}
+		return internal::checkGlobalErrorStateOrClear( out, local_rc );
 	}
 
 	/** \internal Simply delegates to process-local backend */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class MulMonoid >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class MulMonoid
+	>
 	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
 		const Matrix< InputType1, BSP1D > &A,
 		const Matrix< InputType2, BSP1D > &B,
 		const MulMonoid &mul,
-		const PHASE phase = NUMERICAL,
+		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
-		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), mul, phase );
+		assert( phase != TRY );
+		RC local_rc = SUCCESS;
+		if( phase == RESIZE ) {
+			RC ret = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ), internal::getLocal( B ),
+				mul,
+				RESIZE
+			);
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return ret;
+			}
+		} else {
+			assert( phase == EXECUTE );
+			local_rc = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ), internal::getLocal( B ),
+				mul,
+				EXECUTE
+			);
+		}
+		return internal::checkGlobalErrorStateOrClear( C, local_rc );
 	}
 
 	/** \internal Simply delegates to process-local backend */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Operator >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		class Operator
+	>
 	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
 		const Matrix< InputType1, BSP1D > &A,
 		const Matrix< InputType2, BSP1D > &B,
 		const Operator &op,
-		const PHASE phase = NUMERICAL,
+		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value && !
 			grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
-		void >::type * const = NULL
+		void >::type * const = nullptr
 	) {
-		return eWiseApply< descr >( internal::getLocal( C ), internal::getLocal( A ), internal::getLocal( B ), op, phase );
+		assert( phase != TRY );
+		RC ret = eWiseApply< descr >(
+			internal::getLocal( C ),
+			internal::getLocal( A ), internal::getLocal( B ),
+			op,
+			phase
+		);
+		if( phase == RESIZE ) {
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return SUCCESS;
+			}
+		}
+		assert( phase == EXECUTE );
+		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
 } // namespace grb

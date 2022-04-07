@@ -136,7 +136,7 @@ libs: ${LIBRARIES}
 all: tests libs
 
 paths.mk:
-	@echo 'Error: please execute `./configure --prefix=/path/to/install directory'"'"' first or issue `./configure --help'"'"' for details.' && false
+	@echo 'Error: please execute `./bootstrap.sh --prefix=/path/to/install directory'"'"' first or issue `./bootstrap.sh --help'"'"' for details.' && false
 
 install: $(INSTALL_TARGETS) ${GRB_INSTALL_PATH}/bin/setenv ${GRB_INSTALL_PATH}/bin/grbcxx ${GRB_INSTALL_PATH}/bin/grbrun
 

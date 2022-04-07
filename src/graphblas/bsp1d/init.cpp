@@ -62,8 +62,26 @@ grb::RC grb::init< grb::BSP1D >(
 
 template<>
 grb::RC grb::finalize< grb::BSP1D >() {
-	// try to retrieve local data and destroy it
+	// retrieve local data
 	grb::internal::BSP1D_Data &data = grb::internal::grb_BSP1D.load();
+	// use it to print info
+	const size_t s = data.s;
+	if( s == 0 ) {
+		std::cerr << "Info: grb::finalize (bsp1d) called.\n";
+	}
+#ifndef NDEBUG
+	for( size_t k = 0; k < data.P; ++k ) {
+		if( k == s ) {
+			std::cerr << "\t process " << s << " is finalising\n";
+		}
+		if( lpf_sync( data.context, LPF_SYNC_DEFAULT )
+			!= LPF_SUCCESS
+		) {
+			std::cerr << "\t process " << s << " failed to sync\n";
+		}
+	}
+#endif
+	// and then destroy it
 	const grb::RC ret1 = data.destroy();
 	// even if destroying local data failed, still try to destroy backend
 	const grb::RC ret2 = finalize< _GRB_BSP1D_BACKEND >();
@@ -86,9 +104,16 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context,
 	return initialize( _context, _s, _P, _regs, _maxh, bufferSize );
 }
 
-grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _s, const lpf_pid_t _P, const size_t _regs, const size_t _maxh, const size_t _bufsize ) {
+grb::RC grb::internal::BSP1D_Data::initialize(
+	lpf_t _context,
+	const lpf_pid_t _s, const lpf_pid_t _P,
+	const size_t _regs, const size_t _maxh,
+	const size_t _bufsize
+) {
 #ifdef _DEBUG
-	std::cout << "grb::internal::BSP1D_Data::initialize called with arguments " << _context << ", " << s << ", " << _P << ", " << _regs << ", " << _maxh << ", " << _bufsize << "\n";
+	std::cout << "grb::internal::BSP1D_Data::initialize called with arguments "
+		<< _context << ", " << s << ", " << _P << ", " << _regs << ", "
+		<< _maxh << ", " << _bufsize << "\n";
 #endif
 	// arg checks
 	assert( _context != NULL );
@@ -109,7 +134,7 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 	cur_payload = new( std::nothrow ) size_t[ P ];
 	if( cur_payload == NULL ) {
 #ifdef _DEBUG
-		std::cerr << "Out of memory while initializing (1)\n";
+		std::cerr << "\t out of memory while initializing (1)\n";
 #endif
 		return OUTOFMEM;
 	}
@@ -117,7 +142,7 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 	if( cur_msgs == NULL ) {
 		delete[] cur_payload;
 #ifdef _DEBUG
-		std::cerr << "Out of memory while initializing (2)\n";
+		std::cerr << "\t out of memory while initializing (2)\n";
 #endif
 		return OUTOFMEM;
 	}
@@ -129,13 +154,17 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 
 	if( _bufsize > 0 ) {
 		// try and allocate the buffer
-		const int prc = posix_memalign( &buffer, grb::config::CACHE_LINE_SIZE::value(), _bufsize );
-		// Note: always uses local allocation (but rightly so)
+		const int prc = posix_memalign(
+			&buffer,
+			grb::config::CACHE_LINE_SIZE::value(),
+			_bufsize
+		);
+		// Note: always uses local allocation (and rightly so)
 		if( prc != 0 ) {
 			delete[] cur_payload;
 			delete[] cur_msgs;
 #ifdef _DEBUG
-			std::cerr << "Out of memory while initializing (3)\n";
+			std::cerr << "\t out of memory while initializing (3)\n";
 #endif
 			return OUTOFMEM;
 		}
@@ -145,7 +174,8 @@ grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context, const lpf_pid_t _
 	}
 
 #ifdef _DEBUG
-	std::cout << s << ": calling lpf_resize_message_queue, requesting a capacity of " << _maxh << ". Context is " << context << std::endl;
+	std::cout << "\t " << s << ": calling lpf_resize_message_queue, requesting a "
+		<< "capacity of " << _maxh << ". Context is " << context << std::endl;
 #endif
 
 	// resize LPF buffers accordingly
@@ -266,7 +296,7 @@ grb::RC grb::internal::BSP1D_Data::destroy() {
 grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	grb::RC ret = SUCCESS;
 #ifdef _DEBUG
-	std::cout << s << ": ensureBufferSize( " << size_in << " )\n";
+	std::cout << "\t " << s << ": ensureBufferSize( " << size_in << " )\n";
 #endif
 
 	// check if we can exit early
@@ -278,8 +308,8 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	} else {
 #ifdef _DEBUG
 		std::cout << "\t" << s
-				  << ": current capacity is insufficient, reallocating global "
-					 "buffer...\n";
+			<< ": current capacity is insufficient, reallocating global "
+			<< "buffer...\n";
 #endif
 	}
 
@@ -288,7 +318,8 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	lpf_err_t lpfrc = lpf_deregister( context, slot );
 	if( lpfrc != LPF_SUCCESS ) {
 #ifdef _DEBUG
-		std::cout << "\t" << s << ": could not deregister memory slot " << slot << "\n";
+		std::cout << "\t" << s << ": could not deregister memory slot "
+			<< slot << "\n";
 #endif
 		return PANIC;
 	}
@@ -303,12 +334,17 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	}
 
 	// make a new allocation
-	void * replacement = NULL;
-	const int prc = posix_memalign( &replacement, grb::config::CACHE_LINE_SIZE::value(), size );
+	void * replacement = nullptr;
+	const int prc = posix_memalign(
+		&replacement,
+		grb::config::CACHE_LINE_SIZE::value(),
+		size
+	);
 	// check for success
 	if( prc == ENOMEM ) {
 #ifdef _DEBUG
-		std::cout << "\t" << s << ": address " << buffer << " (size " << buffer_size << ") binds to slot " << slot << "\n";
+		std::cout << "\t" << s << ": address " << buffer << " "
+			<< "(size " << buffer_size << ") binds to slot " << slot << "\n";
 #endif
 		// return appropriate error code
 		ret = OUTOFMEM;
@@ -328,14 +364,16 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	// replace memory slot
 	lpfrc = lpf_register_global( context, buffer, buffer_size, &slot );
 #ifdef _DEBUG
-	std::cout << "\t" << s << ": address " << buffer << " (size " << buffer_size << ") binds to slot " << slot << "\n";
+	std::cout << "\t" << s << ": address " << buffer << " "
+		<< "(size " << buffer_size << ") binds to slot " << slot << "\n";
 #endif
 	if( lpfrc == LPF_SUCCESS ) {
 		lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
 	}
 	if( lpfrc != LPF_SUCCESS ) {
 #ifdef _DEBUG
-		std::cout << "\t" << s << ": could not sync on taking into effect new buffer" << std::endl;
+		std::cout << "\t" << s << ": could not sync on taking into effect new buffer"
+			<< std::endl;
 #endif
 		return PANIC;
 	}
@@ -344,10 +382,15 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	return ret;
 }
 
-grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable( const size_t count ) {
+grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable(
+	const size_t count
+) {
 #ifdef _DEBUG
-	std::cout << s << ": call to ensureMemslotAvailable( " << count << " ) started. This must be a collective call with matching arguments.\n";
-	std::cout << "\t current number of memslots reserved: " << lpf_regs << ". Number of regs taken: " << regs_taken << ". New slots requested: " << count << std::endl;
+	std::cout << s << ": call to ensureMemslotAvailable( " << count << " ) "
+		<< "started. This must be a collective call with matching arguments.\n";
+	std::cout << "\t current number of memslots reserved: " << lpf_regs << ". "
+		<< "Number of regs taken: " << regs_taken << ". "
+		<< "New slots requested: " << count << std::endl;
 #endif
 	// dynamic sanity check
 	assert( lpf_regs > 0 );
@@ -383,7 +426,8 @@ grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable( const size_t count ) 
 		}
 	} else {
 #ifdef _DEBUG
-		std::cout << "I already had enough space for the requested number of memory slots\n";
+		std::cout << "I already had enough space for the requested number of memory "
+			<< "slots\n";
 #endif
 	}
 	// done
@@ -423,7 +467,10 @@ grb::RC grb::internal::BSP1D_Data::ensureMaxMessages( const size_t hmax ) {
 	return SUCCESS;
 }
 
-grb::RC grb::internal::BSP1D_Data::ensureBSMPCapacity( const size_t ts, const size_t ps, const size_t nm ) {
+grb::RC grb::internal::BSP1D_Data::ensureBSMPCapacity(
+	const size_t ts, const size_t ps,
+	const size_t nm
+) {
 	// check if we need to do nothing
 	if( ts <= tag_size && ps <= payload_size && nm <= max_msgs ) {
 		return SUCCESS;
@@ -463,7 +510,12 @@ grb::RC grb::internal::BSP1D_Data::ensureBSMPCapacity( const size_t ts, const si
 	}
 
 	// create new buffer
-	if( lpf_bsmp_create( context, s, P, payload_size, tag_size, max_msgs, &queue ) != LPF_SUCCESS ) {
+	if( lpf_bsmp_create( context,
+			s, P,
+			payload_size, tag_size,
+			max_msgs, &queue
+		) != LPF_SUCCESS
+	) {
 		return PANIC;
 	}
 
@@ -477,9 +529,12 @@ void grb::internal::BSP1D_Data::signalMemslotTaken( const unsigned int count ) {
 }
 
 /** Decrements \a regs_taken by one. */
-void grb::internal::BSP1D_Data::signalMemslotReleased( const unsigned int count ) {
+void grb::internal::BSP1D_Data::signalMemslotReleased(
+	const unsigned int count
+) {
 #ifdef _DEBUG
-	std::cout << "signalMemslotReleased( " << count << " ) requested while regs_taken is " << regs_taken << " / " << lpf_regs << std::endl;
+	std::cout << "signalMemslotReleased( " << count << " ) requested "
+		<< "while regs_taken is " << regs_taken << " / " << lpf_regs << std::endl;
 #endif
 	assert( regs_taken <= lpf_regs );
 	if( count == 0 ) {
@@ -488,3 +543,4 @@ void grb::internal::BSP1D_Data::signalMemslotReleased( const unsigned int count 
 	assert( regs_taken >= count );
 	regs_taken -= count;
 }
+

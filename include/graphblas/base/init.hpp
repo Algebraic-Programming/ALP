@@ -27,6 +27,7 @@
 
 #include "config.hpp"
 
+
 namespace grb {
 
 	/**
@@ -114,6 +115,9 @@ namespace grb {
 	 * \note The GraphBLAS C API does not have the notion of user processes. We
 	 *       believe this notion is necessary to properly integrate into parallel
 	 *       frameworks, and also to affect proper and efficient parallel I/O.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template< enum Backend backend = config::default_backend >
 	RC init( const size_t s, const size_t P, void * const implementation_data ) {
@@ -172,6 +176,9 @@ namespace grb {
 	 *      None. Implementations are encouraged to specify the complexity of
 	 *      their implementation of this function in terms of the parameter
 	 *      \a P the matching call to grb::init() was called with.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template< enum Backend backend = config::default_backend >
 	RC finalize() {
@@ -181,3 +188,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_INIT_BASE
+
