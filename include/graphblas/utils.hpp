@@ -30,6 +30,7 @@
 #include <type_traits>
 
 #include <graphblas/descriptors.hpp>
+#include <graphblas/utils/iscomplex.hpp>
 
 
 namespace grb {
@@ -257,6 +258,34 @@ namespace grb {
 				return ret;
 			}
 		}
+
+		/** Specialisation for complex-valued masks */
+		template< Descriptor descriptor, typename T >
+		static bool interpretMask( const bool & assigned,
+								   const std::complex<T> * const val, const size_t offset ) {
+			// set default mask to false
+			bool ret = false;
+			// if we request a structural mask, decide only on passed assigned variable
+			if( descriptor & descriptors::structural ) {
+				ret = assigned;
+			} else {
+				// if based on value, if there is a value, cast it to bool
+				if( assigned ) {
+					ret = static_cast< bool >(
+											  real( val [ offset ] ) == 0 &&
+											  imag( val [ offset ] ) == 0
+											  );
+				}
+				// otherwise there is no value and false is assumed
+			}
+			// check whether we should return the inverted value
+			if( descriptor & descriptors::invert_mask ) {
+				return ! ret;
+			} else {
+				return ret;
+			}
+		}
+		
 
 		/** Specialisation for void-valued masks */
 		template< Descriptor descriptor >

@@ -29,9 +29,27 @@
 
 #include <limits>
 #include <cmath>
+#include <complex>
 
 #include <assert.h>
 
+
+
+/**
+ * internal overload for read of real and complex matrix
+ */
+template< typename fileType >
+int data_fscanf(fileType in, double *truth){
+	return( fscanf( in, "%lf", &(*truth) ) );
+};
+
+template< typename fileType, typename T >
+int data_fscanf(fileType in, std::complex<T> *truth){
+	double x,y;
+	int rc=fscanf( in, "%lf%lf", &x,&y );
+	*truth=std::complex<T>( x, y );
+	return( rc==2 );
+};
 
 /**
  * Verifies a dense vector against a ground-truth output vector.
@@ -88,7 +106,7 @@ int vector_verification(
 	assert( truth_filename != nullptr );
 	assert( c1 > 0 ); assert( c1 < 1 );
 	assert( c2 > 0 ); assert( c2 < 1 );
-	const constexpr double one = static_cast< double >( 1 );
+	const constexpr T one = static_cast< T >( 1 );
 
 	// open verification file
 	FILE *in = fopen( truth_filename, "r" );
@@ -101,15 +119,21 @@ int vector_verification(
 
 	// read the truth output vector from the input verification file
 	const size_t n = output_vector.size();
-	double * const truth = new double[ n ];
+	T * const truth = new T[ n ];
 	if( truth == nullptr ) {
 		std::cerr << "Could not allocate necessary buffer" << std::endl;
 		return 20;
 	}
+
 	for( size_t i = 0; i < n; i++ ) {
-		if( fscanf( in, "%lf", &(truth[ i ]) ) != 1 ) {
+		int rc=data_fscanf(in, truth + i );
+		if( rc != 1 ) {
 			std::cerr << "The verification file looks incomplete."
-				<< std::endl;
+					  << " line i= "
+					  << i
+					  << " data= " << truth[ i ]
+					  << " rc= " << rc
+					  << std::endl;
 			delete [] truth;
 			return 30;
 		}
@@ -125,7 +149,7 @@ int vector_verification(
 	double magnitude2 = 0;
 	double magnitudeInf = 0;
 	for( size_t i = 0; i < n; ++i ) {
-		magnitude2 += truth[ i ] * truth[ i ];
+		magnitude2 +=  std::norm( truth[ i ] );
 		magnitudeInf = fabs( truth[ i ] ) > magnitudeInf ?
 			fabs( truth[ i ] ) :
 			magnitudeInf;
@@ -135,7 +159,7 @@ int vector_verification(
 	magnitude2 = sqrt( magnitude2 );
 
 	// convert the Pinned Vector into raw data
-	double * const raw_output_vector = new double[ n ];
+	T * const raw_output_vector = new T[ n ];
 	bool * const written_to = new bool[ n ];
 	if( raw_output_vector == nullptr || written_to == nullptr ) {
 		std::cerr << "Could not allocate necessary buffers" << std::endl;
@@ -147,7 +171,7 @@ int vector_verification(
 	}
 
 	for( size_t k = 0; k < output_vector.nonzeroes(); k++ ) {
-		const double value = output_vector.getNonzeroValue( k, one );
+		const auto value = output_vector.getNonzeroValue( k, one );
 		const size_t index = output_vector.getNonzeroIndex( k );
 		assert( index < n );
 		assert( !written_to[ index ] );
@@ -216,8 +240,7 @@ int vector_verification(
 	// compute the norm-2
 	double norm2 = 0;
 	for( size_t i = 0; i < n; i++ ) {
-		norm2 += ( raw_output_vector[ i ] - truth[ i ] ) *
-			( raw_output_vector[ i ] - truth[ i ] );
+		norm2 += std::norm( raw_output_vector[ i ] - truth[ i ] );
 	}
 
 	// isgreaterequal is used to ensure that the condition norm2 >= 0

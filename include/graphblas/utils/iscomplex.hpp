@@ -63,6 +63,17 @@ namespace grb {
 				static constexpr const bool value = true;
 		};
 
+
+		/** \internal Wrapper for the std::conjugate. */
+		template<typename X> X conjugate (X a ) {
+			return (a);
+		};
+
+		template<typename T> 
+		std::complex<T> conjugate (std::complex<T> a ) {
+			return (std::conj(a));
+		};
+
 	} // end namespace utils
 
 } // end namespace grb

@@ -23,8 +23,11 @@
 #define _H_GRB_ALGORITHMS_CONJUGATE_GRADIENT
 
 #include <cstdio>
+#include <complex>
 
 #include <graphblas.hpp>
+#include <graphblas/utils/iscomplex.hpp>
+
 
 namespace grb {
 
@@ -190,7 +193,8 @@ namespace grb {
 			);
 
 			constexpr const Descriptor descr_dense = descr | descriptors::dense;
-			const ResidualType zero = ring.template getZero< ResidualType >();
+			const ResidualType zero_residual = ring.template getZero< ResidualType >();
+			const IOType zero = ring.template getZero< IOType >();
 			const size_t n = grb::ncols( A );
 
 			// dynamic checks
@@ -223,7 +227,7 @@ namespace grb {
 				}
 
 				// others
-				if( tol <= zero ) {
+				if( tol <= zero_residual ) {
 					std::cerr << "Error: tolerance input to CG must be strictly positive\n";
 					return ILLEGAL;
 				}
@@ -244,7 +248,7 @@ namespace grb {
 				assert( nnz( x ) == n );
 			}
 
-			ResidualType alpha, sigma, bnorm;
+			IOType sigma, bnorm, alpha, beta;
 
 			// temp = 0
 			grb::RC ret = grb::set( temp, 0 );
@@ -269,16 +273,21 @@ namespace grb {
 
 			// sigma = r' * r;
 			sigma = zero;
-			ret = ret ? ret : grb::dot< descr_dense >( sigma, r, r, ring );
+			grb::set( temp, r );
+			grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+			ret = ret ? ret : grb::dot< descr_dense >( sigma, temp, r, ring );
+			
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			ret = ret ? ret : grb::dot< descr_dense >( bnorm, b, b, ring );
+			grb::set( temp, b );
+			grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+			ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
-				tol *= sqrt( bnorm );
+				tol *= sqrt( std::abs( bnorm ) );
 			}
 
 			size_t iter = 0;
@@ -292,13 +301,15 @@ namespace grb {
 				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
 				assert( ret == SUCCESS );
 
-				// residual = u' * temp
-				residual = zero;
-				ret = ret ? ret : grb::dot< descr_dense >( residual, temp, u, ring );
+				// beta = u' * temp
+				beta = zero;
+				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  u );
+				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
+				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  u );
 				assert( ret == SUCCESS );
 
-				// alpha = sigma / residual;
-				ret = ret ? ret : grb::apply( alpha, sigma, residual, divide );
+				// alpha = sigma / beta;
+				ret = ret ? ret : grb::apply( alpha, sigma, beta, divide );
 				assert( ret == SUCCESS );
 
 				// x = x + alpha * u;
@@ -314,19 +325,22 @@ namespace grb {
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 				assert( ret == SUCCESS );
 
-				// residual = r' * r;
-				residual = zero;
-				ret = ret ? ret : grb::dot< descr_dense >( residual, r, r, ring );
+				// beta = r' * r;
+				beta = zero;
+				grb::set( temp, r );
+				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, r, ring );
 				assert( ret == SUCCESS );
 
+				residual = std::abs( beta );
 				if( ret == SUCCESS ) {
 					if( sqrt( residual ) < tol ) {
 						break;
 					}
 				}
 
-				// alpha = residual / sigma;
-				ret = ret ? ret : grb::apply( alpha, residual, sigma, divide );
+				// alpha = beta / sigma;
+				ret = ret ? ret : grb::apply( alpha, beta, sigma, divide );
 				assert( ret == SUCCESS );
 
 				// temp = r + alpha * u;
@@ -339,8 +353,9 @@ namespace grb {
 				// u = temp
 				std::swap( u, temp );
 
-				// sigma = residual;
-				sigma = residual;
+				// sigma = beta;
+				sigma = beta;
+				residual = std::abs( beta );
 
 			} while( iter++ < max_iterations && ret == SUCCESS );
 

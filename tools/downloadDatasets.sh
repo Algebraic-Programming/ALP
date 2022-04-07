@@ -22,9 +22,16 @@ downloadSS () {
 			wget ${2} || exit 1
 		fi
 		if [ ! -f ${1}/${1}.mtx ]; then
-			tar xf ${1}.tar.gz || exit 1
+			if [ -f ${1}.tar.gz ]; then
+				tar xf ${1}.tar.gz || exit 1
+			elif [ -f ${1}.gz ]; then
+				gzip -d ${1}.gz || exit 1
+			elif [ -f ${1}.mtx.gz ]; then
+				gzip -d ${1}.mtx.gz || exit 1				
+			fi
+		else
+			ln ${1}/${1}.mtx . || exit 1
 		fi
-		ln ${1}/${1}.mtx ./ || exit 1
 	fi
 }
 
@@ -86,6 +93,7 @@ if [[ "$REPLY" = "yes" ]]; then
 	downloadSS "west0497" "https://suitesparse-collection-website.herokuapp.com/MM/HB/west0497.tar.gz"
 	downloadSS "gyro_m" "https://suitesparse-collection-website.herokuapp.com/MM/Oberwolfach/gyro_m.tar.gz"
 	downloadSS "dwt_59" "https://suitesparse-collection-website.herokuapp.com/MM/HB/dwt_59.tar.gz"
+	downloadSS "rndHermit256.mtx" "https://gitlab.com/denis.jelovina/hermitian_test_matrix/-/raw/main/rndHermit256.mtx"
 	downloadSN "cit-HepTh"
 	downloadSN "facebook_combined"
 	echo ""

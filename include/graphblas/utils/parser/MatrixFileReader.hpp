@@ -31,6 +31,7 @@
 #include "MatrixFileIterator.hpp"
 #include "MatrixFileProperties.hpp"
 #include "MatrixFileReaderBase.hpp"
+#include "graphblas/utils/iscomplex.hpp"
 
 namespace grb {
 	namespace utils {

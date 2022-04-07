@@ -212,9 +212,15 @@ namespace grb {
 						} else {
 							std::cerr << "Type is SNAP";
 						}
-						if( properties._symmetric ) {
+						if( properties._symmetric == internal::Symmetric ) {
 							std::cerr << " and the input is symmetric";
 						}
+						if( properties._symmetric == internal::Hermitian ) {
+							std::cerr << " and the input is hermitian ";
+						}
+						if( properties._symmetric == internal::General ) {
+							std::cerr << " and the input is general ";
+						}												
 						std::cerr << ".\n";
 					}
 
