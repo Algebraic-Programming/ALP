@@ -68,7 +68,7 @@ namespace alp {
 			friend void internal::setInitialized<>( self_type &, bool ) noexcept;
 
 			// Scalar value
-			T &value;
+			T value;
 
 			/** Whether the scalar value is currently initialized */
 			bool initialized;
@@ -120,27 +120,7 @@ namespace alp {
 			 * \endparblock
 			 *
 			 */
-			explicit Scalar( T &value ) : value( value ), initialized( true ) {}
-
-			/**
-			 * The ALP scalar constructor for converting a C/C++ scalar to ALP scalar.
-			 *
-			 * The constructed object will be initialized after successful construction.
-			 *
-			 *
-			 * \parblock
-			 * \par Performance semantics.
-			 *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
-			 *        -# This constructor may allocate \f$ \Theta(1) \f$ bytes
-			 *           of dynamic memory.
-			 *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
-			 *           memory beyond that at constructor entry.
-			 *        -# This constructor incurs \f$ \Theta(1) \f$ data movement.
-			 *        -# This constructor \em may make system calls.
-			 * \endparblock
-			 *
-			 */
-			explicit Scalar( T value ) : value( value ), initialized( true ) {}
+			explicit Scalar( const T &value ) : value( value ), initialized( true ) {}
 
 			/**
 			 * Copy constructor.
@@ -159,7 +139,7 @@ namespace alp {
 			 * \endparblock
 			 *
 			 */
-			Scalar( const Scalar &other ) {
+			Scalar( const Scalar &other ) : value( other.value ), initialized( other.initialized ) {
 				// const RC rc = set( *this, other ); // note: initialized will be set as part of this call
 				// if( rc != SUCCESS ) {
 				// 	throw std::runtime_error( "alp::Scalar< T, Structure, Density::Dense, View::Original< void >, reference > (copy constructor): error during call to alp::set (" + toString( rc ) + ")" );

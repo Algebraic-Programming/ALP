@@ -33,6 +33,10 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( alp_gemm alp_gemm.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( argmax argmax.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )

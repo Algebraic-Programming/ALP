@@ -261,23 +261,47 @@ namespace alp {
 			using inferred_structures = structures::tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
 		};
 
+		struct SymmetricPositiveDefinite {
+			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
+		};
+
+		struct Trapezoidal {
+
+			using inferred_structures = structures::tuple_cat< std::tuple< Trapezoidal >, Band< OpenInterval >::inferred_structures >::type;
+		};
+
 		struct Triangular {
 
-			using inferred_structures = structures::tuple_cat< std::tuple< Triangular >, Square::inferred_structures, Band< OpenInterval >::inferred_structures >::type;
+			using inferred_structures = structures::tuple_cat< std::tuple< Triangular >, Square::inferred_structures, Trapezoidal::inferred_structures >::type;
+		};
+
+		struct LowerTrapezoidal {
+
+			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
+
+			using inferred_structures = structures::tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
 		struct LowerTriangular {
 
 			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
 
-			using inferred_structures = structures::tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures >::type;
+			using inferred_structures = structures::tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures, LowerTrapezoidal::inferred_structures >::type;
+		};
+
+		struct UpperTrapezoidal {
+
+			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
+
+			using inferred_structures = structures::tuple_cat< std::tuple< UpperTrapezoidal >, Trapezoidal::inferred_structures >::type;
+
 		};
 
 		struct UpperTriangular {
 
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
 
-			using inferred_structures = structures::tuple_cat< std::tuple< UpperTriangular >, Triangular::inferred_structures >::type;
+			using inferred_structures = structures::tuple_cat< std::tuple< UpperTriangular >, Triangular::inferred_structures, UpperTrapezoidal::inferred_structures >::type;
 
 			// Maybe we can consider inheritance here to allow calling checks in base classes.
 			// For example, in all cases we should check if IMFs do not overflow the original container.
@@ -296,6 +320,11 @@ namespace alp {
 			typedef std::tuple< Interval< -1, 1 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Tridiagonal >, Square::inferred_structures, Band< OpenInterval >::inferred_structures >::type;
+		};
+
+		struct SymmetricTridiagonal {
+
+			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricTridiagonal >, Symmetric::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
 		struct Bidiagonal {
