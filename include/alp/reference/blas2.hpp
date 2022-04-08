@@ -355,6 +355,100 @@ namespace alp {
 		return eWiseLambda( f, A, args... );
 	}
 
+	/**
+	 * For all elements in a ALP Matrix \a A, fold the value \f$ \alpha \f$
+	 * into each element.
+	 *
+	 * The original value of \f$ \alpha \f$ is used as the left-hand side input
+	 * of the operator \a op. The right-hand side inputs for \a op are retrieved
+	 * from the input Matrix \a A. The result of the operation is stored in \a A,
+	 * thus overwriting its previous values.
+	 *
+	 * The value of \f$ A_i,j \f$ after a call to thus function thus equals
+	 * \f$ \alpha \odot A_i,j \f$, for all \f$ i, j \in \{ 0, 1, \dots, n - 1 \} \f$.
+	 *
+	 * @tparam descr         The descriptor used for evaluating this function.
+	 *                       By default, this is alp::descriptors::no_operation.
+	 * @tparam OP            The type of the operator to be applied.
+	 * @tparam InputType     The type of \a alpha.
+	 * @tparam IOType        The type of the elements in \a A.
+	 * @tparam IOStructure   The structure of the matrix \a A.
+	 * @tparam IOView        The view applied to the matrix \a A.
+	 *
+	 * @param[in]     alpha The input value to apply as the left-hand side input
+	 *                      to \a op.
+	 * @param[in,out] A     On function entry: the initial values to be applied as
+	 *                      the right-hand side input to \a op.
+	 *                      On function exit: the output data.
+	 * @param[in]     op    The monoid under which to perform this left-folding.
+	 *
+	 * @returns alp::SUCCESS This function always succeeds.
+	 *
+	 * \note We only define fold under monoids, not under plain operators.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
+	 * \a op must match \a IOType, 2) the second domain of \a op must match
+	 * \a InputType, and 3) the third domain must match \a IOType. If one of these
+	 * is not true, the code shall not compile.
+	 *
+	 * \endparblock
+	 *
+	 * \parblock
+	 * \par Valid operator types
+	 * The given operator \a op is required to be:
+	 *   -# (no requirements).
+	 * \endparblock
+	 *
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
+	//  *         the size of the vector \a x. The constant factor depends on the
+	//  *         cost of evaluating the underlying binary operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the operator used allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ 2n \cdot \mathit{sizeof}(\mathit{IOType}) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement.
+	//  * \endparblock
+	 *
+	 * @see alp::operators::internal::Operator for a discussion on when in-place
+	 *      and/or vectorised operations are used.
+	 */
+	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOStructure, typename InputStructure, typename IOView >
+	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, reference > & A,
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		// static sanity checks
+		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
+		//	"called with a vector x of a type that does not match the first domain "
+		//	"of the given operator" );
+		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
+		//	"called on a vector y of a type that does not match the second domain "
+		//	"of the given operator" );
+		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
+		//	"called on a vector x of a type that does not match the third domain "
+		//	"of the given operator" );
+		(void)alpha;
+		(void)A;
+		(void)monoid;
+
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
+	}
+
 	/** @} */
 
 } // end namespace ``alp''

@@ -1205,76 +1205,155 @@ namespace alp {
 		return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, imf_c );
 	}
 
-	namespace internal {
-		/**
-		 *	
-		 * @brief Generate an original view where the type is compliant with the source Matrix.
-		 * Version where a selection of rows and columns expressed as vectors of positions 
-		 * form a new view with specified target structure.
-		 * 
-		 * \warning WIP interface. Checking the structural correctness is a costly runtime operation for a 
-		 * 			general vector selection. 
-		 * 
-		 * @tparam TargetStructure The target structure of the new view. It should verify
-		 *                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-		 * @tparam T               The matrix' elements type
-		 * @tparam Structure       The structure of the source and target matrix view
-		 * @tparam density         The type (i.e., sparse or dense) of storage scheme
-		 * @tparam View            The source's View type
-		 * @tparam backend         The target backend
-		 * 
-		 * @param source           The source structured matrix
-		 * @param sel_r            A valid vector of row indeces (possibly in any permuted order and with repetition) 
-		 * @param sel_c            A valid vector of column indeces (possibly in any permuted order and with repetition)
-		 * 
-		 * @return A new original view over the source structured matrix.
-		 * 
-		 */
-		template< 
-			typename TargetStructure, 
-			typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, backend > >, backend > 
-		get_view( alp::Matrix< T, Structure, density, View, backend > &source,
-				const std::vector< size_t >& sel_r, const std::vector< size_t >& sel_c ) {
-			
-			auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
-			auto imf_c = std::make_shared< imf::Select >( ncols(source), sel_c );
-
-			return internal::get_view<TargetStructure, T, Structure, density, View, backend>( source, imf_r, imf_c );
-		}
-	} //namespace internal
-
-	/** Returns a constant reference to an Identity matrix of the provided size */
-	template< typename T >
-	const Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference > &
-	I( const size_t n ) {
-		using return_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference >;
-		return_type * ret = new return_type( n );
-		return * ret;
-	}
-
-	/** Returns a constant reference to a Zero matrix of the provided size */
-	template< typename T >
-	const Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference > &
-	Zero( const size_t rows, const size_t cols ) {
-		using return_type = Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference >;
-		return_type * ret = new return_type( rows, cols );
-		return * ret;
-	}
-
-	/** Returns a constant reference to a matrix representing Givens rotation
-	 * of the provided size n and parameters i, j, s and c, where
-	 * s = sin( theta ) and c = cos( theta )
+	/**
+	 *
+	 * @brief Generate a vector view on a row of the source matrix.
+	 *
+	 * @tparam T          The matrix' elements type
+	 * @tparam Structure  The structure of the source and target matrix view
+	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View       The source's View type
+	 * @tparam backend    The target backend
+	 *
+	 * @param source      The source matrix
+	 * @param sel_r       A valid row index
+	 * @param rng_c       A valid range of columns
+	 *
+	 * @return A new original view over the source structured matrix.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 *           of available views of \a source.
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
+	 *
 	 */
-	template< typename T >
-	const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference > &
-	Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
-		using return_type = const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference >;
-		return_type * ret = new return_type( n );
-		// TODO: initialize matrix values according to the provided parameters
-		return * ret;
+	template<
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend >
+	get_view( Matrix< T, Structure, density, View, backend > &source,
+		const size_t &sel_r, const utils::range &rng_c ) {
+
+		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
+
+		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, sel_r, imf_c );
+		return Vector< T, structures::General, density, View, backend >();
 	}
 
+	/**
+	 *
+	 * @brief Generate a vector view on a column of the source matrix.
+	 *
+	 * @tparam T          The matrix' elements type
+	 * @tparam Structure  The structure of the source and target matrix view
+	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
+	 * @tparam View       The source's View type
+	 * @tparam backend    The target backend
+	 *
+	 * @param source      The source matrix
+	 * @param rng_r       A valid range of rows
+	 * @param sel_c       A valid column index
+	 *
+	 * @return A new original view over the source structured matrix.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 *           of available views of \a source.
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
+	 *
+	 */
+	template<
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend > 
+	get_view( Matrix< T, Structure, density, View, backend > &source,
+		const utils::range &rng_r, const size_t &sel_c ) {
+
+		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
+
+		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, sel_c );
+		return Vector< T, structures::General, density, View, backend >();
+	}
+
+	/**
+	 *	
+		* @brief Generate an original view where the type is compliant with the source Matrix.
+		* Version where a selection of rows and columns expressed as vectors of positions 
+		* form a new view with specified target structure.
+		* 
+		* @tparam TargetStructure The target structure of the new view. It should verify
+		*                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
+		* @tparam T               The matrix' elements type
+		* @tparam Structure       The structure of the source and target matrix view
+		* @tparam density         The type (i.e., sparse or dense) of storage scheme
+		* @tparam View            The source's View type
+		* @tparam backend         The target backend
+		* 
+		* @param source           The source structured matrix
+		* @param sel_r            A valid permutation vector of row indeces
+		* @param sel_c            A valid permutation vector of column indeces
+		* 
+		* @return A new original view over the source structured matrix.
+		* 
+		*/
+	template< 
+		typename TargetStructure,
+		typename IndexType, typename IndexStructure, typename IndexView, 
+		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, backend > >, backend > 
+	get_view( alp::Matrix< T, Structure, density, View, backend > &source,
+			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
+		
+		auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
+		auto imf_c = std::make_shared< imf::Select >( ncols(source), sel_c );
+
+		return internal::get_view<TargetStructure, T, Structure, density, View, backend>( source, imf_r, imf_c );
+	}
+
+	namespace structures {
+		namespace constant {
+			/** Returns a constant reference to an Identity matrix of the provided size */
+			template< typename T >
+			const Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference > &
+			I( const size_t n ) {
+				using return_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference >;
+				return_type * ret = new return_type( n );
+				return * ret;
+			}
+
+			/** Returns a constant reference to a Zero matrix of the provided size */
+			template< typename T >
+			const Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference > &
+			Zero( const size_t rows, const size_t cols ) {
+				using return_type = Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference >;
+				return_type * ret = new return_type( rows, cols );
+				return * ret;
+			}
+
+			namespace internal {
+				/** Returns a constant reference to a matrix representing Givens rotation
+				 * of the provided size n and parameters i, j, s and c, where
+				 * s = sin( theta ) and c = cos( theta )
+				 */
+				template< typename T >
+				const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference > &
+				Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
+					using return_type = const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference >;
+					return_type * ret = new return_type( n );
+					// TODO: initialize matrix values according to the provided parameters
+					return * ret;
+				}
+			} // namespace internal
+		} // namespace constant
+	} // namespace structures
 } // namespace alp
 
 #endif // end ``_H_ALP_REFERENCE_MATRIX''

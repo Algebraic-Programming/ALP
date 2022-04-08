@@ -20,32 +20,25 @@
 #include <vector>
 
 #include <alp.hpp>
+#include <alp/algorithms/householder_tridiag.hpp>
 
 using namespace alp;
 
-void alp_program( const size_t & n, alp::RC & rc ) {
+void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
-	std::cout << "\tTesting dense Identity and Zero matrices\n";
-	// initialize test
-	alp::Matrix< double, structures::Square > A( n );
-	alp::Matrix< double, structures::Square > C( n );
-	auto I = alp::structures::constant::I< double >( n );
-	auto Zero = alp::structures::constant::Zero< double >( n, n );
+	// dimensions of sqare matrices H, Q and R
+	size_t N = 10 * unit;
 
-	// Initialize input matrix
-	std::vector< double > A_data( n * n, 1 );
-	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
+	// dimensions of views over H, Q and R
+	size_t n = 2 * unit;
 
-	if( rc == SUCCESS ) {
-		alp::mxm( C, A, I, ring );
-		// C should be equal to A
-	}
+	alp::Matrix< double, structures::Symmetric > H( N );
+	alp::Matrix< double, structures::Orthogonal > Q( N );
+	alp::Matrix< double, structures::SymmetricTridiagonal > T( N );
 
-	if (rc == SUCCESS ) {
-		alp::mxm( C, A, Zero, ring );
-		// C should be a zero
-	}
+	rc = algorithms::householder_tridiag( Q, T, H, ring );
+
 }
 
 int main( int argc, char ** argv ) {
@@ -95,4 +88,3 @@ int main( int argc, char ** argv ) {
 	}
 	return 0;
 }
-

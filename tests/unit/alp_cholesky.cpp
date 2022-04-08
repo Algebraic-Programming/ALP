@@ -1,4 +1,3 @@
-
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -15,37 +14,32 @@
  * limitations under the License.
  */
 
+#include <cmath>
 #include <iostream>
 #include <sstream>
 #include <vector>
 
 #include <alp.hpp>
+#include <alp/algorithms/cholesky.hpp>
 
 using namespace alp;
 
-void alp_program( const size_t & n, alp::RC & rc ) {
+void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
-	std::cout << "\tTesting dense Identity and Zero matrices\n";
-	// initialize test
-	alp::Matrix< double, structures::Square > A( n );
-	alp::Matrix< double, structures::Square > C( n );
-	auto I = alp::structures::constant::I< double >( n );
-	auto Zero = alp::structures::constant::Zero< double >( n, n );
+	std::cout << "\tTesting ALP cholesky\n"
+	             "\tH = L * L^T\n";
 
-	// Initialize input matrix
-	std::vector< double > A_data( n * n, 1 );
-	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
+	// dimensions of sqare matrices H, L
+	size_t N = 10 * unit;
 
-	if( rc == SUCCESS ) {
-		alp::mxm( C, A, I, ring );
-		// C should be equal to A
-	}
+	// dimensions of views over H, Q and R
+	size_t n = 2 * unit;
 
-	if (rc == SUCCESS ) {
-		alp::mxm( C, A, Zero, ring );
-		// C should be a zero
-	}
+	alp::Matrix< double, structures::SymmetricPositiveDefinite, Dense > H( N, N );
+	alp::Matrix< double, structures::LowerTriangular, Dense > L( N, N );
+
+	rc = algorithms::cholesky_lowtr( L, H, ring );
 }
 
 int main( int argc, char ** argv ) {
@@ -95,4 +89,3 @@ int main( int argc, char ** argv ) {
 	}
 	return 0;
 }
-

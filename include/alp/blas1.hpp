@@ -65,6 +65,9 @@ namespace alp {
 	 * A standard vector to use for mask parameters. Indicates no mask shall be
 	 * used.
 	 */
+	#ifdef NO_MASK
+		#undef NO_MASK
+	#endif
 	#define NO_MASK internal::Vector< bool >( 0 )
 
 	/**
