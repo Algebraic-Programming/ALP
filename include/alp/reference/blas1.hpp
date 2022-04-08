@@ -339,6 +339,8 @@ namespace alp {
 			!alp::is_object< T >::value,
 		void >::type * const = NULL
 	) {
+		(void)x;
+		(void)val;
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
@@ -4183,6 +4185,8 @@ namespace alp {
 	}
 
 } // end namespace ``alp''
+
+#undef NO_CAST_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS1''
 

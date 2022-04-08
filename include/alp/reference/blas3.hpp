@@ -713,19 +713,165 @@ namespace alp {
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with an output vector with element type that does not match the "
 			"fourth domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "alp::eWiseAdd",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "alp::eWiseAdd",
 			"called with a left-hand side input vector with element type that does not "
 			"match the third domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "alp::eWiseAdd",
 			"called with a right-hand side input vector with element type that does "
 			"not match the fourth domain of the given semiring" );
 	#ifdef _DEBUG
 		std::cout << "eWiseAdd (reference, StrMat <- StrMat + StrMat) dispatches to eWiseApply( reference, StrMat <- StrMat . StrMat ) using additive monoid\n";
 	#endif
 		return eWiseApply< descr >( C, A, B, ring.getAdditiveMonoid() );
+	}
+
+	/**
+	 * Calculates the element-wise multiplication of two matrices,
+	 *     \f$ C = C + A .* B \f$,
+	 * under a given semiring.
+	 *
+	 * @tparam descr      The descriptor to be used (descriptors::no_operation
+	 *                    if left unspecified).
+	 * @tparam Ring       The semiring type to perform the element-wise multiply
+	 *                    on.
+	 * @tparam InputType1 The left-hand side input type to the multiplicative
+	 *                    operator of the \a ring.
+	 * @tparam InputType2 The right-hand side input type to the multiplicative
+	 *                    operator of the \a ring.
+	 * @tparam OutputType The the result type of the multiplicative operator of
+	 *                    the \a ring.
+	 * @tparam InputStructure1  The structure of the left-hand side input to
+	 *                          the multiplicative operator of the \a ring.
+	 * @tparam InputStructure2  The structure of the right-hand side input
+	 *                          to the multiplicative operator of the \a ring.
+	 * @tparam OutputStructure1 The structure of the output to the
+	 *                          multiplicative operator of the \a ring.
+	 * @tparam InputView1       The view type applied to the left-hand side
+	 *                          input to the multiplicative operator
+	 *                          of the \a ring.
+	 * @tparam InputView2       The view type applied to the right-hand side
+	 *                          input to the multiplicative operator
+	 *                          of the \a ring.
+	 * @tparam OutputView1      The view type applied to the output to the
+	 *                          multiplicative operator of the \a ring.
+	 *
+	 * @param[out]  z  The output vector of type \a OutputType.
+	 * @param[in]   x  The left-hand input vector of type \a InputType1.
+	 * @param[in]   y  The right-hand input vector of type \a InputType2.
+	 * @param[in] ring The generalized semiring under which to perform this
+	 *                 element-wise multiplication.
+	 *
+	 * @return alp::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
+	 *                       not match. All input data containers are left
+	 *                       untouched if this exit code is returned; it will be
+	 *                       as though this call was never made.
+	 * @return alp::SUCCESS  On successful completion of this call.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * alp::descriptors::no_operation, alp::descriptors::no_casting.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * If alp::descriptors::no_casting is specified, then 1) the first domain of
+	 * \a ring must match \a InputType1, 2) the second domain of \a ring must match
+	 * \a InputType2, 3) the third domain of \a ring must match \a OutputType. If
+	 * one of these is not true, the code shall not compile.
+	 *
+	 * \endparblock
+	 *
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
+	//  *         size of the vectors \a x, \a y, and \a z. The constant factor
+	//  *         depends on the cost of evaluating the multiplication operator. A
+	//  *         good implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the multiplicative operator used
+	//  *         allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most \f$ n( \mathit{sizeof}(\mathit{D1}) +
+	//  *         \mathit{sizeof}(\mathit{D2}) + \mathit{sizeof}(\mathit{D3})) +
+	//  *         \mathcal{O}(1) \f$ bytes of data movement. A good implementation
+	//  *         will stream \a x or \a y into \a z to apply the multiplication
+	//  *         operator in-place, whenever the input domains, the output domain,
+	//  *         and the operator used allow for this.
+	//  * \endparblock
+	 *
+	 * \warning When given sparse vectors, the zero now annihilates instead of
+	 *       acting as an identity. Thus the eWiseMul cannot simply map to an
+	 *       eWiseApply of the multiplicative operator.
+	 *
+	 * @see This is a specialised form of eWiseMulAdd.
+	 */
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1, typename InputStructure2,
+		typename OutputView, typename InputView1, typename InputView2 >
+	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, reference > &A,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
+			void >::type * const = NULL ) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+	#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
+	#endif
+		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
+	}
+
+	/**
+	 * eWiseMul, version where A is a scalar.
+	 */
+	template< Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1, typename InputStructure2,
+		typename OutputView, typename InputView2 >
+	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, reference > &B,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
+			void >::type * const = NULL ) {
+		(void)C;
+		(void)alpha;
+		(void)B;
+		(void)ring;
+		// static sanity checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+	#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
+	#endif
+		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/**
@@ -808,7 +954,79 @@ namespace alp {
 		return alp::mxm( A, u_matrix, v_matrix, mul, mono );
 	}
 
+	/**
+	 * Sets all elements of the output matrix to the values of the input matrix. Unmasked version.
+	 * C = A
+	 * 
+	 * @tparam descr 
+	 * @tparam OutputType      Data type of the output matrix C
+	 * @tparam OutputStructure Structure of the matrix C
+	 * @tparam OutputView      View type applied to the matrix C
+	 * @tparam InputType       Data type of the scalar a
+	 *
+	 * @param C    Matrix whose values are to be set
+	 * @param A    The input matrix
+	 *
+	 * @return RC  SUCCESS on the successful execution of the set
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename InputType, typename InputStructure, typename InputView >
+	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, reference > &A ) noexcept {
+		(void)C;
+		(void)A;
+		static_assert( ! std::is_same< OutputType, void >::value,
+			"alp::set (set to value): cannot have a pattern "
+			"matrix as output" );
+#ifdef _DEBUG
+		std::cout << "Called alp::set (matrix-to-value, reference)" << std::endl;
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
+
+		assert( false ); // "Needs an implementation."
+		return SUCCESS;
+	}
+
+	/**
+	 * Sets all elements of the given matrix to the value of the given scalar. Unmasked version.
+	 * C = val
+	 * 
+	 * @tparam descr 
+	 * @tparam OutputType      Data type of the output matrix C
+	 * @tparam OutputStructure Structure of the matrix C
+	 * @tparam OutputView      View type applied to the matrix C
+	 * @tparam InputType       Data type of the scalar a
+	 *
+	 * @param C    Matrix whose values are to be set
+	 * @param val  The value to set the elements of the matrix C
+	 *
+	 * @return RC  SUCCESS on the successful execution of the set
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename InputType, typename InputStructure >
+	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, reference > &C,
+		const Scalar< InputType, InputStructure, reference > &val ) noexcept {
+		(void)C;
+		(void)val;
+		static_assert( ! std::is_same< OutputType, void >::value,
+			"alp::set (set to value): cannot have a pattern "
+			"matrix as output" );
+#ifdef _DEBUG
+		std::cout << "Called alp::set (matrix-to-value, reference)" << std::endl;
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
+
+		assert( false ); // "Needs an implementation."
+		return SUCCESS;
+	}
+
 } // end namespace ``alp''
+
+#undef NO_CAST_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS3''
 

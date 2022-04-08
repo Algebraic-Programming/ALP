@@ -87,19 +87,19 @@ namespace grb {
 			class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one >,
 			class Minus = operators::subtract< IOType >,
 			class Divide = operators::divide< IOType > >
-		grb::RC conjugate_gradient( grb::Vector< IOType > & x,
-			const grb::Matrix< NonzeroType > & A,
-			const grb::Vector< InputType > & b,
+		grb::RC conjugate_gradient( grb::Vector< IOType > &x,
+			const grb::Matrix< NonzeroType > &A,
+			const grb::Vector< InputType > &b,
 			const size_t max_iterations,
 			ResidualType tol,
-			size_t & iterations,
-			ResidualType & residual,
-			grb::Vector< IOType > & r,
-			grb::Vector< IOType > & u,
-			grb::Vector< IOType > & temp,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide() ) {
+			size_t &iterations,
+			ResidualType &residual,
+			grb::Vector< IOType > &r,
+			grb::Vector< IOType > &u,
+			grb::Vector< IOType > &temp,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide() ) {
 			static_assert( std::is_floating_point< ResidualType >::value,
 				"Can only use the CG algorithm with floating-point residual "
 				"types." ); // unless some different norm were used: issue #89
