@@ -21,13 +21,13 @@ jobs:
 
     - name: Build
       working-directory: ${{github.workspace}}/build
-      run: make -j
+      run: make -j2
 
     - name: Install
       working-directory: ${{github.workspace}}/build
-      run: make -j install
+      run: make -j2 install
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: make -j smoketests
+      run: make -j2 smoketests
 
