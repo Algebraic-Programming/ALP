@@ -167,9 +167,11 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
+/*
 			for( auto it = _start; it != _end; ++it ) {
 				std::cout << *it << " ";
 			}
+*/
 #endif
 
 			auto it = _start;
@@ -181,12 +183,14 @@ namespace grb {
 				}
 
 #ifdef _DEBUG
+/*
 			for( size_t i = 0; i < m; i++ ) {
 				for( size_t j = 0; j < n; j++ ) {
 					std::cout << ( *storage )[ i ][ j ] << " ";
 				}
 				std::cout << "\n";
 			}
+*/
 #endif
 
 			// done
