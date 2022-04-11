@@ -36,23 +36,19 @@ void grb_program_chain( const size_t & n, grb::RC & rc ) {
 
 	std::cout << "\tStarting chain mxm test with size: " << n << "\n";
 
-	// initialize.
-	grb::Matrix< float > A1( 30, 35 );
-	grb::Matrix< float > A2( 35, 15 );
-	grb::Matrix< float > O1( 30, 15 );
-	grb::Matrix< float > A3( 15, 5 );
-	grb::Matrix< float > O2( 30, 5 );
-	grb::Matrix< float > A4( 5, 10 );
-	grb::Matrix< float > O3( 30, 10 );
-	grb::Matrix< float > A5( 10, 20 );
-	grb::Matrix< float > O4( 30, 20 );
-	grb::Matrix< float > A6( 20, 25 );
-	grb::Matrix< float > O5( 30, 25 );
+	// initialize test
+	grb::Matrix< float > A1( 1000, 2000 );
+	grb::Matrix< float > A2( 2000, 900 );
+	grb::Matrix< float > O1( 1000, 900 );
+	grb::Matrix< float > A3( 900, 1500 );
+	grb::Matrix< float > O2( 1000, 1500 );
+	grb::Matrix< float > A4( 1500, 600 );
+	grb::Matrix< float > O3( 1000, 600 );
+	grb::Matrix< float > A5( 600, 800 );
+	grb::Matrix< float > O4( 1000, 800 );
 
-  // some filling values.
-	std::vector< float > vA1( 30 * 35, 1.0 ), vA2( 35 * 15, 2.0 ), vA3( 15 * 5, 3.0 ), vA4( 5 * 10, 4.0 ), vA5( 10 * 20, 1.0 ), vA6( 20 * 25, 1.0 );
+	std::vector< float > vA1( 1000 * 2000, 1.0 ), vA2( 2000 * 900, 2.0 ), vA3( 900 * 1500, 3.0 ), vA4( 1500 * 600, 4.0 ), vA5( 600 * 800, 1.0 );
 
-  // fill containers.
 	if( failed( grb::buildMatrixUnique( A1, vA1.begin(), vA1.end(), SEQUENTIAL ) ) ) {
 		std::cerr << "\tinitialisation for A FAILED\n";
 		return;
@@ -73,12 +69,10 @@ void grb_program_chain( const size_t & n, grb::RC & rc ) {
 		std::cerr << "\tinitialisation for D FAILED\n";
 		return;
 	}
-	if( failed( grb::buildMatrixUnique( A6, vA6.begin(), vA6.end(), SEQUENTIAL ) ) ) {
-		std::cerr << "\tinitialisation for D FAILED\n";
-		return;
-	}
 
-  // start chain
+	// compute with the semiring mxm
+	std::cout << "\tVerifying the semiring version of mxm\n";
+
 	if( failed( grb::mxm( O1, A2, A1, ring ) ) ) {
 		std::cerr << "Call to grb::mxm 1 FAILED\n";
 		return;
@@ -99,20 +93,14 @@ void grb_program_chain( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 
-	if( failed( grb::mxm( O5, A6, O4, ring ) ) ) {
-		std::cerr << "Call to grb::mxm  5 FAILED\n";
-		return;
-	}
-  // end chain
-
-	auto deepCopy = internal::getFull( O5 );
+	auto deepCopy = internal::getFull( O4 );
 #ifdef _DEBUG 
-	for( size_t i = 0; i < 30; i++ ) {
-		for( size_t j = 0; j < 25; j++ ) {
-			std::cout << deepCopy[ i * 25 + j ] << " ";
-		}
-		std::cout << "\n";
-	}
+//	for( size_t i = 0; i < 30; i++ ) {
+//		for( size_t j = 0; j < 25; j++ ) {
+//			std::cout << deepCopy[ i * 25 + j ] << " ";
+//		}
+//		std::cout << "\n";
+//	}
 #endif
 	rc = SUCCESS;
 }
