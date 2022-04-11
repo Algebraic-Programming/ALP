@@ -126,13 +126,14 @@ for BACKEND in ${BACKENDS[@]}; do
 				$runner ${TEST_BIN_DIR}/knn_${BACKEND} 4 ${INPUT_DIR}/facebook_combined.txt direct 1 1 &> ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				head -1 ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				if grep -q "Test OK" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log; then
-					(grep -q "Neighbourhood size is 499" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n\n")
+					(grep -q "Neighbourhood size is 499" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n")
 				else
-					printf "Test FAILED\n\n"
+					printf "Test FAILED\n"
 				fi
 			else
 				echo "Test DISABLED; dataset not found. Provide facebook_combined.txt in the ${INPUT_DIR} directory to enable."
 			fi
+			echo " "
 
 			echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
 			bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} &> ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
