@@ -955,10 +955,124 @@ namespace alp {
 	}
 
 	/**
+	 * Returns a view over the general rank-1 matrix computed with the outer product.
+	 * This avoids creating the resulting container. The elements are calculated lazily on access.
+	 *
+	 * @tparam descr      	    The descriptor to be used (descriptors::no_operation
+	 *                    	    if left unspecified).
+	 * @tparam InputType1 	    The value type of the left-hand vector.
+	 * @tparam InputType2 	    The value type of the right-hand scalar.
+	 * @tparam InputStructure1  The Structure type applied to the left-hand vector.
+	 * @tparam InputStructure2  The Structure type applied to the right-hand vector.
+	 * @tparam InputView1       The view type applied to the left-hand vector.
+	 * @tparam InputView2       The view type applied to the right-hand vector.
+	 * @tparam Operator         The operator type used for this element-wise operation.
+	 *
+	 * @param x      The left-hand side vector view
+	 * @param y 	 The right-hand side vector view
+	 * @param mul 	 The operator
+	 * @param phase  The execution phase
+	 *
+	 * @return Matrix view over a lambda function defined in this function.
+	 *         The data type of the matrix equals to the return type of the provided operator.
+	 *         The structure of this matrix is General.
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputStructure1, typename InputView1,
+		typename InputType2, typename InputStructure2, typename InputView2,
+		class Operator
+		>
+	Matrix< typename Operator::D3, structures::General, Density::Dense,
+		view::Functor< std::function< void( InputType1 &, const size_t &, const size_t & ) > >,
+		reference >
+	outer(
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
+		const Operator &mul = Operator(),
+		const typename std::enable_if< alp::is_operator< Operator >::value &&
+			! alp::is_object< InputType1 >::value &&
+			! alp::is_object< InputType2 >::value,
+			void >::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "alp::outerProduct",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "alp::outerProduct",
+			"called with a postfactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+
+		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
+			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
+				//set( ret, alp::identities::zero );
+				apply( result, x[ i ], y[ j ], mul );
+			};
+		
+		return Matrix<
+			typename Operator::D3,
+			structures::General,
+			Density::Dense,
+			view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+			reference
+			>(
+				lambda,
+				std::make_shared< imf::Id >( getLength( x ) ),
+				std::make_shared< imf::Id >( getLength( y ) )
+			);
+
+	}
+
+	/**
+	 * Returns a view over the general rank-1 matrix computed with the outer product.
+	 * Version for the case when input vectors are the same vector,
+	 * which results in a symmetric matrix.
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView,
+		class Operator
+		>
+	Matrix< typename Operator::D3, structures::Symmetric, Density::Dense,
+		view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+		reference >
+	outer(
+		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > &x,
+		const Operator &mul = Operator(),
+		const typename std::enable_if< alp::is_operator< Operator >::value &&
+			! alp::is_object< InputType >::value,
+			void >::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType >::value ), "alp::outerProduct",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ), "alp::outerProduct",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+
+		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
+			[ &x, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
+				//set( ret, alp::identities::zero );
+				apply( result, x[ i ], x[ j ], mul );
+			};
+		
+		return Matrix<
+			typename Operator::D3,
+			structures::Symmetric,
+			Density::Dense,
+			view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+			reference
+			>(
+				lambda,
+				std::make_shared< imf::Id >( getLength( x ) )
+			);
+
+	}
+
+	/**
 	 * Sets all elements of the output matrix to the values of the input matrix. Unmasked version.
 	 * C = A
 	 * 
-	 * @tparam descr 
+	 * @tparam descr
 	 * @tparam OutputType      Data type of the output matrix C
 	 * @tparam OutputStructure Structure of the matrix C
 	 * @tparam OutputView      View type applied to the matrix C
@@ -993,7 +1107,7 @@ namespace alp {
 	 * Sets all elements of the given matrix to the value of the given scalar. Unmasked version.
 	 * C = val
 	 * 
-	 * @tparam descr 
+	 * @tparam descr
 	 * @tparam OutputType      Data type of the output matrix C
 	 * @tparam OutputStructure Structure of the matrix C
 	 * @tparam OutputView      View type applied to the matrix C
