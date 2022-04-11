@@ -85,11 +85,9 @@ namespace alp {
 
 
 				// LL[ k+1: , k+1: ] -= v*v^T
-				Matrix< D, structures::SymmetricPositiveDefinite, Dense > vvt( m );
-				rc = set( vvt, ring.template getZero< D >() );
 				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
-				rc = outer( vvt, v, v, ring.getMultiplicativeOperator() );
+				vvt = outer( v, ring.getMultiplicativeOperator() );
 				rc = foldl( LLprim, vvt, minus );
 
 			}
