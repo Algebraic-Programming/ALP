@@ -530,6 +530,12 @@ namespace alp {
 
 		/**
 		 * Base class with reference-related attributes, used in Views on container-type Matrix specializations
+		 * and views over lambda functions.
+		 *
+		 * \note Views-over-lambda-functions types are used internally as results of low-rank operations and are not
+		 *       directly exposed to users. From the users perspective, the use of objects of this type does not differ
+		 *       from the use of other \a alp::Matrix types. The difference lies in a lazy implementation of the access
+		 *       to matrix elements, which is not exposed to the user.
 		 * 
 		 */
 		template< typename TargetType >
@@ -540,11 +546,30 @@ namespace alp {
 			 * MatrixContainer. Thus a \a MatrixReference never allocates
 			 * memory but only establishes a logical view on top of it.
 			 */
-			TargetType & ref;
+			TargetType &ref;
 
-			MatrixReference( TargetType & struct_mat ) : MatrixBase( nrows( struct_mat ), ncols( struct_mat ) ), ref( struct_mat ) {}
-			MatrixReference( TargetType & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			MatrixBase( imf_l, imf_r ), ref( struct_mat ) {}
+			MatrixReference( TargetType &target ) : MatrixBase( nrows( target ), ncols( target ) ), ref( target ) {}
+			MatrixReference( TargetType &target, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+			MatrixBase( imf_l, imf_r ), ref( target ) {}
+		}; // class MatrixReference
+
+		/**
+		 * Specialization of MatrixReference with a lambda function as a target.
+		 * Used as a result of low-rank operation to avoid the need for allocating a container.
+		 * The data is produced lazily by invoking the lambda function stored as a part of this object.
+		 */
+		template< typename Ret, typename ... Args >
+		class MatrixReference< std::function< Ret( Args... ) > > : public MatrixBase {
+			protected:
+				typedef std::function< Ret( Args... ) > lambda_function_type;
+				lambda_function_type &lambda;
+			public:
+				MatrixReference(
+					lambda_function_type &lambda,
+					std::shared_ptr< imf::IMF > imf_l,
+					std::shared_ptr< imf::IMF > imf_r ) :
+					MatrixBase( imf_l->N, imf_r->N ), lambda( lambda ) {}
+
 		}; // class MatrixReference
 	} // namespace internal
 
@@ -804,6 +829,47 @@ namespace alp {
 		}
 
 	}; // Matrix Square reference
+
+	// Symmetric matrix reference
+	template< typename T, typename View >
+	class Matrix< T, structures::Symmetric, Density::Dense, View, reference > :
+		public internal::MatrixReference< typename View::applied_to > {
+
+	private:
+		using self_type = Matrix< T, structures::Symmetric, Density::Dense, View, reference >;
+		using target_type = typename View::applied_to;
+
+	public:
+		/** Exposes the element type and the structure. */
+		using value_type = T;
+		using structure = structures::Symmetric;
+
+		template < view::Views view_tag, bool d=false >
+		struct view_type;
+
+		template < bool d >
+		struct view_type< view::original, d > {
+			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Original< self_type >, reference >;
+		};
+
+		template < bool d >
+		struct view_type< view::transpose, d > {
+			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, reference >;
+		};
+
+		// ref to empty matrix
+		Matrix( ) : internal::MatrixReference< target_type >() {}
+
+		Matrix( target_type & target ) : internal::MatrixReference< target_type >( target ) {
+			if( nrows( target ) != ncols( target ) ) {
+				throw std::length_error( "Symmetric Matrix reference to non-square target." );
+			}
+		}
+
+		Matrix( target_type & target, std::shared_ptr< imf::IMF > imf_lr ) :
+			internal::MatrixReference< target_type >( target, imf_lr, imf_lr ) {}
+
+	}; // Matrix Symmetric reference
 
 	// Matrix UpperTriangular, container
 	template< typename T >

@@ -23,90 +23,79 @@
 
 using namespace alp;
 
-// sample data
-static const double vec1_vals[ 3 ] = { 1, 2, 3 };
-static const double vec2_vals[ 3 ] = { 4, 5, 6 };
-
-static const size_t I[ 3 ] = { 0, 1, 2 };
-
-static const double test1_in[ 3 ] = { 1, 1, 1 };
-static const double test1_expect[ 3 ] = { 24, 30, 36 };
-
-static const double test2_in[ 3 ] = { 1, 1, 1 };
-static const double test2_expect[ 3 ] = { 15, 30, 45 };
-
 // alp program
-void alpProgram( const void *, const size_t in_size, int &error ) {
+void alpProgram( const size_t &n, RC &rc ) {
 	/** \internal TODO: Implement initialization and result checking.
 	 * Currently only serves as the interface showcase.
 	 * */
-	error = 0;
-
-	if( in_size != 0 ) {
-		(void)fprintf( stderr, "Unit tests called with unexpected input\n" );
-		error = 1;
-		return;
-	}
-
-	// allocate
-	alp::Vector< double > u( 3 );
-	alp::Vector< double > v( 3 );
-	alp::Matrix< double, structures::General > M( 3, 3 );
-	// alp::Vector< double > test1( 3 );
-	// alp::Vector< double > out1( 3 );
-	// alp::Vector< double > test2( 3 );
-	// alp::Vector< double > out2( 3 );
 
 	// semiring
-	alp::Semiring<
+	Semiring<
 		alp::operators::add< double >, alp::operators::mul< double >,
 		alp::identities::zero, alp::identities::one
 	> ring;
+	// allocate
+	Vector< double > u( n );
+	Vector< double > v( n );
+	Matrix< double, structures::General > M( n, n );
 
-	alp::RC rc;
+	rc = outer( M, u, v, ring.getMultiplicativeOperator());
 
-	// initialise vec
-	// const double * vec_iter = &(vec1_vals[ 0 ]);
-	// alp::RC rc = alp::buildVector( u, vec_iter, vec_iter + 3, SEQUENTIAL );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t initial buildVector FAILED\n";
-	// 	error = 5;
-	// }
+	// Example with matrix view on a lambda function.
+	auto uvT = outer( u, v, ring.getMultiplicativeOperator() );
 
-	// if( !error ) {
-	// 	vec_iter = &(vec2_vals[ 0 ]);
-	// 	rc = alp::buildVector( v, vec_iter, vec_iter + 3, SEQUENTIAL );
-	// }
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t initial buildVector FAILED\n";
-	// 	error = 10;
-	// }
-
-	if( !error ) {
-		rc = alp::outer( M, u, v, ring.getMultiplicativeOperator());
-		rc = rc ? rc : alp::outer( M, u, v, ring.getMultiplicativeOperator() );
-	}
+	// Example when outer product takes the same vector as both inputs.
+	// This operation results in a symmetric positive definite matrix.
+	auto vvT = outer( v, ring.getMultiplicativeOperator() );
 
 }
 
 int main( int argc, char ** argv ) {
-	(void)argc;
+	// defaults
+	bool printUsage = false;
+	size_t in = 100;
+
+	// error checking
+	if( argc > 2 ) {
+		printUsage = true;
+	}
+	if( argc == 2 ) {
+		size_t read;
+		std::istringstream ss( argv[ 1 ] );
+		if( ! ( ss >> read ) ) {
+			std::cerr << "Error parsing first argument\n";
+			printUsage = true;
+		} else if( ! ss.eof() ) {
+			std::cerr << "Error parsing first argument\n";
+			printUsage = true;
+		} else if( read == 0 ) {
+			std::cerr << "n must be a positive number\n";
+			printUsage = true;
+		} else {
+			// all OK
+			in = read;
+		}
+	}
+	if( printUsage ) {
+		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
+		std::cerr << "  -n (optional, default is 100): an integer, the "
+					 "test size.\n";
+		return 1;
+	}
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
-	int error;
+	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	alp::Launcher< AUTOMATIC > launcher;
-	if( launcher.exec( &alpProgram, NULL, 0, error ) != SUCCESS ) {
-		std::cerr << "Test failed to launch\n";
-		error = 255;
+	alp::RC out;
+	if( launcher.exec( &alpProgram, in, out, true ) != SUCCESS ) {
+		std::cerr << "Launching test FAILED\n";
+		return 255;
 	}
-	if( error == 0 ) {
-		std::cout << "Test OK\n" << std::endl;
+	if( out != SUCCESS ) {
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
-		std::cerr << std::flush;
-		std::cout << "Test FAILED\n" << std::endl;
+		std::cout << "Test OK" << std::endl;
 	}
-
-	// done
-	return error;
+	return 0;
 }
 

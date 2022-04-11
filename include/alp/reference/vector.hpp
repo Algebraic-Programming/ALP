@@ -417,14 +417,14 @@ namespace alp {
 		lambda_reference operator[]( const size_t i ) noexcept {
 			assert( i < _length() );
 			assert( getInitialized( *v ) );
-			// TODO implement;
+			return ( *v )[ i ];
 		}
 
 		/** \internal No implementation notes. */
 		const lambda_reference operator[]( const size_t i ) const noexcept {
 			assert( i < _length() );
 			assert( getInitialized( *v ) );
-			// TODO implement;
+			return ( *v )[ i ];
 		}
 
 	}; // class Vector with physical container

@@ -71,6 +71,16 @@ namespace alp {
 			}
 		};
 
+		template< typename LambdaFunctionType >
+		struct Functor {
+
+			using applied_to = LambdaFunctionType;
+
+			static std::pair< size_t, size_t > getLength( std::pair< size_t, size_t > dims_pair ) {
+				return std::make_pair( dims_pair.first, dims_pair.second );
+			}
+		};
+
 	}; // namespace view
 
 } // namespace alp
