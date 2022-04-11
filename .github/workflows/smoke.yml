@@ -29,5 +29,9 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: make -j4 smoketests
+      run: make -j4 smoketests &> smoketests.log
+
+    - name: Check
+      working-directory: ${{github.workspace}}/build
+      run: ../tests/summarise.sh smoketests.log
 
