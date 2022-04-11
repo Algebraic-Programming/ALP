@@ -17,6 +17,7 @@
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Support/FileUtilities.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
+#include <mlir/Dialect/Linalg/Transforms/CodegenStrategy.h>
 
 struct Options {
 	llvm::cl::OptionCategory optFlags { "opt-like flags" };
@@ -53,12 +54,19 @@ namespace grb {
 
 			// initialize pass manager and run passes to lower from linalg to llvm.
 			mlir::PassManager pm( &ctx );
+      pm.addPass( mlir::createLinalgChainPass() );
+      //mlir::linalg::LinalgTilingAndFusionOptions optionsLinalg;
+      //optionsLinalg.setTileSizes({1, 1, 1});
+      //mlir::linalg::LinalgTransformationFilter filter = mlir::linalg::LinalgTransformationFilter();
+      //pm.addNestedPass<mlir::FuncOp>( mlir::createLinalgStrategyTileAndFusePass("linalg.matmul", optionsLinalg, filter) );
 			pm.addPass( mlir::createLinalgTransformInterpreterPass() );
 
 			if( mlir::failed( pm.run( *module ) ) ) {
 				std::cout << "module verification error!\n";
 				return FAILED;
 			}
+
+      //module->dump();
 
 			// Remove pdl and linalg_transform dialects
 			builder.setInsertionPointToStart( module->getBody() );
@@ -69,7 +77,7 @@ namespace grb {
 				op->erase();
 			} );
 
-			module->dump();
+			//module->dump();
 
 			llvm::InitializeNativeTarget();
 			llvm::InitializeNativeTargetAsmPrinter();
