@@ -26,9 +26,19 @@
 #include <map>
 #include <string>
 
+
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
+
+			enum Symmetry {
+				General = 0,
+				Symmetric,
+				SkewSymmetric,
+				Hermitian
+			};
 
 			struct MatrixFileProperties {
 
@@ -69,8 +79,18 @@ namespace grb {
 				/** Whether the file to be read is pattern-only. */
 				bool _pattern;
 
-				/** Whether the file is symmetric or not. */
-				bool _symmetric;
+				/**
+				 * Whether the file is symmetric.
+				 *
+				 * If yes, meaning that this field evaluates not equal to zero, it the
+				 * field indicates what symmetry type it is.
+				 */
+				enum Symmetry _symmetric;
+
+				/**
+				 * Whether the file holds complex-valued numbers.
+				 */
+				bool _complex;
 
 				/**
 				 * Whether the file has direct indexing or not.
@@ -92,7 +112,10 @@ namespace grb {
 			};
 
 		} // namespace internal
+
 	}     // namespace utils
+
 } // namespace grb
 
 #endif // end ``_H_MATRIXFILE_PROPERTIES''
+

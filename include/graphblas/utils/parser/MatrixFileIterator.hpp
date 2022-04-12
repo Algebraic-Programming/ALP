@@ -40,8 +40,10 @@
 #include <graphblas/config.hpp>
 #include <graphblas/iomode.hpp>
 #include <graphblas/spmd.hpp>
+
 #include <graphblas/utils/config.hpp>
 #include <graphblas/utils/hpparser.h>
+#include <graphblas/utils/iscomplex.hpp>
 
 #include "MatrixFileProperties.hpp"
 
@@ -235,7 +237,7 @@ namespace grb {
 							properties = x.properties;
 						}
 						// not yet done, copy input file stream position
-						(void)infile.seekg( x.spos );
+						(void) infile.seekg( x.spos );
 						spos = x.spos;
 						pos = x.pos;
 						// copy any remaining buffer contents
@@ -402,7 +404,21 @@ namespace grb {
 								for( ; !ended && i < buffer_size; ++i ) {
 									S row, col;
 									T val;
-									if( !(infile >> row >> col >> val) ) {
+									bool error = false;
+									if( properties._type == MatrixFileProperties::Type::MATRIX_MARKET &&
+										properties._complex
+									) {
+										typename is_complex< T >::type re, im;
+										error = !(infile >> row >> col >> re >> im);
+										if( !error ) {
+											std::stringstream oss;
+											oss << "(" << re << "," << im << ")";
+											error = !(oss >> val);
+										}
+									} else {
+										error = !(infile >> row >> col >> val);
+									}
+									if( error ) {
 										if( i == 0 ) {
 											ended = true;
 										}
@@ -1053,3 +1069,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end ``_H_MATRIXFILEITERATOR''
+
