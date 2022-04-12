@@ -318,6 +318,9 @@ namespace grb {
 								// make symmetric pair & exit if current nonzero is not diagonal
 								if( buffer[ pos ].first.first != buffer[ pos ].first.second ) {
 									std::swap( buffer[ pos ].first.first, buffer[ pos ].first.second );
+									if( properties._symmetric == Hermitian ) {
+										std::conj( buffer[ pos ].second );
+									}
 									return *this;
 								} else {
 									// if diagonal, reset symmetricOut and continue normal path
