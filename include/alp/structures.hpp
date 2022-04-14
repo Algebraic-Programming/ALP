@@ -181,19 +181,19 @@ namespace alp {
 			 * 			associated with the source structure \a SrcStructure; \a true otherwise. 
 			 */
 
-			template< typename SrcStructure >
-			static bool isInstantiableFrom( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
+			template< typename SrcStructure, typename IMF_L, typename IMF_R >
+			static bool isInstantiableFrom( IMF_L &imf_l, IMF_R &imf_r ) {
 				return false;
 			}
 		};
 
-		template<>
-		inline bool General::isInstantiableFrom< UpperTriangular >( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
+		template< typename IMF_L, typename IMF_R >
+		inline bool General::isInstantiableFrom< UpperTriangular >( IMF_L & imf_l, IMF_R & imf_r ) {
 			return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
 		}
 
-		template<>
-		inline bool General::isInstantiableFrom< General >( alp::imf::IMF & imf_l, alp::imf::IMF & imf_r ) {
+		template< typename IMF_L, typename IMF_R >
+		inline bool General::isInstantiableFrom< General >( IMF_L & imf_l, IMF_R & imf_r ) {
 			(void)imf_l;
 			(void)imf_r;
 			return true;
@@ -306,8 +306,8 @@ namespace alp {
 			// Maybe we can consider inheritance here to allow calling checks in base classes.
 			// For example, in all cases we should check if IMFs do not overflow the original container.
 			// (if it is actually necessary. Maybe we want to assume that the user knows what he is doing)
-			template< typename SrcStructure >
-			static bool isInstantiableFrom( const alp::imf::IMF & imf_l, const alp::imf::IMF & imf_r ) {
+			template< typename SrcStructure, typename IMF_L, typename IMF_R >
+			static bool isInstantiableFrom( const IMF_L & imf_l, const IMF_R & imf_r ) {
 
 				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
 
