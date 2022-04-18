@@ -605,17 +605,19 @@ template< typename T, typename IterT, enum Backend implementation = config::defa
 		std::size_t nrows, std::size_t ncols,
 		const typename IterT::input_sizes_t& iter_sizes ) {
 
+	// bsp1d and reference backends allow only sequential input ingestion
+	constexpr IOMode PARALLEL_MODE{ ( implementation == Backend::BSP1D )
+		|| ( implementation == Backend::reference ) ? IOMode::SEQUENTIAL : IOMode::PARALLEL };
+
     LOG() << "-- size " << nrows << " x " << ncols << std::endl;
 
 	try {
-
 		Matrix< T, implementation > sequential_matrix( nrows, ncols );
 		IterT begin( IterT::make_begin( iter_sizes) );
 		IterT end( IterT::make_end( iter_sizes) );
 		const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
-		//std::cout << " with " << num_nnz << " non-zeroes" << std::endl;
 		// test that iterator difference works properly
-		ASSERT_EQ( end  - begin, static_cast< typename IterT::difference_type >( num_nnz ) );
+		ASSERT_EQ( end - begin, static_cast< typename IterT::difference_type >( num_nnz ) );
 		RC ret { buildMatrixUnique( sequential_matrix, begin, end, IOMode::SEQUENTIAL ) };
 		ASSERT_RC_SUCCESS( ret );
 		ASSERT_TRUE( test_build_matrix_iomode( IOMode::SEQUENTIAL ) );
@@ -628,10 +630,7 @@ template< typename T, typename IterT, enum Backend implementation = config::defa
 				compute_parallel_num_nonzeroes( num_nnz ) ) );
 		ret = buildMatrixUnique( parallel_matrix, pbegin, pend, IOMode::PARALLEL );
 		ASSERT_RC_SUCCESS( ret );
-		// allow SEQUENTIAL iomode with sequential-only backends
-		ASSERT_TRUE( test_build_matrix_iomode( IOMode::PARALLEL )
-			|| ( implementation == Backend::BSP1D ) || ( implementation == Backend::reference ) );
-		//std::cout << "expected non-zeroes " << num_nnz << " actual " << nnz( parallel_matrix ) << std::endl;
+		ASSERT_TRUE( test_build_matrix_iomode( PARALLEL_MODE ) );
 		ASSERT_EQ( nnz( parallel_matrix ), num_nnz );
 
 		test_matrix_sizes_match( sequential_matrix, parallel_matrix );

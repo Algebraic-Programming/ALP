@@ -980,99 +980,81 @@ namespace grb {
 		return PANIC;
 	}
 
-	/**
-	 * \internal No implementation details.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename RIT, typename CIT, typename NIT,
-		typename fwd_iterator
-	>
-	RC buildMatrixUnique(
-		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
-		fwd_iterator start, const fwd_iterator end,
-		const IOMode mode
-	) {
-		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
-			std::is_same< InputType,
-				typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
-				std::is_integral< RIT >::value &&
-				std::is_integral< CIT >::value
-		), "grb::buildMatrixUnique (BSP1D implementation)",
-			"Input iterator does not match output vector type while no_casting "
-			"descriptor was set"
-		);
-		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
-			"given iterator does not meet the required interface (i(), j() methods -- and v() for non-void matrices)" );
+	// /**
+	//  * \internal No implementation details.
+	//  */
+	// template<
+	// 	Descriptor descr = descriptors::no_operation,
+	// 	typename InputType, typename RIT, typename CIT, typename NIT,
+	// 	typename fwd_iterator
+	// >
+	// RC buildMatrixUnique(
+	// 	Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+	// 	fwd_iterator start, const fwd_iterator end,
+	// 	const IOMode mode
+	// ) {
+	// 	NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+	// 		std::is_same< InputType,
+	// 			typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
+	// 			std::is_integral< RIT >::value &&
+	// 			std::is_integral< CIT >::value
+	// 	), "grb::buildMatrixUnique (BSP1D implementation)",
+	// 		"Input iterator does not match output vector type while no_casting "
+	// 		"descriptor was set"
+	// 	);
+	// 	static_assert( is_input_iterator< InputType, fwd_iterator >::value,
+	// 		"given iterator does not meet the required interface (i(), j() methods -- and v() for non-void matrices)" );
 
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::row_t,
-			RIT >::value,
-			"cannot convert input row to internal format" );
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::col_t,
-			CIT >::value,
-			"cannot convert input column to internal format" );
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::val_t,
-			InputType >::value || std::is_same< InputType, void >::value,
-			"cannot convert input value to internal format" );
+	// 	static_assert( std::is_convertible<
+	// 		typename is_input_iterator< InputType, fwd_iterator >::row_t,
+	// 		RIT >::value,
+	// 		"cannot convert input row to internal format" );
+	// 	static_assert( std::is_convertible<
+	// 		typename is_input_iterator< InputType, fwd_iterator >::col_t,
+	// 		CIT >::value,
+	// 		"cannot convert input column to internal format" );
+	// 	static_assert( std::is_convertible<
+	// 		typename is_input_iterator< InputType, fwd_iterator >::val_t,
+	// 		InputType >::value || std::is_same< InputType, void >::value,
+	// 		"cannot convert input value to internal format" );
 		
-		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
+	// 	typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
 
-		// static checks
-		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
-				std::is_same< InputType, typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
-				std::is_integral< RIT >::value &&
-				std::is_integral< CIT >::value
-			), "grb::buildMatrixUnique (BSP1D implementation)",
-			"Input iterator does not match output vector type while no_casting "
-			"descriptor was set" );
+	// 	// static checks
+	// 	NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+	// 			std::is_same< InputType, typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
+	// 			std::is_integral< RIT >::value &&
+	// 			std::is_integral< CIT >::value
+	// 		), "grb::buildMatrixUnique (BSP1D implementation)",
+	// 		"Input iterator does not match output vector type while no_casting "
+	// 		"descriptor was set" );
 
-		// get access to user process data on s and P
-		internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+	namespace internal {
 
-#ifdef _DEBUG
-		std::cout << "buildMatrixUnique is called from process " << data.s << " "
-			<< "out of " << data.P << " processes total.\n";
-#endif
+		template< typename fwd_iterator, typename RIT, typename CIT, typename InputType  >
+		RC populateMatrixBuildCaches(
+				fwd_iterator start, const fwd_iterator end,
+				const IOMode mode,
+				size_t rows, size_t cols,
+				std::vector< utils::NonZeroStorage< RIT, CIT, InputType > > &cache,
+				std::vector< std::vector< utils::NonZeroStorage< RIT, CIT, InputType > > > &outgoing,
+				const BSP1D_Data &data
+		) {
 
-		// delegate for sequential case
-		if( data.P == 1 ) {
-			return buildMatrixUnique< descr >(
-				internal::getLocal(A),
-				start, end,
-				SEQUENTIAL
-			);
-		}
-
-		// function semantics require the matrix be cleared first
-		RC ret = clear( A );
-
-		// local cache, used to delegate to reference buildMatrixUnique
-		std::vector< storage_t > cache;
-
-		// caches non-local nonzeroes (in case of Parallel IO)
-		std::vector< std::vector< storage_t > > outgoing;
 		if( mode == PARALLEL ) {
 			outgoing.resize( data.P );
 		}
-		// NOTE: this copies a lot of the above methodology
 
-#ifdef _DEBUG
-		const size_t my_offset =
-			internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
-		std::cout << "Local column-wise offset at PID " << data.s << " is "
-			<< my_offset << "\n";
-#endif
+		RC ret{ SUCCESS };
+
 		// loop over all input
 		for( size_t k = 0; ret == SUCCESS && start != end; ++k, ++start ) {
 
 			// sanity check on input
-			if( start.i() >= A._m ) {
+			if( start.i() >= rows ) {
 				return MISMATCH;
 			}
-			if( start.j() >= A._n ) {
+			if( start.j() >= cols ) {
 				return MISMATCH;
 			}
 
@@ -1080,24 +1062,24 @@ namespace grb {
 			const size_t global_row_index = start.i();
 			const size_t row_pid =
 				internal::Distribution< BSP1D >::global_index_to_process_id(
-					global_row_index, A._m, data.P
+					global_row_index, rows, data.P
 				);
 			const size_t row_local_index =
 				internal::Distribution< BSP1D >::global_index_to_local(
-					global_row_index, A._m, data.P
+					global_row_index, rows, data.P
 				);
 			const size_t global_col_index = start.j();
 			const size_t column_pid =
 				internal::Distribution< BSP1D >::global_index_to_process_id(
-					global_col_index, A._n, data.P
+					global_col_index, cols, data.P
 				);
 			const size_t column_local_index =
 				internal::Distribution< BSP1D >::global_index_to_local(
-					global_col_index, A._n, data.P
+					global_col_index, cols, data.P
 				);
 			const size_t column_offset =
 				internal::Distribution< BSP1D >::local_offset(
-					A._n, column_pid, data.P
+					cols, column_pid, data.P
 				);
 
 			// check if local
@@ -1141,6 +1123,91 @@ namespace grb {
 #endif
 			}
 		}
+
+		return ret;
+		}
+	}
+
+	/**
+	 * \internal No implementation details.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		fwd_iterator start, const fwd_iterator end,
+		const IOMode mode
+	) {
+		// static checks
+		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+			std::is_same< InputType,
+				typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
+				std::is_integral< RIT >::value &&
+				std::is_integral< CIT >::value
+		), "grb::buildMatrixUnique (BSP1D implementation)",
+			"Input iterator does not match output vector type while no_casting "
+			"descriptor was set"
+		);
+		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
+			"given iterator does not meet the required interface (i(), j() methods -- and v() for non-void matrices)" );
+
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::row_t,
+			RIT >::value,
+			"cannot convert input row to internal format" );
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::col_t,
+			CIT >::value,
+			"cannot convert input column to internal format" );
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::val_t,
+			InputType >::value || std::is_same< InputType, void >::value,
+			"cannot convert input value to internal format" );
+		
+		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
+
+		// get access to user process data on s and P
+		internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+
+#ifdef _DEBUG
+		std::cout << "buildMatrixUnique is called from process " << data.s << " "
+			<< "out of " << data.P << " processes total.\n";
+#endif
+
+#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
+			::__trace_build_matrix_iomode( mode );
+#endif
+
+		// delegate for sequential case
+		if( data.P == 1 ) {
+			return buildMatrixUnique< descr >(
+				internal::getLocal(A),
+				start, end,
+				/*SEQUENTIAL*/ mode // follow users's suggestion for local build
+			);
+		}
+
+		// function semantics require the matrix be cleared first
+		RC ret = clear( A );
+
+		// local cache, used to delegate to reference buildMatrixUnique
+		std::vector< storage_t > cache;
+
+		// caches non-local nonzeroes (in case of Parallel IO)
+		std::vector< std::vector< storage_t > > outgoing;
+		// NOTE: this copies a lot of the above methodology
+
+#ifdef _DEBUG
+		const size_t my_offset =
+			internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
+		std::cout << "Local column-wise offset at PID " << data.s << " is "
+			<< my_offset << "\n";
+#endif
+
+		internal::populateMatrixBuildCaches( start, end, mode, A._m, A._n, cache, outgoing, data );
 
 		// report on memory usage
 		(void) config::MEMORY::report( "grb::buildMatrixUnique",
@@ -1410,6 +1477,7 @@ namespace grb {
 
 		return ret;
 	}
+
 
 	template<>
 	RC wait< BSP1D >();
