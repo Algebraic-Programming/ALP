@@ -1097,7 +1097,7 @@ namespace grb {
 		  		return SUCCESS;
 			}
 			typename iterator_tag_selector<fwd_iterator>::iterator_category category;
-			buildMatrixUniqueImpl(_start, _end, category);
+			buildMatrixUniqueImpl( _start, _end, category );
 #else
 			(void)mode;
 		  	buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
@@ -1120,6 +1120,10 @@ namespace grb {
 				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
 			}
 			std::cout << "buildMatrixUnique: end input.\n";
+#endif
+
+#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
+			::__trace_build_matrix_iomode( IOMode::SEQUENTIAL );
 #endif
 			// detect trivial case
 			if( _start == _end || m == 0 || n == 0 ) {
@@ -1280,6 +1284,10 @@ namespace grb {
 					std::cout << "\t" << it.i() << ", " << it.j() << "\n";
 				}
 				std::cout << "buildMatrixUnique: end input.\n";
+#endif
+
+#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
+			::__trace_build_matrix_iomode( IOMode::PARALLEL );
 #endif
 
 				// detect trivial case
