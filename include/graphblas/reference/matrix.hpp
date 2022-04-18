@@ -1086,28 +1086,26 @@ namespace grb {
 		*/
 
 
-	        //interface
-   	        /** @see Matrix::buildMatrixUnique */
-	        template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
+		//interface
+   		/** @see Matrix::buildMatrixUnique */
+		template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
 		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end, const IOMode mode ) {
 
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 			if( mode == IOMode::SEQUENTIAL ) {
-				buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
-		  		return SUCCESS;
+				return buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
 			}
-			typename iterator_tag_selector<fwd_iterator>::iterator_category category;
-			buildMatrixUniqueImpl( _start, _end, category );
-#else
+			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
+			return buildMatrixUniqueImpl( _start, _end, category );
+#else // materialize only sequential iterator
 			(void)mode;
-		  	buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
+		  	return buildMatrixUniqueImpl( _start, _end, std::forward_iterator_tag() );
 #endif
-		  	return SUCCESS;
 		}
 
 
-	        //forward iterator version
-	        template <typename fwd_iterator>
+		//forward iterator version
+		template <typename fwd_iterator>
 		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {
 #ifdef _DEBUG
 		        std::cout << " fwrd acces iterator " << '\n';

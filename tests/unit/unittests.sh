@@ -497,6 +497,13 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
+				echo "                                 both sequentially and in parallel"
+				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 					echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
 					echo
