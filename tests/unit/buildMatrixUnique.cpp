@@ -22,13 +22,27 @@
 #include <stdexcept>
 #include <array>
 #include <vector>
+#include <iterator>
 
-#define _GRB_BUILD_MATRIX_UNIQUE_DBG
+#include <graphblas/iomode.hpp>
+
+#define _GRB_BUILD_MATRIX_UNIQUE_TRACE
+
+void __trace_build_matrix_iomode( grb::IOMode );
+
 #include <graphblas.hpp>
 #include <utils/assertions.hpp>
 #include <graphblas/utils/NonZeroStorage.hpp>
 
 using namespace grb;
+
+static std::vector< grb::IOMode > __iomodes;
+
+void __trace_build_matrix_iomode( grb::IOMode mode ) {
+	__iomodes.push_back( mode );
+}
+
+
 
 #define LOG() std::cout
 const char * MISMATCH_HIGHLIGHT_BEGIN{ "<< " };
@@ -43,10 +57,21 @@ static void compute_parallel_first_nonzero( std::size_t num_nonzeroes,
 	first_local_nonzero = num_nonzeroes_per_process * spmd<>::pid();
 }
 
+static std::size_t compute_parallel_first_nonzero( std::size_t num_nonzeroes ) {
+	std::size_t nnz_per_proc, first;
+	compute_parallel_first_nonzero( num_nonzeroes, nnz_per_proc, first);
+	return first;
+}
+
 static std::size_t compute_parallel_last_nonzero( std::size_t num_nonzeroes ) {
 	std::size_t num_non_zeroes_per_process, first_local_nonzero;
 	compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
 	return std::min( num_nonzeroes, first_local_nonzero + num_non_zeroes_per_process );
+}
+
+static std::size_t compute_parallel_num_nonzeroes( std::size_t num_nonzereos ) {
+	return compute_parallel_last_nonzero( num_nonzereos ) -
+		compute_parallel_first_nonzero( num_nonzereos );
 }
 
 struct diag_iterator {
@@ -565,35 +590,56 @@ template< typename T > bool matrices_values_are_equal( const Matrix< T >& mat1, 
     return match;
 }
 
+static bool test_build_matrix_iomode( IOMode mode ) {
+	bool res{ true };
+	for( IOMode m : __iomodes ) {
+		res &= ( m == mode );
+	}
+	__iomodes.clear();
+	return res;
+}
 
-template< typename T, typename IterT > void test_sequential_and_parallel_matrix_generation(
+
+template< typename T, typename IterT, enum Backend implementation = config::default_backend >
+	void test_sequential_and_parallel_matrix_generation(
 		std::size_t nrows, std::size_t ncols,
 		const typename IterT::input_sizes_t& iter_sizes ) {
 
     LOG() << "-- size " << nrows << " x " << ncols << std::endl;
 
-    Matrix< T > sequential_matrix( nrows, ncols );
-    IterT begin( IterT::make_begin( iter_sizes) );
-    IterT end( IterT::make_end( iter_sizes) );
-	const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
-	//std::cout << " with " << num_nnz << " non-zeroes" << std::endl;
-	// test that iterator difference works properly
-	ASSERT_EQ( end  - begin, static_cast< typename IterT::difference_type >( num_nnz ) );
-    RC ret { buildMatrixUnique( sequential_matrix, begin, end, IOMode::SEQUENTIAL ) };
-    ASSERT_RC_SUCCESS( ret );
-	ASSERT_EQ( nnz( sequential_matrix ), num_nnz );
+	try {
 
-    Matrix< T > parallel_matrix( nrows, ncols );
-    IterT pbegin( IterT::make_parallel_begin( iter_sizes) );
-    IterT pend( IterT::make_parallel_end( iter_sizes) );
-	ASSERT_EQ( pend  - pbegin, static_cast< typename IterT::difference_type >( num_nnz ) );
-    ret = buildMatrixUnique( parallel_matrix, pbegin, pend, IOMode::PARALLEL );
-    ASSERT_RC_SUCCESS( ret );
-	//std::cout << "expected non-zeroes " << num_nnz << " actual " << nnz( parallel_matrix ) << std::endl;
-	ASSERT_EQ( nnz( parallel_matrix ), num_nnz );
+		Matrix< T, implementation > sequential_matrix( nrows, ncols );
+		IterT begin( IterT::make_begin( iter_sizes) );
+		IterT end( IterT::make_end( iter_sizes) );
+		const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
+		//std::cout << " with " << num_nnz << " non-zeroes" << std::endl;
+		// test that iterator difference works properly
+		ASSERT_EQ( end  - begin, static_cast< typename IterT::difference_type >( num_nnz ) );
+		RC ret { buildMatrixUnique( sequential_matrix, begin, end, IOMode::SEQUENTIAL ) };
+		ASSERT_RC_SUCCESS( ret );
+		ASSERT_TRUE( test_build_matrix_iomode( IOMode::SEQUENTIAL ) );
+		ASSERT_EQ( nnz( sequential_matrix ), num_nnz );
 
-    test_matrix_sizes_match( sequential_matrix, parallel_matrix );
-    ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix, true ) );
+		Matrix< T, implementation > parallel_matrix( nrows, ncols );
+		IterT pbegin( IterT::make_parallel_begin( iter_sizes) );
+		IterT pend( IterT::make_parallel_end( iter_sizes) );
+		ASSERT_EQ( pend  - pbegin, static_cast< typename IterT::difference_type >(
+				compute_parallel_num_nonzeroes( num_nnz ) ) );
+		ret = buildMatrixUnique( parallel_matrix, pbegin, pend, IOMode::PARALLEL );
+		ASSERT_RC_SUCCESS( ret );
+		// allow SEQUENTIAL iomode with sequential-only backends
+		ASSERT_TRUE( test_build_matrix_iomode( IOMode::PARALLEL )
+			|| ( implementation == Backend::BSP1D ) || ( implementation == Backend::reference ) );
+		//std::cout << "expected non-zeroes " << num_nnz << " actual " << nnz( parallel_matrix ) << std::endl;
+		ASSERT_EQ( nnz( parallel_matrix ), num_nnz );
+
+		test_matrix_sizes_match( sequential_matrix, parallel_matrix );
+		ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix, true ) );
+	} catch ( std::exception& e ) {
+		LOG() << "got exception: " << std::endl << "---------" << std::endl << "   " << e.what()
+			<<  std::endl << "---------" << std::endl;
+	}
 
 	LOG() << "-- OK" << std::endl;
 }

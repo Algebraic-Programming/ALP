@@ -138,7 +138,7 @@ namespace grb {
 	template< typename IterT > class iterator_tag_selector {
 
 		template< typename It> static typename std::iterator_traits<It>::iterator_category select( int ) {
-			return typename std::iterator_traits<IterT>::iterator_category();
+			return typename std::iterator_traits<It>::iterator_category();
 		}
 
 		template< typename It> static typename std::forward_iterator_tag select( ... ) {
