@@ -198,7 +198,7 @@ namespace grb {
 			if( _m > 0 && _n > 0 ) {
 				// check capacity
 				if( nz / _m > _n ||
-					nz / _n / _m ||
+					nz / _n > _m ||
 					(nz / _m == _n && (nz % _m > 0)) ||
 					(nz / _n == _m && (nz % _n > 0))
 				) {
