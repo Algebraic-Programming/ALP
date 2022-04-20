@@ -168,36 +168,55 @@ namespace alp {
 
 		struct General {
 			using inferred_structures = std::tuple< General >;
-
-			/**
-			 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
-			 * 		  and index mapping functions (IMFs) \a imf_l and \a imf_r can be defined over \a SrcStructure.
-			 * 
-			 * @tparam SrcStructure The underlying structure of the target view.
-			 * @param imf_l 		The IMF applied to the rows of the source matrix.
-			 * @param imf_r 		The IMF applied to the columns of the source matrix.
-
-			 * @return \a false if the function can determined that the new view may alter underlying assumptions 
-			 * 			associated with the source structure \a SrcStructure; \a true otherwise. 
-			 */
-
-			template< typename SrcStructure, typename IMF_L, typename IMF_R >
-			static bool isInstantiableFrom( IMF_L &imf_l, IMF_R &imf_r ) {
-				return false;
-			}
 		};
 
-		template< typename IMF_L, typename IMF_R >
-		inline bool General::isInstantiableFrom< UpperTriangular >( IMF_L & imf_l, IMF_R & imf_r ) {
-			return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
-		}
+		/**
+		 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
+		 * 		  and index mapping functions (IMFs) \a imf_l and \a imf_r can be defined over \a SourceStructure.
+		 *
+		 * @tparam SourceStructure The underlying structure of the source view.
+		 * @tparam TargetStructure The underlying structure of the target view.
+		 * @param imf_l            The IMF applied to the rows of the source matrix.
+		 * @param imf_r            The IMF applied to the columns of the source matrix.
+	
+		 * @return \a false if the function can determined that the new view may alter underlying assumptions
+		 * 			associated with the source structure \a SourceStructure; \a true otherwise.
+		 */
+		template< typename SourceStructure, typename TargetStructure >
+		struct isInstantiable {
+			template< typename ImfL, typename ImfR >
+			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
+				(void)imf_l;
+				(void)imf_r;
+				return false;
+			};
+		};
 
-		template< typename IMF_L, typename IMF_R >
-		inline bool General::isInstantiableFrom< General >( IMF_L & imf_l, IMF_R & imf_r ) {
-			(void)imf_l;
-			(void)imf_r;
-			return true;
-		}
+		template<>
+		struct isInstantiable< General, General > {
+			template< typename ImfL, typename ImfR >
+			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
+				(void)imf_l;
+				(void)imf_r;
+				return true;
+			};
+		};
+
+		template<>
+		struct isInstantiable< UpperTriangular, General > {
+			template< typename ImfL, typename ImfR >
+			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
+				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
+			};
+		};
+
+		template<>
+		struct isInstantiable< UpperTriangular, UpperTriangular > {
+			template< typename ImfL, typename ImfR >
+			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
+				return imf_l.isSame(imf_r);
+			};
+		};
 
 		struct Square {
 			using inferred_structures = structures::tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
@@ -302,17 +321,6 @@ namespace alp {
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< UpperTriangular >, Triangular::inferred_structures, UpperTrapezoidal::inferred_structures >::type;
-
-			// Maybe we can consider inheritance here to allow calling checks in base classes.
-			// For example, in all cases we should check if IMFs do not overflow the original container.
-			// (if it is actually necessary. Maybe we want to assume that the user knows what he is doing)
-			template< typename SrcStructure, typename IMF_L, typename IMF_R >
-			static bool isInstantiableFrom( const IMF_L & imf_l, const IMF_R & imf_r ) {
-
-				static_assert( std::is_same< SrcStructure, UpperTriangular >::value );
-
-				return imf_l.isSame(imf_r);
-			}
 		};
 
 		struct Tridiagonal {
