@@ -27,6 +27,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <functional>
 
 #include <alp/backends.hpp>
 #include <alp/base/matrix.hpp>
@@ -357,63 +358,76 @@ namespace alp {
 
 	namespace internal {
 		/** Forward declaration */
-		template< typename T >
+		template< typename T, typename ImfL, typename ImfR >
 		class MatrixContainer;
 
 		/** Container reference getters used by friend functions of specialized Matrix */
-		template< typename T >
-		const Matrix< T, reference > & getContainer( const MatrixContainer< T > & A );
+		template< typename T, typename ImfL, typename ImfR >
+		const Matrix< T, reference > & getContainer( const MatrixContainer< T, ImfL, ImfR > & A );
 
-		template< typename T >
-		Matrix< T, reference > & getContainer( MatrixContainer< T > & A );
+		template< typename T, typename ImfL, typename ImfR >
+		Matrix< T, reference > & getContainer( MatrixContainer< T, ImfL, ImfR > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
-		template< typename T, typename Structure, enum Density density, typename View >
-		const Matrix< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, reference > & A ) {
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		const Matrix< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) {
 			return getContainer( A );
 		}
 
-		template< typename T, typename Structure, enum Density density, typename View >
-		Matrix< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, reference > & A ) {
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		Matrix< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) {
 			return getContainer( A );
 		}
 
 		/** Forward declaration */
+		template< typename ImfL, typename ImfR >
 		class MatrixBase;
 
-		size_t nrows( const MatrixBase & A ) noexcept;
+		template< typename ImfL, typename ImfR >
+		size_t nrows( const MatrixBase< ImfL, ImfR > & A ) noexcept;
 
-		size_t ncols( const MatrixBase & A ) noexcept;
+		template< typename ImfL, typename ImfR >
+		size_t ncols( const MatrixBase< ImfL, ImfR > & A ) noexcept;
 
-		std::pair< size_t, size_t > dims( const MatrixBase & A ) noexcept;
+		template< typename ImfL, typename ImfR >
+		std::pair< size_t, size_t > dims( const MatrixBase< ImfL, ImfR > & A ) noexcept {
+			(void)A;
+			return {0, 0};
+		};
 
-		bool getInitialized( MatrixBase & ) noexcept;
+		template< typename ImfL, typename ImfR >
+		bool getInitialized( MatrixBase< ImfL, ImfR > & ) noexcept;
 
-		void getInitialized( MatrixBase &, bool ) noexcept;
+		template< typename ImfL, typename ImfR >
+		void getInitialized( MatrixBase< ImfL, ImfR > &, bool ) noexcept;
 	} // namespace internal
 
-	template< typename T, typename Structure, enum Density density, typename View >
-	bool getInitialized( Matrix< T, Structure, density, View, reference > & A ) noexcept {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+	bool getInitialized( Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) noexcept {
 		return getInitialized( A );
 	}
 
-	template< typename T, typename Structure, enum Density density, typename View >
-	void setInitialized( Matrix< T, Structure, density, View, reference > & A, bool initialized ) noexcept {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+	void setInitialized( Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, bool initialized ) noexcept {
 		setInitialized( A, initialized );
 	}
 
-	template< typename D, typename Structure, typename View >
-	size_t nrows( const Matrix< D, Structure, Density::Dense, View, reference > & A ) noexcept {
-		return internal::nrows( A );
+	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
+		//return internal::nrows( static_cast< internal::MatrixBase< ImfL, ImfR > > ( A ) );
+		(void)A;
+		return 0;
 	}
 
-	template< typename D, typename Structure, typename View >
-	size_t ncols( const Matrix< D, Structure, Density::Dense, View, reference > & A ) noexcept {
-		return internal::ncols( A );
+	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
+		//return internal::ncols( static_cast< internal::MatrixBase< ImfL, ImfR > > ( A ) );
+		(void)A;
+		return 0;
 	}
 
-	template< typename D, typename Structure, typename View >
-	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, reference > & A ) noexcept {
+	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
 		return internal::dims( A );
 	}
 
@@ -423,18 +437,19 @@ namespace alp {
 		 * \internal Maybe this class can be inherited by Container and Reference classes below
 		 */
 
+		template< typename ImfL = imf::Id, typename ImfR = imf::Id >
 		class MatrixBase {
 
 		protected:
-			friend size_t nrows( const MatrixBase & A ) noexcept {
+			friend size_t nrows( const MatrixBase< ImfL, ImfR > & A ) noexcept {
 				return A._dims().first;
 			}
 
-			friend size_t ncols( const MatrixBase & A ) noexcept {
+			friend size_t ncols( const MatrixBase< ImfL, ImfR > & A ) noexcept {
 				return A._dims().second;
 			}
 
-			friend std::pair< size_t, size_t > dims( const MatrixBase & A ) noexcept {
+			friend std::pair< size_t, size_t > dims( const MatrixBase< ImfL, ImfR > & A ) noexcept {
 				return A._dims();
 			}
 
@@ -444,7 +459,8 @@ namespace alp {
 			 * of their underlying container. This may be another view leading to a composition
 			 * of IMFs between the top matrix view and the physical container.
 			 */
-			std::shared_ptr<imf::IMF> imf_l, imf_r;
+			ImfL imf_l;
+			ImfR imf_r;
 
 			/**
 			 * @brief determines the size of the structured matrix via the domain of 
@@ -453,7 +469,7 @@ namespace alp {
 			 * @return A pair of dimensions.
 			 */
 			virtual std::pair< size_t, size_t > _dims() const {
-				return std::make_pair( imf_l->n, imf_r->n );
+				return std::make_pair( imf_l.n, imf_r.n );
 			}
 
 			/**
@@ -464,10 +480,11 @@ namespace alp {
 			 * @param cols The number of columns of the matrix.
 			 */
 			MatrixBase( size_t rows, size_t cols ) :
-				imf_l( std::make_shared< imf::Id >( rows ) ),
-				imf_r( std::make_shared< imf::Id >( cols ) ) {}
+				// enable only if ImfL and ImfR are imf::Id
+				imf_l( rows ) ,
+				imf_r( cols ) {}
 
-			MatrixBase( std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
+			MatrixBase( ImfL &&imf_l, ImfR &&imf_r ) :
 				imf_l( imf_l ),
 				imf_r( imf_r ) {}
 
@@ -476,14 +493,14 @@ namespace alp {
 		/**
 		 * Base class with container-related attributes, used in container-type Matrix specializations
 		 */
-		template< typename T >
-		class MatrixContainer : public MatrixBase {
+		template< typename T, typename ImfL = imf::Id, typename ImfR = imf::Id  >
+		class MatrixContainer : public MatrixBase< ImfL, ImfR > {
 		protected:
-			friend const Matrix< T, reference > & getContainer( const MatrixContainer< T > & A ) {
+			friend const Matrix< T, reference > & getContainer( const MatrixContainer< T, ImfL, ImfR > & A ) {
 				return *( A._container );
 			}
 
-			friend Matrix< T, reference > & getContainer( MatrixContainer< T > & A ) {
+			friend Matrix< T, reference > & getContainer( MatrixContainer< T, ImfL, ImfR > & A ) {
 				return *( A._container );
 			}
 
@@ -523,7 +540,7 @@ namespace alp {
 			 * so that allocation can be made accordingly, generalizing the full case.
 			 */
 			MatrixContainer( size_t rows, size_t cols, size_t cap = 0 ) :
-				MatrixBase( rows, cols ),
+				MatrixBase< ImfL, ImfR >( rows, cols ),
 				_container( new Matrix< T, reference >( rows, cols, cap ) ) {}
 
 		}; // class MatrixContainer
@@ -538,8 +555,8 @@ namespace alp {
 		 *       to matrix elements, which is not exposed to the user.
 		 * 
 		 */
-		template< typename TargetType >
-		class MatrixReference : public MatrixBase {
+		template< typename TargetType, typename ImfL, typename ImfR >
+		class MatrixReference : public MatrixBase< ImfL, ImfR > {
 		protected:
 			/** A reference-type view is characterized by an indirect association with a
 			 * physical layout via either another \a MatrixReference or a \a
@@ -548,9 +565,9 @@ namespace alp {
 			 */
 			TargetType &ref;
 
-			MatrixReference( TargetType &target ) : MatrixBase( nrows( target ), ncols( target ) ), ref( target ) {}
-			MatrixReference( TargetType &target, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			MatrixBase( imf_l, imf_r ), ref( target ) {}
+			MatrixReference( TargetType &target ) : MatrixBase< ImfL, ImfR >( nrows( target ), ncols( target ) ), ref( target ) {}
+			MatrixReference( TargetType &target, ImfL &&imf_l, ImfR &&imf_r ) :
+				MatrixBase< ImfL, ImfR >( std::move( imf_l ), std::move( imf_r ) ), ref( target ) {}
 		}; // class MatrixReference
 
 		/**
@@ -558,17 +575,17 @@ namespace alp {
 		 * Used as a result of low-rank operation to avoid the need for allocating a container.
 		 * The data is produced lazily by invoking the lambda function stored as a part of this object.
 		 */
-		template< typename Ret, typename ... Args >
-		class MatrixReference< std::function< Ret( Args... ) > > : public MatrixBase {
+		template< typename ImfL, typename ImfR, typename Ret, typename ... Args >
+		class MatrixReference< std::function< Ret( Args... ) >, ImfL, ImfR > : public MatrixBase< ImfL, ImfR > {
 			protected:
 				typedef std::function< Ret( Args... ) > lambda_function_type;
 				lambda_function_type &lambda;
 			public:
 				MatrixReference(
 					lambda_function_type &lambda,
-					std::shared_ptr< imf::IMF > imf_l,
-					std::shared_ptr< imf::IMF > imf_r ) :
-					MatrixBase( imf_l->N, imf_r->N ), lambda( lambda ) {}
+					ImfL &&imf_l,
+					ImfR &&imf_r ) :
+					MatrixBase< ImfL, ImfR >( imf_l.N, imf_r.N ), lambda( lambda ) {}
 
 		}; // class MatrixReference
 	} // namespace internal
@@ -626,27 +643,27 @@ namespace alp {
 	 * and the \a dense_structured_matrix.cpp unit test.
 	 *
 	 */
-	template< typename T, typename Structure, enum Density density, typename View >
-	class Matrix<T, Structure, density, View, reference> { };
+	template< typename T, typename Structure, enum Density density, typename ImfL, typename ImfR, typename View >
+	class Matrix<T, Structure, density, View, ImfL, ImfR, reference> { };
 
 	/**
 	 * @brief General matrix with physical container. 
 	 */
-	template< typename T >
-	class Matrix< T, structures::General, Density::Dense, view::Original< void >, reference > :
-		public internal::MatrixContainer< T > {
+	template< typename T, typename ImfL, typename ImfR >
+	class Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
+		public internal::MatrixContainer< T, ImfL, ImfR > {
 
 	private:
 		/*********************
 		    Storage info friends
 		******************** */
 
-		using self_type = Matrix< T, structures::General, Density::Dense, view::Original< void >, reference >;
+		using self_type = Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
 
 		// template< typename fwd_iterator >
 		// friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, view::Original< void >, reference > &, const fwd_iterator & start, const fwd_iterator & end );
 		template< typename fwd_iterator >
-		friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, view::Original< void >, reference > & A, const fwd_iterator & start, const fwd_iterator & end );
+		friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference > & A, const fwd_iterator & start, const fwd_iterator & end );
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -666,12 +683,12 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
 		};
 
 		template < bool d >
@@ -680,7 +697,7 @@ namespace alp {
 		};
 
 		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T >( rows, cols, cap ) {
+			internal::MatrixContainer< T, ImfL, ImfR >( rows, cols, cap ) {
 		}
 
 	}; // Matrix General, container
@@ -688,12 +705,12 @@ namespace alp {
 	/**
 	 * View of a general Matrix.
 	 */
-	template< typename T, typename View >
-	class Matrix< T, structures::General, Density::Dense, View, reference > :
-		public internal::MatrixReference< typename View::applied_to > {
+	template< typename T, typename View, typename ImfL, typename ImfR >
+	class Matrix< T, structures::General, Density::Dense, View, ImfL, ImfR, reference > :
+		public internal::MatrixReference< typename View::applied_to, ImfL, ImfR > {
 
 	private:
-		using self_type = Matrix< T, structures::General, Density::Dense, View, reference >;
+		using self_type = Matrix< T, structures::General, Density::Dense, View, ImfL, ImfR, reference >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -706,36 +723,36 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
 		};
 
-		Matrix( ) : internal::MatrixBase( 0, 0 ) {}
+		Matrix( ) : internal::MatrixBase< ImfL, ImfR >( 0, 0 ) {}
 
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {}
+		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat ) {}
 
-		Matrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			internal::MatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
+		Matrix( target_type & struct_mat, ImfL &&imf_l, ImfR &&imf_r ) :
+			internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat, std::move( imf_l ), std::move( imf_r ) ) {}
 
 	}; // Matrix General reference
 
-	template< typename T, typename Structure >
-	class Matrix< T, Structure, Density::Dense, view::Original< void >, reference > :
-		public internal::MatrixContainer< T > {
+	template< typename T, typename Structure, typename ImfL, typename ImfR >
+	class Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
+		public internal::MatrixContainer< T, ImfL, ImfR > {
 
 	private:
 		/*********************
 		    Storage info friends
 		******************** */
 
-		using self_type = Matrix< T, Structure, Density::Dense, view::Original< void >, reference >;
+		using self_type = Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
 
 		template< typename fwd_iterator >
-		friend RC buildMatrix( Matrix< T, Structure, Density::Dense, view::Original< void >, reference > &, const fwd_iterator &, const fwd_iterator ) noexcept;
+		friend RC buildMatrix( Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference > &, const fwd_iterator &, const fwd_iterator ) noexcept;
 
 	public:
 		using value_type = T;
@@ -747,22 +764,22 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, Structure, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, Structure, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
 		};
 
 		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T >( rows, cols, cap ) {}
+			internal::MatrixContainer< T, ImfL, ImfR >( rows, cols, cap ) {}
 	}; // class Matrix
 
-	template< typename T >
-	class Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference > :
-		public internal::MatrixContainer< T > {
+	template< typename T, typename ImfL, typename ImfR >
+	class Matrix< T, structures::Square, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
+		public internal::MatrixContainer< T, ImfL, ImfR > {
 
 	private:
-		using self_type = Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference >;
+		using self_type = Matrix< T, structures::Square, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
 
 		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, ImfL, ImfR, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -780,12 +797,12 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
 		};
 
 		Matrix( const size_t rows, const size_t cap = 0 ) :
@@ -793,12 +810,12 @@ namespace alp {
 
 	}; // Matrix Square, container
 
-	template< typename T, typename View >
-	class Matrix< T, structures::Square, Density::Dense, View, reference > :
-		public internal::MatrixReference< typename View::applied_to > {
+	template< typename T, typename View, typename ImfL, typename ImfR >
+	class Matrix< T, structures::Square, Density::Dense, View, ImfL, ImfR, reference > :
+		public internal::MatrixReference< typename View::applied_to, ImfL, ImfR > {
 
 	private:
-		using self_type = Matrix< T, structures::Square, Density::Dense, View, reference >;
+		using self_type = Matrix< T, structures::Square, Density::Dense, View, ImfL, ImfR, reference >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -811,18 +828,18 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
 		};
 
 		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type >() {}
+		Matrix( ) : internal::MatrixReference< target_type, ImfL, ImfR >() {}
 
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {
+		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat ) {
 			if( nrows( struct_mat ) != ncols( struct_mat ) ) {
 				throw std::length_error( "Square Matrix reference to non-square target." );
 			}
@@ -831,12 +848,12 @@ namespace alp {
 	}; // Matrix Square reference
 
 	// Symmetric matrix reference
-	template< typename T, typename View >
-	class Matrix< T, structures::Symmetric, Density::Dense, View, reference > :
-		public internal::MatrixReference< typename View::applied_to > {
+	template< typename T, typename View, typename Imf >
+	class Matrix< T, structures::Symmetric, Density::Dense, View, Imf, Imf, reference > :
+		public internal::MatrixReference< typename View::applied_to, Imf, Imf > {
 
 	private:
-		using self_type = Matrix< T, structures::Symmetric, Density::Dense, View, reference >;
+		using self_type = Matrix< T, structures::Symmetric, Density::Dense, View, Imf, Imf, reference >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -849,31 +866,31 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
 		};
 
 		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type >() {}
+		Matrix( ) : internal::MatrixReference< target_type, Imf, Imf >() {}
 
-		Matrix( target_type & target ) : internal::MatrixReference< target_type >( target ) {
+		Matrix( target_type & target ) : internal::MatrixReference< target_type, Imf, Imf >( target ) {
 			if( nrows( target ) != ncols( target ) ) {
 				throw std::length_error( "Symmetric Matrix reference to non-square target." );
 			}
 		}
 
-		Matrix( target_type & target, std::shared_ptr< imf::IMF > imf_lr ) :
-			internal::MatrixReference< target_type >( target, imf_lr, imf_lr ) {}
+		Matrix( target_type & target, Imf &&imf_lr ) :
+			internal::MatrixReference< target_type, Imf, Imf >( target, std::move(imf_lr), std::move(imf_lr) ) {}
 
 	}; // Matrix Symmetric reference
 
 	// Matrix UpperTriangular, container
-	template< typename T >
-	class Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, reference > :
+	template< typename T, typename Imf >
+	class Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, Imf, Imf, reference > :
 		public internal::MatrixContainer< T > {
 
 	private:
@@ -881,10 +898,10 @@ namespace alp {
 		    Storage info friends
 		******************** */
 
-		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, reference >;
+		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, Imf, Imf, reference >;
 
 		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, Imf, Imf, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -902,26 +919,26 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
 		};
 
 		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T >( rows, cols, cap ) {}
+			internal::MatrixContainer< T, Imf, Imf >( rows, cols, cap ) {}
 
 	}; // Matrix UpperTriangular, container
 
 	// Matrix UpperTriangular, reference
-	template< typename T, typename View >
-	class Matrix< T, structures::UpperTriangular, Density::Dense, View, reference > :
-		public internal::MatrixReference< typename View::applied_to > {
+	template< typename T, typename View, typename Imf >
+	class Matrix< T, structures::UpperTriangular, Density::Dense, View, Imf, Imf, reference > :
+		public internal::MatrixReference< typename View::applied_to, Imf, Imf > {
 
 	private:
-		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, View, reference >;
+		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, View, Imf, Imf, reference >;
 		using target_type = typename View::applied_to;
 
 	public:
@@ -934,41 +951,41 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
 		};
 
 		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type >() {}
+		Matrix( ) : internal::MatrixReference< target_type, Imf, Imf >() {}
 
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type >( struct_mat ) {
+		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, Imf, Imf >( struct_mat ) {
 			// No matter the view it has to be a square matrix
 		}
 
-		Matrix( target_type & struct_mat, std::shared_ptr< imf::IMF > imf_l, std::shared_ptr< imf::IMF > imf_r ) :
-			internal::MatrixReference< target_type >( struct_mat, imf_l, imf_r ) {}
+		Matrix( target_type & struct_mat, Imf &&imf_l, Imf &&imf_r ) :
+			internal::MatrixReference< target_type, Imf, Imf >( struct_mat, std::move( imf_l ), std::move( imf_r ) ) {}
 
 	}; //  Matrix UpperTriangular, reference
 
 	// Matrix Identity, container
 	// Should Identity be a MatrixContainer?
 	template< typename T >
-	class Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference > :
-		public internal::MatrixContainer< T > {
+	class Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > :
+		public internal::MatrixContainer< T, imf::Id, imf::Id > {
 
 	private:
 		/*********************
 		    Storage info friends
 		******************** */
 
-		using self_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference >;
+		using self_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
 
 		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, imf::Id, imf::Id, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
 		template< typename fwd_iterator >
 		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -986,16 +1003,16 @@ namespace alp {
 
 		template < bool d >
 		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, reference >;
+			using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
 		};
 
 		template < bool d >
 		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, reference >;
+			using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 		};
 
 		Matrix( const size_t rows, const size_t cap = 0 ) :
-			internal::MatrixContainer< T >( rows, rows, cap ) {}
+			internal::MatrixContainer< T, imf::Id, imf::Id >( rows, rows, cap ) {}
 
 	}; // Matrix Identity, container
 
@@ -1045,11 +1062,11 @@ namespace alp {
 	 * 
 	 */
 	template< 
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	typename Matrix< T, Structure, density, View, backend >::template view_type< view::original >::type
-	get_view( Matrix< T, Structure, density, View, backend > & source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< view::original >::type
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > & source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< view::original >::type;
 
 		target_strmat_t target( source );
@@ -1088,11 +1105,11 @@ namespace alp {
 	 */
 	template< 
 		enum view::Views target_view,
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	typename Matrix< T, Structure, density, View, backend >::template view_type< target_view >::type
-	get_view( Matrix< T, Structure, density, View, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< target_view >::type
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< target_view >::type;
 
 		target_strmat_t target( source );
@@ -1135,15 +1152,15 @@ namespace alp {
 	 */
 	template< 
 		typename TargetStructure, 
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend > 
-	get_view( Matrix< T, Structure, density, View, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, ImfL, ImfR, backend > 
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source ) {
 
 		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
 			"Can only create a view when the target structure is compatible with the source." );
 
-		using source_strmat_t = Matrix< T, Structure, density, View, backend >;
-		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
+		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, ImfL, ImfR, backend >;
 
 		target_strmat_t target( source );
 
@@ -1157,24 +1174,25 @@ namespace alp {
 		 */
 
 		template< 
-			typename TargetStructure, 
-			typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, backend > >, backend > 
-		get_view( alp::Matrix< T, Structure, density, View, backend > &source,
-				std::shared_ptr< imf::IMF > imf_r, std::shared_ptr< imf::IMF > imf_c ) {
+			typename TargetStructure, typename TargetImfL, typename TargetImfR,
+			typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, TargetImfL, TargetImfR, backend > 
+		get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+				TargetImfL &&imf_r, TargetImfR &&imf_c ) {
 			
-			if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
-				throw std::runtime_error("Cannot gather with imf::Select yet.");
-			}
+			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
+			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
+			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
-			if( ! (TargetStructure::template isInstantiableFrom< Structure >( * imf_r, * imf_c ) ) ) {
+			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfL & >( imf_r ), static_cast< TargetImfL & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfL & >( imf_r ), static_cast< TargetImfL & >( imf_c ) ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using source_strmat_t = alp::Matrix< T, Structure, density, View, backend >;
-			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, backend >;
+			using source_strmat_t = alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
+			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, TargetImfL, TargetImfR, backend >;
 
-			target_strmat_t target( source, imf_r, imf_c );
+			target_strmat_t target( source, std::move(imf_r), std::move(imf_c) );
 
 			return target;
 		}
@@ -1216,15 +1234,16 @@ namespace alp {
 	 */
 	template< 
 		typename TargetStructure, 
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend > 
-	get_view( Matrix< T, Structure, density, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend > 
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 			const utils::range& rng_r, const utils::range& rng_c ) {
-		
-		auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
-		auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
 
-		return internal::get_view<TargetStructure, T, Structure, density, View, backend >( source, imf_r, imf_c );
+		return internal::get_view< TargetStructure >(
+			source,
+			std::move( imf::Strided( rng_r.count(), nrows(source), rng_r.start, rng_r.stride ) ),
+			std::move( imf::Strided( rng_c.count(), ncols(source), rng_c.start, rng_c.stride ) )
+		);
 	}
 
 	/**
@@ -1260,15 +1279,15 @@ namespace alp {
 	 */
 
 	template< 
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend > 
-	get_view( Matrix< T, Structure, density, View, backend > &source,
-			const utils::range& rng_r, const utils::range& rng_c ) {
-		
-		auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
-		auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend > 
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+			const utils::range &rng_r, const utils::range &rng_c ) {
 
-		return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, imf_c );
+		return internal::get_view< Structure >(
+			source,
+			imf::Strided( rng_r.count(), nrows(source), rng_r.start, rng_r.stride ),
+			imf::Strided( rng_c.count(), ncols(source), rng_c.start, rng_c.stride ) );
 	}
 
 	/**
@@ -1299,9 +1318,9 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend >
-	get_view( Matrix< T, Structure, density, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend >
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 		const size_t &sel_r, const utils::range &rng_c ) {
 
 		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
@@ -1338,9 +1357,9 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, backend > >, backend > 
-	get_view( Matrix< T, Structure, density, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend > 
+	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 		const utils::range &rng_r, const size_t &sel_c ) {
 
 		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
@@ -1373,33 +1392,33 @@ namespace alp {
 	template< 
 		typename TargetStructure,
 		typename IndexType, typename IndexStructure, typename IndexView, 
-		typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, backend > >, backend > 
-	get_view( alp::Matrix< T, Structure, density, View, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
+	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Select, imf::Select, backend > 
+	get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
 		
-		auto imf_r = std::make_shared< imf::Select >( nrows(source), sel_r );
-		auto imf_c = std::make_shared< imf::Select >( ncols(source), sel_c );
+		imf::Select imf_r( nrows(source), sel_r );
+		imf::Select imf_c( ncols(source), sel_c );
 
-		return internal::get_view<TargetStructure, T, Structure, density, View, backend>( source, imf_r, imf_c );
+		return internal::get_view<TargetStructure, T, Structure, density, View, ImfL, ImfR, backend>( source, imf_r, imf_c );
 	}
 
 	namespace structures {
 		namespace constant {
 			/** Returns a constant reference to an Identity matrix of the provided size */
 			template< typename T >
-			const Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference > &
+			const Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > &
 			I( const size_t n ) {
-				using return_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, reference >;
+				using return_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
 				return_type * ret = new return_type( n );
 				return * ret;
 			}
 
 			/** Returns a constant reference to a Zero matrix of the provided size */
 			template< typename T >
-			const Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference > &
+			const Matrix< T, structures::Zero, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > &
 			Zero( const size_t rows, const size_t cols ) {
-				using return_type = Matrix< T, structures::Zero, Density::Dense, view::Original< void >, reference >;
+				using return_type = Matrix< T, structures::Zero, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
 				return_type * ret = new return_type( rows, cols );
 				return * ret;
 			}
@@ -1410,9 +1429,9 @@ namespace alp {
 				 * s = sin( theta ) and c = cos( theta )
 				 */
 				template< typename T >
-				const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference > &
+				const Matrix< T, structures::Square, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > &
 				Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
-					using return_type = const Matrix< T, structures::Square, Density::Dense, view::Original< void >, reference >;
+					using return_type = const Matrix< T, structures::Square, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
 					return_type * ret = new return_type( n );
 					// TODO: initialize matrix values according to the provided parameters
 					return * ret;
