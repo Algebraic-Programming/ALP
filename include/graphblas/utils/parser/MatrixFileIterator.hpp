@@ -186,8 +186,12 @@ namespace grb {
 						symmetricOut( other.symmetricOut ), converter( other.converter ),
 						patternValue( other.patternValue )
 					{
+#ifdef _DEBUG
+						std::cout << "In MatrixFileIterator copy-constructor, "
+							<< "non pattern variant\n";
+#endif
 						// set latest stream position
-						(void)infile.seekg( spos );
+						(void) infile.seekg( spos );
 						// if buffer is nonempty
 						if( pos > 0 ) {
 							// allocate buffer
@@ -217,6 +221,10 @@ namespace grb {
 
 					/** Copies an iterator state. */
 					MatrixFileIterator & operator=( const MatrixFileIterator &x ) {
+#ifdef _DEBUG
+						std::cout << "In MatrixFileIterator::operator=(other), "
+							<< "non pattern variant\n";
+#endif
 						// copy ended state
 						ended = x.ended;
 						// copy started state
@@ -628,21 +636,22 @@ namespace grb {
 				 * This function only copies the state of #hpparser, #row, #col, and #pos;
 				 * all other fields must be set by the caller.
 				 */
-				void copyState( const MatrixFileIterator< S, void > & other ) {
+				void copyState( const MatrixFileIterator< S, void > &other ) {
 					// copy underlying parser
-					if( other.hpparser == NULL || TprdCopy( other.hpparser, &hpparser ) != APL_SUCCESS ) {
-						throw std::runtime_error( "Could not copy underlying "
-												  "hpparser." );
+					if( other.hpparser == nullptr ||
+						TprdCopy( other.hpparser, &hpparser ) != APL_SUCCESS
+					) {
+						throw std::runtime_error( "Could not copy underlying hpparser." );
 					}
 					// allocate buffer
-					if( row == NULL ) {
+					if( row == nullptr ) {
 						allocate();
 					}
 					// copy buffer contents
 					assert( other.pos < buffer_length );
 					if( other.pos > 0 ) {
-						(void)memcpy( row, other.row, other.pos );
-						(void)memcpy( col, other.col, other.pos );
+						(void) memcpy( row, other.row, other.pos );
+						(void) memcpy( col, other.col, other.pos );
 					}
 					// set buffer position
 					pos = other.pos;
@@ -802,20 +811,22 @@ namespace grb {
 				}
 
 				/** Copies an iterator state. */
-				MatrixFileIterator & operator=( const MatrixFileIterator< S, void > & other ) {
+				MatrixFileIterator & operator=( const MatrixFileIterator< S, void > &other ) {
 #ifdef _DEBUG
-					// std::cout << "MatrixFileIterator: assignment operator called on " << this << "\n"; //DBG
+					std::cout << "MatrixFileIterator: assignment operator called on "
+						<< this << "\n";
 #endif
 					// if I already had an hpparser open, I should close it
-					if( hpparser != NULL ) {
+					if( hpparser != nullptr ) {
 						if( ReadEdgeEnd( hpparser ) != APL_SUCCESS ) {
-							throw std::runtime_error( "Could not properly "
-													  "destroy hpparser "
-													  "instance." );
+							throw std::runtime_error(
+								"Could not properly destroy hpparser instance."
+							);
 						}
-						hpparser = NULL;
+						hpparser = nullptr;
 					}
 					// copy static fields
+					coordinates = other.coordinates;
 					symmetricOut = other.symmetricOut;
 					started = other.started;
 					ended = other.ended;
@@ -825,6 +836,12 @@ namespace grb {
 					if( started ) {
 						// copy the state of the underlying parser and the iterator buffer
 						copyState( other );
+						// this copies the following fields:
+						//  - hpparser
+						//  - row
+						//  - col
+						//  - pos
+						//  - incs
 					}
 					// done
 					return *this;
