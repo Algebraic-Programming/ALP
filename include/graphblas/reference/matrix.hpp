@@ -752,8 +752,8 @@ namespace grb {
 			typename fwd_iterator
 		>
 		RC buildMatrixUnique(
-			const fwd_iterator & _start,
-			const fwd_iterator & _end
+			const fwd_iterator &_start,
+			const fwd_iterator &_end
 		) {
 #ifdef _DEBUG
 			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
