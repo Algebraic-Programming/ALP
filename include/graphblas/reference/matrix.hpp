@@ -758,7 +758,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 			std::cout << "buildMatrixUnique: input is\n";
-			for( auto it = _start; it != _end; ++it ) {
+			for( fwd_iterator it = _start; it != _end; ++it ) {
 				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
 			}
 			std::cout << "buildMatrixUnique: end input.\n";
