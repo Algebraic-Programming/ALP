@@ -894,10 +894,10 @@ namespace grb {
 
 #ifdef _DEBUG
 			for( size_t i = 0; i <= m; ++i ) {
-				(void)printf( "row_start[ %ld ] = %ld.\n", i, CRS.col_start[ i ] );
+				std::cout << "row_start[ " << i << " ] = " << CRS.col_start[ i ] << ".\n";
 			}
 			for( size_t i = 0; i <= n; ++i ) {
-				(void)printf( "col_start[ %ld ] = %ld.\n", i, CCS.col_start[ i ] );
+				std::cout << "col_start[ " << i << " ] = " << CCS.col_start[ i ] << ".\n";
 			}
 #endif
 

@@ -233,7 +233,7 @@ namespace grb {
 									"iterator memory." );
 							}
 							// copy any remaining buffer contents
-							for( size_t i = 0; i < pos; ++i ) {
+							for( size_t i = 0; i <= pos; ++i ) {
 								buffer[ i ] = other.buffer[ i ];
 							}
 						}
@@ -672,6 +672,9 @@ namespace grb {
 							throw std::runtime_error( "Attempt to dereference (via i()) "
 								"MatrixFileIterator in end position." );
 						}
+#ifdef _DEBUG
+						std::cout << "\t returning row index " << buffer[ pos ].first.first << "\n";
+#endif
 						return buffer[ pos ].first.first;
 					}
 
