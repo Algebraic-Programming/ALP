@@ -111,6 +111,9 @@ namespace grb {
 
 					/** Strips comments and possible MatrixMarket header from input stream start. */
 					void preprocess() {
+#ifdef _DEBUG
+						std::cout << "\t In MatrixFileIterator::preprocess()\n";
+#endif
 						// check if first header indicates MatrixMarket
 						const std::streampos start = infile.tellg();
 						// assume input is matrix market until we detect otherwise
@@ -127,23 +130,47 @@ namespace grb {
 						) ) {
 							// some type of error occurred-- rewind and let a non-mmfile parse try
 							mmfile = false;
-							(void)infile.seekg( start );
+							(void) infile.seekg( start );
 						}
 						// ignore all comment lines
 						char peek = infile.peek();
 						while( infile.good() && ( peek == '%' || peek == '#' ) ) {
-							(void)infile.ignore( std::numeric_limits< std::streamsize >::max(), '\n' );
+							(void) infile.ignore( std::numeric_limits< std::streamsize >::max(),
+								'\n' );
 							peek = infile.peek();
 						}
 						// ignore non-comment matrix market header if we expect one
 						if( mmfile ) {
 							std::string ignore;
 							std::getline( infile, ignore );
+#ifdef _DEBUG
+							std::cout << "\t\t Assuming MatrixMarket file with header line "
+								<< ignore << "\n";
+#endif
 						} else {
 							mmheader.clear();
+#ifdef _DEBUG
+							std::cout << "\t\t Assuming non-MatrixMarket format\n";
+#endif
 						}
 						// done
 					}
+
+#ifdef _DEBUG
+					void printIteratorState() const {
+						std::cout << "\t buffer = " << (static_cast<const void*>(buffer)) << "\n"
+							<< "\t properties = " << (static_cast<const void*>(&properties)) << "\n"
+							<< "\t infile is " << (infile.is_open() ? "open, stream is " : "closed" )
+							<< (infile.is_open() ? (infile.good() ? "OK" : "not OK") : "") << "\n"
+							<< "\t spos = " << spos << "\n"
+							<< "\t pos = " << pos << "\n"
+							<< "\t ended = " << ended << "\n"
+							<< "\t started = " << started << "\n"
+							<< "\t symmetricOut = " << symmetricOut << "\n"
+							<< "\t converter value and pointer supressed\n"
+							<< "\t patternValue = " << patternValue << "\n";
+					}
+#endif
 
 
 				public:
@@ -210,10 +237,18 @@ namespace grb {
 								buffer[ i ] = other.buffer[ i ];
 							}
 						}
+#ifdef _DEBUG
+						printIteratorState();
+#endif
 					}
 
 					/** Base destructor. */
 					~MatrixFileIterator() {
+#ifdef _DEBUG
+						std::cout << "In MatrixFileIterator destructor, "
+							<< "non-pattern variant\n";
+						printIteratorState();
+#endif
 						if( buffer != nullptr ) {
 							free( buffer );
 						}
@@ -223,7 +258,9 @@ namespace grb {
 					MatrixFileIterator & operator=( const MatrixFileIterator &x ) {
 #ifdef _DEBUG
 						std::cout << "In MatrixFileIterator::operator=(other), "
-							<< "non pattern variant\n";
+							<< "non pattern variant\n"
+							<< "State before copy-assignment:\n";
+						printIteratorState();
 #endif
 						// copy ended state
 						ended = x.ended;
@@ -260,7 +297,8 @@ namespace grb {
 									) != 0
 								) {
 									buffer = nullptr;
-									throw std::runtime_error( "Error during allocation of internal iterator memory." );
+									throw std::runtime_error( "Error during allocation of internal "
+										"iterator memory." );
 								}
 							}
 							// copy remote buffer contents
@@ -271,12 +309,44 @@ namespace grb {
 						}
 						// copy symmetry state
 						symmetricOut = x.symmetricOut;
+#ifdef _DEBUG
+						std::cout << "State after copy-assignment:\n";
+						printIteratorState();
+#endif
 						// done
 						return *this;
 					}
 
 					/** Standard check for equality. */
-					bool operator==( const MatrixFileIterator &x ) const {
+					bool operator==( const MatrixFileIterator< S, T > &x ) const {
+#ifdef _DEBUG
+						std::cout << "In MatrixFileIterator::operator==(), "
+							<< "non-pattern variant\n";
+#endif
+						// it could be that iterators in start position are actually pointing to
+						// an end position. Therefore, we first ensure that iterators are properly
+						// started.
+						if( started ) {
+#ifdef _DEBUG
+							std::cout << "\t starting this iterator. Current state:\n";
+							printIteratorState();
+#endif
+							const_cast< MatrixFileIterator< S, T > * >( this )->preprocess();
+							const_cast< MatrixFileIterator< S, T > * >( this )->started = false;
+							(void)const_cast< MatrixFileIterator< S, T > * >( this )->operator++();
+#ifdef _DEBUG
+							std::cout << "\t State after starting:\n";
+							printIteratorState();
+#endif
+						}
+						if( x.started ) {
+#ifdef _DEBUG
+							std::cout << "\t starting other iterator\n";
+#endif
+							const_cast< MatrixFileIterator< S, T > * >( &x )->preprocess();
+							const_cast< MatrixFileIterator< S, T > * >( &x )->started = false;
+							(void)const_cast< MatrixFileIterator< S, T > * >( &x )->operator++();
+						}
 						// check if both are in end position
 						if( ended && x.ended ) {
 							return true;
@@ -307,24 +377,37 @@ namespace grb {
 
 					// this assumes full triplet data
 					MatrixFileIterator & operator++() {
+#ifdef _DEBUG
+						std::cout << "MatrixFileIterator::operator++() called, "
+							<< "non-pattern variant\n";
+#endif
 						// if ended, stop
 						if( ended ) {
 							return *this;
 						}
 						// if this is the first function call on this iterator, call preprocess first
 						if( started ) {
+#ifdef _DEBUG
+							std::cout << "\t iterator was not yet started-- doing so now\n";
+#endif
 							preprocess();
 							started = false;
-							(void)operator++();
+							(void) operator++();
 						}
 						// if symmtric and not given output yet and not diagonal
 						if( properties._symmetric ) {
+#ifdef _DEBUG
+							std::cout << "\t matrix is symmetric --";
+#endif
 							// toggle symmetricOut
 							symmetricOut = !symmetricOut;
 							// if we are giving symmetric output now
 							if( symmetricOut ) {
 								// make symmetric pair & exit if current nonzero is not diagonal
 								if( buffer[ pos ].first.first != buffer[ pos ].first.second ) {
+#ifdef _DEBUG
+									std::cout << " generating symmetric entry now\n";
+#endif
 									std::swap( buffer[ pos ].first.first, buffer[ pos ].first.second );
 									if( properties._symmetric == Hermitian ) {
 										std::conj( buffer[ pos ].second );
@@ -335,12 +418,24 @@ namespace grb {
 									symmetricOut = false;
 								}
 							}
+#ifdef _DEBUG
+							if( !symmetricOut ) {
+								std::cout << " not generating symmetric entry yet\n";
+							}
+#endif
 						}
 						// check if we need to parse from infile
 						if( pos == 0 ) {
+#ifdef _DEBUG
+							std::cout << "\t starting parse from input file\n";
+#endif
 							// try and parse buffer_size new values
 							size_t i = 0;
 							if( !infile.good() ) {
+#ifdef _DEBUG
+								std::cout << "\t\t infile stream was not OK-- "
+									<< "setting iterator to end position\n";
+#endif
 								ended = true;
 							}
 							// check if buffer is allocated
@@ -409,6 +504,9 @@ namespace grb {
 									buffer[ i ].first.first = row;
 									buffer[ i ].first.second = col;
 									buffer[ i ].second = patternValue;
+#ifdef _DEBUG
+									std::cout << "\t storing pattern value\n";
+#endif
 								}
 							} else {
 								// non-pattern matrices
@@ -419,6 +517,9 @@ namespace grb {
 									if( properties._type == MatrixFileProperties::Type::MATRIX_MARKET &&
 										properties._complex
 									) {
+#ifdef _DEBUG
+										std::cout << "\t attempting complex value parse\n";
+#endif
 										typename is_complex< T >::type re, im;
 										error = !(infile >> row >> col >> re >> im);
 										if( !error ) {
@@ -427,10 +528,17 @@ namespace grb {
 											error = !(oss >> val);
 										}
 									} else {
+#ifdef _DEBUG
+										std::cout << "\t attempting regular value parse\n";
+#endif
 										error = !(infile >> row >> col >> val);
 									}
 									if( error ) {
 										if( i == 0 ) {
+#ifdef _DEBUG
+											std::cout << "\t parse error detected at first position-- "
+												<< "setting iterator to end position\n";
+#endif
 											ended = true;
 										}
 										break;
@@ -438,8 +546,7 @@ namespace grb {
 #ifdef _DEBUG	
 										T temp = val;
 										converter( temp );
-										std::cout << "MatrixFileIterator::operator++ (non-pattern variant): "
-											<< "parsed line ``" << row << " " << col << " " << val << "'', "
+										std::cout << "\t parsed line ``" << row << " " << col << " " << val << "'', "
 											<< "with value after conversion " << temp << "\n";
 #endif
 										// convert value
@@ -494,9 +601,8 @@ namespace grb {
 									buffer[ i ].first.first = row;
 									buffer[ i ].first.second = col;
 #ifdef _DEBUG
-									std::cout << "MatrixFileIterator::operator++ (non-pattern variant): "
-										<< "buffer at index " << i << " now contains " << row << ", "
-										<< col << ", " << val << "\n";
+									std::cout << "\t buffer at index " << i << " now contains: "
+										<< row << ", " << col << ", " << val << "\n";
 #endif
 								}
 							}
@@ -546,10 +652,21 @@ namespace grb {
 
 					/** Returns the current row index. */
 					const S & i() const {
+#ifdef _DEBUG
+						std::cout << "MatrixFileIterator::i() called. State at entry:\n";
+						printIteratorState();
+#endif
 						if( started ) {
+#ifdef _DEBUG
+							std::cout << "\t starting iterator\n";
+#endif
 							const_cast< MatrixFileIterator< S, T > * >( this )->preprocess();
 							const_cast< MatrixFileIterator< S, T > * >( this )->started = false;
 							(void)const_cast< MatrixFileIterator< S, T > * >( this )->operator++();
+#ifdef _DEBUG
+							std::cout << "\t state after preprocess and operator++:\n";
+							printIteratorState();
+#endif
 						}
 						if( ended ) {
 							throw std::runtime_error( "Attempt to dereference (via i()) "
