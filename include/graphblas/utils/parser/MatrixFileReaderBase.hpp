@@ -126,21 +126,24 @@ namespace grb {
 							}
 							// parse header: nonzero value type
 							unsigned int offset;
+							properties._pattern = properties._complex = false;
 							if( line.substr( 33, 7 ) == "pattern" ) {
 								properties._pattern = true;
 								offset = 7;
 							} else if( line.substr( 33, 7 ) == "complex" ) {
 								properties._complex = true;
 								offset = 7;
-							} else {
-								if( line.substr( 33, 4 ) != "real" ) {
-									throw std::runtime_error( "This parser only understands pattern, "
-										"real, or complex matrices." );
-								} else {
-									properties._pattern = false;
-								}
+							} else if( line.substr( 33, 4 ) == "real" ) {
 								offset = 4;
+							} else {
+								throw std::runtime_error( "This parser only understands pattern, "
+									"real, or complex matrices." );
 							}
+#ifndef NDEBUG
+							if( properties._pattern ) {
+								assert( !properties._complex );
+							}
+#endif
 							// parse header: structural information
 							(void) ++offset; // account for space
 							if( line.substr( 33 + offset, 9 ) == "symmetric" ) {
