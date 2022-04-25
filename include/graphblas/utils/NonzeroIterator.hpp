@@ -35,7 +35,6 @@ namespace grb {
 		class NonzeroIterator< S1, S2, V, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< std::pair< S1, S2 >, V >, typename SubIterType::value_type >::value >::type > :
 			public SubIterType {
 
-		private:
 		public:
 			typedef S1 row_coordinate_type;
 			typedef S2 column_coordinate_type;

@@ -23,12 +23,17 @@
 #include <array>
 #include <vector>
 #include <iterator>
+#include <utility>
+#include <unordered_map>
+#include <cassert>
+#include <sstream>
+#include <type_traits>
 
-#include <graphblas/iomode.hpp>
+#include <graphblas/backends.hpp>
 
 #define _GRB_BUILD_MATRIX_UNIQUE_TRACE
 
-void __trace_build_matrix_iomode( grb::IOMode );
+void __trace_build_matrix_iomode( grb::Backend, bool );
 
 #include <graphblas.hpp>
 #include <utils/assertions.hpp>
@@ -36,12 +41,11 @@ void __trace_build_matrix_iomode( grb::IOMode );
 
 using namespace grb;
 
-static std::vector< grb::IOMode > __iomodes;
+static std::vector< std::pair< Backend, bool > > __iomodes;
 
-void __trace_build_matrix_iomode( grb::IOMode mode ) {
-	__iomodes.push_back( mode );
+void __trace_build_matrix_iomode( grb::Backend backend, bool iterator_parallel ) {
+	__iomodes.emplace_back( backend, iterator_parallel );
 }
-
 
 
 #define LOG() std::cout
@@ -74,7 +78,7 @@ static std::size_t compute_parallel_num_nonzeroes( std::size_t num_nonzereos ) {
 		compute_parallel_first_nonzero( num_nonzereos );
 }
 
-struct diag_iterator {
+template< bool random = true > struct diag_iterator {
 
 	using row_coordinate_type = std::size_t;
     using column_coordinate_type = std::size_t;
@@ -86,7 +90,8 @@ struct diag_iterator {
 		coord_value( std::size_t _c ): coord( _c ) {}
 	};
 
-	using iterator_category = std::random_access_iterator_tag;
+	using iterator_category = typename std::conditional< random,
+		std::random_access_iterator_tag, std::forward_iterator_tag >::type;
 	using value_type = coord_value;
 	using pointer = coord_value*;
 	using reference = coord_value&;
@@ -168,7 +173,7 @@ private:
 };
 
 
-template< std::size_t BAND > struct band_iterator {
+template< std::size_t BAND, bool random = true > struct band_iterator {
 
 	static constexpr std::size_t MAX_ELEMENTS_PER_ROW{ BAND * 2 + 1 };
 	static constexpr std::size_t PROLOGUE_ELEMENTS{ ( 3* BAND * BAND + BAND ) / 2 };
@@ -186,7 +191,8 @@ template< std::size_t BAND > struct band_iterator {
 			size( _size ), row( _r ), col( _c ) {}
     };
 
-    using iterator_category = std::random_access_iterator_tag;
+    using iterator_category = typename std::conditional< random,
+		std::random_access_iterator_tag, std::forward_iterator_tag >::type;
 	using value_type = coord_value;
 	using pointer = coord_value*;
 	using reference = coord_value&;
@@ -196,6 +202,7 @@ template< std::size_t BAND > struct band_iterator {
     band_iterator( const band_iterator& ) = default;
 
     band_iterator& operator++() {
+		//std::cout << "INCREMENT" << std::endl;
 		const std::size_t max_col{ std::min( _v.row + BAND, _v.size - 1 ) };
 		if( _v.col < max_col ) {
 			_v.col++;
@@ -208,18 +215,15 @@ template< std::size_t BAND > struct band_iterator {
 
     band_iterator& operator+=( std::size_t offset ) {
 
-		/*
-		#pragma omp critical
+		//#pragma omp critical
 		{
-			std::cout << "INCREMENT offset " << offset << std::endl;
-			//std::cout << "-- i " << _v.row << " j " << _v.col << " v " << std::endl;
+			//std::cout << "-- ADVANCE offset " << offset << std::endl;
+			//std::cout << "i " << _v.row << " j " << _v.col << " v " << std::endl;
 			const std::size_t position{ coords_to_linear( _v.size, _v.row, _v.col ) };
+			//std::cout << "position is " << position << std::endl;
 			linear_to_coords( _v.size, position + offset, _v.row, _v.col );
-			std::cout << "++ i " << _v.row << " j " << _v.col << " v " << std::endl;
+			//std::cout << "++ i " << _v.row << " j " << _v.col << " v " << std::endl;
 		}
-		*/
-		const std::size_t position{ coords_to_linear( _v.size, _v.row, _v.col ) };
-		linear_to_coords( _v.size, position + offset, _v.row, _v.col );
         return *this;
     }
 
@@ -320,6 +324,7 @@ private:
 	}
 
 	static std::size_t __coords_to_linear_in_prologue( std::size_t row, std::size_t col ) {
+		//std::cout << " row " << row << " col " << col << std::endl;
 		return row * BAND + row * ( row + 1 ) / 2 + __col_to_linear( row, col );
 	}
 
@@ -333,11 +338,15 @@ private:
 			return PROLOGUE_ELEMENTS + ( row - BAND ) * MAX_ELEMENTS_PER_ROW + __col_to_linear( row, col );
 		}
 		if( row < matrix_size ) {
-			return 2 * PROLOGUE_ELEMENTS + ( row - 2 * BAND ) * MAX_ELEMENTS_PER_ROW
-				- __coords_to_linear_in_prologue( matrix_size - col, matrix_size - row ); // transpose coordinates
+			//std::cout << "here 3!!!" << std::endl;
+			std::size_t mat_size{ 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW };
+			std::size_t prologue_els{ __coords_to_linear_in_prologue( matrix_size - row - 1, matrix_size - col - 1 ) };
+			//std::cout << " mat_size " << mat_size << std::endl;
+			//std::cout << " prologue els " << prologue_els << std::endl;
+			return  mat_size - 1 - prologue_els; // transpose coordinates
 		}
 		// for points outside of matrix: project to prologue
-		return 2 * PROLOGUE_ELEMENTS + ( row - 2 * BAND ) * MAX_ELEMENTS_PER_ROW
+		return 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW
 			+ ( row - matrix_size ) * BAND + col + BAND - row;
 	}
 
@@ -350,17 +359,6 @@ private:
 		}
 		row = current_row;
 		col = position;
-	}
-
-	static void __linear_to_coords_in_epilogue( std::size_t position, std::size_t& row, std::size_t& col ) {
-		std::size_t offset_row{ 0 };
-		//linear search
-		for( ; position >= ( 2 * BAND - offset_row ) && offset_row <= BAND; offset_row++ ) {
-			position -= ( 2 * BAND - offset_row );
-			//std::cout << "subtract " << ( 2 * BAND - offset_row ) << " get " << position << std::endl;
-		}
-		row = offset_row;
-		col = position + offset_row;
 	}
 
 	static void linear_to_coords( std::size_t matrix_size, std::size_t position,
@@ -381,13 +379,20 @@ private:
 			return;
 		}
 		position -= ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-		std::size_t end_row, end_col;
+		if( position < PROLOGUE_ELEMENTS ) {
+			std::size_t end_row, end_col;
 
-		__linear_to_coords_in_epilogue( position, end_row, end_col );
-		//std::cout << "== position " << position << ", end row " << end_row << ", end col " << end_col << std::endl;
-		row = matrix_size - BAND + end_row;
-		col = matrix_size - 2 * BAND + end_col;
-		//std::cout << "final: position " << position << ", row " << row << ", col " << col << std::endl;
+			//__linear_to_coords_in_epilogue( position, end_row, end_col );
+			__linear_to_coords_in_prologue( PROLOGUE_ELEMENTS - 1 - position, end_row, end_col );
+			//std::cout << "== position " << PROLOGUE_ELEMENTS - 1 - position << ", end row " << end_row << ", end col " << end_col << std::endl;
+			row = matrix_size - 1 - end_row;
+			col = matrix_size - 1 - end_col;
+			//std::cout << "== final: row " << row << ", col " << col << std::endl;
+			return;
+		}
+		position -= PROLOGUE_ELEMENTS;
+		row = matrix_size + position / ( BAND + 1 );
+		col = row - BAND + position % ( BAND + 1 );
 	}
 
 	static void __check_size( std::size_t size ) {
@@ -400,7 +405,7 @@ private:
 
 // simple iterator returning an incremental number
 // and generating a rectangular dense matrix
-template< typename ValueT = int > struct dense_mat_iterator {
+template< typename ValueT = int, bool random = true  > struct dense_mat_iterator {
 
 	using row_coordinate_type = std::size_t;
     using column_coordinate_type = std::size_t;
@@ -510,26 +515,28 @@ template< typename T > struct sorter {
 };
 
 
-template< typename T > bool matrices_values_are_equal( const Matrix< T >& mat1, const Matrix< T >& mat2,
+template< typename T > static void get_nnz_and_sort( const Matrix< T >& mat,
+	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > >& values ) {
+	auto beg1( mat.cbegin() );
+    auto end1( mat.cend() );
+	for( ; beg1 != end1; ++beg1 ) {
+		values.emplace_back( beg1->first.first, beg1->first.second, beg1->second );
+	}
+	sorter< T > s;
+	std::sort( values.begin(), values.end(), s );
+}
+
+
+template< typename T, enum Backend implementation >
+	bool matrices_values_are_equal( const Matrix< T, implementation >& mat1,
+	const Matrix< T, implementation >& mat2,
     bool log_all_differences = false ) {
 
-    auto beg1( mat1.cbegin() );
-    auto end1( mat1.cend() );
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, int > > serial_values;
-	for( ; beg1 != end1; ++beg1 ) {
-		serial_values.emplace_back( beg1->first.first, beg1->first.second, beg1->second );
-	}
+	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > > serial_values;
+	get_nnz_and_sort( mat1, serial_values );
 
-    auto beg2( mat2.cbegin() );
-    auto end2( mat2.cend() );
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, int > > parallel_values;
-	for( ; beg2 != end2; ++beg2 ) {
-		parallel_values.emplace_back( beg2->first.first, beg2->first.second, beg2->second );
-	}
-
-	sorter< int > s;
-	std::sort( serial_values.begin(), serial_values.end(), s );
-	std::sort( parallel_values.begin(), parallel_values.end(), s );
+	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > > parallel_values;
+	get_nnz_and_sort( mat2, parallel_values );
 
     const std::size_t mat_size{ grb::nnz( mat1) };
 
@@ -538,7 +545,7 @@ template< typename T > bool matrices_values_are_equal( const Matrix< T >& mat1, 
         return false;
 	}
 
-	if( serial_values.size() != mat_size ) {
+	if( serial_values.size() != mat_size && implementation != Backend::BSP1D ) {
 		LOG() << "different number of non-zeroes: actual: " << serial_values.size()
 			<< ", expected: " << mat_size << std::endl;
 		return false;
@@ -547,8 +554,7 @@ template< typename T > bool matrices_values_are_equal( const Matrix< T >& mat1, 
     bool match{ true };
 
 	auto pit = parallel_values.cbegin();
-	for( auto sit = serial_values.cbegin();
-		sit != serial_values.cend(); ++sit, ++pit ) {
+	for( auto sit = serial_values.cbegin(); sit != serial_values.cend(); ++sit, ++pit ) {
 
 		const std::size_t row1{ sit->i() }, row2{ pit->i() };
         const std::size_t col1{ sit->j() }, col2{ pit->j() };
@@ -590,104 +596,247 @@ template< typename T > bool matrices_values_are_equal( const Matrix< T >& mat1, 
     return match;
 }
 
-static bool test_build_matrix_iomode( IOMode mode ) {
+using iomode_map_t = std::unordered_map< enum Backend, bool >;
+
+static bool test_build_matrix_iomode( const iomode_map_t& iomap ) {
 	bool res{ true };
-	for( IOMode m : __iomodes ) {
-		res &= ( m == mode );
+	for( const std::pair< enum Backend, bool >& m : __iomodes ) {
+		typename iomode_map_t::const_iterator pos{ iomap.find( m.first ) };
+		if( pos == iomap.cend() ) {
+			FAIL();
+		}
+		ASSERT_EQ( m.second, pos->second );
+		res &= m.second == pos->second;
 	}
 	__iomodes.clear();
 	return res;
 }
 
-
 template< typename T, typename IterT, enum Backend implementation = config::default_backend >
-	void test_sequential_and_parallel_matrix_generation(
-		std::size_t nrows, std::size_t ncols,
-		const typename IterT::input_sizes_t& iter_sizes ) {
+	void build_matrix_and_check(Matrix< T, implementation >& m, IterT begin, IterT end,
+	std::size_t expected_num_global_nnz, std::size_t expected_num_local_nnz, IOMode mode ) {
 
-	// bsp1d and reference backends allow only sequential input ingestion
-	constexpr IOMode PARALLEL_MODE{ ( implementation == Backend::BSP1D )
-		|| ( implementation == Backend::reference ) ? IOMode::SEQUENTIAL : IOMode::PARALLEL };
+	ASSERT_EQ( end - begin, static_cast< typename IterT::difference_type >( expected_num_local_nnz ) );
 
-    LOG() << "-- size " << nrows << " x " << ncols << std::endl;
-
-	try {
-		Matrix< T, implementation > sequential_matrix( nrows, ncols );
-		IterT begin( IterT::make_begin( iter_sizes) );
-		IterT end( IterT::make_end( iter_sizes) );
-		const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
-		// test that iterator difference works properly
-		ASSERT_EQ( end - begin, static_cast< typename IterT::difference_type >( num_nnz ) );
-		RC ret { buildMatrixUnique( sequential_matrix, begin, end, IOMode::SEQUENTIAL ) };
-		ASSERT_RC_SUCCESS( ret );
-		ASSERT_TRUE( test_build_matrix_iomode( IOMode::SEQUENTIAL ) );
-		ASSERT_EQ( nnz( sequential_matrix ), num_nnz );
-
-		Matrix< T, implementation > parallel_matrix( nrows, ncols );
-		IterT pbegin( IterT::make_parallel_begin( iter_sizes) );
-		IterT pend( IterT::make_parallel_end( iter_sizes) );
-		ASSERT_EQ( pend  - pbegin, static_cast< typename IterT::difference_type >(
-				compute_parallel_num_nonzeroes( num_nnz ) ) );
-		ret = buildMatrixUnique( parallel_matrix, pbegin, pend, IOMode::PARALLEL );
-		ASSERT_RC_SUCCESS( ret );
-		ASSERT_TRUE( test_build_matrix_iomode( PARALLEL_MODE ) );
-		ASSERT_EQ( nnz( parallel_matrix ), num_nnz );
-
-		test_matrix_sizes_match( sequential_matrix, parallel_matrix );
-		ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix, true ) );
-	} catch ( std::exception& e ) {
-		LOG() << "got exception: " << std::endl << "---------" << std::endl << "   " << e.what()
-			<<  std::endl << "---------" << std::endl;
-	}
-
-	LOG() << "-- OK" << std::endl;
+	RC ret { buildMatrixUnique( m, begin, end, mode ) };
+	ASSERT_RC_SUCCESS( ret );
+	ASSERT_EQ( nnz( m ), expected_num_global_nnz );
 }
 
-void grbProgram( const void *, const size_t, int & ) {
 
-	std::initializer_list< std::size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
-		spmd<>::nprocs() + 16, 100003 };
+template< typename T, typename IterT, enum Backend implementation >
+	void test_matrix_generation( Matrix< T, implementation > & sequential_matrix,
+		Matrix< T, implementation > parallel_matrix,
+		const typename IterT::input_sizes_t& iter_sizes ) {
 
-	LOG() << "== Testing diagonal matrices" << std::endl;
-    for( const std::size_t& mat_size : diag_sizes ) {
-        test_sequential_and_parallel_matrix_generation< int, diag_iterator >( mat_size, mat_size, mat_size );
-		//return;
-    }
+	constexpr bool iterator_is_random{ std::is_same< typename std::iterator_traits<IterT>::iterator_category,
+		std::random_access_iterator_tag>::value };
+	iomode_map_t iomap( {
+		std::pair< enum Backend, bool >( implementation, iterator_is_random
+			&& ( ( implementation == Backend::reference_omp )
+#ifdef _GRB_BSP1D_BACKEND
+			|| (implementation == Backend::BSP1D && _GRB_BSP1D_BACKEND == Backend::reference_omp )
+#endif
+			) )
+#ifdef _GRB_BSP1D_BACKEND
+		, std::pair< enum Backend, bool >( _GRB_BSP1D_BACKEND,
+			( _GRB_BSP1D_BACKEND == Backend::reference_omp ) )
+#endif
+	} );
 
-	std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467 };
-
-   	for( const std::size_t& mat_size : band_sizes ) {
-		LOG() << "== Testing matrix with band 1" << std::endl;
-        test_sequential_and_parallel_matrix_generation< int, band_iterator< 1 > >(
-			mat_size, mat_size, mat_size );
-		LOG() << "== Testing matrix with band 2" << std::endl;
-        test_sequential_and_parallel_matrix_generation< int, band_iterator< 2 > >(
-			mat_size, mat_size, mat_size );
-		LOG() << "== Testing matrix with band 7" << std::endl;
-        test_sequential_and_parallel_matrix_generation< int, band_iterator< 7 > >(
-			mat_size, mat_size, mat_size );
-    }
-
-	std::initializer_list< std::array< std::size_t, 2 > > matr_sizes{
-		{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 77 }, { 139, 139}
-	};
-
-	for( const std::array< std::size_t, 2 >& mat_size : matr_sizes ) {
-		test_sequential_and_parallel_matrix_generation< int, dense_mat_iterator< int > >(
-			mat_size[0], mat_size[1], mat_size );
+	if( spmd<>::pid() == 0 ) {
+		LOG() << ">> " << ( iterator_is_random ? "RANDOM" : "FORWARD" ) << " ITERATOR ";
+		LOG() << "-- size " << nrows( sequential_matrix ) << " x "
+			<< ncols( sequential_matrix ) << std::endl;
 	}
 
+	//Matrix< T, implementation > sequential_matrix( nrows, ncols );
+	const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
+	build_matrix_and_check( sequential_matrix, IterT::make_begin( iter_sizes),
+		IterT::make_end( iter_sizes), num_nnz, num_nnz, IOMode::SEQUENTIAL );
+	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
 
+	//Matrix< T, implementation > parallel_matrix( nrows, ncols );
+	const std::size_t par_num_nnz{ compute_parallel_num_nonzeroes( num_nnz ) };
+
+	build_matrix_and_check( parallel_matrix, IterT::make_parallel_begin( iter_sizes),
+		IterT::make_parallel_end( iter_sizes), num_nnz, par_num_nnz, IOMode::PARALLEL );
+	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
+
+	test_matrix_sizes_match( sequential_matrix, parallel_matrix );
+	ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix, false ) );
+
+	if( spmd<>::pid() == 0 ) {
+		LOG() << "<< OK" << std::endl;
+	}
+}
+
+template< typename T, typename ParIterT, typename SeqIterT, enum Backend implementation = config::default_backend >
+	void test_sequential_and_parallel_matrix_generation(
+		std::size_t nrows, std::size_t ncols,
+		const typename ParIterT::input_sizes_t& iter_sizes ) {
+
+		Matrix< T, implementation > par_sequential_matrix( nrows, ncols );
+		Matrix< T, implementation > par_parallel_matrix( nrows, ncols );
+		test_matrix_generation< T, ParIterT, implementation >( par_sequential_matrix, par_parallel_matrix, iter_sizes );
+
+		Matrix< T, implementation > seq_sequential_matrix( nrows, ncols );
+		Matrix< T, implementation > seq_parallel_matrix( nrows, ncols );
+		test_matrix_generation< T, SeqIterT, implementation >( seq_sequential_matrix, seq_parallel_matrix, iter_sizes );
+
+		// cross-check parallel vs sequential
+		ASSERT_TRUE( matrices_values_are_equal( par_parallel_matrix, seq_parallel_matrix, false ) );
+}
+
+template< enum Backend implementation = config::default_backend > void test_matrix_from_vectors() {
+	constexpr std::size_t mat_size{ 7 };
+	std::vector< std::size_t > rows{ 0, 0, 1, 2, 3, 4, 4, 5, 5, 5, 5, 5, 5 };
+	std::vector< std::size_t > cols{ 1, 3, 3, 2, 4, 0, 2, 0, 1, 2, 3, 4, 5 };
+	std::vector< int > values{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+	assert( rows.size() == cols.size() && rows.size() == values.size() );
+
+	Matrix< int, implementation > mat( mat_size, mat_size );
+	const std::size_t per_proc{ ( values.size() + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
+	const std::size_t first{ per_proc * spmd<>::pid() };
+	const std::size_t num_local{ std::min( per_proc, values.size() - first ) };
+
+#ifdef _DEBUG
+	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
+		if( spmd<>::pid() == i ) {
+			std::cout << "process " << i << " from " << first << " num " << num_local << std::endl;
+		}
+		spmd<>::barrier();
+	}
+#endif
+
+	RC ret{ buildMatrixUnique( mat, rows.data() + first, cols.data() + first,
+		values.data() + first, num_local, IOMode::PARALLEL ) };
+
+	ASSERT_RC_SUCCESS( ret );
+
+	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, int > > sorted_values;
+	get_nnz_and_sort( mat, sorted_values );
+
+	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
+	const std::size_t local_nnz{ static_cast< std::size_t > ( std::count_if(
+		rows.cbegin(), rows.cend(), [pid,mat_size,nprocs]( std::size_t row ) {
+				return internal::Distribution< implementation >::global_index_to_process_id(
+					row, mat_size, nprocs
+				) == pid;
+			}
+		)
+	) };
+
+#ifdef _DEBUG
+	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
+		if( spmd<>::pid() == i ) {
+			std::cout << "process " << i << " local count " << local_nnz << std::endl;
+		}
+		spmd<>::barrier();
+	}
+#endif
+
+
+	ASSERT_EQ( sorted_values.size(), local_nnz );
+	std::size_t k{ 0 };
+	for( auto it{ sorted_values.cbegin() }; it != sorted_values.cend() && k < values.size(); ++it, ++k ) {
+		ASSERT_EQ( it->i(), rows[ k ] );
+		ASSERT_EQ( it->j(), cols[ k ] );
+		ASSERT_EQ( it->v(), values[ k ] );
+	}
+	ASSERT_EQ( k, local_nnz );
+
+	if( spmd<>::pid() == 0 ) {
+		LOG() << "-- OK" << std::endl;
+	}
+}
+
+static const char* const std_caption{ "got exception: " };
+
+static void print_exception_text( const char * text, const char * caption = std_caption ) {
+	std::stringstream stream;
+	if( spmd<>::nprocs() > 1UL ) {
+		stream << "Machine " << spmd<>::pid() << " - ";
+	}
+	stream << caption << std::endl
+		<< ">>>>>>>>" << std::endl
+		<< text << std::endl
+		<< "<<<<<<<<" << std::endl;
+	LOG() << stream.str();
+}
+
+void grbProgram( const void *, const size_t, int &error ) {
+
+	try {
+
+		std::initializer_list< std::size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
+			spmd<>::nprocs() + 16, 100003 };
+
+		if( spmd<>::pid() == 0 ) {
+			LOG() << "==== Testing diagonal matrices" << std::endl;
+		}
+		for( const std::size_t& mat_size : diag_sizes ) {
+			test_sequential_and_parallel_matrix_generation< int, diag_iterator< true >,diag_iterator< false > >(
+				mat_size, mat_size, mat_size );
+		}
+
+		std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467 };
+
+		for( const std::size_t& mat_size : band_sizes ) {
+			if( spmd<>::pid() == 0 ) {
+				LOG() << "==== Testing matrix with band 1" << std::endl;
+			}
+			test_sequential_and_parallel_matrix_generation< int, band_iterator< 1, true >, band_iterator< 1, false > >(
+				mat_size, mat_size, mat_size );
+
+			if( spmd<>::pid() == 0 ) {
+				LOG() << "==== Testing matrix with band 2" << std::endl;
+			}
+			test_sequential_and_parallel_matrix_generation< int, band_iterator< 2, true >, band_iterator< 2, false > >(
+				mat_size, mat_size, mat_size );
+
+			if( spmd<>::pid() == 0 ) {
+				LOG() << "==== Testing matrix with band 7" << std::endl;
+			}
+			test_sequential_and_parallel_matrix_generation< int, band_iterator< 7, true >, band_iterator< 7, false > >(
+				mat_size, mat_size, mat_size );
+		}
+
+		std::initializer_list< std::array< std::size_t, 2 > > matr_sizes{
+			{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 70 }, { 130, 139 }
+		};
+
+		if( spmd<>::pid() == 0 ) {
+			LOG() << "==== Testing dense matrices" << std::endl;
+		}
+		for( const std::array< std::size_t, 2 >& mat_size : matr_sizes ) {
+			test_sequential_and_parallel_matrix_generation< int, dense_mat_iterator< int, true >, dense_mat_iterator< int, false > >(
+				mat_size[0], mat_size[1], mat_size );
+		}
+
+		if( spmd<>::pid() == 0 ) {
+			LOG() << "==== Testing sparse matrix from user's vectors" << std::endl;
+		}
+		test_matrix_from_vectors();
+
+	} catch ( const std::exception& e ) {
+		print_exception_text( e.what() );
+		error = 1;
+	} catch( ... ) {
+		LOG() << "unknown exception" <<std::endl;
+		error = 1;
+	}
 }
 
 int main( int argc, char ** argv ) {
 	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << std::endl;
 
-	int error{0};
+	int error{ 0 };
+
 	Launcher< AUTOMATIC > launcher;
-	if( launcher.exec( &grbProgram, NULL, 0, error ) != SUCCESS ) {
-		std::cout << "Test FAILED (test failed to launch)" << std::endl;
+	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
+		std::cout << "Could not launch test" << std::endl;
 		error = 255;
 	}
 	if( error == 0 ) {
@@ -698,3 +847,4 @@ int main( int argc, char ** argv ) {
 
 	return error;
 }
+
