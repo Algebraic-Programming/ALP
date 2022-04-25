@@ -21,21 +21,32 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <graphblas/spmd.hpp>
+
 #include "assertion_engine.hpp"
 #include "token_handlers.hpp"
 
+// must call abort() and not exit() otherwise LPF may hang
 #define __EXIT( ret )                             \
 	if( assertion_engine::exit_on_violation() ) { \
-		std::exit( ret );                         \
+		std::abort();                             \
+		std::cout.flush();                        \
 	}
 
-#define __LOGGER_ERR ( std::cerr )
+
+// use std::cout since it does not flush by default: in case of parallel write text
+// chunks from multiple processes are less likely to overlap (not guaranteed though)
+#define __LOGGER_ERR ( std::cout )
+
 #define __PRINT_LINE( TEXT ) __LOGGER_ERR << TEXT << std::endl;
 
 // print red message (working only on Unix consoles!)
-#define __PRINT_ERR_LINE( TEXT ) __LOGGER_ERR << "\x1B[31m" << TEXT << "\033[0m" << std::endl;
-
-#define __PRINT_DBG_LINE_ERR( text ) __PRINT_ERR_LINE( __FILE__ << ":" << __LINE__ << "  " << text );
+#define __PRINT_DBG_LINE_ERR( text ) \
+	__LOGGER_ERR << "\x1B[31m" << __FILE__ << ":" << __LINE__ << " "; \
+	if( spmd<>::nprocs() > 1 ) { \
+		__LOGGER_ERR << "[PID " << spmd<>::pid() << "] "; \
+	} \
+	__LOGGER_ERR << text << "\033[0m" << std::endl;
 
 #define __PRINT_EXPR_VIOLATION( EXPR ) __PRINT_DBG_LINE_ERR( "Violated assertion:\t\"" << EXPR << "\"" )
 
@@ -49,7 +60,7 @@
 #define __ASSERT_CMP( actual, CMP_OP, expected )                     \
 	{                                                                \
 		decltype( actual ) __val { actual };                         \
-		if( ! ( __val CMP_OP( expected ) ) ) {                       \
+		if( ! ( __val CMP_OP ( expected ) ) ) {                      \
 			PRINT_ASSERT_FAILED3( actual, CMP_OP, expected, __val ); \
 		}                                                            \
 	}
@@ -72,12 +83,7 @@
 		__EXIT( -1 );								 \
 	}
 
-/*
-#define ASSERT( expr )                         \
-	if( ! ( expr ) ) {                         \
-		__PRINT_EXPR_VIOLATION( STRINGIFY( expr ) ) \
-	}
-*/
+#define FAIL() __PRINT_DBG_LINE_ERR( "Execution failed" )
 
 #define ASSERT_RC_SUCCESS( rc )                                                         \
 	{                                                                                   \
@@ -89,3 +95,4 @@
 	}
 
 #endif // _H_GRB_TEST_UTILS_ASSERTIONS_
+

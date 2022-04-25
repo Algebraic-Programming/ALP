@@ -201,7 +201,7 @@ namespace grb {
 		template< typename itertype , typename elmtype,
 			typename sizetype, typename comprestype,
 			typename elmtype2 >
-		void count_sort_omp(
+		RC count_sort_omp(
 			itertype it,
 			sizetype nz,
 			elmtype imin,
@@ -223,19 +223,18 @@ namespace grb {
 				bufferlen=(buffersize)/nsize;
 			}
 
-			if (nz<=1) {
-				// why?
-				//return ;
+			if ( nz < 1) {
+				return RC::ILLEGAL;
 			}
 
 			if (imin==imax) {
 				std::cout << " imin==imax=" << imax << ": return\n" ;
-				return ;
+				return RC::ILLEGAL;
 			}
 
 			if( buffersize <= 1 ) {
 				std::cerr << "error: buffersize < 1 \n";
-				return ;
+				return RC::ILLEGAL;
 			}
 
 			if(bufferlen<=1){
@@ -262,11 +261,19 @@ namespace grb {
 			#pragma omp for
 			for (sizetype i=0;i<buffersize;i++) buffer[i] = 0;
 
-			#pragma omp parallel
+			// firstprivate(it) is MANDATORY for each thread to have a private copy
+			// and NOT change the master's object (for the following loops)
+			#pragma omp parallel firstprivate(it)
 			{
 				const sizetype irank = omp_get_thread_num();
-				if(irank<nsize) for (size_t i=irank*nz/nsize;i<(irank+1)*nz/nsize;i++)
-									buffer[irank*bufferlen+(a_get(it,i)-imin)/(bucketlen+1)]++ ;
+				if( irank < nsize ) {
+					size_t i = irank * nz / nsize;
+					it += i;
+					for ( ; i < ( irank + 1 ) * nz / nsize; i++) {
+						buffer[ irank *bufferlen + ( a_get(it) - imin ) / ( bucketlen + 1 ) ]++ ;
+						++it;
+					}
+				}
 			}
 
 			#pragma omp for
@@ -284,16 +291,19 @@ namespace grb {
 				for (size_t irank=0;irank<nsize-1;irank++)
 					buffer[irank*bufferlen+i]+=buffer[(nsize-1)*bufferlen+i-1] ;
 
-			#pragma omp parallel
+			#pragma omp parallel firstprivate(it)
 			{
 				const size_t irank = omp_get_thread_num();
-				if(irank<nsize) {
-					for (size_t i=irank*nz/nsize;i<(irank+1)*nz/nsize;i++) {
-						auto i1=irank*bufferlen+(a_get(it,i)-imin)/(bucketlen+1);
-						--buffer[i1];
-						itertype ittmp=it;
-						ittmp+=(size_t)i;
+				if( irank < nsize ) {
+					size_t i = irank * nz / nsize;
+					it += i;
+					for ( ; i < ( irank + 1 ) * nz / nsize; i++) {
+						auto i1 = irank * bufferlen + ( a_get(it) - imin ) / ( bucketlen + 1 );
+						--buffer[ i1 ];
+						itertype& ittmp = it;
+						//ittmp += (size_t)i;
 						CXX.recordValue( buffer[i1], save_by_i, ittmp );
+						++it;
 					}
 				}
 			}
@@ -301,8 +311,10 @@ namespace grb {
 			#pragma omp for
 			for (size_t i=0;i<imax-imin;i++ ) CXX.col_start[ i ] =  buffer[i];
 
+			return RC::SUCCESS;
+
 		}
-		
+
 		template< typename elmtype, typename sizetype >
 		void prefixsum_inplace(elmtype *x, sizetype N, elmtype *rank_sum) {
 			//rank_sum is a buffer of size= nsize+1
@@ -1090,17 +1102,11 @@ namespace grb {
    		/** @see Matrix::buildMatrixUnique */
 		template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
 		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end, const IOMode mode ) {
-
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-			if( mode == IOMode::SEQUENTIAL ) {
-				return buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
-			}
+			// here we can safely ignore the mode and dispatch based only on the iterator type
+			// since in shared memory the input data reside by definition all on the same machine
+			(void)mode;
 			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
 			return buildMatrixUniqueImpl( _start, _end, category );
-#else // materialize only sequential iterator
-			(void)mode;
-		  	return buildMatrixUniqueImpl( _start, _end, std::forward_iterator_tag() );
-#endif
 		}
 
 
@@ -1121,7 +1127,7 @@ namespace grb {
 #endif
 
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( IOMode::SEQUENTIAL );
+			::__trace_build_matrix_iomode( reference, false );
 #endif
 			// detect trivial case
 			if( _start == _end || m == 0 || n == 0 ) {
@@ -1285,7 +1291,7 @@ namespace grb {
 #endif
 
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( IOMode::PARALLEL );
+			::__trace_build_matrix_iomode( reference, true );
 #endif
 
 				// detect trivial case
@@ -1329,11 +1335,7 @@ namespace grb {
 				}
 			}
 
-			size_t nsize;
-			#pragma omp parallel
-			{
-			  nsize = omp_get_num_threads();
-			}
+			size_t nsize = static_cast< size_t >( omp_get_max_threads() );
 
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
@@ -1350,40 +1352,41 @@ namespace grb {
 			// allocate enough space
 			resize( nz );
 
-			{
 			size_t amax=m;
 			size_t amin=0;
 			size_t bufferlen_tot = (nsize)*(amax-amin+1); // this is min buffer size
 			grb::internal::ensureReferenceBufsize<size_t>( bufferlen_tot ) ;
-			size_t *buffer1=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
-			rndacc_iterator it = _start;
-			count_sort_omp( it, nz, amin, amax, nsize,
-						  buffer1, bufferlen_tot, CRS,
-						  [&](const rndacc_iterator itr, const size_t& k) {
-							  rndacc_iterator itrtmp=itr;
-							  itrtmp+=k;
-							  return (itrtmp.i());
-						  },
-						  false ) ;
+			size_t *buffer=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
+			rndacc_iterator& it = _start;
+
+			struct {
+				config::RowIndexType operator()( const rndacc_iterator& itr ) {
+					return itr.i();
+				}
+			} row_getter;
+
+			RC ret = count_sort_omp( it, nz, amin, amax, nsize,
+						  buffer, bufferlen_tot, CRS, row_getter,
+						  false );
+
+			if ( ret != SUCCESS ) {
+				return ret;
 			}
 
-			{
-			size_t amax=n;
-			size_t amin=0;
-			size_t bufferlen_tot = (nsize)*(amax-amin+1); // this is min buffer size
+			amax=n;
+			bufferlen_tot = (nsize)*(amax-amin+1); // this is min buffer size
 			grb::internal::ensureReferenceBufsize<size_t>( bufferlen_tot ) ;
-			size_t *buffer2=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
-			rndacc_iterator it = _start;
-			count_sort_omp( it, nz, amin, amax, nsize,
-						  buffer2, bufferlen_tot, CCS,
-						  [&](const rndacc_iterator itr, const size_t& k) {
-							  rndacc_iterator itrtmp=itr;
-							  itrtmp+=k;
-							  return (itrtmp.j());
-						  },
+			buffer=grb::internal::getReferenceBuffer<size_t>( bufferlen_tot);
+
+			struct {
+				config::ColIndexType operator()( const rndacc_iterator& itr ) {
+					return itr.j();
+				}
+			} col_getter;
+
+			return count_sort_omp( it, nz, amin, amax, nsize,
+						  buffer, bufferlen_tot, CCS, col_getter,
 						  true ) ;
-			}
-			return SUCCESS;
 		}
 #endif
 
