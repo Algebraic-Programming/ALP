@@ -752,13 +752,13 @@ namespace grb {
 			typename fwd_iterator
 		>
 		RC buildMatrixUnique(
-			const fwd_iterator & _start,
-			const fwd_iterator & _end
+			const fwd_iterator &_start,
+			const fwd_iterator &_end
 		) {
 #ifdef _DEBUG
 			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 			std::cout << "buildMatrixUnique: input is\n";
-			for( auto it = _start; it != _end; ++it ) {
+			for( fwd_iterator it = _start; it != _end; ++it ) {
 				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
 			}
 			std::cout << "buildMatrixUnique: end input.\n";
@@ -894,10 +894,10 @@ namespace grb {
 
 #ifdef _DEBUG
 			for( size_t i = 0; i <= m; ++i ) {
-				(void)printf( "row_start[ %ld ] = %ld.\n", i, CRS.col_start[ i ] );
+				std::cout << "row_start[ " << i << " ] = " << CRS.col_start[ i ] << ".\n";
 			}
 			for( size_t i = 0; i <= n; ++i ) {
-				(void)printf( "col_start[ %ld ] = %ld.\n", i, CCS.col_start[ i ] );
+				std::cout << "col_start[ " << i << " ] = " << CCS.col_start[ i ] << ".\n";
 			}
 #endif
 

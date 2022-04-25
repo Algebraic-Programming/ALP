@@ -72,7 +72,11 @@ namespace grb {
 			 *
 			 * \note Auto-detecting the correct value for \a pattern only can happen successfully in case of MatrixMarket.
 			 */
-			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true, const T patternValueSub = 1 ) : patternValue( patternValueSub ) {
+			MatrixFileReader(
+				const std::string filename,
+				const bool direct = true, const bool symmetricmap = true,
+				const T patternValueSub = 1
+			) : patternValue( patternValueSub ) {
 				internal::MatrixFileProperties & properties = this->properties;
 				// set properties
 				properties._fn = filename;
@@ -93,7 +97,7 @@ namespace grb {
 					// we assume the input is not pattern, since \a T is not \a void
 					properties._pattern = false;
 					// assume unsymmetric
-					properties._symmetric = false;
+					properties._symmetric = internal::General;
 					// assume zero-based (SNAP-like)
 					properties._oneBased = false;
 					// record we assume SNAP
@@ -110,10 +114,10 @@ namespace grb {
 						++properties._nz;
 						// if symmetric, count non-diagonal entries twice
 						if( properties._symmetric && row != col ) {
-							++properties._nz;
+							(void) ++properties._nz;
 						}
 						(void)val;
-						if( ! direct ) {
+						if( !direct ) {
 							const auto row_it = properties._row_map.find( row );
 							if( row_it != properties._row_map.end() ) {
 								row = row_it->second;
@@ -231,6 +235,7 @@ namespace grb {
 			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
 
 		public:
+
 			/**
 			 * Constructs a matrix reader using minimal information.
 			 *
@@ -246,8 +251,12 @@ namespace grb {
 			 *
 			 * \note Auto-detecting the correct value for \a pattern only can happen successfully in case of MatrixMarket.
 			 */
-			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true ) {
-				internal::MatrixFileProperties & properties = this->properties;
+			MatrixFileReader(
+				const std::string filename,
+				const bool direct = true,
+				const bool symmetricmap = true
+			) {
+				internal::MatrixFileProperties &properties = this->properties;
 				// set properties
 				properties._fn = filename;
 				properties._direct = direct;
@@ -257,11 +266,11 @@ namespace grb {
 				// open up file stream to infer remainder properties
 				std::ifstream infile( properties._fn );
 				// try and find header
-				if( ! this->findHeader( infile ) ) {
+				if( !this->findHeader( infile ) ) {
 					// not found, so we have to infer values for _n, _m, and _nz
 					// we first assume the input is pattern and unsymmetric
 					properties._pattern = true;
-					properties._symmetric = false;
+					properties._symmetric = internal::General;
 					// assume 0-based input (SNAP-like)
 					properties._oneBased = false;
 					// record we assume SNAP
@@ -272,10 +281,10 @@ namespace grb {
 					properties._m = properties._n = properties._nz = properties._entries = 0;
 					S row, col;
 					// read until we drop
-					while( ( infile >> row >> col ) ) {
-						++properties._entries;
-						++properties._nz;
-						if( ! direct ) {
+					while( (infile >> row >> col) ) {
+						(void) ++properties._entries;
+						(void) ++properties._nz;
+						if( !direct ) {
 							const auto row_it = properties._row_map.find( row );
 							if( row_it != properties._row_map.end() ) {
 								row = row_it->second;
@@ -306,7 +315,7 @@ namespace grb {
 						}
 						// if symmetric, count non-diagonal entries twice
 						if( properties._symmetric && row != col ) {
-							++properties._nz;
+							(void) ++properties._nz;
 						}
 						// update dimensions
 						if( row > properties._m ) {
@@ -322,8 +331,8 @@ namespace grb {
 						properties._n = properties._m;
 					}
 					if( properties._nz > 0 ) {
-						++properties._m;
-						++properties._n;
+						(void) ++properties._m;
+						(void) ++properties._n;
 					}
 				}
 				// print info to stdout
@@ -345,11 +354,13 @@ namespace grb {
 			}
 
 			internal::MatrixFileIterator< S, void > cbegin( const IOMode mode = SEQUENTIAL ) {
-				return internal::MatrixFileIterator< S, void >( internal::MatrixFileReaderBase< void, S >::properties, mode );
+				return internal::MatrixFileIterator< S, void >(
+					internal::MatrixFileReaderBase< void, S >::properties, mode );
 			}
 
 			internal::MatrixFileIterator< S, void > cend( const IOMode mode = SEQUENTIAL ) {
-				return internal::MatrixFileIterator< S, void >( internal::MatrixFileReaderBase< void, S >::properties, mode, true );
+				return internal::MatrixFileIterator< S, void >(
+					internal::MatrixFileReaderBase< void, S >::properties, mode, true );
 			}
 		};
 
@@ -366,16 +377,20 @@ namespace grb {
 					<< "<unknown>"
 					<< ", entries: " << A.entries();
 			} else {
-				out << "m: " << A.m() << ", n: " << A.n() << ", nz: " << nnz << ", entries: " << A.entries();
+				out << "m: " << A.m() << ", n: " << A.n() << ", nz: " << nnz << ", "
+					<< "entries: " << A.entries();
 			}
 			out << ", pattern: " << ( A.isPattern() ? "yes" : "no" );
 			out << ", symmetric: " << ( A.isSymmetric() ? "yes" : "no" );
-			out << ", uses direct addressing: " << ( A.usesDirectAddressing() ? "yes" : "no" );
+			out << ", uses direct addressing: " <<
+				(A.usesDirectAddressing() ? "yes" : "no");
 			out << " >\n";
 			return out;
 		}
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif //``_H_MATRIXFILEREADER''
+
