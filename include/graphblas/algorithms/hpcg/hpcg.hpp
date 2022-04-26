@@ -105,8 +105,7 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
-			IOType alpha;
-			IOType dotproduct;
+			ResidualType alpha;
 
 			const grb::Matrix< NonzeroType > &A { data.A };
 			grb::Vector< IOType > &x { data.x };
@@ -128,9 +127,8 @@ namespace grb {
 			ret = ret ? ret : grb::eWiseApply( r, b, Ap, minus ); // r = b - Ap;
 			assert( ret == SUCCESS );
 
-			dotproduct =  static_cast< IOType >( 0.0 );
-			ret = ret ? ret : grb::dot( dotproduct, r, r, ring ); // norm_residual = r' * r;
-			norm_residual = std::abs( dotproduct );
+			norm_residual = ring.template getZero< ResidualType >();
+			ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // norm_residual = r' * r;
 			assert( ret == SUCCESS );
 
 			// compute sqrt to avoid underflow
@@ -138,7 +136,7 @@ namespace grb {
 
 			// initial norm of residual
 			const ResidualType norm_residual_initial { norm_residual };
-			IOType old_r_dot_z { 0.0 }, r_dot_z { 0.0 }, beta { 0.0 };
+			ResidualType old_r_dot_z { 0.0 }, r_dot_z { 0.0 }, beta { 0.0 };
 			size_t iter { 0 };
 
 #ifdef HPCG_PRINT_STEPS
@@ -162,6 +160,7 @@ namespace grb {
 				DBG_print_norm( z, "initial z" );
 #endif
 
+				ResidualType pAp;
 
 				if( iter == 0 ) {
 					ret = ret ? ret : grb::set( p, z ); //  p = z;
@@ -172,7 +171,7 @@ namespace grb {
 				} else {
 					old_r_dot_z = r_dot_z;
 
-					r_dot_z = static_cast< IOType >( 0.0 );;
+					r_dot_z = ring.template getZero< ResidualType >();
 					ret = ret ? ret : grb::dot( r_dot_z, r, z, ring ); // r_dot_z = r' * z;
 					assert( ret == SUCCESS );
 
@@ -192,11 +191,11 @@ namespace grb {
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( Ap, "middle Ap" );
 #endif
-				dotproduct =  static_cast< IOType >( 0.0 );
-				ret = ret ? ret : grb::dot( dotproduct, Ap, p, ring ); // dotproduct  = p' * Ap
+				pAp = static_cast< ResidualType >( 0.0 );
+				ret = ret ? ret : grb::dot( pAp, Ap, p, ring ); // pAp = p' * Ap
 				assert( ret == SUCCESS );
 
-				alpha = r_dot_z / dotproduct;
+				alpha = r_dot_z / pAp;
 
 				ret = ret ? ret : grb::eWiseMul( x, alpha, p, ring ); // x += alpha * p;
 				assert( ret == SUCCESS );
@@ -210,9 +209,8 @@ namespace grb {
 				DBG_print_norm( r, "end r" );
 #endif
 
-				dotproduct =  static_cast< IOType >( 0.0 );
-				ret = ret ? ret : grb::dot( dotproduct, r, r, ring ); // residual = r' * r;
-				norm_residual = std::abs( dotproduct );
+				norm_residual = static_cast< ResidualType >( 0.0 );
+				ret = ret ? ret : grb::dot( norm_residual, r, r, ring ); // residual = r' * r;
 				assert( ret == SUCCESS );
 
 				norm_residual = std::sqrt( norm_residual );
