@@ -92,9 +92,6 @@ namespace grb {
 				 */
 				bool _complex;
 
-				/** Whether the file is hermitian or not. */
-				bool _hermitian;
-
 				/**
 				 * Whether the file has direct indexing or not.
 				 *
