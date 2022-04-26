@@ -300,7 +300,7 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
-				tol *= sqrt( std::abs( bnorm ) );
+				tol *= sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
 			}
 
 			size_t iter = 0;
