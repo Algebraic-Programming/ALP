@@ -274,27 +274,29 @@ namespace grb {
 
 			// sigma = r' * r;
 			sigma = zero;
-			ret = ret ? ret : grb::set( temp, r );
 			if( grb::utils::is_complex< IOType >::value ) {
-				ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-						temp[ i ] = grb::utils::conjugate( temp[ i ] );
+				ret = ret ? ret : grb::eWiseLambda( [&temp,&r]( const size_t i ) {
+						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( r[ i ] );
 					}, temp
 				);
+				ret = ret ? ret : grb::dot< descr_dense >( sigma, temp, r, ring );
+			} else {
+				ret = ret ? ret : grb::dot< descr_dense >( sigma, r, r, ring );
 			}
-			ret = ret ? ret : grb::dot< descr_dense >( sigma, temp, r, ring );
 			
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			ret = ret ? ret : grb::set( temp, b );
 			if( grb::utils::is_complex< IOType >::value ) {
-				ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-						temp[ i ] = grb::utils::conjugate( temp[ i ] );
+				ret = ret ? ret : grb::eWiseLambda( [&temp,&b]( const size_t i ) {
+						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( b[ i ] );
 					}, temp
 				);
+				ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
+			} else {
+				ret = ret ? ret : grb::dot< descr_dense >( bnorm, b, b, ring );
 			}
-			ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
@@ -315,11 +317,17 @@ namespace grb {
 				// beta = u' * temp
 				beta = zero;
 				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) { u[ i ] = grb::utils::conjugate( u[ i ] ); }, u );
+					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
+							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
+						}, u
+					);
 				}
 				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
 				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) { u[ i ] = grb::utils::conjugate( u[ i ] ); }, u );
+					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
+							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
+						}, u
+					);
 				}
 				assert( ret == SUCCESS );
 
@@ -342,17 +350,18 @@ namespace grb {
 
 				// beta = r' * r;
 				beta = zero;
-				ret = ret ? ret : grb::set( temp, r );
 				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-							temp[ i ] = grb::utils::conjugate( temp[ i ] );
+					ret = ret ? ret : grb::eWiseLambda( [&temp,&r]( const size_t i ) {
+							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( r[ i ] );
 						}, temp
 					);
+					ret = ret ? ret : grb::dot< descr_dense >( beta, temp, r, ring );
+				} else {
+					ret = ret ? ret : grb::dot< descr_dense >( beta, r, r, ring );
 				}
-				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, r, ring );
+				residual = grb::utils::is_complex< IOType >::modulus( beta );
 				assert( ret == SUCCESS );
 
-				residual = std::abs( beta );
 				if( ret == SUCCESS ) {
 					if( sqrt( residual ) < tol ) {
 						break;
@@ -373,9 +382,7 @@ namespace grb {
 				// u = temp
 				std::swap( u, temp );
 
-				// sigma = beta;
 				sigma = beta;
-				residual = std::abs( beta );
 
 			} while( iter++ < max_iterations && ret == SUCCESS );
 

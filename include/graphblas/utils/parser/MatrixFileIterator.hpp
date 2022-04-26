@@ -410,7 +410,8 @@ namespace grb {
 #endif
 									std::swap( buffer[ pos ].first.first, buffer[ pos ].first.second );
 									if( properties._symmetric == Hermitian ) {
-										buffer[ pos ].second = conjugate( buffer[ pos ].second );
+										buffer[ pos ].second = grb::utils::is_complex< T >::conjugate(
+											buffer[ pos ].second );
 									}
 									return *this;
 								} else {
