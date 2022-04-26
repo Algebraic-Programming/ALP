@@ -141,7 +141,8 @@ namespace grb {
 			class Minus = operators::subtract< IOType >,
 			class Divide = operators::divide< IOType >
 		>
-		grb::RC conjugate_gradient( grb::Vector< IOType > &x,
+		grb::RC conjugate_gradient(
+			grb::Vector< IOType > &x,
 			const grb::Matrix< NonzeroType > &A,
 			const grb::Vector< InputType > &b,
 			const size_t max_iterations,
@@ -273,16 +274,26 @@ namespace grb {
 
 			// sigma = r' * r;
 			sigma = zero;
-			grb::set( temp, r );
-			grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+			ret = ret ? ret : grb::set( temp, r );
+			if( grb::utils::is_complex< IOType >::value ) {
+				ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
+						temp[ i ] = grb::utils::conjugate( temp[ i ] );
+					}, temp
+				);
+			}
 			ret = ret ? ret : grb::dot< descr_dense >( sigma, temp, r, ring );
 			
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			grb::set( temp, b );
-			grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+			ret = ret ? ret : grb::set( temp, b );
+			if( grb::utils::is_complex< IOType >::value ) {
+				ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
+						temp[ i ] = grb::utils::conjugate( temp[ i ] );
+					}, temp
+				);
+			}
 			ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
 			assert( ret == SUCCESS );
 
@@ -303,9 +314,13 @@ namespace grb {
 
 				// beta = u' * temp
 				beta = zero;
-				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  u );
+				if( grb::utils::is_complex< IOType >::value ) {
+					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) { u[ i ] = grb::utils::conjugate( u[ i ] ); }, u );
+				}
 				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
-				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  u );
+				if( grb::utils::is_complex< IOType >::value ) {
+					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) { u[ i ] = grb::utils::conjugate( u[ i ] ); }, u );
+				}
 				assert( ret == SUCCESS );
 
 				// alpha = sigma / beta;
@@ -327,8 +342,13 @@ namespace grb {
 
 				// beta = r' * r;
 				beta = zero;
-				grb::set( temp, r );
-				grb::eWiseMap( []( IOType a ) { return( grb::utils::conjugate( a ) ); } ,  temp );
+				ret = ret ? ret : grb::set( temp, r );
+				if( grb::utils::is_complex< IOType >::value ) {
+					ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
+							temp[ i ] = grb::utils::conjugate( temp[ i ] );
+						}, temp
+					);
+				}
 				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, r, ring );
 				assert( ret == SUCCESS );
 
