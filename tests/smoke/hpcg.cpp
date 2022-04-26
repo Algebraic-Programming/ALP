@@ -33,16 +33,10 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
-#include <complex>
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/hpcg/hpcg.hpp>
 #include <graphblas/algorithms/hpcg/system_building_utils.hpp>
-
-using hpchscalarbase = double ;
-using hpchscalar = std::complex<hpchscalarbase> ;
-//using hpchscalar = double ;
-
 
 // here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
 #ifdef HPCG_PRINT_STEPS
@@ -82,13 +76,13 @@ constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
 constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
 
 // internal values
-constexpr hpchscalarbase SYSTEM_DIAG_VALUE { 26.0 };
-constexpr hpchscalarbase SYSTEM_NON_DIAG_VALUE { -1.0 };
+constexpr double SYSTEM_DIAG_VALUE { 26.0 };
+constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
 constexpr std::size_t BAND_WIDTH_3D { 13UL };
 constexpr std::size_t HALO_RADIUS { 1U };
 //============================================
 
-constexpr hpchscalarbase MAX_NORM { 4.0e-14 };
+constexpr double MAX_NORM { 4.0e-14 };
 
 using namespace grb;
 using namespace algorithms;
@@ -124,10 +118,10 @@ struct output {
 	RC error_code;
 	size_t test_repetitions;
 	size_t performed_iterations;
-	hpchscalarbase residual;
+	double residual;
 	grb::utils::TimerResults times;
-	std::unique_ptr< PinnedVector< hpchscalar > > pinnedVector;
-	hpchscalarbase square_norm_diff;
+	std::unique_ptr< PinnedVector< double > > pinnedVector;
+	double square_norm_diff;
 
 	output() {
 		error_code = SUCCESS;
@@ -156,19 +150,19 @@ T static next_pow_2( T n ) {
  * @brief Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
  * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
  */
-static RC build_3d_system( std::unique_ptr< hpcg_data< hpchscalar, hpchscalar, hpchscalar > > & holder, const system_input & in ) {
+static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
 	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
-	struct hpcg_system_params< 3, hpchscalar > params {
+	struct hpcg_system_params< 3, double > params {
 		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
 
-	return build_hpcg_system< 3, hpchscalar >( holder, params );
+	return build_hpcg_system< 3, double >( holder, params );
 }
 
 #ifdef HPCG_PRINT_SYSTEM
-static void print_system( const hpcg_data< hpchscalar, hpchscalar, hpchscalar > & data ) {
+static void print_system( const hpcg_data< double, double, double > & data ) {
 	print_matrix( data.A, 70, "A" );
-	multi_grid_data< hpchscalar, hpchscalar > * coarser = data.coarser_level;
+	multi_grid_data< double, double > * coarser = data.coarser_level;
 	while( coarser != nullptr ) {
 		print_matrix( coarser->coarsening_matrix, 50, "COARSENING MATRIX" );
 		print_matrix( coarser->A, 50, "COARSER SYSTEM MATRIX" );
@@ -209,7 +203,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	RC rc { SUCCESS };
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
-	std::unique_ptr< hpcg_data< hpchscalar, hpchscalar, hpchscalar > > hpcg_state;
+	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
 	rc = build_3d_system( hpcg_state, in );
 
 	if( rc != SUCCESS ) {
@@ -223,14 +217,14 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	Matrix< hpchscalar > & A { hpcg_state->A };
-	Vector< hpchscalar > & x { hpcg_state->x };
-	Vector< hpchscalar > & b { hpcg_state->b };
+	Matrix< double > & A { hpcg_state->A };
+	Vector< double > & x { hpcg_state->x };
+	Vector< double > & b { hpcg_state->b };
 
 	// set vectors as from standard HPCG benchmark
 	set( x, 1.0 );
 	set( b, 0.0 );
-	rc = grb::mxv( b, A, x, grb::Semiring< grb::operators::add< hpchscalar >, grb::operators::mul< hpchscalar >, grb::identities::zero, grb::identities::one >() );
+	rc = grb::mxv( b, A, x, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
 	set( x, 0.0 );
 
 #ifdef HPCG_PRINT_SYSTEM
@@ -247,9 +241,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		out.test_repetitions = 0;
 		timer.reset();
 		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-		auto single_time = timer.time();
+		double single_time = timer.time();
 		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< decltype( single_time ) >() );
+			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
 		out.times.useful = single_time;
 		out.test_repetitions = static_cast< size_t >( 1000.0 / single_time ) + 1;
@@ -265,8 +259,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 				break;
 			}
 		}
-		auto time_taken { timer.time() };
-		out.times.useful = time_taken / static_cast< decltype( time_taken ) >( out.test_repetitions );
+		double time_taken { timer.time() };
+		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
 		// sleep( 1 );
 	}
 
@@ -288,29 +282,28 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// set error code
 	out.error_code = rc;
 
-	Semiring< grb::operators::add< hpchscalar >, grb::operators::mul< hpchscalar >, grb::identities::zero, grb::identities::one > ring;
+	Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 	grb::set( b, 1.0 );
+	out.square_norm_diff = 0.0;
 	grb::eWiseMul( b, -1.0, x, ring );
-	hpchscalar dotproduct = 0.0;
-	grb::dot( dotproduct, b, b, ring );
-	out.square_norm_diff = std::norm( dotproduct );
+	grb::dot( out.square_norm_diff, b, b, ring );
 
 	// output
-	out.pinnedVector = std::unique_ptr< PinnedVector< hpchscalar > >( new PinnedVector< hpchscalar >( x, SEQUENTIAL ) );
+	out.pinnedVector = std::unique_ptr< PinnedVector< double > >( new PinnedVector< double >( x, SEQUENTIAL ) );
 	// finish timing
-	const auto time_taken { timer.time() };
+	const double time_taken { timer.time() };
 	out.times.postamble = time_taken;
 }
 
 /**
  * @brief Parser the command-line arguments to extract the simulation information and checks they are valid.
  */
-static void parse_arguments( simulation_input &, std::size_t &, hpchscalarbase &, int, char ** );
+static void parse_arguments( simulation_input &, std::size_t &, double &, int, char ** );
 
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
 	size_t test_outer_iterations;
-	hpchscalarbase max_residual_norm;
+	double max_residual_norm;
 
 	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
 	thcout << "System size x: " << sim_in.nx << std::endl;
@@ -352,7 +345,7 @@ int main( int argc, char ** argv ) {
 	if( ! out.pinnedVector ) {
 		thcerr << "no output vector to inspect" << std::endl;
 	} else {
-		const PinnedVector< hpchscalar > &solution { *out.pinnedVector };
+		const PinnedVector< double > &solution { *out.pinnedVector };
 		thcout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
@@ -363,8 +356,7 @@ int main( int argc, char ** argv ) {
 
 	ASSERT_RC_SUCCESS( out.error_code );
 
-	//hpchscalarbase residual_norm { sqrt( out.square_norm_diff ) };
-	auto residual_norm = out.square_norm_diff;
+	double residual_norm { sqrt( out.square_norm_diff ) };
 	thcout << "Residual norm: " << residual_norm << std::endl;
 
 	ASSERT_LT( residual_norm, max_residual_norm );
@@ -373,7 +365,7 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, hpchscalarbase & max_residual_norm, int argc, char ** argv ) {
+static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
 
 	argument_parser parser;
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
