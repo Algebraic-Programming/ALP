@@ -62,7 +62,7 @@ namespace grb {
 				 * @returns The conjugate of a given value if \a C is a complex type, or
 				 *          the given value if \a C is not complex.
 				 */
-				static C conjugate( const C &x ) {
+				static C conjugate( const C &x ) noexcept {
 					return x;
 				}
 
@@ -70,7 +70,7 @@ namespace grb {
 				 * @returns The absolute value of a given value if \a C is a complex type,
 				 *          or the given value if \a C is not complex.
 				 */
-				static C modulus( const C &x ) {
+				static C modulus( const C &x ) noexcept {
 					return x;
 				}
 
