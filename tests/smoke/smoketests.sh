@@ -203,7 +203,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "                                 verifies against a ground-truth solution vector. The test"
 				echo "                                 employs the grb::Launcher in automatic mode. It uses"
 				echo "                                 direct-mode file IO."
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${INPUT_DIR}/${TESTNAME}.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
