@@ -44,8 +44,10 @@ namespace grb {
 			/**
 			 * Parses SNAP files & Matrix Market files.
 			 *
-			 * @tparam T The type a nonzero value iterator should return. Can be set to \a void in case the values are not of interest.
-			 * @tparam S (Optional) The type an nonzero index iterator should return. Default value: \a size_t.
+			 * @tparam T The type a nonzero value iterator should return. Can be set to
+			 *           \a void in case the values are not of interest.
+			 * @tparam S (Optional) The type an nonzero index iterator should return.
+			 *           Default value: \a size_t.
 			 */
 			template< typename T, typename S >
 			class MatrixFileReaderBase {
@@ -214,13 +216,17 @@ namespace grb {
 						}
 						if( properties._symmetric == internal::Symmetric ) {
 							std::cerr << " and the input is symmetric";
+						} else if( properties._symmetric == internal::Hermitian ) {
+							std::cerr << " and the input is hermitian";
+						} else if( properties._symmetric == internal::General ) {
+							std::cerr << " and the input is general";
+						} else {
+							std::cerr << " and the input has unknown symmetry(!)";
+#ifndef NDEBUG
+							const bool unknown_symmetry_type_encountered = false;
+							assert( unknown_symmetry_type_encountered );
+#endif
 						}
-						if( properties._symmetric == internal::Hermitian ) {
-							std::cerr << " and the input is hermitian ";
-						}
-						if( properties._symmetric == internal::General ) {
-							std::cerr << " and the input is general ";
-						}												
 						std::cerr << ".\n";
 					}
 
