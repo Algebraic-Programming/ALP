@@ -147,7 +147,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			out.iterations, out.residual,
 			r, u, temp
 		);
-		auto single_time = timer.time();
+		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
@@ -187,7 +187,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
-		auto time_taken = timer.time();
+		double time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
