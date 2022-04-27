@@ -195,9 +195,9 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo " "
 
 			TESTNAME=rndHermit256
-			if [ -f ${INPUT_DIR}/${TESTNAME}.mtx ]; then
-				n=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
-				m=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
+			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
+				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
+				m=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
 				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex  algorithm for the input"
 				echo "                                 matrix (${n}x${m}) taken from ${TESTNAME}.mtx. This test"
 				echo "                                 verifies against a ground-truth solution vector. The test"
@@ -207,7 +207,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
-				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${INPUT_DIR}/${TESTNAME}.mtx"
+				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi
 			echo " "
 			
