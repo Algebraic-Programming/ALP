@@ -196,8 +196,8 @@ for BACKEND in ${BACKENDS[@]}; do
 
 			TESTNAME=rndHermit256
 			if [ -f ${INPUT_DIR}/${TESTNAME}.mtx ]; then
-				n=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1  | awk '{print $1}' )
-				m=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1  | awk '{print $2}' )
+				n=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
+				m=$(grep -v '^%' ${INPUT_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
 				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex  algorithm for the input"
 				echo "                                 matrix (${n}x${m}) taken from ${TESTNAME}.mtx. This test"
 				echo "                                 verifies against a ground-truth solution vector. The test"
