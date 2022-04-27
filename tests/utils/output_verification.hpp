@@ -36,19 +36,51 @@
 
 
 /**
- * internal overload for read of real and complex matrix
+ * Attempts to read in a double value from a given file into a given memory
+ * location.
+ *
+ * @param[in]  in  The input file
+ * @param[out] out Where to store the read value.
+ *
+ * @returns 0 on success and 1 on failure.
+ *
+ * If the function fails, \a out shall not be assigned.
+ *
+ * \internal This is the overload for reading double data.
  */
 template< typename fileType >
-int data_fscanf(fileType in, double *truth){
-	return( fscanf( in, "%lf", &(*truth) ) );
+int data_fscanf( const fileType in, double * const out ) {
+	const int rc = fscanf( in, "%lf", out );
+	if( rc == 1 ) {
+		return 0;
+	} else {
+		return 1;
+	}
 };
 
+/**
+ * Attempts to read in a complex value from a given file into a given memory
+ * location.
+ *
+ * @param[in]  in  The input file
+ * @param[out] out Where to store the read value.
+ *
+ * @returns 0 on success and 1 on failure.
+ *
+ * If the function fails, \a out shall not be assigned.
+ *
+ * \internal This is the overload for reading complex data.
+ */
 template< typename fileType, typename T >
-int data_fscanf(fileType in, std::complex<T> *truth){
-	double x,y;
-	int rc=fscanf( in, "%lf%lf", &x,&y );
-	*truth=std::complex<T>( x, y );
-	return( rc==2 );
+int data_fscanf( const fileType in, std::complex< T > * const out ) {
+	double x, y;
+	const int rc = fscanf( in, "%lf%lf", &x, &y );
+	if( rc == 2 ) {
+		*out = std::complex< T >( x, y );
+		return 0;
+	} else {
+		return 1;
+	}
 };
 
 /**
@@ -109,7 +141,7 @@ int vector_verification(
 	const constexpr T one = static_cast< T >( 1 );
 
 	// open verification file
-	FILE *in = fopen( truth_filename, "r" );
+	FILE * const in = fopen( truth_filename, "r" );
 
 	if( in == nullptr ) {
 		std::cerr << "Could not open the file \"" << truth_filename << "\"."
@@ -126,14 +158,10 @@ int vector_verification(
 	}
 
 	for( size_t i = 0; i < n; i++ ) {
-		int rc=data_fscanf(in, truth + i );
-		if( rc != 1 ) {
-			std::cerr << "The verification file looks incomplete."
-					  << " line i= "
-					  << i
-					  << " data= " << truth[ i ]
-					  << " rc= " << rc
-					  << std::endl;
+		const int rc = data_fscanf( in, truth + i );
+		if( rc != 0 ) {
+			std::cerr << "The verification file looks incomplete. " << "Line i = " << i
+				<< ", data = " << truth[ i ] << ", rc = " << rc << std::endl;
 			delete [] truth;
 			return 30;
 		}
@@ -141,8 +169,7 @@ int vector_verification(
 
 	// close verification file
 	if( fclose( in ) != 0 ) {
-		std::cerr << "I/O warning: closing verification file failed."
-			<< std::endl;
+		std::cerr << "I/O warning: closing verification file failed." << std::endl;
 	}
 
 	// compute magnitudes
@@ -150,8 +177,8 @@ int vector_verification(
 	double magnitudeInf = 0;
 	for( size_t i = 0; i < n; ++i ) {
 		magnitude2 +=  std::norm( truth[ i ] );
-		magnitudeInf = fabs( truth[ i ] ) > magnitudeInf ?
-			fabs( truth[ i ] ) :
+		magnitudeInf = std::abs( truth[ i ] ) > magnitudeInf ?
+			std::abs( truth[ i ] ) :
 			magnitudeInf;
 	}
 	// we assume the ground truth should have a properly computable 2-norm
@@ -171,7 +198,7 @@ int vector_verification(
 	}
 
 	for( size_t k = 0; k < output_vector.nonzeroes(); k++ ) {
-		const auto value = output_vector.getNonzeroValue( k, one );
+		const T &value = output_vector.getNonzeroValue( k, one );
 		const size_t index = output_vector.getNonzeroIndex( k );
 		assert( index < n );
 		assert( !written_to[ index ] );
