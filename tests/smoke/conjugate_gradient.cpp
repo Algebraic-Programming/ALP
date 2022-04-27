@@ -187,7 +187,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
-		double time_taken = timer.time();
+		const double time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
@@ -221,7 +221,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.pinnedVector = PinnedVector< hpchscalar >( x, SEQUENTIAL );
 
 	// finish timing
-	const auto time_taken = timer.time();
+	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 
 	// done
@@ -348,7 +348,7 @@ int main( int argc, char ** argv ) {
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cout << "First 10 nonzeroes of x are: ( ";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
-			const auto &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			const hpchscalar &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
 			std::cout << nonzeroValue << " ";
 		}
 		std::cout << ")" << std::endl;
