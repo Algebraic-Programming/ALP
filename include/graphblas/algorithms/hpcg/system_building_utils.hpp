@@ -80,7 +80,7 @@ namespace grb {
 		 * @return grb::SUCCESS if every GraphBLAS operation (to generate vectors and matrices) succeeded,
 		 * otherwise the first unsuccessful return value
 		 */
-		template< std::size_t DIMS, typename T >
+		template< std::size_t DIMS, typename T = double >
 		grb::RC build_hpcg_system( std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder, hpcg_system_params< DIMS, T > & params ) {
 			// n is the system matrix size
 			const std::size_t n { std::accumulate( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
@@ -121,7 +121,7 @@ namespace grb {
 				std::size_t coarser_size { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 				std::size_t previous_size { std::accumulate( previous_sizes.cbegin(), previous_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 				// build data structures for new level
-				grb::algorithms::multi_grid_data< T, T > * new_coarser { new grb::algorithms::multi_grid_data< T, T >( coarser_size, previous_size ) };
+				grb::algorithms::multi_grid_data< double, double > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
 				// install coarser level immediately to cleanup in case of build error
 				*coarser = new_coarser;
 				// initialize coarsener matrix, system matrix and diagonal vector for the coarser level
