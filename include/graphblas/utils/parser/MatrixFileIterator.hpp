@@ -51,6 +51,7 @@
  #include <graphblas/omp/config.hpp>
 #endif
 
+
 namespace grb {
 
 	namespace utils {
@@ -69,14 +70,18 @@ namespace grb {
 			class MatrixFileIterator {
 
 				template< typename X1, typename X2 >
-				friend std::ostream & operator<<( std::ostream &, const MatrixFileIterator< X1, X2 > & );
+				friend std::ostream & operator<<(
+					std::ostream &, const MatrixFileIterator< X1, X2 > & );
 
 				private:
 
 					/** The output type of the base iterator. */
 					typedef std::pair< std::pair< S, S >, T > OutputType;
 
-					/** Iterators will retrieve this many lines at a time from the input file. */
+					/**
+					 * Iterators will retrieve this many lines at a time from the input
+					 * file.
+					 */
 					static constexpr size_t buffer_size = grb::config::PARSER::bsize();
 
 					/** The nonzero buffer. */
@@ -97,7 +102,10 @@ namespace grb {
 					/** Whether the \a infile stream \em and \a buffer have been depleted. */
 					bool ended;
 
-					/** Whether the first fill of the buffer is held until the first dereference of this iterator is taking place. */
+					/**
+					 * Whether the first fill of the buffer is held until the first
+					 * dereference of this iterator is taking place.
+					 */
 					bool started;
 
 					/** Whether the smmetric counterpart of the current nonzero was output. */
@@ -106,10 +114,16 @@ namespace grb {
 					/** A function to apply to convert input values on the fly. */
 					std::function< void( T & ) > converter;
 
-					/** In case we are reading from a pattern matrix, which value should substitute a nonzero. */
+					/**
+					 * In case we are reading from a pattern matrix, which value should
+					 * substitute a nonzero.
+					 */
 					const T patternValue;
 
-					/** Strips comments and possible MatrixMarket header from input stream start. */
+					/**
+					 * Strips comments and possible MatrixMarket header from input stream
+					 * start.
+					 */
 					void preprocess() {
 #ifdef _DEBUG
 						std::cout << "\t In MatrixFileIterator::preprocess()\n";
