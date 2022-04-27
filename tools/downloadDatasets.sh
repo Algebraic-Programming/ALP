@@ -93,7 +93,6 @@ if [[ "$REPLY" = "yes" ]]; then
 	downloadSS "west0497" "https://suitesparse-collection-website.herokuapp.com/MM/HB/west0497.tar.gz"
 	downloadSS "gyro_m" "https://suitesparse-collection-website.herokuapp.com/MM/Oberwolfach/gyro_m.tar.gz"
 	downloadSS "dwt_59" "https://suitesparse-collection-website.herokuapp.com/MM/HB/dwt_59.tar.gz"
-	downloadSS "rndHermit256.mtx" "https://gitlab.com/denis.jelovina/hermitian_test_matrix/-/raw/main/rndHermit256.mtx"
 	downloadSN "cit-HepTh"
 	downloadSN "facebook_combined"
 	echo ""
