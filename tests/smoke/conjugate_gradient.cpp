@@ -18,7 +18,11 @@
 #include <exception>
 #include <iostream>
 #include <vector>
-#include <complex>
+
+#ifdef _CG_COMPLEX
+ #include <complex>
+#endif
+
 #include <inttypes.h>
 
 #include <graphblas/algorithms/conjugate_gradient.hpp>
