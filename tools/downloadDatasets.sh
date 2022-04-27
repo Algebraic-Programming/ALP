@@ -22,16 +22,9 @@ downloadSS () {
 			wget ${2} || exit 1
 		fi
 		if [ ! -f ${1}/${1}.mtx ]; then
-			if [ -f ${1}.tar.gz ]; then
-				tar xf ${1}.tar.gz || exit 1
-			elif [ -f ${1}.gz ]; then
-				gzip -d ${1}.gz || exit 1
-			elif [ -f ${1}.mtx.gz ]; then
-				gzip -d ${1}.mtx.gz || exit 1				
-			fi
-		else
-			ln ${1}/${1}.mtx . || exit 1
+			tar xf ${1}.tar.gz || exit 1
 		fi
+		ln ${1}/${1}.mtx ./ || exit 1
 	fi
 }
 
