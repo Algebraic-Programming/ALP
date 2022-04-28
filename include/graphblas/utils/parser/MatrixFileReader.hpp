@@ -32,20 +32,27 @@
 #include "MatrixFileProperties.hpp"
 #include "MatrixFileReaderBase.hpp"
 
+
 namespace grb {
+
 	namespace utils {
 
 		template< typename T, typename S = size_t >
 		class MatrixFileReader : public internal::MatrixFileReaderBase< T, S > {
 
-			static_assert( std::is_integral< S >::value, "The template parameter S to MatrixFileReader must be integral." );
+			static_assert( std::is_integral< S >::value,
+				"The template parameter S to MatrixFileReader must be integral." );
 
 			template< typename U, typename V >
-			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
+			friend std::ostream & operator<<(
+				std::ostream &out, const MatrixFileReader< U, V > &A );
 
 		private:
 
-			/** In case we are reading pattern matrices, which value to substitute for nonzeroes. */
+			/**
+			 * In case we are reading pattern matrices, which value to substitute for
+			 * nonzeroes.
+			 */
 			const T patternValue;
 
 
@@ -54,15 +61,19 @@ namespace grb {
 			/**
 			 * Constructs a matrix reader using minimal information.
 			 *
-			 * This constructor will parse the file in its entirety once. The use of an iterator will parse the file \em again.
+			 * This constructor will parse the file in its entirety once. The use of an
+			 * iterator will parse the file \em again.
 			 *
 			 * @param[in] filename Which file to read.
 			 * @param[in] direct   (Optional) Whether the file uses direct indexing.
 			 *                     If not, new indices will be automatically inferred.
 			 *                     Default value is \a true.
-			 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
-			 *                         the row map should equal the column map.
-			 * @param[in] patternValueSub (Optional) Which value to substitute for nonzeroes when reading in from a pattern
+			 *
+			 * @param[in] symmetricmap    (Optional) In case \a direct is \a false,
+			 *                            whether the row map should equal the column
+			 *                            map.
+			 * @param[in] patternValueSub (Optional) Which value to substitute for
+			 *                            nonzeroes when reading in from a pattern
 			 *                            matrix.
 			 *
 			 * Defaults for \a direct and \a symmetricmap are <tt>true</tt>.
@@ -70,14 +81,15 @@ namespace grb {
 			 *
 			 * @throws std::runtime_error If the given file does not exist.
 			 *
-			 * \note Auto-detecting the correct value for \a pattern only can happen successfully in case of MatrixMarket.
+			 * \note Auto-detecting the correct value for \a pattern only can happen
+			 *       successfully in case of MatrixMarket.
 			 */
 			MatrixFileReader(
 				const std::string filename,
 				const bool direct = true, const bool symmetricmap = true,
 				const T patternValueSub = 1
 			) : patternValue( patternValueSub ) {
-				internal::MatrixFileProperties & properties = this->properties;
+				internal::MatrixFileProperties &properties = this->properties;
 				// set properties
 				properties._fn = filename;
 				properties._direct = direct;
@@ -87,11 +99,11 @@ namespace grb {
 				// open up file stream to infer remainder properties
 				std::ifstream infile( properties._fn );
 				// try and find header
-				if( ! this->findHeader( infile ) ) {
+				if( !this->findHeader( infile ) ) {
 #ifdef _DEBUG
-					std::cout << "MatrixFileReader: couldn't parse header, "
-								 "inferring SNAP-based defaults; i.e., no "
-								 "pattern matrix, not symmetric, 0-based.\n";
+					std::cout << "MatrixFileReader: couldn't parse header, inferring SNAP-"
+						<< "based defaults; i.e., no pattern matrix, not symmetric, and"
+						<< "0-based.\n";
 #endif
 					// not found, so we have to infer matrix properties
 					// we assume the input is not pattern, since \a T is not \a void
@@ -109,14 +121,14 @@ namespace grb {
 					S row, col;
 					T val;
 					// read until we drop
-					while( ( infile >> row >> col >> val ) ) {
-						++properties._entries;
-						++properties._nz;
+					while( (infile >> row >> col >> val) ) {
+						(void) ++properties._entries;
+						(void) ++properties._nz;
 						// if symmetric, count non-diagonal entries twice
 						if( properties._symmetric && row != col ) {
 							(void) ++properties._nz;
 						}
-						(void)val;
+						(void) val;
 						if( !direct ) {
 							const auto row_it = properties._row_map.find( row );
 							if( row_it != properties._row_map.end() ) {
@@ -164,8 +176,8 @@ namespace grb {
 						properties._n = properties._m;
 					}
 					if( properties._nz > 0 ) {
-						++properties._m;
-						++properties._n;
+						(void) ++properties._m;
+						(void) ++properties._n;
 					}
 				}
 				// print info to stdout
@@ -215,41 +227,53 @@ namespace grb {
 			internal::MatrixFileIterator< S, T > cbegin(
 				const IOMode mode = SEQUENTIAL,
 				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, patternValue, false );
+				return internal::MatrixFileIterator< S, T >(
+					internal::MatrixFileReaderBase< T, S >::properties, mode,
+					valueConverter, patternValue, false
+				);
 			}
 
 			/** Matching end iterator to cbegin(). */
 			internal::MatrixFileIterator< S, T > cend(
 				const IOMode mode = SEQUENTIAL,
 				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, patternValue, true );
+				return internal::MatrixFileIterator< S, T >(
+					internal::MatrixFileReaderBase< T, S >::properties, mode,
+					valueConverter, patternValue, true
+				);
 			}
 		};
 
 		template< typename S >
-		class MatrixFileReader< void, S > : public internal::MatrixFileReaderBase< void, S > {
-
-			static_assert( std::is_integral< S >::value, "The template parameter S to MatrixFileReader must be integral." );
+		class MatrixFileReader< void, S > :
+			public internal::MatrixFileReaderBase< void, S >
+		{
+			static_assert( std::is_integral< S >::value,
+				"The template parameter S to MatrixFileReader must be integral." );
 
 			template< typename U, typename V >
-			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
+			friend std::ostream & operator<<(
+				std::ostream &out, const MatrixFileReader< U, V > &A );
 
 		public:
 
 			/**
 			 * Constructs a matrix reader using minimal information.
 			 *
-			 * This constructor will parse the file in its entirety once. The use of an iterator will parse the file \em again.
+			 * This constructor will parse the file in its entirety once. The use of an
+			 * iterator will parse the file \em again.
 			 *
 			 * @param[in] filename Which file to read.
 			 * @param[in] direct   (Optional) Whether the file uses direct indexing.
-			 *                     If not, new indices will be automatically inferred. Default value is \a true.
+			 *                     If not, new indices will be automatically inferred.
+			 *                     Default value is \a true.
 			 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
 			 *                         the row map should equal the column map.
 			 *
 			 * @throws std::runtime_error If the given file does not exist.
 			 *
-			 * \note Auto-detecting the correct value for \a pattern only can happen successfully in case of MatrixMarket.
+			 * \note Auto-detecting the correct value for \a pattern only can happen
+			 *       successfully in case of MatrixMarket.
 			 */
 			MatrixFileReader(
 				const std::string filename,
