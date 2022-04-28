@@ -36,6 +36,11 @@ namespace grb {
 		 *
 		 * @tparam C The type to check.
 		 *
+		 * This class also mirrors a couple of standard functions that translate to
+		 * no-ops in case \a C is not complex. The following functions are provided:
+		 *  - is_complex::conjugate
+		 *  - is_complex::modulus
+		 *
 		 * \internal This is the base implementation which assumes \a C is not of
 		 * type std::complex.
 		 */
@@ -53,6 +58,22 @@ namespace grb {
 				/** Whether the type \a C is std::complex */
 				static constexpr const bool value = false;
 
+				/**
+				 * @returns The conjugate of a given value if \a C is a complex type, or
+				 *          the given value if \a C is not complex.
+				 */
+				static C conjugate( const C &x ) noexcept {
+					return x;
+				}
+
+				/**
+				 * @returns The absolute value of a given value if \a C is a complex type,
+				 *          or the given value if \a C is not complex.
+				 */
+				static C modulus( const C &x ) noexcept {
+					return x;
+				}
+
 		};
 
 		/** \internal The specialisation for std::complex types. */
@@ -61,7 +82,14 @@ namespace grb {
 			public:
 				typedef T type;
 				static constexpr const bool value = true;
+				static std::complex< T > conjugate( const std::complex< T > &x ) {
+					return std::conj( x );
+				}
+				static T modulus( const std::complex< T > &x ) {
+					return std::abs( x );
+				}
 		};
+
 
 	} // end namespace utils
 

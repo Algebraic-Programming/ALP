@@ -20,7 +20,8 @@ function print_synopsis() {
 	echo "  --lpf-args additional arguments for the LPF engine"
 	echo "  --gnn-dataset-path "
 	echo "  --manual-run-args LPF engine arguments for manual run"
-	echo "  --output-verification-dir directory with golden output for tests verification"
+	echo "  --output-verification-dir directory with golden output for test verification"
+	echo "  --test-data-dir directory with original data used for tests"
 }
 
 function check_dir() {
@@ -98,6 +99,10 @@ do
 				echo -e "--manual-run-args cannot be empty"
 				exit -1
 			fi
+			shift 2
+			;;
+		--test-data-dir)
+			TEST_DATA_DIR="$(realpath "$2")"
 			shift 2
 			;;
 		--output-verification-dir)
@@ -227,6 +232,7 @@ echo " INPUT_DIR=${INPUT_DIR}"
 echo " BACKENDS=${BACKENDS}"
 echo " GNN_DATASET_PATH=${GNN_DATASET_PATH}"
 echo " OUTPUT_VERIFICATION_DIR=${OUTPUT_VERIFICATION_DIR}"
+echo " TEST_DATA_DIR=${TEST_DATA_DIR}"
 if [[ ! -z "${LPFRUN}" ]]; then
 	echo " LPFRUN=${LPFRUN}"
 	echo " MANUALRUN=${MANUALRUN}"

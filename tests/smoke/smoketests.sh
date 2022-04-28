@@ -194,6 +194,23 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			TESTNAME=rndHermit256
+			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
+				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
+				m=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
+				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex  algorithm for the input"
+				echo "                                 matrix (${n}x${m}) taken from ${TESTNAME}.mtx. This test"
+				echo "                                 verifies against a ground-truth solution vector. The test"
+				echo "                                 employs the grb::Launcher in automatic mode. It uses"
+				echo "                                 direct-mode file IO."
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
+			fi
+			echo " "
+			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyrom_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"

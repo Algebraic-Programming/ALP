@@ -257,10 +257,11 @@ add_custom_target( tests_unit
 		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
 		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
 		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
+		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
 
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	DEPENDS build_tests_category_unit # add dependency on this target
-									  # to automatically build before running
+	                                  # to automatically build before running
 	COMMAND_EXPAND_LISTS
 	USES_TERMINAL
 )
