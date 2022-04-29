@@ -36,9 +36,8 @@ To compile ALP/GraphBLAS, you need the following tools:
 1. A C++11-capable compiler such as GCC 4.8.2 or higher, with OpenMP support
 2. LibNUMA development headers
 3. POSIX threads development headers
-4. CMake (https://cmake.org/download/) version 3.13 or higher, with GNU Make
-(CMake's default build tool on UNIX systems) or the build tool of your choice
-(e.g., [Ninja](https://ninja-build.org))
+4. [CMake](https://cmake.org/download/) version 3.13 or higher, with GNU Make
+(CMake's default build tool on UNIX systems) or any other supported build tool.
 
 ## Linking and run-time
 The ALP/GraphBLAS libraries link against the following libraries:
