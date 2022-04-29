@@ -236,7 +236,7 @@ There are several use cases in which ALP can be deployed and utilized, listed
 in the following. These assume that the user has installed ALP/GraphBLAS in a
 dedicated directory via `make install`.
 
-## Running ALP algorithms as a standalone executables
+## Running ALP algorithms as a standalone executable
 
 ### Implementation
 
