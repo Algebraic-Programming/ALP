@@ -177,11 +177,11 @@ finally, acknowledges contributors and lists technical papers.
 	- [Running parallel ALP programs from existing parallel contexts](#running-parallel-alp-programs-from-existing-parallel-contexts)
 		- [Implementation](#implementation-1)
 		- [Running](#running-1)
-	- [Integrating ALP within your coding project](integrating-alp-within-your-coding-project)
+	- [Integrating ALP within your coding project](#integrating-alp-within-your-coding-project)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
-- [Citing ALP and ALP/GraphBLAS](citing-alp-and-alpgraphblas)
+- [Citing ALP and ALP/GraphBLAS](#citing-alp-and-alpgraphblas)
 
 
 # Overview of the main Makefile targets
