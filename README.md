@@ -5,9 +5,7 @@
 /    |    \    |___|    |      / /   \    \_\  \  | \// __ \|  |_> >   Y  \    |   \    |___/    |    \/        \
 \____|__  /_______ \____|     / /     \______  /__|  (____  /   __/|___|  /______  /_______ \____|__  /_______  /
         \/        \/          \/             \/           \/|__|        \/       \/        \/       \/        \/
-</pre>
 
-<pre>
   Copyright 2021 Huawei Technologies Co., Ltd.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +21,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 </pre>
 
-# Requirements
+
+
+# Minimal requirements
+
+We first summarise the compile-time, link-time, and run-time dependences of ALP.
+The following are required for producing both sequential and shared-memory ALP
+libraries and programs, using its `reference` and `reference_omp` backends.
 
 ## Compilation
 
@@ -44,12 +48,12 @@ The ALP/GraphBLAS libraries link against the following libraries:
 3. POSIX threads: `-lpthread`
 4. OpenMP: `-fopenmp` in the case of GCC
 
-## Optionals
 
-The above summarise the minimum dependences, while the below summarise the
-dependences for optional features.
+# Optional dependences
 
-### Distributed-memory auto-parallelisation
+The below summarises the dependences for optional features.
+
+## Distributed-memory auto-parallelisation
 
 For distributed-memory parallelisation, the Lightweight Parallel Foundations
 (LPF) communication layer, version 1.0 or higher, is required. ALP makes use
@@ -61,7 +65,7 @@ further dependences, which are all summarised on the LPF project page:
 
 The dependence on LPF applies to compilation, linking, and run-time.
 
-### Code documentation
+## Code documentation
 
 For generating the code documentations:
 * `doyxgen` reads code comments and generates the documentation;
