@@ -128,10 +128,9 @@ In more detail, the steps to follow are:
 6. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
    generates both
 
-    a. PDF documentations in `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`,
-       and
+    a. a PDF in `<ALP/GraphBLAS build dir>/docs/code/latex/refman.pdf`, and
 
-    b. HTML documentations in `<ALP/GraphBLAS root>/docs/code/html/index.html`.
+    b. HTML in `<ALP/GraphBLAS build dir>/docs/code/html/index.html`.
 
 7. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
@@ -200,8 +199,7 @@ The following table lists the main build targets of interest:
 | `perftests`           | builds and runs all available performance tests   |
 | `tests`               | builds and runs all available unit, smoke, and    |
 |                       | performance tests                                 |
-| `docs`                | builds all HTML and LaTeX documentation out of the|
-|                       | sources inside `<ALP/GraphBLAS root>/docs/code/`  |
+| `docs`                | builds HTML and LaTeX code and API documentation  |
 
 For more information about the testing harness, please refer to the
 [related documentation](tests/Tests.md).
