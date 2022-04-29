@@ -283,9 +283,16 @@ to the compilation and installation of ALP.
 When targeting different architectures with differing SIMD widths, different
 ALP installations for different architectures could be maintained.
 
-The program may be compiled using the compiler wrapper `grbcxx` generated during
-installation. When using the LPF-enabled hybrid shared- and distributed-memory
-backend of ALP/GraphBLAS, for example, simply use
+ALP programs may be compiled using the compiler wrapper `grbcxx` that is
+generated during installation. To compile high-performance code when compiling
+your programs using the ALP installation, the following flags are recommended:
+
+ - `-DNDEBUG -O3 -mtune=native -march=native -funroll-loops`
+
+Omitting these flags for brevity, some compilation examples follow.
+
+When using the LPF-enabled hybrid shared- and distributed-memory backend of
+ALP/GraphBLAS, simply use
 
 ```bash
 grbcxx -b hybrid
@@ -450,7 +457,7 @@ If bugs appear in one backend but not another, it is likely you have found a bug
 in the former backend implementation. Please send a minimum working example that
 demonstrates the bug to the maintainers, either as an issue on or an email to:
   1. [GitHub](https://github.com/Algebraic-Programming/ALP/issues);
-  2. [Gitee](https://gitee.com/CSL-ALP/graphblas/);
+  2. [Gitee](https://gitee.com/CSL-ALP/graphblas/issues);
   3. [Albert-Jan](mailto:albertjan.yzelman@huawei.com).
 
 
