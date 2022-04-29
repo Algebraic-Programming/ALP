@@ -34,9 +34,9 @@ limitations under the License.
 
 # Introduction to ALP/GraphBLAS Building and Testing Infrastructure:
 
-The current building infrastructure is based on CMake and on what is commonly
-defined "Modern CMake".
-If you are new to this technology, here are some useful materials:
+The current building infrastructure is based on [CMake](https://cmake.org) and
+on what is commonly defined "Modern CMake". If you are new to this technology,
+here are some useful materials:
 
 * [CMake official tutorial](https://cmake.org/cmake/help/latest/guide/tutorial/index.html)
 * an introduction do Modern CMake like
