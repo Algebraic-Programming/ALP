@@ -223,7 +223,7 @@ configurations. This generates three main output files:
 2. `<ALP/GraphBLAS build dir>/tests/performance/output/benchmarks`, which
    summarises the performance of individual algorithms; and
 
-3. `<ALP/GraphBLAS build dir>`/tests/performance/output/scaling`, which
+3. `<ALP/GraphBLAS build dir>/tests/performance/output/scaling`, which
    summarises operator scaling results.
 
 To ensure that all tests run, please ensure all related datasets are available
