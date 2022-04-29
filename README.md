@@ -78,8 +78,8 @@ documentation.
 # Very quick start
 
 Here are example steps to compile and install ALP/GraphBLAS for shared-memory
-machines, without distributed-memory support:
-
+machines, without distributed-memory support. The last three commands show-case
+the compilation and execution of the `sp.cpp` example program.
 
 ```bash
 cd <ALP/GraphBLAS root>
@@ -92,6 +92,7 @@ source ../install/bin/setenv
 grbcxx ../examples/sp.cpp
 grbrun ./a.out
 ```
+
 
 # Quick start
 
