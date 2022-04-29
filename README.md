@@ -169,15 +169,16 @@ finally, acknowledges contributors and lists technical papers.
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
 - [Automated performance testing](#automated-performance-testing)
 - [Integrating ALP/GraphBLAS with applications](#integrating-alpgraphblas-with-applications)
-	- [1. Running ALP/GraphBLAS as a standalone executable](#1-running-alpgraphblas-as-a-standalone-executable)
+	- [Running ALP/GraphBLAS as a standalone executable](#running-alpgraphblas-as-a-standalone-executable)
 		- [Implementation](#implementation)
 		- [Compilation](#compilation-1)
 		- [Linking](#linking)
 		- [Running](#running)
 		- [Threading](#threading)
-	- [2. Running parallel ALP/GraphBLAS programs from existing parallel contexts](#2-running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
+	- [Running parallel ALP/GraphBLAS programs from existing parallel contexts](#running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
 		- [Implementation](#implementation-1)
 		- [Running](#running-1)
+	- [Integrating ALP within your code project)(#integrating-alp-within-your-code-project)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
@@ -192,7 +193,7 @@ The following table lists the main build targets of interest:
 |----------------------:|---------------------------------------------------|
 | \[*default*\]         | builds the ALP/GraphBLAS libraries and examples   |
 | `install`             | install libraries, headers and some convenience   |
-|                       | scripts into the path set as `--prefix=<path>`    |
+|                       | scripts into the path set via `--prefix=<path>`   |
 | `unittests`           | builds and runs all available unit tests          |
 | `smoketests`          | builds and runs all available smoke tests         |
 | `perftests`           | builds and runs all available performance tests   |
@@ -223,12 +224,12 @@ configurations. This generates three main output files:
 3. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`, which
    summarises operator scaling results.
 
-To ensure all tests run, please ensure all related datasets are available as
-also described at step 5 of the quick start.
+To ensure that all tests run, please ensure all related datasets are available
+as also described at step 5 of the quick start.
 
-With LPF enabled, please note the remark described at step 3 of the quick start
-guide, and note how the LPF installation was configured. Then please review and
-apply any necessary changes to `tests/performance/performancetests.sh`.
+With LPF enabled, please note the remark described at steps 3 and 7 of the quick
+start guide. If LPF was not configured using MPICH, please review and apply any
+necessary changes to `tests/performance/performancetests.sh`.
 
 
 # Integrating ALP/GraphBLAS with applications
@@ -237,7 +238,7 @@ There are several use cases in which ALP can be deployed and utilized, listed
 in the following. These assume that the user has installed ALP/GraphBLAS in a
 dedicated directory via `make install`.
 
-## 1. Running ALP algorithms as a standalone executables
+## Running ALP algorithms as a standalone executables
 
 ### Implementation
 
@@ -265,39 +266,37 @@ program itself.
 Output data is retrieved only from the user process with ID `0`, even if
 multiple user processes exist. Some implemenations or systems may require
 sending back the output data to a calling process, even if there is only
-one user process. The data movement cost thus incurred should hence be
-considered linear in the byte size of `U`, and it may similarly instead be
-advisable to use parallel I/O facilities to store large outputs.
+one user process. The data movement cost incurred should hence be considered
+linear in the byte size of `U`, and, similar to the input data broadcasting,
+the use of parallel I/O facilities from the ALP program itself for storing
+large outputs is strongly advisable.
 
 ### Compilation
 
 Our backends auto-vectorise, hence please recall step 1 from the quick start
-guide, and make sure the `include/graphblas/base/config.hpp` reflects the
-correct value for `config::SIMD_SIZE::bytes`, prior to compilation and
-installation of ALP. For different architectures with differing SIMD widths,
-different installations of ALP for different architectures could be maintained.
+guide, and make sure the `include/graphblas/base/config.hpp` file reflects the
+correct value for `config::SIMD_SIZE::bytes`. This value must be updated prior
+to the compilation and installation of ALP.
+
+When targeting different architectures with differing SIMD widths, different
+ALP installations for different architectures could be maintained.
 
 The program may be compiled using the compiler wrapper `grbcxx` generated during
-installation; for more options on using ALP/GraphBLAS in external projects, you
-may read
-[How-To use ALP/GraphBLAS in your own project](docs/Use_ALPGraphBLAS_in_your_own_project.md).
-
-When using the LPF-enabled distributed-memory backend to ALP/GraphBLAS, for
-example, simply use
+installation. When using the LPF-enabled hybrid shared- and distributed-memory
+backend of ALP/GraphBLAS, for example, simply use
 
 ```bash
 grbcxx -b hybrid
 ```
-as the compiler command.
-Use
+as the compiler command. To show all flags that the wrapper passes on, please use
 
 ```bash
-grbcxx -b hybrid --show <your regular compilation command>
+grbcxx -b hybrid --show
 ```
-to show all flags that the wrapper passes on.
+and append your regular compilation arguments.
 
-This backend is one example that is capable of spawning multiple ALP/GraphBLAS
-user processes. In contrast, compilation using
+The `hybrid` backend is capable of spawning multiple ALP/GraphBLAS user
+processes. In contrast, compilation using
 
 ```bash
 grbcxx -b reference
@@ -307,9 +306,10 @@ produces a sequential binary, while
 ```bash
 grbcxx -b reference_omp
 ```
-produces a shared-memory parallel binary instead.
+produces a shared-memory parallel binary.
 
-The same ALP/GraphBLAS source code needs never change.
+Note that the ALP/GraphBLAS source code never requires change while switching
+backends.
 
 ### Linking
 
@@ -333,23 +333,21 @@ LPF runner `lpfrun` or by the ALP/GraphBLAS runner `grbrun`.
 We recommend using the latter:
 
 ```bash
-grbrun -b hybrid -np <#processes> </path/to/my/program>
+grbrun -b hybrid -np <P> </path/to/my/program>
 ```
-Here, `<#processes>` is the number of requested ALP/GraphBLAS user processes.
+Here, `P` is the number of requested ALP/GraphBLAS user processes.
 
 ### Threading
 
-To employ threading in addition to distributed-memory parallelism, use the
-hybrid backend instead of the bsp1d backend.
-
-To employ threading to use all available hyper-threads or cores on a single
-node, use the reference_omp backend.
+The `hybrid` backend employs threading in addition to distributed-memory
+parallelism. To employ threading to use all available hyper-threads or cores
+on a single node, the `reference_omp` backend may be selected instead.
 
 In both cases, make sure that during execution the `OMP_NUM_THREADS` and
 `OMP_PROC_BIND` environment variables are set appropriately on each node that
-executes an ALP/GraphBLAS user process.
+executes ALP/GraphBLAS user process(es).
 
-## 2. Running parallel ALP programs from existing parallel contexts
+## Running parallel ALP programs from existing parallel contexts
 
 This, instead of automatically spawning a requested number of user processes,
 assumes a number of processes already exist and that we wish those processes to
@@ -428,6 +426,11 @@ grbrun -b hybrid -n 1 --show </any/executable>
 to inspect the run-time dependences and environment variables that must be made
 available, resp., set, as part of the external mechanism that spawns the
 original processes.
+
+## Integrating ALP within your code project
+
+Please see
+[How-To use ALP/GraphBLAS in your own project](docs/Use_ALPGraphBLAS_in_your_own_project.md).
 
 
 # Debugging
