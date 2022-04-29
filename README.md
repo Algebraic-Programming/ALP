@@ -159,7 +159,6 @@ algorithms! Any feedback, question, problem reports are most welcome at
 <div align="center">
 <a href="mailto:albertjan.yzelman@huawei.com">albertjan.yzelman@huawei.com</a>
 </div>
-<br />
 
 
 # Additional Contents
