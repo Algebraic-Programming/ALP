@@ -39,6 +39,7 @@
 #include <alp/utils/autodeleter.hpp>
 //#include <alp/utils/pattern.hpp> //for help with dealing with pattern matrix input
 #include <alp/vector.hpp>
+#include <alp/smf.hpp>
 #include <alp/structures.hpp>
 #include <alp/density.hpp>
 #include <alp/views.hpp>
@@ -105,7 +106,7 @@ namespace alp {
 		/**
 		 * ALP/Dense matrix container.
 		 *
-		 * A matrix is stored in full format. 
+		 * A matrix is stored in full format.
 		 * \a Matrix may be used by \a Matrix as a raw container.
 		 *
 		 * @tparam D  The element type.
@@ -163,7 +164,7 @@ namespace alp {
 			/** The matrix data. */
 			D * __restrict__ data;
 
-			/** 
+			/**
 			 * Whether the container presently is initialized or not.
 			 * We differentiate the concept of empty matrix (matrix of size \f$0\times 0\f$)
 			 * from the one of uninitialized (matrix of size \f$m\times n\f$ which was never set)
@@ -252,7 +253,7 @@ namespace alp {
 			/**
 			 * Copy constructor.
 			 *
-			 * @param other The matrix to copy. The initialization state of the copy 
+			 * @param other The matrix to copy. The initialization state of the copy
 			 *              reflects the state of \a other.
 			 *
 			 * \parblock
@@ -293,9 +294,9 @@ namespace alp {
 			// 	moveFromOther( std::forward< self_type >( other ) );
 			// }
 
-			/** 
+			/**
 			 * Move assignment operator.
-			 * @see Matrix::Matrix( Matrix && ) 
+			 * @see Matrix::Matrix( Matrix && )
 			 */
 			// self_type & operator=( self_type && other ) noexcept {
 			// 	moveFromOther( std::forward< self_type >( other ) );
@@ -347,7 +348,7 @@ namespace alp {
 	} // namespace internal
 
 	/**
-	 * @brief A reference Matrix is an ALP object. 
+	 * @brief A reference Matrix is an ALP object.
 	 */
 	template< typename T >
 	struct is_container< internal::Matrix< T, reference > > {
@@ -358,48 +359,52 @@ namespace alp {
 
 	namespace internal {
 		/** Forward declaration */
-		template< typename T, typename ImfL, typename ImfR >
+		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
 		class MatrixContainer;
 
 		/** Container reference getters used by friend functions of specialized Matrix */
-		template< typename T, typename ImfL, typename ImfR >
-		const Matrix< T, reference > & getContainer( const MatrixContainer< T, ImfL, ImfR > & A );
+		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
+		const Vector< T, reference > & getContainer( const MatrixContainer< T, ImfR, ImfC, Smf, is_original > & A );
 
-		template< typename T, typename ImfL, typename ImfR >
-		Matrix< T, reference > & getContainer( MatrixContainer< T, ImfL, ImfR > & A );
+		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
+		Vector< T, reference > & getContainer( MatrixContainer< T, ImfR, ImfC, Smf, is_original > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		const Matrix< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) {
-			return getContainer( A );
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+		const Vector< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
+			return getContainer( static_cast< const MatrixContainer< T, ImfR, ImfC,
+				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::smf_type,
+				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::is_original > & >( A ) );
 		}
 
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		Matrix< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) {
-			return getContainer( A );
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+		Vector< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
+			return getContainer( static_cast< MatrixContainer< T, ImfR, ImfC,
+				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::smf_type,
+				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::is_original > & >( A ) );
 		}
 
 		/** Forward declaration */
-		template< typename ImfL, typename ImfR >
+		template< typename DerivedMatrix >
 		class MatrixBase;
 
-		template< typename ImfL, typename ImfR >
-		size_t nrows( const MatrixBase< ImfL, ImfR > & A ) noexcept;
+		template< typename DerivedMatrix >
+		size_t nrows( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		template< typename ImfL, typename ImfR >
-		size_t ncols( const MatrixBase< ImfL, ImfR > & A ) noexcept;
+		template< typename DerivedMatrix >
+		size_t ncols( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		template< typename ImfL, typename ImfR >
-		std::pair< size_t, size_t > dims( const MatrixBase< ImfL, ImfR > & A ) noexcept {
+		template< typename DerivedMatrix >
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
 			(void)A;
 			return {0, 0};
-		};
+		}
 
-		template< typename ImfL, typename ImfR >
-		bool getInitialized( MatrixBase< ImfL, ImfR > & ) noexcept;
+		template< typename DerivedMatrix >
+		bool getInitialized( MatrixBase< DerivedMatrix > & ) noexcept;
 
-		template< typename ImfL, typename ImfR >
-		void getInitialized( MatrixBase< ImfL, ImfR > &, bool ) noexcept;
+		template< typename DerivedMatrix >
+		void getInitialized( MatrixBase< DerivedMatrix > &, bool ) noexcept;
 	} // namespace internal
 
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
@@ -432,200 +437,210 @@ namespace alp {
 	}
 
 	namespace internal {
+
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
-		 * \internal Maybe this class can be inherited by Container and Reference classes below
 		 */
-
-		template< typename ImfL = imf::Id, typename ImfR = imf::Id >
+		template< typename DerivedMatrix >
 		class MatrixBase {
 
-		protected:
-			friend size_t nrows( const MatrixBase< ImfL, ImfR > & A ) noexcept {
-				return A._dims().first;
-			}
+			protected:
 
-			friend size_t ncols( const MatrixBase< ImfL, ImfR > & A ) noexcept {
-				return A._dims().second;
-			}
+				friend size_t nrows( const MatrixBase< DerivedMatrix > &A ) noexcept {
+					return static_cast< DerivedMatrix >( A )._dims().first;
+				}
 
-			friend std::pair< size_t, size_t > dims( const MatrixBase< ImfL, ImfR > & A ) noexcept {
-				return A._dims();
-			}
+				friend size_t ncols( const MatrixBase< DerivedMatrix > &A ) noexcept {
+					return static_cast< DerivedMatrix >( A ).second;
+				}
 
-			/** 
-			 * All matrix views use a pair of index mapping functions to 
-			 * capture the correspondence between their logical layout and the one 
-			 * of their underlying container. This may be another view leading to a composition
-			 * of IMFs between the top matrix view and the physical container.
-			 */
-			ImfL imf_l;
-			ImfR imf_r;
-
-			/**
-			 * @brief determines the size of the structured matrix via the domain of 
-			 * the index mapping functions.
-			 * 
-			 * @return A pair of dimensions.
-			 */
-			virtual std::pair< size_t, size_t > _dims() const {
-				return std::make_pair( imf_l.n, imf_r.n );
-			}
-
-			/**
-			 * @brief Construct a new structured matrix Base object assigning identity
-			 * mapping functions both to the row and column dimensions.
-			 * 
-			 * @param rows The number of rows of the matrix.
-			 * @param cols The number of columns of the matrix.
-			 */
-			MatrixBase( size_t rows, size_t cols ) :
-				// enable only if ImfL and ImfR are imf::Id
-				imf_l( rows ) ,
-				imf_r( cols ) {}
-
-			MatrixBase( ImfL &&imf_l, ImfR &&imf_r ) :
-				imf_l( imf_l ),
-				imf_r( imf_r ) {}
-
-		}; // class MatrixBase
+				friend std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > &A ) noexcept {
+					return static_cast< DerivedMatrix >( A )._dims();
+				}
+		};
 
 		/**
-		 * Base class with container-related attributes, used in container-type Matrix specializations
+		 * Matrix container specialization
+		 * Implements both original containers and views on containers.
+		 * @tparam is_original True if the class is an original container
+		 *                     False if the class is a view of another matrix
 		 */
-		template< typename T, typename ImfL = imf::Id, typename ImfR = imf::Id  >
-		class MatrixContainer : public MatrixBase< ImfL, ImfR > {
-		protected:
-			friend const Matrix< T, reference > & getContainer( const MatrixContainer< T, ImfL, ImfR > & A ) {
-				return *( A._container );
-			}
+		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
+		class MatrixContainer : public MatrixBase< MatrixContainer< T, ImfR, ImfC, Smf, is_original > > {
 
-			friend Matrix< T, reference > & getContainer( MatrixContainer< T, ImfL, ImfR > & A ) {
-				return *( A._container );
-			}
+			protected:
+				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
+				typedef typename std::conditional<
+					is_original,
+					Vector< T, reference >,
+					Vector< T, reference > &
+				>::type container_type;
+				/** A container-type view is characterized by its association with a physical container */
+				container_type container;
 
-			friend bool getInitialized( MatrixContainer & A ) noexcept {
-				return getInitialized( getCointainer( A ) );
-			}
+				/**
+				 * All matrix views use a pair of index mapping functions to
+				 * capture the correspondence between their logical layout and the one
+				 * of their underlying container. This may be another view leading to a composition
+				 * of IMFs between the top matrix view and the physical container.
+				 * Original matrix containers's index mapping functions are an identity mapping.
+				 */
+				//ImfR imf_r;
+				//ImfC imf_c;
 
-			friend void setInitialized( MatrixContainer & A, bool initialized ) noexcept {
-				setInitialized( getContainer( A, initialized ));
-			}
+				/**
+				 * The container's storage scheme. \a storage_scheme is not exposed to the user as an option
+				 * but can defined by ALP at different points in the execution depending on the \a backend choice.
+				 * In particular, if the structured matrix is not a temporary matrix than it is fixed at construction
+				 * time when the allocation takes place.
+				 * If the structured matrix is a temporary one than a storage storage scheme choice may or may not be
+				 * made depending on whether a decision about instantiating the matrix is made by the framework.
+				 *
+				 * The specific storage scheme choice depends on the chosen backend and the structure of the matrix.
+				 * \internal \todo Revisit this when introducing storage mapping functions.
+				 */
+				//Smf smf;
 
-			/** A container-type view is characterized by its association with a physical container */
-			Matrix< T, reference > * _container;
+				/**
+				 * Access mapping function maps a pair of logical coordinates
+				 * into the concrete coordinate inside the actual container.
+				 * \see AMF
+				 */
+			public: // TODO: Temporarily expose AMF publicly until proper getters are implemented
+				smf::AMF< ImfR, ImfC, Smf > amf;
+			protected:
 
-			/**
-			 * The container's storage scheme. \a storage_scheme is not exposed to the user as an option
-			 * but can defined by ALP at different points in the execution depending on the \a backend choice.
-			 * In particular, if the structured matrix is not a temporary matrix than it is fixed at construction
-			 * time when the allocation takes place.
-			 * If the structured matrix is a temporary one than a storage storage scheme choice may or may not be 
-			 * made depending on whether a decision about instantiating the matrix is made by the framework.
-			 * 
-			 * The specific storage scheme choice depends on the chosen backend and the structure of the matrix.
-			 * \internal \todo Revisit this when introducing storage mapping functions.
-			 */
-			// Storage storage_scheme;
+				/**
+				 * @brief determines the size of the matrix via the domain of
+				 * the index mapping functions.
+				 *
+				 * @return A pair of dimensions.
+				 */
+				std::pair< size_t, size_t > _dims() const {
+					return std::make_pair( amf.imf_r.n, amf.imf_c.n );
+				}
 
-			/**
-			 * @brief Construct a new structured matrix container object.
-			 * 
-			 * \warning \a cap is present for compatibility with other matrix specializations.
-			 *          In reference backend, the number of non-zeros (i.e. capacity)
-			 *          depends on the used storage scheme. Therefore, this parameter is
-			 *          ignored.
-			 *
-			 * TODO: Add the storage scheme a parameter to the constructor 
-			 * so that allocation can be made accordingly, generalizing the full case.
-			 */
-			MatrixContainer( size_t rows, size_t cols, size_t cap = 0 ) :
-				MatrixBase< ImfL, ImfR >( rows, cols ),
-				_container( new Matrix< T, reference >( rows, cols, cap ) ) {}
+				friend const Vector< T, reference > & getContainer( const self_type &A ) {
+					return A.container;
+				}
+
+				friend Vector< T, reference > & getContainer( self_type &A ) {
+					return A.container;
+				}
+
+				friend bool getInitialized( self_type & A ) noexcept {
+					return getInitialized( getCointainer( A ) );
+				}
+
+				friend void setInitialized( self_type & A, bool initialized ) noexcept {
+					setInitialized( getContainer( A, initialized ));
+				}
+
+				/**
+				 * @brief Construct a new structured matrix Base object assigning identity
+				 * mapping functions both to the row and column dimensions.
+				 *
+				 * @param rows The number of rows of the matrix.
+				 * @param cols The number of columns of the matrix.
+				 * @param smf  The storage mapping function assigned to this matrix.
+				 */
+				/** (Documentation of old MatrixCotiainer. TODO: merge with the above docs.
+				 * @brief Construct a new structured matrix container object.
+				 *
+				 * \warning \a cap is present for compatibility with other matrix specializations.
+				 *          In reference backend, the number of non-zeros (i.e. capacity)
+				 *          depends on the used storage scheme. Therefore, this parameter is
+				 *          ignored.
+				 *
+				 * TODO: Add the storage scheme a parameter to the constructor
+				 * so that allocation can be made accordingly, generalizing the full case.
+				 */
+				MatrixContainer( smf::AMF< ImfR, ImfC, Smf > amf ) :
+					// enable only if ImfR and ImfC are imf::Id
+					container( internal::Vector< T, reference >( 10 /* TODO */ ) ),
+					amf( amf ) {}
+
+				/** View on another container */
+				MatrixContainer( Vector< T, reference > &container, smf::AMF< ImfR, ImfC, Smf > amf ) :
+					container( container ),
+					amf( amf ) {}
 
 		}; // class MatrixContainer
-
-		/**
-		 * Base class with reference-related attributes, used in Views on container-type Matrix specializations
-		 * and views over lambda functions.
-		 *
-		 * \note Views-over-lambda-functions types are used internally as results of low-rank operations and are not
-		 *       directly exposed to users. From the users perspective, the use of objects of this type does not differ
-		 *       from the use of other \a alp::Matrix types. The difference lies in a lazy implementation of the access
-		 *       to matrix elements, which is not exposed to the user.
-		 * 
-		 */
-		template< typename TargetType, typename ImfL, typename ImfR >
-		class MatrixReference : public MatrixBase< ImfL, ImfR > {
-		protected:
-			/** A reference-type view is characterized by an indirect association with a
-			 * physical layout via either another \a MatrixReference or a \a
-			 * MatrixContainer. Thus a \a MatrixReference never allocates
-			 * memory but only establishes a logical view on top of it.
-			 */
-			TargetType &ref;
-
-			MatrixReference( TargetType &target ) : MatrixBase< ImfL, ImfR >( nrows( target ), ncols( target ) ), ref( target ) {}
-			MatrixReference( TargetType &target, ImfL &&imf_l, ImfR &&imf_r ) :
-				MatrixBase< ImfL, ImfR >( std::move( imf_l ), std::move( imf_r ) ), ref( target ) {}
-		}; // class MatrixReference
 
 		/**
 		 * Specialization of MatrixReference with a lambda function as a target.
 		 * Used as a result of low-rank operation to avoid the need for allocating a container.
 		 * The data is produced lazily by invoking the lambda function stored as a part of this object.
+		 *
+		 * \note Views-over-lambda-functions types are used internally as results of low-rank operations and are not
+		 *       directly exposed to users. From the users perspective, the use of objects of this type does not differ
+		 *       from the use of other \a alp::Matrix types. The difference lies in a lazy implementation of the access
+		 *       to matrix elements, which is not exposed to the user.
+		 *
 		 */
-		template< typename ImfL, typename ImfR, typename Ret, typename ... Args >
-		class MatrixReference< std::function< Ret( Args... ) >, ImfL, ImfR > : public MatrixBase< ImfL, ImfR > {
+		template< typename T, typename ImfR, typename ImfC, typename Ret, typename ... Args >
+		class MatrixFunctor : public MatrixBase< MatrixFunctor< T, ImfR, ImfC, Ret, Args... > > {
+
 			protected:
+				ImfR imf_r;
+				ImfC imf_c;
+
 				typedef std::function< Ret( Args... ) > lambda_function_type;
 				lambda_function_type &lambda;
-			public:
-				MatrixReference(
-					lambda_function_type &lambda,
-					ImfL &&imf_l,
-					ImfR &&imf_r ) :
-					MatrixBase< ImfL, ImfR >( imf_l.N, imf_r.N ), lambda( lambda ) {}
 
-		}; // class MatrixReference
+				T get( const size_t i, const size_t j ) const {
+					return lambda( imf_r.map( i ), imf_c.map( j ) );
+				}
+
+			public:
+
+				MatrixFunctor(
+					lambda_function_type &lambda,
+					ImfR &&imf_r,
+					ImfC &&imf_c
+				) :
+					MatrixBase< MatrixFunctor< T, ImfR, ImfC, Ret, Args... > >( imf_r.N, imf_c.N ),
+					lambda( lambda ) {}
+
+		}; // class MatrixFunctor
 	} // namespace internal
 
 	/**
 	 * \brief An ALP structured matrix.
 	 *
-	 * This is an opaque data type for structured matrices. 
+	 * This is an opaque data type for structured matrices.
 	 *
-	 * A structured matrix exposes a mathematical 
-	 * \em logical layout which allows to express implementation-oblivious concepts 
+	 * A structured matrix exposes a mathematical
+	 * \em logical layout which allows to express implementation-oblivious concepts
 	 * including the matrix structure itself and \em views on the matrix.
-	 * The logical layout of a structured matrix maps to a physical counterpart via 
-	 * a storage scheme which typically depends on the chosen structure and the selected 
+	 * The logical layout of a structured matrix maps to a physical counterpart via
+	 * a storage scheme which typically depends on the chosen structure and the selected
 	 * backend. alp::Matrix and alp::Vector may be used as interfaces to such a physical
 	 * layout.
-	 * To visualize this, you may think of a band matrix. Using a 
+	 * To visualize this, you may think of a band matrix. Using a
 	 * full dense or a banded storage schemes would require
 	 * the use of a \a alp::Matrix container (see include/alp/density.hpp for
-	 * more details about the supported storage schemes). However, the interpration of its 
-	 * content would differ in the two cases being a function of both the Structure 
+	 * more details about the supported storage schemes). However, the interpration of its
+	 * content would differ in the two cases being a function of both the Structure
 	 * information and the storage scheme combined.
-	 * 
-	 * Views can be used to create logical \em perspectives on top of a container. 
-	 * For example, one may decide to refer to the transpose of a matrix or to treat 
-	 * for a limited part of my program a square matrix as symmetric. 
+	 *
+	 * Views can be used to create logical \em perspectives on top of a container.
+	 * For example, one may decide to refer to the transpose of a matrix or to treat
+	 * for a limited part of my program a square matrix as symmetric.
 	 * If a view can be expressed as a concept \em invariant of specific runtime features,
-	 * such views can be defined statically (for example, one may always refer to the 
-	 * transpose or the diagonal of a matrix irrespective of features such as the matrix's 
+	 * such views can be defined statically (for example, one may always refer to the
+	 * transpose or the diagonal of a matrix irrespective of features such as the matrix's
 	 * size). Other may depend on features such as the size of a matrix
 	 * (e.g., gathering/scattering the rows/columns of a matrix or permuting them).
-	 * 
+	 *
 	 * Structured matrices defined as views on other matrices do not instantiate a
 	 * new container but refer to the one used by their targets.
-	 * See the two specializations 
+	 * See the two specializations
 	 * \a Matrix<T, structures::General, Density::Dense, View, reference >
-	 * and \a Matrix<T, structures::General, Density::Dense, view::Indentity<void>, reference > 
+	 * and \a Matrix<T, structures::General, Density::Dense, view::Indentity<void>, reference >
 	 * as examples of structured matrix types without and with physical container, respectively.
 	 *
-	 * 
+	 *
 	 * @tparam T         The type of the matrix elements. \a T shall not be a GraphBLAS
 	 *                   type.
 	 * @tparam Structure One of the matrix structures defined in \a alp::structures.
@@ -643,385 +658,396 @@ namespace alp {
 	 * and the \a dense_structured_matrix.cpp unit test.
 	 *
 	 */
-	template< typename T, typename Structure, enum Density density, typename ImfL, typename ImfR, typename View >
-	class Matrix<T, Structure, density, View, ImfL, ImfR, reference> { };
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+	class Matrix< T, Structure, density, View, ImfL, ImfR, reference > { };
 
 	/**
-	 * @brief General matrix with physical container. 
+	 * @brief General matrix with physical container.
 	 */
-	template< typename T, typename ImfL, typename ImfR >
-	class Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
-		public internal::MatrixContainer< T, ImfL, ImfR > {
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
+		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
 
-	private:
-		/*********************
-		    Storage info friends
-		******************** */
+		private:
+			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
 
-		using self_type = Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
+			/*********************
+				Storage info friends
+			******************** */
 
-		// template< typename fwd_iterator >
-		// friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, view::Original< void >, reference > &, const fwd_iterator & start, const fwd_iterator & end );
-		template< typename fwd_iterator >
-		friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, view::Original< void >, ImfL, ImfR, reference > & A, const fwd_iterator & start, const fwd_iterator & end );
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
 
-		template< typename fwd_iterator >
-		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
-			std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
-			return buildMatrix( *(this->_container), start, end );
-		}
-
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::General;
-
-		// A general Structure knows how to define a reference to itself (which is an original reference view)
-		// as well as other static views.
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::diagonal, d > {
-			using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, reference >;
-		};
-
-		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T, ImfL, ImfR >( rows, cols, cap ) {
-		}
-
-	}; // Matrix General, container
-
-	/**
-	 * View of a general Matrix.
-	 */
-	template< typename T, typename View, typename ImfL, typename ImfR >
-	class Matrix< T, structures::General, Density::Dense, View, ImfL, ImfR, reference > :
-		public internal::MatrixReference< typename View::applied_to, ImfL, ImfR > {
-
-	private:
-		using self_type = Matrix< T, structures::General, Density::Dense, View, ImfL, ImfR, reference >;
-		using target_type = typename View::applied_to;
-
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::General;
-
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
-		};
-
-		Matrix( ) : internal::MatrixBase< ImfL, ImfR >( 0, 0 ) {}
-
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat ) {}
-
-		Matrix( target_type & struct_mat, ImfL &&imf_l, ImfR &&imf_r ) :
-			internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat, std::move( imf_l ), std::move( imf_r ) ) {}
-
-	}; // Matrix General reference
-
-	template< typename T, typename Structure, typename ImfL, typename ImfR >
-	class Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
-		public internal::MatrixContainer< T, ImfL, ImfR > {
-
-	private:
-		/*********************
-		    Storage info friends
-		******************** */
-
-		using self_type = Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
-
-		template< typename fwd_iterator >
-		friend RC buildMatrix( Matrix< T, Structure, Density::Dense, view::Original< void >, ImfL, ImfR, reference > &, const fwd_iterator &, const fwd_iterator ) noexcept;
-
-	public:
-		using value_type = T;
-		using structure = Structure;
-
-		/** The type of an identify view over the present type */
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, Structure, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
-		};
-
-		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T, ImfL, ImfR >( rows, cols, cap ) {}
-	}; // class Matrix
-
-	template< typename T, typename ImfL, typename ImfR >
-	class Matrix< T, structures::Square, Density::Dense, view::Original< void >, ImfL, ImfR, reference > :
-		public internal::MatrixContainer< T, ImfL, ImfR > {
-
-	private:
-		using self_type = Matrix< T, structures::Square, Density::Dense, view::Original< void >, ImfL, ImfR, reference >;
-
-		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, ImfL, ImfR, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
-
-		template< typename fwd_iterator >
-		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
-			std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
-			return buildMatrix( *(this->_container), start, end );
-		}
-
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::Square;
-
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
-		};
-
-		Matrix( const size_t rows, const size_t cap = 0 ) :
-			internal::MatrixContainer< T >( rows, rows, cap ) {}
-
-	}; // Matrix Square, container
-
-	template< typename T, typename View, typename ImfL, typename ImfR >
-	class Matrix< T, structures::Square, Density::Dense, View, ImfL, ImfR, reference > :
-		public internal::MatrixReference< typename View::applied_to, ImfL, ImfR > {
-
-	private:
-		using self_type = Matrix< T, structures::Square, Density::Dense, View, ImfL, ImfR, reference >;
-		using target_type = typename View::applied_to;
-
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::Square;
-
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Original< self_type >, ImfL, ImfR, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfL, ImfR, reference >;
-		};
-
-		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type, ImfL, ImfR >() {}
-
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, ImfL, ImfR >( struct_mat ) {
-			if( nrows( struct_mat ) != ncols( struct_mat ) ) {
-				throw std::length_error( "Square Matrix reference to non-square target." );
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
 			}
-		}
 
-	}; // Matrix Square reference
+		public:
+			/** Exposes the types and the static properties. */
+			typedef T value_type;
+			typedef structures::General structure;
+			typedef ImfR imfr_type;
+			typedef ImfC imfc_type;
+			typedef smf::Full_t smf_type;
+			/**
+			 * Indicates if a matrix is an original container.
+			 * False if it is a view over another matrix or a functor.
+			 */
+			static constexpr bool is_original = std::is_same< target_type, void >::value;
 
-	// Symmetric matrix reference
-	template< typename T, typename View, typename Imf >
-	class Matrix< T, structures::Symmetric, Density::Dense, View, Imf, Imf, reference > :
-		public internal::MatrixReference< typename View::applied_to, Imf, Imf > {
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
 
-	private:
-		using self_type = Matrix< T, structures::Symmetric, Density::Dense, View, Imf, Imf, reference >;
-		using target_type = typename View::applied_to;
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >;
+			};
 
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::Symmetric;
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+			};
 
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
+			template < bool d >
+			struct view_type< view::diagonal, d > {
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, reference >;
+			};
 
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
-		};
-
-		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type, Imf, Imf >() {}
-
-		Matrix( target_type & target ) : internal::MatrixReference< target_type, Imf, Imf >( target ) {
-			if( nrows( target ) != ncols( target ) ) {
-				throw std::length_error( "Symmetric Matrix reference to non-square target." );
+			/**
+			 * Constructor for an original matrix.
+			 *
+			 * @tparam TargetMatrixType The dummy type.
+			 *                          Uses SFINAE to enable this constructor
+			 *                          only for an original matrix.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+			>
+			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::Id( rows ),
+						imf::Id( cols ),
+						smf::SMFFactory::Full( cols )
+					)
+				) {
+				(void)cap;
 			}
-		}
 
-		Matrix( target_type & target, Imf &&imf_lr ) :
-			internal::MatrixReference< target_type, Imf, Imf >( target, std::move(imf_lr), std::move(imf_lr) ) {}
+			/**
+			 * Constructor for a view over another matrix.
+			 *
+			 * @tparam TargetMatrixType The dummy type of the source matrix.
+			 *                          Uses SFINAE to enable this constructor
+			 *                          only for matrix views.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					getContainer( target_matrix ),
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
+							target_matrix.amf.imf_r,
+							imf_r
+						),
+						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
+							target_matrix.amf.imf_c,
+							imf_c
+						),
+						target_matrix.amf.smf
+					)
+				) {}
 
-	}; // Matrix Symmetric reference
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 *
+			 * @tparam TargetMatrixType The dummy type of the source matrix.
+			 *                          Uses SFINAE to enable this constructor
+			 *                          only for matrix views.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
 
-	// Matrix UpperTriangular, container
-	template< typename T, typename Imf >
-	class Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, Imf, Imf, reference > :
-		public internal::MatrixContainer< T > {
+	}; // General Matrix
 
-	private:
-		/*********************
-		    Storage info friends
-		******************** */
+	// Square Matrix
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
+		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
 
-		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< void >, Imf, Imf, reference >;
+		private:
+			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
 
-		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, Imf, Imf, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > &,
+				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
-		template< typename fwd_iterator >
-		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
-			std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
-			return buildMatrix( *(this->_container), start, end );
-		}
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
 
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::UpperTriangular;
+		public:
+			/** Exposes the types and the static properties. */
+			typedef T value_type;
+			typedef structures::Square structure;
+			typedef ImfR imfr_type;
+			typedef ImfC imfc_type;
+			typedef smf::Full_t smf_type;
+			static constexpr bool is_original = std::is_same< target_type, void >::value;
 
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
 
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
-		};
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >;
+			};
 
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
-		};
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >;
+			};
 
-		Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-			internal::MatrixContainer< T, Imf, Imf >( rows, cols, cap ) {}
+			/** Constructor for an original matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+			>
+			Matrix( const size_t dim, const size_t cap = 0 ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::Id( dim ),
+						imf::Id( dim ),
+						smf::SMFFactory::Full( dim )
+					)
+				) {
+				(void)cap;
+			}
 
-	}; // Matrix UpperTriangular, container
+			/** Constructor for a view over another matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					getContainer( target_matrix ),
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
+							target_matrix.amf.imf_r,
+							imf_r
+						),
+						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
+							target_matrix.amf.imf_c,
+							imf_c
+						),
+						target_matrix.amf.smf
+					)
+				) {}
 
-	// Matrix UpperTriangular, reference
-	template< typename T, typename View, typename Imf >
-	class Matrix< T, structures::UpperTriangular, Density::Dense, View, Imf, Imf, reference > :
-		public internal::MatrixReference< typename View::applied_to, Imf, Imf > {
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
 
-	private:
-		using self_type = Matrix< T, structures::UpperTriangular, Density::Dense, View, Imf, Imf, reference >;
-		using target_type = typename View::applied_to;
 
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::UpperTriangular;
+	}; // Square Matrix
 
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
+	// UpperTriangular Matrix
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
+		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
 
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, Imf, Imf, reference >;
-		};
+		private:
+			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
 
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, Imf, Imf, reference >;
-		};
+			/*********************
+				Storage info friends
+			******************** */
 
-		// ref to empty matrix
-		Matrix( ) : internal::MatrixReference< target_type, Imf, Imf >() {}
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > &,
+				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
 
-		Matrix( target_type & struct_mat ) : internal::MatrixReference< target_type, Imf, Imf >( struct_mat ) {
-			// No matter the view it has to be a square matrix
-		}
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
 
-		Matrix( target_type & struct_mat, Imf &&imf_l, Imf &&imf_r ) :
-			internal::MatrixReference< target_type, Imf, Imf >( struct_mat, std::move( imf_l ), std::move( imf_r ) ) {}
+		public:
+			/** Exposes the element type and the structure. */
+			typedef T value_type;
+			typedef structures::UpperTriangular structure;
+			typedef ImfR imfr_type;
+			typedef ImfC imfc_type;
+			typedef smf::Full_t smf_type;
+			static constexpr bool is_original = std::is_same< target_type, void >::value;
 
-	}; //  Matrix UpperTriangular, reference
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
 
-	// Matrix Identity, container
-	// Should Identity be a MatrixContainer?
-	template< typename T >
-	class Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > :
-		public internal::MatrixContainer< T, imf::Id, imf::Id > {
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
+			};
 
-	private:
-		/*********************
-		    Storage info friends
-		******************** */
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+			};
 
-		using self_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
+			/** Constructor for an original matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+			>
+			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::Id( rows ),
+						imf::Id( cols ),
+						smf::SMFFactory::Full( cols )
+					)
+				) {
+				(void)cap;
+			}
 
-		template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-		friend RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, imf::Id, imf::Id, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+			/** Constructor for a view over another matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+					getContainer( target_matrix ),
+					smf::AMF< ImfR, ImfC, smf::Full_t >(
+						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
+							target_matrix.amf.imf_r,
+							imf_r
+						),
+						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
+							target_matrix.amf.imf_c,
+							imf_c
+						),
+						target_matrix.amf.smf
+					)
+				) {}
 
-		template< typename fwd_iterator >
-		RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
-			std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
-			return buildMatrix( *(this->_container), start, end );
-		}
+			/** Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
 
-	public:
-		/** Exposes the element type and the structure. */
-		using value_type = T;
-		using structure = structures::Identity;
 
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
+	}; // Matrix UpperTriangular
 
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
-		};
-
-		template < bool d >
-		struct view_type< view::transpose, d > {
-			using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
-		};
-
-		Matrix( const size_t rows, const size_t cap = 0 ) :
-			internal::MatrixContainer< T, imf::Id, imf::Id >( rows, rows, cap ) {}
-
-	}; // Matrix Identity, container
+	// Matrix Identity
+//	template< typename T, typename View, typename ImfR, typename ImfC >
+//	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
+//		public internal::MatrixFunctor< T, ImfR, ImfC, T, size_t, size_t > {
+//
+//		private:
+//			/*********************
+//			 Storage info friends
+//			******************** */
+//
+//			typedef Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > self_type;
+//
+//			template< typename fwd_iterator >
+//			friend RC buildMatrix( Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > &, const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+//
+//			template< typename fwd_iterator >
+//			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+//				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+//				return buildMatrix( *(this->_container), start, end );
+//			}
+//
+//		public:
+//			/** Exposes the element type and the structure. */
+//			typedef T value_type;
+//			typedef structures::Identity structure;
+//
+//			template < view::Views view_tag, bool d=false >
+//			struct view_type;
+//
+//			template < bool d >
+//			struct view_type< view::original, d > {
+//				using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
+//			};
+//
+//			template < bool d >
+//			struct view_type< view::transpose, d > {
+//				using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+//			};
+//
+//			Matrix( const size_t rows, const size_t cap = 0 ) :
+//				internal::MatrixFunctor< T, ImfR, ImfC >(
+//					imf::Id( rows ),
+//					imf::Id( rows ),
+//					[]( const size_t i, const size_t j ) {
+//						return ( i == j ) ? 1 : 0;
+//					}
+//				) {
+//				(void)cap;
+//			}
+//
+//	}; // Matrix Identity, container
 
 	namespace structures {
 
 		/**
 		 * @brief Checks if a structured matrix has structure \a Structure.
-		 * 
-		 * @tparam MatrixT The structured matrix type to be tested. 
+		 *
+		 * @tparam MatrixT The structured matrix type to be tested.
 		 * @tparam Structure 		 The structure type which should be implied by \a MatrixT::structure.
 		 */
 		template< typename MatrixT, typename Structure >
@@ -1037,19 +1063,19 @@ namespace alp {
 	/**
      *
 	 * @brief Generate an original view of \a source maintaining the same \a Structure.
-	 * 		  The function guarantees the created view is non-overlapping with other 
-	 *        existing views only when the check can be performed in constant time. 
-	 * 
+	 * 		  The function guarantees the created view is non-overlapping with other
+	 *        existing views only when the check can be performed in constant time.
+	 *
 	 * @tparam T         The matrix' elements type
 	 * @tparam Structure The structure of the source and target matrix view
 	 * @tparam density   The type (i.e., sparse or dense) of storage scheme
 	 * @tparam View      The source's View type
 	 * @tparam backend   The target backend
-	 * 
+	 *
 	 * @param source     The source matrix
-	 * 
+	 *
 	 * @return A new original view over the source structured matrix.
-	 * 
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -1059,9 +1085,9 @@ namespace alp {
      *           of memory beyond the memory in use at the function call entry.
      *        -# This function may make system calls.
      * \endparblock
-	 * 
+	 *
 	 */
-	template< 
+	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
 	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< view::original >::type
 	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > & source ) {
@@ -1076,20 +1102,20 @@ namespace alp {
 
 	/**
      *
-	 * @brief Generate a view specified by \a target_view where the type is compliant with the 
+	 * @brief Generate a view specified by \a target_view where the type is compliant with the
 	 * 		  \a source matrix.
-	 * 		  The function guarantees the created view is non-overlapping with other 
-	 *        existing views only when the check can be performed in constant time. 
-	 * 
+	 * 		  The function guarantees the created view is non-overlapping with other
+	 *        existing views only when the check can be performed in constant time.
+	 *
 	 * @tparam target_view  One of the supported views listed in \a view::Views
 	 * @tparam T            The matrix' elements type
 	 * @tparam Structure    The structure of the source and target matrix view
 	 * @tparam density      The type (i.e., sparse or dense) of storage scheme
 	 * @tparam View         The source's View type
 	 * @tparam backend      The target backend
-	 * 
+	 *
 	 * @param source        The source structured matrix
-	 * 
+	 *
 	 * @return A new \a target_view view over the source matrix.
 
      * \parblock
@@ -1101,9 +1127,9 @@ namespace alp {
      *           of memory beyond the memory in use at the function call entry.
      *        -# This function may make system calls.
      * \endparblock
-	 * 
+	 *
 	 */
-	template< 
+	template<
 		enum view::Views target_view,
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
 	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< target_view >::type
@@ -1120,13 +1146,13 @@ namespace alp {
 	/**
      *
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
-	 * 		  Version where a target structure is specified. It can only generate a valide type if the target 
+	 * 		  Version where a target structure is specified. It can only generate a valide type if the target
 	 * 		  structure is the same as the source's
 	 * 		  or a more specialized one that would preserve its static properties (e.g., symmetric reference
 	 * 		  to a square matrix -- any assumption based on symmetry would not break those based on square).
 	 * 		  The function guarantees the created view is non-overlapping with other existing views only when the
-	 * 		  check can be performed in constant time. 
-	 * 
+	 * 		  check can be performed in constant time.
+	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
 	 * @tparam T                The matrix's elements type
@@ -1134,11 +1160,11 @@ namespace alp {
 	 * @tparam density          The type (i.e., \a alp::Density:Dense or \a alp::Density:Sparse) of storage scheme
 	 * @tparam View             The source's View type
 	 * @tparam backend          The target backend
-	 * 
+	 *
 	 * @param source            The source structured matrix
-	 * 
+	 *
 	 * @return A new original view over the source structured matrix.
-	 * 
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -1148,12 +1174,12 @@ namespace alp {
      *           of memory beyond the memory in use at the function call entry.
      *        -# This function may make system calls.
      * \endparblock
-	 * 
+	 *
 	 */
-	template< 
-		typename TargetStructure, 
+	template<
+		typename TargetStructure,
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, ImfL, ImfR, backend > 
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, ImfL, ImfR, backend >
 	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source ) {
 
 		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
@@ -1173,13 +1199,13 @@ namespace alp {
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
 
-		template< 
+		template<
 			typename TargetStructure, typename TargetImfL, typename TargetImfR,
 			typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, TargetImfL, TargetImfR, backend > 
+		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, TargetImfL, TargetImfR, backend >
 		get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
-				TargetImfL &&imf_r, TargetImfR &&imf_c ) {
-			
+				TargetImfL imf_r, TargetImfR imf_c ) {
+
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
 			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
 			//}
@@ -1192,7 +1218,7 @@ namespace alp {
 			using source_strmat_t = alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
 			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, TargetImfL, TargetImfR, backend >;
 
-			target_strmat_t target( source, std::move(imf_r), std::move(imf_c) );
+			target_strmat_t target( source, imf_r, imf_c );
 
 			return target;
 		}
@@ -1201,12 +1227,12 @@ namespace alp {
 	/**
      *
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
-	 * Version where a range of rows and columns are selected to form a new view with specified target 
-	 * structure. It can only generate a valide type if the target 
+	 * Version where a range of rows and columns are selected to form a new view with specified target
+	 * structure. It can only generate a valide type if the target
 	 * structure is guaranteed to preserve the static properties of the source's structure.
-	 * A structural check of this kind as well as non-overlapping checks with existing views of \a source 
-	 * are guaranteed only when each one of them incurs constant time work.  
-	 * 
+	 * A structural check of this kind as well as non-overlapping checks with existing views of \a source
+	 * are guaranteed only when each one of them incurs constant time work.
+	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
 	 * @tparam T                The matrix' elements type
@@ -1214,13 +1240,13 @@ namespace alp {
 	 * @tparam density          The type (i.e., sparse or dense) of storage scheme
 	 * @tparam View             The source's View type
 	 * @tparam backend          The target backend
-	 * 
+	 *
 	 * @param source            The source structured matrix
 	 * @param rng_r             A valid range of rows
 	 * @param rng_c             A valid range of columns
-	 * 
+	 *
 	 * @return A new original view over the source structured matrix.
-	 * 
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -1230,12 +1256,12 @@ namespace alp {
      *           of memory beyond the memory in use at the function call entry.
      *        -# This function may make system calls.
      * \endparblock
-	 *  
+	 *
 	 */
-	template< 
-		typename TargetStructure, 
+	template<
+		typename TargetStructure,
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend > 
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend >
 	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 			const utils::range& rng_r, const utils::range& rng_c ) {
 
@@ -1251,21 +1277,21 @@ namespace alp {
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
 	 * Version where no target structure is specified (in this case the structure of the source type is assumed as target)
 	 * with row and column selection.
-	 * A structure preserving check as well as non-overlapping checks with existing views of \a source 
-	 * are guaranteed only when each one of them incurs constant time work.  
-	 * 
+	 * A structure preserving check as well as non-overlapping checks with existing views of \a source
+	 * are guaranteed only when each one of them incurs constant time work.
+	 *
 	 * @tparam T          The matrix' elements type
 	 * @tparam Structure  The structure of the source and target matrix view
 	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
 	 * @tparam View       The source's View type
 	 * @tparam backend    The target backend
-	 * 
+	 *
 	 * @param source      The source matrix
 	 * @param rng_r       A valid range of rows
 	 * @param rng_c       A valid range of columns
-	 * 
+	 *
 	 * @return A new original view over the source structured matrix.
-	 * 
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -1275,12 +1301,12 @@ namespace alp {
      *           of memory beyond the memory in use at the function call entry.
      *        -# This function may make system calls.
      * \endparblock
-	 *  
+	 *
 	 */
 
-	template< 
+	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend > 
+	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend >
 	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 			const utils::range &rng_r, const utils::range &rng_c ) {
 
@@ -1358,7 +1384,7 @@ namespace alp {
 	 */
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend > 
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend >
 	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 		const utils::range &rng_r, const size_t &sel_c ) {
 
@@ -1369,11 +1395,11 @@ namespace alp {
 	}
 
 	/**
-	 *	
+	 *
 		* @brief Generate an original view where the type is compliant with the source Matrix.
-		* Version where a selection of rows and columns expressed as vectors of positions 
+		* Version where a selection of rows and columns expressed as vectors of positions
 		* form a new view with specified target structure.
-		* 
+		*
 		* @tparam TargetStructure The target structure of the new view. It should verify
 		*                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
 		* @tparam T               The matrix' elements type
@@ -1381,22 +1407,22 @@ namespace alp {
 		* @tparam density         The type (i.e., sparse or dense) of storage scheme
 		* @tparam View            The source's View type
 		* @tparam backend         The target backend
-		* 
+		*
 		* @param source           The source structured matrix
 		* @param sel_r            A valid permutation vector of row indeces
 		* @param sel_c            A valid permutation vector of column indeces
-		* 
+		*
 		* @return A new original view over the source structured matrix.
-		* 
+		*
 		*/
-	template< 
+	template<
 		typename TargetStructure,
-		typename IndexType, typename IndexStructure, typename IndexView, 
+		typename IndexType, typename IndexStructure, typename IndexView,
 		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Select, imf::Select, backend > 
+	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Select, imf::Select, backend >
 	get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
 			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
-		
+
 		imf::Select imf_r( nrows(source), sel_r );
 		imf::Select imf_c( ncols(source), sel_c );
 
