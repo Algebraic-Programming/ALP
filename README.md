@@ -70,8 +70,11 @@ The ALP/GraphBLAS libraries link against the following libraries:
 Required for distributed-memory auto-parallelisation:
 
 * The Lightweight Parallel Foundations (LPF) communication layer, version 1.0 or
-higher, its collectives library, and all its dependences
-(https://gitee.com/CSL-ALP/lpf).
+higher, its collectives library, and its dependences. See the LPF project
+repositories:
+
+* (https://gitee.com/CSL-ALP/lpf);
+* (https://github.com/Algebraic-Programming/LPF).
 
 This dependency applies to compilation, linking, and run-time dependences.
 
@@ -397,18 +400,18 @@ To debug an ALP/GraphBLAS program, please compile it using the sequential
 reference backend and use standard debugging tools such as `valgrind` and `gdb`.
 
 If bugs appear in one backend but not another, it is likely you have found a bug
-in one of the backend implementations. Please send a minimum working example
+in the former backend implementation. Please send a minimum working example
 (MWE) that demonstrates the bug to the maintainers, in one of the following
 ways:
-  1. raise it as an issue at https://gitee.com/CSL-ALP/graphblas/
-  2. send the MWE to albertjan.yzelman@huawei.com
+  1. raise it as an issue at (https://github.com/Algebraic-Programming/ALP/issues);
+  2. raise it as an issue at (https://gitee.com/CSL-ALP/graphblas/);
+  3. send the MWE to (mailto:albertjan.yzelman@huawei.com).
 
 
 # Development in ALP
 
-Your contributions to ALP/GraphBLAS would be most welcome. MRs can be
-contributed via gitee or any other git server the maintainers can access, or
-can be sent as an email; see above for the links.
+Your contributions to ALP/GraphBLAS would be most welcome. Merge or Pull Requests
+(MRs/PRs) can be contributed via Gitee and GitHub. See above for the links.
 
 For the complete development documentation, you should start from the
 [docs/README file](docs/README.md) and the related
@@ -417,8 +420,8 @@ For the complete development documentation, you should start from the
 
 # Acknowledgements
 
-The LPF communications layer was primarily authored by Wijnand Suijlen,
-without whom the current ALP/GraphBLAS would not be what it is now.
+The LPF communications layer was primarily authored by Wijnand Suijlen, without
+whom the current ALP/GraphBLAS would not be what it is now.
 
 The collectives library and its interface to the ALP/GraphBLAS was primarily
 authored by Jonathan M. Nash.
@@ -427,15 +430,23 @@ The testing infrastructure that performs smoke, unit, and performance testing of
 sequential, shared-memory parallel, and distributed-memory parallel backends was
 primarily developed by Daniel Di Nardo.
 
-For additional acknowledgements, please see the NOTICE file.
+ALP and ALP/GraphBLAS have since developed significantly, primarily through
+efforts by researchers at the Huawei Paris and Zürich Research Centres, and the
+Computing Systems Laboratory in Zürich specifically. See the NOTICE file for
+individual contributors.
 
 # Citing ALP/GraphBLAS
 
-If you use ALP/GraphBLAS in your work, please consider citing the following
-papers, as appropriate:
+If you use ALP/GraphBLAS in your work, please consider citing one or more of the
+following papers, as appropriate:
 
   - A C++ GraphBLAS: specification, implementation, parallelisation, and
 evaluation by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
-Pre-print. (Bibtex entry available at:
-http://albert-jan.yzelman.net/BIBs/yzelman20.bib)
+Pre-print.
+[PDF](http://albert-jan.yzelman.net/PDFs/yzelman20.pdf),
+[Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
+ - Nonblocking execution in GraphBLAS by Aristeidis Mastoras, Sotiris
+Anagnostidis, and A. N. Yzelman (2022). Pre-print.
+[PDF](http://albert-jan.yzelman.net/PDFs/mastoras22-pp.pdf),
+[Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
 
