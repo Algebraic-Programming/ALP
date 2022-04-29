@@ -23,28 +23,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 </pre>
 
-## Table of Contents
-
-- [Requirements](#requirements)
-	- [Compilation](#compilation)
-	- [Linking and run-time](#linking-and-run-time)
-	- [Optionals](#optionals)
-- [Quick start](#quick-start)
-- [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
-	- [1. Running ALP/GraphBLAS as a standalone executable](#1-running-alpgraphblas-as-a-standalone-executable)
-		- [Implementation](#implementation)
-		- [Compilation](#compilation-1)
-		- [Linking](#linking)
-		- [Running](#running)
-		- [Threading](#threading)
-	- [2. Running parallel ALP/GraphBLAS programs from existing parallel contexts](#2-running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
-		- [Implementation](#implementation-1)
-		- [Running](#running-1)
-- [Debugging](#debugging)
-- [Development in ALP](#development-in-alp)
-- [Acknowledgements](#acknowledgements)
-- [Citing ALP/GraphBLAS](#citing-alpgraphblas)
-
 # Requirements
 
 ## Compilation
@@ -67,37 +45,35 @@ The ALP/GraphBLAS libraries link against the following libraries:
 4. OpenMP: `-fopenmp` in the case of GCC
 
 ## Optionals
-Required for distributed-memory auto-parallelisation:
 
-* The Lightweight Parallel Foundations (LPF) communication layer, version 1.0 or
-higher, its collectives library, and its dependences. See the LPF project
-repositories:
+The above summarise the minimum dependences, while the below summarise the
+dependences for optional features.
 
-* (https://gitee.com/CSL-ALP/lpf);
-* (https://github.com/Algebraic-Programming/LPF).
+### Distributed-memory auto-parallelisation
 
-This dependency applies to compilation, linking, and run-time dependences.
+For distributed-memory parallelisation, the Lightweight Parallel Foundations
+(LPF) communication layer, version 1.0 or higher, is required. ALP makes use
+of the LPF core library and its collectives library. The LPF library has its
+further dependences, which are all summarised on the LPF project page:
 
-Additionally, to generate the code documentation:
+* [Gitee](https://gitee.com/CSL-ALP/lpf);
+* [Github](https://github.com/Algebraic-Programming/LPF).
 
-* `doyxgen` reads code comments and generates the documentation
-* `graphviz` generates various diagrams for inheritance, call paths, etc.
+The dependence on LPF applies to compilation, linking, and run-time.
+
+### Code documentation
+
+For generating the code documentations:
+* `doyxgen` reads code comments and generates the documentation;
+* `graphviz` generates various diagrams for inheritance, call paths, etc.;
 * `pdflatex` is required to build the PDF file out of the Latex generated
-documentation
+documentation.
 
 
-# Quick start
-The compilation and testing infrastructure is based on
-[CMake](https://cmake.org), which supports multiple tools for compilation.
-In the following, we use it to generate a building infrastructure based on GNU
-Makefile, which is CMake's default build tool on UNIX systems and is broadly
-available.
-However, the concepts described here apply very similarly to other compilation
-backends like `ninja`, which are becoming increasingly popular: instead of
-`make <target name>`, one can simply run, e.g., `ninja <target name>`.
+# Very quick start
 
-Here are the basic steps to quickly compile and install ALP/GraphBLAS for shared
-memory machines (i.e. without distributed-memory support):
+Here are example steps to compile and install ALP/GraphBLAS for shared-memory
+machines, without distributed-memory support:
 
 
 ```bash
@@ -106,7 +82,13 @@ mkdir build
 cd build
 ../bootstrap.sh --prefix=../install
 make -j
+make -j install
+source ../install/bin/setenv
+grbcxx ../examples/sp.cpp
+grbrun ./a.out
 ```
+
+# Quick start
 
 In more detail, the steps to follow are:
 
@@ -144,12 +126,15 @@ and
    case, please edit `tests/parse_env.sh` by searching for the MPI
    implementation you used, and uncomment the lines directly below each
    occurance.
+
 7. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
    If you do this with LPF enabled, please edit `tests/parse_env.sh` if required
    as described in step 5.
-8. (*Optional*) Issue `make -j install` to install ALP/GraphBLAS into your
+
+8. Issue `make -j install` to install ALP/GraphBLAS into your
 install directory configured during step 1.
+
 9. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
 `grbcxx` and `grbrun` compiler wrapper and runner.
 
@@ -178,6 +163,29 @@ If you do this with LPF enabled, please note the remark described at step 5 and
 apply any necessary changes also to `tests/performance/performancetests.sh`.
 
 
+# Additional Contents
+
+The remainder of this file summarises other build system targets, how to
+integrate ALP algorithms into applications, debugging, development, and,
+finally, acknowledges contributors and lists technical papers.
+
+- [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
+- [Integrating ALP/GraphBLAS with applications](#integrating-alpgraphblas-with-applications)
+	- [1. Running ALP/GraphBLAS as a standalone executable](#1-running-alpgraphblas-as-a-standalone-executable)
+		- [Implementation](#implementation)
+		- [Compilation](#compilation-1)
+		- [Linking](#linking)
+		- [Running](#running)
+		- [Threading](#threading)
+	- [2. Running parallel ALP/GraphBLAS programs from existing parallel contexts](#2-running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
+		- [Implementation](#implementation-1)
+		- [Running](#running-1)
+- [Debugging](#debugging)
+- [Development in ALP](#development-in-alp)
+- [Acknowledgements](#acknowledgements)
+- [Citing ALP/GraphBLAS](#citing-alpgraphblas)
+
+
 # Overview of the main Makefile targets
 
 The following table lists the main build targets of interest:
@@ -201,11 +209,14 @@ For more information about the testing harness, please refer to the
 For more information on how the build and test infrastructure operate, please
 refer to the [the related documentation](docs/Build_and_test_infra.md).
 
-There are several use cases in which ALP/GraphBLAS can be deployed and utilized,
-listed in the following. These assume that the user has installed ALP/GraphBLAS
-in a dedicated directory via `make install`.
 
-## 1. Running ALP/GraphBLAS as a standalone executable
+# Integrating ALP/GraphBLAS with applications
+
+There are several use cases in which ALP can be deployed and utilized, listed
+in the following. These assume that the user has installed ALP/GraphBLAS in a
+dedicated directory via `make install`.
+
+## 1. Running ALP algorithms as a standalone executables
 
 ### Implementation
 
@@ -313,7 +324,7 @@ In both cases, make sure that during execution the `OMP_NUM_THREADS` and
 `OMP_PROC_BIND` environment variables are set appropriately on each node that
 executes an ALP/GraphBLAS user process.
 
-## 2. Running parallel ALP/GraphBLAS programs from existing parallel contexts
+## 2. Running parallel ALP programs from existing parallel contexts
 
 This, instead of automatically spawning a requested number of user processes,
 assumes a number of processes already exist and that we wish those processes to
@@ -435,7 +446,8 @@ efforts by researchers at the Huawei Paris and Zürich Research Centres, and the
 Computing Systems Laboratory in Zürich specifically. See the NOTICE file for
 individual contributors.
 
-# Citing ALP/GraphBLAS
+
+# Citing ALP and ALP/GraphBLAS
 
 If you use ALP/GraphBLAS in your work, please consider citing one or more of the
 following papers, as appropriate:
