@@ -98,17 +98,24 @@ grbrun ./a.out
 
 In more detail, the steps to follow are:
 
-1. Create an empty directory for building ALP/GraphBLAS and move into it:
+1. Edit the `include/graphblas/base/config.hpp`. In particular, please ensure
+that `config::SIMD_SIZE::bytes` defined in that file is set correctly with
+respect to the target architecture.
+
+2. Create an empty directory for building ALP/GraphBLAS and move into it:
 `mkdir build && cd build`.
-2. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
+
+3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
 `<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
  current directory:
  `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
     - note: add `--with-lpf=/path/to/lpf/install/dir` if you have LPF installed
 and would like to use it.
-3. Issue `make -j` to compile the C++11 ALP/GraphBLAS library for the configured
+
+4. Issue `make -j` to compile the C++11 ALP/GraphBLAS library for the configured
 backends.
-4. (*Optional*) To later run all unit tests, several datasets must be made
+
+5. (*Optional*) To later run all unit tests, several datasets must be made
 available. Please run the `<ALP/GraphBLAS root>/tools/downloadDatasets.sh`
 script for
 
@@ -116,7 +123,7 @@ script for
 
     b. the option to automatically download them.
 
-5. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
+6. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
 generates both
 
     a. PDF documentations in `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`,
@@ -124,7 +131,7 @@ and
 
     b. HTML documentations in `<ALP/GraphBLAS root>/docs/code/html/index.html`.
 
-6. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
+7. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
    If you do this with LPF enabled, and LPF was configured to use an MPI engine
    (which is the default), and the MPI implementation used is _not_ MPICH, then
@@ -133,15 +140,15 @@ and
    implementation you used, and uncomment the lines directly below each
    occurance.
 
-7. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
+8. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
    If you do this with LPF enabled, please edit `tests/parse_env.sh` if required
    as described in step 5.
 
-8. Issue `make -j install` to install ALP/GraphBLAS into your
+9. Issue `make -j install` to install ALP/GraphBLAS into your
 install directory configured during step 1.
 
-9. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
+10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
 `grbcxx` and `grbrun` compiler wrapper and runner.
 
 Congratulations, you are now ready for developing and integrating ALP/GraphBLAS
@@ -152,22 +159,6 @@ algorithms! Any feedback, question, problem reports are most welcome at
 </div>
 <br />
 
-In-depth performance measurements may be obtained via the following additional
-and optional step:
-
-10. (*Optional*) To check in-depth performance of this ALP/GraphBLAS
-implementation, issue `make -j perftests`. This will run several algorithms in
-several ALP/GraphBLAS configurations. All output is captured in
-`<ALP/GraphBLAS root>/build/tests/performance/output`. A summary of benchmark
-results are found in the following locations:
-
-    a. `<ALP/GraphBLAS root>/build/tests/performance/output/benchmarks`.
-
-    b. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`.
-
-If you do this with LPF enabled, please note the remark described at step 5 and
-apply any necessary changes also to `tests/performance/performancetests.sh`.
-
 
 # Additional Contents
 
@@ -176,6 +167,7 @@ integrate ALP algorithms into applications, debugging, development, and,
 finally, acknowledges contributors and lists technical papers.
 
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
+- [Automated performance testing](#automated-performance-testing)
 - [Integrating ALP/GraphBLAS with applications](#integrating-alpgraphblas-with-applications)
 	- [1. Running ALP/GraphBLAS as a standalone executable](#1-running-alpgraphblas-as-a-standalone-executable)
 		- [Implementation](#implementation)
@@ -216,6 +208,29 @@ For more information on how the build and test infrastructure operate, please
 refer to the [the related documentation](docs/Build_and_test_infra.md).
 
 
+# Automated performance testing
+
+To check in-depth performance of this ALP/GraphBLAS implementation, issue
+`make -j perftests`. This will run several algorithms in several ALP/GraphBLAS
+configurations. This generates three main output files:
+
+1. `<ALP/GraphBLAS root>/build/tests/performance/output`, which summarises the
+   whole run;
+
+2. `<ALP/GraphBLAS root>/build/tests/performance/output/benchmarks`, which
+   summarises the performance of individual algorithms; and
+
+3. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`, which
+   summarises operator scaling results.
+
+To ensure all tests run, please ensure all related datasets are available as
+also described at step 5 of the quick start.
+
+With LPF enabled, please note the remark described at step 3 of the quick start
+guide, and note how the LPF installation was configured. Then please review and
+apply any necessary changes to `tests/performance/performancetests.sh`.
+
+
 # Integrating ALP/GraphBLAS with applications
 
 There are several use cases in which ALP can be deployed and utilized, listed
@@ -237,26 +252,30 @@ ALP/GraphBLAS program.
 
 The above sending-and-receiving across processes applies only to ALP/GraphBLAS
 implementations and backends that support or require multiple user processes;
-the sequential reference and shared-memory parallel reference_omp backends, for
-example, support only one user process.
+both the sequential `reference` and the shared-memory parallel `reference_omp`
+backends, for example, support only one user process.
 
 In case of multiple user processes, the overhead of the broadcasting of input
-data is linear in P as well as linear in the byte-size of `T`, and hence should
-be kept to a minimum. A recommended use of this mechanism is, e.g., to broadcast
-input data location; any additional I/O should use the parallel I/O mechanisms
-that ALP/GraphBLAS defines within the program itself.
+data is linear in the number of user processes, as well as linear in the byte-
+size of `T` which hence should be kept to a minimum. A recommended use of this
+mechanism is, e.g., to broadcast input data locations; any additional I/O
+should use the parallel I/O mechanisms that ALP/GraphBLAS exposes to the ALP
+program itself.
 
-Implementations may require sending back the output data to the calling
-process, even if there is only one ALP/GraphBLAS user process. The data
-movement cost this incurs shall be linear to the byte size of `U`.
+Output data is retrieved only from the user process with ID `0`, even if
+multiple user processes exist. Some implemenations or systems may require
+sending back the output data to a calling process, even if there is only
+one user process. The data movement cost thus incurred should hence be
+considered linear in the byte size of `U`, and it may similarly instead be
+advisable to use parallel I/O facilities to store large outputs.
 
 ### Compilation
 
-Our backends auto-vectorise.
-For best results, please edit the `include/graphblas/base/config.hpp` file prior
-to compilation and installation. Most critically, ensure that
-`config::SIMD_SIZE::bytes` defined in that file is set correctly with respect to
-the target architecture.
+Our backends auto-vectorise, hence please recall step 1 from the quick start
+guide, and make sure the `include/graphblas/base/config.hpp` reflects the
+correct value for `config::SIMD_SIZE::bytes`, prior to compilation and
+installation of ALP. For different architectures with differing SIMD widths,
+different installations of ALP for different architectures could be maintained.
 
 The program may be compiled using the compiler wrapper `grbcxx` generated during
 installation; for more options on using ALP/GraphBLAS in external projects, you
