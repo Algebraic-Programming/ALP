@@ -392,8 +392,8 @@ a parallel ALP/GraphBLAS program is launched via
 grb::Launcher< MANUAL >::exec( &grb_program, input, output )
 ```
 
-in exactly the same way as described earlier, though with two useful
-differences:
+in exactly the same way as described earlier, though with the input and output
+arguments now being passed in a one-to-one fashion:
   1. The input data is passed on from the original process to exactly one
      corresponding ALP/GraphBLAS user process; i.e., no broadcast occurs. The
      original process and the ALP/GraphBLAS user process are, from an operating
@@ -443,14 +443,15 @@ to add ALP and ALP/GraphBLAS as a dependence to your project.
 
 To debug an ALP/GraphBLAS program, please compile it using the sequential
 reference backend and use standard debugging tools such as `valgrind` and `gdb`.
+Additionally, please ensure to *not* pass the `-DNDEBUG` flag during
+compilation.
 
 If bugs appear in one backend but not another, it is likely you have found a bug
-in the former backend implementation. Please send a minimum working example
-(MWE) that demonstrates the bug to the maintainers, in one of the following
-ways:
-  1. raise it as an issue at (https://github.com/Algebraic-Programming/ALP/issues);
-  2. raise it as an issue at (https://gitee.com/CSL-ALP/graphblas/);
-  3. send the MWE to (mailto:albertjan.yzelman@huawei.com).
+in the former backend implementation. Please send a minimum working example that
+demonstrates the bug to the maintainers, either as an issue on or an email to:
+  1. [GitHub](https://github.com/Algebraic-Programming/ALP/issues);
+  2. [Gitee](https://gitee.com/CSL-ALP/graphblas/);
+  3. [Albert-Jan](mailto:albertjan.yzelman@huawei.com).
 
 
 # Development in ALP
@@ -477,8 +478,8 @@ primarily developed by Daniel Di Nardo.
 
 ALP and ALP/GraphBLAS have since developed significantly, primarily through
 efforts by researchers at the Huawei Paris and Zürich Research Centres, and the
-Computing Systems Laboratory in Zürich specifically. See the NOTICE file for
-individual contributors.
+Computing Systems Laboratory in Zürich in particular. See the [NOTICE](NOTICE)
+file for individual contributors.
 
 
 # Citing ALP and ALP/GraphBLAS
@@ -486,13 +487,12 @@ individual contributors.
 If you use ALP/GraphBLAS in your work, please consider citing one or more of the
 following papers, as appropriate:
 
-  - A C++ GraphBLAS: specification, implementation, parallelisation, and
-evaluation by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
-Pre-print.
-[PDF](http://albert-jan.yzelman.net/PDFs/yzelman20.pdf),
-[Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
- - Nonblocking execution in GraphBLAS by Aristeidis Mastoras, Sotiris
-Anagnostidis, and A. N. Yzelman (2022). Pre-print.
-[PDF](http://albert-jan.yzelman.net/PDFs/mastoras22-pp.pdf),
-[Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
+ - [A C++ GraphBLAS: specification, implementation, parallelisation, and evaluation](http://albert-jan.yzelman.net/PDFs/yzelman20.pdf)
+   by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
+   Pre-print.
+   [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
+ - [Nonblocking execution in GraphBLAS](http://albert-jan.yzelman.net/PDFs/mastoras22-pp.pdf)
+   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman (2022).
+   Pre-print.
+   [Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
 
