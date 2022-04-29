@@ -168,7 +168,7 @@ finally, acknowledges contributors and lists technical papers.
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
 - [Automated performance testing](#automated-performance-testing)
 - [Integrating ALP with applications](#integrating-alp-with-applications)
-	- [Running ALP as a standalone executable](#running-alp-as-a-standalone-executable)
+	- [Running ALP programs as standalone executables](#running-alp-programs-as-standalone-executables)
 		- [Implementation](#implementation)
 		- [Compilation](#compilation-1)
 		- [Linking](#linking)
@@ -177,11 +177,11 @@ finally, acknowledges contributors and lists technical papers.
 	- [Running parallel ALP programs from existing parallel contexts](#running-parallel-alp-programs-from-existing-parallel-contexts)
 		- [Implementation](#implementation-1)
 		- [Running](#running-1)
-	- [Integrating ALP within your code project](#integrating-alp-within-your-code-project)
+	- [Integrating ALP within your coding project](integrating-alp-within-your-coding-project)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
-- [Citing ALP/GraphBLAS](#citing-alpgraphblas)
+- [Citing ALP and ALP/GraphBLAS](citing-alp-and-alpgraphblas)
 
 
 # Overview of the main Makefile targets
@@ -236,7 +236,7 @@ There are several use cases in which ALP can be deployed and utilized, listed
 in the following. These assume that the user has installed ALP/GraphBLAS in a
 dedicated directory via `make install`.
 
-## Running ALP algorithms as a standalone executable
+## Running ALP programs as standalone executables
 
 ### Implementation
 
