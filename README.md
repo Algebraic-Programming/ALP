@@ -72,7 +72,7 @@ For generating the code documentations:
 * `doyxgen` reads code comments and generates the documentation;
 * `graphviz` generates various diagrams for inheritance, call paths, etc.;
 * `pdflatex` is required to build the PDF file out of the Latex generated
-documentation.
+  documentation.
 
 
 # Very quick start
@@ -99,35 +99,37 @@ grbrun ./a.out
 In more detail, the steps to follow are:
 
 1. Edit the `include/graphblas/base/config.hpp`. In particular, please ensure
-that `config::SIMD_SIZE::bytes` defined in that file is set correctly with
-respect to the target architecture.
+   that `config::SIMD_SIZE::bytes` defined in that file is set correctly with
+   respect to the target architecture.
 
 2. Create an empty directory for building ALP/GraphBLAS and move into it:
-`mkdir build && cd build`.
+   `mkdir build && cd build`.
 
 3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
-`<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
- current directory:
- `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
+   `<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
+   current directory:
+
+   `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
+
     - note: add `--with-lpf=/path/to/lpf/install/dir` if you have LPF installed
-and would like to use it.
+            and would like to use it.
 
 4. Issue `make -j` to compile the C++11 ALP/GraphBLAS library for the configured
-backends.
+   backends.
 
 5. (*Optional*) To later run all unit tests, several datasets must be made
-available. Please run the `<ALP/GraphBLAS root>/tools/downloadDatasets.sh`
-script for
+   available. Please run the `<ALP/GraphBLAS root>/tools/downloadDatasets.sh`
+   script for
 
     a. an overview of datasets required for the basic tests, as well as
 
     b. the option to automatically download them.
 
 6. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
-generates both
+   generates both
 
     a. PDF documentations in `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`,
-and
+       and
 
     b. HTML documentations in `<ALP/GraphBLAS root>/docs/code/html/index.html`.
 
@@ -168,17 +170,17 @@ finally, acknowledges contributors and lists technical papers.
 
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
 - [Automated performance testing](#automated-performance-testing)
-- [Integrating ALP/GraphBLAS with applications](#integrating-alpgraphblas-with-applications)
-	- [Running ALP/GraphBLAS as a standalone executable](#running-alpgraphblas-as-a-standalone-executable)
+- [Integrating ALP with applications](#integrating-alp-with-applications)
+	- [Running ALP as a standalone executable](#running-alp-as-a-standalone-executable)
 		- [Implementation](#implementation)
 		- [Compilation](#compilation-1)
 		- [Linking](#linking)
 		- [Running](#running)
 		- [Threading](#threading)
-	- [Running parallel ALP/GraphBLAS programs from existing parallel contexts](#running-parallel-alpgraphblas-programs-from-existing-parallel-contexts)
+	- [Running parallel ALP programs from existing parallel contexts](#running-parallel-alp-programs-from-existing-parallel-contexts)
 		- [Implementation](#implementation-1)
 		- [Running](#running-1)
-	- [Integrating ALP within your code project)(#integrating-alp-within-your-code-project)
+	- [Integrating ALP within your code project](#integrating-alp-within-your-code-project)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
@@ -215,13 +217,13 @@ To check in-depth performance of this ALP/GraphBLAS implementation, issue
 `make -j perftests`. This will run several algorithms in several ALP/GraphBLAS
 configurations. This generates three main output files:
 
-1. `<ALP/GraphBLAS root>/build/tests/performance/output`, which summarises the
+1. `<ALP/GraphBLAS build dir>/tests/performance/output`, which summarises the
    whole run;
 
-2. `<ALP/GraphBLAS root>/build/tests/performance/output/benchmarks`, which
+2. `<ALP/GraphBLAS build dir>/tests/performance/output/benchmarks`, which
    summarises the performance of individual algorithms; and
 
-3. `<ALP/GraphBLAS root>/build/tests/performance/output/scaling`, which
+3. `<ALP/GraphBLAS build dir>`/tests/performance/output/scaling`, which
    summarises operator scaling results.
 
 To ensure that all tests run, please ensure all related datasets are available
@@ -232,7 +234,7 @@ start guide. If LPF was not configured using MPICH, please review and apply any
 necessary changes to `tests/performance/performancetests.sh`.
 
 
-# Integrating ALP/GraphBLAS with applications
+# Integrating ALP with applications
 
 There are several use cases in which ALP can be deployed and utilized, listed
 in the following. These assume that the user has installed ALP/GraphBLAS in a
@@ -351,7 +353,7 @@ executes ALP/GraphBLAS user process(es).
 
 This, instead of automatically spawning a requested number of user processes,
 assumes a number of processes already exist and that we wish those processes to
-jointly execute a parallel ALP/GraphBLAS program.
+jointly execute a single parallel ALP/GraphBLAS program.
 
 ### Implementation
 
@@ -375,13 +377,13 @@ Here, `P` is the total number of processes that should jointly execute a
 parallel ALP/GraphBLAS program, while `0 <= s < P` is a unique ID of this
 process amongst its `P`-1 siblings.
 The types of `s` and `P` are `size_t`, i.e., unsigned integers.
+
 One of these processes must be selected as a connection broker prior to forming
-a group of ALP/GraphBLAS user processes.
-The remainder `P`-1 processes must first connect to the chosen broker using
-TCP/IP connections.
-This choice must be made outside of ALP/GraphBLAS, prior to setting up the
-launcher and materialises as the hostname and portname constructor arguments.
-These are strings, and must be equal across all processes.
+a group of ALP/GraphBLAS user processes. The remainder `P-1` processes must
+first connect to the chosen broker using TCP/IP connections. This choice must
+be made outside of ALP/GraphBLAS, prior to setting up the launcher, and
+materialises as the `hostname` and `portname` Launcher constructor arguments.
+The host and port name are strings, and must be equal across all processes.
 
 As before, and after the successful construction of a manual launcher instance,
 a parallel ALP/GraphBLAS program is launched via
@@ -392,15 +394,19 @@ grb::Launcher< MANUAL >::exec( &grb_program, input, output )
 
 in exactly the same way as described earlier, though with two useful
 differences:
-  1. the input data struct is passed on from the original process to exactly one
-corresponding ALP/GraphBLAS user process; i.e., no broadcast occurs. Since the
-original process and the ALP/GraphBLAS user process are, from an operating
-system point of view, the same process, input no longer needs to be a
-plain-old-data type. Pointers, for example, are now perfectly valid to pass
-along.
-  2. the same applies on output data; these are passed from the ALP/GraphBLAS
-user process to a corresponding originating process in a one-to-one fashion as
-well.
+  1. The input data is passed on from the original process to exactly one
+     corresponding ALP/GraphBLAS user process; i.e., no broadcast occurs. The
+     original process and the ALP/GraphBLAS user process are, from an operating
+     system point of view, the same process. Therefore, and additionally, input
+     no longer needs to be a plain-old-data (POD) type. Pointers, for example,
+     are now perfectly valid to pass along, and enable sharing data between the
+     original process and the ALP/GraphBLAS algorithm.
+  2. The output data is passed from each ALP/GraphBLAS user process to the
+     original process that called `Launcher< MANUAL >::exec`. To share
+     ALP/GraphBLAS vector data, it is, for example, legal to return a
+     `grb::PinnedVector< T >` as the `exec` output argument type. Doing so is
+     akin to returning a pointer to output data, and does not explicitly pack
+     nor transmit vector data.
 
 ### Running
 
@@ -427,10 +433,10 @@ to inspect the run-time dependences and environment variables that must be made
 available, resp., set, as part of the external mechanism that spawns the
 original processes.
 
-## Integrating ALP within your code project
+## Integrating ALP within your coding project
 
-Please see
-[How-To use ALP/GraphBLAS in your own project](docs/Use_ALPGraphBLAS_in_your_own_project.md).
+Please see [this article](docs/Use_ALPGraphBLAS_in_your_own_project.md) on how
+to add ALP and ALP/GraphBLAS as a dependence to your project.
 
 
 # Debugging
