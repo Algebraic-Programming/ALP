@@ -63,7 +63,8 @@ further dependences, which are all summarised on the LPF project page:
 * [Gitee](https://gitee.com/CSL-ALP/lpf);
 * [Github](https://github.com/Algebraic-Programming/LPF).
 
-The dependence on LPF applies to compilation, linking, and run-time.
+The dependence on LPF applies to compilation, linking, and run-time. Fulfulling
+the dependence enables the `bsp1d` and `hybrid` ALP/GraphBLAS backends.
 
 ## Code documentation
 
