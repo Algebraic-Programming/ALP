@@ -23,6 +23,13 @@
  * implementation-specific choices.
  */
 
+#ifndef _H_ALP_SPARSEBLAS_NIST
+#define _H_ALP_SPARSEBLAS_NIST
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * The supported transposition types.
  */
@@ -30,7 +37,7 @@ enum blas_trans_type {
 	blas_no_trans = 0,
 	blas_trans,
 	blas_conj_trans
-}
+};
 
 /**
  * The supported dense storages.
@@ -38,7 +45,7 @@ enum blas_trans_type {
 enum blas_order_type {
 	blas_rowmajor,
 	blas_colmajor
-}
+};
 
 /** A sparse matrix */
 typedef void * blas_sparse_matrix;
@@ -123,4 +130,10 @@ int BLAS_dusmm(
 	const double * B, const int ldb,
 	const double * C, const int ldc
 );
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
+
+#endif // end _H_ALP_SPARSEBLAS_NIST
 
