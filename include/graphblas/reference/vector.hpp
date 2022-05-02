@@ -149,7 +149,7 @@ namespace grb {
 			internal::Coordinates<
 				config::IMPLEMENTATION< backend >::coordinatesBackend()
 			>
-		> & wrapRawVector(
+		> wrapRawVector(
 			const size_t n, D *__restrict__ const raw
 		);
 
@@ -162,7 +162,7 @@ namespace grb {
 			internal::Coordinates<
 				config::IMPLEMENTATION< backend >::coordinatesBackend()
 			>
-		> & wrapRawVector(
+		> wrapRawVector(
 			const size_t n, const D *__restrict__ const raw
 		);
 
@@ -234,11 +234,11 @@ namespace grb {
 
 		friend class PinnedVector< D, BSP1D >;
 
-		friend Vector< D, reference, MyCoordinates > & internal::wrapRawVector<
+		friend Vector< D, reference, MyCoordinates > internal::wrapRawVector<
 			D, reference
 		>( const size_t n, D *__restrict__ const raw );
 
-		friend const Vector< D, reference, MyCoordinates > & internal::wrapRawVector<
+		friend const Vector< D, reference, MyCoordinates > internal::wrapRawVector<
 			D, reference
 		>( const size_t n, const D *__restrict__ const raw );
 
@@ -554,7 +554,7 @@ namespace grb {
 					<< "constructor\n";
 #endif
 				assert( raw == nullptr );
-				initialize( nullptr, nullptr, nullptr, false, 0, 0 );
+				initialize( nullptr, nullptr, nullptr, false, nullptr, 0, 0 );
 			} else {
 				assert( raw != nullptr );
 				_id = internal::reference_mapper.insert(
