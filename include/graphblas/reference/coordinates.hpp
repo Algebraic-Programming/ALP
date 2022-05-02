@@ -104,7 +104,7 @@ namespace grb {
 				 *
 				 * @returns The number of nonzeroes prior to the increment.
 				 */
-				inline StackType incrementUpdate( Update & update ) {
+				inline StackType incrementUpdate( Update &update ) {
 					return ++( update[ 0 ] );
 				}
 
@@ -115,7 +115,7 @@ namespace grb {
 				 *
 				 * @returns The old number of elements in the stack.
 				 */
-				inline StackType resetUpdate( Update & update ) {
+				inline StackType resetUpdate( Update &update ) {
 					const StackType ret = update[ 0 ];
 					update[ 0 ] = 0;
 					return ret;
@@ -128,6 +128,7 @@ namespace grb {
 				 * @param[out] update Which thread-local update to set.
 				 */
 				inline Update getLocalUpdate() {
+					assert( _buffer != nullptr || _cap == 0 );
 					const int tid = omp_get_thread_num();
 					const size_t bs = _buf / omp_get_num_threads();
 					Update update = _buffer;
@@ -135,6 +136,7 @@ namespace grb {
 					return update;
 				}
 #endif
+
 
 			public:
 
@@ -293,9 +295,17 @@ namespace grb {
 				}
 
 				/**
+				 * May not be called from dense instances.
+				 *
 				 * @returns An empty thread-local stack for new nonzeroes.
 				 */
 				inline Update EMPTY_UPDATE() {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
+						const bool dense_coordinates_may_not_call_EMPTY_UPDATE = false;
+						assert( dense_coordinates_may_not_call_EMPTY_UPDATE );
+					}
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					Update ret = getLocalUpdate();
 					ret[ 0 ] = 0;
@@ -328,7 +338,8 @@ namespace grb {
 				 * This function may be called on instances with any state. After a correct
 				 * call to this function, the state shall become valid.
 				 */
-				void set( void * const arr, bool arr_initialized,
+				void set(
+					void * const arr, bool arr_initialized,
 					void * const buf, const size_t dim
 				) noexcept {
 					// catch trivial case
@@ -341,6 +352,7 @@ namespace grb {
 						_buffer = nullptr;
 						_n = 0;
 						_cap = 0;
+						_buf = 0;
 						return;
 					}
 
@@ -380,7 +392,24 @@ namespace grb {
 				}
 
 				/**
+				 * Sets this data structure to a dummy placeholder for a dense structure.
+				 *
+				 * This structure will be immutable, and does not support the majority of
+				 * operations this class defines; use dense coordinates with care.
+				 */
+				void setDense( const size_t dim ) noexcept {
+					_assigned = nullptr;
+					_stack = nullptr;
+					_buffer = nullptr;
+					_n = dim;
+					_cap = dim;
+					_buf = 0;
+				}
+
+				/**
 				 * Rebuild nonzero data structure after this instance has become invalid.
+				 *
+				 * May not be called on dense instances.
 				 *
 				 * An instance of this type can have one out of four states: valid, invalid,
 				 * assign-updated, or copy-updated. An invalid state only allows function
@@ -416,6 +445,13 @@ namespace grb {
 					if( _cap == 0 ) {
 						return;
 					}
+#ifndef NDEBUG
+					if( _assigned == nullptr && _n == _cap ) {
+						const bool dense_coordinates_may_not_call_rebuild = false;
+						assert( dense_coordinates_may_not_call_rebuild );
+					}
+					assert( _assigned != nullptr );
+#endif
 					if( dense ) {
 #ifdef _DEBUG
 						std::cout << "rebuildSparsity: dense case\n";
@@ -455,7 +491,8 @@ namespace grb {
 						assert( end <= _cap );
 #endif
 #ifdef _DEBUG
-						std::cout << "Coordinates::rebuild: thread " << s << " has range " << start << "--" << end << "\n";
+						std::cout << "Coordinates::rebuild: thread " << s << " has range "
+							<< start << "--" << end << "\n";
 #endif
 						// do recount interleaved with stack re-construction
 						for( size_t i = start; i < end; ++i ) {
@@ -468,7 +505,8 @@ namespace grb {
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp critical
  #endif
-						std::cout << "Coordinates::rebuild: thread " << s << " found " << local_count << " nonzeroes." << std::endl;
+						std::cout << "Coordinates::rebuild: thread " << s << " found "
+							<< local_count << " nonzeroes." << std::endl;
 #endif
 
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
@@ -478,11 +516,13 @@ namespace grb {
 #endif
 
 #ifdef _DEBUG
-							std::cout << "Coordinates::rebuild: thread 0 found " << counts[ 0 ] << " nonzeroes.\n";
+							std::cout << "Coordinates::rebuild: thread 0 found " << counts[ 0 ]
+								<< " nonzeroes.\n";
 #endif
 							for( size_t k = 1; k < P; ++k ) {
 #ifdef _DEBUG
-								std::cout << "Coordinates::rebuild: thread " << k << " found " << counts[ k ] << " nonzeroes.\n";
+								std::cout << "Coordinates::rebuild: thread " << k << " found "
+									<< counts[ k ] << " nonzeroes.\n";
 #endif
 								counts[ k ] += counts[ k - 1 ];
 							}
@@ -511,6 +551,8 @@ namespace grb {
 				/**
 				 * Rebuilds the #_assigned array using the contents of #_stack.
 				 *
+				 * May not be called on dense instances.
+				 *
 				 * \warning Assumes that #_assigned is never set to \a true whenever the
 				 * corresponding index does not appear in #_stack.
 				 *
@@ -532,6 +574,15 @@ namespace grb {
 					const DataType * const packed_in,
 					const size_t new_nz
 				) {
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						std::cerr << "Coordinates< reference >::rebuildFromStack called from a "
+							<< "dense coordinate instance!\n";
+#ifndef NDEBUG
+						const bool dense_coordinates_may_not_call_rebuildFromStack = false;
+						assert( dense_coordinates_may_not_call_rebuildFromStack );
+#endif
+						return PANIC;
+					}
 #ifdef _DEBUG
 					std::cout << "Entering Coordinates::rebuildFromStack (reference backend, non-void version). New stack count: " << new_nz << ".\n";
 					std::cout << "\t stack contents: ( ";
@@ -576,6 +627,8 @@ namespace grb {
 				/**
 				 * Rebuilds the #_assigned array using the contents of #_stack.
 				 *
+				 * May not be called on dense instances.
+				 *
 				 * \warning Assumes that #_assigned is never set to \a true whenever the
 				 * corresponding index does not appear in #_stack.
 				 *
@@ -589,6 +642,15 @@ namespace grb {
 				 * @param[in]  new_nz The number of nonzeroes in #_stack.
 				 */
 				RC rebuildFromStack( void * const, const void * const, const size_t new_nz ) {
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						std::cerr << "Coordinates< reference >::rebuildFromStack called from a "
+							<< "dense coordinate instance!\n";
+#ifndef NDEBUG
+						const bool dense_coordinates_may_not_call_rebuildFromStack = false;
+						assert( dense_coordinates_may_not_call_rebuildFromStack );
+#endif
+						return PANIC;
+					}
 #if defined _DEBUG && ! defined NDEBUG
 					{
 						// this is an extra and costly check only enabled with _DEBUG mode
@@ -655,6 +717,14 @@ namespace grb {
 #endif
 						}
 					} else {
+#ifndef NDEBUG
+						if( _assigned == nullptr ) {
+							const bool a_dense_coordinate_instance_should_not_reach_this_point =
+								false;
+							assert( a_dense_coordinate_instance_should_not_reach_this_point );
+						}
+						assert( _stack != nullptr );
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
@@ -682,7 +752,8 @@ namespace grb {
 				 * The interface is the same as for the above variant to simplify the life
 				 * of callees.
 				 */
-				RC packValues( StackType * const stack_out, const size_t offset,
+				RC packValues(
+					StackType * const stack_out, const size_t offset,
 					void * const, const void * const
 				) const {
 					assert( stack_out != nullptr );
@@ -694,6 +765,14 @@ namespace grb {
 							stack_out[ i ] = i + offset;
 						}
 					} else {
+#ifndef NDEBUG
+						if( _assigned == nullptr ) {
+							const bool a_dense_coordinate_instance_should_not_reach_this_point =
+								false;
+							assert( a_dense_coordinate_instance_should_not_reach_this_point );
+						}
+						assert( _stack != nullptr );
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
@@ -710,6 +789,8 @@ namespace grb {
 				 * Sets this coordinate set to match that of a subset of itself. All entries
 				 * not in the subset are removed from this instance. The subset must be
 				 * contiguous.
+				 *
+				 * May not be called on dense instances.
 				 *
 				 * @tparam dense       Set to \a true if and only if it is known beforehand
 				 *                     that \a localSparsity is dense. (This does \em not
@@ -731,6 +812,12 @@ namespace grb {
 					const Coordinates &localSparsity,
 					const size_t offset
 				) noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						const bool dense_coordinates_may_not_call_rebuildGlobalSparsity = false;
+						assert( dense_coordinates_may_not_call_rebuildGlobalSparsity );
+					}
+#endif
 #ifdef _DEBUG
 					std::cout << "rebuildGlobalSparsity called with ";
 					if( dense ) { std::cout << "a dense local coordinate structure "; }
@@ -781,8 +868,9 @@ namespace grb {
 #ifdef _DEBUG
 					std::cout << "\t our local coordinates are sparse\n";
 #endif
-					// at this point we are either sparse or dense. When dense, localCoordinates cannot be dense;
-					// otherwise the above code would have kicked in. We handle this case first:
+					// at this point we are either sparse or dense. When dense,
+					// localCoordinates cannot be dense; otherwise the above code would have
+					// kicked in. We handle this case first:
 					if( isDense() ) {
 #ifdef _DEBUG
 						std::cout << "\t our own coordinates were dense\n";
@@ -790,8 +878,9 @@ namespace grb {
 						// this is an O(n) loop. It touches n+n/p data elements.
 						// clear nonlocal elements
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						// is this not totally unnecessary if assuming our structure was cleared first,
-						// and isn't that always the case making this branch therefore dead code?
+						// is this not totally unnecessary if assuming our structure was cleared
+						// first, and isn't that always the case making this branch therefore dead
+						// code?
 						// internal issue #262
 						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
@@ -808,8 +897,9 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "\t our own sparsity structure was sparse\n";
 #endif
-						// we are sparse. Loop over our own nonzeroes and then use #_assigned to determine if
-						// they're still there. This is a Theta(nnz)-sized loop and touches 2nnz data elements.
+						// we are sparse. Loop over our own nonzeroes and then use #_assigned
+						// to determine if they're still there. This is a Theta(nnz)-sized loop
+						// and touches 2nnz data elements.
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel
 #endif
@@ -822,7 +912,8 @@ namespace grb {
 							while( k < end ) {
 								const StackType i = _stack[ k ];
 								if( _assigned[ i ] ) {
-									// this nonzero is only valid if it is in the range of the localCoordinates
+									// this nonzero is only valid if it is in the range of the
+									// localCoordinates
 									if( i >= offset && i < offset + localSparsity.size() ) {
 										// all OK-- go check the next one
 										(void)++k;
@@ -838,7 +929,8 @@ namespace grb {
 							}
 						}
 					}
-					// in both cases, we need to rebuild the stack. We copy it from localCoordinates:
+					// in both cases, we need to rebuild the stack. We copy it from
+					// localCoordinates:
 #ifdef _DEBUG
 					std::cout << "\t rebuilding stack\n";
 #endif
@@ -860,7 +952,8 @@ namespace grb {
 					}
 					_n = localSparsity.nonzeroes();
 #ifdef _DEBUG
-					std::cout << "\t final debug-mode sanity check on output stack before exit...";
+					std::cout << "\t final debug-mode sanity check on output stack before "
+						<< "exit...";
 					for( size_t i = 0; i < _n; ++i ) {
 						assert( _stack[ i ] < _cap );
 						assert( _assigned[ _stack[ i ] ] );
@@ -917,24 +1010,35 @@ namespace grb {
 				template< bool maybe_invalid = false >
 				inline void assignAll() noexcept {
 					if( maybe_invalid || _n != _cap ) {
-						assert( maybe_invalid || _n < _cap );
-						assert( ! maybe_invalid || _n <= _cap );
-						_n = _cap;
+						if( _assigned != nullptr ) {
+							assert( _stack != nullptr );
+							assert( maybe_invalid || _n < _cap );
+							assert( !maybe_invalid || _n <= _cap );
+							_n = _cap;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+							#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
-						for( size_t i = 0; i < _n; ++i ) {
-							_assigned[ i ] = true;
-							_stack[ i ] = i;
+							for( size_t i = 0; i < _n; ++i ) {
+								_assigned[ i ] = true;
+								_stack[ i ] = i;
+							}
 						}
 					}
 				}
 
 				/**
+				 * May not be called on dense instances.
+				 *
 				 * @returns How many asynchronous assignments a single thread is guaranteed
 				 *          to be able to push without synchronisation.
 				 */
 				inline size_t maxAsyncAssigns() {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
+						const bool dense_coordinates_may_not_call_maxAsyncAssignes = false;
+						assert( dense_coordinates_may_not_call_maxAsyncAssignes );
+					}
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					const int T = omp_get_num_threads();
 					assert( _buf % T == 0 );
@@ -995,14 +1099,14 @@ namespace grb {
 				 * \note Calling this function on an already-dense vector will have no
 				 *       effect, as can also be inferred from the above description.
 				 */
-				inline bool asyncAssign( const size_t i, Update & localUpdate ) noexcept {
+				inline bool asyncAssign( const size_t i, Update &localUpdate ) noexcept {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					// if dense, then all assigns are trivial
 					if( _n == _cap ) {
 						return true;
 					}
 					// otherwise, check sparsity
-					if( ! _assigned[ i ] ) {
+					if( !_assigned[ i ] ) {
 						_assigned[ i ] = true;
 						const size_t localPos = incrementUpdate( localUpdate );
 						assert( localPos - 1 < maxAsyncAssigns() );
@@ -1023,6 +1127,8 @@ namespace grb {
 				 * given instance will be as though it was newly constructed (i.e., any
 				 * updates recorded via #asyncAssign are deleted)-- i.e., \a update will
 				 * will be empty once more.
+				 *
+				 * May not be called from dense instances.
 				 *
 				 * Once all instances of #Update derived from the same #Coordinates class
 				 * are empty, it becomes valid to make a call to #rebuildSparsity, next to
@@ -1047,7 +1153,14 @@ namespace grb {
 				 *
 				 * @returns Whether \a update was empty for all threads.
 				 */
-				inline bool joinUpdate( Update & update ) noexcept {
+				inline bool joinUpdate( Update &update ) noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
+						const bool dense_coordinate_instance_cannot_call_joinUpdate = false;
+						assert( dense_coordinate_instance_cannot_call_joinUpdate );
+					}
+#endif
+
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					const int t = omp_get_thread_num();
 					const int T = omp_get_num_threads();
@@ -1206,6 +1319,8 @@ namespace grb {
 				 * This function may only be called on instances with valid or copy-updated
 				 * state.
 				 *
+				 * May not be called from dense instances.
+				 *
 				 * \note Thus under the above conditions, this function is thread-safe.
 				 *
 				 * @param[in] x Where to copy the coordinates from.
@@ -1213,11 +1328,17 @@ namespace grb {
 				 *
 				 * @return The nonzero index the i-th nonzero corresponds to.
 				 */
-				inline StackType asyncCopy( const Coordinates & x, const size_t & i ) noexcept {
+				inline StackType asyncCopy( const Coordinates &x, const size_t &i ) noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						const bool dense_coordinate_may_not_call_asyncCopy = false;
+						assert( dense_coordinate_may_not_call_asyncCopy );
+					}
 					assert( _buf == x._buf );
 					assert( _cap == x._cap );
 					assert( x._n <= x._cap );
 					assert( i < x._n );
+#endif
 					const size_t index = x._stack[ i ];
 					assert( index < _cap );
 					assert( x._assigned[ index ] == true );
@@ -1230,6 +1351,8 @@ namespace grb {
 				 * This function must be called after exactly #size calls to #asyncCopy.
 				 * After the call to this function this instance is a full copy of \a x.
 				 *
+				 * May not be called from dense instances.
+				 *
 				 * This function should be called \em exactly once after #size calls to
 				 * #asyncCopy. It will revert any copy-updated state back to a valid
 				 * state. This function should only be called on instances with
@@ -1237,9 +1360,15 @@ namespace grb {
 				 *
 				 * @param[in] x Where to copy the coordinates from.
 				 */
-				inline void joinCopy( const Coordinates & x ) noexcept {
+				inline void joinCopy( const Coordinates &x ) noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						const bool dense_coordinates_may_not_call_joinCopy = false;
+						assert( dense_coordinates_may_not_call_joinCopy );
+					}
 					assert( _buf == x._buf );
 					assert( _cap == x._cap );
+#endif
 					_n = x._n;
 				}
 
@@ -1248,10 +1377,18 @@ namespace grb {
 				 * This function may be called on instances with any state. Any pending
 				 * #Update instances immediately become invalid.
 				 *
-				 * This function may be called on instances with any state.
+				 * May not be called from dense instances.
+				 *
+				 * This function may be called on instances with any (other) state.
 				 */
 				inline void clear() noexcept {
 					if( _n == _cap ) {
+#ifndef NDEBUG
+						if( _assigned == nullptr && _cap > 0 ) {
+							const bool dense_coordinates_may_not_call_clear = false;
+							assert( dense_coordinates_may_not_call_clear );
+						}
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
@@ -1281,6 +1418,8 @@ namespace grb {
 				 * Set a range of coordinates to empty. This instance becomes invalid
 				 * immediately. By exception, a call to #nonzeroes does remain functional.
 				 *
+				 * May not be called on dense instances.
+				 *
 				 * \internal The exception was added since guaranteeing it costs only
 				 *           \f$ \Theta(1) \f$ time.
 				 *
@@ -1289,8 +1428,14 @@ namespace grb {
 				 *                  \em not be cleared.
 				 */
 				inline void clearRange( const size_t start, const size_t end ) noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
+						const bool dense_coordinates_cannot_call_clearRange = false;
+						assert( dense_coordinates_cannot_call_clearRange );
+					}
 					assert( start <= end );
 					assert( end <= _cap );
+#endif
 					size_t removed = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
@@ -1302,16 +1447,18 @@ namespace grb {
 						for( size_t i = start; i < end; ++i ) {
 							if( _assigned[ i ] ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-								(void)++local_removed;
+								(void) ++local_removed;
 #else
-								(void)++removed;
+								(void) ++removed;
 #endif
 								_assigned[ i ] = false;
 							}
 						}
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp critical
-						{ removed += local_removed; }
+						{
+							removed += local_removed;
+						}
 					}
 #endif
 					_n -= removed;
@@ -1398,21 +1545,39 @@ namespace grb {
 				}
 
 				/**
+				 * May not be called on dense coordinates.
+				 *
 				 * @param[out] size The size of the stack, in bytes.
 				 *
 				 * @returns A pointer to the stack memory area.
 				 */
 				void * getRawStack( size_t &size ) const noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
+						const bool dense_coordinates_cannot_call_getRawStack = false;
+						assert( dense_coordinates_cannot_call_getRawStack );
+					}
+					assert( _stack != nullptr || _cap == 0 );
+#endif
 					size = _n * sizeof( StackType );
 					return _stack;
 				}
 
 				/**
+				 * May not be called from dense instances.
+				 *
 				 * @param[out] size The size of the stack, in number of elements.
 				 *
 				 * @returns The stack.
 				 */
 				StackType * getStack( size_t &size ) const noexcept {
+#ifndef NDEBUG
+					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
+						const bool dense_coordinates_cannot_call_getRawStack = false;
+						assert( dense_coordinates_cannot_call_getRawStack );
+					}
+					assert( _stack != nullptr || _cap == 0 );
+#endif
 					size = _n;
 					return _stack;
 				}
