@@ -40,7 +40,7 @@ namespace sparseblas {
 	template< typename T >
 	class PartialTripletBatch {
 		public:
-			int ntriplets;
+			size_t ntriplets;
 			Triplet< T > triplets[ BATCH_SIZE ];
 			PartialTripletBatch() : ntriplets( 0 ) {}
 	};
@@ -133,6 +133,7 @@ namespace sparseblas {
 							if( loc == BATCH_SIZE ) {
 								(void) ++batch;
 								assert( batch <= batches.size() );
+								loc = 0;
 							}
 						}
 						return *this;
@@ -178,9 +179,10 @@ namespace sparseblas {
 				triplet.val = val;
 				(void) ++( last.ntriplets );
 				if( last.ntriplets == BATCH_SIZE ) {
-					batches.push_back( std::move( last ) );
+					FullTripletBatch< T > toAdd( std::move( last ) );
+					batches.push_back( toAdd );
+					assert( last.ntriplets == 0 );
 				}
-				last = PartialTripletBatch< T >();
 			}
 
 			size_t nnz() const {
@@ -245,12 +247,18 @@ namespace sparseblas {
 				assert( !finalized );
 				assert( A == nullptr );
 				assert( ingest != nullptr );
-				A = new grb::Matrix< T >( m, n, ingest->nnz() );
-				const auto rc = grb::buildMatrixUnique(
-					*A, ingest->cbegin(), ingest->cend(), grb::SEQUENTIAL );
-				if( rc != grb::SUCCESS ) {
-					throw std::runtime_error( "Could not ingest matrix into ALP/GraphBLAS"
-						"during finalisation." );
+				const size_t nnz = ingest->nnz();
+				if( nnz > 0 ) {
+					A = new grb::Matrix< T >( m, n, nnz );
+					assert( grb::capacity( *A ) >= nnz );
+					const grb::RC rc = grb::buildMatrixUnique(
+						*A, ingest->cbegin(), ingest->cend(), grb::SEQUENTIAL );
+					if( rc != grb::SUCCESS ) {
+						throw std::runtime_error( "Could not ingest matrix into ALP/GraphBLAS"
+							"during finalisation." );
+					}
+				} else {
+					A = new grb::Matrix< T >( m, n );
 				}
 				delete ingest;
 				ingest = nullptr;
@@ -281,7 +289,7 @@ extern "C" {
 		try {
 			matrix->ingest->add( val, row, col );
 		} catch( ... ) {
-			return 255;
+			return 2;
 		}
 		return 0;
 	}
@@ -295,11 +303,11 @@ extern "C" {
 		assert( matrix->finalized == false );
 		assert( matrix->ingest != nullptr );
 		try {
-			for( size_t k = 0; k < nnz; ++k ) {
+			for( int k = 0; k < nnz; ++k ) {
 				matrix->ingest->add( vals[ k ], rows[ k ], cols[ k ] );
 			}
 		} catch( ... ) {
-			return 255;
+			return 3;
 		}
 		return 0;
 	}
@@ -313,11 +321,11 @@ extern "C" {
 		assert( matrix->finalized == false );
 		assert( matrix->ingest != nullptr );
 		try {
-			for( size_t k = 0; k < nnz; ++k ) {
+			for( int k = 0; k < nnz; ++k ) {
 				matrix->ingest->add( vals[ k ], rows[ k ], j );
 			}
 		} catch( ... ) {
-			return 255;
+			return 4;
 		}
 		return 0;
 	}
@@ -331,20 +339,24 @@ extern "C" {
 		assert( matrix->finalized == false );
 		assert( matrix->ingest != nullptr );
 		try {
-			for( size_t k = 0; k < nnz; ++k ) {
+			for( int k = 0; k < nnz; ++k ) {
 				matrix->ingest->add( vals[ k ], i, cols[ k ] );
 			}
 		} catch( ... ) {
-			return 255;
+			return 5;
 		}
 		return 0;
 	}
 
 	int BLAS_duscr_end( blas_sparse_matrix A ) {
+		auto matrix = sparseblas::getDoubleMatrix( A );
+		assert( matrix->finalized == false );
+		assert( matrix->ingest != nullptr );
 		try {
-			sparseblas::getDoubleMatrix( A )->finalize();
-		} catch( ... ) {
-			return 255;
+			matrix->finalize();
+		} catch( const std::runtime_error &e ) {
+			std::cerr << "Caught error: " << e.what() << "\n";
+			return 1;
 		}
 		return 0;
 	}
@@ -366,8 +378,11 @@ extern "C" {
 			grb::identities::zero,
 			grb::identities::one
 		> ring;
+		if( alpha != 1.0 ) {
+			std::cerr << "An alpha other than 1 is not supported.\n";
+			return 255;
+		}
 		if( incx != 1 || incy != 1 ) {
-			// unsupported
 			std::cerr << "Strided input and/or output vectors are not supported.\n";
 			return 255;
 		}
@@ -382,7 +397,9 @@ extern "C" {
 				wrapRawVector< double >( matrix->n, x );
 			grb::Vector< double > output = grb::internal::template
 				wrapRawVector< double >( matrix->m, y );
-			const grb::RC rc = grb::mxv( output, *(matrix->A), input, ring );
+			const grb::RC rc = grb::mxv< grb::descriptors::dense >(
+				output, *(matrix->A), input, ring
+			);
 			if( rc != grb::SUCCESS ) {
 				std::cerr << "ALP/GraphBLAS returns error during SpMV: "
 					<< grb::toString( rc ) << ".\n";
@@ -393,8 +410,12 @@ extern "C" {
 				wrapRawVector< double >( matrix->m, x );
 			grb::Vector< double > output = grb::internal::template
 				wrapRawVector< double >( matrix->n, y );
-			const grb::RC rc = grb::mxv< grb::descriptors::transpose_matrix >(
-				output, *(matrix->A), input, ring );
+			const grb::RC rc = grb::mxv<
+				grb::descriptors::dense ||
+				grb::descriptors::transpose_matrix
+			>(
+				output, *(matrix->A), input, ring
+			);
 			if( rc != grb::SUCCESS ) {
 				std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
 					<< grb::toString( rc ) << ".\n";
