@@ -104,39 +104,67 @@ namespace grb {
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline C & getCoordinates( Vector< D, reference, C > & x ) noexcept;
+		inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline const C & getCoordinates( const Vector< D, reference, C > & x ) noexcept;
+		inline const C & getCoordinates(
+			const Vector< D, reference, C > &x
+		) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline D * getRaw( Vector< D, reference, C > & x ) noexcept;
+		inline D * getRaw( Vector< D, reference, C > &x ) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline const D * getRaw( const Vector< D, reference, C > & x ) noexcept;
+		inline const D * getRaw( const Vector< D, reference, C > &x ) noexcept;
 
 		template< typename D >
 		inline internal::Compressed_Storage<
 			D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & getCRS( Matrix< D, reference > & A ) noexcept;
+		> & getCRS( Matrix< D, reference > &A ) noexcept;
 
 		template< typename D >
 		inline const internal::Compressed_Storage<
 			D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & getCRS( const Matrix< D, reference > & A ) noexcept;
+		> & getCRS( const Matrix< D, reference > &A ) noexcept;
 
 		template< typename D >
 		inline internal::Compressed_Storage<
 			D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & getCCS( Matrix< D, reference > & A ) noexcept;
+		> & getCCS( Matrix< D, reference > &A ) noexcept;
 
 		template< typename D >
 		inline const internal::Compressed_Storage<
 			D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & getCCS( const Matrix< D, reference > & A ) noexcept;
+		> & getCCS( const Matrix< D, reference > &A ) noexcept;
+
+		template<
+			typename D,
+			Backend backend = config::default_backend
+		>
+		grb::Vector<
+			D, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> & wrapRawVector(
+			const size_t n, D *__restrict__ const raw
+		);
+
+		template<
+			typename D,
+			Backend backend = config::default_backend
+		>
+		const grb::Vector<
+			D, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> & wrapRawVector(
+			const size_t n, const D *__restrict__ const raw
+		);
 
 	} // namespace internal
 
@@ -205,6 +233,14 @@ namespace grb {
 		friend class PinnedVector< D, reference >;
 
 		friend class PinnedVector< D, BSP1D >;
+
+		friend Vector< D, reference, MyCoordinates > & internal::wrapRawVector<
+			D, reference
+		>( const size_t n, D *__restrict__ const raw );
+
+		friend const Vector< D, reference, MyCoordinates > & internal::wrapRawVector<
+			D, reference
+		>( const size_t n, const D *__restrict__ const raw );
 
 		/* *********************
 		 Auxiliary backend friends
@@ -500,6 +536,33 @@ namespace grb {
 
 			// done
 			return SUCCESS;
+		}
+
+		/**
+		 * \internal Internal constructor that wraps around an existing raw dense
+		 *           vector. This constructor results in a dense vector whose
+		 *           structure is immutable. Any invalid use incurs UB; use with care.
+		 */
+		Vector( const size_t n, D *__restrict__ const raw ) : _raw( raw ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference > constructor that wraps around an "
+				<< "external raw array.\n";
+#endif
+			if( n == 0 ) {
+#ifdef _DEBUG
+				std::cerr << "\t constructing an empty vector -- delegating to standard "
+					<< "constructor\n";
+#endif
+				assert( raw == nullptr );
+				initialize( nullptr, nullptr, nullptr, false, 0, 0 );
+			} else {
+				assert( raw != nullptr );
+				_id = internal::reference_mapper.insert(
+					reinterpret_cast< uintptr_t >( raw )
+				);
+				_remove_id = true;
+				_coordinates.setDense( n );
+			}
 		}
 
 
@@ -1202,6 +1265,42 @@ namespace grb {
 			> & getCCS( const Matrix< D, reference > &A ) noexcept {
 				return A.CCS;
 			}
+
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
+			template< typename D, Backend backend >
+			grb::Vector<
+				D, backend,
+				internal::Coordinates<
+					config::IMPLEMENTATION< backend >::coordinatesBackend()
+				>
+			> wrapRawVector(
+				const size_t n, D *__restrict__ const raw
+			) {
+				grb::Vector<
+					D, backend, internal::Coordinates<
+					       config::IMPLEMENTATION< backend >::coordinatesBackend()
+					>
+				> ret( n, raw );
+				return ret;
+			}
+
+			template< typename D, Backend backend >
+			const grb::Vector<
+				D, backend,
+				internal::Coordinates<
+					config::IMPLEMENTATION< backend >::coordinatesBackend()
+				>
+			> wrapRawVector(
+				const size_t n, const D *__restrict__ const raw
+			) {
+				grb::Vector<
+					D, backend, internal::Coordinates<
+					       config::IMPLEMENTATION< backend >::coordinatesBackend()
+					>
+				> ret( n, const_cast< D * >(raw) );
+				return ret;
+			}
+#endif
 
 	} // namespace internal
 
