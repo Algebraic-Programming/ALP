@@ -361,14 +361,21 @@ namespace grb {
 				
 				EWISELAMBDA_FUNC_MATRIX,
 				
-				EWISELAMBDA_FUNC_MATRIX_VECTOR
+				EWISELAMBDA_FUNC_MATRIX_VECTOR,
+				
+				VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				
+				
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				
+				VXM_VECTOR_VECTOR_MATRIX_ADD_MUL
 				
 				
 				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 73;
+			const constexpr size_t numOperationVertexTypes = 76;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -445,8 +452,12 @@ namespace grb {
 				GETID_VECTOR,
 				GETID_MATRIX,
 				EWISELAMBDA_FUNC_MATRIX,
-				EWISELAMBDA_FUNC_MATRIX_VECTOR
+				EWISELAMBDA_FUNC_MATRIX_VECTOR,
+				VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
 				
+				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				VXM_VECTOR_VECTOR_MATRIX_ADD_MUL
+	
 			};
 
 			std::string toString( const enum OperationVertexType ) noexcept;

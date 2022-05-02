@@ -295,7 +295,6 @@ namespace grb {
 	}
  	
  	template<
- 		
 		typename Func,
 		typename DataType1, typename DataType2,
 		typename Coords, typename... Args
@@ -315,7 +314,145 @@ namespace grb {
 		);
 		return eWiseLambda ( f, internal::getMatrix(A), internal::getVector(x), args...);
 	}
-
+	
+	
+	template< Descriptor descr,
+			bool masked,
+			bool input_masked,
+			bool left_handed,
+			bool using_semiring,
+			template< typename > class One,
+			class AdditiveMonoid,
+			class Multiplication,
+			typename IOType,
+			typename InputType1,
+			typename InputType2,
+			typename InputType3,
+			typename InputType4,
+			typename Coords >
+	RC vxm_generic( Vector< IOType, hyperdags, Coords > & u,
+			const Vector< InputType3, hyperdags, Coords > & mask,
+			const Vector< InputType1, hyperdags, Coords > & v,
+			const Vector< InputType4, hyperdags, Coords > & v_mask,
+			const Matrix< InputType2, hyperdags > & A,
+			const AdditiveMonoid & add,
+			const Multiplication & mul,
+			const std::function< size_t( size_t ) > & row_l2g,
+			const std::function< size_t( size_t ) > & row_g2l,
+			const std::function< size_t( size_t ) > & col_l2g,
+			const std::function< size_t( size_t ) > & col_g2l )
+ 	{
+ 		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
+ 		std::array< const void *, 1 > destinations{ &u };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return vxm_generic<descr> ( internal::getVector(u),  internal::getVector(mask),
+				  internal::getVector(v),  internal::getVector(v_mask), internal::getMatrix(A), add, mul, row_l2g, row_g2l, col_l2g, col_g2l);
+		}	
+	template< Descriptor descr = descriptors::no_operation,
+		bool output_may_be_masked = true,
+		bool input_may_be_masked = true,
+		class Ring,
+		typename IOType,
+		typename InputType1,
+		typename InputType2,
+		typename InputType3,
+		typename InputType4,
+		typename Coords 
+	>
+	RC vxm( Vector< IOType, hyperdags, Coords > & u,
+		const Vector< InputType3, hyperdags, Coords > & mask,
+		const Vector< InputType1, hyperdags, Coords > & v,
+		const Vector< InputType4, hyperdags, Coords > & v_mask,
+		const Matrix< InputType2, hyperdags > & A,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
+	{
+		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
+ 		std::array< const void *, 1 > destinations{ &u };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return vxm<descr> ( internal::getVector(u),  internal::getVector(mask),
+				  internal::getVector(v),  internal::getVector(v_mask), internal::getMatrix(A), ring);
+	}
+		
+		
+		
+		
+	
+		
+	template< 
+		Descriptor descr = descriptors::no_operation,
+		bool output_may_be_masked = true,
+		bool input_may_be_masked = true,
+		class AdditiveMonoid,
+		class MultiplicativeOperator,
+		typename IOType,
+		typename InputType1,
+		typename InputType2,
+		typename InputType3,
+		typename InputType4,
+		typename Coords >
+	RC vxm( Vector< IOType, hyperdags, Coords > & u,
+		const Vector< InputType3, hyperdags, Coords > & mask,
+		const Vector< InputType1, hyperdags, Coords > & v,
+		const Vector< InputType4, hyperdags, Coords > & v_mask,
+		const Matrix< InputType2, hyperdags > & A,
+		const AdditiveMonoid & add = AdditiveMonoid(),
+		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
+				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
+				! std::is_same< InputType2, void >::value,
+			void >::type * const = NULL )
+		{
+		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
+ 		std::array< const void *, 1 > destinations{ &u };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return vxm<descr> ( internal::getVector(u),  internal::getVector(mask),
+				  internal::getVector(v),  internal::getVector(v_mask), internal::getMatrix(A), add, mul);
+	}
+		
+		
+		
+	template< 
+		Descriptor descr = descriptors::no_operation, 
+		class AdditiveMonoid, 
+		class MultiplicativeOperator, 
+		typename IOType, typename InputType1, 
+		typename InputType2, typename Coords
+	>
+	RC vxm( Vector< IOType, hyperdags, Coords > & u,
+		const Vector< InputType1, hyperdags, Coords > & v,
+		const Matrix< InputType2, hyperdags > & A,
+		const AdditiveMonoid & add = AdditiveMonoid(),
+		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
+				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
+			void >::type * const = NULL ) 
+	{
+		std::array< const void *, 2 > sources{ & v,& A,};
+ 		std::array< const void *, 1 > destinations{ &u };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return vxm<descr> ( internal::getVector(u), internal::getVector(v), internal::getMatrix(A), add, mul);
+	}	
+		
+		
+		
+		
 } // end namespace grb
 
 #endif
