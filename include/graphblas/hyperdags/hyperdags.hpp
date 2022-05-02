@@ -357,14 +357,18 @@ namespace grb {
 				
 				GETID_VECTOR,
 				
-				GETID_MATRIX
+				GETID_MATRIX,
+				
+				EWISELAMBDA_FUNC_MATRIX,
+				
+				EWISELAMBDA_FUNC_MATRIX_VECTOR
 				
 				
 				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 71;
+			const constexpr size_t numOperationVertexTypes = 73;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -439,7 +443,9 @@ namespace grb {
 				CAPACITY_MATRIX,
 				RESIZE,
 				GETID_VECTOR,
-				GETID_MATRIX
+				GETID_MATRIX,
+				EWISELAMBDA_FUNC_MATRIX,
+				EWISELAMBDA_FUNC_MATRIX_VECTOR
 				
 			};
 

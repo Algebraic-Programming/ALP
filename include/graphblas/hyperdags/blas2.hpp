@@ -251,7 +251,8 @@ namespace grb {
 
 
 
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid,
+	template< 
+		 Descriptor descr = descriptors::no_operation, class AdditiveMonoid,
 		 class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords
 	>
 		 
@@ -274,6 +275,57 @@ namespace grb {
 		return mxv<descr> ( internal::getVector(u), internal::getMatrix(A), internal::getVector(v), add, mul );
 		}
  	
+
+	template< 
+		class ActiveDistribution, typename Func, typename DataType
+	>
+	RC eWiseLambda( const Func f, 
+			const Matrix< DataType, hyperdags > & A, 	
+			const size_t s,
+			const size_t P )
+	{
+ 		std::array< const void *, 1 > sources{ &A};
+ 		std::array< const void *, 0 > destinations{  };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::EWISELAMBDA_FUNC_MATRIX,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return eWiseLambda( f, internal::getMatrix(A), s, P );
+	}
+ 	
+ 	template<
+ 		
+		typename Func,
+		typename DataType1, typename DataType2,
+		typename Coords, typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, hyperdags > &A,
+		const Vector< DataType2, hyperdags, Coords > &x,
+		Args...args)
+	{
+ 		std::array< const void *, 2 > sources{&A, &x };
+ 		std::array< const void *, 0 > destinations{ };
+		internal::hyperdags::generator.addOperation(
+				internal::hyperdags::EWISELAMBDA_FUNC_MATRIX_VECTOR,
+				sources.begin(), sources.end(),
+				destinations.begin(), destinations.end()
+		);
+		return eWiseLambda ( f, internal::getMatrix(A), internal::getVector(x), args...);
+	}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
