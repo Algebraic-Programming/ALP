@@ -811,7 +811,7 @@ namespace grb {
 			// perform counting sort and detect dimension mismatches
 			// parallelise this loop -- internal issue #64
 			for( fwd_iterator it = _start; it != _end; ++it ) {
-				if( it.i() >= m ) {
+				if( static_cast< size_t >( it.i() ) >= m ) {
 #ifdef _DEBUG
 					std::cerr << "Error: " << m << " times " << n
 						<< " matrix nonzero ingestion encounters row "
@@ -819,7 +819,7 @@ namespace grb {
 #endif
 					return MISMATCH;
 				}
-				if( it.j() >= n ) {
+				if( static_cast< size_t >( it.j() ) >= n ) {
 #ifdef _DEBUG
 					std::cerr << "Error: " << m << " times " << n
 						<< " matrix nonzero ingestion encounters column "
