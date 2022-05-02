@@ -354,6 +354,56 @@ extern "C" {
 		return 0;
 	}
 
+	int BLAS_dusmv(
+		const enum blas_trans_type transa,
+		const double alpha, const blas_sparse_matrix A,
+		const double * x, int incx,
+		double * const y, const int incy
+	) {
+		grb::Semiring<
+			grb::operators::add< double >,
+			grb::operators::mul< double >,
+			grb::identities::zero,
+			grb::identities::one
+		> ring;
+		if( incx != 1 || incy != 1 ) {
+			// unsupported
+			std::cerr << "Strided input and/or output vectors are not supported.\n";
+			return 255;
+		}
+		auto matrix = sparseblas::getDoubleMatrix( A );
+		if( !(matrix->finalized) ) {
+			std::cerr << "Input matrix was not yet finalised; see BLAS_duscr_end.\n";
+			return 100;
+		}
+		assert( matrix->finalized );
+		if( transa == blas_no_trans ) {
+			const grb::Vector< double > input = grb::internal::template
+				wrapRawVector< double >( matrix->n, x );
+			grb::Vector< double > output = grb::internal::template
+				wrapRawVector< double >( matrix->m, y );
+			const grb::RC rc = grb::mxv( output, *(matrix->A), input, ring );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "ALP/GraphBLAS returns error during SpMV: "
+					<< grb::toString( rc ) << ".\n";
+				return 200;
+			}
+		} else {
+			const grb::Vector< double > input = grb::internal::template
+				wrapRawVector< double >( matrix->m, x );
+			grb::Vector< double > output = grb::internal::template
+				wrapRawVector< double >( matrix->n, y );
+			const grb::RC rc = grb::mxv< grb::descriptors::transpose_matrix >(
+				output, *(matrix->A), input, ring );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
+					<< grb::toString( rc ) << ".\n";
+				return 200;
+			}
+		}
+		return 0;
+	}
+
 	// TODO implement additional functionality from here onwards
 
 }
