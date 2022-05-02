@@ -316,21 +316,6 @@ namespace grb {
 		return eWiseLambda ( f, internal::getMatrix(A), internal::getVector(x), args...);
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 } // end namespace grb
 
 #endif
