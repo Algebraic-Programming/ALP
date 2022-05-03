@@ -617,14 +617,53 @@ extern "C" {
 		const extblas_sparse_vector x,
 		extblas_sparse_vector y
 	) {
-		(void) transa;
-		(void) alpha;
-		(void) A;
-		(void) x;
-		(void) y;
-		// TODO requires extblas_sparse_vector to be implemented
-		assert( false );
-		return 255;
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> ring;
+		auto matrix = sparseblas::getDoubleMatrix( A );
+		auto input  = sparseblas::getDoubleVector( x );
+		auto output = sparseblas::getDoubleVector( y );
+		if( !(matrix->finalized) ) {
+			std::cerr << "Uninitialised input matrix during SpMSpV\n";
+			return 10;
+		}
+		if( !(input->finalized) ) {
+			std::cerr << "Uninitialised input vector during SpMSpV\n";
+			return 20;
+		}
+		if( !(output->finalized) ) {
+			std::cerr << "Uninitialised output vector during SpMSpV\n";
+			return 30;
+		}
+		grb::RC rc = grb::SUCCESS;
+		if( alpha != 1.0 ) {
+			rc = grb::foldl( *(output->vector), 1.0 / alpha,
+				ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during pre-scaling of SpMSpV\n";
+				return 40;
+			}
+		}
+		if( transa == blas_no_trans ) {
+			rc = grb::mxv( *(output->vector), *(matrix->A), *(input->vector), ring );
+		} else {
+			rc = grb::mxv< grb::descriptors::transpose_matrix >(
+				*(output->vector), *(matrix->A), *(input->vector), ring );
+		}
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during call to grb::mxv (SpMSpV)\n";
+			return 50;
+		}
+		if( alpha != 1.0 ) {
+			rc = grb::foldl( *(output->vector), alpha,
+				ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during post-scaling of SpMSpV\n";
+				return 60;
+			}
+		}
+		return 0;
 	}
 
 	int EXTBLAS_dusmsm(
