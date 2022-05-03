@@ -188,3 +188,20 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
 
 install( TARGETS algorithms EXPORT GraphBLASTargets )
 
+# this target lists the transition path headers
+# these are plain C headers and do not have any dependences
+add_library( sparseblas INTERFACE )
+
+target_include_directories(
+	sparseblas INTERFACE
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sparseblas/>
+	$<INSTALL_INTERFACE:sparseblas/>
+)
+
+install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sparseblas/"
+	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../sparseblas/"
+	FILES_MATCHING REGEX "${HEADERS_REGEX}"
+)
+
+install( TARGETS sparseblas EXPORT GraphBLASTargets )
+
