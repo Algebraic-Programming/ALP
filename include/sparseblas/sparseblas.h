@@ -50,6 +50,9 @@ enum blas_order_type {
 /** A sparse matrix */
 typedef void * blas_sparse_matrix;
 
+/** A sparse vector. This is an implementation-specific extension. */
+typedef void * extblas_sparse_vector;
+
 /**
  * Creates a handle to a new / empty sparse matrix.
  *
@@ -130,6 +133,41 @@ int BLAS_dusmm(
 	const double * B, const int ldb,
 	const double * C, const int ldc
 );
+
+/**
+ * This function is an implementation-specific extension of SparseBLAS that
+ * performs sparse matrix sparse vector multiplication; i.e., one of
+ *  - \f$ y \to \alpha A x + y \f$, or
+ *  - \f$ y \to \alpha A^T x + y \f$.
+ */
+int EXTBLAS_dusmsv(
+	const enum blas_trans_type transa,
+	const double alpha, const blas_sparse_matrix A,
+	const extblas_sparse_vector x,
+	extblas_sparse_vector y
+);
+
+/**
+ * This function is an implementation-specific extension of SparseBLAS that
+ * performs sparse matrix sparse matrix multiplication, i.e., one of
+ *  - \f$ C \to \alpha A   B   + C \f$,
+ *  - \f$ C \to \alpha A^T B   + C \f$,
+ *  - \f$ C \to \alpha A   B^T + C \f$, or
+ *  - \f$ C \to \alpha A^T B^T + C \f$.
+ */
+int EXTBLAS_dusmsm(
+	const enum blas_trans_type transa,
+	const double alpha, const blas_sparse_matrix A,
+	const enum blas_trans_type transb, const blas_sparse_matrix B,
+	blas_sparse_matrix C
+);
+
+/**
+ * This function is an implementation-specific extension of SparseBLAS that
+ * clears any buffer memory that preceding SparseBLAS operations may have
+ * created and used.
+ */
+int EXTBLAS_free();
 
 #ifdef __cplusplus
 } // end extern "C"

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "nist.h"
+#include "sparseblas.h"
 
 #include <assert.h>
 
@@ -37,6 +37,10 @@ namespace sparseblas {
 			T val;
 	};
 
+	/**
+	 * \internal A set of triplets, the number of which is than or equal to
+	 *           #BATCH_SIZE triplets.
+	 */
 	template< typename T >
 	class PartialTripletBatch {
 		public:
@@ -45,6 +49,9 @@ namespace sparseblas {
 			PartialTripletBatch() : ntriplets( 0 ) {}
 	};
 
+	/**
+	 * \internal A set of #BATCH_SIZE triplets.
+	 */
 	template< typename T >
 	class FullTripletBatch {
 		public:
@@ -62,11 +69,19 @@ namespace sparseblas {
 
 		private:
 
+			/** \internal A series of full triplet batches. */
 			std::vector< FullTripletBatch< T > > batches;
+
+			/** \internal One partial batch of triplets. */
 			PartialTripletBatch< T > last;
+
 
 		public:
 
+			/**
+			 * \internal An iterator over the triplets contained herein. The iterator
+			 *           adheres both to STL as well as ALP.
+			 */
 			class const_iterator {
 
 				friend class MatrixUC< T >;
@@ -171,6 +186,7 @@ namespace sparseblas {
 
 			};
 
+			/** \internal Adds a triplet. */
 			void add( const T& val, const int &row, const int &col ) {
 				assert( last.ntriplets != BATCH_SIZE );
 				auto &triplet = last.triplets[ last.ntriplets ];
@@ -185,16 +201,19 @@ namespace sparseblas {
 				}
 			}
 
+			/** \internal Counts the number of triplets currently contained within. */
 			size_t nnz() const {
 				size_t ret = batches.size() * BATCH_SIZE;
 				ret += last.ntriplets;
 				return ret;
 			}
 
+			/** \internal Retrieves an iterator in start position. */
 			const_iterator cbegin() const {
 				return const_iterator( *this );
 			}
 
+			/** \internal Retrieves an iterator in end position. */
 			const_iterator cend() const {
 				auto ret = const_iterator( *this );
 				ret.setToEndPosition();
@@ -203,6 +222,11 @@ namespace sparseblas {
 
 	};
 
+	/**
+	 * \internal SparseBLAS allows a matrix to be under construction or finalized.
+	 *           This class matches that concept -- for non-finalized matrices, it
+	 *           is backed by MatrixUC, and otherwise by an ALP/GraphBLAS matrix.
+	 */
 	template< typename T >
 	class SparseMatrix {
 
@@ -243,6 +267,10 @@ namespace sparseblas {
 				finalized = false;
 			}
 
+			/**
+			 * \internal Switches from a matrix under construction to a finalized
+			 *           matrix.
+			 */
 			void finalize() {
 				assert( !finalized );
 				assert( A == nullptr );
@@ -267,11 +295,17 @@ namespace sparseblas {
 
 	};
 
+	/**
+	 * \internal Utility function that converts a #blas_sparse_matrix to a
+	 *           sparseblas::SparseMatrix. This is for matrices of doubles.
+	 */
 	SparseMatrix< double > * getDoubleMatrix( blas_sparse_matrix A ) {
 		return static_cast< SparseMatrix< double >* >( A );
 	}
 
 }
+
+// implementation of the SparseBLAS API follows
 
 extern "C" {
 
@@ -373,20 +407,25 @@ extern "C" {
 		double * const y, const int incy
 	) {
 		grb::Semiring<
-			grb::operators::add< double >,
-			grb::operators::mul< double >,
-			grb::identities::zero,
-			grb::identities::one
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
 		> ring;
+		auto matrix = sparseblas::getDoubleMatrix( A );
 		if( alpha != 1.0 ) {
-			std::cerr << "An alpha other than 1 is not supported.\n";
-			return 255;
+			grb::Vector< double > output = grb::internal::template
+				wrapRawVector< double >( matrix->m, y );
+			const grb::RC rc = grb::foldl< grb::descriptors::dense >(
+				output, 1.0 / alpha, ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during pre-scaling during SpMV\n";
+				return 50;
+			}
 		}
 		if( incx != 1 || incy != 1 ) {
+			// TODO: requires ALP views
 			std::cerr << "Strided input and/or output vectors are not supported.\n";
 			return 255;
 		}
-		auto matrix = sparseblas::getDoubleMatrix( A );
 		if( !(matrix->finalized) ) {
 			std::cerr << "Input matrix was not yet finalised; see BLAS_duscr_end.\n";
 			return 100;
@@ -422,10 +461,141 @@ extern "C" {
 				return 200;
 			}
 		}
+		if( alpha != 1.0 ) {
+			grb::Vector< double > output = grb::internal::template
+				wrapRawVector< double >( matrix->m, y );
+			const grb::RC rc = grb::foldl< grb::descriptors::dense >(
+				output, alpha, ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during post-scaling during SpMV\n";
+				return 250;
+			}
+		}
 		return 0;
 	}
 
-	// TODO implement additional functionality from here onwards
+	int BLAS_dusmm(
+		const enum blas_order_type order,
+		const enum blas_trans_type transa,
+		const int nrhs,
+		const double alpha, const blas_sparse_matrix A,
+		const double * B, const int ldb,
+		const double * C, const int ldc
+	) {
+		(void) order;
+		(void) transa;
+		(void) nrhs;
+		(void) alpha;
+		(void) A;
+		(void) B;
+		(void) ldb;
+		(void) C;
+		(void) ldc;
+		// TODO requires dense ALP and mixed sparse/dense ALP operations
+		std::cerr << "BLAS_dusmm (sparse matrix times dense matrix) has not yet "
+			<< "been implemented.\n";
+		assert( false );
+		return 255;
+	}
 
-}
+	int EXTBLAS_dusmsv(
+		const enum blas_trans_type transa,
+		const double alpha, const blas_sparse_matrix A,
+		const extblas_sparse_vector x,
+		extblas_sparse_vector y
+	) {
+		(void) transa;
+		(void) alpha;
+		(void) A;
+		(void) x;
+		(void) y;
+		// TODO requires extblas_sparse_vector to be implemented
+		assert( false );
+		return 255;
+	}
+
+	int EXTBLAS_dusmsm(
+		const enum blas_trans_type transa,
+		const double alpha, const blas_sparse_matrix A,
+		const enum blas_trans_type transb, const blas_sparse_matrix B,
+		blas_sparse_matrix C
+	) {
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> ring;
+		auto matA = sparseblas::getDoubleMatrix( A );
+		auto matB = sparseblas::getDoubleMatrix( B );
+		auto matC = sparseblas::getDoubleMatrix( C );
+		if( !(matA->finalized) ) {
+			std::cerr << "Uninitialised left-hand input matrix during SpMSpM\n";
+			return 10;
+		}
+		if( !(matB->finalized) ) {
+			std::cerr << "Uninitialised right-hand input matrix during SpMSpM\n";
+			return 20;
+		}
+		if( !(matC->finalized) ) {
+			std::cerr << "Uninitialised output matrix during SpMSpM\n";
+			return 30;
+		}
+		if( alpha != 1.0 ) {
+			/*const grb::RC rc = grb::foldl( *(matC->A), 1.0 / alpha,
+				ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during pre-scaling for SpMSpM\n";
+				return 40;
+			}*/
+			// TODO requires level-3 fold in ALP/GraphBLAS
+			std::cerr << "Any other alpha from 1.0 is currently not supported for "
+				<< "SpMSpM multiplication\n";
+			return 255;
+		}
+		grb::RC rc = grb::SUCCESS;
+		if( transa == blas_no_trans && transb == blas_no_trans ) {
+			rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring );
+		} else if( transa != blas_no_trans && transb == blas_no_trans ) {
+			rc = grb::mxm< grb::descriptors::transpose_left >(
+				*(matC->A), *(matA->A), *(matB->A), ring );
+		} else if( transa == blas_no_trans && transb != blas_no_trans ) {
+			rc = grb::mxm< grb::descriptors::transpose_right >(
+				*(matC->A), *(matA->A), *(matB->A), ring );
+		} else {
+			assert( transa != blas_no_trans );
+			assert( transb != blas_no_trans );
+			rc = grb::mxm<
+				grb::descriptors::transpose_left |
+				grb::descriptors::transpose_right
+			>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+			rc = rc ? rc : grb::mxm<
+				grb::descriptors::transpose_left |
+				grb::descriptors::transpose_right
+			>( *(matC->A), *(matA->A), *(matB->A), ring );
+		}
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during call to ALP/GraphBLAS mxm\n";
+			return 50;
+		}
+		/*TODO see above
+		if( alpha != 1.0 ) {
+			rc = grb::foldl( *(matC->A), 1.0 / alpha,
+				ring.getMultiplicativeOperator() );
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "Error during post-scaling for SpMSpM\n";
+				return 60;
+			}
+		}*/
+		return 0;
+	}
+
+	int EXTBLAS_free() {
+		const grb::RC rc = grb::finalize();
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during call to EXTBLAS_free\n";
+			return 10;
+		}
+		return 0;
+	}
+
+} // end extern "C"
 
