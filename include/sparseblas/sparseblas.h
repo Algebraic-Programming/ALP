@@ -54,6 +54,43 @@ typedef void * blas_sparse_matrix;
 typedef void * extblas_sparse_vector;
 
 /**
+ * Creates a handle to a new sparse vector that holds no entries.
+ *
+ * This is an implementation-specific extension.
+ *
+ * @param[in] n The returned vector size.
+ *
+ * @returns An #extblas_sparse_vector that is under construction.
+ */
+extblas_sparse_vector EXTBLAS_dusv_begin( const int n );
+
+/**
+ * Inserts a new nonzero entry into a sparse vector that is under construction.
+ *
+ * This is an implementation-specific extension.
+ */
+int EXTBLAS_dusv_insert_entry(
+	extblas_sparse_vector x,
+	const double val,
+	const int index
+);
+
+/**
+ * Signals the end of sparse vector construction, making the given vector ready
+ * for use.
+ *
+ * This is an implementation-specific extension.
+ */
+int EXTBLAS_dusv_end( extblas_sparse_vector x );
+
+/**
+ * Destroys the given sparse vector.
+ *
+ * This is an implementation-specific extension.
+ */
+int EXTBLAS_dusvds( extblas_sparse_vector x );
+
+/**
  * Creates a handle to a new / empty sparse matrix.
  *
  * A call to this function must always be paired with one to

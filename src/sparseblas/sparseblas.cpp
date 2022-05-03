@@ -223,6 +223,75 @@ namespace sparseblas {
 	};
 
 	/**
+	 * \internal A sparse vector that is either under construction, or finalized as
+	 *           an ALP/GraphBLAS vector.
+	 */
+	template< typename T >
+	class SparseVector {
+
+		public:
+
+			int n;
+			bool finalized;
+			grb::Vector< T > * vector;
+
+		private:
+
+			std::vector< T > uc_vals;
+			std::vector< int > uc_inds;
+
+		public:
+
+			SparseVector( const int &_n ) :
+				n( _n ), finalized( false ), vector( nullptr )
+			{}
+
+			~SparseVector() {
+				if( finalized ) {
+					assert( vector != nullptr );
+					delete vector;
+				} else {
+					assert( vector == nullptr );
+				}
+			}
+
+			void add( const T &val, const int &index ) {
+				assert( !finalized );
+				uc_vals.push_back( val );
+				uc_inds.push_back( index );
+			}
+
+			void finalize() {
+				assert( uc_vals.size() == uc_inds.size() );
+				const size_t nz = uc_vals.size();
+				vector = new grb::Vector< T >( n, nz );
+				if( vector == nullptr ) {
+					std::cerr << "Could not create ALP/GraphBLAS vector of size " << n
+						<< " and capacity " << nz << "\n";
+					throw std::runtime_error( "Could not create ALP/GraphBLAS vector" );
+				}
+				if( grb::capacity( *vector ) < nz ) {
+					throw std::runtime_error( "ALP/GraphBLAS vector has insufficient "
+						"capacity" );
+				}
+				const grb::RC rc = grb::buildVector(
+					*vector, 
+					uc_inds.cbegin(), uc_inds.cend(),
+					uc_vals.cbegin(), uc_vals.cend(),
+					grb::SEQUENTIAL
+				);
+				if( rc != grb::SUCCESS ) {
+					throw std::runtime_error( "Could not ingest nonzeroes into ALP/GraphBLAS "
+						"vector" );
+				}
+				uc_vals.clear();
+				uc_inds.clear();
+				finalized = true;
+			}
+
+	};
+
+	/**
 	 * \internal SparseBLAS allows a matrix to be under construction or finalized.
 	 *           This class matches that concept -- for non-finalized matrices, it
 	 *           is backed by MatrixUC, and otherwise by an ALP/GraphBLAS matrix.
@@ -296,6 +365,14 @@ namespace sparseblas {
 	};
 
 	/**
+	 * \internal Utility function that converts a #extblas_sparse_vector to a
+	 *           sparseblas::SparseVector. This is for vectors of doubles.
+	 */
+	SparseVector< double > * getDoubleVector( extblas_sparse_vector x ) {
+		return static_cast< SparseVector< double >* >( x );
+	}
+
+	/**
 	 * \internal Utility function that converts a #blas_sparse_matrix to a
 	 *           sparseblas::SparseMatrix. This is for matrices of doubles.
 	 */
@@ -308,6 +385,42 @@ namespace sparseblas {
 // implementation of the SparseBLAS API follows
 
 extern "C" {
+
+	extblas_sparse_vector BLAS_dusv_begin( const int n ) {
+		return new sparseblas::SparseVector< double >( n );
+	}
+
+	int EXTBLAS_dusv_insert_entry(
+		extblas_sparse_vector x,
+		const double val,
+		const int index
+	) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( !(vector->finalized) );
+		try {
+			vector->add( val, index );
+		} catch( ... ) {
+			return 20;
+		}
+		return 0;
+	}
+
+	int EXTBLAS_dusv_end( extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( !(vector->finalized) );
+		try {
+			vector->finalize();
+		} catch( ... ) {
+			return 30;
+		}
+		return 0;
+	}
+
+	int EXTBLAS_dusvds( extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		delete vector;
+		return 0;
+	}
 
 	blas_sparse_matrix BLAS_duscr_begin( const int m, const int n ) {
 		return new sparseblas::SparseMatrix< double >( m, n );
