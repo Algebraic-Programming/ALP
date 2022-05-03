@@ -273,28 +273,69 @@ namespace grb {
 				destinations.begin(), destinations.end()
 		);
 		return mxv<descr> ( internal::getVector(u), internal::getMatrix(A), internal::getVector(v), add, mul );
-		}
- 	
+	}
 
-	template< 
-		class ActiveDistribution, typename Func, typename DataType
+	/** \internal Uses a direct implementation. */
+	template<
+		typename Func, typename DataType
 	>
-	RC eWiseLambda( const Func f, 
-			const Matrix< DataType, hyperdags > & A, 	
-			const size_t s,
-			const size_t P )
-	{
- 		std::array< const void *, 1 > sources{ &A};
- 		std::array< const void *, 0 > destinations{  };
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType, hyperdags > &A
+	) {
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::EWISELAMBDA_FUNC_MATRIX,
-				sources.begin(), sources.end(),
-				destinations.begin(), destinations.end()
+				sources.cbegin(), sources.cend(),
+				destinations.cbegin(), destinations.cend()
 		);
-		return eWiseLambda( f, internal::getMatrix(A), s, P );
+		return eWiseLambda( f, internal::getMatrix(A) );
 	}
- 	
- 	template<
+
+	namespace internal {
+
+		/** \internal This is the end recursion */
+		template<
+			typename Func, typename DataType
+		>
+		RC hyperdag_ewisematrix(
+			const Func f,
+			const Matrix< DataType, grb::hyperdags > &A,
+			std::vector< const void * > &sources,
+			std::vector< const void * > &destinations
+		) {
+			sources.push_back( &A );
+			internal::hyperdags::generator.addOperation(
+					internal::hyperdags::EWISELAMBDA_FUNC_MATRIX,
+					sources.cbegin(), sources.cend(),
+					destinations.cbegin(), destinations.cend()
+			);
+			return grb::eWiseLambda( f, internal::getMatrix(A) );
+		}
+
+		/** \internal This is the base recursion */
+		template<
+			typename Func, typename DataType1, typename DataType2,
+			typename Coords, typename... Args
+		>
+		RC hyperdag_ewisematrix(
+			const Func f,
+			const Matrix< DataType1, grb::hyperdags > &A,
+			std::vector< const void * > &sources,
+			std::vector< const void * > &destinations,
+			const Vector< DataType2, grb::hyperdags, Coords > &x,
+			Args... args
+		) {
+			sources.push_back( &x );
+			destinations.push_back( &x );
+			return hyperdag_ewisematrix( f, A, sources, destinations, args... );
+		}
+
+	} // end namespace grb::internal
+
+	/** \internal Implements the recursive case */
+	template<
 		typename Func,
 		typename DataType1, typename DataType2,
 		typename Coords, typename... Args
@@ -303,55 +344,56 @@ namespace grb {
 		const Func f,
 		const Matrix< DataType1, hyperdags > &A,
 		const Vector< DataType2, hyperdags, Coords > &x,
-		Args...args)
-	{
- 		std::array< const void *, 2 > sources{&A, &x };
- 		std::array< const void *, 0 > destinations{ };
-		internal::hyperdags::generator.addOperation(
-				internal::hyperdags::EWISELAMBDA_FUNC_MATRIX_VECTOR,
-				sources.begin(), sources.end(),
-				destinations.begin(), destinations.end()
-		);
-		return eWiseLambda ( f, internal::getMatrix(A), internal::getVector(x), args...);
+		Args... args
+	) {
+		std::vector< const void * > sources, destinations;
+		return internal::hyperdag_ewisematrix( f, A, sources, destinations, x, args... );
 	}
-	
-	
+
 	template< Descriptor descr,
-			bool masked,
-			bool input_masked,
-			bool left_handed,
-			bool using_semiring,
-			template< typename > class One,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
-	RC vxm_generic( Vector< IOType, hyperdags, Coords > & u,
-			const Vector< InputType3, hyperdags, Coords > & mask,
-			const Vector< InputType1, hyperdags, Coords > & v,
-			const Vector< InputType4, hyperdags, Coords > & v_mask,
-			const Matrix< InputType2, hyperdags > & A,
-			const AdditiveMonoid & add,
-			const Multiplication & mul,
-			const std::function< size_t( size_t ) > & row_l2g,
-			const std::function< size_t( size_t ) > & row_g2l,
-			const std::function< size_t( size_t ) > & col_l2g,
-			const std::function< size_t( size_t ) > & col_g2l )
- 	{
- 		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
- 		std::array< const void *, 1 > destinations{ &u };
+		bool masked,
+		bool input_masked,
+		bool left_handed,
+		bool using_semiring,
+		template< typename > class One,
+		class AdditiveMonoid,
+		class Multiplication,
+		typename IOType,
+		typename InputType1,
+		typename InputType2,
+		typename InputType3,
+		typename InputType4,
+		typename Coords
+	>
+	RC vxm_generic(
+		Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Vector< InputType4, hyperdags, Coords > &v_mask,
+		const Matrix< InputType2, hyperdags > &A,
+		const AdditiveMonoid &add,
+		const Multiplication &mul,
+		const std::function< size_t( size_t ) > &row_l2g,
+		const std::function< size_t( size_t ) > &row_g2l,
+		const std::function< size_t( size_t ) > &col_l2g,
+		const std::function< size_t( size_t ) > &col_g2l
+	) {
+		std::array< const void *, 4 > sources{ &v, &A, &mask, &v_mask };
+		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
-				internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				sources.begin(), sources.end(),
-				destinations.begin(), destinations.end()
+			internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
 		);
-		return vxm_generic<descr> ( internal::getVector(u),  internal::getVector(mask),
-				  internal::getVector(v),  internal::getVector(v_mask), internal::getMatrix(A), add, mul, row_l2g, row_g2l, col_l2g, col_g2l);
-		}	
+		return vxm_generic<descr>(
+			internal::getVector(u), internal::getVector(mask),
+			internal::getVector(v), internal::getVector(v_mask),
+			internal::getMatrix(A),
+			add, mul,
+			row_l2g, row_g2l, col_l2g, col_g2l
+		);
+	}
+
 	template< Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
