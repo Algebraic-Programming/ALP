@@ -29,7 +29,7 @@ set_target_properties( sparseblas_static PROPERTIES
 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
 )
 
-target_link_libraries( sparseblas_static PUBLIC backend_reference_headers sparseblas )
+target_link_libraries( sparseblas_static PUBLIC backend_reference sparseblas )
 
 target_link_libraries( sparseblas_static PRIVATE backend_flags )
 
@@ -49,7 +49,7 @@ set_target_properties( sparseblas_omp_static PROPERTIES
 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
 )
 
-target_link_libraries( sparseblas_omp_static PUBLIC backend_reference_omp_headers sparseblas )
+target_link_libraries( sparseblas_omp_static PUBLIC backend_reference_omp sparseblas )
 
 target_link_libraries( sparseblas_omp_static PRIVATE backend_flags )
 
