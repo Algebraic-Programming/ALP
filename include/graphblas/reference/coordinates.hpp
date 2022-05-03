@@ -295,17 +295,12 @@ namespace grb {
 				}
 
 				/**
-				 * May not be called from dense instances.
-				 *
 				 * @returns An empty thread-local stack for new nonzeroes.
 				 */
 				inline Update EMPTY_UPDATE() {
-#ifndef NDEBUG
 					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
-						const bool dense_coordinates_may_not_call_EMPTY_UPDATE = false;
-						assert( dense_coordinates_may_not_call_EMPTY_UPDATE );
+						return nullptr;
 					}
-#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					Update ret = getLocalUpdate();
 					ret[ 0 ] = 0;
@@ -1027,18 +1022,13 @@ namespace grb {
 				}
 
 				/**
-				 * May not be called on dense instances.
-				 *
 				 * @returns How many asynchronous assignments a single thread is guaranteed
 				 *          to be able to push without synchronisation.
 				 */
 				inline size_t maxAsyncAssigns() {
-#ifndef NDEBUG
 					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
-						const bool dense_coordinates_may_not_call_maxAsyncAssignes = false;
-						assert( dense_coordinates_may_not_call_maxAsyncAssignes );
+						return 0;
 					}
-#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					const int T = omp_get_num_threads();
 					assert( _buf % T == 0 );
@@ -1128,8 +1118,6 @@ namespace grb {
 				 * updates recorded via #asyncAssign are deleted)-- i.e., \a update will
 				 * will be empty once more.
 				 *
-				 * May not be called from dense instances.
-				 *
 				 * Once all instances of #Update derived from the same #Coordinates class
 				 * are empty, it becomes valid to make a call to #rebuildSparsity, next to
 				 * even more calls to #asyncAssign and #joinAssign.
@@ -1154,12 +1142,9 @@ namespace grb {
 				 * @returns Whether \a update was empty for all threads.
 				 */
 				inline bool joinUpdate( Update &update ) noexcept {
-#ifndef NDEBUG
 					if( _assigned == nullptr && _cap > 0 && _cap == _n ) {
-						const bool dense_coordinate_instance_cannot_call_joinUpdate = false;
-						assert( dense_coordinate_instance_cannot_call_joinUpdate );
+						return true;
 					}
-#endif
 
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					const int t = omp_get_thread_num();
