@@ -17,6 +17,11 @@
 
 #include "sparseblas.h"
 
+#include <limits>
+#include <vector>
+#include <iostream>
+#include <stdexcept>
+
 #include <assert.h>
 
 #include <graphblas.hpp>
@@ -234,6 +239,7 @@ namespace sparseblas {
 			int n;
 			bool finalized;
 			grb::Vector< T > * vector;
+			typename grb::Vector< T >::const_iterator start, end;
 
 		private:
 
@@ -419,6 +425,60 @@ extern "C" {
 	int EXTBLAS_dusvds( extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		delete vector;
+		return 0;
+	}
+
+	int EXTBLAS_dusvnz( const extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( vector->finalized );
+		const size_t nnz = grb::nnz( *(vector->vector) );
+		if( nnz > static_cast< size_t >( std::numeric_limits< int >::max() ) ) {
+			std::cerr << "Number of nonzeroes is larger than what can be represented by "
+				<< "a SparseBLAS int!\n";
+			return 10;
+		}
+		return static_cast< int >(nnz);
+	}
+
+	int EXTBLAS_dusv_open( const extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( vector->finalized );
+		try {
+			vector->start = vector->vector->cbegin();
+			vector->end = vector->vector->cend();
+		} catch( ... ) {
+			return 10;
+		}
+		return 0;
+	}
+
+	int EXTBLAS_dusv_get(
+		const extblas_sparse_vector x,
+		double * const val, int * const ind
+	) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( vector->finalized );
+		assert( vector->start != vector->end );
+		assert( val != nullptr );
+		assert( ind != nullptr );
+		*val = vector->start->first;
+		*ind = vector->start->second;
+		try {
+			(void) ++(vector->start);
+		} catch( ... ) {
+			return 2;
+		}
+		if( vector->start == vector->end ) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	int EXTBLAS_dusv_close( const extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( vector->finalized );
+		vector->start = vector->end;
 		return 0;
 	}
 
