@@ -162,14 +162,19 @@ namespace grb {
 				}
 
 				/** Helper function that prints allocation information to stdout. */
-				static void postAlloc( const RC ret, const size_t allocd, const std::string prefix, const std::string postfix ) {
+				static void postAlloc(
+					const RC ret, const size_t allocd,
+					const std::string prefix, const std::string postfix
+				) {
 					if( ret == SUCCESS ) {
 						if( config::MEMORY::report( prefix, "allocated", allocd, false ) ) {
-							std::cout << postfix << ".\n";
+							std::cout << ", reason: " << postfix << ".\n";
 						}
 					} else {
-						if( config::MEMORY::report( prefix, "failed to allocate", allocd, false ) ) {
-							std::cout << postfix << ".\n";
+						if( config::MEMORY::report(
+							prefix, "failed to allocate", allocd, false
+						) ) {
+							std::cout << ", reason: " << postfix << ".\n";
 						}
 					}
 				}
