@@ -392,7 +392,7 @@ namespace sparseblas {
 
 extern "C" {
 
-	extblas_sparse_vector BLAS_dusv_begin( const int n ) {
+	extblas_sparse_vector EXTBLAS_dusv_begin( const int n ) {
 		return new sparseblas::SparseVector< double >( n );
 	}
 
@@ -438,6 +438,16 @@ extern "C" {
 			return 10;
 		}
 		return static_cast< int >(nnz);
+	}
+
+	int EXTBLAS_dusv_clear( extblas_sparse_vector x ) {
+		auto vector = sparseblas::getDoubleVector( x );
+		assert( vector->finalized );
+		const grb::RC rc = grb::clear( *(vector->vector) );
+		if( rc != grb::SUCCESS ) {
+			return 10;
+		}
+		return 0;
 	}
 
 	int EXTBLAS_dusv_open( const extblas_sparse_vector x ) {
@@ -564,6 +574,16 @@ extern "C" {
 		} catch( const std::runtime_error &e ) {
 			std::cerr << "Caught error: " << e.what() << "\n";
 			return 1;
+		}
+		return 0;
+	}
+
+	int EXTBLAS_duscr_clear( blas_sparse_matrix A ) {
+		auto matrix = sparseblas::getDoubleMatrix( A );
+		assert( matrix->finalized );
+		const grb::RC rc = grb::clear( *(matrix->A) );
+		if( rc != grb::SUCCESS ) {
+			return 10;
 		}
 		return 0;
 	}

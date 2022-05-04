@@ -132,6 +132,13 @@ int EXTBLAS_dusv_get(
 int EXTBLAS_dusv_close( const extblas_sparse_vector x );
 
 /**
+ * Removes all entries from a finalised sparse vector.
+ *
+ * This is an implementation-specific extension.
+ */
+int EXTBLAS_dusv_clear( extblas_sparse_vector x );
+
+/**
  * Creates a handle to a new / empty sparse matrix.
  *
  * A call to this function must always be paired with one to
@@ -180,6 +187,13 @@ int BLAS_duscr_insert_row(
  * added.
  */
 int BLAS_duscr_end( blas_sparse_matrix A );
+
+/**
+ * Removes all entries from a finalised sparse matrix.
+ *
+ * This is an implementation-specific extension.
+ */
+int EXTBLAS_duscr_clear( blas_sparse_matrix x );
 
 /**
  * Frees a given matrix.
