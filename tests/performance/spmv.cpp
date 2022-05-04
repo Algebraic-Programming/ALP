@@ -26,7 +26,7 @@
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-//#include <utils/output_verification.hpp>
+#include <utils/output_verification.hpp>
 
 #define C1 0.0001
 #define C2 0.0001
@@ -322,7 +322,7 @@ int main( int argc, char ** argv ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n";
 	} else {
-		/*if( verification ) {
+		if( verification ) {
 		    out.error_code = vector_verification(
 		        out.pinnedVector, truth_filename,
 		        C1, C2
@@ -337,7 +337,7 @@ int main( int argc, char ** argv ) {
 		    }
 		} else {
 		    std::cout << "Test OK\n";
-		}*/
+		}
 	}
 	std::cout << std::endl;
 
