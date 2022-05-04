@@ -23,7 +23,7 @@
 add_subdirectory( graphblas )
 
 ### Add transition path targets
-add_subdirectory( sparseblas )
+add_subdirectory( transition )
 
 ### BUILD WRAPPER SCRIPTS FOR INSTALLATION
 
