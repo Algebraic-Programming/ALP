@@ -73,6 +73,10 @@ DATASET_SIZES=(497 4039 27770 334863 1134890 3774768 3072441)
 KNN4SOLS=(118 499 2805 1 64 1 1048907)
 KNN6SOLS=(357 547 5176 1 246 1 1453447)
 
+#the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
+MULTIPLICATION_DATASETS=(gyro_m.mtx)
+MULTIPLICATION_DATASET_MODES=(direct)
+
 #which command to use to run a GraphBLAS program
 LPF=yes
 if [ -z "${LPFRUN}" ]; then
@@ -392,6 +396,32 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				# ---------------------------------------------------------------------
 				# pagerank
 				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "simple_pagerank"
+
+			fi
+		done
+
+		for ((i=0;i<${#MULTIPLICATION_DATASETS[@]};++i));
+		do
+			if [ ! -z "$DATASETTORUN" ] && [ "$DATASETTORUN" != "${MULTIPLICATION_DATASETS[i]}" ]; then
+				continue
+			fi
+
+			# initialise parameters
+			DATASET=${MULTIPLICATION_DATASETS[i]}
+			PARSE_MODE=${MULTIPLICATION_DATASET_MODES[i]}
+
+			# test for file
+			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
+				echo "Warning: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo " "
+				continue
+			fi
+
+			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
+
+				# ---------------------------------------------------------------------
+				# pagerank
+				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmv"
 
 			fi
 		done
