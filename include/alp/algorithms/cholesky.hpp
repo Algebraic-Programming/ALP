@@ -24,27 +24,28 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * @brief Computes the Cholesky decomposition LL^T = H of a real symmetric
+		 * @brief Computes the Cholesky decomposition LL^H = H of a real symmetric
 		 *        positive definite (SPD) matrix H where \a L is lower triangular.
+		 *        L^H  is equvalent to cojugate(transpose(L))
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
 		 * @param[out] L    output lower triangular matrix
-		 * @param[in]  H    input real symmetric positive definite matrix
+		 * @param[in]  H    input real symmetric (or complex hermitian) positive definite matrix
 		 * @param[in]  ring The semiring used in the computation
 		 * @return RC        SUCCESS if the execution was correct
 		 *
 		 */
 		template<
-			typename D = double,
+			typename D,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D > >
 		RC cholesky_lowtr(
 			Matrix< D, structures::LowerTriangular, Dense > &L,
-			const Matrix< D, structures::SymmetricPositiveDefinite, Dense > &H,
+			const Matrix< D, structures::HermitianPositiveDefinite, Dense > &H,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide() ) {
@@ -55,7 +56,7 @@ namespace alp {
 			const size_t n = nrows( H );
 
 			// Out of place specification of the operation
-			Matrix< D, structures::SymmetricPositiveDefinite, Dense > LL( n, n );
+			Matrix< D, structures::HermitianPositiveDefinite, Dense > LL( n, n );
 			rc = set( LL, H );
 
 			for( size_t k = 0; k < n ; ++k ) {
@@ -84,7 +85,7 @@ namespace alp {
 							v );
 
 
-				// LL[ k+1: , k+1: ] -= v*v^T
+				// LL[ k+1: , k+1: ] -= v*v^H
 				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
 				auto vvt = outer( v, ring.getMultiplicativeOperator() );
@@ -106,56 +107,21 @@ namespace alp {
 			return rc;
 		}
 
-		// # python code 
-        // # cholesky_lowtr should be equivalent to (python) cholesky (check conjugate for complex!)
-		// def cholesky(L):
-		// 	n=len(L)
-		// 	for i in range(n):
-		// 		A11=L[i,i]
-		// 		A21=L[i+1:,i]
-		// 		A22=L[i+1:,i+1:]
-		// 		L[i,i+1:]=0
-		//      #***************#
-		// 		A11=sqrt(A11)
-		// 		A21=A21/A11
-		// 		A22=A22-outer(A21,conjugate(A21).T)
-		//      #***************#
-		// 		L[i,i]=A11
-		// 		L[i+1:,i]=A21
-		// 		L[i+1:,i+1:]=A22
-		//
-		//    return(L)
-		//
-		// #check the result
-		// def block_cholesky(L,bs):
-		// 	n=len(L)
-		// 	nb=n//bs
-		// 	if(n%bs!=0):
-		// 		nb=nb+1
-		//
-		// 	for i in range(nb):
-		// 		A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
-		// 		A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
-		// 		A22=L[(i+1)*bs:,(i+1)*bs:]
-		// 		L[i*bs:(i+1)*bs:,(i+1)*bs:]=0
-		//
-		// 		A11=cholesky(A11)
-		//
-		// 		A21=TRSM(A11,conjugate(A21).T)  # make it
-		// 		A21=conjugate(A21).T            # one call or use views
-		//
-		// 		A22=A22-A21.dot(conjugate(A21).T)
-		//
-		// 		L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]=A11
-		// 		L[(i+1)*bs:,i*bs:(i+1)*bs]=A21
-		// 		L[(i+1)*bs:,(i+1)*bs:]=A22
-		//
-		//     return(L)
-		//
-		// #check the result
-		// L=copy(Anew)
-		// L=block_cholesky(L,bs)
-		// print(norm(L.dot(conjugate(L.T))-Anew))
+		/**
+		 * @brief Computes the blocked version Cholesky decomposition LL^H = H of a real symmetric
+		 *        or complex hermitian positive definite (SPD) matrix H where \a L is lower triangular.
+		 *        L^H  is equvalent to cojugate(transpose(L))
+		 *
+		 * @tparam D        Data element type
+		 * @tparam Ring     Type of the semiring used in the computation
+		 * @tparam Minus    Type minus operator used in the computation
+		 * @tparam Divide   Type of divide operator used in the computation
+		 * @param[out] L    output lower triangular matrix
+		 * @param[in]  H    input real symmetric (or complex hermitian) positive definite matrix
+		 * @param[in]  ring The semiring used in the computation
+		 * @return RC        SUCCESS if the execution was correct
+		 *
+		 */		
 		template<
 			typename D,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
@@ -163,7 +129,7 @@ namespace alp {
 			typename Divide = operators::divide< D > >
 		RC cholesky_lowtr_blk(
 			Matrix< D, structures::LowerTriangular, Dense > &L,
-			const Matrix< D, structures::SymmetricPositiveDefinite, Dense > &H,
+			const Matrix< D, structures::HermitianPositiveDefinite, Dense > &H,
 			const size_t & bs,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
@@ -173,9 +139,10 @@ namespace alp {
 
 			const size_t n = nrows( L );
 
-			Matrix< D, structures::SymmetricPositiveDefinite, Dense > LL( n, n );
+			Matrix< D, structures::HermitianPositiveDefinite, Dense > LL( n, n );
 			rc = set( LL, H );
 
+			//nb: number of blocks of (max) size bz 
 			size_t nb = n / bs ;
 			if( n % bs != 0 ){
 				nb = nb + 1 ;
@@ -225,7 +192,6 @@ namespace alp {
 			}
 
 			return rc;
-			
 		}
 					
 
