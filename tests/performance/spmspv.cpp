@@ -336,14 +336,18 @@ int main( int argc, char ** argv ) {
 	std::cout << "Error code is " << out.error_code << ".\n";
 	std::cout << "Size of x is " << out.pinnedVector.size() << ".\n";
 	std::cout << "Number of non-zeroes are: " << out.pinnedVector.nonzeroes() << ".\n";
-	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
+	if( out.error_code == 0 && out.pinnedVector.nonzeroes() > 0 ) {
 		std::cerr << std::fixed;
-		std::cerr << "Output vector: (";
-		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); ++k ) {
-			const auto & nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-			std::cerr << "{" << out.pinnedVector.getNonzeroIndex( k ) << "," << nonzeroValue << "}, ";
+		std::cerr << "Output vector: ( ";
+		double nonzeroValue = out.pinnedVector.getNonzeroValue( 0 );
+		std::cerr << "{" << out.pinnedVector.getNonzeroIndex( 0 ) << ","
+			<< nonzeroValue << "} ";
+		for( size_t k = 1; k < out.pinnedVector.nonzeroes(); ++k ) {
+			nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			std::cerr << ", {" << out.pinnedVector.getNonzeroIndex( k ) << ","
+				<< nonzeroValue << "}";
 		}
-		std::cerr << ")" << std::endl;
+		std::cerr << " )" << std::endl;
 		std::cerr << std::defaultfloat;
 	}
 
