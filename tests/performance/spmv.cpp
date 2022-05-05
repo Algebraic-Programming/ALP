@@ -70,14 +70,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	grb::utils::MatrixFileReader< double,
 		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
 		parser( data_in.filename, data_in.direct );
-	assert( parser.m() == parser.n() );
+	const size_t m = parser.m();
 	const size_t n = parser.n();
 
 	out.times.io = timer.time();
 	timer.reset();
 
 	// load into GraphBLAS
-	Matrix< double > A( n, n );
+	Matrix< double > A( m, n );
 	{
 		const RC rc = buildMatrixUnique( A, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
 		/* Once internal issue #342 is resolved this can be re-enabled
@@ -109,12 +109,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	RC rc = SUCCESS;
 
-	// test default pagerank run
-	Vector< double > u( n ), v( n );
+	Vector< double > y( m ), x( n );
 
 	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
-	rc = rc ? rc : set( v, static_cast< double >( 1 ) );
+	rc = rc ? rc : set( x, static_cast< double >( 1 ) );
 	assert( rc == SUCCESS );
 
 	out.times.preamble = timer.time();
@@ -125,10 +124,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 
-		rc = rc ? rc : set( u, static_cast< double >( 0 ) );
+		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
 		assert( rc == SUCCESS );
 
-		rc = rc ? rc : mxv( u, A, v, ring );
+		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 
 		double single_time = timer.time();
@@ -158,10 +157,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			
-			rc = rc ? rc : set( u, static_cast< double >( 0 ) );
+			rc = rc ? rc : set( y, static_cast< double >( 0 ) );
 			assert( rc == SUCCESS );
 
-			rc = rc ? rc : mxv( u, A, v, ring );
+			rc = rc ? rc : mxv( y, A, x, ring );
 			assert( rc == SUCCESS );
 		}
 		time_taken = timer.time();
@@ -191,7 +190,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< double >( u, SEQUENTIAL );
+	out.pinnedVector = PinnedVector< double >( y, SEQUENTIAL );
 
 	// finish timing
 	const double time_taken = timer.time();
