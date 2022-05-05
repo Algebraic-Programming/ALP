@@ -30,10 +30,6 @@
 #define C1 0.0001
 #define C2 0.0001
 
-#define ERR( ret, fun )    \
-	ret = ret ? ret : fun; \
-	assert( ret == SUCCESS );
-
 using namespace grb;
 
 struct input {
@@ -93,9 +89,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	timer.reset();
 
 	// load into GraphBLAS
-	Matrix< double > L( l, m ), R( m, n );
+	Matrix< double > A( l, m ), B( m, n );
 	{
-		RC rc = buildMatrixUnique( L, parserL.begin( SEQUENTIAL ), parserL.end( SEQUENTIAL ), SEQUENTIAL );
+		RC rc = buildMatrixUnique( A, parserL.begin( SEQUENTIAL ), parserL.end( SEQUENTIAL ), SEQUENTIAL );
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique( A,
 		    parser.begin( PARALLEL ), parser.end( PARALLEL),
@@ -107,7 +103,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 			return;
 		}
 
-		rc = buildMatrixUnique( R, parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ), SEQUENTIAL );
+		rc = buildMatrixUnique( B, parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ), SEQUENTIAL );
 
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
@@ -119,17 +115,25 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// TODO: add R numZeroes?
 	// check number of nonzeroes
 	try {
-		const size_t global_nnz = nnz( L );
-		const size_t parser_nnz = parserL.nz();
-		if( global_nnz != parser_nnz ) {
-			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
-					  << "parser nnz (" << parser_nnz << ")." << std::endl;
+		const size_t global_nnzL = nnz( A );
+		const size_t global_nnzR = nnz( B );
+		const size_t parser_nnzL = parserL.nz();
+		const size_t parser_nnzR = parserR.nz();
+		if( global_nnzL != parser_nnzL ) {
+			std::cerr << "Left matrix Failure: global nnz (" << global_nnzL << ") does not equal "
+					  << "parser nnz (" << parser_nnzL << ")." << std::endl;
+			return;
+		} else if( global_nnzR != parser_nnzR ) {
+			std::cerr << "Right matrix Failure: global nnz (" << global_nnzR << ") does not equal "
+					  << "parser nnz (" << parser_nnzR << ")." << std::endl;
 			return;
 		}
+
 	} catch( const std::runtime_error & ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
 				  << "cannot be derived from the matrix file header. The "
-				  << "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
+				  << "grb::Matrix reports " << nnz( A ) << " nonzeroes in left "
+				  << "and " << nnz( B ) << "in right \n";
 	}
 
 	RC rc = SUCCESS;
@@ -146,9 +150,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 
-		ERR( rc, grb::mxm( C, L, R, ring, RESIZE ) );
+		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+		assert( rc == SUCCESS );
 
-		ERR( rc, mxm( C, L, R, ring ) );
+		rc = rc ? rc : grb::mxm( C, A, B, ring );
+		assert( rc == SUCCESS );
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -176,10 +182,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		double time_taken;
 		timer.reset();
 
-		ERR( rc, grb::mxm( C, L, R, ring, RESIZE ) );
+		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+		assert( rc == SUCCESS );
 
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			ERR( rc, mxm( C, L, R, ring ) );
+			rc = rc ? rc : grb::mxm( C, A, B, ring );
+			assert( rc == SUCCESS );
 		}
 
 		time_taken = timer.time();
@@ -212,13 +220,34 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 
+	// translate to pinned vector for printing result comparison
+	Vector< double > a( n * m );
+	rc = rc ? rc : set( a, static_cast< double >( 0 ) );
+
+	auto it = C.begin();
+	while( it != C.end() ) {
+		// col + (row * rowsize)
+		const long i = ( *it ).first.first + ( ( *it ).first.second * n );
+
+		rc = rc ? rc : setElement( a, ( *it ).second, i );
+		it.operator++();
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error during copy of result matrix: " << rc << '\n';
+			out.error_code = 40;
+			return;
+		}
+	}
+
+	out.pinnedVector = PinnedVector< double >( a, SEQUENTIAL );
+
 	// done
 	return;
 }
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 8 ) {
+	if( argc < 3 || argc > 7 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <datasetL> <datasetR> <direct/indirect> "
 				  << "(inner iterations) (outer iterations) (verification <truth-file>)\n";
 		std::cout << "<datasetL>, <datasetR>, and <direct/indirect> are mandatory arguments.\n";
@@ -227,8 +256,8 @@ int main( int argc, char ** argv ) {
 				  << "If set to zero, the program will select a number of iterations "
 				  << "approximately required to take at least one second to complete.\n";
 		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0.\n";
-		//std::cout << "(verification <truth-file>) is optional." << std::endl;
-		//TODO: Update verification to work with matrices 
+		// std::cout << "(verification <truth-file>) is optional." << std::endl;
+		// TODO: Update verification to work with matrices
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -294,7 +323,7 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	std::cout << "Executable called with parameters " << in.filenameL << ", "
+	std::cout << "Executable called with parameters:  Left matrix A = " << in.filenameL << ", right matrix B = " << in.filenameR << ", "
 			  << "inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
 
 	// the output struct
@@ -328,11 +357,24 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 
+	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
+		std::cerr << std::fixed;
+		std::cerr << "Output matrix: (";
+		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); k++ ) {
+			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
+			if( nonZeroValue != static_cast< double >( 0 ) ) { // Temp solution to the non-zero segfault bug
+				std::cerr << nonZeroValue << ", ";
+			}
+		}
+		std::cerr << ")" << std::endl;
+		std::cerr << std::defaultfloat;
+	}
+
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n";
 	} else {
-		//TODO: update to support matrices
+		// TODO: update to support matrices
 		/*if( verification ) {
 		    out.error_code = vector_verification(
 		        out.pinnedVector, truth_filename,
@@ -349,6 +391,7 @@ int main( int argc, char ** argv ) {
 		} else {
 		    std::cout << "Test OK\n";
 		}*/
+		std::cout << "Test OK\n";
 	}
 	std::cout << std::endl;
 
