@@ -117,7 +117,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	rc = rc ? rc : clear( x );
 	assert( rc == SUCCESS );
 
-	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	const Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	// read in the elements of the input vector, if none use default
 	if( data_in.numelem == 0 ) {
@@ -131,8 +134,15 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		}
 	} else {
 		for( int k = 0; k < data_in.numelem; ++k ) {
-			int pos = atoi( data_in.elements[ k ] );
-			if( pos < 0 || pos >= n ) {
+			size_t pos;
+			{
+				std::stringstream ss( std::string( data_in.elements[ k ] ) );
+				if( !(ss >> pos) ) {
+					std::cerr << "Error in parsing argument " << k << ": "
+						<< data_in.elements[ k ] << "\n";
+				}
+			}
+			if( pos >= n ) {
 
 				std::cerr << "Requested source position " << pos << " is invalid (max is " << n << ")\n";
 				out.error_code = 23;
