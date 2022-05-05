@@ -771,6 +771,8 @@ extern "C" {
 			std::cerr << "Uninitialised output matrix during SpMSpM\n";
 			return 30;
 		}
+
+		grb::RC rc = grb::SUCCESS;
 		if( alpha != 1.0 ) {
 			/*const grb::RC rc = grb::foldl( *(matC->A), 1.0 / alpha,
 				ring.getMultiplicativeOperator() );
@@ -783,7 +785,31 @@ extern "C" {
 				<< "SpMSpM multiplication\n";
 			return 255;
 		}
-		grb::RC rc = grb::SUCCESS;
+
+		// resize phase
+		if( transa == blas_no_trans && transb == blas_no_trans ) {
+			rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+		} else if( transa != blas_no_trans && transb == blas_no_trans ) {
+			rc = grb::mxm< grb::descriptors::transpose_left >(
+				*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+		} else if( transa == blas_no_trans && transb != blas_no_trans ) {
+			rc = grb::mxm< grb::descriptors::transpose_right >(
+				*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+		} else {
+			assert( transa != blas_no_trans );
+			assert( transb != blas_no_trans );
+			rc = grb::mxm<
+				grb::descriptors::transpose_left |
+				grb::descriptors::transpose_right
+			>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+		}
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during call to ALP/GraphBLAS mxm (RESIZE phase): "
+				<< grb::toString( rc ) << "\n";
+			return 50;
+		}
+
+		// execute phase
 		if( transa == blas_no_trans && transb == blas_no_trans ) {
 			rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring );
 		} else if( transa != blas_no_trans && transb == blas_no_trans ) {
@@ -798,23 +824,21 @@ extern "C" {
 			rc = grb::mxm<
 				grb::descriptors::transpose_left |
 				grb::descriptors::transpose_right
-			>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
-			rc = rc ? rc : grb::mxm<
-				grb::descriptors::transpose_left |
-				grb::descriptors::transpose_right
 			>( *(matC->A), *(matA->A), *(matB->A), ring );
 		}
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Error during call to ALP/GraphBLAS mxm\n";
-			return 50;
+			std::cerr << "Error during call to ALP/GraphBLAS mxm (EXECUTE phase): \n"
+				<< grb::toString( rc ) << "\n";
+			return 60;
 		}
+
 		/*TODO see above
 		if( alpha != 1.0 ) {
 			rc = grb::foldl( *(matC->A), 1.0 / alpha,
 				ring.getMultiplicativeOperator() );
 			if( rc != grb::SUCCESS ) {
 				std::cerr << "Error during post-scaling for SpMSpM\n";
-				return 60;
+				return 70;
 			}
 		}*/
 		return 0;
