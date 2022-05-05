@@ -420,8 +420,22 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
 
 				# ---------------------------------------------------------------------
-				# pagerank
+				# spmv
 				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmv"
+
+			fi
+			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPV" ]; then
+
+				# ---------------------------------------------------------------------
+				# spmspv
+				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmspv"
+
+			fi
+			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPM" ]; then
+
+				# ---------------------------------------------------------------------
+				# spmspm
+				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmspm"
 
 			fi
 		done
