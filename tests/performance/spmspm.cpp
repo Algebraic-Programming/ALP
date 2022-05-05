@@ -21,20 +21,24 @@
 
 #include <inttypes.h>
 
-//#include <graphblas/blas2.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-#include <utils/output_verification.hpp>
+//#include <utils/output_verification.hpp>
 
 #define C1 0.0001
 #define C2 0.0001
 
+#define ERR( ret, fun )    \
+	ret = ret ? ret : fun; \
+	assert( ret == SUCCESS );
+
 using namespace grb;
 
 struct input {
-	char filename[ 1024 ];
+	char filenameL[ 1024 ];
+	char filenameR[ 1024 ];
 	bool direct;
 	size_t rep;
 };
@@ -57,8 +61,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	timer.reset();
 
 	// sanity checks on input
-	if( data_in.filename[ 0 ] == '\0' ) {
-		std::cerr << s << ": no file name given as input." << std::endl;
+	if( data_in.filenameL[ 0 ] == '\0' ) {
+		std::cerr << s << ": no file name given as input for left matrix." << std::endl;
+		out.error_code = ILLEGAL;
+		return;
+	} else if( data_in.filenameR[ 0 ] == '\n' ) {
+		std::cerr << s << ": no file name given as input for right matrix." << std::endl;
 		out.error_code = ILLEGAL;
 		return;
 	}
@@ -69,17 +77,25 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// create local parser
 	grb::utils::MatrixFileReader< double,
 		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parser( data_in.filename, data_in.direct );
-	const size_t m = parser.m();
-	const size_t n = parser.n();
+		parserL( data_in.filenameL, data_in.direct );
+
+	grb::utils::MatrixFileReader< double,
+		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
+		parserR( data_in.filenameR, data_in.direct );
+
+	assert( parserL.n() == parserR.m() );
+
+	const size_t l = parserL.m();
+	const size_t m = parserL.n();
+	const size_t n = parserR.n();
 
 	out.times.io = timer.time();
 	timer.reset();
 
 	// load into GraphBLAS
-	Matrix< double > A( m, n );
+	Matrix< double > L( l, m ), R( m, n );
 	{
-		const RC rc = buildMatrixUnique( A, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
+		RC rc = buildMatrixUnique( L, parserL.begin( SEQUENTIAL ), parserL.end( SEQUENTIAL ), SEQUENTIAL );
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique( A,
 		    parser.begin( PARALLEL ), parser.end( PARALLEL),
@@ -90,12 +106,21 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 					  << "(" << toString( rc ) << ")." << std::endl;
 			return;
 		}
+
+		rc = buildMatrixUnique( R, parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ), SEQUENTIAL );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+					  << "(" << toString( rc ) << ")." << std::endl;
+			return;
+		}
 	}
 
+	// TODO: add R numZeroes?
 	// check number of nonzeroes
 	try {
-		const size_t global_nnz = nnz( A );
-		const size_t parser_nnz = parser.nz();
+		const size_t global_nnz = nnz( L );
+		const size_t parser_nnz = parserL.nz();
 		if( global_nnz != parser_nnz ) {
 			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
 					  << "parser nnz (" << parser_nnz << ")." << std::endl;
@@ -104,17 +129,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	} catch( const std::runtime_error & ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
 				  << "cannot be derived from the matrix file header. The "
-				  << "grb::Matrix reports " << nnz( A ) << " nonzeroes.\n";
+				  << "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
 	}
 
 	RC rc = SUCCESS;
 
-	Vector< double > y( m ), x( n );
-
+	// test default pagerank run
+	Matrix< double > C( l, n );
 	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
-
-	rc = rc ? rc : set( x, static_cast< double >( 1 ) );
-	assert( rc == SUCCESS );
 
 	out.times.preamble = timer.time();
 
@@ -124,15 +146,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 
-		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
-		assert( rc == SUCCESS );
+		ERR( rc, grb::mxm( C, L, R, ring, RESIZE ) );
 
-		rc = rc ? rc : mxv( y, A, x, ring );
-		assert( rc == SUCCESS );
+		ERR( rc, mxm( C, L, R, ring ) );
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to mxv did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to mxm did not succeed (" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == SUCCESS ) {
@@ -145,7 +165,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
 		if( rc == SUCCESS ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold mxv completed"
+				std::cout << "Info: cold mxm completed"
 						  << ". Time taken was " << single_time << " ms. "
 						  << "Deduced inner repetitions parameter of " << out.rep << " "
 						  << "to take 1 second or more per inner benchmark.\n";
@@ -155,14 +175,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		// do benchmark
 		double time_taken;
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			
-			rc = rc ? rc : set( y, static_cast< double >( 0 ) );
-			assert( rc == SUCCESS );
 
-			rc = rc ? rc : mxv( y, A, x, ring );
-			assert( rc == SUCCESS );
+		ERR( rc, grb::mxm( C, L, R, ring, RESIZE ) );
+
+		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+			ERR( rc, mxm( C, L, R, ring ) );
 		}
+
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -170,7 +189,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for a " << out.rep << " "
-					  << "Mxv calls (hot start): " << out.times.useful << ". "
+					  << "Mxm calls (hot start): " << out.times.useful << ". "
 					  << "Error code is " << out.error_code << std::endl;
 		}
 		sleep( 1 );
@@ -189,9 +208,6 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		return;
 	}
 
-	// output
-	out.pinnedVector = PinnedVector< double >( y, SEQUENTIAL );
-
 	// finish timing
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
@@ -202,15 +218,17 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> "
+	if( argc < 3 || argc > 8 ) {
+		std::cout << "Usage: " << argv[ 0 ] << " <datasetL> <datasetR> <direct/indirect> "
 				  << "(inner iterations) (outer iterations) (verification <truth-file>)\n";
-		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
+		std::cout << "<datasetL>, <datasetR>, and <direct/indirect> are mandatory arguments.\n";
+		std::cout << "<datasetL> is the left matrix of the multiplication and <datasetR> is the right matrix \n";
 		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". "
 				  << "If set to zero, the program will select a number of iterations "
 				  << "approximately required to take at least one second to complete.\n";
 		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0.\n";
-		std::cout << "(verification <truth-file>) is optional." << std::endl;
+		//std::cout << "(verification <truth-file>) is optional." << std::endl;
+		//TODO: Update verification to work with matrices 
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -218,12 +236,16 @@ int main( int argc, char ** argv ) {
 	// the input struct
 	struct input in;
 
-	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
-	in.filename[ 1023 ] = '\0';
+	// get file name Left
+	(void)strncpy( in.filenameL, argv[ 1 ], 1023 );
+	in.filenameL[ 1023 ] = '\0';
+
+	// get file name Right
+	(void)strncpy( in.filenameR, argv[ 2 ], 1023 );
+	in.filenameL[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
-	if( strncmp( argv[ 2 ], "direct", 6 ) == 0 ) {
+	if( strncmp( argv[ 3 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
 	} else {
 		in.direct = false;
@@ -232,10 +254,10 @@ int main( int argc, char ** argv ) {
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
 	char * end = nullptr;
-	if( argc >= 4 ) {
-		in.rep = strtoumax( argv[ 3 ], &end, 10 );
-		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
+	if( argc >= 5 ) {
+		in.rep = strtoumax( argv[ 4 ], &end, 10 );
+		if( argv[ 4 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
 					  << "for number of inner experiment repititions." << std::endl;
 			return 2;
 		}
@@ -243,10 +265,10 @@ int main( int argc, char ** argv ) {
 
 	// get outer number of iterations
 	size_t outer = grb::config::BENCHMARKING::outer();
-	if( argc >= 5 ) {
-		outer = strtoumax( argv[ 4 ], &end, 10 );
-		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
+	if( argc >= 6 ) {
+		outer = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
 					  << "for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
@@ -255,24 +277,24 @@ int main( int argc, char ** argv ) {
 	// check for verification of the output
 	bool verification = false;
 	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
+	if( argc >= 7 ) {
+		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
 			verification = true;
 			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+				(void)strncpy( truth_filename, argv[ 7 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument." << std::endl;
 				return 5;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
+			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
 					  << "the optional \"verification\" argument was expected." << std::endl;
 			return 5;
 		}
 	}
 
-	std::cout << "Executable called with parameters " << in.filename << ", "
+	std::cout << "Executable called with parameters " << in.filenameL << ", "
 			  << "inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
 
 	// the output struct
@@ -305,24 +327,13 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
-	std::cout << "Size of x is " << out.pinnedVector.size() << ".\n";
-	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
-		std::cerr << std::fixed;
-		std::cerr << "Output vector: (";
-		for (size_t k = 0; k < out.pinnedVector.size(); k++)
-		{
-			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
-			std::cerr << nonZeroValue << ", ";
-		}
-		std::cout << ")" << std::endl;
-		std::cerr << std::defaultfloat;
-	}
 
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n";
 	} else {
-		if( verification ) {
+		//TODO: update to support matrices
+		/*if( verification ) {
 		    out.error_code = vector_verification(
 		        out.pinnedVector, truth_filename,
 		        C1, C2
@@ -337,7 +348,7 @@ int main( int argc, char ** argv ) {
 		    }
 		} else {
 		    std::cout << "Test OK\n";
-		}
+		}*/
 	}
 	std::cout << std::endl;
 

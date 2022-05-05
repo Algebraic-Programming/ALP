@@ -21,15 +21,18 @@
 
 #include <inttypes.h>
 
-//#include <graphblas/blas2.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-#include <utils/output_verification.hpp>
+//#include <utils/output_verification.hpp>
 
 #define C1 0.0001
 #define C2 0.0001
+
+#define ERR( ret, fun )    \
+	ret = ret ? ret : fun; \
+	assert( ret == SUCCESS );
 
 using namespace grb;
 
@@ -37,6 +40,8 @@ struct input {
 	char filename[ 1024 ];
 	bool direct;
 	size_t rep;
+	int numelem;
+	char ** elements;
 };
 
 struct output {
@@ -70,8 +75,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	grb::utils::MatrixFileReader< double,
 		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
 		parser( data_in.filename, data_in.direct );
-	const size_t m = parser.m();
+
 	const size_t n = parser.n();
+	const size_t m = parser.m();
 
 	out.times.io = timer.time();
 	timer.reset();
@@ -109,12 +115,42 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	RC rc = SUCCESS;
 
-	Vector< double > y( m ), x( n );
+	// test default pagerank run
+	Vector< double > x( n ), y( m );
+	ERR( rc, clear( x ) );
 
 	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
-	rc = rc ? rc : set( x, static_cast< double >( 1 ) );
-	assert( rc == SUCCESS );
+	// read in the elements of the input vector, if none use default
+	if( data_in.numelem == 0 ) {
+		int pos = n / 2;
+		std::cout << "Setting default source value at position " << pos << "\n";
+		rc = setElement( x, 1.0, pos );
+		if( rc != 0 ) {
+			std::cerr << "Failed to insert entry at position " << pos << "\n";
+			out.error_code = 22;
+			return;
+		}
+	} else {
+		for( int k = 0; k < data_in.numelem; ++k ) {
+			int pos = atoi( data_in.elements[ k ] );
+			if( pos < 0 || pos >= n ) {
+
+				std::cerr << "Requested source position " << pos << " is invalid (max is " << n << ")\n";
+				out.error_code = 23;
+				return;
+			} else {
+				std::cout << "Setting default source value at position " << pos << "\n";
+
+				rc = setElement( x, 1.0, pos );
+				if( rc != 0 ) {
+					std::cerr << "Failed to insert entry at position " << pos << "\n";
+					out.error_code = 24;
+					return;
+				}
+			}
+		}
+	}
 
 	out.times.preamble = timer.time();
 
@@ -124,11 +160,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 
-		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
-		assert( rc == SUCCESS );
+		ERR( rc, clear( y ) ); // TODO: make sparse
 
-		rc = rc ? rc : mxv( y, A, x, ring );
-		assert( rc == SUCCESS );
+		ERR( rc, mxv( y, A, x, ring ) ); // TODO: make sparse
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -155,14 +189,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		// do benchmark
 		double time_taken;
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			
-			rc = rc ? rc : set( y, static_cast< double >( 0 ) );
-			assert( rc == SUCCESS );
 
-			rc = rc ? rc : mxv( y, A, x, ring );
-			assert( rc == SUCCESS );
+		ERR( rc, clear( y ) );
+
+		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+
+			ERR( rc, mxv( y, A, x, ring ) );
 		}
+
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -202,15 +236,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 3 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> "
-				  << "(inner iterations) (outer iterations) (verification <truth-file>)\n";
+				  << "(inner iterations) (outer iterations) (source vertex 1) (source vertex 2) ...\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". "
 				  << "If set to zero, the program will select a number of iterations "
 				  << "approximately required to take at least one second to complete.\n";
 		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0.\n";
-		std::cout << "(verification <truth-file>) is optional." << std::endl;
+		std::cout << "(Source vertices 1, 2 ...) are optional and defines which elements in the vectors are non-zero."
+				  << "The default value for this is element n/2 is non-zero \n";
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -252,25 +287,9 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	// check for verification of the output
-	bool verification = false;
-	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
-			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
-				truth_filename[ 1023 ] = '\0';
-			} else {
-				std::cerr << "The verification file was not provided as an argument." << std::endl;
-				return 5;
-			}
-		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
-					  << "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
-		}
-	}
+	// pass the rest of the elements to be read/constructed inside the function
+	in.numelem = argc - 5;
+	in.elements = argv + 5;
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
 			  << "inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
@@ -306,6 +325,7 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 	std::cout << "Size of x is " << out.pinnedVector.size() << ".\n";
+	std::cout << "Number of non-zeroes are: " << out.pinnedVector.nonzeroes() << ".\n";
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cerr << std::fixed;
 		std::cerr << "Output vector: (";
@@ -321,23 +341,6 @@ int main( int argc, char ** argv ) {
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n";
-	} else {
-		if( verification ) {
-		    out.error_code = vector_verification(
-		        out.pinnedVector, truth_filename,
-		        C1, C2
-		    );
-		    if( out.error_code == 0 ) {
-		        std::cout << "Output vector verificaton was successful!\n";
-		        std::cout << "Test OK\n";
-		    } else {
-		        std::cerr << std::flush;
-		        std::cout << "Verification FAILED\n";
-		        std::cout << "Test FAILED\n";
-		    }
-		} else {
-		    std::cout << "Test OK\n";
-		}
 	}
 	std::cout << std::endl;
 
