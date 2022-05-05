@@ -329,10 +329,9 @@ int main( int argc, char ** argv ) {
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cerr << std::fixed;
 		std::cerr << "Output vector: (";
-		for (size_t k = 0; k < out.pinnedVector.size(); k++)
-		{
-			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
-			std::cerr << nonZeroValue << ", ";
+		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); ++k ) {
+			const auto & nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			std::cerr << "{" << k << "," << nonzeroValue << "}, ";
 		}
 		std::cerr << ")" << std::endl;
 		std::cerr << std::defaultfloat;
