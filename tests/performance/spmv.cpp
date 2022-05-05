@@ -314,13 +314,13 @@ int main( int argc, char ** argv ) {
 			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
 			std::cerr << nonZeroValue << ", ";
 		}
-		std::cout << ")" << std::endl;
+		std::cerr << ")" << std::endl;
 		std::cerr << std::defaultfloat;
 	}
 
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED\n";
+		std::cerr << "Test FAILED\n";
 	} else {
 		if( verification ) {
 		    out.error_code = vector_verification(
@@ -332,8 +332,8 @@ int main( int argc, char ** argv ) {
 		        std::cout << "Test OK\n";
 		    } else {
 		        std::cerr << std::flush;
-		        std::cout << "Verification FAILED\n";
-		        std::cout << "Test FAILED\n";
+		        std::cerr << "Verification FAILED\n";
+		        std::cerr << "Test FAILED\n";
 		    }
 		} else {
 		    std::cout << "Test OK\n";

@@ -30,10 +30,6 @@
 #define C1 0.0001
 #define C2 0.0001
 
-#define ERR( ret, fun )    \
-	ret = ret ? ret : fun; \
-	assert( ret == SUCCESS );
-
 using namespace grb;
 
 struct input {
@@ -117,7 +113,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// test default pagerank run
 	Vector< double > x( n ), y( m );
-	ERR( rc, clear( x ) );
+
+	rc = rc ? rc : clear( x );
+	assert( rc == SUCCESS );
 
 	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
@@ -160,9 +158,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 
-		ERR( rc, clear( y ) ); // TODO: make sparse
+		rc = rc ? rc : clear( y );
+		assert( rc == SUCCESS );
 
-		ERR( rc, mxv( y, A, x, ring ) ); // TODO: make sparse
+		rc = rc ? rc : mxv( y, A, x, ring );
+		assert( rc == SUCCESS );
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -189,14 +189,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		// do benchmark
 		double time_taken;
 		timer.reset();
-
-		ERR( rc, clear( y ) );
-
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 
-			ERR( rc, mxv( y, A, x, ring ) );
-		}
+			rc = rc ? rc : clear( y );
+			assert( rc == SUCCESS );
 
+			rc = rc ? rc : mxv( y, A, x, ring );
+			assert( rc == SUCCESS );
+		}
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -334,14 +334,17 @@ int main( int argc, char ** argv ) {
 			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
 			std::cerr << nonZeroValue << ", ";
 		}
-		std::cout << ")" << std::endl;
+		std::cerr << ")" << std::endl;
 		std::cerr << std::defaultfloat;
 	}
 
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED\n";
+		std::cerr << "Test FAILED\n";
+	} else {
+		std::cout << "Test OK\n";
 	}
+
 	std::cout << std::endl;
 
 	// done
