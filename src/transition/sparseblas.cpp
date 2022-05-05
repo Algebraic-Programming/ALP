@@ -471,8 +471,8 @@ extern "C" {
 		assert( vector->start != vector->end );
 		assert( val != nullptr );
 		assert( ind != nullptr );
-		*val = vector->start->first;
-		*ind = vector->start->second;
+		*val = vector->start->second;
+		*ind = vector->start->first;
 		try {
 			(void) ++(vector->start);
 		} catch( ... ) {
