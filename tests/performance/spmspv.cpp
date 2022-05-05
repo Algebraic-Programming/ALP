@@ -331,7 +331,7 @@ int main( int argc, char ** argv ) {
 		std::cerr << "Output vector: (";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); ++k ) {
 			const auto & nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-			std::cerr << "{" << k << "," << nonzeroValue << "}, ";
+			std::cerr << "{" << out.pinnedVector.getNonzeroIndex( k ) << "," << nonzeroValue << "}, ";
 		}
 		std::cerr << ")" << std::endl;
 		std::cerr << std::defaultfloat;
