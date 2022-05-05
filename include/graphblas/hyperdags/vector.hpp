@@ -47,7 +47,14 @@ namespace grb {
 		const Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > & getVector(
 			const Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &x
 		);
-
+		
+		template< typename T>
+		inline const T * getRaw( const Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > & x ) ;
+		
+		
+		template< typename T>
+		inline T * getRaw( Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > & x  ) ;
+	
 	}
 
 	template< typename T >
@@ -169,7 +176,15 @@ namespace grb {
 		) {
 			return x.vector;
 		}
-
+		
+		
+		template< typename T>
+		inline const T * getRaw( const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > & x ) {
+			return getRaw(getVector(x));
+		};
+		
+		template< typename T>
+		inline T * getRaw( Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > & x  ) ;
 	}
 
 }
