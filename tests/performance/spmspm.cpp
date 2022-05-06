@@ -44,6 +44,7 @@ struct output {
 	size_t rep;
 	grb::utils::TimerResults times;
 	PinnedVector< double > pinnedVector;
+	size_t result_nnz;
 };
 
 void grbProgram( const struct input & data_in, struct output & out ) {
@@ -134,7 +135,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
 				  << "cannot be derived from the matrix file header. The "
 				  << "grb::Matrix reports " << nnz( A ) << " nonzeroes in left "
-				  << "and " << nnz( B ) << "in right \n";
+				  << "and " << nnz( B ) << " n right \n";
 	}
 
 	RC rc = SUCCESS;
@@ -220,7 +221,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	out.times.postamble = time_taken;
 
 	// copy to pinned vector for printing result comparison
-	Vector< double > a( n * m );
+	//TODO: refactor to avoid out of memory error
+	/*Vector< double > a( l * n);
+	rc = clear(a);
 
 	auto it = C.begin();
 	while( it != C.end() ) {
@@ -238,6 +241,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	}
 
 	out.pinnedVector = PinnedVector< double >( a, SEQUENTIAL );
+	*/
+
+	out.result_nnz = nnz(C);
 
 	// done
 	return;
@@ -355,6 +361,8 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 
+	std::cout << "Number of non-zeroes in output matrix: " << out.result_nnz << "\n";
+
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cerr << std::fixed;
 		std::cerr << "Output matrix: (";
@@ -394,5 +402,3 @@ int main( int argc, char ** argv ) {
 	// done
 	return out.error_code;
 }
-
-//make SPARSEBLAS_INC_DIR=/home/anderhan/projectArea/ALP/install/include/transition GRAPHBLAS_LIB_DIR=/home/anderhan/projectArea/ALP/install/lib/sequential WITH_ALP_EXTBLAS=1
