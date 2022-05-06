@@ -184,7 +184,7 @@ namespace grb {
 
 						// skip to first non-empty row
 						for( row = 0; row < m; ++row ) {
-							if( row + 1 <= m && col_start[ row ] != col_start[ row + 1 ] ) {
+							if( col_start[ row ] != col_start[ row + 1 ] ) {
 								break;
 							}
 						}
@@ -851,7 +851,7 @@ namespace grb {
 
 					// skip to first non-empty row
 					for( row = 0; row < m; ++row ) {
-						if( row + 1 <= m && col_start[ row ] != col_start[ row + 1 ] ) {
+						if( col_start[ row ] != col_start[ row + 1 ] ) {
 							break;
 						}
 					}

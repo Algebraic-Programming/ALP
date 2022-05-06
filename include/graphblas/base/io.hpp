@@ -1382,13 +1382,12 @@ namespace grb {
 	) {
 		// derive synchronized iterator
 		//first derive iterator access category in(3x random acc. it.) => out(random acc. it.)
-		typedef typename std::iterator_traits<fwd_iterator1>::iterator_category It1_cat;
-		typedef typename std::iterator_traits<fwd_iterator2>::iterator_category It2_cat;
-		typedef typename std::iterator_traits<fwd_iterator3>::iterator_category It3_cat;
-		typedef typename utils::common_it_tag<It1_cat,It2_cat,It3_cat>::it_tag iterator_category;
+		typedef typename common_iterator_tag<fwd_iterator1, fwd_iterator2, fwd_iterator3 >::iterator_category
+			iterator_category;
 		//using  iterator_category=std::forward_iterator_tag;  //testing only
 		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end, iterator_category() );
-		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end, iterator_category() );
+		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end,
+			iterator_category() );
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
