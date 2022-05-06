@@ -23,6 +23,9 @@
 #if ! defined _H_GRB_REFERENCE_INIT || defined _H_GRB_REFERENCE_OMP_INIT
 #define _H_GRB_REFERENCE_INIT
 
+#include <new>
+#include <algorithm>
+
 #include <graphblas/base/init.hpp>
 #include <graphblas/utils/DMapper.hpp>
 
@@ -60,15 +63,12 @@ namespace grb {
 		bool ensureReferenceBufsize( const size_t n ) {
 			const size_t targetSize = n * sizeof( D );
 			if( reference_bufsize < targetSize ) {
-				size_t newSize = 2 * reference_bufsize;
-				if( newSize < targetSize ) {
-					newSize = targetSize;
-				}
+				size_t newSize = std::max( 2 * reference_bufsize, targetSize );
 				if( reference_bufsize > 0 ) {
 					delete[] reference_buffer;
 				}
-				reference_buffer = new char[ newSize ];
-				if( reference_buffer == NULL ) {
+				reference_buffer = new( std::nothrow ) char[ newSize ];
+				if( reference_buffer == nullptr ) {
 					reference_bufsize = 0;
 					return false;
 				} else {
@@ -79,6 +79,12 @@ namespace grb {
 				return true;
 			}
 		}
+
+		/**
+		 * @brief forces buffer deallocation to release memory to the OS
+		 * 	and avoid Out-Of-Memory killer
+		 */
+		void forceDeallocBuffer();
 
 		/**
 		 * \internal

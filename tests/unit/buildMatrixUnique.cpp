@@ -688,14 +688,50 @@ template< typename T, typename ParIterT, typename SeqIterT, enum Backend impleme
 		ASSERT_TRUE( matrices_values_are_equal( par_parallel_matrix, seq_parallel_matrix, false ) );
 }
 
-template< enum Backend implementation = config::default_backend > void test_matrix_from_vectors() {
-	constexpr std::size_t mat_size{ 7 };
-	std::vector< std::size_t > rows{ 0, 0, 1, 2, 3, 4, 4, 5, 5, 5, 5, 5, 5 };
-	std::vector< std::size_t > cols{ 1, 3, 3, 2, 4, 0, 2, 0, 1, 2, 3, 4, 5 };
-	std::vector< int > values{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+// filter only local non-zeroes - useful with distributed backends, which split rows
+// template< enum Backend implementation = config::default_backend >
+// 	std::size_t count_local_rows( std::size_t nrows, const std::vector< std::size_t >& rows ) {
+
+// 	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
+// 	return static_cast< std::size_t > ( std::count_if(
+// 		rows.cbegin(), rows.cend(), [pid,nrows,nprocs]( std::size_t row ) {
+// 				return internal::Distribution< implementation >::global_index_to_process_id(
+// 					row, nrows, nprocs
+// 				) == pid;
+// 			}
+// 		)
+// 	);
+// }
+
+template< typename ValT, enum Backend implementation = config::default_backend >
+	void filter_local_nonzeroes( std::size_t nrows,
+	const std::vector< std::size_t >& rows,
+	const std::vector< std::size_t >& cols,
+	const std::vector< ValT >& values,
+	std::vector< std::size_t >& out_rows,
+	std::vector< std::size_t >& out_cols,
+	std::vector< ValT >& out_values ) {
+
+	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
+	for( std::size_t i{ 0 }; i < rows.size(); i++ ) {
+		if ( internal::Distribution< implementation >::global_index_to_process_id(
+			rows[ i ], nrows, nprocs ) == pid ) {
+			out_rows.push_back( rows[ i ] );
+			out_cols.push_back( cols[ i ] );
+			out_values.push_back( values[ i ] );
+		}
+	}
+}
+
+template< typename ValT, enum Backend implementation = config::default_backend > void test_matrix_from_vectors(
+	std::size_t nrows, std::size_t ncols,
+	const std::vector< std::size_t >& rows,
+	const std::vector< std::size_t >& cols,
+	const std::vector< ValT >& values
+) {
 	assert( rows.size() == cols.size() && rows.size() == values.size() );
 
-	Matrix< int, implementation > mat( mat_size, mat_size );
+	Matrix< ValT, implementation > mat( nrows, ncols );
 	const std::size_t per_proc{ ( values.size() + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
 	const std::size_t first{ per_proc * spmd<>::pid() };
 	const std::size_t num_local{ std::min( per_proc, values.size() - first ) };
@@ -714,18 +750,13 @@ template< enum Backend implementation = config::default_backend > void test_matr
 
 	ASSERT_RC_SUCCESS( ret );
 
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, int > > sorted_values;
-	get_nnz_and_sort( mat, sorted_values );
+	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, ValT > > sorted_local_values;
+	get_nnz_and_sort( mat, sorted_local_values );
 
-	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
-	const std::size_t local_nnz{ static_cast< std::size_t > ( std::count_if(
-		rows.cbegin(), rows.cend(), [pid,mat_size,nprocs]( std::size_t row ) {
-				return internal::Distribution< implementation >::global_index_to_process_id(
-					row, mat_size, nprocs
-				) == pid;
-			}
-		)
-	) };
+	std::vector< std::size_t > local_rows, local_cols;
+	std::vector< ValT > local_values;
+	filter_local_nonzeroes( nrows, rows, cols, values, local_rows, local_cols, local_values );
+	const std::size_t local_nnz{ local_rows.size() };
 
 #ifdef _DEBUG
 	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
@@ -737,18 +768,58 @@ template< enum Backend implementation = config::default_backend > void test_matr
 #endif
 
 
-	ASSERT_EQ( sorted_values.size(), local_nnz );
+	ASSERT_EQ( sorted_local_values.size(), local_nnz );
 	std::size_t k{ 0 };
-	for( auto it{ sorted_values.cbegin() }; it != sorted_values.cend() && k < values.size(); ++it, ++k ) {
-		ASSERT_EQ( it->i(), rows[ k ] );
-		ASSERT_EQ( it->j(), cols[ k ] );
-		ASSERT_EQ( it->v(), values[ k ] );
+	for( auto it{ sorted_local_values.cbegin() }; it != sorted_local_values.cend() && k < values.size(); ++it, ++k ) {
+		// std::cout << "+++" << it->i() << ", " << it->j() << ", " << it->v() << std::endl;
+		// std::cout << "---" << rows[ k ] << ", " << cols[ k ] << ", " << values[ k ] << std::endl;
+		ASSERT_EQ( it->i(), local_rows[ k ] );
+		ASSERT_EQ( it->j(), local_cols[ k ] );
+		ASSERT_EQ( it->v(), local_values[ k ] );
 	}
 	ASSERT_EQ( k, local_nnz );
 
 	if( spmd<>::pid() == 0 ) {
-		LOG() << "-- OK" << std::endl;
+		LOG() << "<< OK" << std::endl;
 	}
+}
+
+
+
+/*
+	std::vector< std::size_t > rows{ 0, 0, 1, 2, 3, 4, 4, 5, 5, 5, 5, 5, 5 };
+	std::vector< std::size_t > cols{ 1, 3, 3, 2, 4, 0, 2, 0, 1, 2, 3, 4, 5 };
+	std::vector< int >       values{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+*/
+
+/*
+	std::vector< std::size_t > rows{ 0, 0, 2, 4, 4, 5, 5, 5, 5, 5, 5 };
+	std::vector< std::size_t > cols{ 1, 3, 1, 0, 2, 0, 1, 2, 3, 4, 5 };
+	std::vector< int >       values{ 0, 1, 3, 5, 6, 7, 8, 9, 10, 11, 12 };
+*/
+
+template< enum Backend implementation = config::default_backend > void test_matrix_from_user_vectors() {
+	constexpr std::size_t mat_size{ 7 };
+	std::vector< std::size_t > rows{ 0, 0, 0, 0, 0,  1, 1, 1, 1,  2,  3,  4, 4,  5, 5, 5, 5, 5, 5 };
+	std::vector< std::size_t > cols{ 1, 3, 4, 5, 6,  3, 4, 5, 6,  2,  4,  0, 2,  0, 1, 2, 3, 4, 5 };
+	std::vector< int >       values{ 0, 1,-1,-2,-3,  2,-4,-5,-6,  3,  4,  5, 6,  7, 8, 9,10,11,12 };
+
+	test_matrix_from_vectors( mat_size, mat_size, rows, cols, values );
+}
+
+
+
+template< typename ValT, typename ParIterT, enum Backend implementation = config::default_backend >
+	void test_matrix_from_permuted_iterators(
+	std::size_t nrows, std::size_t ncols,
+	const typename ParIterT::input_sizes_t& iter_sizes
+) {
+	constexpr std::size_t mat_size{ 20 };
+	std::vector< std::size_t > rows{ 0, 0, 0, 0, 0,  1, 1, 1, 1,  2,  3,  4, 4,  5, 5, 5, 5, 5, 5 };
+	std::vector< std::size_t > cols{ 1, 3, 4, 5, 6,  3, 4, 5, 6,  2,  4,  0, 2,  0, 1, 2, 3, 4, 5 };
+	std::vector< int >       values{ 0, 1,-1,-2,-3,  2,-4,-5,-6,  3,  4,  5, 6,  7, 8, 9,10,11,12 };
+
+	test_matrix_from_vectors( mat_size, mat_size, rows, cols, values );
 }
 
 static const char* const std_caption{ "got exception: " };
@@ -814,10 +885,12 @@ void grbProgram( const void *, const size_t, int &error ) {
 				mat_size[0], mat_size[1], mat_size );
 		}
 
+
+
 		if( spmd<>::pid() == 0 ) {
 			LOG() << "==== Testing sparse matrix from user's vectors" << std::endl;
 		}
-		test_matrix_from_vectors();
+		test_matrix_from_user_vectors();
 
 	} catch ( const std::exception& e ) {
 		print_exception_text( e.what() );

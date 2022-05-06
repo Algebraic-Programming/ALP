@@ -40,19 +40,6 @@
 namespace grb {
 	namespace utils {
 
-		template<typename T1, typename T2, typename T3> class common_it_tag {
-		public:
-			using it_tag = std::forward_iterator_tag ;
-		};
-
-		template<> class common_it_tag<std::random_access_iterator_tag,
-			std::random_access_iterator_tag,
-			std::random_access_iterator_tag> {
-		public:
-			using it_tag = std::random_access_iterator_tag;
-		};
-
-
 		// base class for storage, where V can be void
 		template<
 			typename RowIndexT,

@@ -1,0 +1,64 @@
+
+/*
+ *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * @author: Denis Jelovina
+ */
+
+#ifndef _GRB_UTILS_PREFIX_SUM_H_
+#define _GRB_UTILS_PREFIX_SUM_H_
+
+#include <omp.h>
+
+namespace grb {
+	namespace utils {
+
+		template< typename elmtype, typename sizetype >
+			void parallel_prefixsum_inplace(elmtype *x, sizetype N, elmtype *rank_sum) {
+			//rank_sum is a buffer of size= nsize+1
+			#pragma omp parallel
+			{
+				const sizetype irank = omp_get_thread_num();
+				//const sizetype nsize = omp_get_num_threads();
+				#pragma omp single
+				{
+					rank_sum[0] = 0;
+				}
+				elmtype sum = 0;
+				#pragma omp for schedule(static)
+				for (sizetype i=0; i<N; i++) {
+					sum += x[i];
+					x[i] = sum;
+				}
+				rank_sum[irank+1] = sum;
+				#pragma omp barrier
+				elmtype offset = 0;
+				for(sizetype i=0; i<(irank+1); i++) {
+					offset += rank_sum[i];
+				}
+				#pragma omp for schedule(static)
+				for (sizetype i=0; i<N; i++) {
+					x[i] += offset;
+				}
+			}
+		}
+
+	} // utils
+} // grb
+
+#endif
+
