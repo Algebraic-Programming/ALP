@@ -98,21 +98,22 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		    PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed for left-hand matrix "
 					  << "(" << toString( rc ) << ")." << std::endl;
+			out.error_code = 10;
 			return;
 		}
 
 		rc = buildMatrixUnique( B, parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ), SEQUENTIAL );
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed for right-hand matrix "
 					  << "(" << toString( rc ) << ")." << std::endl;
+			out.error_code = 20;
 			return;
 		}
 	}
 
-	// TODO: add R numZeroes?
 	// check number of nonzeroes
 	try {
 		const size_t global_nnzL = nnz( A );
@@ -144,14 +145,14 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	out.times.preamble = timer.time();
 
+	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+	assert( rc == SUCCESS );
+
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
-
-		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-		assert( rc == SUCCESS );
 
 		rc = rc ? rc : grb::mxm( C, A, B, ring );
 		assert( rc == SUCCESS );
@@ -159,13 +160,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to mxm did not succeed (" << toString( rc ) << ")." << std::endl;
-			out.error_code = 20;
+			out.error_code = 70;
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
 		if( rc != SUCCESS ) {
-			out.error_code = 25;
+			out.error_code = 80;
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
@@ -182,13 +183,11 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		double time_taken;
 		timer.reset();
 
-		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-		assert( rc == SUCCESS );
+		//for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			rc = rc ? rc : grb::mxm( C, A, B, ring );
 			assert( rc == SUCCESS );
-		}
+		//}
 
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
@@ -220,20 +219,19 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 
-	// translate to pinned vector for printing result comparison
+	// copy to pinned vector for printing result comparison
 	Vector< double > a( n * m );
-	rc = rc ? rc : set( a, static_cast< double >( 0 ) );
 
 	auto it = C.begin();
 	while( it != C.end() ) {
 		// col + (row * rowsize)
-		const long i = ( *it ).first.first + ( ( *it ).first.second * n );
+		const size_t i = ( *it ).first.first + ( ( *it ).first.second * n );
 
 		rc = rc ? rc : setElement( a, ( *it ).second, i );
 		it.operator++();
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Error during copy of result matrix: " << rc << '\n';
+			std::cerr << "Error during copy/pinning of result matrix: " << rc << '\n';
 			out.error_code = 40;
 			return;
 		}
@@ -362,9 +360,7 @@ int main( int argc, char ** argv ) {
 		std::cerr << "Output matrix: (";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); k++ ) {
 			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
-			if( nonZeroValue != static_cast< double >( 0 ) ) { // Temp solution to the non-zero segfault bug
-				std::cerr << nonZeroValue << ", ";
-			}
+			std::cerr << nonZeroValue << ", ";
 		}
 		std::cerr << ")" << std::endl;
 		std::cerr << std::defaultfloat;
@@ -372,7 +368,7 @@ int main( int argc, char ** argv ) {
 
 	if( out.error_code != 0 ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED\n";
+		std::cerr << "Test FAILED\n";
 	} else {
 		// TODO: update to support matrices
 		/*if( verification ) {
@@ -398,3 +394,5 @@ int main( int argc, char ** argv ) {
 	// done
 	return out.error_code;
 }
+
+//make SPARSEBLAS_INC_DIR=/home/anderhan/projectArea/ALP/install/include/transition GRAPHBLAS_LIB_DIR=/home/anderhan/projectArea/ALP/install/lib/sequential WITH_ALP_EXTBLAS=1
