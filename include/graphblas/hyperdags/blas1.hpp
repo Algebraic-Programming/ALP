@@ -279,10 +279,9 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > & y,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< IOType >::value &&
-		! grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value &&
-		grb::is_monoid< Monoid >::value, void >::type * const = NULL 
-		) {
+		const typename std::enable_if< ! grb::is_object< IOType >::value && !
+		grb::is_object< InputType >::value && ! grb::is_object< MaskType >::value && grb::is_monoid< Monoid >::value,
+		void >::type * const = NULL ){
 
 		std::array< const void *, 3 > sources{&x, &y, &mask };
 		std::array< const void *, 1 > destinations{ &x };
