@@ -127,13 +127,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	rc = rc ? rc : set( x, static_cast< double >( 1 ) );
 	assert( rc == SUCCESS );
 
-	out.times.preamble = timer.time();
-
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
 	{
-		timer.reset();
+		grb::utils::Timer subtimer;
+		subtimer.reset();
 
 		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
 		assert( rc == SUCCESS );
@@ -141,7 +140,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 
-		double single_time = timer.time();
+		double single_time = subtimer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to mxv did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
@@ -166,6 +165,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 		}
 	}
+
+	// that was the preamble
+	out.times.preamble = timer.time();
+
 	// now do benchmark
 	double time_taken;
 	timer.reset();
