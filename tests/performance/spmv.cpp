@@ -48,7 +48,6 @@ struct output {
 };
 
 void grbProgram( const struct input &data_in, struct output &out ) {
-
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
@@ -133,7 +132,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	if( out.rep == 0 ) {
+	{
 		timer.reset();
 
 		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
@@ -155,38 +154,46 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
-		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		const size_t recommended_inner_repetitions =
+			static_cast< size_t >( 100.0 / single_time ) + 1;
+		if( rc == SUCCESS && out.rep == 0 ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold mxv completed"
 					<< ". Time taken was " << single_time << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.rep << " "
-					<< "to take 1 second or more per inner benchmark.\n";
+					<< "to take 100 ms. or more per inner benchmark.\n";
+				out.rep = recommended_inner_repetitions;
 			}
 		}
-	} else {
-		// do benchmark
-		double time_taken;
-		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			
-			rc = rc ? rc : set( y, static_cast< double >( 0 ) );
-			assert( rc == SUCCESS );
-
-			rc = rc ? rc : mxv( y, A, x, ring );
-			assert( rc == SUCCESS );
-		}
-		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
-		// print timing at root process
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " "
-				<< "Mxv calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
-		}
-		sleep( 1 );
+	}
+	// now do benchmark
+	double time_taken;
+	timer.reset();
+	for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+		// reset input vector
+#ifndef NDEBUG
+		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
+		assert( rc == SUCCESS );
+#else
+		(void) set( y, static_cast< double >( 0 ) );
+#endif
+		// do spmv
+#ifndef NDEBUG
+		rc = rc ? rc : mxv( y, A, x, ring );
+		assert( rc == SUCCESS );
+#else
+		(void) mxv( y, A, x, ring );
+#endif
+	}
+	time_taken = timer.time();
+	if( rc == SUCCESS ) {
+		out.times.useful = time_taken / static_cast< double >( out.rep );
+	}
+	// print timing at root process
+	if( grb::spmd<>::pid() == 0 ) {
+		std::cout << "Time taken for a " << out.rep << " "
+			<< "Mxv calls (hot start): " << out.times.useful << ". "
+			<< "Error code is " << out.error_code << std::endl;
 	}
 
 	// start postamble
@@ -206,7 +213,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.pinnedVector = PinnedVector< double >( y, SEQUENTIAL );
 
 	// finish timing
-	const double time_taken = timer.time();
+	time_taken = timer.time();
 	out.times.postamble = time_taken;
 
 	// done
@@ -230,6 +237,10 @@ int main( int argc, char ** argv ) {
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+#ifndef NDEBUG
+	std::cerr << "Warning: this benchmark utility was **not** compiled with the "
+		<< "NDEBUG macro defined(!)\n";
+#endif
 
 	// the input struct
 	struct input in;
