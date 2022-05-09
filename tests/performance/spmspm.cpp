@@ -30,6 +30,7 @@
 #define C1 0.0001
 #define C2 0.0001
 
+
 using namespace grb;
 
 struct input {
@@ -47,8 +48,7 @@ struct output {
 	size_t result_nnz;
 };
 
-void grbProgram( const struct input & data_in, struct output & out ) {
-
+void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
@@ -73,12 +73,20 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< double,
-		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parserL( data_in.filenameL, data_in.direct );
+		std::conditional< (sizeof(grb::config::RowIndexType) >
+				sizeof(grb::config::ColIndexType)),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
+	> parserL( data_in.filenameL, data_in.direct );
 
 	grb::utils::MatrixFileReader< double,
-		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parserR( data_in.filenameR, data_in.direct );
+		std::conditional< (sizeof(grb::config::RowIndexType) >
+				sizeof(grb::config::ColIndexType)),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
+	> parserR( data_in.filenameR, data_in.direct );
 
 	assert( parserL.n() == parserR.m() );
 
@@ -92,24 +100,32 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// load into GraphBLAS
 	Matrix< double > A( l, m ), B( m, n );
 	{
-		RC rc = buildMatrixUnique( A, parserL.begin( SEQUENTIAL ), parserL.end( SEQUENTIAL ), SEQUENTIAL );
+		RC rc = buildMatrixUnique(
+			A,
+			parserL.begin( SEQUENTIAL ), parserL.end( SEQUENTIAL ),
+			SEQUENTIAL
+		);
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique( A,
-		    parser.begin( PARALLEL ), parser.end( PARALLEL),
-		    PARALLEL
+			parser.begin( PARALLEL ), parser.end( PARALLEL),
+			PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed for left-hand matrix "
-					  << "(" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed for the "
+				<< "left-hand matrix " << "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 10;
 			return;
 		}
 
-		rc = buildMatrixUnique( B, parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ), SEQUENTIAL );
+		rc = buildMatrixUnique(
+			B,
+			parserR.begin( SEQUENTIAL ), parserR.end( SEQUENTIAL ),
+			SEQUENTIAL
+		);
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to buildMatrixUnique did not succeed for right-hand matrix "
-					  << "(" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed for the "
+				<< "right-hand matrix " << "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 			return;
 		}
@@ -122,85 +138,109 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		const size_t parser_nnzL = parserL.nz();
 		const size_t parser_nnzR = parserR.nz();
 		if( global_nnzL != parser_nnzL ) {
-			std::cerr << "Left matrix Failure: global nnz (" << global_nnzL << ") does not equal "
-					  << "parser nnz (" << parser_nnzL << ")." << std::endl;
+			std::cerr << "Left matrix Failure: global nnz (" << global_nnzL << ") "
+				<< "does not equal parser nnz (" << parser_nnzL << ")." << std::endl;
 			return;
 		} else if( global_nnzR != parser_nnzR ) {
-			std::cerr << "Right matrix Failure: global nnz (" << global_nnzR << ") does not equal "
-					  << "parser nnz (" << parser_nnzR << ")." << std::endl;
+			std::cerr << "Right matrix Failure: global nnz (" << global_nnzR << ") "
+				<< "does not equal parser nnz (" << parser_nnzR << ")." << std::endl;
 			return;
 		}
 
 	} catch( const std::runtime_error & ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-				  << "cannot be derived from the matrix file header. The "
-				  << "grb::Matrix reports " << nnz( A ) << " nonzeroes in left "
-				  << "and " << nnz( B ) << " n right \n";
+			<< "cannot be derived from the matrix file header. The "
+			<< "grb::Matrix reports " << nnz( A ) << " nonzeroes in left "
+			<< "and " << nnz( B ) << " n right \n";
 	}
 
 	RC rc = SUCCESS;
 
-	// test default pagerank run
-	Matrix< double > C( l, n );
-	const Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
-
-	out.times.preamble = timer.time();
-
-	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-	assert( rc == SUCCESS );
+	// test default SpMSpM run
+	const Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
-	// time a single call
-	if( out.rep == 0 ) {
-		timer.reset();
 
+	// time a single call
+	{
+		Matrix< double > C( l, n );
+
+		grb::utils::Timer subtimer;
+		subtimer.reset();
+		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+		assert( rc == SUCCESS );
 		rc = rc ? rc : grb::mxm( C, A, B, ring );
 		assert( rc == SUCCESS );
+		double single_time = subtimer.time();
 
-		double single_time = timer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to mxm did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to mxm did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 70;
+			return;
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
 		if( rc != SUCCESS ) {
 			out.error_code = 80;
+			return;
 		}
 		out.times.useful = single_time;
-		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		const size_t deduced_inner_reps =
+			static_cast< size_t >( 100.0 / single_time ) + 1;
+		if( rc == SUCCESS && out.rep == 0 ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold mxm completed"
-						  << ". Time taken was " << single_time << " ms. "
-						  << "Deduced inner repetitions parameter of " << out.rep << " "
-						  << "to take 1 second or more per inner benchmark.\n";
+					<< ". Time taken was " << single_time << " ms. "
+					<< "Deduced inner repetitions parameter of " << out.rep << " "
+					<< "to take 1 second or more per inner benchmark.\n";
+				out.rep = deduced_inner_reps;
 			}
 		}
-	} else {
-		// do benchmark
-		double time_taken;
-		timer.reset();
+	}
 
-		//for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+	if( out.rep > 1 ) {
+		std::cerr << "Error: more than 1 inner repetitions are not supported due to "
+			<< "having to time the symbolic phase while not timing the initial matrix "
+			<< "allocation cost\n";
+		out.error_code = 90;
+		return;
+	}
 
-			rc = rc ? rc : grb::mxm( C, A, B, ring );
-			assert( rc == SUCCESS );
-		//}
+	// allocate output for benchmark
+	Matrix< double > C( l, n );
 
-		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
-		// print timing at root process
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " "
-					  << "Mxm calls (hot start): " << out.times.useful << ". "
-					  << "Error code is " << out.error_code << std::endl;
-		}
-		sleep( 1 );
+	// that was the preamble
+	out.times.preamble = timer.time();
+
+	// do benchmark
+	double time_taken;
+	timer.reset();
+
+#ifndef NDEBUG
+	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+	assert( rc == SUCCESS );
+	rc = rc ? rc : grb::mxm( C, A, B, ring );
+	assert( rc == SUCCESS );
+#else
+	(void) grb::mxm( C, A, B, ring, RESIZE );
+	(void) grb::mxm( C, A, B, ring );
+#endif
+
+	time_taken = timer.time();
+	if( rc == SUCCESS ) {
+		out.times.useful = time_taken / static_cast< double >( out.rep );
+	}
+	// print timing at root process
+	if( grb::spmd<>::pid() == 0 ) {
+		std::cout << "Time taken for a " << out.rep << " "
+			<< "mxm calls (hot start): " << out.times.useful << ". "
+			<< "Error code is " << out.error_code << std::endl;
 	}
 
 	// start postamble
@@ -217,7 +257,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	}
 
 	// finish timing
-	const double time_taken = timer.time();
+	time_taken = timer.time();
 	out.times.postamble = time_taken;
 
 	// copy to pinned vector for printing result comparison
@@ -253,13 +293,17 @@ int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 3 || argc > 7 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <datasetL> <datasetR> <direct/indirect> "
-				  << "(inner iterations) (outer iterations) (verification <truth-file>)\n";
+			<< "(inner iterations) (outer iterations) (verification <truth-file>)\n";
 		std::cout << "<datasetL>, <datasetR>, and <direct/indirect> are mandatory arguments.\n";
-		std::cout << "<datasetL> is the left matrix of the multiplication and <datasetR> is the right matrix \n";
-		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". "
-				  << "If set to zero, the program will select a number of iterations "
-				  << "approximately required to take at least one second to complete.\n";
-		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0.\n";
+		std::cout << "<datasetL> is the left matrix of the multiplication and "
+			<< "<datasetR> is the right matrix \n";
+		std::cout << "(inner iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::inner() << ". "
+			<< "If set to zero, the program will select a number of iterations "
+			<< "approximately required to take at least one second to complete.\n";
+		std::cout << "(outer iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::outer() << ". "
+			<< "This value must be strictly larger than 0.\n";
 		// std::cout << "(verification <truth-file>) is optional." << std::endl;
 		// TODO: Update verification to work with matrices
 		return 0;
@@ -291,7 +335,7 @@ int main( int argc, char ** argv ) {
 		in.rep = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
-					  << "for number of inner experiment repititions." << std::endl;
+				<< "for number of inner experiment repititions." << std::endl;
 			return 2;
 		}
 	}
@@ -302,7 +346,7 @@ int main( int argc, char ** argv ) {
 		outer = strtoumax( argv[ 5 ], &end, 10 );
 		if( argv[ 5 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
-					  << "for number of outer experiment repititions." << std::endl;
+				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
 	}
@@ -322,13 +366,16 @@ int main( int argc, char ** argv ) {
 			}
 		} else {
 			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
-					  << "the optional \"verification\" argument was expected." << std::endl;
+				<< "the optional \"verification\" argument was expected." << std::endl;
 			return 5;
 		}
 	}
 
-	std::cout << "Executable called with parameters:  Left matrix A = " << in.filenameL << ", right matrix B = " << in.filenameR << ", "
-			  << "inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
+	std::cout << "Executable called with parameters:  Left matrix A = "
+		<< in.filenameL << ", right matrix B = " << in.filenameR << ", "
+		<< "inner repititions = " << in.rep
+		<< ", and outer reptitions = " << outer
+		<< std::endl;
 
 	// the output struct
 	struct output out;
@@ -344,7 +391,8 @@ int main( int argc, char ** argv ) {
 			in.rep = out.rep;
 		}
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
 			return 6;
 		}
 	}
@@ -355,19 +403,21 @@ int main( int argc, char ** argv ) {
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "benchmarker.exec returns with non-SUCCESS error code " << grb::toString( rc ) << std::endl;
+		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
 		return 8;
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 
-	std::cout << "Number of non-zeroes in output matrix: " << out.result_nnz << "\n";
+	std::cout << "Number of non-zeroes in output matrix: "
+		<< out.result_nnz << "\n";
 
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cerr << std::fixed;
 		std::cerr << "Output matrix: (";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes(); k++ ) {
-			const auto & nonZeroValue = out.pinnedVector.getNonzeroValue( k );
+			const auto &nonZeroValue = out.pinnedVector.getNonzeroValue( k );
 			std::cerr << nonZeroValue << ", ";
 		}
 		std::cerr << ")" << std::endl;
@@ -380,20 +430,20 @@ int main( int argc, char ** argv ) {
 	} else {
 		// TODO: update to support matrices
 		/*if( verification ) {
-		    out.error_code = vector_verification(
-		        out.pinnedVector, truth_filename,
-		        C1, C2
-		    );
-		    if( out.error_code == 0 ) {
-		        std::cout << "Output vector verificaton was successful!\n";
-		        std::cout << "Test OK\n";
-		    } else {
-		        std::cerr << std::flush;
-		        std::cout << "Verification FAILED\n";
-		        std::cout << "Test FAILED\n";
-		    }
+			out.error_code = vector_verification(
+				out.pinnedVector, truth_filename,
+				C1, C2
+			);
+			if( out.error_code == 0 ) {
+				std::cout << "Output vector verificaton was successful!\n";
+				std::cout << "Test OK\n";
+			} else {
+				std::cerr << std::flush;
+				std::cout << "Verification FAILED\n";
+				std::cout << "Test FAILED\n";
+			}
 		} else {
-		    std::cout << "Test OK\n";
+			std::cout << "Test OK\n";
 		}*/
 		std::cout << "Test OK\n";
 	}
@@ -402,3 +452,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return out.error_code;
 }
+

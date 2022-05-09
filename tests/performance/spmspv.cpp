@@ -213,10 +213,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	double time_taken;
 	timer.reset();
 	for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+#ifndef NDEBUG
 		rc = rc ? rc : clear( y );
 		assert( rc == SUCCESS );
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
+#else
+		(void) clear( y );
+		(void) mxv( y, A, x, ring );
+#endif
 	}
 	time_taken = timer.time();
 	if( rc == SUCCESS ) {
