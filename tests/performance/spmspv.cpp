@@ -25,10 +25,10 @@
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-//#include <utils/output_verification.hpp>
 
 #define C1 0.0001
 #define C2 0.0001
+
 
 using namespace grb;
 
@@ -47,7 +47,7 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
-void grbProgram( const struct input & data_in, struct output & out ) {
+void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
 	const size_t s = spmd<>::pid();
@@ -69,9 +69,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< double,
-		std::conditional< ( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ), grb::config::RowIndexType, grb::config::ColIndexType >::type >
-		parser( data_in.filename, data_in.direct );
-
+		std::conditional< (sizeof( grb::config::RowIndexType) >
+				sizeof(grb::config::ColIndexType )),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
+	> parser( data_in.filename, data_in.direct );
 	const size_t n = parser.n();
 	const size_t m = parser.m();
 
@@ -81,15 +84,19 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// load into GraphBLAS
 	Matrix< double > A( m, n );
 	{
-		const RC rc = buildMatrixUnique( A, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
+		const RC rc = buildMatrixUnique(
+			A,
+			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+			SEQUENTIAL
+		);
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique( A,
-		    parser.begin( PARALLEL ), parser.end( PARALLEL),
-		    PARALLEL
+			parser.begin( PARALLEL ), parser.end( PARALLEL),
+			PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
-					  << "(" << toString( rc ) << ")." << std::endl;
+				<< "(" << toString( rc ) << ")." << std::endl;
 			return;
 		}
 	}
@@ -100,18 +107,18 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		const size_t parser_nnz = parser.nz();
 		if( global_nnz != parser_nnz ) {
 			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
-					  << "parser nnz (" << parser_nnz << ")." << std::endl;
+				<< "parser nnz (" << parser_nnz << ")." << std::endl;
 			return;
 		}
 	} catch( const std::runtime_error & ) {
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-				  << "cannot be derived from the matrix file header. The "
-				  << "grb::Matrix reports " << nnz( A ) << " nonzeroes.\n";
+			<< "cannot be derived from the matrix file header. The "
+			<< "grb::Matrix reports " << nnz( A ) << " nonzeroes.\n";
 	}
 
 	RC rc = SUCCESS;
 
-	// test default pagerank run
+	// test default spmspv run
 	Vector< double > x( n ), y( m );
 
 	rc = rc ? rc : clear( x );
@@ -160,13 +167,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		}
 	}
 
-	out.times.preamble = timer.time();
-
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	if( out.rep == 0 ) {
-		timer.reset();
+	{
+		grb::utils::Timer subtimer;
+		subtimer.reset();
 
 		rc = rc ? rc : clear( y );
 		assert( rc == SUCCESS );
@@ -174,9 +180,10 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 
-		double single_time = timer.time();
+		double single_time = subtimer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to mxv did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to mxv did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == SUCCESS ) {
@@ -186,38 +193,40 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
-		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		const size_t deduced_ideal_spmv_time =
+			static_cast< size_t >( 100.0 / single_time ) + 1;
+		if( rc == SUCCESS && out.rep == 0 ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold mxv completed"
-						  << ". Time taken was " << single_time << " ms. "
-						  << "Deduced inner repetitions parameter of " << out.rep << " "
-						  << "to take 1 second or more per inner benchmark.\n";
+					<< ". Time taken was " << single_time << " ms. "
+					<< "Deduced inner repetitions parameter of " << out.rep << " "
+					<< "to take 100 ms. or more per inner benchmark.\n";
+				out.rep = deduced_ideal_spmv_time;
 			}
 		}
-	} else {
-		// do benchmark
-		double time_taken;
-		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+	}
 
-			rc = rc ? rc : clear( y );
-			assert( rc == SUCCESS );
+	// that was the preamble
+	out.times.preamble = timer.time();
 
-			rc = rc ? rc : mxv( y, A, x, ring );
-			assert( rc == SUCCESS );
-		}
-		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
-		// print timing at root process
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " "
-					  << "Mxv calls (hot start): " << out.times.useful << ". "
-					  << "Error code is " << out.error_code << std::endl;
-		}
-		sleep( 1 );
+	// do benchmark
+	double time_taken;
+	timer.reset();
+	for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+		rc = rc ? rc : clear( y );
+		assert( rc == SUCCESS );
+		rc = rc ? rc : mxv( y, A, x, ring );
+		assert( rc == SUCCESS );
+	}
+	time_taken = timer.time();
+	if( rc == SUCCESS ) {
+		out.times.useful = time_taken / static_cast< double >( out.rep );
+	}
+	// print timing at root process
+	if( grb::spmd<>::pid() == 0 ) {
+		std::cout << "Time taken for a " << out.rep << " "
+			<< "Mxv calls (hot start): " << out.times.useful << ". "
+			<< "Error code is " << out.error_code << std::endl;
 	}
 
 	// start postamble
@@ -237,7 +246,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	out.pinnedVector = PinnedVector< double >( y, SEQUENTIAL );
 
 	// finish timing
-	const double time_taken = timer.time();
+	time_taken = timer.time();
 	out.times.postamble = time_taken;
 
 	// done
@@ -248,17 +257,26 @@ int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 3 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> "
-				  << "(inner iterations) (outer iterations) (source vertex 1) (source vertex 2) ...\n";
+			<< "(inner iterations) (outer iterations) (source vertex 1) "
+			<< "(source vertex 2) ...\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
-		std::cout << "(inner iterations) is optional, the default is " << grb::config::BENCHMARKING::inner() << ". "
-				  << "If set to zero, the program will select a number of iterations "
-				  << "approximately required to take at least one second to complete.\n";
-		std::cout << "(outer iterations) is optional, the default is " << grb::config::BENCHMARKING::outer() << ". This value must be strictly larger than 0.\n";
-		std::cout << "(Source vertices 1, 2 ...) are optional and defines which elements in the vectors are non-zero."
-				  << "The default value for this is element n/2 is non-zero \n";
+		std::cout << "(inner iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::inner() << ". "
+			<< "If set to zero, the program will select a number of iterations "
+			<< "approximately required to take at least one second to complete.\n";
+		std::cout << "(outer iterations) is optional, the default is "
+			<< grb::config::BENCHMARKING::outer() << ". "
+			<< "This value must be strictly larger than 0.\n";
+		std::cout << "(Source vertices 1, 2 ...) are optional and defines which "
+			<< "elements in the vectors are non-zero. "
+			<< "The default value for this is element n/2 is non-zero \n";
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+#ifndef NDEBUG
+	std::cerr << "Warning: benchmark driver compiled without the NDEBUG macro "
+		<< "defined(!)\n";
+#endif
 
 	// the input struct
 	struct input in;
@@ -281,7 +299,7 @@ int main( int argc, char ** argv ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
-					  << "for number of inner experiment repititions." << std::endl;
+				<< "for number of inner experiment repititions." << std::endl;
 			return 2;
 		}
 	}
@@ -292,7 +310,7 @@ int main( int argc, char ** argv ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
-					  << "for number of outer experiment repititions." << std::endl;
+				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
 		}
 	}
@@ -302,7 +320,9 @@ int main( int argc, char ** argv ) {
 	in.elements = argv + 5;
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
-			  << "inner repititions = " << in.rep << ", and outer reptitions = " << outer << std::endl;
+		<< "inner repititions = " << in.rep << ", and "
+		<< "outer reptitions = " << outer
+		<< std::endl;
 
 	// the output struct
 	struct output out;
@@ -318,7 +338,8 @@ int main( int argc, char ** argv ) {
 			in.rep = out.rep;
 		}
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
 			return 6;
 		}
 	}
@@ -329,13 +350,15 @@ int main( int argc, char ** argv ) {
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "benchmarker.exec returns with non-SUCCESS error code " << grb::toString( rc ) << std::endl;
+		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
 		return 8;
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 	std::cout << "Size of x is " << out.pinnedVector.size() << ".\n";
-	std::cout << "Number of non-zeroes are: " << out.pinnedVector.nonzeroes() << ".\n";
+	std::cout << "Number of non-zeroes are: "
+		<< out.pinnedVector.nonzeroes() << ".\n";
 	if( out.error_code == 0 && out.pinnedVector.nonzeroes() > 0 ) {
 		std::cerr << std::fixed;
 		std::cerr << "Output vector: ( ";
@@ -363,3 +386,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return out.error_code;
 }
+
