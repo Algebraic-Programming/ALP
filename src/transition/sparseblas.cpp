@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "sparseblas.h"
+#include "blas_sparse.h"
 
 #include <limits>
 #include <vector>
