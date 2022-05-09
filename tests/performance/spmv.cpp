@@ -70,8 +70,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// create local parser
 	grb::utils::MatrixFileReader< double,
 		std::conditional< (sizeof( grb::config::RowIndexType) >
-			sizeof(grb::config::ColIndexType )),
-			grb::config::RowIndexType
+				sizeof(grb::config::ColIndexType )),
+			grb::config::RowIndexType,
 			grb::config::ColIndexType
 		>::type
 	> parser( data_in.filename, data_in.direct );
