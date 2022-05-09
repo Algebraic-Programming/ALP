@@ -38,8 +38,7 @@ namespace alp {
 	enum Backend {
 
 		/**
-		 * The ALP/Dense backend. This is no longer a proper GraphBLAS implementation, as it assumes
-		 * all containers are dense. No ``missing'' entries in containers are allowed.
+		 * The ALP reference backend.
 		 */
 		reference
 
