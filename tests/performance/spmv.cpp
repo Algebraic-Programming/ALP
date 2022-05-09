@@ -163,6 +163,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					<< "to take 100 ms. or more per inner benchmark.\n";
 				out.rep = recommended_inner_repetitions;
 			}
+			return;
 		}
 	}
 

@@ -201,6 +201,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					<< "to take 1 second or more per inner benchmark.\n";
 				out.rep = deduced_inner_reps;
 			}
+			return;
 		}
 	}
 
