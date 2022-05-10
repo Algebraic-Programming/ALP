@@ -109,6 +109,12 @@ namespace grb {
 
 	};
 
+	template< typename D >
+	struct is_container< Matrix< D, hyperdags > > {
+		/** A hyperdags matrix is an ALP container. */
+		static const constexpr bool value = true;
+	};
+
 	namespace internal {
 
 		template< typename T >

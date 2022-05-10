@@ -162,6 +162,12 @@ namespace grb {
 
 	};
 
+	template< typename D, typename Coord >
+	struct is_container< Vector< D, hyperdags, Coord > > {
+		/** A hyperdags vector is an ALP container. */
+		static const constexpr bool value = true;
+	};
+
 	namespace internal {
 
 		template< typename T >
