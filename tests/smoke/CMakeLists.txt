@@ -57,7 +57,7 @@ add_grb_executables( manual_hook_grb_collectives_blas1_raw manual_launcher.cpp
 
 add_grb_executables( small_knn ../unit/auto_launcher.cpp
 	hook/knn.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( manual_hook_small_knn manual_launcher.cpp
@@ -94,22 +94,22 @@ add_grb_executables( from_mpi_launch_simple_pagerank_broadcast simple_pagerank_b
 )
 
 add_grb_executables( knn knn.cpp ../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( hpcg hpcg.cpp
 
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( graphchallenge_nn_single_inference graphchallenge_nn_single_inference.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( simple_pagerank simple_pagerank.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
@@ -130,7 +130,7 @@ add_grb_executables( pregel_connected_components pregel_connected_components.cpp
 )
 
 add_grb_executables( conjugate_gradient conjugate_gradient.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
@@ -141,22 +141,22 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 )
 
 add_grb_executables( bicgstab bicgstab.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( kmeans kmeans.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( labeltest label_test.cpp
 	../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
 	hook/small_simple_pagerank.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 # targets to list and build the test for this category
