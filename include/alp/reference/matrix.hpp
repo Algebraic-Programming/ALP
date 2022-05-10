@@ -1100,17 +1100,20 @@ namespace alp {
 	namespace structures {
 
 		/**
-		 * @brief Checks if a structured matrix has structure \a Structure.
+		 * @brief Checks if TestedStructure is a \a Structure according to the ALP's structure classification.
 		 *
-		 * @tparam MatrixT The structured matrix type to be tested.
-		 * @tparam Structure 		 The structure type which should be implied by \a MatrixT::structure.
+		 * @tparam TestedStructure   The structure to be tested.
+		 * @tparam Structure 		 The structure that should be implied by \a TestedStructure.
 		 */
-		template< typename MatrixT, typename Structure >
+		template< typename TestedStructure, typename Structure >
 		struct is_a {
+
+			static_assert( std::is_base_of< structures::BaseStructure, TestedStructure >::value );
+
 			/**
-			 * \a value is true iff \a Structure is implied by \a MatrixT::structure.
+			 * \a value is true iff \a Structure is implied by \a TestedStructure.
 			 */
-			static constexpr bool value = is_in< Structure, typename MatrixT::structure::inferred_structures >::value;
+			static constexpr bool value = is_in< Structure, typename TestedStructure::inferred_structures >::value;
 		};
 
 		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >

@@ -121,41 +121,49 @@ namespace alp {
 
 			OutputType temp;
 
-			const std::ptrdiff_t m = nrows( C );
-			const std::ptrdiff_t n = ncols( C );
-			const std::ptrdiff_t m_a = nrows( A );
-			const std::ptrdiff_t k = ncols( A );
-			const std::ptrdiff_t k_b = nrows( B );
-			const std::ptrdiff_t n_b = ncols( B );
+			const std::ptrdiff_t m   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
+			const std::ptrdiff_t n   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
+			const std::ptrdiff_t m_a { static_cast< std::ptrdiff_t >( nrows( A ) ) };
+			const std::ptrdiff_t k   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
+			const std::ptrdiff_t k_b { static_cast< std::ptrdiff_t >( nrows( B ) ) };
+			const std::ptrdiff_t n_b { static_cast< std::ptrdiff_t >( ncols( B ) ) };
 
 			if( m != m_a || k != k_b || n != n_b ) {
 				return MISMATCH;
 			}
 
-			std::cout << "m, n, k  = " << m << " " << n << " " << k << std::endl;
-
 			// Currently assuming single band
 			// extensions to multiple bands requires cartesian product 
 			// btw A and B's bands.
 
-			const std::ptrdiff_t l_a = structures::get_lower_bandwidth( A );
-			const std::ptrdiff_t u_a = structures::get_upper_bandwidth( A );
+			const std::ptrdiff_t l_a { structures::get_lower_bandwidth( A ) };
+			const std::ptrdiff_t u_a { structures::get_upper_bandwidth( A ) };
 
-			const std::ptrdiff_t l_b = structures::get_lower_bandwidth( B );
-			const std::ptrdiff_t u_b = structures::get_upper_bandwidth( B );
+			const std::ptrdiff_t l_b { structures::get_lower_bandwidth( B ) };
+			const std::ptrdiff_t u_b { structures::get_upper_bandwidth( B ) };
+			
+			// In case of symmetry the iteration domain intersects the the upper 
+			// (or lower) domain of C
 
-			std::cout << "l_a, u_a = " << l_a << ", " << u_a << std::endl;
-			std::cout << "l_b, u_b = " << l_b << ", " << u_b << std::endl;
+			constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
+			constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multi-choice symmetric layout
 
 			for( std::ptrdiff_t i = 0; i < m; ++i ) {
-				for( std::ptrdiff_t j = std::max( (std::ptrdiff_t)0, i + l_a + l_b ); j < std::min( n, i + u_a + u_b - 1 ); ++j ) {
-					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); l < std::min( {k, i + u_a, j - l_b + 1} ); ++l ) {
-						std::cout << "temp = A.mulOp.B at ";
-						(void)internal::apply( temp, internal::get(A, i, l ), internal::get(B, l, j ), oper );
-						std::cout << "\n";
-						std::cout << "C addMon.= temp at ";
+				for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
+					 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
+					 ++j ) {
+					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
+						 l < std::min( {k, i + u_a, j - l_b + 1} ); 
+						 ++l ) {
+						std::cout << "temp = A";
+						const auto ta { internal::get(A, i, l ) };
+						std::cout << ".mulOp.B";
+						const auto tb { internal::get(B, l, j ) };
+						(void)internal::apply( temp, ta, tb, oper );
+						std::cout << ";\n";
+						std::cout << "C";
 						(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
-						std::cout << "\n";
+						std::cout << " addMon.= temp;\n";
 					}
 				}
 			}

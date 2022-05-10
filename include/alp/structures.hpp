@@ -166,9 +166,11 @@ namespace alp {
 			};
 		} // namespace internal 
 
+		struct BaseStructure {};
+
 		struct UpperTriangular;
 
-		struct General {
+		struct General: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
@@ -223,7 +225,7 @@ namespace alp {
 			};
 		};
 
-		struct Square {
+		struct Square: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
@@ -275,7 +277,7 @@ namespace alp {
 		 *
 		 */
 		template < typename... Intervals >
-		struct Band {
+		struct Band: BaseStructure {
 
 			typedef std::tuple< Intervals... > band_intervals;
 
@@ -284,45 +286,45 @@ namespace alp {
 			typedef typename structures::tuple_cat< std::tuple< Band< Intervals... > >, General::inferred_structures >::type inferred_structures;
 		};
 
-		struct Symmetric {
+		struct Symmetric: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
 		};
 
-		struct SymmetricPositiveDefinite {
+		struct SymmetricPositiveDefinite: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
 		};
 
-		struct Trapezoidal {
+		struct Trapezoidal: BaseStructure {
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Trapezoidal >, Band< OpenInterval >::inferred_structures >::type;
 		};
 
-		struct Triangular {
+		struct Triangular: BaseStructure {
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Triangular >, Square::inferred_structures, Trapezoidal::inferred_structures >::type;
 		};
 
-		struct LowerTrapezoidal {
+		struct LowerTrapezoidal: BaseStructure {
 
 			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
-		struct LowerTriangular {
+		struct LowerTriangular: BaseStructure {
 
 			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures, LowerTrapezoidal::inferred_structures >::type;
 		};
 
-		struct UpperTrapezoidal {
+		struct UpperTrapezoidal: BaseStructure {
 
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
 
@@ -330,102 +332,102 @@ namespace alp {
 
 		};
 
-		struct UpperTriangular {
+		struct UpperTriangular: BaseStructure {
 
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< UpperTriangular >, Triangular::inferred_structures, UpperTrapezoidal::inferred_structures >::type;
 		};
 
-		struct Tridiagonal {
+		struct Tridiagonal: BaseStructure {
 
 			typedef std::tuple< Interval< -1, 1 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Tridiagonal >, Square::inferred_structures, Band< OpenInterval >::inferred_structures >::type;
 		};
 
-		struct SymmetricTridiagonal {
+		struct SymmetricTridiagonal: BaseStructure {
 
 			typedef std::tuple< Interval< -1, 1 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricTridiagonal >, Symmetric::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
-		struct Bidiagonal {
+		struct Bidiagonal: BaseStructure {
 			using inferred_structures = structures::tuple_cat< std::tuple< Bidiagonal >, Triangular::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
-		struct LowerBidiagonal {
+		struct LowerBidiagonal: BaseStructure {
 
 			typedef std::tuple< Interval< -1, 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< LowerBidiagonal >, Bidiagonal::inferred_structures, LowerTriangular::inferred_structures >::type;
 		};
 
-		struct UpperBidiagonal {
+		struct UpperBidiagonal: BaseStructure {
 
 			typedef std::tuple< Interval< 0, 1 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< UpperBidiagonal >, Bidiagonal::inferred_structures, UpperTriangular::inferred_structures >::type;
 		};
 
-		struct Diagonal {
+		struct Diagonal: BaseStructure {
 
 			typedef std::tuple< Interval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Diagonal >, LowerBidiagonal::inferred_structures, UpperBidiagonal::inferred_structures >::type;
 		};
 
-		struct FullRank {
+		struct FullRank: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< FullRank >, General::inferred_structures >::type;
 		};
 
-		struct NonSingular {
+		struct NonSingular: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< NonSingular >, Square::inferred_structures, FullRank::inferred_structures >::type;
 		};
 
-		struct OrthogonalColumns {
+		struct OrthogonalColumns: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalColumns >, FullRank::inferred_structures >::type;
 		};
 
-		struct OrthogonalRows {
+		struct OrthogonalRows: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalRows >, FullRank::inferred_structures >::type;
 		};
 
-		struct Orthogonal {
+		struct Orthogonal: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Orthogonal >, NonSingular::inferred_structures, OrthogonalColumns::inferred_structures, OrthogonalRows::inferred_structures >::type;
 		};
 
-		struct Constant {
+		struct Constant: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Constant >, General::inferred_structures >::type;
 		};
 
-		struct Identity {
+		struct Identity: BaseStructure {
 
 			typedef std::tuple< Interval< 0 > > band_intervals;
 
 			using inferred_structures = structures::tuple_cat< std::tuple< Identity >, FullRank::inferred_structures, Diagonal::inferred_structures, Constant::inferred_structures >::type;
 		};
 
-		struct Zero {
+		struct Zero: BaseStructure {
 
 			typedef std::tuple< > band_intervals;
 
