@@ -488,11 +488,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * = nullptr
 	) {
-<<<<<<< HEAD
-		std::array< const void *, 2 > sources{ &x, beta };
-=======
 		std::array< const void *, 2 > sources{ &x, &beta };
->>>>>>> b4c074c9 (add eWiseMul)
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDL_VECTOR_BETA_MONOID,
