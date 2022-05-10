@@ -88,7 +88,9 @@ namespace grb {
 			val, i);
 	}
 
-	template< typename DataType, typename Coords >
+	template< 
+		typename DataType, typename Coords 
+	>
 	RC clear( Vector< DataType, hyperdags, Coords > &x ) {
 		std::array< const void *, 1 > sources{ &x };
 		std::array< const void *, 1 > destinations{ &x };
@@ -199,9 +201,7 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return set<descr>(internal::getVector(x), internal::getVector(y));	
-	}
-	
-	
+	}	
 	
 	template< 
 		Descriptor descr = descriptors::no_operation, 
@@ -271,8 +271,6 @@ namespace grb {
 		return foldr<descr>(internal::getVector(x), beta, monoid);
 	}
 	
-	
-	
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename IOType, typename InputType, typename Coords
@@ -313,8 +311,6 @@ namespace grb {
 		return foldr<descr>(alpha, internal::getVector(y), op);
 	}
 	
-	
-	
 	template< 
 		Descriptor descr = descriptors::no_operation, class OP,
 		typename IOType, typename InputType, typename Coords 
@@ -334,7 +330,6 @@ namespace grb {
 		);
 		return foldr<descr>(internal::getVector(x), internal::getVector(y), op);
 	}
-	
 	
 	template<
 		 Descriptor descr = descriptors::no_operation, class OP,
@@ -356,7 +351,6 @@ namespace grb {
 		);
 		return foldr<descr>(internal::getVector(x), internal::getVector(m), internal::getVector(y), op);
 	}
-	
 	
 	template< 
 		Descriptor descr = descriptors::no_operation,
@@ -398,8 +392,6 @@ namespace grb {
 		);
 		return foldr<descr>(internal::getVector(x), internal::getVector(m), internal::getVector(y), monoid);
 	}
-	
-	
 	
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
@@ -464,7 +456,6 @@ namespace grb {
 		return foldl<descr>(internal::getVector(x), internal::getVector(m), beta, op);
 	}
 
-
 	template< 
 		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename IOType, typename InputType, typename Coords 
@@ -473,8 +464,7 @@ namespace grb {
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! 
-		grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL )
-	{
+		grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL ){
 		std::array< const void *, 2 > sources{&x, beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -485,7 +475,6 @@ namespace grb {
 		return foldl<descr>(internal::getVector(x), beta, monoid);
 	}
 
-
 	template<
 		 Descriptor descr = descriptors::no_operation, class Monoid, 
 		 typename IOType, typename MaskType, typename InputType, typename Coords 
@@ -495,8 +484,7 @@ namespace grb {
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< MaskType >::value &&
-		! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL )
-	{
+		! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL ){
 		
 		std::array< const void *, 3 > sources{&x, &m, beta };
 		std::array< const void *, 1 > destinations{ &x };
@@ -554,16 +542,15 @@ namespace grb {
 	
 	template
 	<
-		 Descriptor descr = descriptors::no_operation, class Monoid,
-		 typename IOType, typename MaskType, typename InputType, typename Coords 
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename MaskType, typename InputType, typename Coords 
 	>
 	RC foldl( Vector< IOType, hyperdags, Coords > & x,
 		const Vector< MaskType, hyperdags, Coords > & m,
 		const Vector< InputType, hyperdags, Coords > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value &&
-		! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) 
-	{
+		! grb::is_object< MaskType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) 	{
 			std::array< const void *, 3 > sources{&x, &m, &y };
 			std::array< const void *, 1 > destinations{ &x };
 			internal::hyperdags::generator.addOperation(
@@ -571,8 +558,7 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 			);
-			return foldl<descr>(internal::getVector(x),internal::getVector(m), internal::getVector(y), monoid);
-		
+			return foldl<descr>(internal::getVector(x),internal::getVector(m), internal::getVector(y), monoid);	
 	}
 	
 	template< 
@@ -583,8 +569,7 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && !
-		grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) 	
-	{
+		grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
 
 		std::array< const void *, 2 > sources{&x, &y };
 		std::array< const void *, 1 > destinations{ &x };
@@ -594,12 +579,9 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl<descr>(internal::getVector(x),internal::getVector(y), op);
-	
 	}
-	
 
-	template
-	< 
+	template< 
 		typename Func, typename DataType, typename Coords 
 	>
 	RC eWiseLambda( const Func f, const Vector< DataType, hyperdags, Coords > & x ) {
@@ -612,13 +594,12 @@ namespace grb {
 		);
 		return eWiseLambda( f, internal::getVector(x) );
 	}
-
 	
 	template< 
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename fwd_iterator, typename Coords,
 		class Dup = operators::right_assign< InputType >
-		>
+	>
 	RC buildVector( Vector< InputType, hyperdags, Coords > & x,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode, const Dup & dup = Dup()
@@ -638,13 +619,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
 		typename Coords, class Dup = operators::right_assign< InputType >
-		>
+	>
 	RC buildVector( Vector< InputType, hyperdags, Coords > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode,
-		const Dup &dup = Dup()
-	) {
+		const Dup &dup = Dup()) {
+		
 		std::array< const void *, 0 > sources;
 		std::array< const void *, 1 > destinations{ &x};
 		internal::hyperdags::generator.addOperation(
@@ -655,10 +636,9 @@ namespace grb {
 		return buildVector<descr>( internal::getVector(x), ind_start, ind_end, val_start, val_end, mode, dup  );
 	}
 	
-	
 	template< 
 		typename DataType, typename Coords
-		>
+	>
 	size_t size( const Vector< DataType, hyperdags, Coords > & x ) {
 	
 		std::array< const void *, 1 > sources{ &x };
@@ -669,12 +649,11 @@ namespace grb {
 			destinations.begin(), destinations.end());
 		return size (internal::getVector(x));
 	}
-	
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords 
-		>
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< InputType1, hyperdags, Coords > & x,
 		const InputType2 beta,
@@ -694,10 +673,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(x), beta, op); 	
 	}	
 		
-	template
-		< Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		 typename InputType1, typename InputType2, typename Coords 
-		>
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > & y,
@@ -715,10 +694,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), alpha, internal::getVector(y), op); 	
 	}	
 	
-	template
-		< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
-		 typename MaskType, typename InputType1, typename InputType2, typename Coords
-		>
+	template< 
+		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
+		typename MaskType, typename InputType1, typename InputType2, typename Coords
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Vector< InputType1, hyperdags, Coords > & x,
@@ -737,10 +716,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(mask), internal::getVector(x), beta, monoid); 	
 	}	
 	
-	template
-		< Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		 typename MaskType, typename InputType1, typename InputType2, typename Coords 
-		>
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Vector< InputType1, hyperdags, Coords > & x,
@@ -759,17 +738,18 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(mask), internal::getVector(x), beta, op); 	
 	}	
 	
-	template
-		< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
-		 typename MaskType, typename InputType1, typename InputType2, typename Coords 
-		>
+	template< 
+		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
+		typename MaskType, typename InputType1, typename InputType2, typename Coords 
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value &&
-		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType 
+		>::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid 
+		>::value, void >::type * const = NULL ) {
 		
 		std::array< const void *, 2 > sources{& mask, &y,};
 		std::array< const void *, 1 > destinations{ &z};
@@ -779,13 +759,11 @@ namespace grb {
 			destinations.begin(), destinations.end());
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(mask), alpha, internal::getVector(y), monoid); 	
 	}	
-		
-	
-		
-	template
-		< Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		 typename MaskType, typename InputType1, typename InputType2, typename Coords 
-		>
+			
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
+		typename MaskType, typename InputType1, typename InputType2, typename Coords 
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const InputType1 alpha,
@@ -803,10 +781,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(mask), alpha, internal::getVector(y), op); 	
 	}
 	
-	template
-		< Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		 typename MaskType, typename InputType1, typename InputType2, typename Coords
-		  >
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
+		typename MaskType, typename InputType1, typename InputType2, typename Coords
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Vector< InputType1, hyperdags, Coords > & x,
@@ -829,7 +807,7 @@ namespace grb {
 	template< 
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords
-		 >
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< InputType1, hyperdags, Coords > & x,
 		const InputType2 beta,
@@ -853,7 +831,7 @@ namespace grb {
 	template<
 		 Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		 typename InputType1, typename InputType2, typename Coords 
-		 >
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > & y,
@@ -868,13 +846,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseApply <descr> (internal::getVector(z), alpha, internal::getVector(y), monoid); 
-		
 		}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
-		>
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & mask,
 		const Vector< InputType1, hyperdags, Coords > & x,
@@ -893,11 +870,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(mask), internal::getVector(x), internal::getVector(y), monoid); 
 	}
 	
-	template
-		< 
+	template< 
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords 
-		>
+	>
 	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< InputType1, hyperdags, Coords > & x,
 		const Vector< InputType2, hyperdags, Coords > & y,
@@ -914,11 +890,10 @@ namespace grb {
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(x), internal::getVector(y), monoid); 
 		}
 				
-	template
-		< 
+	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const Vector< InputType1, hyperdags, Coords > & _a,
@@ -939,11 +914,10 @@ namespace grb {
 		internal::getVector(_x), internal::getVector(_y), ring); 
 		}
 		
-		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, 
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const Vector< InputType1, hyperdags, Coords > & _a,
@@ -962,14 +936,12 @@ namespace grb {
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a),
 		internal::getVector(_x), gamma, ring); 
-		}
-		
-		
-		
+	}
+
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2, 
 		typename InputType3, typename OutputType, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > & _x,
@@ -985,14 +957,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), alpha, internal::getVector(_x), internal::getVector(_y), ring); 
-		
-		}
-		
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
-		 typename InputType2, typename InputType3, typename OutputType, typename Coords 
-		>
+		typename InputType2, typename InputType3, typename OutputType, typename Coords 
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< InputType1, hyperdags, Coords > & _a,
 		const InputType2 chi,
@@ -1008,12 +978,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), chi, internal::getVector(_y), ring); 
-		}
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
-		 >
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const InputType1 alpha,
@@ -1031,14 +1001,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), alpha, internal::getVector(_x), internal::getVector(_y), ring); 
-		}
-		
-		
-		
+	}
+	
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, 
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const Vector< InputType1, hyperdags, Coords > & _a,
@@ -1056,13 +1024,13 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a), chi,  internal::getVector(_y), ring); 
-		}
+	}
 		
 		
 	template<
 		 Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		 typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const Vector< InputType1, hyperdags, Coords > & _a,
@@ -1080,14 +1048,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a), beta,  gamma, ring); 
-		
-		}
-		
-		
+	}
+			
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType, typename MaskType, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
 		const Vector< MaskType, hyperdags, Coords > & _m,
 		const InputType1 alpha,
@@ -1105,14 +1071,13 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), alpha, internal::getVector(_x), gamma, ring); 
-		
-		}
-		
-		
+
+	}
+			
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2, typename InputType3, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & m,
 		const InputType1 alpha,
@@ -1130,13 +1095,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), internal::getVector(m), alpha, beta, internal::getVector(y), ring); 
-		
-		}
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, 
 		typename MaskType, typename InputType1, typename InputType2, typename InputType3, typename Coords 
-		>
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
 		const Vector< MaskType, hyperdags, Coords > & m,
 		const InputType1 alpha,
@@ -1154,9 +1118,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), internal::getVector(m), alpha, beta, gamma, ring); 
-		
-		
-		}
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords 
@@ -1174,8 +1136,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return unzip <descr> (internal::getVector(x), internal::getVector(y), internal::getVector(in)); 	
-		}
-		
+	}	
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -1198,10 +1159,8 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), internal::getVector(_x), gamma, ring); 	
-		}
-	
-	
-	
+	}
+
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename Coords 
@@ -1222,8 +1181,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), beta, gamma, ring); 
-		
-		}
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
@@ -1245,14 +1203,12 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), alpha, internal::getVector(_x), gamma, ring); 
-		} 
-		
-		
-		
+	}
+	 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
 	 	typename InputType1, typename InputType2, typename InputType3, typename Coords 
-	 >
+	>
 	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
 		const InputType1 alpha,
 		const InputType2 beta,
@@ -1260,9 +1216,7 @@ namespace grb {
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! 
 		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value 
-		&& grb::is_semiring< Ring >::value, void >::type * const = NULL )
-		{
-		
+		&& grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 		std::array< const void *, 1 > sources{& y};
 		std::array< const void *, 1 > destinations{ & z};
 		internal::hyperdags::generator.addOperation(
@@ -1270,9 +1224,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), alpha, beta, internal::getVector(y), ring); 
-
-		}
-		
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
@@ -1284,9 +1236,7 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
-		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
-		{
-		
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 		std::array< const void *, 0 > sources{};
 		std::array< const void *, 1 > destinations{ & z};
 		internal::hyperdags::generator.addOperation(
@@ -1294,7 +1244,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), alpha, beta, gamma, ring); 
-		}
+	}
 		
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
@@ -1315,7 +1265,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), internal::getVector(_x), internal::getVector(_y), ring); 
-		}
+	}
 		
 		
 } // end namespace grb
