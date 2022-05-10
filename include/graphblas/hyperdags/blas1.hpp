@@ -271,6 +271,136 @@ namespace grb {
 		return foldr<descr>(internal::getVector(x), beta, monoid);
 	}
 	
+	
+	
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename InputType, typename Coords
+	>
+	RC foldr( const InputType & alpha,
+		Vector< IOType, hyperdags, Coords > & y,
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< ! grb::is_object< InputType >::value && !
+		grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL )
+		{
+		std::array< const void *, 2 > sources{ &alpha, &y,  };
+		std::array< const void *, 2 > destinations{ &monoid,  &y, };
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_APLHA_VECTOR_MONOID,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(alpha, internal::getVector(y), monoid);
+	}
+	
+	template< 
+		Descriptor descr = descriptors::no_operation,
+		 class OP, typename IOType, typename InputType, typename Coords 
+	>
+	RC foldr( const InputType & alpha,
+		Vector< IOType, hyperdags, Coords > & y,
+		const OP & op = OP(),
+		const typename std::enable_if< ! grb::is_object< InputType >::value && !
+		grb::is_object< IOType >::value && grb::is_operator< OP >::value, void >::type * const = NULL )
+		{
+		std::array< const void *, 2 > sources{ &alpha, &y};
+		std::array< const void *, 2 > destinations{ &op, &y};
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_APLHA_VECTOR_OPERATOR,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(alpha, internal::getVector(y), op);
+	}
+	
+	
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename InputType, typename Coords 
+	>
+	RC foldr( const Vector< InputType, hyperdags, Coords > & x,
+		Vector< IOType, hyperdags, Coords > & y,
+		const OP & op = OP(),
+		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType
+		>::value && ! grb::is_object< IOType >::value, void >::type * = NULL )
+		{
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 2 > destinations{ &y, &op,};
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_VECTOR_VECTOR_OPERATOR,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(internal::getVector(x), internal::getVector(y), op);
+	}
+	
+	
+	template<
+		 Descriptor descr = descriptors::no_operation, class OP,
+		 typename IOType, typename MaskType, typename InputType, typename Coords 
+	>
+	RC foldr( const Vector< InputType, hyperdags, Coords > & x,
+		const Vector< MaskType, hyperdags, Coords > & m,
+		Vector< IOType, hyperdags, Coords > & y,
+		const OP & op = OP(),
+		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value &&
+		! grb::is_object< MaskType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) 
+		{
+		std::array< const void *, 2 > sources{ &x, &m, & y };
+		std::array< const void *, 2 > destinations{ &y,  &op};
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(internal::getVector(x), internal::getVector(m), internal::getVector(y), op);
+	}
+	
+	
+	template< 
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, typename IOType, typename InputType, typename Coords 
+	>
+	RC foldr( const Vector< InputType, hyperdags, Coords > & x,
+		Vector< IOType, hyperdags, Coords > & y,
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< InputType
+		>::value && ! grb::is_object< IOType >::value, void >::type * = NULL )
+		{
+		std::array< const void *, 2 > sources{ &x, & y };
+		std::array< const void *, 2 > destinations{ &y,  &monoid};
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_VECTOR_VECTOR_MONOID,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(internal::getVector(x), internal::getVector(y), monoid);
+	}
+	
+	template< 
+		Descriptor descr = descriptors::no_operation, class Monoid, typename IOType,
+		typename MaskType, typename InputType, typename Coords 
+	>
+	RC foldr( const Vector< InputType, hyperdags, Coords > & x,
+		const Vector< MaskType, hyperdags, Coords > & m,
+		Vector< IOType, hyperdags, Coords > & y,
+		const Monoid & monoid = Monoid(),
+		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< MaskType >::value &&
+		! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) 
+		{
+		std::array< const void *, 3 > sources{ &x, & m, & y };
+		std::array< const void *, 2 > destinations{ &y,  &monoid};
+		internal::hyperdags::generator.addOperation(
+		internal::hyperdags::FOLDR_VECTOR_VECTOR_VECTOR_MONOID,
+		sources.begin(), sources.end(),
+		destinations.begin(), destinations.end()	
+		);
+		return foldr<descr>(internal::getVector(x), internal::getVector(m), internal::getVector(y), monoid);
+	}
+	
+	
+	
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename IOType, typename MaskType, typename Coords

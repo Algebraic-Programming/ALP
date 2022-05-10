@@ -384,13 +384,25 @@ namespace grb {
 				
 				FOLDL_VECTOR_VECTOR_VECTOR_OP,
 				
-				FOLDL_VECTOR_VECTOR_OP
+				FOLDL_VECTOR_VECTOR_OP,
+				
+				FOLDR_APLHA_VECTOR_MONOID,
+				
+				FOLDR_APLHA_VECTOR_OPERATOR,
+				
+				FOLDR_VECTOR_VECTOR_OPERATOR,
+				
+				FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR,
+				
+				FOLDR_VECTOR_VECTOR_MONOID,
+				
+				FOLDR_VECTOR_VECTOR_VECTOR_MONOID
 				
 				
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 84;
+			const constexpr size_t numOperationVertexTypes = 90;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -479,7 +491,13 @@ namespace grb {
 				FOLDL_VECTOR_VECTOR_MONOID,
 				FOLDL_VECTOR_VECTOR_VECTOR_MONOID,
 				FOLDL_VECTOR_VECTOR_VECTOR_OP,
-				FOLDL_VECTOR_VECTOR_OP
+				FOLDL_VECTOR_VECTOR_OP,
+				FOLDR_APLHA_VECTOR_MONOID,
+				FOLDR_APLHA_VECTOR_OPERATOR,
+				FOLDR_VECTOR_VECTOR_OPERATOR,
+				FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR,
+				FOLDR_VECTOR_VECTOR_MONOID,
+				FOLDR_VECTOR_VECTOR_VECTOR_MONOID
 	
 			};
 
