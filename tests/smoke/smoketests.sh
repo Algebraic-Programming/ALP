@@ -69,7 +69,7 @@ for BACKEND in ${BACKENDS[@]}; do
 	else
 		Ps=( 1 )
 	fi
-	if [ "$BACKEND" = "reference_omp" ] ; then
+	if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 		Pt=( ${MAX_THREADS} )
 	elif [ "$BACKEND" = "hybrid" ]; then
 		MTDS=$((MAX_THREADS/2))
@@ -94,7 +94,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			elif [ "${BACKEND}" = "hybrid" ]; then
 				runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T}"
 				runner="${runner} ${BIND_PROCESSES_TO_MULTIPLE_HW_THREADS}${T}"
-			elif [ "$BACKEND" = "reference_omp" ]; then
+			elif [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 				export OMP_NUM_THREADS=${T}
 			fi
 
@@ -139,6 +139,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED; GitHub runner does not have enough memory for this test"
 			else
 				echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
+				echo "Functional test executable: ${TEST_BIN_DIR}/hpcg_${BACKEND}"
 				bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} 2>&1 | sed -e '1p' -e '/===/!d' > ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
 				head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
@@ -338,7 +339,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ] || [ "$BACKEND" = "nonblocking" ]; then
 				echo "Additional standardised smoke tests not yet supported for the ${BACKEND} backend"
 				echo
 				continue

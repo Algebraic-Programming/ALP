@@ -52,6 +52,7 @@ endif()
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
+option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" YES )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
@@ -121,6 +122,7 @@ endif()
 
 if( NOT WITH_REFERENCE_BACKEND AND
 	NOT WITH_OMP_BACKEND AND
+	NOT WITH_NONBLOCKING_BACKEND AND
 	NOT WITH_BSP1D_BACKEND AND
 	NOT WITH_HYBRID_BACKEND )
 	message( FATAL_ERROR "At least one backend should be enabled")
@@ -195,7 +197,7 @@ set( WITH_OMP_BACKEND_HEADERS OFF )
 set( WITH_HYPERDAGS_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
-if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND )
+if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND OR WITH_NONBLOCKING_BACKEND )
 	# both reference and bsp1d backends need reference headers
 	set( WITH_REFERENCE_BACKEND_HEADERS ON )
 endif()

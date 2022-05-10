@@ -63,7 +63,7 @@ validate_command_result() {
 
 print_help() {
 	echo "Usage: $0 --prefix=<path> [--with-lpf[=<path>]]\
- [--with-banshee=<path>] [--with-snitch=<path>] [--no-reference] [--debug-build] [--generator=<value>] [--show] [--delete-files]"
+ [--with-banshee=<path>] [--with-snitch=<path>] [--no-reference] [--no-nonblocking] [--debug-build] [--generator=<value>] [--show] [--delete-files]"
 	echo " "
 	echo "Required arguments:"
 	echo "  --prefix=<path/to/install/directory/>"
@@ -78,6 +78,7 @@ the location where LPF is installed"
 	echo "  --with-hyperdags-using=<backend>    - uses the given backend reference for HyperDAG generation"
 	echo "                                        optional; default value is reference"
 	echo "                                        clashes with --no-hyperdags"
+	echo "  --no-nonblocking                    - disables the nonblocking backend"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
@@ -96,6 +97,7 @@ the location where LPF is installed"
 reference=yes
 hyperdags=yes
 hyperdags_using=reference
+nonblocking=yes
 banshee=no
 lpf=no
 show=no
@@ -158,6 +160,9 @@ or assume default paths (--with-lpf)"
 	--with-hyperdags-using=*)
 			hyperdags=yes
 			hyperdags_using="${arg#--with-hyperdags-using=}"
+			;;
+	--no-nonblocking)
+			nonblocking=no
 			;;
 	--debug-build)
 			debug_build=yes

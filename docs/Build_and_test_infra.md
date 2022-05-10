@@ -534,7 +534,9 @@ which may be set via a variable like
 set( EXAMPLE_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/example" )
 ```
 
-used in the following steps.
+used in the following steps. The same binary file may implement multiple
+backends. For example, both the reference and the OMP backend share
+the same binary file, i.e., the one generated for shared memory backends.
 
 For convenience, the macro `addBackendWrapperGenOptions` is provided to
 automatically generate the necessary variables according to the internal naming

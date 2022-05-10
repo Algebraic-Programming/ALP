@@ -32,6 +32,9 @@
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/config.hpp"
 #endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/config.hpp"
+#endif
 #ifdef _GRB_WITH_OMP
  #include "graphblas/omp/config.hpp"
 #endif

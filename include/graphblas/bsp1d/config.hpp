@@ -132,6 +132,12 @@ namespace grb {
 					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::coordinatesBackend();
 				}
 
+				/**
+				 * The selected backend may perform nonblocking execution depending on the underlying backend.
+				 */
+				static constexpr bool isNonblockingExecution() {
+					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::isNonblockingExecution();
+				}
 		};
 
 		/** @} */

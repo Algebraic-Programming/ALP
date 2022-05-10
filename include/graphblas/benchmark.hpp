@@ -28,16 +28,19 @@
 
 // include specialisations
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/benchmark.hpp"
+ #include "graphblas/reference/benchmark.hpp"
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/benchmark.hpp"
 #endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/benchmark.hpp"
+#endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/benchmark.hpp"
+ #include "graphblas/banshee/benchmark.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/benchmark.hpp"
+ #include "graphblas/bsp1d/benchmark.hpp"
 #endif
 
 #ifdef _GRB_BACKEND
@@ -48,3 +51,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_BENCH''
+

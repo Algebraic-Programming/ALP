@@ -23,7 +23,12 @@
 
 using namespace grb;
 
+template< Backend backend = grb::config::default_backend >
 void grb_program( const size_t &n, RC &rc ) {
+	// for the subtests that return ILLEGAL due to incorrect usage of the dense descriptor
+	// in the case of nonblocking execution, the ouput vector is reset due to side effects
+	constexpr bool nonblocking_execution = grb::config::IMPLEMENTATION< backend >::isNonblockingExecution();
+
 	Semiring<
 		operators::add< double >, operators::mul< double >,
 		identities::zero, identities::one
@@ -139,6 +144,10 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : clear( out );
+	}
+
 	std::cout << "\b\b 5: ";
 	rc = eWiseMul< descriptors::dense >( left, out, right, ring );
 	rc = rc ? rc : wait();
@@ -150,6 +159,10 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : set( left, 1 );
+	}
+
 	std::cout << "\b\b 6: ";
 	rc = eWiseMul< descriptors::dense >( left, right, out, ring );
 	rc = rc ? rc : wait();
@@ -161,6 +174,10 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : set( left, 1 );
+	}
+
 	std::cout << "\b\b 7: ";
 	rc = clear( left );
 	rc = rc ? rc : eWiseMul< descriptors::dense >( right, left, out, ring );
@@ -173,6 +190,10 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : set( right, 2 );
+	}
+
 	std::cout << "\b\b 8: ";
 	rc = eWiseMul< descriptors::dense >( left, right, out, ring );
 	rc = rc ? rc : wait();
@@ -184,6 +205,10 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : set( left, 1 );
+	}
+
 	std::cout << "\b\b 9: ";
 	rc = eWiseMul< descriptors::dense >( left, out, right, ring );
 	rc = rc ? rc : wait();
@@ -195,6 +220,9 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = rc ? rc : set( left, 1 );
+	}
 
 	// test sparse unmasked
 	std::cout << "\b\b 10: ";

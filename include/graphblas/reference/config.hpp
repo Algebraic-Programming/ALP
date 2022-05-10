@@ -174,6 +174,13 @@ namespace grb {
 					return reference;
 				}
 
+				/**
+				 * The selected backend does not perform nonblocking execution.
+				 */
+				static constexpr bool isNonblockingExecution() {
+					return false;
+				}
+
 		};
 
 		/**
@@ -267,7 +274,14 @@ namespace grb {
 				}
 
 				/**
-				 *\internal
+				 * The selected backend does not perform nonblocking execution.
+				 */
+				static constexpr bool isNonblockingExecution() {
+					return false;
+				}
+
+				/**
+				 * \internal
 				 * Whether the backend has vector capacities always fixed to their
 				 * defaults.
 				 * \endinternal

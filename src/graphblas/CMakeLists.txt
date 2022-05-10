@@ -20,7 +20,9 @@
 
 assert_defined_targets( backend_headers_nodefs backend_flags )
 
-assert_valid_variables( ALP_UTILS_LIBRARY_OUTPUT_NAME )
+assert_valid_variables( ALP_UTILS_LIBRARY_OUTPUT_NAME BACKEND_LIBRARY_OUTPUT_NAME VERSION
+	SHMEM_BACKEND_INSTALL_DIR
+)
 
 # convenience variable: a few tests need the path of utility sources
 set( ALP_UTILS_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/utils"
@@ -74,6 +76,92 @@ set( backend_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/reference/io.cpp
 )
 
+# append the source files for the nonblocking backend
+if( WITH_NONBLOCKING_BACKEND )
+	list( APPEND backend_reference_srcs
+		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/init.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/analytic_model.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/pipeline.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/lazy_evaluation.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/io.cpp
+	)
+endif()
+
+# macro to create a target for the shared memory library, with all minimal properties
+#
+# Parameters:
+#   targetName name of the target
+#   targetType type of library (STATIC or SHARED)
+#   outDir directory to compile the binary to (not install)
+#
+macro( make_reference_target targetName targetType outDir )
+
+	add_library( "${targetName}" "${targetType}"
+		"${backend_reference_srcs}"
+	)
+	set_target_properties( "${targetName}" PROPERTIES
+		OUTPUT_NAME "${BACKEND_LIBRARY_OUTPUT_NAME}"
+	)
+	if( "${targetType}" STREQUAL "SHARED" )
+		set_target_properties( "${targetName}" PROPERTIES
+			SOVERSION "${VERSION}"
+			LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${outDir}"
+		)
+	elseif( "${targetType}" STREQUAL "STATIC" )
+		set_target_properties( "${targetName}" PROPERTIES
+			ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${outDir}"
+		)
+	else()
+		message( FATAL_ERROR "Unknown library type: ${targetType}")
+	endif()
+	target_link_libraries( "${targetName}" PRIVATE backend_flags )
+
+endmacro( make_reference_target )
+
+
+### BINARY-ONLY TARGETS: create the actual library with all code inside
+### but storing only the minimum interface definitions (e.g. no OMP);
+### no default backend is set!
+
+if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
+
+	# alias target for basic propagation of headers and definitions
+	# from existing header target, which depends on the enabled backends;
+	# use the most advanced ones, i.e. those of reference_omp if available
+	if( WITH_OMP_BACKEND_HEADERS )
+		set( backend_shmem_base_headers backend_reference_omp_headers)
+	elseif( WITH_REFERENCE_BACKEND_HEADERS )
+		set( backend_shmem_base_headers backend_reference_headers )
+	endif()
+
+	## STATIC
+	make_reference_target( backend_shmem_static STATIC "shmem" )
+	target_link_libraries( backend_shmem_static PRIVATE ${backend_shmem_base_headers} )
+	if( WITH_NONBLOCKING_BACKEND )
+		target_link_libraries( backend_shmem_static PRIVATE ${backend_nonblocking_headers} )
+	endif()
+	# this is the actual binary file, i.e. the one to be installed
+	install( TARGETS backend_shmem_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## DYNAMIC
+	make_reference_target( backend_shmem_shared SHARED "shmem" )
+	target_link_libraries( backend_shmem_shared PRIVATE ${backend_shmem_base_headers} )
+	if( WITH_NONBLOCKING_BACKEND )
+		target_link_libraries( backend_shmem_shared PRIVATE ${backend_nonblocking_headers} )
+	endif()
+	install( TARGETS backend_shmem_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	add_dependencies( libs backend_shmem_static )
+	add_dependencies( libs backend_shmem_shared )
+endif()
+
+
 # the only source file common to all BSP-based backends
 set( backend_bsp_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/bsp/collectives.cpp
@@ -85,6 +173,10 @@ endif()
 
 if( WITH_HYPERDAGS_BACKEND )
 	add_subdirectory( hyperdags )
+endif()
+
+if( WITH_NONBLOCKING_BACKEND )
+	add_subdirectory( nonblocking )
 endif()
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )

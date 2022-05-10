@@ -56,6 +56,9 @@ namespace grb {
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/alloc.hpp"
 #endif
+#ifdef _GRB_WITH_NONBLOCKING
+#include "graphblas/nonblocking/alloc.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
  #include "graphblas/bsp1d/alloc.hpp"
 #endif
