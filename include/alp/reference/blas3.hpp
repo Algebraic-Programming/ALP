@@ -23,10 +23,13 @@
 #ifndef _H_ALP_REFERENCE_BLAS3
 #define _H_ALP_REFERENCE_BLAS3
 
-#include <type_traits> //for std::enable_if
+#include <algorithm>   // for std::min/max
+#include <type_traits> // for std::enable_if
 
 #include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
+#include <alp/structures.hpp>
+#include <alp/blas0.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -61,17 +64,28 @@ namespace alp {
 	namespace internal {
 
 		/**
-		 * \internal general mxm implementation that all mxm variants refer to
+		 * \internal general mxm implementation that all mxm variants using 
+		 * structured matrices refer to.
 		 */
 		template<
 			bool allow_void,
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
-			class Operator, class Monoid
+			class Operator, class Monoid,
+			typename OutputStructure, typename OutputView, 
+			typename OutputImfR, typename OutputImfC,
+			typename InputStructure1, typename InputView1, 
+			typename InputImfR1, typename InputImfC1,
+			typename InputStructure2, typename InputView2, 
+			typename InputImfR2, typename InputImfC2
 		>
-		RC mxm_generic( Matrix< OutputType, reference > &C,
-			const Matrix< InputType1, reference > &A,
-			const Matrix< InputType2, reference > &B,
+		RC mxm_generic( 
+			alp::Matrix< OutputType, OutputStructure, 
+			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, 
+			Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, 
+			Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -82,214 +96,74 @@ namespace alp {
 				alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL
 		) {
-			(void)oper;
-			(void)monoid;
-			(void)mulMonoid;
-			static_assert( allow_void ||
-				( !(
-					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
-				) ),
-				"alp::mxm_generic: the operator-monoid version of mxm cannot be "
+
+			static_assert( 
+				!(
+					std::is_same< InputType1, void >::value ||
+					std::is_same< InputType2, void >::value
+				),
+				"alp::internal::mxm_generic: the operator-monoid version of mxm cannot be "
 				"used if either of the input matrices is a pattern matrix (of type "
 				"void)"
 			);
 
 #ifdef _DEBUG
-			std::cout << "In alp::internal::mxm_generic (reference, unmasked)\n";
+			std::cout << "In alp::internal::mxm_generic (reference)\n";
 #endif
 
-			// run-time checks
-			const size_t m = nrows( C );
-			const size_t n = ncols( C );
-			const size_t m_A = nrows( A );
-			const size_t k = ncols( A );
-			const size_t k_B = nrows( B );
-			const size_t n_B = ncols( B );
+			(void)mulMonoid;
 
-			if( m != m_A || k != k_B || n != n_B ) {
+			// Early exit checks 
+			if( ! internal::getInitialized( A ) || ! internal::getInitialized( B ) || ! internal::getInitialized( C ) ) {
+				internal::setInitialized( C, false );
+				return SUCCESS;
+			}
+
+			OutputType temp;
+
+			const std::ptrdiff_t m = nrows( C );
+			const std::ptrdiff_t n = ncols( C );
+			const std::ptrdiff_t m_a = nrows( A );
+			const std::ptrdiff_t k = ncols( A );
+			const std::ptrdiff_t k_b = nrows( B );
+			const std::ptrdiff_t n_b = ncols( B );
+
+			if( m != m_a || k != k_b || n != n_b ) {
 				return MISMATCH;
 			}
 
-			const auto A_raw = getRaw( A );
-			const auto B_raw = getRaw( B );
-			auto C_raw = getRaw( C );
+			std::cout << "m, n, k  = " << m << " " << n << " " << k << std::endl;
 
-			std::cout << "Multiplying dense matrices.\n";
+			// Currently assuming single band
+			// extensions to multiple bands requires cartesian product 
+			// btw A and B's bands.
 
-			for( size_t row = 0; row < m; ++row ) {
-				for( size_t col = 0; col < n; ++col ) {
-					C_raw[ row * k + col] = monoid.template getIdentity< OutputType >();
-					for( size_t i = 0; i < k; ++ i ) {
-						OutputType temp = monoid.template getIdentity< OutputType >();
-						(void)alp::apply( temp, A_raw[ row * k + i ], B_raw[ i * n_B + col ], oper );
-						(void)alp::foldl( C_raw[ row * k + col], temp, monoid.getOperator() );
+			const std::ptrdiff_t l_a = structures::get_lower_bandwidth( A );
+			const std::ptrdiff_t u_a = structures::get_upper_bandwidth( A );
+
+			const std::ptrdiff_t l_b = structures::get_lower_bandwidth( B );
+			const std::ptrdiff_t u_b = structures::get_upper_bandwidth( B );
+
+			std::cout << "l_a, u_a = " << l_a << ", " << u_a << std::endl;
+			std::cout << "l_b, u_b = " << l_b << ", " << u_b << std::endl;
+
+			for( std::ptrdiff_t i = 0; i < m; ++i ) {
+				for( std::ptrdiff_t j = std::max( (std::ptrdiff_t)0, i + l_a + l_b ); j < std::min( n, i + u_a + u_b - 1 ); ++j ) {
+					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); l < std::min( {k, i + u_a, j - l_b + 1} ); ++l ) {
+						std::cout << "temp = A.mulOp.B at ";
+						(void)internal::apply( temp, internal::get(A, i, l ), internal::get(B, l, j ), oper );
+						std::cout << "\n";
+						std::cout << "C addMon.= temp at ";
+						(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
+						std::cout << "\n";
 					}
 				}
 			}
-			alp::internal::setInitialized( C, true );
-			// done
+
 			return SUCCESS;
 		}
 
-		/**
-		 * \internal general mxm implementation that all mxm variants using structured matrices refer to
-		 */
-		template<
-			bool allow_void,
-			class MulMonoid,
-			typename OutputType, typename InputType1, typename InputType2,
-			class Operator, class Monoid,
-			typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-			typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-			typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
-		>
-		RC mxm_generic( alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
-			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-			const Operator &oper,
-			const Monoid &monoid,
-			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !alp::is_object< OutputType >::value &&
-				!alp::is_object< InputType1 >::value && !
-				alp::is_object< InputType2 >::value &&
-				alp::is_operator< Operator >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL
-		) {
-			(void)C;
-			(void)A;
-			(void)B;
-			(void)oper;
-			(void)monoid;
-			(void)mulMonoid;
-			// TODO; Implement this as a backup version that works for any structure and storage.
-			// Even though the performance does not have to be optimal, we guarantee that any two matrices can be multiplied
-			// To provide better performing mxm, one should implement a function with specialized template elements
-			// This currently cannot work as we do not have a generic way to access elements in a given Matrix
-			return UNSUPPORTED;
-		}
-
-		/**
-		 * \internal mxm specialized to StructuredMatrices having general structure and full dense storage scheme
-		 */
-		template<
-			bool allow_void,
-			class MulMonoid,
-			class Operator, class Monoid,
-			typename OutputType, typename OutputView = view::Original< void >, typename OutputImfR, typename OutputImfC,
-			typename InputType1, typename InputView1 = view::Original< void >, typename InputImfR1, typename InputImfC1,
-			typename InputType2, typename InputView2 = view::Original< void >, typename InputImfR2, typename InputImfC2
-		>
-		RC mxm_generic( alp::Matrix< OutputType, structures::General, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-			const alp::Matrix< InputType1, structures::General, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
-			const alp::Matrix< InputType2, structures::General, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-			const Operator &oper,
-			const Monoid &monoid,
-			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !alp::is_object< OutputType >::value &&
-				!alp::is_object< InputType1 >::value && !
-				alp::is_object< InputType2 >::value &&
-				alp::is_operator< Operator >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL
-		) {
-			(void)oper;
-			(void)monoid;
-			(void)mulMonoid;
-			static_assert( allow_void ||
-				( !(
-					std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value
-				) ),
-				"alp::mxm_generic: the operator-monoid version of mxm cannot be "
-				"used if either of the input matrices is a pattern matrix (of type "
-				"void)"
-			);
-
-#ifdef _DEBUG
-			std::cout << "In alp::internal::mxm_generic (reference, unmasked)\n";
-#endif
-
-			// How to handle combinations of different storage schemes?
-			// For example for C<dense:full> = A<dense::full> * B<dense:full> we can directly call mxm for Matrix<> containers
-			// run-time checks
-			const size_t m = alp::nrows( C );
-			const size_t n = alp::ncols( C );
-			const size_t m_A = alp::nrows( A );
-			const size_t k = alp::ncols( A );
-			const size_t k_B = alp::nrows( B );
-			const size_t n_B = alp::ncols( B );
-			// Maybe we can offload these checks to mxm call later in this function
-
-			if( m != m_A || k != k_B || n != n_B ) {
-				return MISMATCH;
-			}
-
-			const auto A_container = alp::internal::getContainer( A );
-			const auto B_container = alp::internal::getContainer( B );
-			auto C_container = alp::internal::getContainer( C );
-
-			std::cout << "Multiplying dense matrices.\n";
-
-			RC rc = mxm_generic< true >( C_container, A_container, B_container, oper, monoid, mulMonoid );
-
-			if ( rc == SUCCESS ) {
-				// alp::internal::setInitialized( C, true );
-			}
-
-			// done
-			return rc;
-		}
-
 	} // namespace internal
-
-	/**
-	 * Dense Matrix-Matrix multiply between unstructured containers.
-	 * Version with semiring parameter.
-	 *
-	 * @tparam descr      The descriptors under which to perform the computation.
-	 * @tparam OutputType The type of elements in the output matrix.
-	 * @tparam InputType1 The type of elements in the left-hand side input
-	 *                    matrix.
-	 * @tparam InputType2 The type of elements in the right-hand side input
-	 *                    matrix.
-	 * @tparam Semiring   The semiring under which to perform the
-	 *                    multiplication.
-	 * @tparam Backend    The backend that should perform the computation.
-	 *
-	 * @returns SUCCESS If the computation completed as intended.
-	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  #alp::resize( C, A, B ); \em and the current capacity of
-	 *                  \a C was insufficient to store the multiplication of \a A
-	 *                  and \a B. The contents of \a C shall be undefined (which
-	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
-	 *                  error has side effects).
-	 *
-	 * @param[out] C 	The output matrix \f$ C = AB \f$ when the function returns
-	 *               	#SUCCESS.
-	 * @param[in]  A 	The left-hand side input matrix \f$ A \f$.
-	 * @param[in]  B 	The left-hand side input matrix \f$ B \f$.
-	 * @param[in] ring  (Optional.) The semiring under which the computation should
-	 *                             proceed.
-	 * @param phase 	The execution phase.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2,
-		class Semiring
-	>
-	RC mxm( internal::Matrix< OutputType, reference > & C,
-		const internal::Matrix< InputType1, reference > & A,
-		const internal::Matrix< InputType2, reference > & B,
-		const Semiring & ring = Semiring(),
-		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Semiring >::value,
-			void >::type * const = NULL ) {
-
-#ifdef _DEBUG
-		std::cout << "In alp::mxm (reference, unmasked, semiring)\n";
-#endif
-
-		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
-	}
 
 	/**
 	 * Dense Matrix-Matrix multiply between structured matrices.
@@ -318,7 +192,7 @@ namespace alp {
 	 *                             proceed.
 	 * @param phase 	The execution phase.
 	 */
-	template< Descriptor descr = descriptors::no_operation, 
+	template<
 		typename OutputStructMatT,
 		typename InputStructMatT1,
 		typename InputStructMatT2,
@@ -333,7 +207,7 @@ namespace alp {
 			void >::type * const = NULL ) {
 		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
-		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
+		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
 	/**
@@ -356,7 +230,7 @@ namespace alp {
 			void >::type * const = NULL ) {
 		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
-		return internal::mxm_generic< true >( C, A, B, mulOp, addM, Monoid() );
+		return internal::mxm_generic< false >( C, A, B, mulOp, addM, Monoid() );
 	}
 
 	namespace internal {
@@ -1014,7 +888,7 @@ namespace alp {
 		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
 			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
 				//set( ret, alp::identities::zero );
-				apply( result, x[ i ], y[ j ], mul );
+				internal::apply( result, x[ i ], y[ j ], mul );
 			};
 		
 		return Matrix<
@@ -1064,7 +938,7 @@ namespace alp {
 		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
 			[ &x, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
 				//set( ret, alp::identities::zero );
-				apply( result, x[ i ], x[ j ], mul );
+				internal::apply( result, x[ i ], x[ j ], mul );
 			};
 		
 		return Matrix<

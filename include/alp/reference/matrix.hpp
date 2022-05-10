@@ -23,11 +23,12 @@
 #ifndef _H_ALP_REFERENCE_MATRIX
 #define _H_ALP_REFERENCE_MATRIX
 
-#include <stdexcept>
-#include <memory>
-#include <vector>
 #include <algorithm>
+#include <cstddef>
 #include <functional>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 
 #include <alp/backends.hpp>
 #include <alp/base/matrix.hpp>
@@ -391,22 +392,23 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		template< typename DerivedMatrix >
-		bool getInitialized( MatrixBase< DerivedMatrix > & ) noexcept;
+		// template< typename DerivedMatrix >
+		// bool getInitialized( MatrixBase< DerivedMatrix > & ) noexcept;
 
-		template< typename DerivedMatrix >
-		void getInitialized( MatrixBase< DerivedMatrix > &, bool ) noexcept;
+		// template< typename DerivedMatrix >
+		// void getInitialized( MatrixBase< DerivedMatrix > &, bool ) noexcept;
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+		bool getInitialized( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) noexcept {
+			return internal::getInitialized( internal::getContainer( A ) );
+		}
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+		void setInitialized( alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A, bool initialized ) noexcept {
+			internal::setInitialized( internal::getContainer( A ), initialized );
+		}
+
 	} // namespace internal
-
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-	bool getInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) noexcept {
-		return getInitialized( internal::getContainer( A ) );
-	}
-
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-	void setInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A, bool initialized ) noexcept {
-		setInitialized( internal::getContainer( A ), initialized );
-	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
 	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept;
@@ -491,8 +493,8 @@ namespace alp {
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
-				typedef ImfR imfr_type;
-				typedef ImfC imfc_type;
+				// typedef ImfR imfr_type;
+				// typedef ImfC imfc_type;
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > self_type;
@@ -557,13 +559,13 @@ namespace alp {
 					return A.container;
 				}
 
-				friend bool getInitialized( self_type & A ) noexcept {
-					return getInitialized( getCointainer( A ) );
-				}
+				// friend bool getInitialized( self_type & A ) noexcept {
+				// 	return getInitialized( getContainer( A ) );
+				// }
 
-				friend void setInitialized( self_type & A, bool initialized ) noexcept {
-					setInitialized( getContainer( A, initialized ));
-				}
+				// friend void setInitialized( self_type & A, bool initialized ) noexcept {
+				// 	setInitialized( getContainer( A ), initialized );
+				// }
 
 				/**
 				 * Returns a constant reference to the element corresponding to
@@ -1080,6 +1082,21 @@ namespace alp {
 //
 //	}; // Matrix Identity, container
 
+	namespace internal {
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		const T & get( const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, size_t i, size_t j ) {
+			std::cout << "(const, " << i << ", " << j << ")";
+			return A.tmp;
+		}
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		T & get( alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, size_t i, size_t j ) {
+			std::cout << "(" << i << ", " << j << ")";
+			return A.tmp;
+		}
+
+	} 
 	namespace structures {
 
 		/**
@@ -1095,6 +1112,30 @@ namespace alp {
 			 */
 			static constexpr bool value = is_in< Structure, typename MatrixT::structure::inferred_structures >::value;
 		};
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		std::ptrdiff_t get_lower_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
+
+			const std::ptrdiff_t m = nrows( A );
+			constexpr std::ptrdiff_t cl_a = std::tuple_element< 0, typename Structure::band_intervals >::type::left;
+
+			const std::ptrdiff_t l_a = ( cl_a < -m + 1 ) ? -m + 1 : cl_a ;
+
+			return l_a;
+
+		}
+
+		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		std::ptrdiff_t get_upper_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
+
+			const std::ptrdiff_t n = ncols( A );
+			constexpr std::ptrdiff_t cu_a = std::tuple_element< 0, typename Structure::band_intervals >::type::right;
+
+			const std::ptrdiff_t u_a = ( cu_a > n ) ? n : cu_a ;
+
+			return u_a;
+
+		}
 
 	} // namespace structures
 
@@ -1606,12 +1647,12 @@ namespace alp {
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
 	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		return dims( A ).second;
+		return dims( A ).first;
 	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
 	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		return dims( A ).first;
+		return dims( A ).second;
 	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >

@@ -29,6 +29,8 @@
 #ifndef _H_ALP_STRUCTURES
 #define _H_ALP_STRUCTURES
 
+#include <cstddef>
+#include <limits>
 #include <tuple>
 #include <type_traits>
 
@@ -43,32 +45,32 @@ namespace alp {
 	 * @tparam _right right boundary of the interval. Optional, in which case 
 	 *                _left == _right
 	 */
-	template <int _left, int _right = _left + 1 >
+	template <std::ptrdiff_t _left, std::ptrdiff_t _right = _left + 1 >
 	struct Interval {
 		
 		static_assert( _left < _right );
 
-		static constexpr int left = _left;
-		static constexpr int right = _right;
+		static constexpr std::ptrdiff_t left = _left;
+		static constexpr std::ptrdiff_t right = _right;
 
 	};
 
 	/**
 	 * @brief Compile-time interval [ -inf, _right )
 	 */
-	template < int _right > 
-	using LeftOpenInterval = Interval<std::numeric_limits<int>::min(), _right >;
+	template < std::ptrdiff_t _right > 
+	using LeftOpenInterval = Interval<std::numeric_limits< std::ptrdiff_t >::min(), _right >;
 
 	/**
 	 * @brief Compile-time interval [ _left, +inf ]
 	 */
-	template <int _left >
-	using RightOpenInterval = Interval< _left, std::numeric_limits<int>::max() >;
+	template < std::ptrdiff_t _left >
+	using RightOpenInterval = Interval< _left, std::numeric_limits< std::ptrdiff_t >::max() >;
 
 	/**
 	 * @brief Compile-time interval [ -inf, +inf ]
 	 */
-	typedef Interval<std::numeric_limits<int>::min(), std::numeric_limits<int>::max() > OpenInterval;
+	typedef Interval<std::numeric_limits< std::ptrdiff_t >::min(), std::numeric_limits< std::ptrdiff_t >::max() > OpenInterval;
 	
 	namespace internal {
 		/**
@@ -78,12 +80,12 @@ namespace alp {
 		template< typename IntervalTuple >
 		struct is_tuple_sorted_non_overlapping;
 
-		template< int _left0, int _right0, int _left1, int _right1, typename... Intervals >
+		template< std::ptrdiff_t _left0, std::ptrdiff_t _right0, std::ptrdiff_t _left1, std::ptrdiff_t _right1, typename... Intervals >
 		struct is_tuple_sorted_non_overlapping < std::tuple< Interval< _left0, _right0 >, Interval< _left1, _right1 >, Intervals... > > {
 			static constexpr bool value = ( _right0 <= _left1 ) && is_tuple_sorted_non_overlapping< std::tuple< Interval< _left1, _right1 >, Intervals... > >::value;
 		};
 
-		template< int _left, int _right >
+		template< std::ptrdiff_t _left, std::ptrdiff_t _right >
 		struct is_tuple_sorted_non_overlapping < std::tuple< Interval< _left, _right > > > : std::true_type { };
 
 		template< >
@@ -167,6 +169,9 @@ namespace alp {
 		struct UpperTriangular;
 
 		struct General {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = std::tuple< General >;
 		};
 
@@ -219,6 +224,9 @@ namespace alp {
 		};
 
 		struct Square {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
 		};
 
@@ -277,10 +285,16 @@ namespace alp {
 		};
 
 		struct Symmetric {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
 		};
 
 		struct SymmetricPositiveDefinite {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
 		};
 
@@ -332,6 +346,8 @@ namespace alp {
 
 		struct SymmetricTridiagonal {
 
+			typedef std::tuple< Interval< -1, 1 > > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< SymmetricTridiagonal >, Symmetric::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
@@ -361,34 +377,58 @@ namespace alp {
 		};
 
 		struct FullRank {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< FullRank >, General::inferred_structures >::type;
 		};
 
 		struct NonSingular {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< NonSingular >, Square::inferred_structures, FullRank::inferred_structures >::type;
 		};
 
 		struct OrthogonalColumns {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalColumns >, FullRank::inferred_structures >::type;
 		};
 
 		struct OrthogonalRows {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< OrthogonalRows >, FullRank::inferred_structures >::type;
 		};
 
 		struct Orthogonal {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Orthogonal >, NonSingular::inferred_structures, OrthogonalColumns::inferred_structures, OrthogonalRows::inferred_structures >::type;
 		};
 
 		struct Constant {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Constant >, General::inferred_structures >::type;
 		};
 
 		struct Identity {
+
+			typedef std::tuple< Interval< 0 > > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Identity >, FullRank::inferred_structures, Diagonal::inferred_structures, Constant::inferred_structures >::type;
 		};
 
 		struct Zero {
+
+			typedef std::tuple< > band_intervals;
+
 			using inferred_structures = structures::tuple_cat< std::tuple< Zero >, Constant::inferred_structures >::type;
 		};
 
