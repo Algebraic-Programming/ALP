@@ -3491,7 +3491,7 @@ namespace grb {
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), monoid variant\n";
 #endif
 		// simply delegate to operator variant
-		return eWiseApply< descr >( z, alpha, beta, monoid.getOperator() );
+		return eWiseApply< descr >( z, alpha, beta, monoid.getOperator(), phase );
 	}
 
 	/**

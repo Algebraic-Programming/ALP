@@ -393,19 +393,15 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &
 		);
 
-		/* ********************
-		        BSP1D friends
-		   ******************** */
+		/* ***********************************
+		   Friend other matrix implementations
+		   *********************************** */
 
-		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend Matrix< InputType, BSP1D, RIT, CIT, NIT >::Matrix(
-			const size_t, const size_t, const size_t
-		);
-
-		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend void Matrix< InputType, BSP1D, RIT, CIT, NIT >::initialize(
-			const size_t, const size_t, const size_t
-		);
+		template<
+			typename InputType, Backend backend,
+			typename RIT, typename CIT, typename NIT
+		>
+		friend class Matrix;
 
 
 	private:

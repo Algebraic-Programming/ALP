@@ -142,9 +142,10 @@ namespace grb {
 		const Vector< InputType3, backend, Coords > &z,
 		const Phase &phase = EXECUTE
 	) {
-		(void)x;
-		(void)y;
-		(void)z;
+		(void) x;
+		(void) y;
+		(void) z;
+		(void) phase;
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
 #endif
@@ -172,8 +173,9 @@ namespace grb {
 		const Vector< InputType2, backend, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
-		(void)x;
-		(void)y;
+		(void) x;
+		(void) y;
+		(void) phase;
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
 #endif

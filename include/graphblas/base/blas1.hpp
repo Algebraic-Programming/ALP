@@ -428,8 +428,10 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "Should not call base grb::dot (semiring version)\n";
 #endif
+#ifndef NDEBUG
 		const bool should_not_call_base_dot_semiring = false;
 		assert( should_not_call_base_dot_semiring );
+#endif
 		(void) x;
 		(void) left;
 		(void) right;

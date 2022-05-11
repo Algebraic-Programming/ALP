@@ -57,73 +57,91 @@ namespace grb {
 	 *
 	 * \internal Uses a 1D block-cyclic distribution for A and A-transpose.
 	 */
-	template< typename D >
-	class Matrix< D, BSP1D > {
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	class Matrix< D, BSP1D, RIT, CIT, NIT > {
 
 		/* *********************
 		        BLAS2 friends
 		   ********************* */
 
-		template< typename DataType >
-		friend size_t nrows( const Matrix< DataType, BSP1D > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t nrows(
+			const Matrix< DataType, BSP1D, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend size_t ncols( const Matrix< DataType, BSP1D > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t ncols(
+			const Matrix< DataType, BSP1D, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend size_t nnz( const Matrix< DataType, BSP1D > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t nnz(
+			const Matrix< DataType, BSP1D, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend size_t capacity( const Matrix< DataType, BSP1D > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t capacity(
+			const Matrix< DataType, BSP1D, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename InputType >
-		friend RC resize( Matrix< InputType, BSP1D > &, const size_t ) noexcept;
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend RC resize(
+			Matrix< InputType, BSP1D, RIT, CIT, NIT > &, const size_t
+		) noexcept;
 
 		template<
 			Descriptor, bool, bool, bool, class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		friend RC internal::bsp1d_mxv( Vector< IOType, BSP1D, Coords > &,
+		friend RC internal::bsp1d_mxv(
+			Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
-			const Matrix< InputType2, BSP1D > &,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Ring &, const Phase & );
+			const Ring &, const Phase &
+		);
 
 		template<
 			Descriptor descr, bool, bool, bool, class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		friend RC internal::bsp1d_vxm( Vector< IOType, BSP1D, Coords > &,
+		friend RC internal::bsp1d_vxm(
+			Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Matrix< InputType2, BSP1D > &,
-			const Ring &, const Phase & );
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &,
+			const Ring &, const Phase &
+		);
 
-		template< Descriptor descr, typename InputType, typename fwd_iterator >
+		template<
+			Descriptor descr, typename InputType,
+			typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
 		friend RC buildMatrixUnique(
-			Matrix< InputType, BSP1D > &,
+			Matrix< InputType, BSP1D, RIT, CIT, NIT > &,
 			fwd_iterator, const fwd_iterator,
 			const IOMode
 		);
 
-		template< typename IOType >
+		template< typename IOType, typename RIT, typename CIT, typename NIT >
 		friend Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
-			Matrix< IOType, BSP1D > &
+			Matrix< IOType, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename IOType >
+		template< typename IOType, typename RIT, typename CIT, typename NIT >
 		friend const Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
-			const Matrix< IOType, BSP1D > &
+			const Matrix< IOType, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename IOType >
-		friend uintptr_t getID( const Matrix< IOType, BSP1D > & );
+		template< typename IOType, typename RIT, typename CIT, typename NIT >
+		friend uintptr_t getID( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & );
 
 
 	private:
@@ -433,16 +451,16 @@ namespace grb {
 	namespace internal {
 
 		/** Gets the process-local matrix */
-		template< typename D >
-		Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
-			Matrix< D, BSP1D > &A
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > & getLocal(
+			Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;
 		}
 		/** Const variant */
-		template< typename D >
+		template< typename D, typename RIT, typename CIT, typename NIT >
 		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
-			const Matrix< D, BSP1D > &A
+			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;
 		}
@@ -450,8 +468,8 @@ namespace grb {
 	} // namespace internal
 
 	// template specialisation for GraphBLAS type_traits
-	template< typename D >
-	struct is_container< Matrix< D, BSP1D > > {
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	struct is_container< Matrix< D, BSP1D, RIT, CIT, NIT > > {
 		/** A BSP1D Matrix is a GraphBLAS object. */
 		static const constexpr bool value = true;
 	};

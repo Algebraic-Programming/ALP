@@ -643,7 +643,7 @@ extern "C" {
 			grb::Vector< double > output = grb::internal::template
 				wrapRawVector< double >( matrix->n, y );
 			const grb::RC rc = grb::mxv<
-				grb::descriptors::dense ||
+				grb::descriptors::dense |
 				grb::descriptors::transpose_matrix
 			>(
 				output, *(matrix->A), input, ring

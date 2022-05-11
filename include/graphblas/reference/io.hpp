@@ -102,8 +102,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nnz( const Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nnz(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.nz;
 	}
 
@@ -114,8 +116,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t capacity( const Matrix< DataType, reference > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t capacity(
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return internal::getNonzeroCapacity( A );
 	}
 
@@ -1405,9 +1409,11 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
 	>
-	RC buildMatrixUnique( Matrix< InputType, reference > &A,
+	RC buildMatrixUnique(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
