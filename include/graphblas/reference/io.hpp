@@ -66,8 +66,8 @@ namespace grb {
 	 *
 	 * \endinternal
 	 */
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, reference > &A ) {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	uintptr_t getID( const Matrix< InputType, reference, RIT, CIT, NIT > &A ) {
 		assert( nrows(A) > 0 );
 		assert( ncols(A) > 0 );
 		return A.id;

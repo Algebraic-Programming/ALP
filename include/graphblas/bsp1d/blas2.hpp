@@ -61,11 +61,12 @@ namespace grb {
 			typename IOType,
 			typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > &u,
+		RC bsp1d_mxv(
+			Vector< IOType, BSP1D, Coords > &u,
 			const Vector< InputType3, BSP1D, Coords > &u_mask,
-			const Matrix< InputType2, BSP1D > &A,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 			const Vector< InputType1, BSP1D, Coords > &v,
 			const Vector< InputType4, BSP1D, Coords > &v_mask,
 			const Ring &ring,
@@ -200,13 +201,14 @@ namespace grb {
 			class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > &u,
+		RC bsp1d_vxm(
+			Vector< IOType, BSP1D, Coords > &u,
 			const Vector< InputType3, BSP1D, Coords > &u_mask,
 			const Vector< InputType1, BSP1D, Coords > &v,
 			const Vector< InputType4, BSP1D, Coords > &v_mask,
-			const Matrix< InputType2, BSP1D > &A,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 			const Ring &ring,
 			const Phase &phase
 		) {
@@ -375,14 +377,16 @@ namespace grb {
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename Coords,
+		typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords >
+		typename InputType2 = typename Ring::D2
+	>
 	RC mxv(
 		Vector< IOType, BSP1D, Coords > &u,
-		const Matrix< InputType2, BSP1D > &A,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 		const Vector< InputType1, BSP1D, Coords > &v,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
@@ -405,18 +409,18 @@ namespace grb {
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
-		typename InputType4 = bool,
-		typename Coords
+		typename InputType4 = bool
 	>
 	RC mxv(
 		Vector< IOType, BSP1D, Coords > &u,
 		const Vector< InputType3, BSP1D, Coords > &u_mask,
-		const Matrix< InputType2, BSP1D > &A,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 		const Vector< InputType1, BSP1D, Coords > &v,
 		const Vector< InputType4, BSP1D, Coords > &v_mask,
 		const Ring &ring = Ring(),
@@ -473,16 +477,16 @@ namespace grb {
 
 	/** \internal Dispatches to bsp1d_mxv or bsp1d_vxm */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords
+		typename InputType2 = typename Ring::D2
 	>
 	RC vxm(
 		Vector< IOType, BSP1D, Coords > &u,
 		const Vector< InputType1, BSP1D, Coords > &v,
-		const Matrix< InputType2, BSP1D > &A,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -504,20 +508,20 @@ namespace grb {
 
 	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
-		typename InputType4 = bool,
-		typename Coords
+		typename InputType4 = bool
 	>
 	RC vxm(
 		Vector< IOType, BSP1D, Coords > &u,
 		const Vector< InputType3, BSP1D, Coords > &u_mask,
 		const Vector< InputType1, BSP1D, Coords > &v,
 		const Vector< InputType4, BSP1D, Coords > &v_mask,
-		const Matrix< InputType2, BSP1D > &A,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -545,12 +549,12 @@ namespace grb {
 	 */
 	template<
 		typename Func,
-		typename DataType1, typename DataType2,
-		typename Coords, typename... Args
+		typename DataType1, typename RIT, typename CIT, typename NIT,
+		typename DataType2, typename Coords, typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType1, BSP1D > &A,
+		const Matrix< DataType1, BSP1D, RIT, CIT, NIT > &A,
 		const Vector< DataType2, BSP1D, Coords > &x,
 		Args... args
 	) {
@@ -581,12 +585,18 @@ namespace grb {
 	 * It assumes the copy-assignment and the equals comparison are implemented for
 	 * the given data type.
 	 */
-	template< typename Func, typename DataType1 >
-	RC eWiseLambda( const Func f, const Matrix< DataType1, BSP1D > &A ) {
+	template<
+		typename Func, typename DataType1,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, BSP1D, RIT, CIT, NIT > &A
+	) {
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseLambda (BSP1D, matrix)\n";
 #endif
-		const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 		RC ret = eWiseLambda< internal::Distribution< BSP1D > >(
 			f, internal::getLocal( A ), data.s, data.P
 		);

@@ -40,14 +40,14 @@ namespace grb {
 	// forward-declare internal getters
 	namespace internal {
 
-		template< typename D >
-		Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
-			Matrix< D, BSP1D > &
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > & getLocal(
+			Matrix< D, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename D >
-		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
-			const Matrix< D, BSP1D > &
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		const Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > & getLocal(
+			const Matrix< D, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
 
 	} // namespace internal
@@ -57,8 +57,11 @@ namespace grb {
 	 *
 	 * \internal Uses a 1D block-cyclic distribution for A and A-transpose.
 	 */
-	template< typename D, typename RIT, typename CIT, typename NIT >
-	class Matrix< D, BSP1D, RIT, CIT, NIT > {
+	template<
+		typename D,
+		typename RowIndexType, typename ColIndexType, typename NonzeroIndexType
+	>
+	class Matrix< D, BSP1D, RowIndexType, ColIndexType, NonzeroIndexType > {
 
 		/* *********************
 		        BLAS2 friends
@@ -131,14 +134,12 @@ namespace grb {
 		);
 
 		template< typename IOType, typename RIT, typename CIT, typename NIT >
-		friend Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
-			Matrix< IOType, BSP1D, RIT, CIT, NIT > &
-		) noexcept;
+		friend Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
+		internal::getLocal( Matrix< IOType, BSP1D, RIT, CIT, NIT > & ) noexcept;
 
 		template< typename IOType, typename RIT, typename CIT, typename NIT >
-		friend const Matrix< IOType, _GRB_BSP1D_BACKEND > & internal::getLocal(
-			const Matrix< IOType, BSP1D, RIT, CIT, NIT > &
-		) noexcept;
+		friend const Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
+		internal::getLocal( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & ) noexcept;
 
 		template< typename IOType, typename RIT, typename CIT, typename NIT >
 		friend uintptr_t getID( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & );
@@ -147,10 +148,16 @@ namespace grb {
 	private:
 
 		/** The type of the sequential matrix implementation. */
-		typedef Matrix< D, _GRB_BSP1D_BACKEND > LocalMatrix;
+		typedef Matrix<
+			D, _GRB_BSP1D_BACKEND,
+			RowIndexType, ColIndexType, NonzeroIndexType
+		> LocalMatrix;
 
 		/** My own type. */
-		typedef Matrix< D, BSP1D > self_type;
+		typedef Matrix<
+			D, BSP1D,
+			RowIndexType, ColIndexType, NonzeroIndexType
+		> self_type;
 
 		/** The ID of this container. */
 		uintptr_t _id;
@@ -343,7 +350,9 @@ namespace grb {
 		}
 
 		/** Copy constructor */
-		Matrix( const Matrix< D, BSP1D > &other ) :
+		Matrix(
+			const Matrix< D, BSP1D, RowIndexType, ColIndexType, NonzeroIndexType > &other
+		) :
 			Matrix( other._m, other._n, other._cap )
 		{
 			assert( nnz( other ) <= capacity( *this ) );
@@ -459,7 +468,8 @@ namespace grb {
 		}
 		/** Const variant */
 		template< typename D, typename RIT, typename CIT, typename NIT >
-		const Matrix< D, _GRB_BSP1D_BACKEND > & getLocal(
+		const Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
+		getLocal(
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;

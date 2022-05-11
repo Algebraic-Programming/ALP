@@ -820,13 +820,15 @@ namespace grb {
 		 * \note This implementation has those restrictions since otherwise the
 		 *       above performance semantics cannot be met.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool masked, bool input_masked,
 			bool left_handed, bool using_semiring,
 			template< typename > class One,
 			class AdditiveMonoid, class Multiplication,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
+			typename RIT, typename CIT, typename NIT,
 			typename Coords
 		>
 		RC vxm_generic(
@@ -834,7 +836,7 @@ namespace grb {
 			const Vector< InputType3, reference, Coords > &mask,
 			const Vector< InputType1, reference, Coords > &v,
 			const Vector< InputType4, reference, Coords > &v_mask,
-			const Matrix< InputType2, reference > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const Phase &phase,
@@ -1483,13 +1485,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType, typename InputType1,
 		typename InputType2, typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1506,13 +1509,14 @@ namespace grb {
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1,
 		typename InputType2, typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1539,6 +1543,7 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
@@ -1546,7 +1551,7 @@ namespace grb {
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1643,14 +1648,15 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords
+		typename InputType2 = typename Ring::D2
 	>
-	RC vxm( Vector< IOType, reference, Coords > &u,
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1667,12 +1673,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator, typename IOType,
 		typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1693,15 +1700,16 @@ namespace grb {
 	/** \internal Delegates to fully masked version */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename InputType3 = bool,
-		typename Coords
+		typename InputType3 = bool
 	>
-	RC mxv( Vector< IOType, reference, Coords > &u,
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
@@ -1722,12 +1730,13 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
 		const Ring &ring,
@@ -1829,14 +1838,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords
+		typename InputType2 = typename Ring::D2
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
@@ -1854,10 +1863,12 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
-	RC mxv( Vector< IOType, reference, Coords > &u,
-		const Matrix< InputType2, reference > &A,
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
@@ -1887,6 +1898,7 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
@@ -1894,7 +1906,7 @@ namespace grb {
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1999,12 +2011,13 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
 		const AdditiveMonoid &add = AdditiveMonoid(),
@@ -2252,9 +2265,12 @@ namespace grb {
 		 * @param[in] start The start iterator to the collection of nonzeroes.
 		 * @param[in]  end  The end iterator to the collection of nonzeroes.
 		 */
-		template< typename DataType, typename fwd_iterator >
+		template<
+			typename DataType, typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
 		void addToCRS(
-			const Matrix< DataType, reference > &A,
+			const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 			const fwd_iterator start, const fwd_iterator end
 		) {
 			auto &CRS = internal::getCRS( A );
@@ -2339,10 +2355,13 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< class ActiveDistribution, typename Func, typename DataType >
+	template<
+		class ActiveDistribution, typename Func,
+		typename DataType, typename RIT, typename CIT, typename NIT
+	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, reference > &A,
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 		const size_t s, const size_t P
 	) {
 #ifdef _DEBUG
@@ -2706,12 +2725,13 @@ namespace grb {
 	 */
 	template<
 		typename Func,
-		typename DataType1, typename DataType2,
+		typename DataType1, typename RIT, typename CIT, typename NIT,
+		typename DataType2,
 		typename Coords, typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType1, reference > &A,
+		const Matrix< DataType1, reference, RIT, CIT, NIT > &A,
 		const Vector< DataType2, reference, Coords > &x,
 		Args... args
 	) {

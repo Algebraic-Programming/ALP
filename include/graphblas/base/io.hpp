@@ -163,10 +163,12 @@ namespace grb {
 	 * @see getID
 	 */
 	template<
-		typename ElementType,
+		typename ElementType, typename RIT, typename CIT, typename NIT,
 		Backend implementation = config::default_backend
 	>
-	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+	uintptr_t getID(
+		const Matrix< ElementType, implementation, RIT, CIT, NIT > &x
+	) {
 		(void) x;
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
@@ -1607,9 +1609,13 @@ namespace grb {
 	 *                        prescribed by the non-blocking primitives whose
 	 *                        execution was attempted may be returned instead.
 	 */
-	template< Backend backend, typename InputType, typename... Args >
+	template<
+		Backend backend,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, backend > &A,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 #ifndef NDEBUG
