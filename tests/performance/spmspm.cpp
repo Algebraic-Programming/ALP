@@ -283,8 +283,16 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	out.pinnedVector = PinnedVector< double >( a, SEQUENTIAL );
 	*/
+	int nnz = 0;
+	auto it = C.begin();
+	while( it != C.end() ) {
+		if((*it).second != 0.0){
+			nnz++;
+		}
+		it.operator++();
+	}
 
-	out.result_nnz = nnz(C);
+	out.result_nnz = nnz;
 
 	// done
 	return;
