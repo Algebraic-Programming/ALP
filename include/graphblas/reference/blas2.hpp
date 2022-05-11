@@ -893,6 +893,9 @@ namespace grb {
 			// get whether we may simply assume the vectors are dense
 			constexpr bool dense_hint = descr & descriptors::dense;
 
+			// get whether we are forced to use a row-major storage
+			constexpr const bool crs_only = descr & descriptors::force_row_major;
+
 			// check for dimension mismatch
 			if( ( transposed && ( n != ncols( A ) || m != nrows( A ) ) ) ||
 				( !transposed && ( n != nrows( A ) || m != ncols( A ) ) )
@@ -1081,12 +1084,15 @@ namespace grb {
 					// const size_t CCS_loop_size = CRS_loop_size + 1;
 					// This variant modifies the sequential loop size to be P times more
 					// expensive
-					const size_t CCS_loop_size = omp_get_num_threads() * CCS_seq_loop_size;
+					const size_t CCS_loop_size = use_crs ? CRS_loop_size + 1 :
+						omp_get_num_threads() * CCS_seq_loop_size;
 #else
-					const size_t CCS_loop_size = CCS_seq_loop_size;
+					const size_t CCS_loop_size = use_crs ? CRS_loop_size + 1 :
+						CCS_seq_loop_size;
 #endif
 					// choose best-performing variant.
 					if( CCS_loop_size < CRS_loop_size ) {
+						assert( !use_crs );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 						#pragma omp single
 						{
@@ -1273,9 +1279,11 @@ namespace grb {
 					// const size_t CRS_loop_size = CCS_loop_size + 1;
 					// This variant estimates this non-parallel variant's cost at a factor P
 					// more
-					const size_t CRS_loop_size = omp_get_num_threads() * CRS_seq_loop_size;
+					const size_t CRS_loop_size = use_crs ? CRS_loop_size + 1 :
+						omp_get_num_threads() * CRS_seq_loop_size;
 #else
-					const size_t CRS_loop_size = CRS_seq_loop_size;
+					const size_t CRS_loop_size = use_crs ? CRS_loop_size + 1:
+						CRS_seq_loop_size;
 #endif
 
 					if( CRS_loop_size < CCS_loop_size ) {
@@ -1368,6 +1376,7 @@ namespace grb {
 						// end u=vA using CRS
 					} else {
 						// start u=vA using CCS
+						assert( !use_crs );
 #ifdef _DEBUG
 						std::cout << s << ": in column-major vector times matrix variant (u=vA)\n"
 							<< "\t(this variant relies on the gathering inner kernel)\n";

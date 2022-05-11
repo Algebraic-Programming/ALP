@@ -103,6 +103,15 @@ namespace grb {
 			constexpr bool trans_left = descr & descriptors::transpose_left;
 			constexpr bool trans_right = descr & descriptors::transpose_right;
 
+			// get whether we are required to stick to CRS
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+
+			// static checks
+			static_assert( !(crs_only && trans_left), "Cannot (presently) transpose A and
+				force the use of CRS" );
+			static_assert( !(crs_only && trans_right), "Cannot (presently) transpose B and
+				force the use of CRS" );
+
 			// run-time checks
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -131,8 +140,14 @@ namespace grb {
 			// initialisations
 			internal::Coordinates< reference > coors;
 			coors.set( arr, false, buf, n );
-			for( size_t j = 0; j <= n; ++j ) {
-				CCS_raw.col_start[ j ] = 0;
+
+			if( !crs_only ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value() )
+#endif
+				for( size_t j = 0; j <= n; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+				}
 			}
 			// end initialisations
 
@@ -148,9 +163,11 @@ namespace grb {
 						++l
 					) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( ! coors.assign( l_col ) ) {
-							(void)++nzc;
-							(void)++CCS_raw.col_start[ l_col + 1 ];
+						if( !coors.assign( l_col ) ) {
+							(void) ++nzc;
+							if( !crs_only ) {
+								(void) ++CCS_raw.col_start[ l_col + 1 ];
+							}
 						}
 					}
 				}
@@ -178,13 +195,23 @@ namespace grb {
 
 			// prefix sum for C_col_index,
 			// set CCS_raw.col_start to all zero
-			assert( CCS_raw.col_start[ 0 ] == 0 );
+#ifndef NDEBUG
+			if( !crs_only ) {
+				assert( CCS_raw.col_start[ 0 ] == 0 );
+			}
+#endif
 			C_col_index[ 0 ] = 0;
 			for( size_t j = 1; j < n; ++j ) {
-				CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				if( !crs_only ) {
+					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				}
 				C_col_index[ j ] = 0;
 			}
-			assert( CCS_raw.col_start[ n ] == nzc );
+#ifndef NDEBUG
+			if( !crs_only ) {
+				assert( CCS_raw.col_start[ n ] == nzc );
+			}
+#endif
 
 #ifndef NDEBUG
 			const size_t old_nzc = nzc;
@@ -237,9 +264,11 @@ namespace grb {
 					C_raw.row_index[ nzc ] = j;
 					C_raw.setValue( nzc, valbuf[ j ] );
 					// update CCS
-					const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
-					CCS_raw.row_index[ CCS_index ] = i;
-					CCS_raw.setValue( CCS_index, valbuf[ j ] );
+					if( !crs_only ) {
+						const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
+						CCS_raw.row_index[ CCS_index ] = i;
+						CCS_raw.setValue( CCS_index, valbuf[ j ] );
+					}
 					// update count
 					(void)++nzc;
 				}
@@ -247,9 +276,11 @@ namespace grb {
 			}
 
 #ifndef NDEBUG
-			for( size_t j = 0; j < n; ++j ) {
-				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
-					C_col_index[ j ] );
+			if( !crs_only ) {
+				for( size_t j = 0; j < n; ++j ) {
+					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+						C_col_index[ j ] );
+				}
 			}
 			assert( nzc == old_nzc );
 #endif
@@ -396,6 +427,7 @@ namespace grb {
 			const Vector< InputType3, reference, Coords > &z,
 			const Phase &phase
 		) {
+			assert( !(descr & descriptors::force_row_major) );
 #ifdef _DEBUG
 			std::cout << "In matrix_zip_generic (reference, vectors-to-matrix)\n";
 #endif
@@ -814,6 +846,7 @@ namespace grb {
 				grb::is_operator< Operator >::value,
 			void >::type * const = nullptr
 		) {
+			assert( !(descr & descriptors::force_row_major ) );
 			static_assert( allow_void ||
 				( !(
 				     std::is_same< InputType1, void >::value ||
@@ -942,8 +975,8 @@ namespace grb {
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( coors1.assigned( l_col ) ) {
-							(void)++nzc;
-							(void)++CCS_raw.col_start[ l_col + 1 ];
+							(void) ++nzc;
+							(void) ++CCS_raw.col_start[ l_col + 1 ];
 						}
 					}
 				}
