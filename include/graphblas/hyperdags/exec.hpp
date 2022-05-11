@@ -23,6 +23,7 @@
 #ifndef _H_GRB_HYPERDAGS_EXEC
 #define _H_GRB_HYPERDAGS_EXEC
 
+#include <graphblas/backends.hpp>
 #include <graphblas/base/exec.hpp>
 
 
