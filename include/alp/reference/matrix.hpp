@@ -699,6 +699,12 @@ namespace alp {
 			 */
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
+			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
+
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
 			template < view::Views view_tag, bool d=false >
@@ -818,6 +824,7 @@ namespace alp {
 			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
@@ -920,6 +927,7 @@ namespace alp {
 			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
