@@ -80,14 +80,18 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nrows( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nrows(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.m;
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t ncols( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t ncols(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.n;
 	}
 
@@ -165,8 +169,8 @@ namespace grb {
 	 * OpenMP threads.
 	 * \endparblock
 	 */
-	template< typename InputType >
-	RC clear( Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC clear( Matrix< InputType, reference, RIT, CIT, NIT > &A ) noexcept {
 		// delegate
 		return A.clear();
 	}
@@ -253,8 +257,10 @@ namespace grb {
 	 *
 	 * \internal No implementation notes.
 	 */
-	template< typename InputType >
-	RC resize( Matrix< InputType, reference > &A, const size_t new_nz ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC resize(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"

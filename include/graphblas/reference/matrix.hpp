@@ -68,16 +68,23 @@ namespace grb {
 
 	namespace internal {
 
-		template< typename D >
-		const size_t & getNonzeroCapacity( const grb::Matrix< D, reference > &A ) noexcept {
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		const size_t & getNonzeroCapacity(
+			const grb::Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept {
 			return A.cap;
 		}
-		template< typename D >
-		const size_t & getCurrentNonzeroes( const grb::Matrix< D, reference > &A ) noexcept {
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		const size_t & getCurrentNonzeroes(
+			const grb::Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept {
 			return A.nz;
 		}
-		template< typename D >
-		void setCurrentNonzeroes( grb::Matrix< D, reference > &A, const size_t nnz ) noexcept {
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		void setCurrentNonzeroes(
+			grb::Matrix< D, reference, RIT, CIT, NIT > &A,
+			const size_t nnz
+		) noexcept {
 			A.nz = nnz;
 		}
 
@@ -99,10 +106,11 @@ namespace grb {
 		 *
 		 * \endinternal
 		 */
-		template< typename InputType >
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		void getMatrixBuffers(
 			char * &coorArr, char * &coorBuf, InputType * &valbuf,
-			const unsigned int k, const grb::Matrix< InputType, reference > &A
+			const unsigned int k,
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			coorArr = const_cast< char * >( A.coorArr[ k ] );
 			coorBuf = const_cast< char * >( A.coorBuf[ k ] );
@@ -136,25 +144,21 @@ namespace grb {
 			const std::function< size_t( size_t ) > &dst_global_to_local
 		);
 
-		template< Descriptor descr,
-			bool masked,
-			bool input_masked,
-			bool left_handed,
-			template< typename >
-			class One,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords >
-		RC vxm_generic( Vector< IOType, reference, Coords > &u,
+		template<
+			Descriptor descr,
+			bool masked, bool input_masked, bool left_handed,
+			template< typename > class One,
+			class AdditiveMonoid, class Multiplication,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords, typename RIT, typename CIT, typename NIT
+		>
+		RC vxm_generic(
+			Vector< IOType, reference, Coords > &u,
 			const Vector< InputType3, reference, Coords > &mask,
 			const Vector< InputType1, reference, Coords > &v,
 			const Vector< InputType4, reference, Coords > &v_mask,
-			const Matrix< InputType2, reference > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const std::function< size_t( size_t ) > &row_l2g,
@@ -165,24 +169,31 @@ namespace grb {
 
 	} // namespace internal
 
-	template< typename DataType >
-	size_t nrows( const Matrix< DataType, reference > & ) noexcept;
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t nrows( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
-	template< typename DataType >
-	size_t ncols( const Matrix< DataType, reference > & ) noexcept;
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t ncols( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
-	template< typename DataType >
-	size_t nnz( const Matrix< DataType, reference > & ) noexcept;
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t nnz( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
-	template< typename InputType >
-	RC clear( Matrix< InputType, reference > & ) noexcept;
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC clear( Matrix< InputType, reference, RIT, CIT, NIT > & ) noexcept;
 
-	template< typename DataType >
-	RC resize( Matrix< DataType, reference > &, const size_t ) noexcept;
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	RC resize(
+		Matrix< DataType, reference, RIT, CIT, NIT > &,
+		const size_t
+	) noexcept;
 
-	template< class ActiveDistribution, typename Func, typename DataType >
-	RC eWiseLambda( const Func f,
-		const Matrix< DataType, reference > &A,
+	template<
+		class ActiveDistribution, typename Func, typename DataType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 		const size_t s, const size_t P
 	);
 
@@ -193,63 +204,87 @@ namespace grb {
 	 *
 	 * \warning This implementation prefers speed over memory efficiency.
 	 *
-	 * @tparam D  The type of a nonzero element.
+	 * @tparam D The type of a nonzero element.
+	 *
+	 * \internal
+	 * @tparam RowIndexType The type used for row indices
+	 * @tparam ColIndexType The type used for column indices
+	 * @tparam NonzeroIndexType The type used for nonzero indices
+	 * \endinternal
 	 */
-	template< typename D >
-	class Matrix< D, reference > {
+	template<
+		typename D,
+		typename RowIndexType,
+		typename ColIndexType,
+		typename NonzeroIndexType
+	>
+	class Matrix< D, reference, RowIndexType, ColIndexType, NonzeroIndexType > {
 
 		static_assert( !grb::is_object< D >::value,
-			"Cannot create a GraphBLAS matrix of GraphBLAS objects!" );
+			"Cannot create an ALP matrix of ALP objects!" );
 
 		/* *********************
 		        BLAS2 friends
 		   ********************* */
 
-		template< typename DataType >
-		friend size_t nrows( const Matrix< DataType, reference > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t nrows(
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend size_t ncols( const Matrix< DataType, reference > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t ncols(
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend size_t nnz( const Matrix< DataType, reference > & ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend size_t nnz(
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename InputType >
-		friend RC clear( Matrix< InputType, reference > & ) noexcept;
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend RC clear(
+			Matrix< InputType, reference, RIT, CIT, NIT > &
+		) noexcept;
 
-		template< typename DataType >
-		friend RC resize( Matrix< DataType, reference > &, const size_t ) noexcept;
+		template< typename DataType, typename RIT, typename CIT, typename NIT  >
+		friend RC resize(
+			Matrix< DataType, reference, RIT, CIT, NIT > &,
+			const size_t
+		) noexcept;
 
-		template< class ActiveDistribution, typename Func, typename DataType >
-		friend RC eWiseLambda( const Func,
-			const Matrix< DataType, reference > &,
+		template<
+			class ActiveDistribution, typename Func, typename DataType,
+			typename RIT, typename CIT, typename NIT
+		>
+		friend RC eWiseLambda(
+			const Func,
+			const Matrix< DataType, reference, RIT, CIT, NIT > &,
 			const size_t, const size_t
 		);
 
-		template< Descriptor descr,
-			bool input_dense,
-			bool output_dense,
-			bool masked,
-			bool left_handed,
+		template<
+			Descriptor descr,
+			bool input_dense, bool output_dense, bool masked, bool left_handed,
 			template< typename > class One,
 			typename IOType,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename InputType1,
-			typename InputType2,
+			class AdditiveMonoid, class Multiplication,
+			typename InputType1, typename InputType2,
 			typename InputType3,
-			typename RowColType,
-			typename NonzeroType,
+			typename RowColType, typename NonzeroType,
 			typename Coords
 		>
-		friend void internal::vxm_inner_kernel_scatter( RC &rc,
+		friend void internal::vxm_inner_kernel_scatter(
+			RC &rc,
 			Vector< IOType, reference, Coords > &destination_vector,
 			IOType * __restrict__ const &destination,
 			const size_t &destination_range,
 			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_index,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage<
+				InputType2, RowColType, NonzeroType
+			> &matrix,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const AdditiveMonoid &add,
@@ -258,25 +293,21 @@ namespace grb {
 			const std::function< size_t( size_t ) > &dst_global_to_local
 		);
 
-		template< Descriptor descr,
-			bool masked,
-			bool input_masked,
-			bool left_handed,
+		template<
+			Descriptor descr,
+			bool masked, bool input_masked, bool left_handed,
 			template< typename > class One,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename IOType,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename InputType4,
-			typename Coords
+			class AdditiveMonoid, class Multiplication,
+			typename IOType, typename InputType1, typename InputType2,
+			typename InputType3, typename InputType4,
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		friend RC internal::vxm_generic( Vector< IOType, reference, Coords > &u,
+		friend RC internal::vxm_generic(
+			Vector< IOType, reference, Coords > &u,
 			const Vector< InputType3, reference, Coords > &mask,
 			const Vector< InputType1, reference, Coords > &v,
 			const Vector< InputType4, reference, Coords > &v_mask,
-			const Matrix< InputType2, reference > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const std::function< size_t( size_t ) > &row_l2g,
@@ -289,65 +320,90 @@ namespace grb {
 		        IO friends
 		   ******************** */
 
-		template< Descriptor descr, typename InputType, typename fwd_iterator >
+		template<
+			Descriptor descr, typename InputType,
+			typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
 		friend RC buildMatrixUnique(
-			Matrix< InputType, reference > &,
+			Matrix< InputType, reference, RIT, CIT, NIT > &,
 			fwd_iterator, const fwd_iterator,
 			const IOMode
 		);
 
-		friend internal::Compressed_Storage< D,
-		       grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & internal::getCRS<>( Matrix< D, reference > &A ) noexcept;
+		friend internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > &
+		internal::getCRS<>(
+			Matrix<
+				D, reference,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> &A
+		) noexcept;
 
-		friend const internal::Compressed_Storage< D,
-		       grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & internal::getCRS<>( const Matrix< D, reference > &A ) noexcept;
+		friend const internal::Compressed_Storage<
+			D,
+			RowIndexType, NonzeroIndexType
+		> & internal::getCRS<>(
+			const Matrix<
+				D, reference,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> &A
+		) noexcept;
 
-		friend internal::Compressed_Storage< D,
-		       grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & internal::getCCS<>( Matrix< D, reference > &A ) noexcept;
+		friend internal::Compressed_Storage< D, ColIndexType, NonzeroIndexType > &
+		internal::getCCS<>(
+			Matrix<
+				D, reference,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> &A
+		) noexcept;
 
-		friend const internal::Compressed_Storage< D,
-		       grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & internal::getCCS<>( const Matrix< D, reference > &A ) noexcept;
+		friend const internal::Compressed_Storage<
+			D, ColIndexType, NonzeroIndexType
+		> & internal::getCCS<>(
+			const Matrix<
+				D, reference,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> &A
+		) noexcept;
 
-		template< typename InputType >
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend const size_t & internal::getNonzeroCapacity(
-			const grb::Matrix< InputType, reference > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename InputType >
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend const size_t & internal::getCurrentNonzeroes(
-			const grb::Matrix< InputType, reference > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename InputType >
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend void internal::setCurrentNonzeroes(
-			grb::Matrix< InputType, reference > &, const size_t
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &, const size_t
 		) noexcept;
 
-		template< typename InputType >
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend void internal::getMatrixBuffers(
 			char *&, char *&, InputType *&,
 			const unsigned int,
-			const grb::Matrix< InputType, reference > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
-		template< typename InputType >
-		friend uintptr_t getID( const Matrix< InputType, reference > & );
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend uintptr_t getID(
+			const Matrix< InputType, reference, RIT, CIT, NIT > &
+		);
 
 		/* ********************
 		        BSP1D friends
 		   ******************** */
 
-		template< typename InputType >
-		friend Matrix< InputType, BSP1D >::Matrix(
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend Matrix< InputType, BSP1D, RIT, CIT, NIT >::Matrix(
 			const size_t, const size_t, const size_t
 		);
 
-		template< typename InputType >
-		friend void Matrix< InputType, BSP1D >::initialize(
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend void Matrix< InputType, BSP1D, RIT, CIT, NIT >::initialize(
 			const size_t, const size_t, const size_t
 		);
 
@@ -355,17 +411,16 @@ namespace grb {
 	private:
 
 		/** Our own type. */
-		typedef Matrix< D, reference > self_type;
+		typedef Matrix<
+			D, reference,
+			RowIndexType, ColIndexType, NonzeroIndexType
+		> self_type;
 
 		/** The Row Compressed Storage */
-		class internal::Compressed_Storage< D,
-			grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> CRS;
+		class internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > CRS;
 
 		/** The Column Compressed Storage */
-		class internal::Compressed_Storage< D,
-			grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> CCS;
+		class internal::Compressed_Storage< D, ColIndexType, NonzeroIndexType > CCS;
 
 		/** The determinstically-obtained ID of this container. */
 		uintptr_t id;
@@ -437,11 +492,11 @@ namespace grb {
 		) {
 			// static checks
 			constexpr size_t globalBufferUnitSize =
-				sizeof(typename config::RowIndexType) +
-				sizeof(typename config::ColIndexType) +
+				sizeof(RowIndexType) +
+				sizeof(ColIndexType) +
 				grb::utils::SizeOf< D >::value;
 			static_assert(
-				globalBufferUnitSize >= sizeof(typename config::NonzeroIndexType),
+				globalBufferUnitSize >= sizeof(NonzeroIndexType),
 				"We hit here a configuration border case which the implementation does not "
 				"handle at present. Please submit a bug report."
 			);
@@ -456,14 +511,14 @@ namespace grb {
 			assert( id == std::numeric_limits< uintptr_t >::max() );
 			assert( !remove_id );
 			if( rows >= static_cast< size_t >(
-					std::numeric_limits< grb::config::RowIndexType >::max()
+					std::numeric_limits< RowIndexType >::max()
 				)
 			) {
 				throw std::overflow_error( "Number of rows larger than configured "
 					"RowIndexType maximum!" );
 			}
 			if( columns >= static_cast< size_t >(
-					std::numeric_limits< grb::config::ColIndexType >::max()
+					std::numeric_limits< ColIndexType >::max()
 				)
 			) {
 				throw std::overflow_error( "Number of columns larger than configured "
@@ -680,7 +735,7 @@ namespace grb {
 			}
 
 			if( nonzeroes >= static_cast< size_t >(
-					std::numeric_limits< grb::config::NonzeroIndexType >::max()
+					std::numeric_limits< NonzeroIndexType >::max()
 				)
 			) {
 				return OVERFLW;
@@ -834,7 +889,7 @@ namespace grb {
 
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
-					std::numeric_limits< grb::config::NonzeroIndexType >::max()
+					std::numeric_limits< NonzeroIndexType >::max()
 				)
 			) {
 				return OVERFLW;
@@ -983,7 +1038,12 @@ namespace grb {
 		 *   -# then, the performance semantics of a call to grb::set apply.
 		 * \endparblock
 		 */
-		Matrix( const Matrix< D, reference > &other ) :
+		Matrix(
+			const Matrix<
+				D, reference,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> &other
+		) :
 			Matrix( other.m, other.n, other.cap )
 		{
 #ifdef _DEBUG
@@ -1077,7 +1137,7 @@ namespace grb {
 		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
-			grb::config::RowIndexType, grb::config::NonzeroIndexType
+			RowIndexType, NonzeroIndexType
 		>::template ConstIterator< ActiveDistribution > begin(
 			const IOMode mode = PARALLEL,
 			const size_t s = 0, const size_t P = 1
@@ -1086,8 +1146,8 @@ namespace grb {
 			(void)mode;
 			typedef typename internal::Compressed_Storage<
 				D,
-				grb::config::RowIndexType,
-				grb::config::NonzeroIndexType
+				RowIndexType,
+				NonzeroIndexType
 			>::template ConstIterator< ActiveDistribution > IteratorType;
 #ifdef _DEBUG
 			std::cout << "In grb::Matrix<T,reference>::cbegin\n";
@@ -1103,8 +1163,8 @@ namespace grb {
 		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
-			grb::config::RowIndexType,
-			grb::config::NonzeroIndexType
+			RowIndexType,
+			NonzeroIndexType
 		>::template ConstIterator< ActiveDistribution > end(
 			const IOMode mode = PARALLEL,
 			const size_t s = 0, const size_t P = 1
@@ -1113,8 +1173,8 @@ namespace grb {
 			(void)mode;
 			typedef typename internal::Compressed_Storage<
 				D,
-				grb::config::RowIndexType,
-				grb::config::NonzeroIndexType
+				RowIndexType,
+				NonzeroIndexType
 			>::template ConstIterator< ActiveDistribution > IteratorType;
 			return IteratorType( CRS, m, n, nz, true, s, P );
 		}
@@ -1127,8 +1187,8 @@ namespace grb {
 		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
-			grb::config::RowIndexType,
-			grb::config::NonzeroIndexType
+			RowIndexType,
+			NonzeroIndexType
 		>::template ConstIterator< ActiveDistribution > cbegin(
 			const IOMode mode = PARALLEL
 		) const {
@@ -1143,8 +1203,8 @@ namespace grb {
 		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
-			grb::config::RowIndexType,
-			grb::config::NonzeroIndexType
+			RowIndexType,
+			NonzeroIndexType
 		>::template ConstIterator< ActiveDistribution > cend(
 			const IOMode mode = PARALLEL
 		) const {
@@ -1154,8 +1214,8 @@ namespace grb {
 	};
 
 	// template specialisation for GraphBLAS type traits
-	template< typename D >
-	struct is_container< Matrix< D, reference > > {
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	struct is_container< Matrix< D, reference, RIT, CIT, NIT > > {
 		/** A reference Matrix is a GraphBLAS object. */
 		static const constexpr bool value = true;
 	};

@@ -96,8 +96,8 @@
 namespace grb {
 
 	// forward declaration of backend-local matrix specialization for vector's friends
-	template< typename D >
-	class Matrix< D, reference >;
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	class Matrix< D, reference, RIT, CIT, NIT >;
 
 	// forward-declare internal getters
 	namespace internal {
@@ -120,25 +120,25 @@ namespace grb {
 		template< typename D, typename C >
 		inline const D * getRaw( const Vector< D, reference, C > &x ) noexcept;
 
-		template< typename D >
-		inline internal::Compressed_Storage<
-			D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & getCRS( Matrix< D, reference > &A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+			Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline const internal::Compressed_Storage<
-			D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-		> & getCRS( const Matrix< D, reference > &A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+			const Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline internal::Compressed_Storage<
-			D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & getCCS( Matrix< D, reference > &A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+			Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline const internal::Compressed_Storage<
-			D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-		> & getCCS( const Matrix< D, reference > &A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+			const Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
 		template<
 			typename D,
@@ -1238,31 +1238,31 @@ namespace grb {
 				return x._raw;
 			}
 
-			template< typename D >
-			inline internal::Compressed_Storage<
-				D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-			> & getCRS( Matrix< D, reference > &A ) noexcept {
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+				Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
 				return A.CRS;
 			}
 
-			template< typename D >
-			inline const internal::Compressed_Storage<
-				D, grb::config::RowIndexType, grb::config::NonzeroIndexType
-			> & getCRS( const Matrix< D, reference > &A ) noexcept {
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline const internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+				const Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
 				return A.CRS;
 			}
 
-			template< typename D >
-			inline internal::Compressed_Storage<
-				D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-			> & getCCS( Matrix< D, reference > &A ) noexcept {
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+				Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
 				return A.CCS;
 			}
 
-			template< typename D >
-			inline const internal::Compressed_Storage<
-				D, grb::config::ColIndexType, grb::config::NonzeroIndexType
-			> & getCCS( const Matrix< D, reference > &A ) noexcept {
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline const internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+				const Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
 				return A.CCS;
 			}
 

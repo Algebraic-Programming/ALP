@@ -107,10 +107,10 @@ namespace grb {
 			constexpr bool crs_only = descr & descriptors::force_row_major;
 
 			// static checks
-			static_assert( !(crs_only && trans_left), "Cannot (presently) transpose A and
-				force the use of CRS" );
-			static_assert( !(crs_only && trans_right), "Cannot (presently) transpose B and
-				force the use of CRS" );
+			static_assert( !(crs_only && trans_left), "Cannot (presently) transpose A "
+				"and force the use of CRS" );
+			static_assert( !(crs_only && trans_right), "Cannot (presently) transpose B "
+				"and force the use of CRS" );
 
 			// run-time checks
 			const size_t m = grb::nrows( C );

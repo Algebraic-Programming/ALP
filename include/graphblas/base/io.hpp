@@ -266,8 +266,13 @@ namespace grb {
 	 *       passed by reference, indeed must have a size that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t nrows( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t nrows(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_nrows = false;
 #endif
@@ -314,8 +319,13 @@ namespace grb {
 	 *       and passed by reference, indeed must have a size that can be
 	 *       immediately returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t ncols( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t ncols(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_ncols = false;
 #endif
@@ -590,8 +600,13 @@ namespace grb {
 	 * \note Only the destruction of \a A would ensure all corresponding memory is
 	 *       freed, for all backends.
 	 */
-	template< typename InputType, Backend backend >
-	RC clear( Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC clear(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_clear = false;
 #endif
@@ -756,10 +771,12 @@ namespace grb {
 	 *          should be used sparingly and only when absolutely necessary.
 	 */
 	template<
-		typename InputType,
-		Backend backend
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
 	>
-	RC resize( Matrix< InputType, backend > &A, const size_t new_nz ) noexcept {
+	RC resize(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_resize = false;
 #endif

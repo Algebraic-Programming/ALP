@@ -50,17 +50,29 @@ namespace grb {
 	 * @tparam implementation Allows multiple backends to implement different
 	 *                        versions of this data type.
 	 *
-	 * \warning Creating a grb::Matrix of other GraphBLAS types is not allowed.
-	 *          Passing a GraphBLAS type as the template parameter \a D shall lead
-	 *          to a compile-time error.
+	 * \internal
+	 * @tparam RowIndexType The type used for row indices
+	 * @tparam ColIndexType The type used for column indices
+	 * @tparam NonzeroIndexType The type used for nonzero indices
+	 * \endinternal
+	 *
+	 * \warning Creating a grb::Matrix of other ALP/GraphBLAS types is not allowed.
 	 */
-	template< typename D, enum Backend implementation >
+	template<
+		typename D, enum Backend implementation,
+		typename RowIndexType,
+		typename ColIndexType,
+		typename NonzeroIndexType
+	>
 	class Matrix {
 
 		public :
 
 			/** The type of this container. */
-			typedef Matrix< D, implementation > self_type;
+			typedef Matrix<
+				D, implementation,
+				RowIndexType, ColIndexType, NonzeroIndexType
+			> self_type;
 
 			/**
 			 * A standard iterator for an ALP/GraphBLAS matrix.
@@ -253,7 +265,10 @@ namespace grb {
 			 * \warning Avoid the use of this constructor within performance critical
 			 *          code sections.
 			 */
-			Matrix( const Matrix< D, implementation > &other ) {
+			Matrix( const Matrix<
+				D, implementation,
+				RowIndexType, ColIndexType, NonzeroIndexType > &other
+			) {
 				(void)other;
 			}
 
