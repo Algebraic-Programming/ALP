@@ -153,7 +153,9 @@ namespace alp {
 				AMF( ImfR &&imf_r, ImfC &&imf_c, Smf smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
 
 				size_t map( const size_t i, const size_t j ) const {
+#ifdef _DEBUG
 					std::cout << "Calling AMF::map()\n";
+#endif
 					return smf.f( imf_r.map( i ), imf_c.map( j ) );
 				}
 		};
@@ -193,7 +195,11 @@ namespace alp {
 				}
 
 				size_t map( const size_t i, const size_t j ) const {
+#ifdef _DEBUG
 					std::cout << "Calling AMF::map()\n";
+#endif
+					// TODO: Maybe these asserts should be pushed to debug mode
+					// for performance reasons.
 					assert( i < imf_r.n );
 					assert( j < imf_c.n );
 					return amf.f( i, j );

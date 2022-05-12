@@ -65,17 +65,16 @@ namespace alp {
 
 			protected:
 
-				size_t map( const size_t i ) const {
-					(void)i;
-					std::cout << "Calling IMF map" << std::endl;
-					return 0;
-				}
-
 				template< typename OtherImf >
 				bool isSame( const OtherImf & other ) const {
 					//static_assert( std::is_same< decltype( *this ), decltype( other ) >::value );
 					return n == other.n && N == other.N;
 				}
+
+			private:
+
+				/** Implements the mapping function of the IMF */
+				size_t map( const size_t ) const;
 
 		}; // class IMF
 
@@ -88,11 +87,14 @@ namespace alp {
 		class Strided: public IMF {
 
 			public:
+
 				const size_t b;
 				const size_t s;
 
 				size_t map( const size_t i ) const {
-					std::cout << "Calling Strided map" << std::endl;
+#ifdef _DEBUG
+					std::cout << "Calling Strided map\n";
+#endif
 					return b + s * i;
 				}
 
@@ -126,7 +128,9 @@ namespace alp {
 				std::vector< size_t > select;
 
 				size_t map( size_t i ) const {
-					std::cout << "Calling Select map; vec size = " << select.size() << std::endl;
+#ifdef _DEBUG
+					std::cout << "Calling Select map.\n";
+#endif
 					return select.at( i );
 				}
 
@@ -137,8 +141,9 @@ namespace alp {
 				}
 
 				Select(size_t N, std::vector< size_t > &&select): IMF( select.size(), N ), select( select ) {
-					std::cout << "Select move constructor" << std::endl;
-					std::cout << (this->select).size() << std::endl;
+#ifdef _DEBUG
+					std::cout << "Select move constructor\n";
+#endif
 					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
 					//	throw std::runtime_error("IMF Select beyond range.");
 					//}
@@ -171,12 +176,19 @@ namespace alp {
 				const SecondIMF &f;
 
 				size_t map( const size_t i ) const {
-						std::cout << "Calling Composed< IMF, IMF>::map()" << std::endl;
+#ifdef _DEBUG
+						std::cout << "Calling Composed< IMF, IMF>::map()\n";
+#endif
 						return f.map( g.map( i ) );
 				}
 
 				Composed( const FirstIMF &g, const SecondIMF &f ):
-					IMF( g.n, f.N ), g( g ), f( f ) {}
+					IMF( g.n, f.N ), g( g ), f( f ) {
+#ifdef _DEBUG
+						std::cout << "Creating composition of IMFs that cannot be composed into a"
+						             "single mapping function. Consider the effect on performance.\n";
+#endif
+					}
 
 		};
 
@@ -236,8 +248,10 @@ namespace alp {
 		/** Composition of two Id IMFs is an Id Imf */
 		template<>
 		Id ComposedFactory::create( const Id &f1, const Id &f2 ) {
+#ifdef NDEBUG
 			(void)f2;
-			// The first function's domain must be equal to the second function's domain.
+#endif
+			// The first function's co-domain must be equal to the second function's domain.
 			assert( f1.N == f2.n );
 			return Id( f1.n );
 		}
