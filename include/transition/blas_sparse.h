@@ -18,13 +18,15 @@
 /**
  * @file
  *
- * This is the ALP implementation of a subset of the proposed NIST Sparse BLAS
- * standard. While the API is standardised, this header makes some
- * implementation-specific choices.
+ * This is the ALP implementation of a subset of the NIST Sparse BLAS standard.
+ * While the API is standardised, this header makes some implementation-specific
+ * extensions.
  */
 
 #ifndef _H_ALP_SPARSEBLAS_NIST
 #define _H_ALP_SPARSEBLAS_NIST
+
+#include "blas_sparse_vec.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,94 +51,6 @@ enum blas_order_type {
 
 /** A sparse matrix */
 typedef void * blas_sparse_matrix;
-
-/** A sparse vector. This is an implementation-specific extension. */
-typedef void * extblas_sparse_vector;
-
-/**
- * Creates a handle to a new sparse vector that holds no entries.
- *
- * This is an implementation-specific extension.
- *
- * @param[in] n The returned vector size.
- *
- * @returns An #extblas_sparse_vector that is under construction.
- */
-extblas_sparse_vector EXTBLAS_dusv_begin( const int n );
-
-/**
- * Inserts a new nonzero entry into a sparse vector that is under construction.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusv_insert_entry(
-	extblas_sparse_vector x,
-	const double val,
-	const int index
-);
-
-/**
- * Signals the end of sparse vector construction, making the given vector ready
- * for use.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusv_end( extblas_sparse_vector x );
-
-/**
- * Destroys the given sparse vector.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusvds( extblas_sparse_vector x );
-
-/**
- * @returns The number of nonzeroes in a given sparse vector.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusvnz( const extblas_sparse_vector x );
-
-/**
- * Opens a sparse vector for read-out.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusv_open( const extblas_sparse_vector x );
-
-/**
- * Retrieves a sparse vector entry. Each call to this function will retrieve a
- * new entry. The order in which entries are returned is unspecified.
- *
- * The given vector must be opened for read-out, and must not have been closed
- * in the mean time.
- *
- * This is an implementation-specific extension.
- *
- * @returns 0  If a value was successfully returned but a next value is not
- *             available (i.e., the read-out has completed).
- * @returns 1  If a value was successfully returned and a next value is
- *             available.
- * @returns 10 In case of error.
- */
-int EXTBLAS_dusv_get(
-	const extblas_sparse_vector x,
-	double * const val, int * const ind
-);
-
-/**
- * Closes a sparse vector read-out.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusv_close( const extblas_sparse_vector x );
-
-/**
- * Removes all entries from a finalised sparse vector.
- *
- * This is an implementation-specific extension.
- */
-int EXTBLAS_dusv_clear( extblas_sparse_vector x );
 
 /**
  * Creates a handle to a new / empty sparse matrix.

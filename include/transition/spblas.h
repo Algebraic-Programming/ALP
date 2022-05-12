@@ -28,6 +28,12 @@
 #ifndef _H_ALP_SPBLAS
 #define _H_ALP_SPBLAS
 
+#include "blas_sparse_vec.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Computes either
  *  - \f$ y \to Ax \f$, or
@@ -179,6 +185,10 @@ void extspblas_dcsrmultsv(
 	const extblas_sparse_vector x,
 	extblas_sparse_vector y
 );
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #endif // end _H_ALP_SPBLAS
 
