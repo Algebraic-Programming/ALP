@@ -60,6 +60,32 @@ namespace grb {
 			static constexpr size_t value = 0;
 		};
 
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend = config::default_backend
+		>
+		const grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			const ValType *__restrict__ const value_array,
+			const ColType *__restrict__ const index_array,
+			const IndType *__restrict__ const offst_array,
+			const size_t m, const size_t n
+		);
+
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend = config::default_backend
+		>
+		grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			ValType *__restrict__ const value_array,
+			ColType *__restrict__ const index_array,
+			IndType *__restrict__ const offst_array,
+			const size_t m, const size_t n,
+			char * const buf1 = nullptr, char * const buf2 = nullptr,
+			ValType *__restrict__ const buf3 = nullptr
+		);
+
 	} // namespace internal
 #endif
 
@@ -392,6 +418,36 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &
 		);
 
+		/* *************************
+		   Friend internal functions
+		   ************************* */
+
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend
+		>
+		friend const grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			const ValType *__restrict__ const,
+			const ColType *__restrict__ const,
+			const IndType *__restrict__ const,
+			const size_t, const size_t
+		);
+
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend
+		>
+		friend grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			ValType *__restrict__ const,
+			ColType *__restrict__ const,
+			IndType *__restrict__ const,
+			const size_t, const size_t,
+			char * const, char * const,
+			ValType *__restrict__ const
+		);
+
 		/* ***********************************
 		   Friend other matrix implementations
 		   *********************************** */
@@ -508,9 +564,9 @@ namespace grb {
 		 * behaviour during a call to grb::mxm.
 		 */
 		Matrix(
-			D *__restrict__ const _values,
-			ColIndexType *__restrict__ const _column_indices,
-			NonzeroIndexType *__restrict__ const _offset_array,
+			const D *__restrict__ const _values,
+			const ColIndexType *__restrict__ const _column_indices,
+			const NonzeroIndexType *__restrict__ const _offset_array,
 			const size_t _m, const size_t _n,
 			char *__restrict__ const buf1 = nullptr,
 			char *__restrict__ const buf2 = nullptr,
@@ -1265,7 +1321,50 @@ namespace grb {
 		static const constexpr bool value = true;
 	};
 
-} // namespace grb
+	namespace internal {
+
+#ifndef _H_GRB_REFERENCE_OMP_MATRIX
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend
+		>
+		const grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			const ValType *__restrict__ const value_array,
+			const ColType *__restrict__ const index_array,
+			const IndType *__restrict__ const offst_array,
+			const size_t m, const size_t n
+		) {
+			grb::Matrix< ValType, backend, ColType, ColType, IndType > ret(
+				value_array, index_array, offst_array, m, n
+			);
+			return ret;
+		}
+
+		template<
+			typename ValType, typename ColType, typename IndType,
+			Backend backend
+		>
+		grb::Matrix< ValType, backend, ColType, ColType, IndType >
+		wrapCRSMatrix(
+			ValType *__restrict__ const value_array,
+			ColType *__restrict__ const index_array,
+			IndType *__restrict__ const offst_array,
+			const size_t m, const size_t n,
+			char * const buf1, char * const buf2,
+			ValType *__restrict__ const buf3
+		) {
+			grb::Matrix< ValType, backend, ColType, ColType, IndType > ret(
+				value_array, index_array, offst_array, m, n,
+				buf1, buf2, buf3
+			);
+			return ret;
+		}
+#endif
+
+	} // end namespace grb::internal
+
+} // end namespace grb
 
 // parse again for reference_omp backend
 #ifdef _GRB_WITH_OMP
