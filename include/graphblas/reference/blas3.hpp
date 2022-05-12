@@ -71,7 +71,8 @@ namespace grb {
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid
 		>
-		RC mxm_generic( Matrix< OutputType, reference > &C,
+		RC mxm_generic(
+			Matrix< OutputType, reference > &C,
 			const Matrix< InputType1, reference > &A,
 			const Matrix< InputType2, reference > &B,
 			const Operator &oper,
@@ -125,8 +126,12 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			const auto &A_raw = !trans_left ? internal::getCRS( A ) : internal::getCCS( A );
-			const auto &B_raw = !trans_right ? internal::getCRS( B ) : internal::getCCS( B );
+			const auto &A_raw = !trans_left
+				? internal::getCRS( A )
+				: internal::getCCS( A );
+			const auto &B_raw = !trans_right
+				? internal::getCRS( B )
+				: internal::getCCS( B );
 			auto &C_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
