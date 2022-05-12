@@ -419,6 +419,13 @@ namespace alp {
 
 	namespace internal {
 
+		// Forward declaration
+		template< typename T, typename MatrixType >
+		const T &getReference( const MatrixType &, const size_t, const size_t );
+
+		template< typename T, typename MatrixType >
+		T &getReference( MatrixType &, const size_t, const size_t );
+
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
@@ -432,6 +439,23 @@ namespace alp {
 				std::pair< size_t, size_t > dims() const noexcept {
 					return static_cast< const DerivedMatrix * >( this )->_dims();
 				}
+
+				template< typename MatrixType >
+				friend const typename MatrixType::value_type &getReference( const MatrixType &A, const size_t i, const size_t j );
+
+				template< typename MatrixType >
+				friend typename MatrixType::value_type &getReference( MatrixType &A, const size_t i, const size_t j );
+
+				template< typename T >
+				const T &getReference( const size_t i, const size_t j ) const {
+					return static_cast< const DerivedMatrix & >( *this ).getReference( i, j );
+				}
+
+				template< typename T >
+				T &getReference( const size_t i, const size_t j ) {
+					return static_cast< DerivedMatrix & >( *this ).getReference( i, j );
+				}
+
 		};
 
 		/**
@@ -452,6 +476,9 @@ namespace alp {
 					Vector< T, reference >,
 					Vector< T, reference > &
 				>::type container_type;
+
+				friend MatrixBase< self_type >;
+
 				/** A container-type view is characterized by its association with a physical container */
 				container_type container;
 
@@ -511,6 +538,23 @@ namespace alp {
 
 				friend void setInitialized( self_type & A, bool initialized ) noexcept {
 					setInitialized( getContainer( A, initialized ));
+				}
+
+				/**
+				 * Returns a constant reference to the element at the i-th row and
+				 * j-th column in the matrix.
+				 *
+				 * @param i row-coordinate of the element
+				 * @param j column-coordinate of the element
+				 *
+				 * @return constant reference to the element with coordinates (i, j).
+				 */
+				const T &getReference( const size_t i, const size_t j ) const {
+					return container[ amf.map( i, j ) ];
+				}
+
+				T &getReference( const size_t i, const size_t j ) {
+					return container[ amf.map( i, j ) ];
 				}
 
 				/**
@@ -1457,6 +1501,29 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
 			return A.dims();
+		}
+
+		/** Access the matrix element.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A matrix to be accessed
+		 * @param[in] i row coordinate of matrix A
+		 * @param[in] j column coordinate of matrix A
+		 *
+		 * @return A constant reference to the element at the position (i, j)
+		 *         of matrix A
+		 *
+		 * \note   This method may be used to access only elements local to the processor.
+		 */
+		template< typename MatrixType >
+		const typename MatrixType::value_type &getReference( const MatrixType &A, const size_t i, const size_t j ) {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template getReference< typename MatrixType::value_type >( i, j );
+		}
+
+		template< typename MatrixType >
+		typename MatrixType::value_type &getReference( MatrixType &A, const size_t i, const size_t j ) {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template getReference< typename MatrixType::value_type >( i, j );
 		}
 
 	} // namespace internal

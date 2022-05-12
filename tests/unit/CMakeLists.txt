@@ -200,6 +200,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
+add_grb_executables( dense_matrix_access dense_matrix_access.cpp
+	BACKENDS alp_reference
+)
+
 # Temporarily disable until containers rework is completed
 #add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
 #	BACKENDS alp_reference
