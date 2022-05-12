@@ -407,32 +407,32 @@ namespace alp {
 		void getInitialized( MatrixBase< DerivedMatrix > &, bool ) noexcept;
 	} // namespace internal
 
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-	bool getInitialized( Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A ) noexcept {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	bool getInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) noexcept {
 		return getInitialized( A );
 	}
 
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-	void setInitialized( Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, bool initialized ) noexcept {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	void setInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A, bool initialized ) noexcept {
 		setInitialized( A, initialized );
 	}
 
-	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
-	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
-		//return internal::nrows( static_cast< internal::MatrixBase< ImfL, ImfR > > ( A ) );
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
+		//return internal::nrows( static_cast< internal::MatrixBase< ImfR, ImfC > > ( A ) );
 		(void)A;
 		return 0;
 	}
 
-	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
-	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
-		//return internal::ncols( static_cast< internal::MatrixBase< ImfL, ImfR > > ( A ) );
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
+		//return internal::ncols( static_cast< internal::MatrixBase< ImfR, ImfC > > ( A ) );
 		(void)A;
 		return 0;
 	}
 
-	template< typename D, typename Structure, typename View, typename ImfL, typename ImfR >
-	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfL, ImfR, reference > & A ) noexcept {
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
 		return internal::dims( A );
 	}
 
@@ -658,8 +658,8 @@ namespace alp {
 	 * and the \a dense_structured_matrix.cpp unit test.
 	 *
 	 */
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-	class Matrix< T, Structure, density, View, ImfL, ImfR, reference > { };
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, Structure, density, View, ImfR, ImfC, reference > { };
 
 	/**
 	 * @brief General matrix with physical container.
@@ -1088,11 +1088,11 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< view::original >::type
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > & source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > & source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< view::original >::type;
 
 		target_strmat_t target( source );
@@ -1131,11 +1131,11 @@ namespace alp {
 	 */
 	template<
 		enum view::Views target_view,
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfL, ImfR, backend >::template view_type< target_view >::type
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< target_view >::type
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
 		using target_strmat_t = typename source_strmat_t::template view_type< target_view >::type;
 
 		target_strmat_t target( source );
@@ -1178,15 +1178,15 @@ namespace alp {
 	 */
 	template<
 		typename TargetStructure,
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, ImfL, ImfR, backend >
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source ) {
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, ImfR, ImfC, backend >
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source ) {
 
 		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
 			"Can only create a view when the target structure is compatible with the source." );
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
-		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, ImfL, ImfR, backend >;
+		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
+		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, ImfR, ImfC, backend >;
 
 		target_strmat_t target( source );
 
@@ -1200,23 +1200,23 @@ namespace alp {
 		 */
 
 		template<
-			typename TargetStructure, typename TargetImfL, typename TargetImfR,
-			typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, TargetImfL, TargetImfR, backend >
-		get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
-				TargetImfL imf_r, TargetImfR imf_c ) {
+			typename TargetStructure, typename TargetImfR, typename TargetImfC,
+			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, TargetImfR, TargetImfC, backend >
+		get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
+				TargetImfR imf_r, TargetImfC imf_c ) {
 
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
 			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
-			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfL & >( imf_r ), static_cast< TargetImfL & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfL & >( imf_r ), static_cast< TargetImfL & >( imf_c ) ) ) ) {
+			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using source_strmat_t = alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend >;
-			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, TargetImfL, TargetImfR, backend >;
+			using source_strmat_t = alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
+			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, TargetImfR, TargetImfC, backend >;
 
 			target_strmat_t target( source, imf_r, imf_c );
 
@@ -1260,9 +1260,9 @@ namespace alp {
 	 */
 	template<
 		typename TargetStructure,
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend >
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Strided, imf::Strided, backend >
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const utils::range& rng_r, const utils::range& rng_c ) {
 
 		return internal::get_view< TargetStructure >(
@@ -1305,9 +1305,9 @@ namespace alp {
 	 */
 
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Strided, imf::Strided, backend >
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Strided, imf::Strided, backend >
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const utils::range &rng_r, const utils::range &rng_c ) {
 
 		return internal::get_view< Structure >(
@@ -1344,9 +1344,9 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend >
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, backend >
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const size_t &sel_r, const utils::range &rng_c ) {
 
 		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
@@ -1383,9 +1383,9 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, backend >
-	get_view( Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, backend >
+	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const utils::range &rng_r, const size_t &sel_c ) {
 
 		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
@@ -1418,15 +1418,15 @@ namespace alp {
 	template<
 		typename TargetStructure,
 		typename IndexType, typename IndexStructure, typename IndexView,
-		typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR, enum Backend backend >
-	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > >, imf::Select, imf::Select, backend >
-	get_view( alp::Matrix< T, Structure, density, View, ImfL, ImfR, backend > &source,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Select, imf::Select, backend >
+	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
 
 		imf::Select imf_r( nrows(source), sel_r );
 		imf::Select imf_c( ncols(source), sel_c );
 
-		return internal::get_view<TargetStructure, T, Structure, density, View, ImfL, ImfR, backend>( source, imf_r, imf_c );
+		return internal::get_view<TargetStructure, T, Structure, density, View, ImfR, ImfC, backend>( source, imf_r, imf_c );
 	}
 
 	namespace structures {

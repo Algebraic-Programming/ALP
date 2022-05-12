@@ -47,8 +47,8 @@ namespace alp {
 		typename Structure,
 		enum Density density = Density::Dense,
 		typename View = view::Original< void >,
-		typename ImfL = imf::Id,
 		typename ImfR = imf::Id,
+		typename ImfC = imf::Id,
 		enum Backend backend = config::default_backend >
 	class Matrix;
 

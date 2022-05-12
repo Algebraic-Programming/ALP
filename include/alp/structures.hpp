@@ -172,49 +172,49 @@ namespace alp {
 
 		/**
 		 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
-		 * 		  and index mapping functions (IMFs) \a imf_l and \a imf_r can be defined over \a SourceStructure.
+		 * 		  and index mapping functions (IMFs) \a imf_r and \a imf_c can be defined over \a SourceStructure.
 		 *
 		 * @tparam SourceStructure The underlying structure of the source view.
 		 * @tparam TargetStructure The underlying structure of the target view.
-		 * @param imf_l            The IMF applied to the rows of the source matrix.
-		 * @param imf_r            The IMF applied to the columns of the source matrix.
+		 * @param imf_r            The IMF applied to the rows of the source matrix.
+		 * @param imf_c            The IMF applied to the columns of the source matrix.
 	
 		 * @return \a false if the function can determined that the new view may alter underlying assumptions
 		 * 			associated with the source structure \a SourceStructure; \a true otherwise.
 		 */
 		template< typename SourceStructure, typename TargetStructure >
 		struct isInstantiable {
-			template< typename ImfL, typename ImfR >
-			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
-				(void)imf_l;
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				(void)imf_r;
+				(void)imf_c;
 				return false;
 			};
 		};
 
 		template<>
 		struct isInstantiable< General, General > {
-			template< typename ImfL, typename ImfR >
-			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
-				(void)imf_l;
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				(void)imf_r;
+				(void)imf_c;
 				return true;
 			};
 		};
 
 		template<>
 		struct isInstantiable< UpperTriangular, General > {
-			template< typename ImfL, typename ImfR >
-			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
-				return imf_l.map( imf_l.n - 1 ) <= imf_r.map( 0 );
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.map( imf_r.n - 1 ) <= imf_c.map( 0 );
 			};
 		};
 
 		template<>
 		struct isInstantiable< UpperTriangular, UpperTriangular > {
-			template< typename ImfL, typename ImfR >
-			static bool check( const ImfL &imf_l, const ImfR &imf_r ) {
-				return imf_l.isSame(imf_r);
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
 			};
 		};
 
