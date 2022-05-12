@@ -26,10 +26,6 @@
 
 #include <graphblas.hpp>
 
-#define C1 0.0001
-#define C2 0.0001
-
-
 using namespace grb;
 
 struct input {
@@ -169,6 +165,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
+
 	// time a single call
 	{
 		grb::utils::Timer subtimer;
@@ -275,7 +272,7 @@ int main( int argc, char ** argv ) {
 			<< "This value must be strictly larger than 0.\n";
 		std::cout << "(Source vertices 1, 2 ...) are optional and defines which "
 			<< "elements in the vectors are non-zero. "
-			<< "The default value for this is element n/2 is non-zero \n";
+			<< "The default value for this is element n/2 is non-zero." << std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;

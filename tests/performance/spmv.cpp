@@ -21,16 +21,10 @@
 
 #include <inttypes.h>
 
-//#include <graphblas/blas2.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-#include <utils/output_verification.hpp>
-
-#define C1 0.0001
-#define C2 0.0001
-
 
 using namespace grb;
 
@@ -129,6 +123,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
+
 	// time a single call
 	{
 		grb::utils::Timer subtimer;
@@ -174,18 +169,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	double time_taken;
 	timer.reset();
 	for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-		// reset input vector
 #ifndef NDEBUG
 		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
 		assert( rc == SUCCESS );
-#else
-		(void) set( y, static_cast< double >( 0 ) );
-#endif
-		// do spmv
-#ifndef NDEBUG
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 #else
+		(void) set( y, static_cast< double >( 0 ) );
 		(void) mxv( y, A, x, ring );
 #endif
 	}
@@ -236,8 +226,7 @@ int main( int argc, char ** argv ) {
 			<< "approximately required to take at least one second to complete.\n";
 		std::cout << "(outer iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::outer() << ". "
-			<< "This value must be strictly larger than 0.\n";
-		std::cout << "(verification <truth-file>) is optional." << std::endl;
+			<< "This value must be strictly larger than 0." << std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -280,27 +269,6 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
 				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
-		}
-	}
-
-	// check for verification of the output
-	bool verification = false;
-	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
-			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
-				truth_filename[ 1023 ] = '\0';
-			} else {
-				std::cerr << "The verification file was not provided as an argument."
-					<< std::endl;
-				return 5;
-			}
-		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
-				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
 		}
 	}
 
@@ -356,26 +324,10 @@ int main( int argc, char ** argv ) {
 		std::cerr << std::flush;
 		std::cerr << "Test FAILED\n";
 	} else {
-		if( verification ) {
-			out.error_code = vector_verification(
-				out.pinnedVector, truth_filename,
-				C1, C2
-			);
-			if( out.error_code == 0 ) {
-			std::cout << "Output vector verificaton was successful!\n";
-			std::cout << "Test OK\n";
-			} else {
-				std::cerr << std::flush;
-				std::cerr << "Verification FAILED\n";
-				std::cerr << "Test FAILED\n";
-			}
-		} else {
-			std::cout << "Test OK\n";
-		}
+		std::cout << "Test OK\n";
 	}
 	std::cout << std::endl;
 
 	// done
 	return out.error_code;
 }
-

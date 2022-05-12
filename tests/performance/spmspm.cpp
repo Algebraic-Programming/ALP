@@ -25,11 +25,6 @@
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-//#include <utils/output_verification.hpp>
-
-#define C1 0.0001
-#define C2 0.0001
-
 
 using namespace grb;
 
@@ -312,12 +307,14 @@ int main( int argc, char ** argv ) {
 			<< "approximately required to take at least one second to complete.\n";
 		std::cout << "(outer iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::outer() << ". "
-			<< "This value must be strictly larger than 0.\n";
-		// std::cout << "(verification <truth-file>) is optional." << std::endl;
-		// TODO: Update verification to work with matrices
+			<< "This value must be strictly larger than 0." << std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+#ifndef NDEBUG
+	std::cerr << "Warning: benchmark driver compiled without the NDEBUG macro "
+		<< "defined(!)\n";
+#endif
 
 	// the input struct
 	struct input in;
@@ -357,26 +354,6 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
 				<< "for number of outer experiment repititions." << std::endl;
 			return 4;
-		}
-	}
-
-	// check for verification of the output
-	bool verification = false;
-	char truth_filename[ 1024 ];
-	if( argc >= 7 ) {
-		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
-			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 7 ], 1023 );
-				truth_filename[ 1023 ] = '\0';
-			} else {
-				std::cerr << "The verification file was not provided as an argument." << std::endl;
-				return 5;
-			}
-		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
-				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
 		}
 	}
 
@@ -437,23 +414,6 @@ int main( int argc, char ** argv ) {
 		std::cerr << std::flush;
 		std::cerr << "Test FAILED\n";
 	} else {
-		// TODO: update to support matrices
-		/*if( verification ) {
-			out.error_code = vector_verification(
-				out.pinnedVector, truth_filename,
-				C1, C2
-			);
-			if( out.error_code == 0 ) {
-				std::cout << "Output vector verificaton was successful!\n";
-				std::cout << "Test OK\n";
-			} else {
-				std::cerr << std::flush;
-				std::cout << "Verification FAILED\n";
-				std::cout << "Test FAILED\n";
-			}
-		} else {
-			std::cout << "Test OK\n";
-		}*/
 		std::cout << "Test OK\n";
 	}
 	std::cout << std::endl;

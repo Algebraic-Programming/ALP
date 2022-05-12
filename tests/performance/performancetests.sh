@@ -74,8 +74,8 @@ KNN4SOLS=(118 499 2805 1 64 1 1048907)
 KNN6SOLS=(357 547 5176 1 246 1 1453447)
 
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
-MULTIPLICATION_DATASETS=(gyro_m.mtx)
-MULTIPLICATION_DATASET_MODES=(direct)
+MULTIPLICATION_DATASETS=(west0497.mtx facebook_combined.txt cit-HepTh.txt com-amazon.ungraph.txt com-youtube.ungraph.txt cit-Patents.txt com-orkut.ungraph.txt)
+MULTIPLICATION_DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
 
 #which command to use to run a GraphBLAS program
 LPF=yes
@@ -281,6 +281,71 @@ runOtherBenchMarkTests()
 	echo >> ${TEST_OUT_DIR}/benchmarks
 }
 
+runMultiplicationKernels()
+{
+	local runner=$1
+	local backend=$2
+	local dataSet=$3
+	local parseMode=$4
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmv
+		echo ">>>      [ ]           [x]       Testing spmv using ${dataSet} dataset, $backend backend."
+		echo
+		$runner ${TEST_BIN_DIR}/driver_spmv_${backend} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}
+		head -1 ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}
+		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}; then
+			printf "Test OK\n\n"
+		else
+			printf "Test FAILED\n\n"
+		fi
+		echo "$backend spmv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		echo >> ${TEST_OUT_DIR}/benchmarks
+
+	fi
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPV" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmspv
+		echo ">>>      [ ]           [x]       Testing spmspv using ${dataSet} dataset, $backend backend."
+		echo
+		$runner ${TEST_BIN_DIR}/driver_spmspv_${backend} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}
+		head -1 ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}
+		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}; then
+			printf "Test OK\n\n"
+		else
+			printf "Test FAILED\n\n"
+		fi
+		echo "$backend spmspv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		echo >> ${TEST_OUT_DIR}/benchmarks
+
+	fi
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPM" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmspm
+		echo ">>>      [ ]           [x]       Testing spmspm using ${dataSet} dataset, $backend backend."
+		echo
+		$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+		head -1 ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}; then
+			printf "Test OK\n\n"
+		else
+			printf "Test FAILED\n\n"
+		fi
+		echo "$backend spmspm using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		echo >> ${TEST_OUT_DIR}/benchmarks
+
+	fi
+}
+
 # end helper functions
 
 if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
@@ -417,27 +482,8 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				continue
 			fi
 
-			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
+			runMultiplicationKernels "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE"
 
-				# ---------------------------------------------------------------------
-				# spmv
-				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmv"
-
-			fi
-			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPV" ]; then
-
-				# ---------------------------------------------------------------------
-				# spmspv
-				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmspv"
-
-			fi
-			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPM" ]; then
-
-				# ---------------------------------------------------------------------
-				# spmspm
-				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "spmspm"
-
-			fi
 		done
 
 	done
