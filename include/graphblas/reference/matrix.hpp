@@ -22,10 +22,6 @@
 #if ! defined _H_GRB_REFERENCE_MATRIX || defined _H_GRB_REFERENCE_OMP_MATRIX
 #define _H_GRB_REFERENCE_MATRIX
 
-#ifdef _DEBUG
-#include <cstdio>
-#endif
-
 #include <numeric> //std::accumulate
 #include <sstream> //std::stringstream
 
@@ -45,6 +41,7 @@
 #include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
 
 #include "forward.hpp"
+
 
 namespace grb {
 
@@ -112,12 +109,14 @@ namespace grb {
 			const unsigned int k,
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
+			assert( k < 2 );
 			coorArr = const_cast< char * >( A.coorArr[ k ] );
 			coorBuf = const_cast< char * >( A.coorBuf[ k ] );
 			valbuf = const_cast< InputType * >( A.valbuf[ k ] );
 		}
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool input_dense, bool output_dense,
 			bool masked,
 			bool left_handed,
@@ -477,6 +476,56 @@ namespace grb {
 		Matrix() : id( std::numeric_limits< uintptr_t >::max() ),
 			remove_id( false )
 		{}
+
+		/**
+		 * Internal constructor that wraps around an existing external Compressed Row
+		 * Storage (CRS).
+		 *
+		 * The internal column-major storage will \em not be initialised after a call
+		 * to this constructor. Resulting instances must be used only in combination
+		 * with #grb::descriptors::force_row_major. Container IDs will not be
+		 * available for resulting instances.
+		 *
+		 * @param[in] _values         Array of nonzero values.
+		 * @param[in] _column_indices Array of nonzero column indices.
+		 * @param[in] _offset_array   CRS offset array of size \a _m + 1.
+		 * @param[in] _m              The number of matrix rows.
+		 * @param[in] _n              The number of matrix columns.
+		 *
+		 * The arrays \a _values and \a _column_indices must have size equal to
+		 * <tt>_offset_array[ _m ];</tt>. The entries of \a _column_indices must
+		 * all be smaller than \a _n. The entries of \a _offset_array must be
+		 * monotonically increasing.
+		 *
+		 * If the wrapped matrix is to be used as an output for grb::mxm, then the
+		 * following buffers must also be provided:
+		 *
+		 * @param[in] buf1 A buffer of Coordinates< T >::arraySize( \a n ) bytes.
+		 * @param[in] buf2 A buffer of Coordinates< T >::bufferSize( \a n ) bytes.
+		 * @param[in] buf3 A buffer of <tt>sizeof( D )</tt> times \a n bytes.
+		 *
+		 * Failure to provide such buffers for an output matrix will lead to undefined
+		 * behaviour during a call to grb::mxm.
+		 */
+		Matrix(
+			D *__restrict__ const _values,
+			ColIndexType *__restrict__ const _column_indices,
+			NonzeroIndexType *__restrict__ const _offset_array,
+			const size_t _m, const size_t _n,
+			char *__restrict__ const buf1 = nullptr,
+			char *__restrict__ const buf2 = nullptr,
+			D *__restrict__ const buf3 = nullptr
+		) :
+			id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
+			m( _m ), n( _n ), cap( _column_indices[ _m ] ), nz( _column_indices[ _m ] ),
+			coorArr( { nullptr, buf1 } ), coorBuf( { nullptr, buf2 } ),
+			valbuf( { nullptr, buf3 } )
+		{
+			assert( (_m > 0 && _n > 0) || _column_indices[ 0 ] == 0 );
+			CRS.replace( _values, _column_indices );
+			CRS.replaceStart( _offset_array );
+			// CCS is not initialised (and should not be used)
+		}
 
 		/**
 		 * Takes care of the initialisation of a new matrix.
