@@ -91,253 +91,258 @@ namespace grb {
 
 			/** The matrix nonzero iterator class. */
 			template< class ActiveDistribution >
-			class ConstIterator : public std::iterator< std::forward_iterator_tag, std::pair< std::pair< const size_t, const size_t >, const D > > {
+			class ConstIterator : public std::iterator<
+				std::forward_iterator_tag,
+				std::pair< std::pair< const size_t, const size_t >, const D >
+			> {
 
-			private:
-				/** The value array. */
-				const D * __restrict__ values;
+				private:
 
-				/** The row index values. */
-				const IND * __restrict__ row_index;
+					/** The value array. */
+					const D * __restrict__ values;
 
-				/** The column start indices. */
-				const SIZE * __restrict__ col_start;
+					/** The row index values. */
+					const IND * __restrict__ row_index;
 
-				/** Current index. */
-				size_t k;
+					/** The column start indices. */
+					const SIZE * __restrict__ col_start;
 
-				/** Max row. */
-				size_t m;
+					/** Current index. */
+					size_t k;
 
-				/** Max column. */
-				size_t n;
+					/** Max row. */
+					size_t m;
 
-				/** Current row. */
-				size_t row;
+					/** Max column. */
+					size_t n;
 
-				/** My user process ID. */
-				size_t s;
+					/** Current row. */
+					size_t row;
 
-				/** Total number of user processes. */
-				size_t P;
+					/** My user process ID. */
+					size_t s;
 
-				/** Current nonzero. */
-				std::pair< std::pair< size_t, size_t >, D > nonzero;
+					/** Total number of user processes. */
+					size_t P;
+
+					/** Current nonzero. */
+					std::pair< std::pair< size_t, size_t >, D > nonzero;
 
 
-			public:
+				public:
 
-				/** Base constructor. */
-				ConstIterator() noexcept : values( nullptr ),
-					row_index( nullptr ), col_start( nullptr ),
-					k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 )
-				{
-					nonzero.first.first = 1;
-					nonzero.first.second = 1;
-				}
-
-				/** Copy constructor. */
-				ConstIterator( const ConstIterator & other ) noexcept :
-					values( other.values ),
-					row_index( other.row_index ), col_start( other.col_start ),
-					k( other.k ), m( other.m ), n( other.n ),
-					row( other.row ), s( other.s ), P( other.P )
-				{}
-
-				/** Move constructor. */
-				ConstIterator( ConstIterator && other ) {
-					values = std::move( other.values );
-					row_index = std::move( other.row_index );
-					col_start = std::move( other.col_start );
-					k = std::move( other.k );
-					m = std::move( other.m );
-					n = std::move( other.n );
-					row = std::move( other.row );
-					s = std::move( other.s );
-					P = std::move( other.P );
-				}
-
-				/** Non-trivial constructor. */
-				ConstIterator(
-					const Compressed_Storage &_storage,
-					const size_t _m, const size_t _n, const size_t _nz,
-					const bool end, const size_t _s = 0, const size_t _P = 1
-				) noexcept :
-					values( _storage.values ),
-					row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ),
-					m( _m ), n( _n ),
-					s( _s ), P( _P )
-				{
-#ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator constructor called, "
-						<< "with storage " << ( &_storage ) << ", "
-						<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
-#endif
-					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
-						row = m;
-						return;
+					/** Base constructor. */
+					ConstIterator() noexcept : values( nullptr ),
+						row_index( nullptr ), col_start( nullptr ),
+						k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 )
+					{
+						nonzero.first.first = 1;
+						nonzero.first.second = 1;
 					}
 
-					// skip to first non-empty row
-					for( row = 0; row < m; ++row ) {
-						if( row + 1 < m && col_start[ row ] != col_start[ row + 1 ] ) {
-							break;
+					/** Copy constructor. */
+					ConstIterator( const ConstIterator &other ) noexcept :
+						values( other.values ),
+						row_index( other.row_index ), col_start( other.col_start ),
+						k( other.k ), m( other.m ), n( other.n ),
+						row( other.row ), s( other.s ), P( other.P )
+					{}
+
+					/** Move constructor. */
+					ConstIterator( ConstIterator &&other ) {
+						values = std::move( other.values );
+						row_index = std::move( other.row_index );
+						col_start = std::move( other.col_start );
+						k = std::move( other.k );
+						m = std::move( other.m );
+						n = std::move( other.n );
+						row = std::move( other.row );
+						s = std::move( other.s );
+						P = std::move( other.P );
+					}
+
+					/** Non-trivial constructor. */
+					ConstIterator(
+						const Compressed_Storage &_storage,
+						const size_t _m, const size_t _n, const size_t _nz,
+						const bool end, const size_t _s = 0, const size_t _P = 1
+					) noexcept :
+						values( _storage.values ),
+						row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ),
+						m( _m ), n( _n ),
+						s( _s ), P( _P )
+					{
+#ifdef _DEBUG
+						std::cout << "Compressed_Storage::Const_Iterator constructor called, "
+							<< "with storage " << ( &_storage ) << ", "
+							<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
+#endif
+						if( _nz == 0 || _m == 0 || _n == 0 || end ) {
+							row = m;
+							return;
+						}
+
+						// skip to first non-empty row
+						for( row = 0; row < m; ++row ) {
+							if( row + 1 < m && col_start[ row ] != col_start[ row + 1 ] ) {
+								break;
+							}
+						}
+
+						if( row < m ) {
+#ifdef _DEBUG
+							std::cout << "\tInitial pair, pre-translated at " << row << ", "
+								<< row_index[ k ] << " with value " << values[ k ] << ". "
+								<< "P = " << P << ", row = " << row << ".\n";
+#endif
+							const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ],
+								n, P );
+							const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
+							nonzero.first.first = ActiveDistribution::local_index_to_global( row, m,
+								s, P );
+							nonzero.first.second = ActiveDistribution::local_index_to_global(
+								row_index[ k ] - col_off, n, col_pid, P );
+							nonzero.second = values[ k ];
+#ifdef _DEBUG
+							std::cout << "\tInitial pair at " << nonzero.first.first << ", "
+								<< nonzero.first.second << " with value " << nonzero.second << ". "
+								<< "P = " << P << ", row = " << row << ".\n";
+#endif
 						}
 					}
 
-					if( row < m ) {
-#ifdef _DEBUG
-						std::cout << "\tInitial pair, pre-translated at " << row << ", "
-							<< row_index[ k ] << " with value " << values[ k ] << ". "
-							<< "P = " << P << ", row = " << row << ".\n";
-#endif
-						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
-						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
-						nonzero.first.first = ActiveDistribution::local_index_to_global( row, m, s, P );
-						nonzero.first.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
-						nonzero.second = values[ k ];
-#ifdef _DEBUG
-						std::cout << "\tInitial pair at " << nonzero.first.first << ", "
-							<< nonzero.first.second << " with value " << nonzero.second << ". "
-							<< "P = " << P << ", row = " << row << ".\n";
-#endif
+					/** Copy assignment. */
+					ConstIterator & operator=( const ConstIterator &other ) noexcept {
+						values = other.values;
+						row_index = other.row_index;
+						col_start = other.col_start;
+						k = other.k;
+						m = other.m;
+						n = other.n;
+						row = other.row;
+						s = other.s;
+						P = other.P;
 					}
-				}
 
-				/** Copy assignment. */
-				ConstIterator & operator=( const ConstIterator &other ) noexcept {
-					values = other.values;
-					row_index = other.row_index;
-					col_start = other.col_start;
-					k = other.k;
-					m = other.m;
-					n = other.n;
-					row = other.row;
-					s = other.s;
-					P = other.P;
-				}
+					/** Move assignment. */
+					ConstIterator & operator=( ConstIterator &&other ) {
+						values = std::move( other.values );
+						row_index = std::move( other.row_index );
+						col_start = std::move( other.col_start );
+						k = std::move( other.k );
+						m = std::move( other.m );
+						n = std::move( other.n );
+						row = std::move( other.row );
+						s = std::move( other.s );
+						P = std::move( other.P );
+					}
 
-				/** Move assignment. */
-				ConstIterator & operator=( ConstIterator &&other ) {
-					values = std::move( other.values );
-					row_index = std::move( other.row_index );
-					col_start = std::move( other.col_start );
-					k = std::move( other.k );
-					m = std::move( other.m );
-					n = std::move( other.n );
-					row = std::move( other.row );
-					s = std::move( other.s );
-					P = std::move( other.P );
-				}
-
-				/** Whether two iterators compare equal. */
-				bool operator==( const ConstIterator &other ) const noexcept {
+					/** Whether two iterators compare equal. */
+					bool operator==( const ConstIterator &other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator operator== called "
-						<< "with k ( " << k << ", " << other.k << " ), "
-						<< " m ( " << m << ", " << other.m << " )\n";
+						std::cout << "Compressed_Storage::Const_Iterator operator== called "
+							<< "with k ( " << k << ", " << other.k << " ), "
+							<< " m ( " << m << ", " << other.m << " )\n";
 #endif
-					assert( values == other.values );
-					assert( row_index == other.row_index );
-					assert( col_start == other.col_start );
-					assert( m == other.m );
-					assert( n == other.n );
-					assert( s == other.s );
-					assert( P == other.P );
+						assert( values == other.values );
+						assert( row_index == other.row_index );
+						assert( col_start == other.col_start );
+						assert( m == other.m );
+						assert( n == other.n );
+						assert( s == other.s );
+						assert( P == other.P );
 #ifndef NDEBUG
-					if( k == other.k ) {
-						assert( row == other.row );
-					}
+						if( k == other.k ) {
+							assert( row == other.row );
+						}
 #endif
-					if( row == other.row ) {
-						return k == other.k;
-					} else {
-						return false;
-					}
-				}
-
-				/** Whether two iterators do not compare equal. */
-				bool operator!=( const ConstIterator & other ) const noexcept {
-#ifdef _DEBUG
-					std::cout << "Compressed_Storage::Const_Iterator operator!= called "
-						<< "with k ( " << k << ", " << other.k << " ), "
-						<< "row ( " << row << ", " << other.row << " ), "
-						<< "m ( " << m << ", " << other.m << " )\n";
-#endif
-					assert( values == other.values );
-					assert( row_index == other.row_index );
-					assert( m == other.m );
-					assert( n == other.n );
-					assert( col_start == other.col_start );
-					assert( s == other.s );
-					assert( P == other.P );
-					if( row == other.row ) {
-						if( row == m ) {
+						if( row == other.row ) {
+							return k == other.k;
+						} else {
 							return false;
 						}
-						return k != other.k;
-					} else {
-						return true;
 					}
-				}
 
-				/** Move to the next iterator. */
-				ConstIterator & operator++() noexcept {
+					/** Whether two iterators do not compare equal. */
+					bool operator!=( const ConstIterator &other ) const noexcept {
 #ifdef _DEBUG
-					std::cout << "Compressed_Storage::operator++ called\n";
+						std::cout << "Compressed_Storage::Const_Iterator operator!= called "
+							<< "with k ( " << k << ", " << other.k << " ), "
+							<< "row ( " << row << ", " << other.row << " ), "
+							<< "m ( " << m << ", " << other.m << " )\n";
 #endif
-					if( row == m ) {
+						assert( values == other.values );
+						assert( row_index == other.row_index );
+						assert( m == other.m );
+						assert( n == other.n );
+						assert( col_start == other.col_start );
+						assert( s == other.s );
+						assert( P == other.P );
+						if( row == other.row ) {
+							if( row == m ) {
+								return false;
+							}
+							return k != other.k;
+						} else {
+							return true;
+						}
+					}
+
+					/** Move to the next iterator. */
+					ConstIterator & operator++() noexcept {
+#ifdef _DEBUG
+						std::cout << "Compressed_Storage::operator++ called\n";
+#endif
+						if( row == m ) {
+							return *this;
+						}
+						assert( row < m );
+						assert( k < col_start[ row + 1 ] );
+						(void) ++k;
+						while( row < m && k == col_start[ row + 1 ] ) {
+							(void) ++row;
+						}
+						if( row < m ) {
+#ifdef _DEBUG
+							std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
+								<< row_index[ k ] << " ): " << values[ k ] << "\n";
+#endif
+							const size_t col_pid = ActiveDistribution::offset_to_pid(
+								row_index[ k ], n, P
+							);
+							const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
+							assert( col_off <= row_index[ k ] );
+							nonzero.first.first = ActiveDistribution::local_index_to_global(
+								row, m, s, P );
+							nonzero.first.second = ActiveDistribution::local_index_to_global(
+								row_index[ k ] - col_off, n, col_pid, P );
+							nonzero.second = values[ k ];
+#ifdef _DEBUG
+							std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
+								<< nonzero.first.second << " ): " << nonzero.second << "\n";
+#endif
+						}
 						return *this;
 					}
-					assert( row < m );
-					assert( k < col_start[ row + 1 ] );
-					(void)++k;
-					while( row < m && k == col_start[ row + 1 ] ) {
-						(void)++row;
-					}
-					if( row < m ) {
-#ifdef _DEBUG
-						std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
-							<< row_index[ k ] << " ): " << values[ k ] << "\n";
-#endif
-						const size_t col_pid = ActiveDistribution::offset_to_pid(
-							row_index[ k ], n, P
-						);
-						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
-						assert( col_off <= row_index[ k ] );
-						nonzero.first.first = ActiveDistribution::local_index_to_global(
-							row, m, s, P
-						);
-						nonzero.first.second = ActiveDistribution::local_index_to_global(
-							row_index[ k ] - col_off, n, col_pid, P
-						);
-						nonzero.second = values[ k ];
-#ifdef _DEBUG
-						std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
-							<< nonzero.first.second << " ): " << nonzero.second << "\n";
-#endif
-					}
-					return *this;
-				}
 
-				/** Return a const-reference to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > &
-				operator*() const noexcept {
-					assert( row < m );
-					return nonzero;
-				}
+					/** Return a const-reference to the current nonzero. */
+					const std::pair< std::pair< size_t, size_t >, D > &
+					operator*() const noexcept {
+						assert( row < m );
+						return nonzero;
+					}
 
-				/** Return a pointer to the current nonzero. */
-				const std::pair< std::pair< size_t, size_t >, D > *
-				operator->() const noexcept {
-					assert( row < m );
-					return &nonzero;
-				}
+					/** Return a pointer to the current nonzero. */
+					const std::pair< std::pair< size_t, size_t >, D > *
+					operator->() const noexcept {
+						assert( row < m );
+						return &nonzero;
+					}
 			};
 
 			/** Base constructor (NULL-initialiser). */
-			Compressed_Storage() : values( nullptr ),
-				row_index( nullptr ), col_start( nullptr )
+			Compressed_Storage() :
+				values( nullptr ), row_index( nullptr ), col_start( nullptr )
 			{}
 
 			/** Non-shallow copy constructor. */
@@ -412,7 +417,10 @@ namespace grb {
 			 * Does not perform any actions on pre-existing arrays, if any. Use with
 			 * care or memory leaks may occur.
 			 */
-			void replace( void * __restrict__ const new_vals, void * __restrict__ const new_ind ) {
+			void replace(
+				void * __restrict__ const new_vals,
+				void * __restrict__ const new_ind
+			) {
 				values = static_cast< D * __restrict__ >( new_vals );
 				row_index = static_cast< IND * __restrict__ >( new_ind );
 			}
@@ -772,8 +780,13 @@ namespace grb {
 				std::pair< size_t, size_t > nonzero;
 
 			public:
+
 				/** Base constructor. */
-				ConstIterator() noexcept : row_index( NULL ), col_start( NULL ), k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 ) {
+				ConstIterator() noexcept :
+					row_index( nullptr ), col_start( nullptr ),
+					k( 0 ), m( 0 ), n( 0 ), row( 1 ),
+					s( 0 ), P( 1 )
+				{
 #ifdef _DEBUG
 					std::cout << "Iterator default constructor (pattern "
 								 "specialisation) called\n";
@@ -781,8 +794,11 @@ namespace grb {
 				}
 
 				/** Copy constructor. */
-				ConstIterator( const ConstIterator & other ) noexcept :
-					row_index( other.row_index ), col_start( other.col_start ), k( other.k ), m( other.m ), n( other.n ), row( other.row ), s( 0 ), P( 1 ) {
+				ConstIterator( const ConstIterator &other ) noexcept :
+					row_index( other.row_index ), col_start( other.col_start ),
+					k( other.k ), m( other.m ), n( other.n ), row( other.row ),
+					s( 0 ), P( 1 )
+				{
 #ifdef _DEBUG
 					std::cout << "Iterator copy constructor (pattern "
 								 "specialisation) called\n";
@@ -790,7 +806,7 @@ namespace grb {
 				}
 
 				/** Move constructor. */
-				ConstIterator( ConstIterator && other ) {
+				ConstIterator( ConstIterator &&other ) {
 					row_index = std::move( other.row_index );
 					col_start = std::move( other.col_start );
 					k = std::move( other.k );
@@ -924,10 +940,14 @@ namespace grb {
 			};
 
 			/** Base constructor (NULL-initialiser). */
-			Compressed_Storage() : row_index( NULL ), col_start( NULL ) {}
+			Compressed_Storage() : row_index( nullptr ), col_start( nullptr ) {}
 
 			/** Non-shallow copy constructor. */
-			explicit Compressed_Storage( const Compressed_Storage< void, IND, SIZE > & other ) : row_index( other.row_index ), col_start( other.col_start ) {}
+			explicit Compressed_Storage(
+				const Compressed_Storage< void, IND, SIZE > &other
+			) :
+				row_index( other.row_index ), col_start( other.col_start )
+			{}
 
 			/** Move constructor. */
 			Compressed_Storage< void, IND, SIZE >( self_type &&other ) {
@@ -955,7 +975,7 @@ namespace grb {
 			 * @returns <tt>NULL</tt> (since this is a pattern matrix).
 			 */
 			char * getValues() noexcept {
-				return NULL;
+				return nullptr;
 			}
 
 			/**
@@ -989,7 +1009,7 @@ namespace grb {
 			 * Gets the current raw pointers of the resizable arrays that are being used by this instance.
 			 */
 			void getPointers( void ** pointers ) {
-				*pointers++ = NULL;
+				*pointers++ = nullptr;
 				*pointers++ = row_index;
 			}
 
@@ -1001,9 +1021,9 @@ namespace grb {
 			 */
 			void replace( void * const new_vals, void * const new_ind ) {
 #ifdef NDEBUG
-				(void)new_vals;
+				(void) new_vals;
 #endif
-				assert( new_vals == NULL );
+				assert( new_vals == nullptr );
 				row_index = static_cast< IND * __restrict__ >( new_ind );
 			}
 
@@ -1028,17 +1048,23 @@ namespace grb {
 			 * \internal copyFrom specialisation for pattern matrices.
 			 */
 			template< bool use_id, typename InputType, typename UnusedType = void >
-			void copyFrom( const Compressed_Storage< InputType, IND, SIZE > & other, const size_t nz, const size_t m, const size_t start, size_t end, const UnusedType * __restrict__ = NULL ) {
+			void copyFrom(
+				const Compressed_Storage< InputType, IND, SIZE > &other,
+				const size_t nz, const size_t m, const size_t start, size_t end,
+				const UnusedType * __restrict__ = nullptr
+			) {
 #ifdef _DEBUG
-				std::cout << "CompressedStorage::copyFrom (void) called with "
-							 "range "
-						  << start << "--" << end << "\n";
+				std::cout << "CompressedStorage::copyFrom (void) called with range "
+					<< start << "--" << end << "\n";
 #endif
 
 				size_t k = start;
 				if( k < nz ) {
 					const size_t loop_end = std::min( nz, end );
-					(void)std::memcpy( row_index + k, other.row_index + k, ( loop_end - k ) * sizeof( IND ) );
+					(void) std::memcpy(
+						row_index + k, other.row_index + k,
+						(loop_end - k) * sizeof( IND )
+					);
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -1050,7 +1076,10 @@ namespace grb {
 				end -= nz;
 				if( k < m + 1 ) {
 					const size_t loop_end = std::min( m + 1, end );
-					(void)std::memcpy( col_start + k, other.col_start + k, ( loop_end - k ) * sizeof( SIZE ) );
+					(void) std::memcpy(
+						col_start + k, other.col_start + k,
+						(loop_end - k) * sizeof( SIZE )
+					);
 				}
 			}
 
@@ -1067,7 +1096,7 @@ namespace grb {
 			 * This function shall not change the position of the iterator passed.
 			 */
 			template< typename fwd_it >
-			void recordValue( const size_t & pos, const bool row, const fwd_it & it ) {
+			void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 				row_index[ pos ] = row ? it.i() : it.j();
 				// values are ignored for pattern matrices
 			}
