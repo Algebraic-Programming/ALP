@@ -95,7 +95,7 @@ well:
 
 * files should end with an empty line
 * no `if`, `for`, `while`, or any other control structure without curly
-* brackets, even if what follows is a single statement
+brackets, even if what follows is a single statement
 * OpenMP pragmas (or any pragma) are indented as regular code
 * nested `ifdef`s etc. in close proximity of one another are indented by spaces
 
