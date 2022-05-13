@@ -63,6 +63,7 @@ current number of indents by one and vice versa
 * lines cannot have trailing whitespace
 * files should end with an empty line
 
+
 * be gratuitous with spaces and parenthesis: anything that could possibly be
 construed as confusing or ambiguous should be clarified with spaces and
 parentheses if that removes (some of the) possible confusion or ambiguity
@@ -71,22 +72,26 @@ parentheses if that removes (some of the) possible confusion or ambiguity
 * in particular, only write `<<` or `>>` when doing bit shifts, not when
 performing template magic
 * exceptions from above rules:
-  * negation of a condition (write `!value` instead of `! value`)
+  * negation of a condition (write `!condition` instead of `! condition`)
   * pointer or reference (write `&variable` instead of `& variable`)
+
 
 * `#ifdef`, `#else`, `#endif` etc are never indented.
 * OpenMP pragmas (or any pragma) are indented as regular code
 * nested `ifdef`s etc. in close proximity of one another are indented by spaces
 
+
 * no `if`, `for`, `while`, or any other control structure without curly
 brackets, even if what follows is a single statement
 
-- no lines with indents and curly brackets only: put curly brackets on the
+
+* no lines with indents and curly brackets only: put curly brackets on the
 same line as what starts that code block instead (only exception: code blocks
 that are not started by standard C++ key words, but e.g. required pragmas
 instead)
 
-- include lines primarily ordered by
+
+* include lines primarily ordered by
   1. standard includes
   2. external libraries
   3. internal headers/files
