@@ -51,8 +51,9 @@ terminating in `_type`
 
 ### Code formatting
 * maximum line length is 200 characters, with the following exceptions
-* comment blocks are capped at 80 chars per line
-* argument lists (including template arguments) are capped at 80 characters per line
+  * comment blocks are capped at 80 chars per line
+  * argument lists (including template arguments) are capped at 80 characters per line
+
 
 * indents should be *tabs*, not spaces
 * alignment should be done using spaces, not tabs
