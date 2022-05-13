@@ -389,16 +389,7 @@ namespace alp {
 		class MatrixBase;
 
 		template< typename DerivedMatrix >
-		size_t nrows( const MatrixBase< DerivedMatrix > & A ) noexcept;
-
-		template< typename DerivedMatrix >
-		size_t ncols( const MatrixBase< DerivedMatrix > & A ) noexcept;
-
-		template< typename DerivedMatrix >
-		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
-			(void)A;
-			return {0, 0};
-		}
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
 		template< typename DerivedMatrix >
 		bool getInitialized( MatrixBase< DerivedMatrix > & ) noexcept;
@@ -409,32 +400,22 @@ namespace alp {
 
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 	bool getInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) noexcept {
-		return getInitialized( A );
+		return getInitialized( internal::getContainer( A ) );
 	}
 
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 	void setInitialized( Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A, bool initialized ) noexcept {
-		setInitialized( A, initialized );
+		setInitialized( internal::getContainer( A ), initialized );
 	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
-	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		//return internal::nrows( static_cast< internal::MatrixBase< ImfR, ImfC > > ( A ) );
-		(void)A;
-		return 0;
-	}
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept;
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
-	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		//return internal::ncols( static_cast< internal::MatrixBase< ImfR, ImfC > > ( A ) );
-		(void)A;
-		return 0;
-	}
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept;
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
-	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		return internal::dims( A );
-	}
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept;
 
 	namespace internal {
 
@@ -444,18 +425,12 @@ namespace alp {
 		template< typename DerivedMatrix >
 		class MatrixBase {
 
+			friend std::pair< size_t, size_t > dims<>( const MatrixBase< DerivedMatrix > &A ) noexcept;
+
 			protected:
 
-				friend size_t nrows( const MatrixBase< DerivedMatrix > &A ) noexcept {
-					return static_cast< DerivedMatrix >( A )._dims().first;
-				}
-
-				friend size_t ncols( const MatrixBase< DerivedMatrix > &A ) noexcept {
-					return static_cast< DerivedMatrix >( A ).second;
-				}
-
-				friend std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > &A ) noexcept {
-					return static_cast< DerivedMatrix >( A )._dims();
+				std::pair< size_t, size_t > dims() const noexcept {
+					return static_cast< const DerivedMatrix * >( this )->_dims();
 				}
 		};
 
@@ -470,6 +445,8 @@ namespace alp {
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
+				friend MatrixBase< self_type >;
+
 				typedef typename std::conditional<
 					is_original,
 					Vector< T, reference >,
@@ -516,7 +493,7 @@ namespace alp {
 				 *
 				 * @return A pair of dimensions.
 				 */
-				std::pair< size_t, size_t > _dims() const {
+				std::pair< size_t, size_t > _dims() const noexcept {
 					return std::make_pair( amf.imf_r.n, amf.imf_c.n );
 				}
 
@@ -1473,6 +1450,33 @@ namespace alp {
 			} // namespace internal
 		} // namespace constant
 	} // namespace structures
+
+	/** Definitions of previously declared global methods that operate on ALP Matrix */
+	namespace internal {
+
+		template< typename DerivedMatrix >
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
+			return A.dims();
+		}
+
+	} // namespace internal
+
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
+		return dims( A ).second;
+	}
+
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
+		return dims( A ).first;
+	}
+
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
+		return internal::dims( static_cast< internal::MatrixBase<
+			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type > > ( A ) );
+	}
+
 } // namespace alp
 
 #endif // end ``_H_ALP_REFERENCE_MATRIX''
