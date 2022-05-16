@@ -1281,10 +1281,10 @@ namespace grb {
 					// const size_t CRS_loop_size = CCS_loop_size + 1;
 					// This variant estimates this non-parallel variant's cost at a factor P
 					// more
-					const size_t CRS_loop_size = crs_only ? CRS_loop_size + 1 :
+					const size_t CRS_loop_size = crs_only ? CRS_seq_loop_size + 1 :
 						omp_get_num_threads() * CRS_seq_loop_size;
 #else
-					const size_t CRS_loop_size = crs_only ? CRS_loop_size + 1:
+					const size_t CRS_loop_size = crs_only ? CRS_seq_loop_size + 1:
 						CRS_seq_loop_size;
 #endif
 
