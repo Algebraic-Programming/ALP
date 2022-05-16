@@ -937,5 +937,9 @@ extern "C" {
 		return 0;
 	}
 
+	void extspblas_free() {
+		(void) EXTBLAS_free();
+	}
+
 } // end extern "C"
 

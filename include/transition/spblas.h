@@ -145,8 +145,8 @@ void spblas_dcsrmultcsr(
 	const char * trans, const int * request, const int * sort,
 	const int * m, const int * n, const int * k,
 	double * a, int * ja, int * ia,
-	double * b, int * jb, int * jb,
-	double * c, int * jc, int * jc,
+	double * b, int * jb, int * ib,
+	double * c, int * jc, int * ic,
 	const int * nzmax, int * info
 );
 
@@ -185,6 +185,12 @@ void extspblas_dcsrmultsv(
 	const extblas_sparse_vector x,
 	extblas_sparse_vector y
 );
+
+/**
+ * An extension that frees any buffers the ALP/GraphBLAS-generated SparseBLAS
+ * library may have allocated.
+ */
+void extspblas_free();
 
 #ifdef __cplusplus
 } // end extern "C"
