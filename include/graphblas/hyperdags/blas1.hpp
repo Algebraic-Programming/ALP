@@ -625,6 +625,61 @@ namespace grb {
 		);
 		return eWiseLambda( f, internal::getVector(x) );
 	}
+	
+	
+	namespace internal {
+
+		/** \internal This is the end recursion */
+		template<
+			typename Func, typename DataType,
+			typename Coords
+		>
+		RC hyperdag_ewisevector(
+			const Func f,
+			const Vector< DataType, grb::hyperdags, Coords > & x,
+			std::vector< const void * > &sources,
+			std::vector< const void * > &destinations
+		) {
+			sources.push_back( &x );
+			internal::hyperdags::generator.addOperation(
+					internal::hyperdags::EWISELAMBDA_FUNC_VECTOR,
+					sources.cbegin(), sources.cend(),
+					destinations.cbegin(), destinations.cend()
+			);
+			return grb::eWiseLambda( f, internal::getVector(x) );
+		}
+
+		/** \internal This is the base recursion */
+		template<
+			typename Func, typename DataType1, typename DataType2,
+			typename Coords, typename... Args
+		>
+		RC hyperdag_ewisevector(
+			const Func f,
+			const Vector< DataType1, grb::hyperdags, Coords > & x,
+			std::vector< const void * > &sources,
+			std::vector< const void * > &destinations,
+			const Vector< DataType2, grb::hyperdags, Coords > & y,
+			Args... args
+		) {
+			sources.push_back( &y );
+			destinations.push_back( &y );
+			return hyperdag_ewisevector( f, x, sources, destinations, args... );
+		}
+
+	} // end namespace grb::internal
+	
+	template< typename Func, 
+		typename DataType1,
+		typename DataType2,
+		typename Coords,
+		typename... Args >
+	RC eWiseLambda( const Func f, const Vector< DataType1, hyperdags, Coords > & x,
+			 const Vector< DataType2, hyperdags, Coords > & y, Args const &... args ) {
+			std::vector< const void * > sources, destinations;
+			return internal::hyperdag_ewisevector( f, x, sources, destinations, y, args... );
+	}
+
 
 	template<
 		Descriptor descr = descriptors::no_operation,

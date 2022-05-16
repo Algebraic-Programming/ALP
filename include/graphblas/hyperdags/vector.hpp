@@ -24,6 +24,7 @@
 #define _H_GRB_HYPERDAGS_VECTOR
 
 #include <graphblas/config.hpp>
+#include <graphblas/base/pinnedvector.hpp>
 
 
 namespace grb {
@@ -71,6 +72,8 @@ namespace grb {
 			const Vector< A, grb::hyperdags, internal::hyperdags::Coordinates > &
 		);
 
+
+		friend class PinnedVector< T, hyperdags >;
 
 		private:
 
@@ -160,12 +163,6 @@ namespace grb {
 				return vector.raw();
 			}
 
-	};
-
-	template< typename D, typename Coord >
-	struct is_container< Vector< D, hyperdags, Coord > > {
-		/** A hyperdags vector is an ALP container. */
-		static const constexpr bool value = true;
 	};
 
 	namespace internal {

@@ -408,12 +408,14 @@ namespace grb {
 				
 				EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING,
 				
-				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING
+				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
+				
+				EWISELAMBDA_FUNC_VECTOR
 			
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 96;
+			const constexpr size_t numOperationVertexTypes = 97;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -514,7 +516,8 @@ namespace grb {
 				EWISEMUL_VECTOR_VECTOR_BETA_RING,
 				EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING,
 				EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING,
-				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING
+				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
+				EWISELAMBDA_FUNC_VECTOR
 	
 			};
 
