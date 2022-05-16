@@ -69,12 +69,13 @@ namespace grb {
 			Descriptor descr,
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT, typename CIT, typename NIT,
 			class Operator, class Monoid
 		>
 		RC mxm_generic(
-			Matrix< OutputType, reference > &C,
-			const Matrix< InputType1, reference > &A,
-			const Matrix< InputType2, reference > &B,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -160,10 +161,10 @@ namespace grb {
 			size_t nzc = 0; // output nonzero count
 			for( size_t i = 0; i < m; ++i ) {
 				coors.clear();
-				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 					const size_t k_col = A_raw.row_index[ k ];
 					for(
-						size_t l = B_raw.col_start[ k_col ];
+						auto l = B_raw.col_start[ k_col ];
 						l < B_raw.col_start[ k_col + 1 ];
 						++l
 					) {
@@ -226,9 +227,9 @@ namespace grb {
 			C_raw.col_start[ 0 ] = 0;
 			for( size_t i = 0; i < m; ++i ) {
 				coors.clear();
-				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 					const size_t k_col = A_raw.row_index[ k ];
-					for( size_t l = B_raw.col_start[ k_col ];
+					for( auto l = B_raw.col_start[ k_col ];
 						l < B_raw.col_start[ k_col + 1 ];
 						++l
 					) {
@@ -306,11 +307,13 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		class Semiring
 	>
-	RC mxm( Matrix< OutputType, reference > &C,
-		const Matrix< InputType1, reference > &A,
-		const Matrix< InputType2, reference > &B,
+	RC mxm(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 		const Semiring &ring = Semiring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -356,11 +359,13 @@ namespace grb {
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		class Operator, class Monoid
 	>
-	RC mxm( Matrix< OutputType, reference > &C,
-		const Matrix< InputType1, reference > &A,
-		const Matrix< InputType2, reference > &B,
+	RC mxm(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 		const Monoid &addM,
 		const Operator &mulOp,
 		const Phase &phase = EXECUTE,

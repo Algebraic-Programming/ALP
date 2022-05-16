@@ -71,11 +71,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
+		typename CIT, typename RIT, typename NIT,
 		class Semiring,
 		Backend backend
 	>
-	RC mxm( Matrix< OutputType, backend > &C,
-		const Matrix< InputType1, backend > &A, const Matrix< InputType2, backend > &B,
+	RC mxm(
+		Matrix< OutputType, backend, CIT, RIT, NIT > &C,
+		const Matrix< InputType1, backend, CIT, RIT, NIT > &A,
+		const Matrix< InputType2, backend, CIT, RIT, NIT > &B,
 		const Semiring &ring = Semiring(),
 		const Phase &phase = EXECUTE
 	) {
