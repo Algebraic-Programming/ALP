@@ -386,6 +386,83 @@ namespace sparseblas {
 		return static_cast< SparseMatrix< double >* >( A );
 	}
 
+	/**
+	 * \internal Internal buffer used for output matrix containers.
+	 */
+	char * buffer = nullptr;
+
+	/**
+	 * \internal The size of #buffer.
+	 */
+	size_t buffer_size = 0;
+
+	/**
+	 * @returns false if and only if buffer allocation failed.
+	 * @returns true on success.
+	 */
+	template< typename T >
+	bool getBuffer(
+		char * &bitmask, char * &stack, T * &valbuf,
+		const size_t size
+	) {
+		typedef typename grb::internal::Coordinates< grb::config::default_backend >
+			Coors;
+		constexpr const size_t b = grb::config::CACHE_LINE_SIZE::value();
+
+		// catch trivial case
+		if( size == 0 ) {
+			bitmask = stack = nullptr;
+			valbuf = nullptr;
+			return true;
+		}
+
+		// compute required size
+		size_t reqSize = Coors::arraySize( size ) + Coors::stackSize( size ) +
+			(size * sizeof(T)) + 3 * b;
+
+		// ensure buffer is at least the required size
+		if( buffer == nullptr ) {
+			assert( buffer_size == 0 );
+			buffer_size = reqSize;
+			buffer = static_cast< char * >( malloc( buffer_size ) );
+			if( buffer == nullptr ) {
+				buffer_size = 0;
+				return false;
+			}
+		} else if( buffer_size < reqSize ) {
+			free( buffer );
+			buffer_size = std::max( reqSize, 2 * buffer_size );
+			buffer = static_cast< char * >( malloc( buffer_size ) );
+			if( buffer == nullptr ) {
+				buffer_size = 0;
+				return false;
+			}
+		}
+
+		// set buffers and make sure they are aligned
+		char * walk = buffer;
+		uintptr_t cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
+		if( cur_mod > 0 ) {
+			walk += (b - cur_mod);
+		}
+		bitmask = walk;
+		walk += Coors::arraySize( size );
+		cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
+		if( cur_mod > 0 ) {
+			walk += (b - cur_mod);
+		}
+		stack = walk;
+		walk += Coors::stackSize( size );
+		cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
+		if( cur_mod > 0 ) {
+			walk += (b - cur_mod);
+		}
+		valbuf = reinterpret_cast< T * >( walk);
+
+		// done
+		return true;
+	}
+
 }
 
 // implementation of the SparseBLAS API follows
@@ -775,6 +852,43 @@ extern "C" {
 		return 255;
 	}
 
+	void spblas_dcsrmm(
+		const char * const transa,
+		const int * m, const int * n, const int * k,
+		const double * alpha,
+		const char * matdescra, const double * val, const int * indx,
+		const int * pntrb, const int * pntre,
+		const double * b, const int * ldb,
+		const double * beta,
+		double * c, const int * ldc
+	) {
+		assert( transa[0] == 'N' || transa[0] == 'T' );
+		assert( m != NULL );
+		assert( n != NULL );
+		assert( k != NULL );
+		assert( alpha != NULL );
+		// not sure yet what constraints if any on matdescra
+		if( *m > 0 && *k > 0 ) {
+			assert( pntrb != NULL );
+			assert( pntre != NULL );
+		}
+		// val and indx could potentially be NULL if there are no nonzeroes
+		assert( b != NULL );
+		assert( ldb != NULL );
+		assert( beta != NULL );
+		assert( C != NULL );
+		assert( ldc != NULL );
+		(void) transa;
+		(void) m; (void) n; (void) k;
+		(void) alpha;
+		(void) matdescra; (void) val; (void) indx; (void) pntrb; (void) pntre;
+		(void) b; (void) ldb;
+		(void) beta;
+		(void) c; (void) ldc;
+		// requires dense ALP and mixed sparse/dense operations
+		assert( false );
+	}
+
 	int EXTBLAS_dusmsv(
 		const enum blas_trans_type transa,
 		const double alpha, const blas_sparse_matrix A,
@@ -828,6 +942,16 @@ extern "C" {
 			}
 		}
 		return 0;
+	}
+
+	void extspblas_dcsrmultsv(
+		const char * trans, const int * request,
+		const int * m, const int * n,
+		const double * a, const int * ja, const int * ia,
+		const extblas_sparse_vector x,
+		extblas_sparse_vector y
+	) {
+		// TODO
 	}
 
 	int EXTBLAS_dusmsm(
@@ -928,7 +1052,121 @@ extern "C" {
 		return 0;
 	}
 
+	void spblas_dcsrmultcsr(
+		const char * trans, const int * request, const int * sort,
+		const int * m_p, const int * n_p, const int * k_p,
+		double * a, int * ja, int * ia,
+		double * b, int * jb, int * ib,
+		double * c, int * jc, int * ic,
+		const int * nzmax, int * info
+	) {
+		assert( trans[0] == 'N' );
+		assert( sort != NULL && sort[0] = 7 );
+		assert( m_p != NULL );
+		assert( n_p != NULL );
+		assert( k_p != NULL );
+		assert( a != NULL ); assert( ja != NULL ); assert( ia != NULL );
+		assert( b != NULL ); assert( jb != NULL ); assert( ib != NULL );
+		assert( c != NULL ); assert( jc != NULL ); assert( ic != NULL );
+		assert( nzmax != NULL );
+		assert( info != NULL );
+
+		// declare algebraic structures
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> ring;
+
+		// check support
+		if( trans[ 0 ] != 'N' ) {
+			std::cerr << "ALP/SparseBLAS, error: illegal trans argument to dcsrmultcsr\n";
+			*info = 4;
+		}
+		if( sort[ 0 ] != 7 ) {
+			std::cerr << "ALP/SparseBLAS, error: illegal sort argument to dcsrmultcsr\n";
+			*info = 5;
+			return;
+		}
+
+		// declare minimum necessary descriptors
+		constexpr const grb::Descriptor minDescr = grb::descriptors::dense |
+			grb::descriptors::force_row_major;
+
+		// determine matrix size
+		const int m = *m_p;
+		const int n = *n_p;
+		const int k = *k_p;
+
+		// retrieve buffers (only when A needs to be output also)
+		char * bitmask = nullptr;
+		char * stack = nullptr;
+		double * valbuf = nullptr;
+		if( sparseblas::template getBuffer< double >(
+				bitmask, stack, valbuf, n
+			) == false
+		) {
+			std::cerr << "ALP/SparseBLAS, error: could not allocate buffer for "
+				<< "computations on an output matrix\n";
+			*info = 10;
+			return;
+		}
+
+		// retrieve necessary ALP/GraphBLAS container wrappers
+		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
+			grb::internal::wrapCRSMatrix( a, ja, ia, m, k );
+		const grb::Matrix< double, grb::config::default_backend, int, int, int > B =
+			grb::internal::wrapCRSMatrix( b, jb, ib, k, n );
+		grb::Matrix< double, grb::config::default_backend, int, int, int > C =
+			grb::internal::wrapCRSMatrix(
+				c, jc, ic,
+				m, n, *nzmax,
+				bitmask, stack, valbuf
+			);
+
+		// set output vector to zero
+		grb::RC rc = grb::clear( C );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "ALP/SparseBLAS, error: Could not clear output matrix\n";
+			assert( false );
+			*info = 20;
+			return;
+		}
+
+		// do either C=AB or C=A^TB
+		if( trans[0] == 'N' ) {
+			if( *request == 1 ) {
+				rc = grb::mxm< minDescr >( C, A, B, ring, grb::RESIZE );
+			} else {
+				assert( *request == 0 || *request == 2 );
+				rc = grb::mxm< minDescr >( C, A, B, ring );
+			}
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "ALP/SparseBLAS, error during call to SpMSpM: "
+					<< grb::toString( rc ) << ".\n";
+				assert( false );
+				*info = 30;
+				return;
+			}
+		} else {
+			// this case is not supported
+			assert( false );
+		}
+
+		// done
+		if( *request == 1 ) {
+			*info = -1;
+		} else {
+			*info = 0;
+		}
+	}
+
 	int EXTBLAS_free() {
+		if( sparseblas::buffer != nullptr || sparseblas::buffer_size > 0 ) {
+			assert( sparseblas::buffer != nullptr );
+			assert( sparseblas::buffer_size > 0 );
+			free( sparseblas::buffer );
+			sparseblas::buffer_size = 0;
+		}
 		const grb::RC rc = grb::finalize();
 		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error during call to EXTBLAS_free\n";
