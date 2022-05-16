@@ -422,15 +422,11 @@ namespace grb {
 		   Friend internal functions
 		   ************************* */
 
-		template<
-			typename ValType, typename ColType, typename IndType,
-			Backend backend
-		>
-		friend const grb::Matrix< ValType, backend, ColType, ColType, IndType >
-		wrapCRSMatrix(
-			const ValType *__restrict__ const,
-			const ColType *__restrict__ const,
-			const IndType *__restrict__ const,
+		friend const grb::Matrix< D, reference, ColIndexType, ColIndexType, NonzeroIndexType >
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, reference >(
+			const D *__restrict__ const,
+			const ColIndexType *__restrict__ const,
+			const NonzeroIndexType *__restrict__ const,
 			const size_t, const size_t
 		);
 
@@ -574,8 +570,8 @@ namespace grb {
 		) :
 			id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
 			m( _m ), n( _n ), cap( _column_indices[ _m ] ), nz( _column_indices[ _m ] ),
-			coorArr( { nullptr, buf1 } ), coorBuf( { nullptr, buf2 } ),
-			valbuf( { nullptr, buf3 } )
+			coorArr{ nullptr, buf1 }, coorBuf{ nullptr, buf2 },
+			valbuf{ nullptr, buf3 }
 		{
 			assert( (_m > 0 && _n > 0) || _column_indices[ 0 ] == 0 );
 			CRS.replace( _values, _column_indices );
