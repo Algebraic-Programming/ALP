@@ -81,7 +81,7 @@ namespace grb {
 			ValType *__restrict__ const value_array,
 			ColType *__restrict__ const index_array,
 			IndType *__restrict__ const offst_array,
-			const size_t m, const size_t n,
+			const size_t m, const size_t n, const size_t cap,
 			char * const buf1 = nullptr, char * const buf2 = nullptr,
 			ValType *__restrict__ const buf3 = nullptr
 		);
@@ -422,7 +422,10 @@ namespace grb {
 		   Friend internal functions
 		   ************************* */
 
-		friend const grb::Matrix< D, reference, ColIndexType, ColIndexType, NonzeroIndexType >
+		friend const grb::Matrix<
+			D, reference,
+			ColIndexType, ColIndexType, NonzeroIndexType
+		>
 		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, reference >(
 			const D *__restrict__ const,
 			const ColIndexType *__restrict__ const,
@@ -430,18 +433,17 @@ namespace grb {
 			const size_t, const size_t
 		);
 
-		template<
-			typename ValType, typename ColType, typename IndType,
-			Backend backend
+		friend grb::Matrix<
+			D, reference,
+			ColIndexType, ColIndexType, NonzeroIndexType
 		>
-		friend grb::Matrix< ValType, backend, ColType, ColType, IndType >
-		wrapCRSMatrix(
-			ValType *__restrict__ const,
-			ColType *__restrict__ const,
-			IndType *__restrict__ const,
-			const size_t, const size_t,
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, reference >(
+			D *__restrict__ const,
+			ColIndexType *__restrict__ const,
+			NonzeroIndexType *__restrict__ const,
+			const size_t, const size_t, const size_t,
 			char * const, char * const,
-			ValType *__restrict__ const
+			D *__restrict__ const
 		);
 
 		/* ***********************************
@@ -564,12 +566,13 @@ namespace grb {
 			const ColIndexType *__restrict__ const _column_indices,
 			const NonzeroIndexType *__restrict__ const _offset_array,
 			const size_t _m, const size_t _n,
+			const size_t _cap,
 			char *__restrict__ const buf1 = nullptr,
 			char *__restrict__ const buf2 = nullptr,
 			D *__restrict__ const buf3 = nullptr
 		) :
 			id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
-			m( _m ), n( _n ), cap( _column_indices[ _m ] ), nz( _column_indices[ _m ] ),
+			m( _m ), n( _n ), cap( _cap ), nz( _column_indices[ _m ] ),
 			coorArr{ nullptr, buf1 }, coorBuf{ nullptr, buf2 },
 			valbuf{ nullptr, buf3 }
 		{
@@ -1332,7 +1335,7 @@ namespace grb {
 			const size_t m, const size_t n
 		) {
 			grb::Matrix< ValType, backend, ColType, ColType, IndType > ret(
-				value_array, index_array, offst_array, m, n
+				value_array, index_array, offst_array, m, n, offst_array[ m ]
 			);
 			return ret;
 		}
@@ -1346,12 +1349,12 @@ namespace grb {
 			ValType *__restrict__ const value_array,
 			ColType *__restrict__ const index_array,
 			IndType *__restrict__ const offst_array,
-			const size_t m, const size_t n,
+			const size_t m, const size_t n, const size_t cap,
 			char * const buf1, char * const buf2,
 			ValType *__restrict__ const buf3
 		) {
 			grb::Matrix< ValType, backend, ColType, ColType, IndType > ret(
-				value_array, index_array, offst_array, m, n,
+				value_array, index_array, offst_array, m, n, cap,
 				buf1, buf2, buf3
 			);
 			return ret;
