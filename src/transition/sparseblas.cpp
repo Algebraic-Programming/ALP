@@ -667,6 +667,90 @@ extern "C" {
 		return 0;
 	}
 
+	void spblas_dcsrgemv(
+		const char * transa,
+		const int * m_p,
+		const double * a, const int * ia, const int * ja,
+		const double * x,
+		double * y
+	) {
+		// declare algebraic structures
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> ring;
+		grb::Monoid<
+			grb::operators::max< int >, grb::identities::negative_infinity
+		> maxMonoid;
+
+		// declare minimum necessary descriptors
+		constexpr grb::Descriptor minDescr = grb::descriptors::dense |
+			grb::descriptors::force_row_major;
+
+		// determine matrix size
+		const int m = *m_p;
+		const grb::Vector< int > columnIndices =
+			grb::internal::template wrapRawVector< int >( ia[ m ], ja );
+		int n = 0;
+		grb::RC rc = foldl( n, columnIndices, maxMonoid );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Could not determine matrix column size\n";
+			assert( false );
+			return;
+		}
+
+		// retrieve buffers (only when A needs to be output also)
+		//char * const bitmask = sparseblas::getBitmask( n );
+		//char * const stack = sparseblas::getStack( n );
+		//double * const buffer = sparseblas::template getBuffer< double >( n );
+
+		// retrieve necessary ALP/GraphBLAS container wrappers
+		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
+			grb::internal::wrapCRSMatrix( a, ja, ia, m, n );
+		const grb::Vector< double > input = grb::internal::template
+			wrapRawVector< double >( n, x );
+		grb::Vector< double > output = grb::internal::template
+			wrapRawVector< double >( m, y );
+
+		// set output vector to zero
+		rc = grb::set( output, ring.template getZero< double >() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Could not set output vector to zero\n";
+			assert( false );
+			return;
+		}
+
+		// do either y=Ax or y=A^Tx
+		if( transa[0] == 'N' ) {
+			rc = grb::mxv< minDescr >(
+				output, A, input, ring
+			);
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "ALP/GraphBLAS returns error during SpMV: "
+					<< grb::toString( rc ) << ".\n";
+				assert( false );
+				return;
+			}
+		} else {
+			// Hermitian is not supported
+			assert( transa[0] == 'T' );
+			rc = grb::mxv<
+				minDescr |
+				grb::descriptors::transpose_matrix
+			>(
+				output, A, input, ring
+			);
+			if( rc != grb::SUCCESS ) {
+				std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
+					<< grb::toString( rc ) << ".\n";
+				assert( false );
+				return;
+			}
+		}
+
+		// done
+	}
+
 	int BLAS_dusmm(
 		const enum blas_order_type order,
 		const enum blas_trans_type transa,
