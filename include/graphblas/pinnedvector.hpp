@@ -34,6 +34,9 @@
 #ifdef _GRB_WITH_REFERENCE
 #include <graphblas/reference/pinnedvector.hpp>
 #endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/pinnedvector.hpp>
+#endif
 #ifdef _GRB_WITH_LPF
 #include <graphblas/bsp1d/pinnedvector.hpp>
 #endif
