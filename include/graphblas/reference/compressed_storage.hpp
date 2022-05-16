@@ -415,24 +415,33 @@ namespace grb {
 			 * Replaces the existing arrays with the given ones.
 			 *
 			 * Does not perform any actions on pre-existing arrays, if any. Use with
-			 * care or memory leaks may occur.
+			 * care or memory leaks may occur. The new memory arrays given to this
+			 * function are left untouched (until they are used by other calls to this
+			 * class).
 			 */
 			void replace(
-				void * __restrict__ const new_vals,
-				void * __restrict__ const new_ind
+				const void * __restrict__ const new_vals,
+				const void * __restrict__ const new_ind
 			) {
-				values = static_cast< D * __restrict__ >( new_vals );
-				row_index = static_cast< IND * __restrict__ >( new_ind );
+				values = const_cast< D * __restrict__ >(
+					static_cast< const D *__restrict__ >(new_vals)
+				);
+				row_index = const_cast< IND * __restrict__ >(
+					static_cast< const IND *__restrict__ >(new_ind)
+				);
 			}
 
 			/**
 			 * Replaces an existing start array with a given one.
 			 *
 			 * Does not perform any actions on pre-existing arrays, if any. Use with
-			 * care or memory leaks may occur.
+			 * care or memory leaks may occur. The new memory area given to this function
+			 * are left untouched (until they are used by other calls to this class).
 			 */
-			void replaceStart( void * const new_start ) {
-				col_start = static_cast< SIZE * __restrict__ >( new_start );
+			void replaceStart( const void * const new_start ) {
+				col_start = const_cast< SIZE * __restrict__ >(
+					static_cast< const SIZE *__restrict__>(new_start)
+				);
 			}
 
 			/**
