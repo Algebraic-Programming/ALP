@@ -465,6 +465,32 @@ namespace grb {
 			RowIndexType, ColIndexType, NonzeroIndexType
 		> self_type;
 
+		/**
+		 * \internal Returns the required global buffer size for a matrix of the
+		 *           given dimensions.
+		 */
+		static size_t reqBufSize( const size_t m, const size_t n ) {
+			// static checks
+			constexpr size_t globalBufferUnitSize =
+				sizeof(RowIndexType) +
+				sizeof(ColIndexType) +
+				grb::utils::SizeOf< D >::value;
+			static_assert(
+				globalBufferUnitSize >= sizeof(NonzeroIndexType),
+				"We hit here a configuration border case which the implementation does not "
+				"handle at present. Please submit a bug report."
+			);
+			// compute and return
+			return std::max( (std::max( m, n ) + 1) * globalBufferUnitSize,
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+				config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
+					utils::SizeOf< D >::value
+#else
+				static_cast< size_t >( 0 )
+#endif
+		       );
+		}
+
 		/** The Row Compressed Storage */
 		class internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > CRS;
 
@@ -572,7 +598,7 @@ namespace grb {
 			D *__restrict__ const buf3 = nullptr
 		) :
 			id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
-			m( _m ), n( _n ), cap( _cap ), nz( _column_indices[ _m ] ),
+			m( _m ), n( _n ), cap( _cap ), nz( _offset_array[ _m ] ),
 			coorArr{ nullptr, buf1 }, coorBuf{ nullptr, buf2 },
 			valbuf{ nullptr, buf3 }
 		{
@@ -580,6 +606,11 @@ namespace grb {
 			CRS.replace( _values, _column_indices );
 			CRS.replaceStart( _offset_array );
 			// CCS is not initialised (and should not be used)
+			if( !internal::template ensureReferenceBufsize< char >(
+				reqBufSize( m, n ) )
+			) {
+				throw std::runtime_error( "Could not resize global buffer" );
+			}
 		}
 
 		/**
@@ -590,17 +621,6 @@ namespace grb {
 			const size_t rows, const size_t columns,
 			const size_t cap_in
 		) {
-			// static checks
-			constexpr size_t globalBufferUnitSize =
-				sizeof(RowIndexType) +
-				sizeof(ColIndexType) +
-				grb::utils::SizeOf< D >::value;
-			static_assert(
-				globalBufferUnitSize >= sizeof(NonzeroIndexType),
-				"We hit here a configuration border case which the implementation does not "
-				"handle at present. Please submit a bug report."
-			);
-
 #ifdef _DEBUG
 			std::cerr << "\t in Matrix< reference >::initialize...\n"
 				<< "\t\t matrix size " << rows << " by " << columns << "\n"
@@ -642,15 +662,9 @@ namespace grb {
 				nullptr, nullptr, nullptr, nullptr,
 				nullptr, nullptr, nullptr, nullptr
 			};
-			if( !internal::template ensureReferenceBufsize< char >( std::max(
-					(std::max( m, n ) + 1) * globalBufferUnitSize,
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
-						utils::SizeOf< D >::value
-#else
-					static_cast< size_t >( 0 )
-#endif
-			) ) ) {
+			if( !internal::template ensureReferenceBufsize< char >(
+				reqBufSize( m, n ) )
+			) {
 				throw std::runtime_error( "Could not resize global buffer" );
 			}
 			if( m > 0 && n > 0 ) {
