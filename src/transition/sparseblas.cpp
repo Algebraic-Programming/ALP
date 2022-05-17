@@ -876,7 +876,7 @@ extern "C" {
 		assert( b != NULL );
 		assert( ldb != NULL );
 		assert( beta != NULL );
-		assert( C != NULL );
+		assert( c != NULL );
 		assert( ldc != NULL );
 		(void) transa;
 		(void) m; (void) n; (void) k;
@@ -1098,7 +1098,7 @@ extern "C" {
 		const int * nzmax, int * info
 	) {
 		assert( trans[0] == 'N' );
-		assert( sort != NULL && sort[0] = 7 );
+		assert( sort != NULL && sort[0] == 7 );
 		assert( m_p != NULL );
 		assert( n_p != NULL );
 		assert( k_p != NULL );
