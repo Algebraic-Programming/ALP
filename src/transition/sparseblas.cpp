@@ -951,7 +951,44 @@ extern "C" {
 		const extblas_sparse_vector x,
 		extblas_sparse_vector y
 	) {
-		// TODO
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> ring;
+		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
+			grb::internal::wrapCRSMatrix( a, ja, ia, *m, *n );
+		auto input  = sparseblas::getDoubleVector( x );
+		auto output = sparseblas::getDoubleVector( y );
+		if( !(input->finalized) ) {
+			throw std::runtime_error( "Uninitialised input vector during SpMSpV\n" );
+		}
+		if( !(output->finalized) ) {
+			throw std::runtime_error( "Uninitialised output vector during SpMSpV\n" );
+		}
+		if( request[ 0 ] != 0 && request[ 1 ] != 1 ) {
+			throw std::runtime_error( "Illegal request during call to dcsrmultsv\n" );
+		}
+		grb::Phase phase = grb::EXECUTE;
+		if( request[ 0 ] == 1 ) {
+			phase = grb::RESIZE;
+		}
+		grb::RC rc;
+		if( trans[0] == 'N' ) {
+			rc = grb::mxv< grb::descriptors::force_row_major >( *(output->vector), A,
+				*(input->vector), ring, phase );
+		} else {
+			if( trans[1] != 'T' ) {
+				throw std::runtime_error( "Illegal trans argument to dcsrmultsv\n" );
+			}
+			rc = grb::mxv<
+				grb::descriptors::force_row_major |
+				grb::descriptors::transpose_matrix
+			>( *(output->vector), A, *(input->vector), ring, phase );
+		}
+		if( rc != grb::SUCCESS ) {
+			throw std::runtime_error( "ALP/GraphBLAS returns error during call to "
+				"SpMSpV: " + grb::toString( rc ) );
+		}
 	}
 
 	int EXTBLAS_dusmsm(

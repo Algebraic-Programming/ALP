@@ -164,7 +164,7 @@ void spblas_dcsrmultcsr(
  * @param[in] trans Either 'N' or 'T', indicating whether A is to be transposed.
  *                  The Hermitian operator on \a A is currently not supported;
  *                  if required, please submit a ticket.
- * @param[in] request A pointer to an integer that reads either 0, 1, or 2.
+ * @param[in] request A pointer to an integer that reads either 0 or 1
  *                    0: the output vector is guaranteed to have sufficient
  *                       capacity to hold the output of the computation.
  *                    1: a symbolic phase will be executed that only modifies
