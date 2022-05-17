@@ -193,7 +193,9 @@ namespace grb {
 		/**
 		 * \internal For the reference backend specifically, indicates for that the
 		 * row-major storage must be used; the column-major storage shall be ignored
-		 * completely. This is for internal use only, and presently only supported for
+		 * completely. Additionally, the row-major storage is considered of static
+		 * size and managed outside of ALP.
+		 * This descriptor is for internal use only, and presently only supported for
 		 * the grb::mxv and the grb::mxm. For the latter, only the non-transposed
 		 * cases are supported.
 		 */

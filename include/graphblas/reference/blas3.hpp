@@ -159,30 +159,51 @@ namespace grb {
 
 			// symbolic phase (counting sort, step 1)
 			size_t nzc = 0; // output nonzero count
-			for( size_t i = 0; i < m; ++i ) {
-				coors.clear();
-				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-					const size_t k_col = A_raw.row_index[ k ];
-					for(
-						auto l = B_raw.col_start[ k_col ];
-						l < B_raw.col_start[ k_col + 1 ];
-						++l
-					) {
-						const size_t l_col = B_raw.row_index[ l ];
-						if( !coors.assign( l_col ) ) {
-							(void) ++nzc;
-							if( !crs_only ) {
-								(void) ++CCS_raw.col_start[ l_col + 1 ];
+			if( crs_only && phase == RESIZE ) {
+				// we are using an auxialiary CRS that we cannot resize ourselves
+				// instead, we update the offset array only
+				C_raw.col_start[ 0 ] = 0;
+			}
+			// if crs_only, then the below implements its resize phase
+			// if not crs_only, then the below is both crucial for the resize phase,
+			// as well as for enabling the insertions of output values in the output CCS
+			if( (crs_only && phase == RESIZE) || !crs_only ) {
+				for( size_t i = 0; i < m; ++i ) {
+					coors.clear();
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						for(
+							auto l = B_raw.col_start[ k_col ];
+							l < B_raw.col_start[ k_col + 1 ];
+							++l
+						) {
+							const size_t l_col = B_raw.row_index[ l ];
+							if( !coors.assign( l_col ) ) {
+								(void) ++nzc;
+								if( !crs_only ) {
+									(void) ++CCS_raw.col_start[ l_col + 1 ];
+								}
 							}
 						}
+					}
+					if( crs_only && phase == RESIZE ) {
+						// we are using an auxialiary CRS that we cannot resize ourselves
+						// instead, we update the offset array only
+						C_raw.col_start[ i + 1 ] = nzc;
 					}
 				}
 			}
 
 			if( phase == RESIZE ) {
-				// do final resize
-				const RC ret = grb::resize( C, nzc );
-				return ret;
+				if( !crs_only ) {
+					// do final resize
+					const RC ret = grb::resize( C, nzc );
+					return ret;
+				} else {
+					// we are using an auxiliary CRS that we cannot resize
+					// instead, we updated the offset array in the above and can now exit
+					return SUCCESS;
+				}
 			}
 
 			// computational phase
@@ -222,7 +243,8 @@ namespace grb {
 #ifndef NDEBUG
 			const size_t old_nzc = nzc;
 #endif
-			// use prefix sum to perform computational phase
+			// use previously computed CCS offset array to update CCS during the
+			// computational phase
 			nzc = 0;
 			C_raw.col_start[ 0 ] = 0;
 			for( size_t i = 0; i < m; ++i ) {
@@ -243,9 +265,9 @@ namespace grb {
 								mulMonoid.template getIdentity< typename Operator::D2 >() )
 							<< " to accumulate into C( " << i << ", " << l_col << " )\n";
 #endif
-						if( ! coors.assign( l_col ) ) {
+						if( !coors.assign( l_col ) ) {
 							valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
-							(void)grb::apply( valbuf[ l_col ],
+							(void) grb::apply( valbuf[ l_col ],
 								A_raw.getValue( k,
 									mulMonoid.template getIdentity< typename Operator::D1 >() ),
 								B_raw.getValue( l,
@@ -253,13 +275,13 @@ namespace grb {
 								oper );
 						} else {
 							OutputType temp = monoid.template getIdentity< OutputType >();
-							(void)grb::apply( temp,
+							(void) grb::apply( temp,
 								A_raw.getValue( k,
 									mulMonoid.template getIdentity< typename Operator::D1 >() ),
 								B_raw.getValue( l,
 									mulMonoid.template getIdentity< typename Operator::D2 >() ),
 								oper );
-							(void)grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+							(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
 						}
 					}
 				}
@@ -276,7 +298,7 @@ namespace grb {
 						CCS_raw.setValue( CCS_index, valbuf[ j ] );
 					}
 					// update count
-					(void)++nzc;
+					(void) ++nzc;
 				}
 				C_raw.col_start[ i + 1 ] = nzc;
 			}
