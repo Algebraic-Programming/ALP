@@ -47,6 +47,17 @@ extblas_sparse_vector EXTBLAS_dusv_begin( const int n );
 /**
  * Inserts a new nonzero entry into a sparse vector that is under construction.
  *
+ * @param[in,out] x   The sparse vector to which to add a nonzero.
+ * @param[in]     val The nonzero to add to \a x.
+ * @param[in]   index The nonzero coordinate.
+ *
+ * The value \a index must be smaller than the size of the vector \a x as given
+ * during the call to #EXTBLAS_dusv_begin that returned \a x.
+ *
+ * @returns 0 If \a x has successfully ingested the given nonzero.
+ * @returns Any other integer on error, in which case the state of \a x shall
+ *          become undefined.
+ *
  * This is an implementation-specific extension.
  */
 int EXTBLAS_dusv_insert_entry(
@@ -59,6 +70,12 @@ int EXTBLAS_dusv_insert_entry(
  * Signals the end of sparse vector construction, making the given vector ready
  * for use.
  *
+ * @param[in,out] x The sparse vector that is under construction.
+ *
+ * @returns 0 If \a x has successfully been moved to a finalised state.
+ * @returns Any other integer if the call was unsuccessful, in which case the
+ *          state of \a x becomes undefined.
+ *
  * This is an implementation-specific extension.
  */
 int EXTBLAS_dusv_end( extblas_sparse_vector x );
@@ -66,38 +83,76 @@ int EXTBLAS_dusv_end( extblas_sparse_vector x );
 /**
  * Destroys the given sparse vector.
  *
+ * @param[in] x The finalised sparse vector to destroy.
+ *
+ * @returns 0 If the call was successful, after which \a x should no longer be
+ *            used unless it is overwritten by a call to #EXTBLAS_dusv_begin.
+ * @returns Any other integer if the call was unsuccessful, in which case the
+ *          state of \a x becomes undefined.
+ *
  * This is an implementation-specific extension.
  */
 int EXTBLAS_dusvds( extblas_sparse_vector x );
 
 /**
- * @returns The number of nonzeroes in a given sparse vector.
+ * Retrieves the number of nonzeroes in a given finalised sparse vector.
+ *
+ * @param[in]  x  The vector of which to return the number of nonzeroes.
+ * @param[out] nz Where to store the number of nonzeroes in a given sparse
+ *                vector.
+ *
+ * @returns 0 If the call was successful and \a nz was set.
+ * @returns Any other integer if the call was unsuccessful, in which case \a nz
+ *          shall remain untouched.
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_dusvnz( const extblas_sparse_vector x );
+int EXTBLAS_dusv_nz( const extblas_sparse_vector x, int * nz );
 
 /**
  * Opens a sparse vector for read-out.
+ *
+ * @param[in] x The vector to read out.
+ *
+ * @returns 0 If the call was successful.
+ * @returns Any other integer indicating an error, in which case the state of
+ *          \a x shall remain unchanged.
+ *
+ * After a successful call to this function, \a x moves into a read-out state.
+ * This means \a x shall only be a valid argument for calls to #EXTBLAS_dusv_get
+ * and #EXTBLAS_dusv_close.
  *
  * This is an implementation-specific extension.
  */
 int EXTBLAS_dusv_open( const extblas_sparse_vector x );
 
 /**
- * Retrieves a sparse vector entry. Each call to this function will retrieve a
- * new entry. The order in which entries are returned is unspecified.
+ * Retrieves a sparse vector entry.
+ *
+ * Each call to this function will retrieve a new entry. The order in which
+ * entries are returned is unspecified.
+ *
+ * @param[in] x The vector to retrieve an entry of.
  *
  * The given vector must be opened for read-out, and must not have been closed
  * in the mean time.
  *
- * This is an implementation-specific extension.
+ * @param[out] val The value of the retrieved nonzero.
+ * @param[out] ind The index of the retrieved nonzero value.
  *
- * @returns 0  If a value was successfully returned but a next value is not
- *             available (i.e., the read-out has completed).
- * @returns 1  If a value was successfully returned and a next value is
- *             available.
- * @returns 10 In case of error.
+ * @returns 0 If a nonzero was successfully returned but a next value is not
+ *            available; i.e., the read-out has completed. When this is
+ *            returned, \a x will no longer be a legal argument for a call to
+ *            this function.
+ * @returns 1 If a value was successfully returned and a next nonzero is
+ *            available.
+ * @returns Any other integer in case of error.
+ *
+ * In case of error, the output memory areas pointed to by \a val and \a ind
+ * shall remain untouched. Furthermore, \a x will no longer be a valid argument
+ * for a call to this function.
+ *
+ * This is an implementation-specific extension.
  */
 int EXTBLAS_dusv_get(
 	const extblas_sparse_vector x,
@@ -107,12 +162,24 @@ int EXTBLAS_dusv_get(
 /**
  * Closes a sparse vector read-out.
  *
+ * @param[in] x The vector which is in a read-out state.
+ *
+ * @returns 0 If \a x is successfully returned to a finalised state.
+ * @returns Any other integer in case of error, which brings \a A to an
+ *          undefined state.
+ *
  * This is an implementation-specific extension.
  */
 int EXTBLAS_dusv_close( const extblas_sparse_vector x );
 
 /**
  * Removes all entries from a finalised sparse vector.
+ *
+ * @param[in] x The vector to clear.
+ *
+ * @returns 0 If \a x was successfully cleared.
+ * @returns Any other integer in case of error, which brings \a x into an
+ *          undefined state.
  *
  * This is an implementation-specific extension.
  */

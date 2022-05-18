@@ -20,9 +20,15 @@
  *
  * This is the ALP implementation of a subset of the de-facto *_spblas.h Sparse
  * BLAS standard. This implementation uses the spblas_ prefix; e.g.,
- * #spblas_dcsrgemv. All functions defined have <tt>void</tt> return types --
- * i.e., if breaking the contract defined in the APIs, undefined behaviour will
- * occur.
+ * #spblas_dcsrgemv.
+ *
+ * All functions defined have <tt>void</tt> return types. This implies two
+ * important factors:
+ *   1. when breaking the contract defined in the API, undefined behaviour will
+ *      occur.
+ *   2. this API hence does not permit the graceful handling of any errors that
+ *      ALP would normally recover gracefully from, such as, but not limited to,
+ *      the detection of dimension mismatches.
  */
 
 #ifndef _H_ALP_SPBLAS
@@ -35,7 +41,9 @@ extern "C" {
 #endif
 
 /**
- * Computes either
+ * Performs sparse matrix--vector multiplication.
+ *
+ * This function computes one of
  *  - \f$ y \to Ax \f$, or
  *  - \f$ y \to A^Tx \f$.
  *
@@ -67,7 +75,6 @@ void spblas_dcsrgemv(
  * The matrix \f$ A \f$ is sparse and employs the Compressed Row Storage (CRS).
  * The matrices \f$ B, C \f$ are dense. \f$ A \f$ has size \f$ m \times k \f$,
  * \f$ B \f$ is \f$ k \times n \f$ and \f$ C \f$ is \f$ m \times n \f$.
- *
  *
  * @param[in] transa    Either 'N' or 'T'.
  * @param[in] m, n, k   Pointers to integers that equal \f$ m, n, k \f$, resp.
@@ -151,16 +158,17 @@ void spblas_dcsrmultcsr(
 );
 
 /**
- * An extension that provides sparse matrix times sparse vector multiplication;
- * i.e., either of
+ * Performs sparse matrix--sparse vector multiplication.
+ *
+ * This extension performs one of
  *  -# \f$ y \to y + \alpha A x \f$, or
  *  -# \f$ y \to y + \alpha A^T x \f$.
+ *
  * Here, \f$ A \f$ is assumed in Compressed Row Storage (CRS), while \f$ x \f$
  * and \f$ y \f$ are assumed to be using the #extblas_sparse_vector extension.
  *
- * \warning This is an ALP implementation-specific extension.
- *
  * This API follows loosely that of #spblas_dcsrmultcsr.
+ *
  * @param[in] trans Either 'N' or 'T', indicating whether A is to be transposed.
  *                  The Hermitian operator on \a A is currently not supported;
  *                  if required, please submit a ticket.
@@ -177,6 +185,8 @@ void spblas_dcsrmultcsr(
  * @param[in] ia The row offset arrays of the nonzeroes in \f$ A \f$.
  * @param[in]  x The sparse input vector.
  * @param[out] y The sparse output vector.
+ *
+ * This is an ALP implementation-specific extension.
  */
 void extspblas_dcsrmultsv(
 	const char * trans, const int * request,

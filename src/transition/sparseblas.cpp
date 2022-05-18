@@ -505,7 +505,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusvnz( const extblas_sparse_vector x ) {
+	int EXTBLAS_dusv_nz( const extblas_sparse_vector x, int * const nz ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		const size_t nnz = grb::nnz( *(vector->vector) );
@@ -514,7 +514,8 @@ extern "C" {
 				<< "a SparseBLAS int!\n";
 			return 10;
 		}
-		return static_cast< int >(nnz);
+		nz = static_cast< int >(nnz);
+		return 0;
 	}
 
 	int EXTBLAS_dusv_clear( extblas_sparse_vector x ) {
