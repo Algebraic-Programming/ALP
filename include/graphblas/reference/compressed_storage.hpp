@@ -222,6 +222,7 @@ namespace grb {
 						row = other.row;
 						s = other.s;
 						P = other.P;
+						return *this;
 					}
 
 					/** Move assignment. */
@@ -235,6 +236,7 @@ namespace grb {
 						row = std::move( other.row );
 						s = std::move( other.s );
 						P = std::move( other.P );
+						return *this;
 					}
 
 					/** Whether two iterators compare equal. */
@@ -321,6 +323,9 @@ namespace grb {
 							std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
 								<< nonzero.first.second << " ): " << nonzero.second << "\n";
 #endif
+						} else {
+							assert( row == m );
+							k = 0;
 						}
 						return *this;
 					}
@@ -827,11 +832,17 @@ namespace grb {
 				}
 
 				/** Non-trivial constructor. */
-				ConstIterator( const Compressed_Storage & _storage, const size_t _m, const size_t _n, const size_t _nz, const bool end, const size_t _s = 0, const size_t _P = 1 ) noexcept :
-					row_index( _storage.row_index ), col_start( _storage.col_start ), k( 0 ), m( _m ), n( _n ), s( _s ), P( _P ) {
+				ConstIterator(
+					const Compressed_Storage &_storage,
+					const size_t _m, const size_t _n, const size_t _nz,
+					const bool end, const size_t _s = 0, const size_t _P = 1
+				) noexcept :
+					row_index( _storage.row_index ), col_start( _storage.col_start ),
+					k( 0 ), m( _m ), n( _n ),
+					s( _s ), P( _P )
+				{
 #ifdef _DEBUG
-					std::cout << "Iterator constructor (pattern "
-								 "specialisation) called\n";
+					std::cout << "Iterator constructor (pattern specialisation) called\n";
 #endif
 					if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 						row = m;
@@ -846,15 +857,17 @@ namespace grb {
 					}
 
 					if( row < m ) {
-						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
+						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ],
+							n, P );
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
 						nonzero.first = ActiveDistribution::local_index_to_global( row, m, s, P );
-						nonzero.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
+						nonzero.second = ActiveDistribution::local_index_to_global(
+							row_index[ k ] - col_off, n, col_pid, P );
 					}
 				}
 
 				/** Copy assignment. */
-				ConstIterator & operator=( const ConstIterator & other ) noexcept {
+				ConstIterator & operator=( const ConstIterator &other ) noexcept {
 					row_index = other.row_index;
 					col_start = other.col_start;
 					k = other.k;
@@ -866,7 +879,7 @@ namespace grb {
 				}
 
 				/** Move assignment. */
-				ConstIterator & operator=( ConstIterator && other ) {
+				ConstIterator & operator=( ConstIterator &&other ) {
 					row_index = std::move( other.row_index );
 					col_start = std::move( other.col_start );
 					k = std::move( other.k );
@@ -878,7 +891,7 @@ namespace grb {
 				}
 
 				/** Whether two iterators compare equal. */
-				bool operator==( const ConstIterator & other ) const noexcept {
+				bool operator==( const ConstIterator &other ) const noexcept {
 					assert( row_index == other.row_index );
 					assert( col_start == other.col_start );
 					assert( m == other.m );
@@ -898,7 +911,7 @@ namespace grb {
 				}
 
 				/** Whether two iterators do not compare equal. */
-				bool operator!=( const ConstIterator & other ) const noexcept {
+				bool operator!=( const ConstIterator &other ) const noexcept {
 					assert( row_index == other.row_index );
 					assert( col_start == other.col_start );
 					assert( m == other.m );
@@ -922,15 +935,20 @@ namespace grb {
 					}
 					assert( row < m );
 					assert( k < col_start[ row + 1 ] );
-					(void)++k;
+					(void) ++k;
 					while( row < m && k == col_start[ row + 1 ] ) {
-						(void)++row;
+						(void) ++row;
 					}
 					if( row < m ) {
-						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ], n, P );
+						const size_t col_pid = ActiveDistribution::offset_to_pid( row_index[ k ],
+							n, P );
 						const size_t col_off = ActiveDistribution::local_offset( n, col_pid, P );
 						nonzero.first = ActiveDistribution::local_index_to_global( row, m, s, P );
-						nonzero.second = ActiveDistribution::local_index_to_global( row_index[ k ] - col_off, n, col_pid, P );
+						nonzero.second = ActiveDistribution::local_index_to_global(
+							row_index[ k ] - col_off, n, col_pid, P );
+					} else {
+						assert( row == m );
+						k = 0;
 					}
 					return *this;
 				}
