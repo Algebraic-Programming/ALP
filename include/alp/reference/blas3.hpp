@@ -64,6 +64,183 @@ namespace alp {
 	namespace internal {
 
 		/**
+		 * \internal generic band mxm implementation - forward declaration.
+		 */
+		template<
+			size_t BandPos1, size_t BandPos2,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			class Operator, class Monoid,
+			typename OutputStructure, typename OutputView, 
+			typename OutputImfR, typename OutputImfC,
+			typename InputStructure1, typename InputView1, 
+			typename InputImfR1, typename InputImfC1,
+			typename InputStructure2, typename InputView2, 
+			typename InputImfR2, typename InputImfC2
+		>
+		typename std::enable_if<
+			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
+			( BandPos2 < std::tuple_size< typename InputStructure2::band_intervals >::value ),
+		RC >::type mxm_band_generic( 
+			alp::Matrix< OutputType, OutputStructure, 
+			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, 
+			Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, 
+			Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
+			const Operator &oper,
+			const Monoid &monoid,
+			const MulMonoid &mulMonoid
+		);
+
+		/**
+		 * \internal generic band mxm implementation.
+		 * Recursively enumerating the cartesian product of non-zero bands 
+		 * (Base case).
+		 */
+		template<
+			size_t BandPos1, size_t BandPos2,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			class Operator, class Monoid,
+			typename OutputStructure, typename OutputView, 
+			typename OutputImfR, typename OutputImfC,
+			typename InputStructure1, typename InputView1, 
+			typename InputImfR1, typename InputImfC1,
+			typename InputStructure2, typename InputView2, 
+			typename InputImfR2, typename InputImfC2
+		>
+		typename std::enable_if<
+			( BandPos1 == std::tuple_size< typename InputStructure1::band_intervals >::value ),
+		RC >::type mxm_band_generic( 
+			alp::Matrix< OutputType, OutputStructure, 
+			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, 
+			Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, 
+			Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
+			const Operator &oper,
+			const Monoid &monoid,
+			const MulMonoid &mulMonoid
+		) {
+			(void)C;
+			(void)A;
+			(void)B;
+			(void)oper;
+			(void)monoid;
+			(void)mulMonoid;
+
+			return SUCCESS;
+		}
+
+		/**
+		 * \internal generic band mxm implementation. 
+		 * Recursively enumerating the cartesian product of non-zero bands.
+		 * Move to next non-zero band of A.
+		 */
+		template<
+			size_t BandPos1, size_t BandPos2,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			class Operator, class Monoid,
+			typename OutputStructure, typename OutputView, 
+			typename OutputImfR, typename OutputImfC,
+			typename InputStructure1, typename InputView1, 
+			typename InputImfR1, typename InputImfC1,
+			typename InputStructure2, typename InputView2, 
+			typename InputImfR2, typename InputImfC2
+		>
+		typename std::enable_if<
+			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
+			( BandPos2 == std::tuple_size< typename InputStructure2::band_intervals >::value ),
+		RC >::type mxm_band_generic( 
+			alp::Matrix< OutputType, OutputStructure, 
+			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, 
+			Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, 
+			Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
+			const Operator &oper,
+			const Monoid &monoid,
+			const MulMonoid &mulMonoid
+		) {
+			return mxm_band_generic< BandPos1 + 1, 0 >( C, A, B, oper, monoid, mulMonoid );
+		}
+
+		/**
+		 * \internal generic band mxm implementation. 
+		 * Recursively enumerating the cartesian product of non-zero bands.
+		 * Compute and move to next non-zero band of B.
+		 */
+		template<
+			size_t BandPos1, size_t BandPos2,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			class Operator, class Monoid,
+			typename OutputStructure, typename OutputView, 
+			typename OutputImfR, typename OutputImfC,
+			typename InputStructure1, typename InputView1, 
+			typename InputImfR1, typename InputImfC1,
+			typename InputStructure2, typename InputView2, 
+			typename InputImfR2, typename InputImfC2
+		>
+		typename std::enable_if<
+			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
+			( BandPos2 < std::tuple_size< typename InputStructure2::band_intervals >::value ),
+		RC >::type mxm_band_generic( 
+			alp::Matrix< OutputType, OutputStructure, 
+			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType1, InputStructure1, 
+			Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+			const alp::Matrix< InputType2, InputStructure2, 
+			Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
+			const Operator &oper,
+			const Monoid &monoid,
+			const MulMonoid &mulMonoid
+		) {
+
+			OutputType temp;
+
+			const std::ptrdiff_t m   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
+			const std::ptrdiff_t n   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
+			const std::ptrdiff_t k   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
+
+			const std::ptrdiff_t l_a { structures::get_lower_bandwidth< BandPos1 >( A ) };
+			const std::ptrdiff_t u_a { structures::get_upper_bandwidth< BandPos1 >( A ) };
+
+			const std::ptrdiff_t l_b { structures::get_lower_bandwidth< BandPos2 >( B ) };
+			const std::ptrdiff_t u_b { structures::get_upper_bandwidth< BandPos2 >( B ) };
+			
+			// In case of symmetry the iteration domain intersects the the upper 
+			// (or lower) domain of C
+
+			constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
+			constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multiple symmetry directions
+
+			for( std::ptrdiff_t i = 0; i < m; ++i ) {
+				for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
+					 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
+					 ++j ) {
+					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
+						 l < std::min( {k, i + u_a, j - l_b + 1} ); 
+						 ++l ) {
+						std::cout << "temp = A";
+						const auto ta { internal::get(A, i, l ) };
+						std::cout << ".mulOp.B";
+						const auto tb { internal::get(B, l, j ) };
+						(void)internal::apply( temp, ta, tb, oper );
+						std::cout << ";\n";
+						std::cout << "C";
+						(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
+						std::cout << " addMon.= temp;\n";
+					}
+				}
+			}
+
+			return mxm_band_generic< BandPos1, BandPos2 + 1 >( C, A, B, oper, monoid, mulMonoid );
+		}
+
+		/**
 		 * \internal general mxm implementation that all mxm variants using 
 		 * structured matrices refer to.
 		 */
@@ -107,19 +284,27 @@ namespace alp {
 				"void)"
 			);
 
+			static_assert( 
+				!(
+					structures::is_a< InputStructure1, structures::Symmetric >::value ||
+					structures::is_a< InputStructure2, structures::Symmetric >::value
+				),
+				"alp::internal::mxm_generic: the generic version of mxm cannot be "
+				"used if either of the input matrices is symmetric."
+			);
+
 #ifdef _DEBUG
 			std::cout << "In alp::internal::mxm_generic (reference)\n";
 #endif
 
-			(void)mulMonoid;
-
 			// Early exit checks 
-			if( ! internal::getInitialized( A ) || ! internal::getInitialized( B ) || ! internal::getInitialized( C ) ) {
+			if( ! internal::getInitialized( A ) || 
+				! internal::getInitialized( B ) || 
+				! internal::getInitialized( C ) 
+			) {
 				internal::setInitialized( C, false );
 				return SUCCESS;
 			}
-
-			OutputType temp;
 
 			const std::ptrdiff_t m   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
 			const std::ptrdiff_t n   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
@@ -132,43 +317,44 @@ namespace alp {
 				return MISMATCH;
 			}
 
-			// Currently assuming single band
-			// extensions to multiple bands requires cartesian product 
-			// btw A and B's bands.
+			return mxm_band_generic< 0, 0 >( C, A, B, oper, monoid, mulMonoid );
+			// // Currently assuming single band
+			// // extensions to multiple bands requires cartesian product 
+			// // btw A and B's bands.
 
-			const std::ptrdiff_t l_a { structures::get_lower_bandwidth( A ) };
-			const std::ptrdiff_t u_a { structures::get_upper_bandwidth( A ) };
+			// const std::ptrdiff_t l_a { structures::get_lower_bandwidth< 0 >( A ) };
+			// const std::ptrdiff_t u_a { structures::get_upper_bandwidth< 0 >( A ) };
 
-			const std::ptrdiff_t l_b { structures::get_lower_bandwidth( B ) };
-			const std::ptrdiff_t u_b { structures::get_upper_bandwidth( B ) };
+			// const std::ptrdiff_t l_b { structures::get_lower_bandwidth< 0 >( B ) };
+			// const std::ptrdiff_t u_b { structures::get_upper_bandwidth< 0 >( B ) };
 			
-			// In case of symmetry the iteration domain intersects the the upper 
-			// (or lower) domain of C
+			// // In case of symmetry the iteration domain intersects the the upper 
+			// // (or lower) domain of C
 
-			constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
-			constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multi-choice symmetric layout
+			// constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
+			// constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multi-choice symmetric layout
 
-			for( std::ptrdiff_t i = 0; i < m; ++i ) {
-				for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
-					 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
-					 ++j ) {
-					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
-						 l < std::min( {k, i + u_a, j - l_b + 1} ); 
-						 ++l ) {
-						std::cout << "temp = A";
-						const auto ta { internal::get(A, i, l ) };
-						std::cout << ".mulOp.B";
-						const auto tb { internal::get(B, l, j ) };
-						(void)internal::apply( temp, ta, tb, oper );
-						std::cout << ";\n";
-						std::cout << "C";
-						(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
-						std::cout << " addMon.= temp;\n";
-					}
-				}
-			}
+			// for( std::ptrdiff_t i = 0; i < m; ++i ) {
+			// 	for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
+			// 		 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
+			// 		 ++j ) {
+			// 		for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
+			// 			 l < std::min( {k, i + u_a, j - l_b + 1} ); 
+			// 			 ++l ) {
+			// 			std::cout << "temp = A";
+			// 			const auto ta { internal::get(A, i, l ) };
+			// 			std::cout << ".mulOp.B";
+			// 			const auto tb { internal::get(B, l, j ) };
+			// 			(void)internal::apply( temp, ta, tb, oper );
+			// 			std::cout << ";\n";
+			// 			std::cout << "C";
+			// 			(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
+			// 			std::cout << " addMon.= temp;\n";
+			// 		}
+			// 	}
+			// }
 
-			return SUCCESS;
+			// return SUCCESS;
 		}
 
 	} // namespace internal

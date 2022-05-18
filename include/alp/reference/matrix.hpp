@@ -493,8 +493,6 @@ namespace alp {
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
-				// typedef ImfR imfr_type;
-				// typedef ImfC imfc_type;
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > self_type;
@@ -640,9 +638,6 @@ namespace alp {
 				typedef T access_type;
 				/** Type of the index used to access the physical storage */
 				typedef std::pair< size_t, size_t > storage_index_type;
-
-				typedef ImfR imfr_type;
-				typedef ImfC imfc_type;
 
 			protected:
 				ImfR imf_r;
@@ -941,6 +936,93 @@ namespace alp {
 
 	}; // Square Matrix
 
+	// Symmetric Matrix
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > :
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
+
+		private:
+			typedef Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
+
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > &,
+				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
+
+		public:
+			/** Exposes the types and the static properties. */
+			typedef structures::Symmetric structure;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			static constexpr bool is_original = std::is_same< target_type, void >::value;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
+
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >;
+			};
+
+			/** Constructor for an original matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+			>
+			Matrix( const size_t dim, const size_t cap = 0 ) :
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
+						imf::Id( dim ),
+						imf::Id( dim ),
+						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+						dim * dim
+					)
+				) {
+				(void)cap;
+			}
+
+			/** Constructor for a view over another matrix. */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+				) {}
+
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 */
+			template<
+				typename TargetMatrixType = target_type,
+				typename = typename std::enable_if<
+					!std::is_same< TargetMatrixType, void >::value &&
+					std::is_same< TargetMatrixType, target_type >::value >::type
+			>
+			Matrix( TargetMatrixType &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
+
+
+	}; // Square Matrix
+
 	// UpperTriangular Matrix
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
@@ -989,13 +1071,13 @@ namespace alp {
 				typename TargetMatrixType = target_type,
 				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
 			>
-			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+			Matrix( const size_t rows, const size_t cap = 0 ) :
 				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
 					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( rows ),
-						imf::Id( cols ),
-						storage::polynomials::Create< mapping_polynomial_type >( cols ),
-						rows * cols
+						imf::Id( rows ),
+						storage::polynomials::Create< mapping_polynomial_type >( rows ),
+						rows * rows
 					)
 				) {
 				(void)cap;
@@ -1116,11 +1198,11 @@ namespace alp {
 			static constexpr bool value = is_in< Structure, typename TestedStructure::inferred_structures >::value;
 		};
 
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
 		std::ptrdiff_t get_lower_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
 
 			const std::ptrdiff_t m = nrows( A );
-			constexpr std::ptrdiff_t cl_a = std::tuple_element< 0, typename Structure::band_intervals >::type::left;
+			constexpr std::ptrdiff_t cl_a = std::tuple_element< band, typename Structure::band_intervals >::type::left;
 
 			const std::ptrdiff_t l_a = ( cl_a < -m + 1 ) ? -m + 1 : cl_a ;
 
@@ -1128,11 +1210,11 @@ namespace alp {
 
 		}
 
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
 		std::ptrdiff_t get_upper_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
 
 			const std::ptrdiff_t n = ncols( A );
-			constexpr std::ptrdiff_t cu_a = std::tuple_element< 0, typename Structure::band_intervals >::type::right;
+			constexpr std::ptrdiff_t cu_a = std::tuple_element< band, typename Structure::band_intervals >::type::right;
 
 			const std::ptrdiff_t u_a = ( cu_a > n ) ? n : cu_a ;
 
