@@ -315,6 +315,8 @@ namespace sparseblas {
 
 			grb::Matrix< T > * A;
 
+			typename grb::Matrix< T >::const_iterator start, end;
+
 			SparseMatrix( const int _m, const int _n ) :
 				m( _m ), n( _n ),
 				finalized( false ), A( nullptr )
@@ -514,7 +516,7 @@ extern "C" {
 				<< "a SparseBLAS int!\n";
 			return 10;
 		}
-		nz = static_cast< int >(nnz);
+		*nz = static_cast< int >(nnz);
 		return 0;
 	}
 
@@ -656,7 +658,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_duscr_clear( blas_sparse_matrix A ) {
+	int EXTBLAS_dusm_clear( blas_sparse_matrix A ) {
 		auto matrix = sparseblas::getDoubleMatrix( A );
 		assert( matrix->finalized );
 		const grb::RC rc = grb::clear( *(matrix->A) );
@@ -1196,6 +1198,74 @@ extern "C" {
 		} else {
 			*info = 0;
 		}
+	}
+
+	int EXTBLAS_dusm_nz( const blas_sparse_matrix A, int * nz ) {
+		auto matA = sparseblas::getDoubleMatrix( A );
+		if( !(matA->finalized) ) {
+			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+			return 10;
+		}
+		const size_t grb_nz = grb::nnz( *(matA->A) );
+		if( grb_nz > static_cast< size_t >(std::numeric_limits< int >::max()) ) {
+			std::cerr << "Number of nonzeroes in given sparse matrix is larger than "
+				<< "what can be represented by a SparseBLAS int\n";
+			return 20;
+		}
+		*nz = static_cast< int >( grb_nz );
+		return 0;
+	}
+
+	int EXTBLAS_dusm_open( const blas_sparse_matrix A ) {
+		auto matA = sparseblas::getDoubleMatrix( A );
+		if( !(matA->finalized) ) {
+			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+			return 10;
+		}
+		try{
+			matA->start = matA->A->cbegin();
+			matA->end = matA->A->cend();
+		} catch( ... ) {
+			std::cerr << "Could not retrieve matrix iterators\n";
+			return 20;
+		}
+		return 0;
+	}
+
+	int EXTBLAS_dusm_get(
+		const blas_sparse_matrix A,
+		double * value, int * row, int * col
+	) {
+		auto matA = sparseblas::getDoubleMatrix( A );
+		if( !(matA->finalized) ) {
+			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+			return 10;
+		}
+		assert( matA->start != matA->end );
+		const auto &triplet = *(matA->start);
+		*value = triplet.second;
+		*row = triplet.first.first;
+		*col = triplet.first.second;
+		try {
+			(void) ++(matA->start);
+		} catch( ... ) {
+			return 2;
+		}
+		if( matA->start == matA->end ) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	int EXTBLAS_dusm_close( const blas_sparse_matrix A ) {
+		auto matA = sparseblas::getDoubleMatrix( A );
+		if( !(matA->finalized) ) {
+			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+			return 10;
+		}
+		matA->start = matA->end;
+		return 0;
 	}
 
 	int EXTBLAS_free() {
