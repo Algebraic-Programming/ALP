@@ -148,6 +148,7 @@ namespace grb {
 	uintptr_t getID(
 		const Vector< ElementType, implementation, Coords > &x
 	) {
+		(void) x;
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
 #endif
@@ -162,10 +163,13 @@ namespace grb {
 	 * @see getID
 	 */
 	template<
-		typename ElementType,
+		typename ElementType, typename RIT, typename CIT, typename NIT,
 		Backend implementation = config::default_backend
 	>
-	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+	uintptr_t getID(
+		const Matrix< ElementType, implementation, RIT, CIT, NIT > &x
+	) {
+		(void) x;
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
 #endif
@@ -266,8 +270,13 @@ namespace grb {
 	 *       passed by reference, indeed must have a size that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t nrows( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t nrows(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_nrows = false;
 #endif
@@ -314,8 +323,13 @@ namespace grb {
 	 *       and passed by reference, indeed must have a size that can be
 	 *       immediately returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t ncols( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t ncols(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_ncols = false;
 #endif
@@ -359,7 +373,9 @@ namespace grb {
 	 *       being instantiated, must have a capacity that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend, typename Coords >
+	template<
+		typename InputType, Backend backend, typename Coords
+	>
 	size_t capacity( const Vector< InputType, backend, Coords > &x ) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_vector_capacity = false;
@@ -399,8 +415,13 @@ namespace grb {
 	 *       being instantiated, must have a capacity that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t capacity( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t capacity(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_capacity = false;
 #endif
@@ -485,8 +506,13 @@ namespace grb {
 	 * \note Backends thus are forced to cache the current number of nonzeroes and
 	 *       immediately return that cached value.
 	 */
-	template< typename InputType, Backend backend >
-	size_t nnz( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t nnz(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_nnz = false;
 #endif
@@ -590,8 +616,13 @@ namespace grb {
 	 * \note Only the destruction of \a A would ensure all corresponding memory is
 	 *       freed, for all backends.
 	 */
-	template< typename InputType, Backend backend >
-	RC clear( Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC clear(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_clear = false;
 #endif
@@ -756,10 +787,12 @@ namespace grb {
 	 *          should be used sparingly and only when absolutely necessary.
 	 */
 	template<
-		typename InputType,
-		Backend backend
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
 	>
-	RC resize( Matrix< InputType, backend > &A, const size_t new_nz ) noexcept {
+	RC resize(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_resize = false;
 #endif
@@ -1379,14 +1412,14 @@ namespace grb {
 	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType,
+		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator1 I, fwd_iterator2 J,
 		const length_type nz, const IOMode mode
 	) {
@@ -1439,11 +1472,12 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -1575,9 +1609,13 @@ namespace grb {
 	 *                        prescribed by the non-blocking primitives whose
 	 *                        execution was attempted may be returned instead.
 	 */
-	template< Backend backend, typename InputType, typename... Args >
+	template<
+		Backend backend,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, backend > &A,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 #ifndef NDEBUG

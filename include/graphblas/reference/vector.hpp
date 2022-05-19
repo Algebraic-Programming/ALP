@@ -96,39 +96,75 @@
 namespace grb {
 
 	// forward declaration of backend-local matrix specialization for vector's friends
-	template< typename D >
-	class Matrix< D, reference >;
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	class Matrix< D, reference, RIT, CIT, NIT >;
 
 	// forward-declare internal getters
 	namespace internal {
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline C & getCoordinates( Vector< D, reference, C > & x ) noexcept;
+		inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline const C & getCoordinates( const Vector< D, reference, C > & x ) noexcept;
+		inline const C & getCoordinates(
+			const Vector< D, reference, C > &x
+		) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline D * getRaw( Vector< D, reference, C > & x ) noexcept;
+		inline D * getRaw( Vector< D, reference, C > &x ) noexcept;
 
 		/** TODO documentation */
 		template< typename D, typename C >
-		inline const D * getRaw( const Vector< D, reference, C > & x ) noexcept;
+		inline const D * getRaw( const Vector< D, reference, C > &x ) noexcept;
 
-		template< typename D >
-		inline internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< D, reference > & A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+			Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline const internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< D, reference > & A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+			const Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline internal::Compressed_Storage< D, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< D, reference > & A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+			Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		template< typename D >
-		inline const internal::Compressed_Storage< D, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< D, reference > & A ) noexcept;
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+			const Matrix< D, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template<
+			typename D,
+			Backend backend = config::default_backend
+		>
+		grb::Vector<
+			D, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> wrapRawVector(
+			const size_t n, D *__restrict__ const raw
+		);
+
+		template<
+			typename D,
+			Backend backend = config::default_backend
+		>
+		const grb::Vector<
+			D, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> wrapRawVector(
+			const size_t n, const D *__restrict__ const raw
+		);
 
 	} // namespace internal
 
@@ -146,29 +182,50 @@ namespace grb {
 	template< typename D, typename MyCoordinates >
 	class Vector< D, reference, MyCoordinates > {
 
-		static_assert( ! grb::is_object< D >::value, "Cannot create a GraphBLAS vector of GraphBLAS objects!" );
+		static_assert( !grb::is_object< D >::value, "Cannot create an ALP/GraphBLAS"
+			"vector of ALP/GraphBLAS objects!" );
 
 		/* *********************
 		     `Getter' friends
 		   ********************* */
 
-		friend MyCoordinates & internal::getCoordinates< D, MyCoordinates >( Vector< D, reference, MyCoordinates > & x ) noexcept;
+		friend MyCoordinates & internal::getCoordinates< D, MyCoordinates >(
+			Vector< D, reference, MyCoordinates > & x ) noexcept;
 
-		friend const MyCoordinates & internal::getCoordinates< D, MyCoordinates >( const Vector< D, reference, MyCoordinates > & x ) noexcept;
+		friend const MyCoordinates & internal::getCoordinates< D, MyCoordinates >(
+			const Vector< D, reference, MyCoordinates > & x ) noexcept;
 
-		friend D * internal::getRaw< D, MyCoordinates >( Vector< D, reference, MyCoordinates > & x ) noexcept;
+		friend D * internal::getRaw< D, MyCoordinates >(
+			Vector< D, reference, MyCoordinates > & x ) noexcept;
 
-		friend const D * internal::getRaw< D, MyCoordinates >( const Vector< D, reference, MyCoordinates > & x ) noexcept;
+		friend const D * internal::getRaw< D, MyCoordinates >(
+			const Vector< D, reference, MyCoordinates > & x ) noexcept;
 
 		/* *********************
 		        IO friends
 		   ********************* */
 
-		template< Descriptor, typename InputType, typename fwd_iterator, typename Coords, class Dup >
-		friend RC buildVector( Vector< InputType, reference, Coords > &, fwd_iterator, const fwd_iterator, const IOMode, const Dup & );
+		template<
+			Descriptor, typename InputType,
+			typename fwd_iterator,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, reference, Coords > &, fwd_iterator, const fwd_iterator,
+			const IOMode, const Dup &
+		);
 
-		template< Descriptor descr, typename InputType, typename fwd_iterator1, typename fwd_iterator2, typename Coords, class Dup >
-		friend RC buildVector( Vector< InputType, reference, Coords > &, fwd_iterator1, const fwd_iterator1, fwd_iterator2, const fwd_iterator2, const IOMode, const Dup & );
+		template<
+			Descriptor descr, typename InputType,
+			typename fwd_iterator1, typename fwd_iterator2,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, reference, Coords > &,
+			fwd_iterator1, const fwd_iterator1,
+			fwd_iterator2, const fwd_iterator2,
+			const IOMode, const Dup &
+		);
 
 		template< typename InputType, typename Coords >
 		friend uintptr_t getID( const Vector< InputType, reference, Coords > & );
@@ -177,9 +234,18 @@ namespace grb {
 
 		friend class PinnedVector< D, BSP1D >;
 
+		friend Vector< D, reference, MyCoordinates > internal::wrapRawVector<
+			D, reference
+		>( const size_t n, D *__restrict__ const raw );
+
+		friend const Vector< D, reference, MyCoordinates > internal::wrapRawVector<
+			D, reference
+		>( const size_t n, const D *__restrict__ const raw );
+
 		/* *********************
 		 Auxiliary backend friends
 		   ********************* */
+
 #ifdef _GRB_WITH_LPF
 		friend class Vector< D, BSP1D, internal::Coordinates<
 			config::IMPLEMENTATION< BSP1D >::coordinatesBackend()
@@ -418,21 +484,34 @@ namespace grb {
 		 * No implementation remarks.
 		 * @see Vector for the user-level specfication.
 		 */
-		template< Descriptor descr = descriptors::no_operation, class Dup, typename ind_iterator = const size_t * __restrict__, typename nnz_iterator = const D * __restrict__ >
-		RC build( const Dup & dup,
+		template<
+			Descriptor descr = descriptors::no_operation, class Dup,
+			typename ind_iterator = const size_t * __restrict__,
+			typename nnz_iterator = const D * __restrict__
+		>
+		RC build( const Dup &dup,
 			const ind_iterator ind_start,
 			const ind_iterator ind_end,
 			const nnz_iterator nnz_start,
 			const nnz_iterator nnz_end,
-			const typename std::enable_if< grb::is_operator< Dup >::value, void >::type * const = NULL ) {
+			const typename std::enable_if<
+					grb::is_operator< Dup >::value, void
+				>::type * const = nullptr
+		) {
 			// compile-time sanity checks
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D1, D >::value ), "Vector::build",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Dup::D1, D >::value ), "Vector::build",
 				"called with a duplicate operator whose left domain type does not "
 				"match the vector element type" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D2, typename std::iterator_traits< nnz_iterator >::value_type >::value ), "Vector::build",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same<
+					typename Dup::D2,
+					typename std::iterator_traits< nnz_iterator >::value_type
+				>::value ), "Vector::build",
 				"called with a duplicate operator whose right domain type does not "
 				"match the input nonzero iterator value type" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Dup::D3, D >::value ), "Vector::build",
+			NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Dup::D3, D >::value ), "Vector::build",
 				"called with a duplicate operator whose output domain type does "
 				"not match the vector element type" );
 
@@ -459,7 +538,36 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		/**
+		 * \internal Internal constructor that wraps around an existing raw dense
+		 *           vector. This constructor results in a dense vector whose
+		 *           structure is immutable. Any invalid use incurs UB; use with care.
+		 */
+		Vector( const size_t n, D *__restrict__ const raw ) : _raw( raw ) {
+#ifdef _DEBUG
+			std::cerr << "In Vector< reference > constructor that wraps around an "
+				<< "external raw array.\n";
+#endif
+			if( n == 0 ) {
+#ifdef _DEBUG
+				std::cerr << "\t constructing an empty vector -- delegating to standard "
+					<< "constructor\n";
+#endif
+				assert( raw == nullptr );
+				initialize( nullptr, nullptr, nullptr, false, nullptr, 0, 0 );
+			} else {
+				assert( raw != nullptr );
+				_id = internal::reference_mapper.insert(
+					reinterpret_cast< uintptr_t >( raw )
+				);
+				_remove_id = true;
+				_coordinates.setDense( n );
+			}
+		}
+
+
 	public:
+
 		/** @see Vector::value_type. */
 		typedef D value_type;
 
@@ -493,608 +601,706 @@ namespace grb {
 			// no-one else is allowed to.
 			friend class Vector< D, reference, MyCoordinates >;
 
-		private:
+			private:
 
-			/** The currently active inter user process distribution. */
-			using ActiveDistribution = internal::Distribution< spmd_backend >;
+				/** The currently active inter user process distribution. */
+				using ActiveDistribution = internal::Distribution< spmd_backend >;
 
-			/** Handle to the container to iterate over. */
-			const Vector< D, reference, MyCoordinates > * container;
+				/** Handle to the container to iterate over. */
+				const Vector< D, reference, MyCoordinates > * container;
 
-			/** The current iterator value. */
-			std::pair< size_t, D > value;
+				/** The current iterator value. */
+				std::pair< size_t, D > value;
 
-			/** The current position in the container. */
-			size_t position;
+				/** The current position in the container. */
+				size_t position;
 
-			/** The maximum value of #position. */
-			size_t max;
+				/** The maximum value of #position. */
+				size_t max;
 
-			/** The local process ID. */
-			const size_t s;
+				/** The local process ID. */
+				const size_t s;
 
-			/** The total number of processes. */
-			const size_t P;
+				/** The total number of processes. */
+				const size_t P;
 
-			/**
-			 * The only way to construct a valid ConstIterator.
-			 *
-			 * \internal Can only be called from the grb::Vector< D, reference, MyCoordinates > class.
-			 *
-			 * @param[in] in      The container to iterate on.
-			 * @param[in] initial The initial position of this iterator.
-			 *
-			 * If the initial position does not have an element assigned to it, the
-			 * constructor will advance it to the first assigned value found in the
-			 * container. If there are none, the iterator advances to the end
-			 * position.
-			 *
-			 * The initial position must be smaller or equal to the capacity of the
-			 * given container. If it is equal, this iterator will be set to its end
-			 * position.
-			 */
-			ConstIterator( const Vector< D, reference, MyCoordinates > &in,
-				size_t initial = 0,
-				size_t processID = 0, size_t numProcesses = 1
-			) noexcept :
-				container( &in ), position( initial ),
-				s( processID ), P( numProcesses )
-			{
-				// make sure the initial value is valid;
-				// if not, go to the next valid value:
-				if( container->_coordinates.isEmpty() ) {
-					max = 0;
-				} else if( container->_coordinates.isDense() ) {
-					max = container->_coordinates.size();
-				} else {
-					max = container->_coordinates.nonzeroes();
+				/**
+				 * The only way to construct a valid ConstIterator.
+				 *
+				 * \internal Can only be called from instances of the class
+				 *           grb::Vector< D, reference, MyCoordinates >.
+				 *
+				 * @param[in] in      The container to iterate on.
+				 * @param[in] initial The initial position of this iterator.
+				 *
+				 * If the initial position does not have an element assigned to it, the
+				 * constructor will advance it to the first assigned value found in the
+				 * container. If there are none, the iterator advances to the end
+				 * position.
+				 *
+				 * The initial position must be smaller or equal to the capacity of the
+				 * given container. If it is equal, this iterator will be set to its end
+				 * position.
+				 */
+				ConstIterator( const Vector< D, reference, MyCoordinates > &in,
+					size_t initial = 0,
+					size_t processID = 0, size_t numProcesses = 1
+				) noexcept :
+					container( &in ), position( initial ),
+					s( processID ), P( numProcesses )
+				{
+					// make sure the initial value is valid;
+					// if not, go to the next valid value:
+					if( container->_coordinates.isEmpty() ) {
+						max = 0;
+					} else if( container->_coordinates.isDense() ) {
+						max = container->_coordinates.size();
+					} else {
+						max = container->_coordinates.nonzeroes();
+					}
+					if( position < max ) {
+						setValue();
+					} else if( position > max ) {
+						position = max;
+					}
+					assert( position <= max );
 				}
-				if( position < max ) {
-					setValue();
-				} else if( position > max ) {
-					position = max;
-				}
-				assert( position <= max );
-			}
 
-			/**
-			 * Checks whether two iterators are at the same position.
-			 *
-			 * @return false if the \a other iterator is derived from the same
-			 *               container as this iterator, and the positions differ.
-			 * @return true  if the \a other iterator is derived from the same
-			 *               container as this iterator, and the positions match.
-			 * \note If the \a other iterator is not derived from the same container
-			 *       as this iterator, the result is undefined.
-			 */
-			bool equal( const ConstIterator & other ) const noexcept {
-				return other.position == position;
-			}
-
-			/**
-			 * Helper function that sets #value to the current #position. Should not
-			 * be called if #position is out of range!
-			 */
-			void setValue() noexcept {
-				size_t index;
-				if( container->_coordinates.isDense() ) {
-					index = position;
-				} else {
-					index = container->_coordinates.index( position );
+				/**
+				 * Checks whether two iterators are at the same position.
+				 *
+				 * @return false if the \a other iterator is derived from the same
+				 *               container as this iterator, and the positions differ.
+				 * @return true  if the \a other iterator is derived from the same
+				 *               container as this iterator, and the positions match.
+				 * \note If the \a other iterator is not derived from the same container
+				 *       as this iterator, the result is undefined.
+				 */
+				bool equal( const ConstIterator & other ) const noexcept {
+					return other.position == position;
 				}
-				assert( container->_coordinates.assigned( index ) );
-				const size_t global_index = ActiveDistribution::local_index_to_global( index, size( *container ), s, P );
+
+				/**
+				 * Helper function that sets #value to the current #position. Should not
+				 * be called if #position is out of range!
+				 */
+				void setValue() noexcept {
+					size_t index;
+					if( container->_coordinates.isDense() ) {
+						index = position;
+					} else {
+						index = container->_coordinates.index( position );
+					}
+					assert( container->_coordinates.assigned( index ) );
+					const size_t global_index = ActiveDistribution::local_index_to_global(
+						index, size( *container ), s, P );
 #ifdef _DEBUG
-				std::cout << "\t ConstIterator at process " << s << " / " << P << " translated index " << index << " to " << global_index << "\n";
+					std::cout << "\t ConstIterator at process " << s << " / " << P
+						<< " translated index " << index << " to " << global_index << "\n";
 #endif
-				value = std::make_pair( global_index, container->_raw[ index ] );
-			}
-
-		public:
-
-			/** Default constructor. */
-			ConstIterator() noexcept :
-				container( NULL ), position( 0 ), max( 0 ),
-				s( grb::spmd< spmd_backend >::pid() ),
-				P( grb::spmd< spmd_backend >::nprocs() )
-			{}
-
-			/** Copy constructor. */
-			ConstIterator( const ConstIterator &other ) noexcept :
-				container( other.container ),
-				value( other.value ), position( other.position ),
-				max( other.max ),
-				s( other.s ), P( other.P )
-			{}
-
-			/** Move constructor. */
-			ConstIterator( ConstIterator &&other ) : container( other.container ), s( other.s ), P( other.P ) {
-				std::swap( value, other.value );
-				std::swap( position, other.position );
-				std::swap( max, other.max );
-			}
-
-			/** Copy assignment. */
-			ConstIterator& operator=( const ConstIterator &other ) noexcept {
-				container = other.container;
-				value = other.value;
-				position = other.position;
-				max = other.max;
-				assert( s == other.s );
-				assert( P == other.P );
-				return *this;
-			}
-
-			/** Move assignment. */
-			ConstIterator& operator=( ConstIterator &&other ) {
-				container = other.container;
-				std::swap( value, other.value );
-				std::swap( position, other.position );
-				std::swap( max, other.max );
-				assert( s == other.s );
-				assert( P == other.P );
-				return *this;
-			}
-
-			/**
-			 * @see Vector::ConstIterator::operator==
-			 * @see equal().
-			 */
-			bool operator==( const ConstIterator &other ) const noexcept {
-				return equal( other );
-			}
-
-			/**
-			 * @see Vector::ConstIterator::operator!=
-			 * @returns The negation of equal().
-			 */
-			bool operator!=( const ConstIterator &other ) const noexcept {
-				return !equal( other );
-			}
-
-			/** @see Vector::ConstIterator::operator* */
-			std::pair< const size_t, const D > operator*() const noexcept {
-				return value;
-			}
-
-			const std::pair< size_t, D >* operator->() const noexcept {
-				return &value;
-			}
-
-			/** @see Vector::ConstIterator::operator++ */
-			ConstIterator & operator++() noexcept {
-				(void)++position;
-				assert( position <= max );
-				if( position < max ) {
-					setValue();
+					value = std::make_pair( global_index, container->_raw[ index ] );
 				}
+
+
+			public:
+
+				/** Default constructor. */
+				ConstIterator() noexcept :
+					container( nullptr ), position( 0 ), max( 0 ),
+					s( grb::spmd< spmd_backend >::pid() ),
+					P( grb::spmd< spmd_backend >::nprocs() )
+				{}
+
+				/** Copy constructor. */
+				ConstIterator( const ConstIterator &other ) noexcept :
+					container( other.container ),
+					value( other.value ), position( other.position ),
+					max( other.max ),
+					s( other.s ), P( other.P )
+				{}
+
+				/** Move constructor. */
+				ConstIterator( ConstIterator &&other ) :
+					container( other.container ), s( other.s ), P( other.P )
+				{
+					std::swap( value, other.value );
+					std::swap( position, other.position );
+					std::swap( max, other.max );
+				}
+
+				/** Copy assignment. */
+				ConstIterator& operator=( const ConstIterator &other ) noexcept {
+					container = other.container;
+					value = other.value;
+					position = other.position;
+					max = other.max;
+					assert( s == other.s );
+					assert( P == other.P );
+					return *this;
+				}
+
+				/** Move assignment. */
+				ConstIterator& operator=( ConstIterator &&other ) {
+					container = other.container;
+					std::swap( value, other.value );
+					std::swap( position, other.position );
+					std::swap( max, other.max );
+					assert( s == other.s );
+					assert( P == other.P );
+					return *this;
+				}
+
+				/**
+				 * @see Vector::ConstIterator::operator==
+				 * @see equal().
+				 */
+				bool operator==( const ConstIterator &other ) const noexcept {
+					return equal( other );
+				}
+
+				/**
+				 * @see Vector::ConstIterator::operator!=
+				 * @returns The negation of equal().
+				 */
+				bool operator!=( const ConstIterator &other ) const noexcept {
+					return !equal( other );
+				}
+
+				/** @see Vector::ConstIterator::operator* */
+				std::pair< const size_t, const D > operator*() const noexcept {
+					return value;
+				}
+
+				const std::pair< size_t, D >* operator->() const noexcept {
+					return &value;
+				}
+
+				/** @see Vector::ConstIterator::operator++ */
+				ConstIterator & operator++() noexcept {
+					(void)++position;
+					assert( position <= max );
+					if( position < max ) {
+						setValue();
+					}
+					return *this;
+				}
+			};
+
+			/** Our const iterator type. */
+			typedef ConstIterator< reference > const_iterator;
+
+			/**
+			 * A reference vector constructor.
+			 *
+			 * May throw exceptions.
+			 *
+			 * \parblock
+			 * \par Performance semantics
+			 * This constructor:
+			 *   -# contains \f$ \Theta( n ) \f$ work,
+			 *   -# moves \f$ \Theta( n ) \f$ data intra-process,
+			 *   -# requires \f$ \Theta( n ) \f$ storage, and
+			 *   -# will result in system calls, in particular the allocation of memory
+			 *      areas of \f$ \Theta( n ) \f$.
+			 * Here, \f$ n \f$ refers to the argument \a n. There are no costs incurred
+			 * that are proportional to \a nz.
+			 *
+			 * In the case of the #grb::reference_omp backend, the critical work path
+			 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of OpenMP
+			 * threads that are active. This assumes that memory allocation is a scalable
+			 * operation (while in reality the complexity of allocation is, of course,
+			 * undefined).
+			 * \endparblock
+			 */
+			Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
+#ifdef _DEBUG
+				std::cerr << "In Vector< reference >::Vector( size_t, size_t ) "
+					<< "constructor\n";
+#endif
+				initialize( nullptr, nullptr, nullptr, false, nullptr, n, nz );
+			}
+
+			/**
+			 * Creates a reference vector with default capacity.
+			 *
+			 * This constructor may throw exceptions.
+			 *
+			 * See the documentation for the constructor with given capacities for the
+			 * performance specification of this constructor. The default capacity
+			 * inferred by this constructor is \a n, as required by the specification.
+			 */
+			Vector( const size_t n ): Vector( n, n ) {
+#ifdef _DEBUG
+				std::cerr << "In Vector< reference >::Vector( size_t ) constructor\n";
+#endif
+			}
+
+			/**
+			 * The default constructor creates an empty vector and should never be
+			 * used explicitly.
+			 */
+			Vector() : Vector( 0 ) {}
+
+			/**
+			 * Copy constructor.
+			 *
+			 * Incurs the same costs as the normal constructor, followed by a grb::set.
+			 *
+			 * @throws runtime_error If the call to grb::set fails, the error code is
+			 *                       caught and thrown.
+			 */
+			Vector( const Vector< D, reference, MyCoordinates > &x ) : _raw( nullptr ) {
+#ifdef _DEBUG
+				std::cout << "In Vector< reference > copy-constructor\n";
+#endif
+				initialize(
+					nullptr, nullptr, nullptr, false, nullptr,
+					size( x ), capacity( x )
+				);
+				if( size( x ) > 0 ) {
+#ifdef _DEBUG
+					std::cerr << "\t non-empty source vector; "
+						<< "now performing deep copy by call to grb::set\n";
+#endif
+					const auto rc = set( *this, x );
+					if( rc != SUCCESS ) {
+						throw std::runtime_error( "grb::set inside copy-constructor: "
+							+ toString( rc )
+						);
+					}
+				}
+			}
+
+			/**
+			 * No implementation remarks.
+			 * @see Vector for the user-level specfication.
+			 */
+			Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
+				// copy and move
+				_id = x._id;
+				_remove_id = x._remove_id;
+				_raw = x._raw;
+				_coordinates = std::move( x._coordinates );
+				_raw_deleter = std::move( x._raw_deleter );
+				_assigned_deleter = std::move( x._assigned_deleter );
+				_buffer_deleter = std::move( x._buffer_deleter );
+
+				// invalidate that which was not moved
+				x._id = std::numeric_limits< uintptr_t >::max();
+				x._remove_id = false;
+				x._raw = nullptr;
+			}
+
+			/** Copy-constructor. */
+			Vector< D, reference, MyCoordinates > & operator=(
+				const Vector< D, reference, MyCoordinates > &x
+			) noexcept {
+				Vector< D, reference, MyCoordinates > replace( x );
+				*this = std::move( replace );
 				return *this;
 			}
+
+			/** Assign-from-temporary. */
+			Vector< D, reference, MyCoordinates > & operator=(
+				Vector< D, reference, MyCoordinates > &&x
+			) noexcept {
+				_id = x._id;
+				_remove_id = x._remove_id;
+				_raw = x._raw;
+				_coordinates = std::move( x._coordinates );
+				_raw_deleter = std::move( x._raw_deleter );
+				_assigned_deleter = std::move( x._assigned_deleter );
+				_buffer_deleter = std::move( x._buffer_deleter );
+				x._id = std::numeric_limits< uintptr_t >::max();
+				x._remove_id = false;
+				x._raw = nullptr;
+				return *this;
+			}
+
+			/**
+			 * No implementation remarks.
+			 * @see Vector for the user-level specfication.
+			 */
+			~Vector() {
+#ifdef _DEBUG
+				std::cout << "In ~Vector (reference) of container ID " << _id << std::endl;
+#endif
+				// all frees will be handled by
+				// _raw_deleter,
+				// _buffer_deleter, and
+				// _assigned_deleter
+				if( _coordinates.size() > 0 && _remove_id ) {
+					internal::reference_mapper.remove( _id );
+					_id = std::numeric_limits< uintptr_t >::max();
+				} else {
+					if( _remove_id ) {
+						assert( _id == std::numeric_limits< uintptr_t >::max() );
+					}
+				}
+			}
+
+			/**
+			 * This function simply translates to <code>return cbegin();</code>.
+			 * @see Vector for the user-level specfication.
+			 */
+			template< Backend spmd_backend = reference >
+			ConstIterator< spmd_backend > begin(
+				const size_t s = 0, const size_t P = 1
+			) const {
+				return cbegin< spmd_backend >( s, P );
+			}
+
+			/**
+			 * This function simply translates to <code>return cend();</code>.
+			 * @see Vector for the user-level specfication.
+			 */
+			template< Backend spmd_backend = reference >
+			ConstIterator< spmd_backend > end(
+				const size_t s = 0, const size_t P = 1
+			) const {
+				return cend< spmd_backend >( s, P );
+			}
+
+			/**
+			 * No implementation remarks.
+			 * @see Vector for the user-level specfication.
+			 */
+			template< Backend spmd_backend = reference >
+			ConstIterator< spmd_backend > cbegin(
+				const size_t s = 0, const size_t P = 1
+			) const {
+				return ConstIterator< spmd_backend >( *this, 0, s, P );
+			}
+
+			/**
+			 * No implementation remarks.
+			 * @see Vector for the user-level specfication.
+			 */
+			template< Backend spmd_backend = reference >
+			ConstIterator< spmd_backend > cend(
+				const size_t s = 0, const size_t P = 1
+			) const {
+				return ConstIterator< spmd_backend >( *this, _coordinates.size(), s, P );
+			}
+
+			/**
+			 * No implementation remarks.
+			 *
+			 * @see Vector for the user-level specfication.
+			 */
+			template< Descriptor descr = descriptors::no_operation,
+				typename mask_type,
+				class Accum,
+				typename ind_iterator = const size_t * __restrict__,
+				typename nnz_iterator = const D * __restrict__,
+				class Dup = operators::right_assign<
+					D, typename nnz_iterator::value_type, D
+				>
+			>
+			RC build(
+				const Vector< mask_type, reference, MyCoordinates > &mask,
+				const Accum &accum,
+				const ind_iterator ind_start,
+				const ind_iterator ind_end,
+				const nnz_iterator nnz_start,
+				const nnz_iterator nnz_end,
+				const Dup &dup = Dup()
+			) {
+				(void)dup;
+
+				// compile-time sanity checks
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same<
+						typename Accum::left_type,
+						typename std::iterator_traits< nnz_iterator >::value_type
+					>::value ), "Vector::build",
+					"called with a value type that does not match the first domain of "
+					"the given accumulator" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_integral<
+						typename std::iterator_traits< ind_iterator >::value_type
+					>::value ), "Vector::build",
+					"called with an index iterator value type that is not integral" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Accum::right_type, D >::value ), "Vector::build",
+					"called on a vector with a nonzero type that does not match the "
+					"second domain of the given accumulator" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Accum::result_type, D >::value ), "Vector::build",
+					"called on a vector with a nonzero type that does not match the "
+					"third domain of the given accumulator" );
+				NO_MASKCAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< bool, mask_type >::value ), "Vector::build",
+					"called with non-boolean Vector mask while the no_casting "
+					"descriptor was set" );
+				static_assert( (descr & descriptors::no_duplicates) != 0, "This "
+					"implementation does not support input of duplicate values." );
+
+				// all OK, so perform copy
+				nnz_iterator nnz = nnz_start;
+				ind_iterator ind = ind_start;
+				while( nnz != nnz_end || ind != ind_end ) {
+					const size_t i = static_cast< size_t >( *ind++ );
+					// sanity check
+					if( i >= _coordinates.size() ) {
+						return MISMATCH;
+					}
+					// only copy element when mask is true
+					if( utils::interpretMask< descr >(
+						mask._coordinates.assigned( i ),
+						mask._raw + i
+					) ) {
+						if( _coordinates.assign( i ) ) {
+							foldl( _raw[ i ], *nnz++, accum );
+						} else {
+							_raw[ i ] = static_cast< D >( *nnz++ );
+						}
+					}
+				}
+
+				// done
+				return SUCCESS;
+			}
+
+			/**
+			 * No implementation remarks.
+			 *
+			 * @see Vector for the user-level specfication.
+			 */
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Accum = operators::right_assign< D, D, D >,
+				typename T, typename mask_type = bool
+			>
+			RC assign(
+				const T &val,
+				const Vector< mask_type, reference, MyCoordinates > &mask,
+				const Accum &accum = Accum()
+			) {
+				// sanity checks
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Accum::left_type, T >::value ),
+					"Vector::assign (3)",
+					"called with a value type that does not match the first domain of "
+					"the given accumulator" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Accum::right_type, D >::value ),
+					"Vector::assign (3)",
+					"called on a vector with a nonzero type that does not match the "
+					"second domain of the given accumulator" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< typename Accum::result_type, D >::value ),
+					"Vector::assign (3)",
+					"called on a vector with a nonzero type that does not match the "
+					"third domain of the given accumulator" );
+				NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+					std::is_same< bool, mask_type >::value ), "Vector::assign (3)",
+					"called with non-boolean Vector mask while the no_casting "
+					"descriptor was set" );
+
+				// fill capacity
+				for( size_t i = 0; i < _coordinates.size(); ++i ) {
+					// check mask
+					if( utils::interpretMask< descr >(
+						mask._coordinates.assigned( i ),
+						mask._raw + i
+					) ) {
+						// update _n if necessary
+						if( _coordinates.assign( i ) ) {
+							foldl( _raw[ i ], val, accum );
+						} else {
+							_raw[ i ] = static_cast< D >( val );
+						}
+					}
+				}
+				// return success
+				return SUCCESS;
+			}
+
+			/**
+			 * No implementation remarks.
+			 * @see Vector for the user-level specfication.
+			 */
+			template< typename T >
+			RC nnz( T &nnz ) const {
+				nnz = _coordinates.nonzeroes();
+				return SUCCESS;
+			}
+
+			/**
+			 * Non-standard data accessor for debug purposes.
+			 *
+			 * \warning Do not use this fucntion.
+			 *
+			 * The user promises to never write to this data when GraphBLAS can operate
+			 * on it. The user understands that data read out may be subject to incoming
+			 * changes caused by preceding GraphBLAS calls.
+			 *
+			 * \warning This function is only defined for the reference backend--
+			 *          thus switching backends may cause your code to not compile.
+			 *
+			 * @return A const reference to the raw data this vector contains.
+			 *
+			 * \note This function is used internally for testing purposes.
+			 */
+			D * raw() const {
+				return _raw;
+			}
+
+			/**
+			 * Returns a #lambda_reference to the i-th element of this vector. This
+			 * reference may be modified.
+			 *
+			 * This implementation asserts only valid elements are requested.
+			 *
+			 * \note Compile with the \a NDEBUG flag set to disable checks for this
+			 *       assertion.
+			 *
+			 * @see Vector::operator[] for the user-level specification.
+			 */
+			lambda_reference operator[]( const size_t i ) {
+				// sanity checks
+				assert( i < _coordinates.size() );
+				assert( _coordinates.assigned( i ) );
+				// directly return the reference
+				return _raw[ i ];
+			}
+
+			/**
+			 * Returns a #lambda_reference to the i-th element of this vector. This
+			 * reference may \em not be modified.
+			 *
+			 * This implementation asserts only valid elements are requested.
+			 *
+			 * \note Compile with the \a NDEBUG flag set to disable checks for this
+			 *       assertion.
+			 *
+			 * @see Vector::operator[] for the user-level specification.
+			 */
+			lambda_reference operator[]( const size_t i ) const {
+				// sanity checks
+				assert( i < _coordinates.size() );
+				assert( _coordinates.assigned( i ) );
+				// directly return the reference
+				return _raw[ i ];
+			}
+
+			/**
+			 * No implementation details.
+			 *
+			 * @see Vector::operator() for the user-level specification.
+			 */
+			/*template< class Monoid >
+			    lambda_reference operator()( const size_t i, const Monoid &monoid = Monoid() ) {
+			        //sanity checks
+			        assert( i < _cap );
+			        //check whether element exists
+			        if( ! _assigned[ i ] ) {
+			            //not yet, so create
+			            _assigned[ i ] = true;
+			            _raw[ i ] = monoid.template getIdentity< D >();
+			            ++_n;
+			        }
+			        //and finally return the reference
+			        return _raw[ i ];
+			    }*/
 		};
 
-		/** Our const iterator type. */
-		typedef ConstIterator< reference > const_iterator;
+		// specialisation for GraphBLAS type_traits
+		template< typename D, typename Coord >
+		struct is_container< Vector< D, reference, Coord > > {
+			/** A reference vector is a GraphBLAS object. */
+			static const constexpr bool value = true;
+		};
 
-		/**
-		 * A reference vector constructor.
-		 *
-		 * May throw exceptions.
-		 *
-		 * \parblock
-		 * \par Performance semantics
-		 * This constructor:
-		 *   -# contains \f$ \Theta( n ) \f$ work,
-		 *   -# moves \f$ \Theta( n ) \f$ data intra-process,
-		 *   -# requires \f$ \Theta( n ) \f$ storage, and
-		 *   -# will result in system calls, in particular the allocation of memory
-		 *      areas of \f$ \Theta( n ) \f$.
-		 * Here, \f$ n \f$ refers to the argument \a n. There are no costs incurred
-		 * that are proportional to \a nz.
-		 *
-		 * In the case of the #grb::reference_omp backend, the critical work path
-		 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of OpenMP
-		 * threads that are active. This assumes that memory allocation is a scalable
-		 * operation (while in reality the complexity of allocation is, of course,
-		 * undefined).
-		 * \endparblock
-		 */
-		Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
-#ifdef _DEBUG
-			std::cerr << "In Vector< reference >::Vector( size_t, size_t ) constructor\n";
-#endif
-			initialize( nullptr, nullptr, nullptr, false, nullptr, n, nz );
-		}
+		// internal getters implementation
+		namespace internal {
 
-		/**
-		 * Creates a reference vector with default capacity.
-		 *
-		 * This constructor may throw exceptions.
-		 *
-		 * See the documentation for the constructor with given capacities for the
-		 * performance specification of this constructor. The default capacity
-		 * inferred by this constructor is \a n, as required by the specification.
-		 */
-		Vector( const size_t n ): Vector( n, n ) {
-#ifdef _DEBUG
-			std::cerr << "In Vector< reference >::Vector( size_t ) constructor\n";
-#endif
-		}
-
-		/**
-		 * The default constructor creates an empty vector and should never be
-		 * used explicitly.
-		 */
-		Vector() : Vector( 0 ) {}
-
-		/**
-		 * Copy constructor.
-		 *
-		 * Incurs the same costs as the normal constructor, followed by a grb::set.
-		 *
-		 * @throws runtime_error If the call to grb::set fails, the error code is
-		 *                       caught and thrown.
-		 */
-		Vector( const Vector< D, reference, MyCoordinates > &x ) : _raw( nullptr ) {
-#ifdef _DEBUG
-			std::cout << "In Vector< reference > copy-constructor\n";
-#endif
-			initialize(
-				nullptr, nullptr, nullptr, false, nullptr,
-				size( x ), capacity( x )
-			);
-			if( size( x ) > 0 ) {
-#ifdef _DEBUG
-				std::cerr << "\t non-empty source vector; "
-					<< "now performing deep copy by call to grb::set\n";
-#endif
-				const auto rc = set( *this, x );
-				if( rc != SUCCESS ) {
-					throw std::runtime_error( "grb::set inside copy-constructor: "
-						+ toString( rc )
-					);
-				}
-			}
-		}
-
-		/**
-		 * No implementation remarks.
-		 * @see Vector for the user-level specfication.
-		 */
-		Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
-			// copy and move
-			_id = x._id;
-			_remove_id = x._remove_id;
-			_raw = x._raw;
-			_coordinates = std::move( x._coordinates );
-			_raw_deleter = std::move( x._raw_deleter );
-			_assigned_deleter = std::move( x._assigned_deleter );
-			_buffer_deleter = std::move( x._buffer_deleter );
-
-			// invalidate that which was not moved
-			x._id = std::numeric_limits< uintptr_t >::max();
-			x._remove_id = false;
-			x._raw = nullptr;
-		}
-
-		/** Copy-constructor. */
-		Vector< D, reference, MyCoordinates > & operator=(
-			const Vector< D, reference, MyCoordinates > &x
-		) noexcept {
-			Vector< D, reference, MyCoordinates > replace( x );
-			*this = std::move( replace );
-			return *this;
-		}
-
-		/** Assign-from-temporary. */
-		Vector< D, reference, MyCoordinates > & operator=(
-			Vector< D, reference, MyCoordinates > &&x
-		) noexcept {
-			_id = x._id;
-			_remove_id = x._remove_id;
-			_raw = x._raw;
-			_coordinates = std::move( x._coordinates );
-			_raw_deleter = std::move( x._raw_deleter );
-			_assigned_deleter = std::move( x._assigned_deleter );
-			_buffer_deleter = std::move( x._buffer_deleter );
-			x._id = std::numeric_limits< uintptr_t >::max();
-			x._remove_id = false;
-			x._raw = nullptr;
-			return *this;
-		}
-
-		/**
-		 * No implementation remarks.
-		 * @see Vector for the user-level specfication.
-		 */
-		~Vector() {
-#ifdef _DEBUG
-			std::cout << "In ~Vector (reference) of container ID " << _id << std::endl;
-#endif
-			// all frees will be handled by
-			// _raw_deleter,
-			// _buffer_deleter, and
-			// _assigned_deleter
-			if( _coordinates.size() > 0 && _remove_id ) {
-				internal::reference_mapper.remove( _id );
-				_id = std::numeric_limits< uintptr_t >::max();
-			} else {
-				if( _remove_id ) {
-					assert( _id == std::numeric_limits< uintptr_t >::max() );
-				}
-			}
-		}
-
-		/**
-		 * This function simply translates to <code>return cbegin();</code>.
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Backend spmd_backend = reference >
-		ConstIterator< spmd_backend > begin( const size_t s = 0, const size_t P = 1 ) const {
-			return cbegin< spmd_backend >( s, P );
-		}
-
-		/**
-		 * This function simply translates to <code>return cend();</code>.
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Backend spmd_backend = reference >
-		ConstIterator< spmd_backend > end( const size_t s = 0, const size_t P = 1 ) const {
-			return cend< spmd_backend >( s, P );
-		}
-
-		/**
-		 * No implementation remarks.
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Backend spmd_backend = reference >
-		ConstIterator< spmd_backend > cbegin( const size_t s = 0, const size_t P = 1 ) const {
-			return ConstIterator< spmd_backend >( *this, 0, s, P );
-		}
-
-		/**
-		 * No implementation remarks.
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Backend spmd_backend = reference >
-		ConstIterator< spmd_backend > cend( const size_t s = 0, const size_t P = 1 ) const {
-			return ConstIterator< spmd_backend >( *this, _coordinates.size(), s, P );
-		}
-
-		/**
-		 * No implementation remarks.
-		 *
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Descriptor descr = descriptors::no_operation,
-			typename mask_type,
-			class Accum,
-			typename ind_iterator = const size_t * __restrict__,
-			typename nnz_iterator = const D * __restrict__,
-			class Dup = operators::right_assign< D, typename nnz_iterator::value_type, D > >
-		RC build( const Vector< mask_type, reference, MyCoordinates > mask,
-			const Accum & accum,
-			const ind_iterator ind_start,
-			const ind_iterator ind_end,
-			const nnz_iterator nnz_start,
-			const nnz_iterator nnz_end,
-			const Dup & dup = Dup() ) {
-			(void)dup;
-
-			// compile-time sanity checks
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::left_type, typename std::iterator_traits< nnz_iterator >::value_type >::value ), "Vector::build",
-				"called with a value type that does not match the first domain of "
-				"the given accumulator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_integral< typename std::iterator_traits< ind_iterator >::value_type >::value ), "Vector::build",
-				"called with an index iterator value type that is not integral" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::right_type, D >::value ), "Vector::build",
-				"called on a vector with a nonzero type that does not match the "
-				"second domain of the given accumulator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::result_type, D >::value ), "Vector::build",
-				"called on a vector with a nonzero type that does not match the "
-				"third domain of the given accumulator" );
-			NO_MASKCAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, mask_type >::value ), "Vector::build",
-				"called with non-boolean Vector mask while the no_casting "
-				"descriptor was set" );
-			static_assert( ( descr & descriptors::no_duplicates ) != 0, "This implementation does not support input of duplicate values." );
-
-			// all OK, so perform copy
-			nnz_iterator nnz = nnz_start;
-			ind_iterator ind = ind_start;
-			while( nnz != nnz_end || ind != ind_end ) {
-				const size_t i = static_cast< size_t >( *ind++ );
-				// sanity check
-				if( i >= _coordinates.size() ) {
-					return MISMATCH;
-				}
-				// only copy element when mask is true
-				if( utils::interpretMask< descr >( mask._coordinates.assigned( i ), mask._raw + i ) ) {
-					if( _coordinates.assign( i ) ) {
-						foldl( _raw[ i ], *nnz++, accum );
-					} else {
-						_raw[ i ] = static_cast< D >( *nnz++ );
-					}
-				}
+			template< typename D, typename C >
+			inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept {
+				return x._coordinates;
 			}
 
-			// done
-			return SUCCESS;
-		}
-
-		/**
-		 * No implementation remarks.
-		 *
-		 * @see Vector for the user-level specfication.
-		 */
-		template< Descriptor descr = descriptors::no_operation, class Accum = operators::right_assign< D, D, D >, typename T, typename mask_type = bool >
-		RC assign( const T val, const Vector< mask_type, reference, MyCoordinates > mask, const Accum & accum = Accum() ) {
-			// sanity checks
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::left_type, T >::value ), "Vector::assign (3)",
-				"called with a value type that does not match the first domain of "
-				"the given accumulator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::right_type, D >::value ), "Vector::assign (3)",
-				"called on a vector with a nonzero type that does not match the "
-				"second domain of the given accumulator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Accum::result_type, D >::value ), "Vector::assign (3)",
-				"called on a vector with a nonzero type that does not match the "
-				"third domain of the given accumulator" );
-			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, mask_type >::value ), "Vector::assign (3)",
-				"called with non-boolean Vector mask while the no_casting "
-				"descriptor was set" );
-
-			// fill capacity
-			for( size_t i = 0; i < _coordinates.size(); ++i ) {
-				// check mask
-				if( utils::interpretMask< descr >( mask._coordinates.assigned( i ), mask._raw + i ) ) {
-					// update _n if necessary
-					if( _coordinates.assign( i ) ) {
-						foldl( _raw[ i ], val, accum );
-					} else {
-						_raw[ i ] = static_cast< D >( val );
-					}
-				}
+			template< typename D, typename C >
+			inline const C & getCoordinates(
+				const Vector< D, reference, C > &x
+			) noexcept {
+				return x._coordinates;
 			}
-			// return success
-			return SUCCESS;
-		}
 
-		/**
-		 * No implementation remarks.
-		 * @see Vector for the user-level specfication.
-		 */
-		template< typename T >
-		RC nnz( T & nnz ) const {
-			nnz = _coordinates.nonzeroes();
-			return SUCCESS;
-		}
+			template< typename D, typename C >
+			inline D * getRaw( Vector< D, reference, C > &x ) noexcept {
+				return x._raw;
+			}
 
-		/**
-		 * Non-standard data accessor for debug purposes.
-		 *
-		 * \warning Do not use this fucntion.
-		 *
-		 * The user promises to never write to this data when GraphBLAS can operate
-		 * on it. The user understands that data read out may be subject to incoming
-		 * changes caused by preceding GraphBLAS calls.
-		 *
-		 * \warning This function is only defined for the reference backend--
-		 *          thus switching backends may cause your code to not compile.
-		 *
-		 * @return A const reference to the raw data this vector contains.
-		 *
-		 * \note This function is used internally for testing purposes.
-		 */
-		D * raw() const {
-			return _raw;
-		}
+			template< typename D, typename C >
+			inline const D * getRaw( const Vector< D, reference, C > &x ) noexcept {
+				return x._raw;
+			}
 
-		/**
-		 * Returns a #lambda_reference to the i-th element of this vector. This
-		 * reference may be modified.
-		 *
-		 * This implementation asserts only valid elements are requested.
-		 *
-		 * \note Compile with the \a NDEBUG flag set to disable checks for this
-		 *       assertion.
-		 *
-		 * @see Vector::operator[] for the user-level specification.
-		 */
-		lambda_reference operator[]( const size_t i ) {
-			// sanity checks
-			assert( i < _coordinates.size() );
-			assert( _coordinates.assigned( i ) );
-			// directly return the reference
-			return _raw[ i ];
-		}
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+				Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
+				return A.CRS;
+			}
 
-		/**
-		 * Returns a #lambda_reference to the i-th element of this vector. This
-		 * reference may \em not be modified.
-		 *
-		 * This implementation asserts only valid elements are requested.
-		 *
-		 * \note Compile with the \a NDEBUG flag set to disable checks for this
-		 *       assertion.
-		 *
-		 * @see Vector::operator[] for the user-level specification.
-		 */
-		lambda_reference operator[]( const size_t i ) const {
-			// sanity checks
-			assert( i < _coordinates.size() );
-			assert( _coordinates.assigned( i ) );
-			// directly return the reference
-			return _raw[ i ];
-		}
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline const internal::Compressed_Storage< D, RIT, NIT > & getCRS(
+				const Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
+				return A.CRS;
+			}
 
-		/**
-		 * No implementation details.
-		 *
-		 * @see Vector::operator() for the user-level specification.
-		 */
-		/*template< class Monoid >
-		    lambda_reference operator()( const size_t i, const Monoid &monoid = Monoid() ) {
-		        //sanity checks
-		        assert( i < _cap );
-		        //check whether element exists
-		        if( ! _assigned[ i ] ) {
-		            //not yet, so create
-		            _assigned[ i ] = true;
-		            _raw[ i ] = monoid.template getIdentity< D >();
-		            ++_n;
-		        }
-		        //and finally return the reference
-		        return _raw[ i ];
-		    }*/
-	};
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+				Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
+				return A.CCS;
+			}
 
-	// specialisation for GraphBLAS type_traits
-	template< typename D, typename Coord >
-	struct is_container< Vector< D, reference, Coord > > {
-		/** A reference vector is a GraphBLAS object. */
-		static const constexpr bool value = true;
-	};
+			template< typename D, typename RIT, typename CIT, typename NIT >
+			inline const internal::Compressed_Storage< D, CIT, NIT > & getCCS(
+				const Matrix< D, reference, RIT, CIT, NIT > &A
+			) noexcept {
+				return A.CCS;
+			}
 
-	// internal getters implementation
-	namespace internal {
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
+			template< typename D, Backend backend >
+			grb::Vector<
+				D, backend,
+				internal::Coordinates<
+					config::IMPLEMENTATION< backend >::coordinatesBackend()
+				>
+			> wrapRawVector(
+				const size_t n, D *__restrict__ const raw
+			) {
+				grb::Vector<
+					D, backend, internal::Coordinates<
+					       config::IMPLEMENTATION< backend >::coordinatesBackend()
+					>
+				> ret( n, raw );
+				return ret;
+			}
 
-		template< typename D, typename C >
-		inline C & getCoordinates( Vector< D, reference, C > & x ) noexcept {
-			return x._coordinates;
-		}
-
-		template< typename D, typename C >
-		inline const C & getCoordinates( const Vector< D, reference, C > & x ) noexcept {
-			return x._coordinates;
-		}
-
-		template< typename D, typename C >
-		inline D * getRaw( Vector< D, reference, C > & x ) noexcept {
-			return x._raw;
-		}
-
-		template< typename D, typename C >
-		inline const D * getRaw( const Vector< D, reference, C > & x ) noexcept {
-			return x._raw;
-		}
-
-		template< typename D >
-		inline internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< D, reference > & A ) noexcept {
-			return A.CRS;
-		}
-
-		template< typename D >
-		inline const internal::Compressed_Storage< D, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< D, reference > & A ) noexcept {
-			return A.CRS;
-		}
-
-		template< typename D >
-		inline internal::Compressed_Storage< D, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< D, reference > & A ) noexcept {
-			return A.CCS;
-		}
-
-		template< typename D >
-		inline const internal::Compressed_Storage< D, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< D, reference > & A ) noexcept {
-			return A.CCS;
-		}
+			template< typename D, Backend backend >
+			const grb::Vector<
+				D, backend,
+				internal::Coordinates<
+					config::IMPLEMENTATION< backend >::coordinatesBackend()
+				>
+			> wrapRawVector(
+				const size_t n, const D *__restrict__ const raw
+			) {
+				grb::Vector<
+					D, backend, internal::Coordinates<
+					       config::IMPLEMENTATION< backend >::coordinatesBackend()
+					>
+				> ret( n, const_cast< D * >(raw) );
+				return ret;
+			}
+#endif
 
 	} // namespace internal
 
@@ -1105,13 +1311,14 @@ namespace grb {
 
 // parse this unit again for OpenMP support
 #ifdef _GRB_WITH_OMP
-#ifndef _H_GRB_REFERENCE_OMP_VECTOR
-#define _H_GRB_REFERENCE_OMP_VECTOR
-#define reference reference_omp
-#include "graphblas/reference/vector.hpp"
-#undef reference
-#undef _H_GRB_REFERENCE_OMP_VECTOR
-#endif
+ #ifndef _H_GRB_REFERENCE_OMP_VECTOR
+  #define _H_GRB_REFERENCE_OMP_VECTOR
+  #define reference reference_omp
+  #include "graphblas/reference/vector.hpp"
+  #undef reference
+  #undef _H_GRB_REFERENCE_OMP_VECTOR
+ #endif
 #endif
 
 #endif // end ``_H_GRB_REFERENCE_VECTOR''
+
