@@ -66,8 +66,8 @@ namespace grb {
 	 *
 	 * \endinternal
 	 */
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, reference > &A ) {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	uintptr_t getID( const Matrix< InputType, reference, RIT, CIT, NIT > &A ) {
 		assert( nrows(A) > 0 );
 		assert( ncols(A) > 0 );
 		return A.id;
@@ -80,14 +80,18 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nrows( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nrows(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.m;
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t ncols( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t ncols(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.n;
 	}
 
@@ -98,8 +102,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nnz( const Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nnz(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.nz;
 	}
 
@@ -110,8 +116,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t capacity( const Matrix< DataType, reference > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t capacity(
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return internal::getNonzeroCapacity( A );
 	}
 
@@ -165,8 +173,8 @@ namespace grb {
 	 * OpenMP threads.
 	 * \endparblock
 	 */
-	template< typename InputType >
-	RC clear( Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC clear( Matrix< InputType, reference, RIT, CIT, NIT > &A ) noexcept {
 		// delegate
 		return A.clear();
 	}
@@ -253,8 +261,10 @@ namespace grb {
 	 *
 	 * \internal No implementation notes.
 	 */
-	template< typename InputType >
-	RC resize( Matrix< InputType, reference > &A, const size_t new_nz ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC resize(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
@@ -1399,9 +1409,11 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
 	>
-	RC buildMatrixUnique( Matrix< InputType, reference > &A,
+	RC buildMatrixUnique(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {

@@ -233,18 +233,19 @@ namespace grb {
 	 * or at least refrain from using any GraphBLAS functions for the remainder of
 	 * the application.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
+		typename IOType, typename InputType1, typename InputType2,
 		typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords,
 		enum Backend implementation = config::default_backend
 	>
-	RC mxv( Vector< IOType, implementation, Coords > &u,
+	RC mxv(
+		Vector< IOType, implementation, Coords > &u,
 		const Vector< InputType3, implementation, Coords > &mask,
-		const Matrix< InputType2, implementation > &A,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
 		const Vector< InputType1, implementation, Coords > &v,
 		const Ring &ring,
 		typename std::enable_if<
@@ -274,10 +275,12 @@ namespace grb {
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
-		typename Coords, Backend implementation = config::default_backend
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend implementation = config::default_backend
 	>
-	RC mxv( Vector< IOType, implementation, Coords > &u,
-		const Matrix< InputType2, implementation > &A,
+	RC mxv(
+		Vector< IOType, implementation, Coords > &u,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
 		const Vector< InputType1, implementation, Coords > &v,
 		const Ring &ring,
 		typename std::enable_if<
@@ -310,18 +313,19 @@ namespace grb {
 	 *
 	 * @see grb::mxv for the full documentation.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
+		typename IOType, typename InputType1, typename InputType2,
 		typename InputType3,
-		typename Coords,
-		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > &u,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		enum Backend implementation = config::default_backend
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
 		const Vector< InputType3, implementation, Coords > &mask,
 		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation > &A,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
 		const Ring &ring,
 		typename std::enable_if<
 			grb::is_semiring< Ring >::value, void
@@ -347,16 +351,17 @@ namespace grb {
 	 *
 	 * @see grb::vxm for the full documentation.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename Coords,
-		enum Backend implementation = config::default_backend >
-	RC vxm( Vector< IOType, implementation, Coords > &u,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		enum Backend implementation = config::default_backend
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
 		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation > &A,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
 		const Ring &ring,
 		typename std::enable_if<
 			grb::is_semiring< Ring >::value, void
@@ -377,21 +382,20 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords,
-		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > &u,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC vxm(
+		Vector< IOType, backend, Coords > &u,
 		const Vector< InputType3, backend, Coords > &mask,
 		const Vector< InputType1, backend, Coords > &v,
 		const Vector< InputType4, backend, Coords > &v_mask,
-		const Matrix< InputType2, backend > &A,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if<
@@ -423,19 +427,18 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename InputType3,
-		typename InputType4,
-		typename Coords,
-		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > &u,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
 		const Vector< InputType3, backend, Coords > &mask,
-		const Matrix< InputType2, backend > &A,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
 		const Vector< InputType1, backend, Coords > &v,
 		const Vector< InputType4, backend, Coords > &v_mask,
 		const AdditiveMonoid &add = AdditiveMonoid(),
@@ -469,18 +472,18 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
 		typename InputType3,
-		typename Coords,
-		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > &u,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
 		const Vector< InputType3, backend, Coords > &mask,
-		const Matrix< InputType2, backend > &A,
+		const Matrix< InputType2, backend, RIT, NIT, CIT > &A,
 		const Vector< InputType1, backend, Coords > &v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
@@ -512,17 +515,17 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename Coords,
-		Backend backend >
-	RC vxm( Vector< IOType, backend, Coords > &u,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC vxm(
+		Vector< IOType, backend, Coords > &u,
 		const Vector< InputType1, backend, Coords > &v,
-		const Matrix< InputType2, backend > &A,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if<
@@ -551,19 +554,19 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
 		typename InputType3,
-		typename Coords,
-		Backend implementation >
-	RC vxm( Vector< IOType, implementation, Coords > &u,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend implementation
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
 		const Vector< InputType3, implementation, Coords > &mask,
 		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation > &A,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		typename std::enable_if<
@@ -592,16 +595,16 @@ namespace grb {
 	}
 
 	/** TODO documentation */
-	template< Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType,
-		typename InputType1,
-		typename InputType2,
-		typename Coords,
-		Backend backend >
-	RC mxv( Vector< IOType, backend, Coords > &u,
-		const Matrix< InputType2, backend > &A,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
 		const Vector< InputType1, backend, Coords > &v,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
@@ -722,12 +725,13 @@ namespace grb {
 	 */
 	template<
 		typename Func, typename DataType,
+		typename RIT, typename CIT, typename NIT,
 		Backend implementation = config::default_backend,
 		typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, implementation > &A,
+		const Matrix< DataType, implementation, RIT, CIT, NIT > &A,
 		Args... /*args*/
 	) {
 #ifdef _DEBUG

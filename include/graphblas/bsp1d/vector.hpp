@@ -53,8 +53,8 @@
 namespace grb {
 
 	// forward declaration for vector's friends
-	template< typename D >
-	class Matrix< D, BSP1D >;
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	class Matrix< D, BSP1D, RIT, CIT, NIT >;
 
 	namespace internal {
 
@@ -66,33 +66,39 @@ namespace grb {
 		template< typename DataType, typename Coords >
 		void setDense( Vector< DataType, BSP1D, Coords > & x );
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool output_masked, bool input_masked, bool left_handed,
 			class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		RC bsp1d_mxv( Vector< IOType, BSP1D, Coords > &u,
+		RC bsp1d_mxv(
+			Vector< IOType, BSP1D, Coords > &u,
 			const Vector< InputType3, BSP1D, Coords > &u_mask,
-			const Matrix< InputType2, BSP1D > &A,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 			const Vector< InputType1, BSP1D, Coords > &v,
 			const Vector< InputType4, BSP1D, Coords > &v_mask,
-			const Ring &ring );
+			const Ring &ring
+		);
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool, bool, bool,
 			class Ring,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		RC bsp1d_vxm( Vector< IOType, BSP1D, Coords > &u,
+		RC bsp1d_vxm(
+			Vector< IOType, BSP1D, Coords > &u,
 			const Vector< InputType3, BSP1D, Coords > &u_mask,
 			const Vector< InputType1, BSP1D, Coords > &v,
 			const Vector< InputType4, BSP1D, Coords > &v_mask,
-			const Matrix< InputType2, BSP1D > &A,
-			const Ring &ring );
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
+			const Ring &ring
+		);
 
 		/**
 		 * Retrieves the process-local part of a distributed vector.
@@ -292,11 +298,12 @@ namespace grb {
 			typename IOType,
 			typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		friend RC internal::bsp1d_mxv( Vector< IOType, BSP1D, Coords > &,
+		friend RC internal::bsp1d_mxv(
+			Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
-			const Matrix< InputType2, BSP1D > &,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
 			const Ring &, const Phase &
@@ -309,13 +316,14 @@ namespace grb {
 			typename IOType,
 			typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
-			typename Coords
+			typename Coords, typename RIT, typename CIT, typename NIT
 		>
-		friend RC internal::bsp1d_vxm( Vector< IOType, BSP1D, Coords > &,
+		friend RC internal::bsp1d_vxm(
+			Vector< IOType, BSP1D, Coords > &,
 			const Vector< InputType3, BSP1D, Coords > &,
 			const Vector< InputType1, BSP1D, Coords > &,
 			const Vector< InputType4, BSP1D, Coords > &,
-			const Matrix< InputType2, BSP1D > &,
+			const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &,
 			const Ring &, const Phase &
 		);
 

@@ -70,8 +70,8 @@ namespace grb {
 	}
 
 	/** \internal No implementation details. */
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, BSP1D > &A ) {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	uintptr_t getID( const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A ) {
 		return A._id;
 	}
 
@@ -82,14 +82,18 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t nrows( const Matrix< DataType, BSP1D > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t nrows(
+		const Matrix< DataType, BSP1D, RIT, CIT, NIT > &A
+	) noexcept {
 		return A._m;
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t ncols( const Matrix< DataType, BSP1D > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t ncols(
+		const Matrix< DataType, BSP1D, RIT, CIT, NIT > &A
+	) noexcept {
 		return A._n;
 	}
 
@@ -100,8 +104,8 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t capacity( const Matrix< DataType, BSP1D > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t capacity( const Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
 		return A._cap;
 	}
 
@@ -130,8 +134,8 @@ namespace grb {
 	 *
 	 * @see grb::nnz for the user-level specification.
 	 */
-	template< typename DataType >
-	size_t nnz( const Matrix< DataType, BSP1D > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t nnz( const Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
 #ifdef _DEBUG
 		std::cout << "Called grb::nnz (matrix, BSP1D).\n";
 #endif
@@ -192,8 +196,8 @@ namespace grb {
 	 *
 	 * \internal No implementation notes.
 	 */
-	template< typename IOType >
-	RC clear( grb::Matrix< IOType, BSP1D > &A ) noexcept {
+	template< typename IOType, typename RIT, typename CIT, typename NIT >
+	RC clear( grb::Matrix< IOType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
 		return grb::clear( internal::getLocal( A ) );
 	}
 
@@ -316,8 +320,11 @@ namespace grb {
 	 * end up at each separate user process, thus global information cannot be
 	 * exploited to make rational process-local decisions (in general).
 	 */
-	template< typename InputType >
-	RC resize( Matrix< InputType, BSP1D > &A, const size_t new_nz ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC resize(
+		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		const size_t new_nz
+	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, BSP1D)\n"
 			<< "\t matrix is " << nrows( A ) << " by " << ncols( A ) << "\n"
@@ -975,10 +982,11 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, BSP1D > &A,
+		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -1390,9 +1398,12 @@ namespace grb {
 	}
 
 	/** \internal Dispatch to base wait implementation */
-	template< typename InputType, typename... Args >
+	template<
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, BSP1D > &A,
+		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 		(void) A;

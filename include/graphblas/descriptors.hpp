@@ -176,16 +176,30 @@ namespace grb {
 		static constexpr Descriptor safe_overlap = 1024;
 
 		/**
-		 * For operations involving 2 matrices, transposes the left-hand side input
+		 * For operations involving two matrices, transposes the left-hand side input
 		 * matrix prior to applying it.
 		 */
 		static constexpr Descriptor transpose_left = 2048;
 
 		/**
-		 * For operations involving 2 matrices, transposes the right-hand side input
+		 * For operations involving two matrices, transposes the right-hand side input
 		 * matrix prior to applying it.
 		 */
 		static constexpr Descriptor transpose_right = 4096;
+
+		// Put internal, backend-specific descriptors last
+
+
+		/**
+		 * \internal For the reference backend specifically, indicates for that the
+		 * row-major storage must be used; the column-major storage shall be ignored
+		 * completely. Additionally, the row-major storage is considered of static
+		 * size and managed outside of ALP.
+		 * This descriptor is for internal use only, and presently only supported for
+		 * the grb::mxv and the grb::mxm. For the latter, only the non-transposed
+		 * cases are supported.
+		 */
+		static constexpr Descriptor force_row_major = 8192;
 
 		/**
 		 * Translates a descriptor into a string.
@@ -199,10 +213,13 @@ namespace grb {
 	} // namespace descriptors
 
 	namespace internal {
+
 		/** A descriptor cannot have a higher value than the below. */
-		static constexpr Descriptor MAX_DESCRIPTOR_VALUE = 8191;
+		static constexpr Descriptor MAX_DESCRIPTOR_VALUE = 16383;
+
 	} // namespace internal
 
 } // namespace grb
 
 #endif
+
