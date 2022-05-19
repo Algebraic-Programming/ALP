@@ -45,7 +45,9 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 			A,
 			alp::utils::range(1,3), alp::utils::range(1,5)
 		);
+		(void)Aview;
 		std::cout << "\tSUCCESS\n";
+		rc = alp::SUCCESS;
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
 	}
@@ -57,7 +59,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	// Initialize Matrix
 	std::vector< double > Mdata ( n * n, 1 );
 	buildUpperTriangularRawArray( Mdata, n );
-	rc = alp::buildMatrix( U, Mdata.begin(), Mdata.end() );
+	//rc = alp::buildMatrix( U, Mdata.begin(), Mdata.end() );
 	if( rc != alp::SUCCESS ) {
 		return;
 	}
@@ -75,6 +77,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 			U,
 			alp::utils::range(1,3), alp::utils::range(1,3)
 		);
+		(void)Uview1;
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -93,6 +96,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 			U,
 			alp::utils::range(0,2), alp::utils::range(3,5)
 		);
+		(void)Uview2;
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -111,6 +115,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 			U,
 			alp::utils::range(1,3), alp::utils::range(1,5)
 		);
+		(void)Uview3;
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -129,6 +134,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 			U,
 			alp::utils::range(4,n), alp::utils::range(0,2)
 		);
+		(void)Uview4;
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";

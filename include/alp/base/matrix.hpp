@@ -442,7 +442,8 @@ namespace alp {
 	} // namespace internal
 
 
-	template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
+	template< typename T, typename Structure, enum Density density, typename View,
+		typename ImfR, typename ImfC, enum Backend backend >
 	class Matrix {
 
 		/**
@@ -455,7 +456,8 @@ namespace alp {
 		 * A pair of pointers to index mapping functions (see imf.hpp) that express the
 		 * logical access to the structured matrix.
 		 */
-		std::shared_ptr<imf::IMF> imf_l, imf_r;
+		ImfR imf_r;
+		ImfC imf_c;
 
 		/**
 		 * When a structured matrix instanciate a \em container it defines a new \em physical
@@ -493,9 +495,9 @@ namespace alp {
 
 			Matrix( const size_t m, const size_t n );
 
-			Matrix( const Matrix< T, Structure, density, View, backend > & other );
+			Matrix( const Matrix< T, Structure, density, View, ImfR, ImfC, backend > & other );
 
-			Matrix( Matrix< T, Structure, density, View, backend > && other );
+			Matrix( Matrix< T, Structure, density, View, ImfR, ImfC, backend > && other );
 
 			~Matrix();
 
@@ -506,8 +508,8 @@ namespace alp {
 	 */
 	template< typename T >
 	struct is_structured_matrix : std::false_type {};
-	template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	struct is_structured_matrix< Matrix< T, Structure, density, View, backend > > : std::true_type {};
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	struct is_structured_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > : std::true_type {};
 
 } // end namespace ``alp''
 
