@@ -33,9 +33,10 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
-add_grb_executables( alp_gemm alp_gemm.cpp
-	BACKENDS alp_reference
-)
+# Temporarily disable until containers rework is completed
+#add_grb_executables( alp_gemm alp_gemm.cpp
+#	BACKENDS alp_reference
+#)
 
 add_grb_executables( argmax argmax.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
@@ -208,9 +209,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
-add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
-	BACKENDS alp_reference
-)
+# Temporarily disable until containers rework is completed
+#add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
+#	BACKENDS alp_reference
+#)
 
 add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
 	BACKENDS alp_reference
@@ -224,13 +226,15 @@ add_grb_executables( dense_matrix_eWiseApply dense_matrix_eWiseApply.cpp
 	BACKENDS alp_reference
 )
 
-add_grb_executables( dense_mxm dense_mxm.cpp
-	BACKENDS alp_reference
-)
+# Temporarily disable until containers rework is completed
+#add_grb_executables( dense_mxm dense_mxm.cpp
+#	BACKENDS alp_reference
+#)
 
-add_grb_executables( dense_outer dense_outer.cpp
-	BACKENDS alp_reference
-)
+# Temporarily disable until containers rework is completed
+#add_grb_executables( dense_outer dense_outer.cpp
+#	BACKENDS alp_reference
+#)
 
 add_grb_executables( dense_structured_matrix dense_structured_matrix.cpp
 	BACKENDS alp_reference
