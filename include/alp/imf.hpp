@@ -16,30 +16,30 @@
 
 /**
  *
- * @file 
- * 
+ * @file
+ *
  * This file registers available index mapping functions (IMFs).
  * IMFs are maps between integer intervals and can be used to define
  * affine \em access transformations in the form of access matrices.
- * For example, an access matrix \f$G_f\in R^{N\times N}\f$ 
+ * For example, an access matrix \f$G_f\in R^{N\times N}\f$
  * parametrized by the IMF \f$f\f$ such that
  * \f[G_f = \sum_{i=0}^{n-1} e_i^n\left(e_{f(i)}^N\right)^T\f]
- * could be used to access a group of $n\eN$ rows of matrix 
+ * could be used to access a group of $n\eN$ rows of matrix
  * \f$A\in R^{N\times N}\f$
  * according to \f$f\f$ by multiplying \f$A\f$ by \f$G_f\f$ from the left:
  * \f[\tilde{A} = G_f\cdot A,\quad \tilde{A}\in R^{n\times N}\f]
- *      
- * \note The idea of parametrized matrices to express matrix accesses at 
- *       a higher level of mathematical abstractions is inspired by the 
- *       SPIRAL literature (Franchetti et al. SPIRAL: Extreme Performance Portability. 
- *       http://spiral.net/doc/papers/08510983_Spiral_IEEE_Final.pdf). 
- *       Similar affine formulations are also used in the polyhedral 
+ *
+ * \note The idea of parametrized matrices to express matrix accesses at
+ *       a higher level of mathematical abstractions is inspired by the
+ *       SPIRAL literature (Franchetti et al. SPIRAL: Extreme Performance Portability.
+ *       http://spiral.net/doc/papers/08510983_Spiral_IEEE_Final.pdf).
+ *       Similar affine formulations are also used in the polyhedral
  *       compilation literature to express concepts such as access
  *       relations.
- *       In this draft we use integer maps. A symbolic version of them could be 
- *       defined using external libraries such as the Integer Set Library (isl 
+ *       In this draft we use integer maps. A symbolic version of them could be
+ *       defined using external libraries such as the Integer Set Library (isl
  *       \link https://libisl.sourceforge.io/).
- *       
+ *
  */
 
 #ifndef _H_ALP_IMF
@@ -50,107 +50,216 @@
 #include <algorithm>
 #include <stdexcept>
 
-
 namespace alp {
 
 	namespace imf {
 
-        class IMF {
-            public:
-                size_t n, N;
+		class IMF {
 
-                IMF(size_t n, size_t N): n(n), N(N) {}
+			public:
 
-                virtual size_t map(size_t i) = 0;
+				const size_t n;
+				const size_t N;
 
-                virtual bool isSame( const IMF & other ) const {
-                    return typeid( *this ) == typeid( other ) && n == other.n && N == other.N;
-                }
+				IMF( const size_t n, const size_t N ): n( n ), N( N ) {}
 
-        };
+			protected:
 
-        /**
-         * The identity IMF.  
-         * \f$I_n = [0, n)\f$
-         * \f$Id = I_n \rightarrow I_n; i \mapsto i\f$
-         */
+				template< typename OtherImf >
+				bool isSame( const OtherImf & other ) const {
+					//static_assert( std::is_same< decltype( *this ), decltype( other ) >::value );
+					return n == other.n && N == other.N;
+				}
 
+			private:
 
-        class Id: public IMF {
+				/** Implements the mapping function of the IMF */
+				size_t map( const size_t ) const;
 
-            public:
-                size_t map(size_t i) {
-                    return i;
-                }
+		}; // class IMF
 
-                Id(size_t n): IMF(n, n) { }
-        };
+		/**
+		 * The strided IMF.
+		 * \f$I_n =[0, n), I_N =[0, N)\f$
+		 * \f$Strided_{b, s} = I_n \rightarrow I_N; i \mapsto b + si\f$
+		 */
 
-        /**
-         * The strided IMF.  
-         * \f$I_n =[0, n), I_N =[0, N)\f$
-         * \f$Strided_{b, s} = I_n \rightarrow I_N; i \mapsto b + si\f$
-         */
+		class Strided: public IMF {
 
-        class Strided: public IMF {
+			public:
 
-            public:
-                size_t b, s;
+				const size_t b;
+				const size_t s;
 
-                size_t map(size_t i) {
+				size_t map( const size_t i ) const {
+#ifdef _DEBUG
+					std::cout << "Calling Strided map\n";
+#endif
+					return b + s * i;
+				}
 
-                    return b + s * i;
-                }
+				Strided( const size_t n, const size_t N, const size_t b, const size_t s ): IMF( n, N ), b( b ), s( s ) { }
 
-                Strided(size_t n, size_t N, size_t b, size_t s): IMF(n, N), b(b), s(s) { }
+				template< typename OtherIMF >
+				bool isSame( const OtherIMF &other ) const {
+					return IMF::isSame( other ) &&
+						b == static_cast< const Strided & >( other ).b &&
+						s == static_cast< const Strided & >( other ).s;
+				}
+		};
 
-                virtual bool isSame( const IMF & other ) const {
-                    return IMF::isSame( other )
-                        && b == dynamic_cast< const Strided & >( other ).b
-                        && s == dynamic_cast< const Strided & >( other ).s;
-                }
-        };
+		/**
+		 * The identity IMF.
+		 * \f$I_n = [0, n)\f$
+		 * \f$Id = I_n \rightarrow I_n; i \mapsto i\f$
+		 */
 
-        class Select: public IMF {
+		class Id: public Strided {
 
-            public:
-                std::vector< size_t > select;
+			public:
 
-                size_t map(size_t i) {
-                    return select.at( i );
-                }
+				Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
+		};
 
-                Select(size_t N, std::vector< size_t > & select): IMF( select.size(), N ), select( select ) {
-                    if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
-                        throw std::runtime_error("IMF Select beyond range.");
-                    }
-                }
+		class Select: public IMF {
 
-                virtual bool isSame( const IMF & other ) const {
-                    return IMF::isSame( other )
-                        && select == dynamic_cast< const Select & >( other ).select;
-                }
-        };
+			public:
 
-        /**
-         * A composition of two IMFs.
-         * \f$I_{g,n} =[0, n), I_{g,N} =[0, N)\f$
-         * \f$I_{f,n} =[0, n), I_{f,N} =[0, N)\f$
-         * \f$Composed_{f, g} = I_{g,n} \rightarrow I_{f,N}; i \mapsto f( g( i ) )\f$
-         */
-        
-        class Composed: public IMF {
+				std::vector< size_t > select;
 
-            public:
-                std::shared_ptr<IMF> f, g;
+				size_t map( size_t i ) const {
+#ifdef _DEBUG
+					std::cout << "Calling Select map.\n";
+#endif
+					return select.at( i );
+				}
 
-                size_t map(size_t i) {
-                    return f->map( g->map( i ) );
-                }
+				Select(size_t N, std::vector< size_t > &select): IMF( select.size(), N ), select( select ) {
+					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
+					//	throw std::runtime_error("IMF Select beyond range.");
+					//}
+				}
 
-                Composed(std::shared_ptr<IMF> f, std::shared_ptr<IMF> g): IMF( g->n, f->N ), f(f), g(g) { }
+				Select(size_t N, std::vector< size_t > &&select): IMF( select.size(), N ), select( select ) {
+#ifdef _DEBUG
+					std::cout << "Select move constructor\n";
+#endif
+					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
+					//	throw std::runtime_error("IMF Select beyond range.");
+					//}
+				}
 
-        };
+				template< typename OtherIMF >
+				bool isSame( const OtherIMF &other ) const {
+					return IMF::isSame( other ) && select == static_cast< const Select & >( other ).select;
+				}
+		};
+
+		/**
+		 * A composition of two IMFs.
+		 * \f$I_{g,n} =[0, n), I_{g,N} =[0, N)\f$
+		 * \f$I_{f,n} =[0, n), I_{f,N} =[0, N)\f$
+		 * \f$Composed_{f, g} = I_{g,n} \rightarrow I_{f,N}; i \mapsto f( g( i ) )\f$
+		 *
+		 * \tparam FirstIMF  The function that is applied first (i.e., \f$g\f$ )
+		 * \tparam SecondIMF The function that is applied second (i.e., \f$f\f$ )
+		 *
+		 * For specific combinations of the IMF types, there are specializations
+		 * that avoid nested function calls by fusing two functions into one.
+		 */
+
+		template< typename FirstIMF, typename SecondIMF >
+		class Composed: public IMF {
+
+			public:
+				const FirstIMF &g;
+				const SecondIMF &f;
+
+				size_t map( const size_t i ) const {
+#ifdef _DEBUG
+						std::cout << "Calling Composed< IMF, IMF>::map()\n";
+#endif
+						return f.map( g.map( i ) );
+				}
+
+				Composed( const FirstIMF &g, const SecondIMF &f ):
+					IMF( g.n, f.N ), g( g ), f( f ) {
+#ifdef _DEBUG
+						std::cout << "Creating composition of IMFs that cannot be composed into a"
+						             "single mapping function. Consider the effect on performance.\n";
+#endif
+					}
+
+		};
+
+		template< typename IMF1, typename IMF2 >
+		struct composed_type {
+			typedef Composed< IMF1, IMF2 > type;
+		};
+
+		template<>
+		struct composed_type< Strided, Strided > {
+			typedef Strided type;
+		};
+
+		template<>
+		struct composed_type< Id, Strided > {
+			typedef Strided type;
+		};
+
+		template<>
+		struct composed_type< Strided, Id > {
+			typedef Strided type;
+		};
+
+		template<>
+		struct composed_type< Id, Id > {
+			typedef Id type;
+		};
+
+		/**
+		 * Creates the composed IMF from two provided input IMFs.
+		 * Depending on the input IMF types, the factory may
+		 * specialize the returned IMF type.
+		 */
+
+		struct ComposedFactory {
+
+			template< typename IMF1, typename IMF2 >
+			static typename composed_type< IMF1, IMF2 >::type create( const IMF1 &f1, const IMF2 &f2 );
+
+		};
+
+		template<>
+		Strided ComposedFactory::create< Id, Strided >( const Id &f1, const Strided &f2 ) {
+			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		}
+
+		template<>
+		Strided ComposedFactory::create( const Strided &f1, const Strided &f2 ) {
+			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		}
+
+		template<>
+		Strided ComposedFactory::create( const Strided &f1, const Id &f2 ) {
+			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		}
+
+		/** Composition of two Id IMFs is an Id Imf */
+		template<>
+		Id ComposedFactory::create( const Id &f1, const Id &f2 ) {
+#ifdef NDEBUG
+			(void)f2;
+#endif
+			// The first function's co-domain must be equal to the second function's domain.
+			assert( f1.N == f2.n );
+			return Id( f1.n );
+		}
+
+		template<>
+		Composed< Strided, Select > ComposedFactory::create( const Strided &f1, const Select &f2 ) {
+			return Composed< Strided, Select >( f1, f2 );
+		}
 
 	}; // namespace imf
 

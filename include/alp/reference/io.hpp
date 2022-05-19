@@ -154,8 +154,12 @@ namespace alp {
 	 * 
 	 * @see alp::buildMatrix
 	 */
-	template< typename InputType, typename Structure, typename View, typename fwd_iterator >
-	RC buildMatrix( Matrix< InputType, Structure, Density::Dense, View, reference > & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
+	template< typename InputType, typename Structure, typename View, typename ImfR, typename ImfC, typename fwd_iterator >
+	RC buildMatrix(
+		Matrix< InputType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A,
+		const fwd_iterator & start,
+		const fwd_iterator & end
+	) noexcept {
 		(void)A;
 		(void)start;
 		(void)end;
