@@ -421,10 +421,10 @@ namespace alp {
 
 		// Forward declaration
 		template< typename MatrixType >
-		const typename MatrixType::value_type &access( const MatrixType &, const size_t, const size_t );
+		const typename MatrixType::access_type access( const MatrixType &, const size_t, const size_t );
 
 		template< typename MatrixType >
-		typename MatrixType::value_type &access( MatrixType &, const size_t, const size_t );
+		typename MatrixType::access_type access( MatrixType &, const size_t, const size_t );
 
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
@@ -441,13 +441,13 @@ namespace alp {
 				}
 
 				template< typename MatrixType >
-				friend const typename MatrixType::value_type &access( const MatrixType &A, const size_t i, const size_t j );
+				friend const typename MatrixType::access_type access( const MatrixType &A, const size_t i, const size_t j );
 
 				template< typename MatrixType >
-				friend typename MatrixType::value_type &access( MatrixType &A, const size_t i, const size_t j );
+				friend typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j );
 
 				template< typename T >
-				const T &access( const size_t i, const size_t j ) const {
+				const T access( const size_t i, const size_t j ) const {
 					return static_cast< const DerivedMatrix & >( *this ).access( i, j );
 				}
 
@@ -556,11 +556,11 @@ namespace alp {
 				 *
 				 * @return constant reference to the element with coordinates (i, j).
 				 */
-				const T &access( const size_t i, const size_t j ) const {
+				const access_type access( const size_t i, const size_t j ) const {
 					return container[ amf.map( i, j ) ];
 				}
 
-				T &access( const size_t i, const size_t j ) {
+				access_type access( const size_t i, const size_t j ) {
 					return container[ amf.map( i, j ) ];
 				}
 
@@ -625,7 +625,7 @@ namespace alp {
 				typedef std::function< Ret( Args... ) > lambda_function_type;
 				lambda_function_type &lambda;
 
-				T get( const size_t i, const size_t j ) const {
+				access_type access( const size_t i, const size_t j ) const {
 					return lambda( imf_r.map( i ), imf_c.map( j ) );
 				}
 
@@ -1523,13 +1523,13 @@ namespace alp {
 		 * \note   This method may be used to access only elements local to the processor.
 		 */
 		template< typename MatrixType >
-		const typename MatrixType::value_type &access( const MatrixType &A, const size_t i, const size_t j ) {
-			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::value_type >( i, j );
+		const typename MatrixType::access_type access( const MatrixType &A, const size_t i, const size_t j ) {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type >( i, j );
 		}
 
 		template< typename MatrixType >
-		typename MatrixType::value_type &access( MatrixType &A, const size_t i, const size_t j ) {
-			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::value_type >( i, j );
+		typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j ) {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type >( i, j );
 		}
 
 	} // namespace internal
