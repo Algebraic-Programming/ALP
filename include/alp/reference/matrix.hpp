@@ -471,6 +471,8 @@ namespace alp {
 				/** Expose static properties */
 
 				typedef T value_type;
+				typedef ImfR imfr_type;
+				typedef ImfC imfc_type;
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
@@ -611,6 +613,9 @@ namespace alp {
 				/** Expose static properties */
 				typedef T value_type;
 
+				typedef ImfR imfr_type;
+				typedef ImfC imfc_type;
+
 			protected:
 				ImfR imf_r;
 				ImfC imf_c;
@@ -719,8 +724,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			/**
 			 * Indicates if a matrix is an original container.
@@ -848,8 +851,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
@@ -950,8 +951,6 @@ namespace alp {
 		public:
 			/** Exposes the element type and the structure. */
 			typedef structures::UpperTriangular structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
