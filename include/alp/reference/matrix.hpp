@@ -421,10 +421,13 @@ namespace alp {
 
 		// Forward declaration
 		template< typename MatrixType >
-		const typename MatrixType::access_type access( const MatrixType &, const size_t, const size_t );
+		const typename MatrixType::access_type access( const MatrixType &, const size_t );
 
 		template< typename MatrixType >
-		typename MatrixType::access_type access( MatrixType &, const size_t, const size_t );
+		typename MatrixType::access_type access( MatrixType &, const size_t );
+
+		template< typename MatrixType >
+		size_t getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
@@ -441,21 +444,28 @@ namespace alp {
 				}
 
 				template< typename MatrixType >
-				friend const typename MatrixType::access_type access( const MatrixType &A, const size_t i, const size_t j );
+				friend const typename MatrixType::access_type access( const MatrixType &A, const size_t storageIndex );
 
 				template< typename MatrixType >
-				friend typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j );
+				friend typename MatrixType::access_type access( MatrixType &A, const size_t storageIndex );
+
+				template< typename MatrixType >
+				friend size_t getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P );
 
 				template< typename AccessType >
-				const AccessType access( const size_t i, const size_t j ) const {
+				const AccessType access( const size_t storageIndex ) const {
 					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
-					return static_cast< const DerivedMatrix & >( *this ).access( i, j );
+					return static_cast< const DerivedMatrix & >( *this ).access( storageIndex );
 				}
 
 				template< typename AccessType >
-				AccessType access( const size_t i, const size_t j ) {
+				AccessType access( const size_t storageIndex ) {
 					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
-					return static_cast< DerivedMatrix & >( *this ).access( i, j );
+					return static_cast< DerivedMatrix & >( *this ).access( storageIndex );
+				}
+
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					return static_cast< const DerivedMatrix & >( *this ).getStorageIndex( i, j, s, P );
 				}
 
 		};
@@ -550,20 +560,24 @@ namespace alp {
 				}
 
 				/**
-				 * Returns a constant reference to the element at the i-th row and
-				 * j-th column in the matrix.
+				 * Returns a constant reference to the element corresponding to
+				 * the provided storage index.
 				 *
-				 * @param i row-coordinate of the element
-				 * @param j column-coordinate of the element
+				 * @param storageIndex  storage index in the physical iteration
+				 *                      space.
 				 *
-				 * @return constant reference to the element with coordinates (i, j).
+				 * @return const reference or value of the element at given position.
 				 */
-				const access_type access( const size_t i, const size_t j ) const {
-					return container[ amf.map( i, j ) ];
+				const access_type access( const size_t storageIndex ) const {
+					return container[ storageIndex ];
 				}
 
-				access_type access( const size_t i, const size_t j ) {
-					return container[ amf.map( i, j ) ];
+				access_type access( const size_t storageIndex ) {
+					return container[ storageIndex ];
+				}
+
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					return amf.getStorageIndex( i, j, s, P );
 				}
 
 				/**
@@ -1515,27 +1529,64 @@ namespace alp {
 		 *
 		 * @tparam    MatrixType ALP Matrix type
 		 *
-		 * @param[in] A matrix to be accessed
-		 * @param[in] i row coordinate of matrix A
-		 * @param[in] j column coordinate of matrix A
+		 * @param[in] A             matrix to be accessed
+		 * @param[in] storageIndex  index in the physical iteration space
 		 *
 		 * @return For container matrices, returns a constant reference to the
-		 *         element at the position (i, j) of matrix A.
+		 *         element at the given physical position of matrix A.
 		 *         For functor view matrices, returns a value corresponding to
-		 *         the position (i, j) of matrix A.
+		 *         the given physical position of matrix A.
 		 *
 		 * \note   This method may be used to access only elements local to the processor.
 		 */
 		template< typename MatrixType >
-		const typename MatrixType::access_type access( const MatrixType &A, const size_t i, const size_t j ) {
-			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type >( i, j );
+		const typename MatrixType::access_type access( const MatrixType &A, const size_t storageIndex ) {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type >( storageIndex );
 		}
 
 		/** Non-constant variant. **/
 		template< typename MatrixType >
-		typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j ) {
-			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type >( i, j );
+		typename MatrixType::access_type access( MatrixType &A, const size_t storageIndex ) {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type >( storageIndex );
 		}
+
+		/** Return a storage index in the physical layout.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A  matrix to be accessed
+		 * @param[in] i  row-index in the logical layout
+		 * @param[in] j  column-index in the logical layout
+		 * @param[in] s  process ID
+		 * @param[in] P  total number of processors
+		 *
+		 * @return For container matrices, returns a constant reference to the
+		 *         element at the given physical position of matrix A.
+		 *         For functor view matrices, returns a value corresponding to
+		 *         the given physical position of matrix A.
+		 *
+		 */
+		template< typename MatrixType >
+		size_t getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template getStorageIndex( i, j, s, P );
+		}
+
+		/** Return a pair of coordinates in logical layout.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A             matrix to be accessed
+		 * @param[in] storageIndex  storage index in the physical layout.
+		 * @param[in] s             process ID
+		 * @param[in] P             total number of processors
+		 *
+		 * @return Returns a pair of coordinates in logical iteration space
+		 *         that correspond to the provided storage index in the
+		 *         physical iteration space.
+		 *
+		 */
+		template< typename MatrixType >
+		std::pair< size_t, size_t > getCoords( const MatrixType &A, const size_t storageIndex, const size_t s, const size_t P );
 
 	} // namespace internal
 
