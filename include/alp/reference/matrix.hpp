@@ -446,13 +446,15 @@ namespace alp {
 				template< typename MatrixType >
 				friend typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j );
 
-				template< typename T >
-				const T access( const size_t i, const size_t j ) const {
+				template< typename AccessType >
+				const AccessType access( const size_t i, const size_t j ) const {
+					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
 					return static_cast< const DerivedMatrix & >( *this ).access( i, j );
 				}
 
-				template< typename T >
-				T &access( const size_t i, const size_t j ) {
+				template< typename AccessType >
+				AccessType access( const size_t i, const size_t j ) {
+					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
 					return static_cast< DerivedMatrix & >( *this ).access( i, j );
 				}
 
@@ -1517,8 +1519,10 @@ namespace alp {
 		 * @param[in] i row coordinate of matrix A
 		 * @param[in] j column coordinate of matrix A
 		 *
-		 * @return A constant reference to the element at the position (i, j)
-		 *         of matrix A
+		 * @return For container matrices, returns a constant reference to the
+		 *         element at the position (i, j) of matrix A.
+		 *         For functor view matrices, returns a value corresponding to
+		 *         the position (i, j) of matrix A.
 		 *
 		 * \note   This method may be used to access only elements local to the processor.
 		 */
@@ -1527,6 +1531,7 @@ namespace alp {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type >( i, j );
 		}
 
+		/** Non-constant variant. **/
 		template< typename MatrixType >
 		typename MatrixType::access_type access( MatrixType &A, const size_t i, const size_t j ) {
 			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type >( i, j );
