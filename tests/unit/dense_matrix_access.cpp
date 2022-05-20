@@ -61,16 +61,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::internal::access( M, alp::internal::getStorageIndex( M, height - 1, width - 1 ) );
 
 	// transposed view
-	alp::internal::access( Mt, alp::internal::getStorageIndex( M, 0, 0 ) );
-	alp::internal::access( Mt, alp::internal::getStorageIndex( M, width - 1, 0 ) );
-	alp::internal::access( Mt, alp::internal::getStorageIndex( M, 0, height - 1 ) );
-	alp::internal::access( Mt, alp::internal::getStorageIndex( M, width - 1, height - 1 ) );
+	alp::internal::access( Mt, alp::internal::getStorageIndex( Mt, 0, 0 ) );
+	alp::internal::access( Mt, alp::internal::getStorageIndex( Mt, width - 1, 0 ) );
+	alp::internal::access( Mt, alp::internal::getStorageIndex( Mt, 0, height - 1 ) );
+	alp::internal::access( Mt, alp::internal::getStorageIndex( Mt, width - 1, height - 1 ) );
 
 	// square block view
-	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( M, 0, 0 ) );
-	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( M, block_size - 1, 0 ) );
-	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( M, 0, block_size - 1 ) );
-	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( M, block_size - 1, block_size - 1 ) );
+	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( Sq_Mref, 0, 0 ) );
+	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( Sq_Mref, block_size - 1, 0 ) );
+	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( Sq_Mref, 0, block_size - 1 ) );
+	alp::internal::access( Sq_Mref, alp::internal::getStorageIndex( Sq_Mref, block_size - 1, block_size - 1 ) );
 
 	rc = alp::SUCCESS;
 }
