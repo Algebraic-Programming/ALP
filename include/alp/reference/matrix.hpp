@@ -466,6 +466,11 @@ namespace alp {
 		 */
 		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
 		class MatrixContainer : public MatrixBase< MatrixContainer< T, ImfR, ImfC, Smf, is_original > > {
+			public:
+
+				/** Expose static properties */
+
+				typedef T value_type;
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
@@ -601,6 +606,10 @@ namespace alp {
 		 */
 		template< typename T, typename ImfR, typename ImfC, typename Ret, typename ... Args >
 		class MatrixFunctor : public MatrixBase< MatrixFunctor< T, ImfR, ImfC, Ret, Args... > > {
+			public:
+
+				/** Expose static properties */
+				typedef T value_type;
 
 			protected:
 				ImfR imf_r;
@@ -709,7 +718,6 @@ namespace alp {
 
 		public:
 			/** Exposes the types and the static properties. */
-			typedef T value_type;
 			typedef structures::General structure;
 			typedef ImfR imfr_type;
 			typedef ImfC imfc_type;
@@ -839,7 +847,6 @@ namespace alp {
 
 		public:
 			/** Exposes the types and the static properties. */
-			typedef T value_type;
 			typedef structures::Square structure;
 			typedef ImfR imfr_type;
 			typedef ImfC imfc_type;
@@ -942,7 +949,6 @@ namespace alp {
 
 		public:
 			/** Exposes the element type and the structure. */
-			typedef T value_type;
 			typedef structures::UpperTriangular structure;
 			typedef ImfR imfr_type;
 			typedef ImfC imfc_type;
@@ -1042,7 +1048,6 @@ namespace alp {
 //
 //		public:
 //			/** Exposes the element type and the structure. */
-//			typedef T value_type;
 //			typedef structures::Identity structure;
 //
 //			template < view::Views view_tag, bool d=false >
