@@ -420,11 +420,11 @@ namespace alp {
 	namespace internal {
 
 		// Forward declaration
-		template< typename T, typename MatrixType >
-		const T &getReference( const MatrixType &, const size_t, const size_t );
+		template< typename MatrixType >
+		const typename MatrixType::value_type &getReference( const MatrixType &, const size_t, const size_t );
 
-		template< typename T, typename MatrixType >
-		T &getReference( MatrixType &, const size_t, const size_t );
+		template< typename MatrixType >
+		typename MatrixType::value_type &getReference( MatrixType &, const size_t, const size_t );
 
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
@@ -483,8 +483,6 @@ namespace alp {
 					Vector< T, reference >,
 					Vector< T, reference > &
 				>::type container_type;
-
-				friend MatrixBase< self_type >;
 
 				/** A container-type view is characterized by its association with a physical container */
 				container_type container;
