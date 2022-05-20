@@ -30,7 +30,7 @@ void setElements( MatrixType &M, const typename MatrixType::value_type value ) {
 	const size_t width = alp::nrows( M );
 	for( size_t r = 0; r < height; ++r ) {
 		for( size_t c = 0; c < width; ++c ) {
-			alp::internal::getReference( M, r, c ) = value;
+			alp::internal::access( M, r, c ) = value;
 		}
 	}
 }
@@ -55,22 +55,22 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	// verify that accessing corner elements succeeds
 	// original matrix
-	alp::internal::getReference( M, 0, 0 );
-	alp::internal::getReference( M, height - 1, 0 );
-	alp::internal::getReference( M, 0, width - 1 );
-	alp::internal::getReference( M, height - 1, width - 1 );
+	alp::internal::access( M, 0, 0 );
+	alp::internal::access( M, height - 1, 0 );
+	alp::internal::access( M, 0, width - 1 );
+	alp::internal::access( M, height - 1, width - 1 );
 
 	// transposed view
-	alp::internal::getReference( Mt, 0, 0 );
-	alp::internal::getReference( Mt, width - 1, 0 );
-	alp::internal::getReference( Mt, 0, height - 1 );
-	alp::internal::getReference( Mt, width - 1, height - 1 );
+	alp::internal::access( Mt, 0, 0 );
+	alp::internal::access( Mt, width - 1, 0 );
+	alp::internal::access( Mt, 0, height - 1 );
+	alp::internal::access( Mt, width - 1, height - 1 );
 
 	// square block view
-	alp::internal::getReference( Sq_Mref, 0, 0 );
-	alp::internal::getReference( Sq_Mref, block_size - 1, 0 );
-	alp::internal::getReference( Sq_Mref, 0, block_size - 1 );
-	alp::internal::getReference( Sq_Mref, block_size - 1, block_size - 1 );
+	alp::internal::access( Sq_Mref, 0, 0 );
+	alp::internal::access( Sq_Mref, block_size - 1, 0 );
+	alp::internal::access( Sq_Mref, 0, block_size - 1 );
+	alp::internal::access( Sq_Mref, block_size - 1, block_size - 1 );
 
 	rc = alp::SUCCESS;
 }
