@@ -471,6 +471,8 @@ namespace alp {
 				/** Expose static properties */
 
 				typedef T value_type;
+				/** Type returned by access function */
+				typedef T &access_type;
 				typedef ImfR imfr_type;
 				typedef ImfC imfc_type;
 
@@ -610,6 +612,8 @@ namespace alp {
 
 				/** Expose static properties */
 				typedef T value_type;
+				/** Type returned by access function */
+				typedef T access_type;
 
 				typedef ImfR imfr_type;
 				typedef ImfC imfc_type;
