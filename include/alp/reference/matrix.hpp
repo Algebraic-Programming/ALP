@@ -607,7 +607,7 @@ namespace alp {
 				 */
 				MatrixContainer( storage::AMF< ImfR, ImfC, storage > amf ) :
 					// enable only if ImfR and ImfC are imf::Id
-					container( internal::Vector< T, reference >( 10 /* TODO */ ) ),
+					container( internal::Vector< T, reference >( amf.getStorageDimensions() ) ),
 					amf( amf ) {}
 
 				/** View on another container */

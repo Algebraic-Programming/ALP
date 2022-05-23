@@ -331,7 +331,7 @@ namespace alp {
 				}
 
 				std::size_t getStorageDimensions() const {
-					return 0;
+					return SMF< storage >::getStorageDimensions( imf_r.n, imf_c.n );
 				}
 
 				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
