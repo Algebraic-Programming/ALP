@@ -235,6 +235,8 @@ namespace alp {
 					return amf.f( i, j );
 				}
 
+				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
+
 		}; // class AMF< imf::Strided, imf::Strided, Smf >
 
 	}; // namespace smf
