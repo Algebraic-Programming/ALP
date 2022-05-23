@@ -81,13 +81,13 @@ namespace alp {
 		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
 
 
-		enum Schemes { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
+		enum Scheme { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
 
 		/**
 		 * Encapsulate type and methods associated with a specific
 		 * storage scheme.
 		 */
-		template< enum Schemes storageScheme >
+		template< enum Scheme storage_scheme >
 		struct SMF {
 
 			/** A type associated with this specific storage scheme. */
@@ -108,7 +108,7 @@ namespace alp {
 		 * Implements full storage scheme with row-major ordering.
 		 */
 		template<>
-		struct SMF< Schemes::FULL_ROW_MAJOR > {
+		struct SMF< Scheme::FULL_ROW_MAJOR > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > type;
 
@@ -137,7 +137,7 @@ namespace alp {
 		 * the specialization for full row-major storage scheme.
 		 */
 		template<>
-		struct SMF< Schemes::FULL_COLUMN_MAJOR > : SMF< Schemes::FULL_ROW_MAJOR > {
+		struct SMF< Scheme::FULL_COLUMN_MAJOR > : SMF< Scheme::FULL_ROW_MAJOR > {
 
 			static type Instance( const size_t rows, const size_t cols ) {
 				(void) cols;
@@ -146,7 +146,7 @@ namespace alp {
 		};
 
 		template<>
-		struct SMF< Schemes::PACKED > {
+		struct SMF< Scheme::PACKED > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
 
@@ -167,7 +167,7 @@ namespace alp {
 		};
 
 		template<>
-		struct SMF< Schemes::BANDED > {
+		struct SMF< Scheme::BANDED > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
 
@@ -197,13 +197,13 @@ namespace alp {
 		 * expressed as a BivariateQuadratic polynomial depending
 		 * on the types of the IMFs and the SMF.
 		 */
-		template< typename ImfR, typename ImfC, typename Smf >
+		template< typename ImfR, typename ImfC, enum Scheme storage_scheme >
 		struct Composition {
 			typedef polynomials::BivariateQuadratic< 1, 1, 1, 1, 1, 1, 1 > type;
 		};
 
 		template<>
-		struct Composition< imf::Strided, imf::Strided, Full_t > {
+		struct Composition< imf::Strided, imf::Strided, Scheme::FULL_ROW_MAJOR > {
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
 		};
 
@@ -217,7 +217,7 @@ namespace alp {
 		 * For certain combinations of IMFs and SMFs it is possible to fuse the
 		 * index computation in a single function call.
 		 */
-		template< typename ImfR, typename ImfC, typename Smf >
+		template< typename ImfR, typename ImfC, enum Scheme storage >
 		class AMF {
 
 			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
@@ -227,11 +227,12 @@ namespace alp {
 
 				const ImfR imf_r;
 				const ImfC imf_c;
-				const Smf smf;
+				typedef typename SMF< storage >::type smf_type;
+				const smf_type smf;
 
 			public:
 
-				AMF( ImfR &&imf_r, ImfC &&imf_c, Smf smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
+				AMF( ImfR &&imf_r, ImfC &&imf_c, smf_type smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
 
 				/**
 				 * Returns dimensions of the logical layout of the associated container.
@@ -287,8 +288,8 @@ namespace alp {
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 		};
 
-		template< typename Smf >
-		class AMF< imf::Strided, imf::Strided, Smf > {
+		template< enum Scheme storage >
+		class AMF< imf::Strided, imf::Strided, storage > {
 
 			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
 			friend class alp::Matrix;
@@ -298,14 +299,15 @@ namespace alp {
 				/** For size checks */
 				const imf::Strided imf_r;
 				const imf::Strided imf_c;
-				const Smf smf;
-				typedef typename Composition< imf::Strided, imf::Strided, Smf >::type Composition_t;
+				typedef typename SMF< storage >::type smf_type;
+				const smf_type smf;
+				typedef typename Composition< imf::Strided, imf::Strided, storage >::type Composition_t;
 				const Composition_t amf;
 
 				Composition_t fusion(
 					const imf::Strided &imf_r,
 					const imf::Strided &imf_c,
-					const Smf &smf
+					const smf_type &smf
 				) const {
 					return Composition_t(
 						smf.ax2 * imf_r.s * imf_r.s, // ax2 ( for x^2 )
@@ -320,7 +322,7 @@ namespace alp {
 
 			public:
 
-				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const Smf &smf ) :
+				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const smf_type &smf ) :
 					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ) {
 				}
 
@@ -347,7 +349,7 @@ namespace alp {
 
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 
-		}; // class AMF< imf::Strided, imf::Strided, Smf >
+		}; // class AMF< imf::Strided, imf::Strided, storage >
 
 	}; // namespace storage
 
