@@ -31,7 +31,7 @@
 
 namespace alp {
 
-	namespace smf {
+	namespace storage {
 
 		namespace polynomials {
 
@@ -349,7 +349,7 @@ namespace alp {
 
 		}; // class AMF< imf::Strided, imf::Strided, Smf >
 
-	}; // namespace smf
+	}; // namespace storage
 
 } // namespace alp
 
