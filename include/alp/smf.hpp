@@ -80,39 +80,117 @@ namespace alp {
 		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_t; // TODO
 		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
 
+
+		enum StorageSchemes { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
+
 		/**
-		 * Creates a polynomial object representing desired storage mapping function.
+		 * Encapsulate type and methods associated with a specific
+		 * storage scheme.
 		 */
-		struct SMFFactory {
+		template< enum StorageSchemes storageScheme >
+		struct SMF {
+
+			/** A type associated with this specific storage scheme. */
+			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > type;
+
+			/** Creates an instance of this storage scheme. */
+			static type Instance() {
+				return type( 0, 0, 0, 0, 0, 0 );
+			}
+
+			/** Returns the storage size corresponding to this storage scheme. */
+			static size_t getStorageSize() {
+				return 0;
+			}
+		};
+
+		/**
+		 * Implements full storage scheme with row-major ordering.
+		 */
+		template<>
+		struct SMF< StorageSchemes::FULL_ROW_MAJOR > {
+
+			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > type;
 
 			/**
-			 * For row-major storage, N represents number of columns.
-			 * For column-major storage, N represents number of rows.
+			 * For row-major storage, dim represents number of columns.
+			 * For column-major storage, dim represents number of rows.
 			 */
-			static Full_t Full( size_t N ) {
-				return Full_t( 0, 0, 0, N, 1, 0 );
+			static type Instance( const size_t rows, const size_t cols ) {
+				(void) rows;
+				return type( 0, 0, 0, cols, 1, 0 );
 			}
 
 			/**
-			 * For triangular and symmetric structures (assuming square matrices)
+			 * @param[in] M  number of rows
+			 * @param[in] N  number of columns
 			 */
-			static Packed_t Packed( size_t N ) {
-				(void)N;
-				return Packed_t( /* TODO */ 0, 0, 0, 0, 0, 0 );
+			static size_t getStorageSize( const size_t M, const size_t N ) {
+				return M * N;
+			}
+		};
+
+		/**
+		 * Implements full storage scheme with column-major ordering.
+		 *
+		 * Mapping polynomial and getStorageSize are inherited from
+		 * the specialization for full row-major storage scheme.
+		 */
+		template<>
+		struct SMF< StorageSchemes::FULL_COLUMN_MAJOR > : SMF< StorageSchemes::FULL_ROW_MAJOR > {
+
+			static type Instance( const size_t rows, const size_t cols ) {
+				(void) cols;
+				return type( 0, 0, 0, rows, 1, 0 );
+			}
+		};
+
+		template<>
+		struct SMF< StorageSchemes::PACKED > {
+
+			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
+
+			static type Instance( size_t dim ) {
+				(void) dim;
+				return type( 0, 0, 0, 0, 0, 0 /* TODO */ );
 			}
 
 			/**
-			 * For Banded structures
+			 * @param[in] M  number of rows
+			 * @param[in] N  number of columns
 			 */
-			static Band_t Band( size_t rows, size_t cols, size_t kl, size_t ku ) {
-				(void)rows;
-				(void)cols;
-				(void)kl;
-				(void)ku;
-				return Band_t( /* TODO */ 0, 0, 0, 0, 0, 0 );
+			static size_t getStorageSize( const size_t M, const size_t N ) {
+				(void) M;
+				(void) N;
+				return 0; // TODO
+			}
+		};
+
+		template<>
+		struct SMF< StorageSchemes::BANDED > {
+
+			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
+
+			static type Instance( size_t rows, size_t cols, size_t kl, size_t ku ) {
+				(void) rows;
+				(void) cols;
+				(void) kl;
+				(void) ku;
+				return type( 0, 0, 0, 0, 0, 0 /* TODO */ );
 			}
 
-		}; // SMFFactory
+			/**
+			 * @param[in] M  number of rows
+			 * @param[in] N  number of columns
+			 */
+			static size_t getStorageSize( const size_t M, const size_t N, size_t kl, size_t ku ) {
+				(void) M;
+				(void) N;
+				(void) kl;
+				(void) ku;
+				return 0; // TODO
+			}
+		};
 
 		/**
 		 * Provides a type of composed Access Mapping Function
