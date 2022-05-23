@@ -81,13 +81,13 @@ namespace alp {
 		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
 
 
-		enum StorageSchemes { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
+		enum Schemes { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
 
 		/**
 		 * Encapsulate type and methods associated with a specific
 		 * storage scheme.
 		 */
-		template< enum StorageSchemes storageScheme >
+		template< enum Schemes storageScheme >
 		struct SMF {
 
 			/** A type associated with this specific storage scheme. */
@@ -108,7 +108,7 @@ namespace alp {
 		 * Implements full storage scheme with row-major ordering.
 		 */
 		template<>
-		struct SMF< StorageSchemes::FULL_ROW_MAJOR > {
+		struct SMF< Schemes::FULL_ROW_MAJOR > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > type;
 
@@ -137,7 +137,7 @@ namespace alp {
 		 * the specialization for full row-major storage scheme.
 		 */
 		template<>
-		struct SMF< StorageSchemes::FULL_COLUMN_MAJOR > : SMF< StorageSchemes::FULL_ROW_MAJOR > {
+		struct SMF< Schemes::FULL_COLUMN_MAJOR > : SMF< Schemes::FULL_ROW_MAJOR > {
 
 			static type Instance( const size_t rows, const size_t cols ) {
 				(void) cols;
@@ -146,7 +146,7 @@ namespace alp {
 		};
 
 		template<>
-		struct SMF< StorageSchemes::PACKED > {
+		struct SMF< Schemes::PACKED > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
 
@@ -167,7 +167,7 @@ namespace alp {
 		};
 
 		template<>
-		struct SMF< StorageSchemes::BANDED > {
+		struct SMF< Schemes::BANDED > {
 
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
 

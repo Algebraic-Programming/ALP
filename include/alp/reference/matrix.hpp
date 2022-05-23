@@ -805,7 +805,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, storage::Full_t >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						storage::SMF< storage::StorageSchemes::FULL_ROW_MAJOR >::Instance( rows, cols )
+						storage::SMF< storage::Schemes::FULL_ROW_MAJOR >::Instance( rows, cols )
 					)
 				) {
 				(void)cap;
@@ -910,7 +910,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, storage::Full_t >(
 						imf::Id( dim ),
 						imf::Id( dim ),
-						storage::SMF< storage::StorageSchemes::FULL_ROW_MAJOR >::Instance( dim, dim )
+						storage::SMF< storage::Schemes::FULL_ROW_MAJOR >::Instance( dim, dim )
 					)
 				) {
 				(void)cap;
@@ -1010,7 +1010,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, storage::Full_t >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						storage::SMF< storage::StorageSchemes::FULL_ROW_MAJOR >::Instance( rows, cols )
+						storage::SMF< storage::Schemes::FULL_ROW_MAJOR >::Instance( rows, cols )
 					)
 				) {
 				(void)cap;
