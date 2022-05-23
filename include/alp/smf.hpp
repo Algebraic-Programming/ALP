@@ -153,6 +153,24 @@ namespace alp {
 				AMF( ImfR &&imf_r, ImfC &&imf_c, Smf smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
 
 				/**
+				 * Returns dimensions of the logical layout of the associated container.
+				 *
+				 * @return  A pair of two values, number of rows and columns, respectively.
+				 */
+				std::pair< size_t, size_t> getLogicalDimensions() const {
+					return std::make_pair( imf_r.n, imf_c.n );
+				}
+
+				/**
+				 * Returns dimensions of the physical layout of the associated container.
+				 *
+				 * @return  The size of the physical container.
+				 */
+				std::size_t getStorageDimensions() const {
+					return 0;
+				}
+
+				/**
 				 * Returns a storage index based on the coordinates in the
 				 * logical iteration space.
 				 *
@@ -220,6 +238,14 @@ namespace alp {
 
 				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const Smf &smf ) :
 					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ) {
+				}
+
+				std::pair< size_t, size_t> getLogicalDimensions() const {
+					return std::make_pair( imf_r.n, imf_c.n );
+				}
+
+				std::size_t getStorageDimensions() const {
+					return 0;
 				}
 
 				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {

@@ -546,7 +546,7 @@ namespace alp {
 				 * @return A pair of dimensions.
 				 */
 				std::pair< size_t, size_t > _dims() const noexcept {
-					return std::make_pair( amf.imf_r.n, amf.imf_c.n );
+					return amf.getLogicalDimensions();
 				}
 
 				friend const Vector< T, reference > & getContainer( const self_type &A ) {
