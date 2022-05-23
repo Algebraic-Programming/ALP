@@ -142,7 +142,10 @@ namespace alp {
 		template< typename ImfR, typename ImfC, typename Smf >
 		class AMF {
 
-			public:
+			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
+			friend class alp::Matrix;
+
+			private:
 
 				const ImfR imf_r;
 				const ImfC imf_c;
@@ -209,7 +212,10 @@ namespace alp {
 		template< typename Smf >
 		class AMF< imf::Strided, imf::Strided, Smf > {
 
-			public:
+			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
+			friend class alp::Matrix;
+
+			private:
 
 				/** For size checks */
 				const imf::Strided imf_r;
