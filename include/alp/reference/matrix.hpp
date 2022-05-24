@@ -1267,7 +1267,15 @@ namespace alp {
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
 			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, TargetImfR, TargetImfC, backend >
+		alp::Matrix<
+			T,
+			TargetStructure,
+			density,
+			view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			typename imf::composed_type< TargetImfR, ImfR >::type,
+			typename imf::composed_type< TargetImfC, ImfC >::type,
+			backend
+		>
 		get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 				TargetImfR imf_r, TargetImfC imf_c ) {
 
@@ -1371,7 +1379,15 @@ namespace alp {
 
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Strided, imf::Strided, backend >
+	Matrix<
+		T,
+		Structure,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		typename imf::composed_type< imf::Strided, ImfR >::type,
+		typename imf::composed_type< imf::Strided, ImfC >::type,
+		backend
+	>
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const utils::range &rng_r, const utils::range &rng_c ) {
 
@@ -1484,7 +1500,15 @@ namespace alp {
 		typename TargetStructure,
 		typename IndexType, typename IndexStructure, typename IndexView,
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Select, imf::Select, backend >
+	alp::Matrix<
+		T,
+		TargetStructure,
+		density,
+		view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		typename imf::composed_type< imf::Select, ImfR >::type,
+		typename imf::composed_type< imf::Select, ImfC >::type,
+		backend
+	>
 	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
 
