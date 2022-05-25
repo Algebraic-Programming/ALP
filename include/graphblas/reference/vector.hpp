@@ -234,13 +234,22 @@ namespace grb {
 
 		friend class PinnedVector< D, BSP1D >;
 
-		friend Vector< D, reference, MyCoordinates > internal::wrapRawVector<
-			D, reference
-		>( const size_t n, D *__restrict__ const raw );
+		template< typename ValueType, Backend backend >
+		friend Vector<
+			ValueType, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> internal::wrapRawVector( const size_t n, ValueType *__restrict__ const
+			raw );
 
-		friend const Vector< D, reference, MyCoordinates > internal::wrapRawVector<
-			D, reference
-		>( const size_t n, const D *__restrict__ const raw );
+		template< typename ValueType, Backend backend >
+		friend const Vector<
+			ValueType, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> internal::wrapRawVector( const size_t n, const ValueType *__restrict__ const raw );
 
 		/* *********************
 		 Auxiliary backend friends
