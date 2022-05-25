@@ -419,6 +419,16 @@ namespace alp {
 
 	namespace internal {
 
+		// Forward declaration
+		template< typename MatrixType >
+		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
+
+		template< typename MatrixType >
+		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
+
+		template< typename MatrixType >
+		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
+
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
@@ -432,6 +442,36 @@ namespace alp {
 				std::pair< size_t, size_t > dims() const noexcept {
 					return static_cast< const DerivedMatrix * >( this )->_dims();
 				}
+
+				template< typename MatrixType >
+				friend const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
+
+				template< typename MatrixType >
+				friend typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
+
+				template< typename MatrixType >
+				friend typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P );
+
+				template< typename AccessType, typename StorageIndexType >
+				const AccessType access( const StorageIndexType storageIndex ) const {
+					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
+					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
+					return static_cast< const DerivedMatrix & >( *this ).access( storageIndex );
+				}
+
+				template< typename AccessType, typename StorageIndexType >
+				AccessType access( const StorageIndexType &storageIndex ) {
+					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
+					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
+					return static_cast< DerivedMatrix & >( *this ).access( storageIndex );
+				}
+
+				template< typename StorageIndexType >
+				StorageIndexType getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
+					return static_cast< const DerivedMatrix & >( *this ).getStorageIndex( i, j, s, P );
+				}
+
 		};
 
 		/**
@@ -442,6 +482,17 @@ namespace alp {
 		 */
 		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
 		class MatrixContainer : public MatrixBase< MatrixContainer< T, ImfR, ImfC, Smf, is_original > > {
+			public:
+
+				/** Expose static properties */
+
+				typedef T value_type;
+				/** Type returned by access function */
+				typedef T &access_type;
+				/** Type of the index used to access the physical storage */
+				typedef size_t storage_index_type;
+				typedef ImfR imfr_type;
+				typedef ImfC imfc_type;
 
 			protected:
 				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
@@ -452,6 +503,7 @@ namespace alp {
 					Vector< T, reference >,
 					Vector< T, reference > &
 				>::type container_type;
+
 				/** A container-type view is characterized by its association with a physical container */
 				container_type container;
 
@@ -514,6 +566,27 @@ namespace alp {
 				}
 
 				/**
+				 * Returns a constant reference to the element corresponding to
+				 * the provided storage index.
+				 *
+				 * @param storageIndex  storage index in the physical iteration
+				 *                      space.
+				 *
+				 * @return const reference or value of the element at given position.
+				 */
+				const access_type access( const storage_index_type &storageIndex ) const {
+					return container[ storageIndex ];
+				}
+
+				access_type access( const storage_index_type &storageIndex ) {
+					return container[ storageIndex ];
+				}
+
+				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					return amf.getStorageIndex( i, j, s, P );
+				}
+
+				/**
 				 * @brief Construct a new structured matrix Base object assigning identity
 				 * mapping functions both to the row and column dimensions.
 				 *
@@ -557,6 +630,17 @@ namespace alp {
 		 */
 		template< typename T, typename ImfR, typename ImfC, typename Ret, typename ... Args >
 		class MatrixFunctor : public MatrixBase< MatrixFunctor< T, ImfR, ImfC, Ret, Args... > > {
+			public:
+
+				/** Expose static properties */
+				typedef T value_type;
+				/** Type returned by access function */
+				typedef T access_type;
+				/** Type of the index used to access the physical storage */
+				typedef std::pair< size_t, size_t > storage_index_type;
+
+				typedef ImfR imfr_type;
+				typedef ImfC imfc_type;
 
 			protected:
 				ImfR imf_r;
@@ -565,8 +649,14 @@ namespace alp {
 				typedef std::function< Ret( Args... ) > lambda_function_type;
 				lambda_function_type &lambda;
 
-				T get( const size_t i, const size_t j ) const {
-					return lambda( imf_r.map( i ), imf_c.map( j ) );
+				access_type access( const storage_index_type &storage_index ) const {
+					return lambda( imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
+				}
+
+				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					(void)s;
+					(void)P;
+					return std::make_pair( i, j );
 				}
 
 			public:
@@ -665,10 +755,7 @@ namespace alp {
 
 		public:
 			/** Exposes the types and the static properties. */
-			typedef T value_type;
 			typedef structures::General structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			/**
 			 * Indicates if a matrix is an original container.
@@ -795,10 +882,7 @@ namespace alp {
 
 		public:
 			/** Exposes the types and the static properties. */
-			typedef T value_type;
 			typedef structures::Square structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
@@ -898,10 +982,7 @@ namespace alp {
 
 		public:
 			/** Exposes the element type and the structure. */
-			typedef T value_type;
 			typedef structures::UpperTriangular structure;
-			typedef ImfR imfr_type;
-			typedef ImfC imfc_type;
 			typedef smf::Full_t smf_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
@@ -998,7 +1079,6 @@ namespace alp {
 //
 //		public:
 //			/** Exposes the element type and the structure. */
-//			typedef T value_type;
 //			typedef structures::Identity structure;
 //
 //			template < view::Views view_tag, bool d=false >
@@ -1458,6 +1538,69 @@ namespace alp {
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
 			return A.dims();
 		}
+
+		/** Access the matrix element.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A             matrix to be accessed
+		 * @param[in] storageIndex  index in the physical iteration space
+		 *
+		 * @return For container matrices, returns a constant reference to the
+		 *         element at the given physical position of matrix A.
+		 *         For functor view matrices, returns a value corresponding to
+		 *         the given physical position of matrix A.
+		 *
+		 * \note   This method may be used to access only elements local to the processor.
+		 */
+		template< typename MatrixType >
+		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+		}
+
+		/** Non-constant variant. **/
+		template< typename MatrixType >
+		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+		}
+
+		/** Return a storage index in the physical layout.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A  matrix to be accessed
+		 * @param[in] i  row-index in the logical layout
+		 * @param[in] j  column-index in the logical layout
+		 * @param[in] s  process ID
+		 * @param[in] P  total number of processors
+		 *
+		 * @return For container matrices, returns a constant reference to the
+		 *         element at the given physical position of matrix A.
+		 *         For functor view matrices, returns a value corresponding to
+		 *         the given physical position of matrix A.
+		 *
+		 */
+		template< typename MatrixType >
+		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );
+		}
+
+		/** Return a pair of coordinates in logical layout.
+		 *
+		 * @tparam    MatrixType ALP Matrix type
+		 *
+		 * @param[in] A             matrix to be accessed
+		 * @param[in] storageIndex  storage index in the physical layout.
+		 * @param[in] s             process ID
+		 * @param[in] P             total number of processors
+		 *
+		 * @return Returns a pair of coordinates in logical iteration space
+		 *         that correspond to the provided storage index in the
+		 *         physical iteration space.
+		 *
+		 */
+		template< typename MatrixType >
+		std::pair< size_t, size_t > getCoords( const MatrixType &A, const size_t storageIndex, const size_t s, const size_t P );
 
 	} // namespace internal
 

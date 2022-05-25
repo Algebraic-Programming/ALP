@@ -152,12 +152,40 @@ namespace alp {
 
 				AMF( ImfR &&imf_r, ImfC &&imf_c, Smf smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
 
-				size_t map( const size_t i, const size_t j ) const {
+				/**
+				 * Returns a storage index based on the coordinates in the
+				 * logical iteration space.
+				 *
+				 * @param[in] i  row-coordinate
+				 * @param[in] j  column-coordinate
+				 * @param[in] s  current process ID
+				 * @param[in] P  total number of processes
+				 *
+				 * @return  storage index corresponding to the provided logical
+				 *          coordinates and parameters s and P.
+				 */
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
 #ifdef _DEBUG
-					std::cout << "Calling AMF::map()\n";
+					std::cout << "Calling AMF::getStorageIndex()\n";
 #endif
+					(void)s;
+					(void)P;
 					return smf.f( imf_r.map( i ), imf_c.map( j ) );
 				}
+
+				/**
+				 * Returns coordinates in the logical iteration space based on
+				 * the storage index.
+				 *
+				 * @param[in] storageIndex  storage index in the physical
+				 *                          iteration space
+				 * @param[in] s             current process ID
+				 * @param[in] P             total number of processes
+				 *
+				 * @return  a pair of row- and column-coordinates in the
+				 *          logical iteration space.
+				 */
+				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 		};
 
 		template< typename Smf >
@@ -194,12 +222,14 @@ namespace alp {
 					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ) {
 				}
 
-				size_t map( const size_t i, const size_t j ) const {
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
 #ifdef _DEBUG
-					std::cout << "Calling AMF::map()\n";
+					std::cout << "Calling AMF::getStorageIndex()\n";
 #endif
 					// TODO: Maybe these asserts should be pushed to debug mode
 					// for performance reasons.
+					(void)s;
+					(void)P;
 					assert( i < imf_r.n );
 					assert( j < imf_c.n );
 					return amf.f( i, j );
