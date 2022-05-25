@@ -201,6 +201,9 @@ namespace alp {
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
 		};
 
+		/** Forward declaration */
+		class AMFFactory;
+
 		/**
 		 * Access Mapping Function (AMF) maps a logical matrix coordinates (i, j)
 		 * to a corresponding matrix element's location in the physical container.
@@ -214,8 +217,7 @@ namespace alp {
 		template< typename ImfR, typename ImfC, enum Scheme storage >
 		class AMF {
 
-			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
-			friend class alp::Matrix;
+			friend AMFFactory;
 
 			private:
 
@@ -285,8 +287,7 @@ namespace alp {
 		template< enum Scheme storage >
 		class AMF< imf::Strided, imf::Strided, storage > {
 
-			template< typename T, typename Structure, enum Density density, typename View, typename ImfRT, typename ImfCT, enum Backend backend >
-			friend class alp::Matrix;
+			friend AMFFactory;
 
 			private:
 
@@ -344,6 +345,41 @@ namespace alp {
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 
 		}; // class AMF< imf::Strided, imf::Strided, storage >
+
+		class AMFFactory {
+
+			public:
+
+			template<
+				typename OriginalImfR, typename OriginalImfC, enum Scheme storage,
+				typename ViewImfR, typename ViewImfC
+			>
+			static AMF<
+				typename imf::composed_type< ViewImfR, OriginalImfR >::type,
+				typename imf::composed_type< ViewImfC, OriginalImfC >::type,
+				storage
+			> Create(
+				const AMF< OriginalImfR, OriginalImfC, storage > &original_amf,
+				ViewImfR view_imf_r,
+				ViewImfC view_imf_c
+			) {
+				return AMF<
+					typename imf::composed_type< ViewImfR, OriginalImfR >::type,
+					typename imf::composed_type< ViewImfC, OriginalImfC >::type,
+					storage
+				>(
+					imf::ComposedFactory::create< ViewImfR, OriginalImfR >(
+						view_imf_r,
+						original_amf.imf_r
+					),
+					imf::ComposedFactory::create< ViewImfC, OriginalImfC >(
+						view_imf_c,
+						original_amf.imf_c
+					),
+					original_amf.smf
+				);
+			}
+		}; // class AMFFactory
 
 	}; // namespace storage
 

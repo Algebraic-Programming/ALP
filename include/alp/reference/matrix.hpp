@@ -827,17 +827,7 @@ namespace alp {
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::MatrixContainer< T, ImfR, ImfC, storage_scheme, is_original >(
 					getContainer( target_matrix ),
-					storage::AMF< ImfR, ImfC, storage_scheme >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/**
@@ -926,17 +916,7 @@ namespace alp {
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::MatrixContainer< T, ImfR, ImfC, storage_scheme, is_original >(
 					getContainer( target_matrix ),
-					storage::AMF< ImfR, ImfC, storage_scheme >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/**
@@ -1026,17 +1006,7 @@ namespace alp {
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::MatrixContainer< T, ImfR, ImfC, storage_scheme, is_original >(
 					getContainer( target_matrix ),
-					storage::AMF< ImfR, ImfC, storage_scheme >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/** Constructor for a view over another matrix using default IMFs (Identity).
