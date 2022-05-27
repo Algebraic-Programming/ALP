@@ -79,24 +79,19 @@ namespace alp {
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
 
 			/**
-			 * Polynomial factory
+			 * Polynomial factory method
 			 */
-			template< typename PolynomialType >
-			struct Factory {
+			template< typename PolynomialType, typename... Args >
+			PolynomialType Create( Args... args ) {
+				return PolynomialType( args... );
+			}
 
-				template< typename... Args >
-				static PolynomialType Instance( Args... args ) {
-					return PolynomialType( args... );
-				}
-			};
-
+			/** Specialization for Full storage of type i * dim + j */
 			template<>
-			struct Factory< Full_t > {
+			Full_t Create< Full_t >( size_t dim ) {
+				return Full_t( 0, 0, 0, dim, 1, 0 );
+			}
 
-				static Full_t Instance( size_t dim ) {
-					return Full_t( 0, 0, 0, dim, 1, 0 );
-				}
-			};
 		};
 
 

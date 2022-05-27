@@ -805,7 +805,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						storage::polynomials::Factory< mapping_polynomial_type >::Instance( cols ),
+						storage::polynomials::Create< mapping_polynomial_type >( cols ),
 						rows * cols
 					)
 				) {
@@ -901,7 +901,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( dim ),
 						imf::Id( dim ),
-						storage::polynomials::Factory< mapping_polynomial_type >::Instance( dim ),
+						storage::polynomials::Create< mapping_polynomial_type >( dim ),
 						dim * dim
 					)
 				) {
@@ -992,7 +992,7 @@ namespace alp {
 					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						storage::polynomials::Factory< mapping_polynomial_type >::Instance( cols ),
+						storage::polynomials::Create< mapping_polynomial_type >( cols ),
 						rows * cols
 					)
 				) {
