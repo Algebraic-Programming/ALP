@@ -154,7 +154,7 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-		return mxv< descr >( internal::getVector(u), internal::getVector(mask), internal::getMatrix(A), internal::getVector(mask), ring );
+		return mxv< descr >( internal::getVector(u), internal::getVector(mask), internal::getMatrix(A), internal::getVector(v), ring );
 	}
 	
 	template< Descriptor descr = descriptors::no_operation,
@@ -176,7 +176,6 @@ namespace grb {
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		
 		std::array< const void *, 4 > sources{ &mask, &A, &v, &v_mask};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
@@ -185,7 +184,7 @@ namespace grb {
 				destinations.begin(), destinations.end()
 		);
 		return mxv< descr >( internal::getVector(u), internal::getVector(mask), internal::getMatrix(A),
-		 internal::getVector(mask), internal::getVector(v_mask), ring );
+		 internal::getVector(v), internal::getVector(v_mask), ring );
 		}
 
 
@@ -220,7 +219,7 @@ namespace grb {
 				sources.begin(), sources.end(),
 				destinations.begin(), destinations.end()
 		);
-		return mxv< descr >( internal::getVector(u), internal::getVector(mask), internal::getMatrix(A), internal::getVector(mask), internal::getVector(v_mask), add );
+		return mxv< descr >( internal::getVector(u), internal::getVector(mask), internal::getMatrix(A), internal::getVector(v), internal::getVector(v_mask), add, mul );
 		}
 
 
