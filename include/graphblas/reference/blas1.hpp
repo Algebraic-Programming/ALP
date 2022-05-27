@@ -118,14 +118,19 @@ namespace grb {
 			}
 			assert( phase == EXECUTE );
 
+			// mask must be of equal size as input vector
+			if( masked && size( to_fold ) != size( mask ) ) {
+				return MISMATCH;
+			}
+
 			// fold is only defined on dense vectors
 			if( nnz( to_fold ) < size( to_fold ) ) {
 				return ILLEGAL;
 			}
 
-			// mask must be of equal size as input vector
-			if( masked && size( to_fold ) != size( mask ) ) {
-				return MISMATCH;
+			// if dense descriptor is given, then additionally the mask must be dense
+			if( masked && (descr & descriptors::dense) && nnz( mask ) < size( mask ) ) {
+				return ILLEGAL;
 			}
 
 			// handle trivial case
@@ -332,7 +337,17 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
+#ifndef NDEBUG
+			constexpr const bool dense_descr = descr & descriptors::dense;
+#endif
 			const size_t n = size( vector );
+
+			// input checking is done by fold_from_scalar_to_vector_generic
+			// we hence here only assert
+			assert( !masked || m_coors->size() == n );
+			assert( !dense_descr || nnz( vector ) == n );
+			assert( !dense_descr || !masked || m_coors->nonzeroes() == n );
+
 			if( n == 0 ) {
 				return SUCCESS;
 			}
@@ -346,7 +361,7 @@ namespace grb {
 			Coords &coors = internal::getCoordinates( vector );
 			assert( coors.nonzeroes() < coors.size() );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel for schedule(dynamic, config::CACHE_LINE_SIZE::value())
 #endif
 			for( size_t i = 0; i < n; ++i ) {
 				const size_t index = coors.index( i );
@@ -381,8 +396,18 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
-			assert( grb::size( vector ) == m_coors.size() );
-			if( grb::size( vector ) == 0 ) {
+#ifndef NDEBUG
+			constexpr const bool dense_descr = descr & descriptors::dense;
+#endif
+			const size_t n = size( vector );
+
+			// input checking is done by fold_from_scalar_to_vector_generic
+			// we hence here only assert
+			assert( m_coors.size() != n );
+			assert( !dense_descr || nnz( vector ) == n );
+			assert( !dense_descr || m_coors.nonzeroes() == n );
+
+			if( n == 0 ) {
 				return SUCCESS;
 			}
 			if( phase == RESIZE ) {
@@ -457,11 +482,24 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
+			constexpr const bool dense_descr = descr & descriptors::dense;
 			assert( !masked || m != nullptr );
 			assert( !masked || m_coors != nullptr );
 			auto &coor = internal::getCoordinates( vector );
 			const size_t n = coor.size();
 
+			if( masked && m_coors->size() != n ) {
+				return MISMATCH;
+			}
+			if( dense_descr && sparse ) {
+				return ILLEGAL;
+			}
+			if( dense_descr && nnz( vector ) < n ) {
+				return ILLEGAL;
+			}
+			if( dense_descr && masked && m_coors->nonzeroes() < n ) {
+				return ILLEGAL;
+			}
 			if( n == 0 ) {
 				return SUCCESS;
 			}
@@ -566,7 +604,8 @@ namespace grb {
 		 *                    match.
 		 * @returns #SUCCESS  On successful completion of this function call.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool left, // if this is false, the right-looking fold is assumed
 			bool sparse, bool masked, bool monoid,
 			typename MaskType, typename IOType, typename IType,
@@ -580,19 +619,14 @@ namespace grb {
 			const OP &op,
 			const Phase phase
 		) {
+			constexpr const bool dense_descr = descr & descriptors::dense;
 			assert( !masked || (m != nullptr) );
-			// take at least a number of elements so that no two threads operate on the same cache line
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			const constexpr size_t blocksize =
-				config::SIMD_BLOCKSIZE< IOType >::value() >
-					config::SIMD_BLOCKSIZE< IType >::value() ?
-				config::SIMD_BLOCKSIZE< IOType >::value() :
-				config::SIMD_BLOCKSIZE< IType >::value();
-			static_assert( blocksize > 0, "Config error: zero blocksize in call to fold_from_vector_to_vector_generic!" );
-#endif
 			const size_t n = size( fold_into );
 			if( n != size( to_fold ) ) {
 				return MISMATCH;
+			}
+			if( dense_descr && sparse ) {
+				return ILLEGAL;
 			}
 			if( !sparse && nnz( fold_into ) < n ) {
 				return ILLEGAL;
@@ -605,6 +639,18 @@ namespace grb {
 			}
 
 			assert( phase == EXECUTE );
+
+			// take at least a number of elements so that no two threads operate on the
+			// same cache line
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			const constexpr size_t blocksize =
+				config::SIMD_BLOCKSIZE< IOType >::value() >
+					config::SIMD_BLOCKSIZE< IType >::value() ?
+				config::SIMD_BLOCKSIZE< IOType >::value() :
+				config::SIMD_BLOCKSIZE< IType >::value();
+			static_assert( blocksize > 0, "Config error: zero blocksize in call to"
+				"fold_from_vector_to_vector_generic!" );
+#endif
 			if( !sparse && !masked ) {
 #ifdef _DEBUG
 				std::cout << "fold_from_vector_to_vector_generic: in dense variant\n";
@@ -8422,7 +8468,8 @@ namespace grb {
 		typename InputType, typename IOType, typename MaskType,
 		typename Coords
 	>
-	RC foldl( IOType &x,
+	RC foldl(
+		IOType &x,
 		const Vector< InputType, reference, Coords > &y,
 		const Vector< MaskType, reference, Coords > &mask,
 		const Monoid &monoid = Monoid(),
@@ -8465,6 +8512,9 @@ namespace grb {
 		}
 		if( descr & descriptors::dense ) {
 			if( nnz( y ) != size( y ) ) {
+				return ILLEGAL;
+			}
+			if( size( mask ) > 0 && nnz( mask ) != size( mask ) ) {
 				return ILLEGAL;
 			}
 		}
