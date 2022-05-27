@@ -75,6 +75,12 @@ namespace alp {
 
 		};
 
+		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_t;
+		typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_t;
+		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_t; // TODO
+		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
+
+
 		enum Scheme { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
 
 		/**
