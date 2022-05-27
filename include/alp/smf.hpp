@@ -18,8 +18,8 @@
  *
  * @file
  *
- * This file registers available storage mapping functions (SMFs).
- * SMFs are maps between logical and physical storage space.
+ * This file registers mechanisms for coordinate mapping between
+ * logical and physical iteration spaces.
  *
  */
 
@@ -33,6 +33,11 @@ namespace alp {
 
 	namespace storage {
 
+		/**
+		 * The namespace containts polynomials used to map coordinates
+		 * between logical and physical iteration spaces,
+		 * associated type traits and helper classes.
+		 */
 		namespace polynomials {
 
 			/**
@@ -41,11 +46,23 @@ namespace alp {
 			 * where uppercase coefficients are compile-time constant,
 			 * lowercase coefficients are run-time constant,
 			 * and x and y are variables.
-			 * All coefficients, variables are integers and all operations are integer
+			 * All coefficients and variables are integers and all operations are integer
 			 * operations.
 			 *
 			 * The purpose of compile-time constant coefficients is to allow compile-time
-			 * optimizations for zero factors.
+			 * optimizations for zero terms/monomials.
+			 *
+			 * Denominator allows for implementaiton of polynomials with integer division,
+			 * e.g., n * ( n + 1 ) / 2,
+			 * while avoiding the need for floating point coefficients and operations.
+			 *
+			 * @tparam Ax2  Static coefficient corresponding to x^2
+			 * @tparam Ay2  Static coefficient corresponding to y^2
+			 * @tparam Axy  Static coefficient corresponding to x*y
+			 * @tparam Ax   Static coefficient corresponding to x
+			 * @tparam Ay   Static coefficient corresponding to y
+			 * @tparam A0   Static coefficient corresponding to constant term
+			 * @tparam Denominator  Static denominator dividing the whole polynomial
 			 */
 			template< size_t Ax2, size_t Ay2, size_t Axy, size_t Ax, size_t Ay, size_t A0, size_t Denominator >
 			struct BivariateQuadratic {
@@ -92,13 +109,12 @@ namespace alp {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
 			}
 
-		};
-
+		}; // namespace polynomials
 
 		/**
 		 * Provides a type of composed Access Mapping Function
 		 * expressed as a BivariateQuadratic polynomial depending
-		 * on the types of the IMFs and the SMF.
+		 * on the types of the IMFs and the Mapping Polynomial.
 		 */
 		template< typename ImfR, typename ImfC, typename MappingPolynomial >
 		struct Composition {
@@ -114,14 +130,17 @@ namespace alp {
 		class AMFFactory;
 
 		/**
-		 * Access Mapping Function (AMF) maps a logical matrix coordinates (i, j)
-		 * to a corresponding matrix element's location in the physical container.
-		 * AMF take into account the index mapping function associated to each
-		 * coordinate (rows and columns) and the storage mapping function that
-		 * maps logical coordinates to physical ones.
+		 * Access Mapping Function (AMF) maps logical matrix coordinates (i, j)
+		 * to the corresponding matrix element's location in the physical container.
 		 *
-		 * For certain combinations of IMFs and SMFs it is possible to fuse the
-		 * index computation in a single function call.
+		 * To calculate the mapping, the AMF first applies logical-to-logical
+		 * mapping provided by one IMF per coordinate (row and column).
+		 * A bivariate polynomial (called mapping polynomial) takes these two
+		 * output coordinates as inputs to calculate the position is physical
+		 * storage of the requested element (logical-to-physical mapping).
+		 *
+		 * For certain combinations of IMFs and mapping polynomial types it is
+		 * possible to fuse the index computation into a single function call.
 		 */
 		template< typename ImfR, typename ImfC, typename MappingPolynomial >
 		class AMF {
@@ -192,8 +211,13 @@ namespace alp {
 				 *          logical iteration space.
 				 */
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
-		};
 
+		}; // class AMF
+
+		/**
+		 * Specialization for strided IMFs
+		 * which allows for fusion of IMFs with the mapping polynomial
+		 */
 		template< typename MappingPolynomial >
 		class AMF< imf::Strided, imf::Strided, MappingPolynomial > {
 
@@ -210,6 +234,7 @@ namespace alp {
 
 				const size_t storage_dimensions;
 
+				/** Returns a polynomial representing fusion of the IMFs and the original polynomial */
 				Composition_type fusion(
 					const imf::Strided &imf_r,
 					const imf::Strided &imf_c,
@@ -257,56 +282,51 @@ namespace alp {
 
 		}; // class AMF< imf::Strided, imf::Strided, storage >
 
+		/**
+		 * Factory class that creates AMF objects of the appropriate type
+		 * depending on the types of provided IMFs and polynomials.
+		 */
 		class AMFFactory {
 
 			public:
 
-			template< typename MappingPolynomial >
-			static AMF<
-				imf::Id,
-				imf::Id,
-				MappingPolynomial
-			> Create(
-				imf::Id imf_r,
-				imf::Id imf_c,
-				MappingPolynomial map_poly,
-				const size_t storage_dimensions
-			) {
-				return AMF< imf::Id, imf::Id, MappingPolynomial >(
-					imf_r, imf_c, map_poly, storage_dimensions
-				);
-			}
+				template< typename MappingPolynomial >
+				static AMF< imf::Id, imf::Id, MappingPolynomial >
+				Create( imf::Id imf_r, imf::Id imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) {
+					return AMF< imf::Id, imf::Id, MappingPolynomial >( imf_r, imf_c, map_poly, storage_dimensions );
+				}
 
-			template<
-				typename OriginalImfR, typename OriginalImfC, typename MappingPolynomial,
-				typename ViewImfR, typename ViewImfC
-			>
-			static AMF<
-				typename imf::composed_type< ViewImfR, OriginalImfR >::type,
-				typename imf::composed_type< ViewImfC, OriginalImfC >::type,
-				MappingPolynomial
-			> Create(
-				const AMF< OriginalImfR, OriginalImfC, MappingPolynomial > &original_amf,
-				ViewImfR view_imf_r,
-				ViewImfC view_imf_c
-			) {
-				return AMF<
+				template<
+					typename OriginalImfR, typename OriginalImfC, typename MappingPolynomial,
+					typename ViewImfR, typename ViewImfC
+				>
+				static AMF<
 					typename imf::composed_type< ViewImfR, OriginalImfR >::type,
 					typename imf::composed_type< ViewImfC, OriginalImfC >::type,
 					MappingPolynomial
-				>(
-					imf::ComposedFactory::create< ViewImfR, OriginalImfR >(
-						view_imf_r,
-						original_amf.imf_r
-					),
-					imf::ComposedFactory::create< ViewImfC, OriginalImfC >(
-						view_imf_c,
-						original_amf.imf_c
-					),
-					original_amf.map_poly,
-					original_amf.storage_dimensions
-				);
-			}
+				> Create(
+					const AMF< OriginalImfR, OriginalImfC, MappingPolynomial > &original_amf,
+					ViewImfR view_imf_r,
+					ViewImfC view_imf_c
+				) {
+					return AMF<
+						typename imf::composed_type< ViewImfR, OriginalImfR >::type,
+						typename imf::composed_type< ViewImfC, OriginalImfC >::type,
+						MappingPolynomial
+					>(
+						imf::ComposedFactory::create< ViewImfR, OriginalImfR >(
+							view_imf_r,
+							original_amf.imf_r
+						),
+						imf::ComposedFactory::create< ViewImfC, OriginalImfC >(
+							view_imf_c,
+							original_amf.imf_c
+						),
+						original_amf.map_poly,
+						original_amf.storage_dimensions
+					);
+				}
+
 		}; // class AMFFactory
 
 	}; // namespace storage
