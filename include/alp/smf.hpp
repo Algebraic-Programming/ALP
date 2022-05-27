@@ -73,137 +73,45 @@ namespace alp {
 
 			}; // BivariateQuadratic
 
-		};
-
-		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_t;
-		typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_t;
-		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_t; // TODO
-		typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
-
-
-		enum Scheme { NONE, FULL_ROW_MAJOR, FULL_COLUMN_MAJOR, PACKED, BANDED };
-
-		/**
-		 * Encapsulate type and methods associated with a specific
-		 * storage scheme.
-		 */
-		template< enum Scheme storage_scheme >
-		struct SMF {
-
-			/** A type associated with this specific storage scheme. */
-			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > type;
-
-			/** Creates an instance of this storage scheme. */
-			static type Instance() {
-				return type( 0, 0, 0, 0, 0, 0 );
-			}
-
-			/** Returns the storage size corresponding to this storage scheme. */
-			static size_t getStorageSize() {
-				return 0;
-			}
-		};
-
-		/**
-		 * Implements full storage scheme with row-major ordering.
-		 */
-		template<>
-		struct SMF< Scheme::FULL_ROW_MAJOR > {
-
-			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > type;
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_t;
+			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_t;
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_t; // TODO
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
 
 			/**
-			 * For row-major storage, dim represents number of columns.
-			 * For column-major storage, dim represents number of rows.
+			 * Polynomial factory
 			 */
-			static type Instance( const size_t rows, const size_t cols ) {
-				(void) rows;
-				return type( 0, 0, 0, cols, 1, 0 );
-			}
+			template< typename PolynomialType >
+			struct Factory {
 
-			/**
-			 * @param[in] M  number of rows
-			 * @param[in] N  number of columns
-			 */
-			static size_t getStorageSize( const size_t M, const size_t N ) {
-				return M * N;
-			}
+				template< typename... Args >
+				static PolynomialType Instance( Args... args ) {
+					return PolynomialType( args... );
+				}
+			};
+
+			template<>
+			struct Factory< Full_t > {
+
+				static Full_t Instance( size_t dim ) {
+					return Full_t( 0, 0, 0, dim, 1, 0 );
+				}
+			};
 		};
 
-		/**
-		 * Implements full storage scheme with column-major ordering.
-		 *
-		 * Mapping polynomial and getStorageSize are inherited from
-		 * the specialization for full row-major storage scheme.
-		 */
-		template<>
-		struct SMF< Scheme::FULL_COLUMN_MAJOR > : SMF< Scheme::FULL_ROW_MAJOR > {
-
-			static type Instance( const size_t rows, const size_t cols ) {
-				(void) cols;
-				return type( 0, 0, 0, rows, 1, 0 );
-			}
-		};
-
-		template<>
-		struct SMF< Scheme::PACKED > {
-
-			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
-
-			static type Instance( size_t dim ) {
-				(void) dim;
-				return type( 0, 0, 0, 0, 0, 0 /* TODO */ );
-			}
-
-			/**
-			 * @param[in] M  number of rows
-			 * @param[in] N  number of columns
-			 */
-			static size_t getStorageSize( const size_t M, const size_t N ) {
-				(void) M;
-				(void) N;
-				return 0; // TODO
-			}
-		};
-
-		template<>
-		struct SMF< Scheme::BANDED > {
-
-			typedef polynomials::BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 /* TODO */ > type;
-
-			static type Instance( size_t rows, size_t cols, size_t kl, size_t ku ) {
-				(void) rows;
-				(void) cols;
-				(void) kl;
-				(void) ku;
-				return type( 0, 0, 0, 0, 0, 0 /* TODO */ );
-			}
-
-			/**
-			 * @param[in] M  number of rows
-			 * @param[in] N  number of columns
-			 */
-			static size_t getStorageSize( const size_t M, const size_t N, size_t kl, size_t ku ) {
-				(void) M;
-				(void) N;
-				(void) kl;
-				(void) ku;
-				return 0; // TODO
-			}
-		};
 
 		/**
 		 * Provides a type of composed Access Mapping Function
 		 * expressed as a BivariateQuadratic polynomial depending
 		 * on the types of the IMFs and the SMF.
 		 */
-		template< typename ImfR, typename ImfC, enum Scheme storage_scheme >
+		template< typename ImfR, typename ImfC, typename MappingPolynomial >
 		struct Composition {
 			typedef polynomials::BivariateQuadratic< 1, 1, 1, 1, 1, 1, 1 > type;
 		};
 
 		template<>
-		struct Composition< imf::Strided, imf::Strided, Scheme::FULL_ROW_MAJOR > {
+		struct Composition< imf::Strided, imf::Strided, polynomials::Full_t > {
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
 		};
 
@@ -220,7 +128,7 @@ namespace alp {
 		 * For certain combinations of IMFs and SMFs it is possible to fuse the
 		 * index computation in a single function call.
 		 */
-		template< typename ImfR, typename ImfC, enum Scheme storage >
+		template< typename ImfR, typename ImfC, typename MappingPolynomial >
 		class AMF {
 
 			friend AMFFactory;
@@ -229,12 +137,13 @@ namespace alp {
 
 				const ImfR imf_r;
 				const ImfC imf_c;
-				typedef typename SMF< storage >::type smf_type;
-				const smf_type smf;
+				const MappingPolynomial smf;
+				const size_t storage_dimensions;
 
 			public:
 
-				AMF( ImfR &&imf_r, ImfC &&imf_c, smf_type smf ) : imf_r( imf_r ), imf_c( imf_c ), smf( smf ) {}
+				AMF( ImfR &&imf_r, ImfC &&imf_c, MappingPolynomial smf, const size_t storage_dimensions ) :
+					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), storage_dimensions( storage_dimensions ) {}
 
 				/**
 				 * Returns dimensions of the logical layout of the associated container.
@@ -251,7 +160,7 @@ namespace alp {
 				 * @return  The size of the physical container.
 				 */
 				std::size_t getStorageDimensions() const {
-					return 0;
+					return storage_dimensions;
 				}
 
 				/**
@@ -290,8 +199,8 @@ namespace alp {
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 		};
 
-		template< enum Scheme storage >
-		class AMF< imf::Strided, imf::Strided, storage > {
+		template< typename MappingPolynomial >
+		class AMF< imf::Strided, imf::Strided, MappingPolynomial > {
 
 			friend AMFFactory;
 
@@ -300,15 +209,16 @@ namespace alp {
 				/** For size checks */
 				const imf::Strided imf_r;
 				const imf::Strided imf_c;
-				typedef typename SMF< storage >::type smf_type;
-				const smf_type smf;
-				typedef typename Composition< imf::Strided, imf::Strided, storage >::type Composition_t;
+				const MappingPolynomial smf;
+				typedef typename Composition< imf::Strided, imf::Strided, MappingPolynomial >::type Composition_t;
 				const Composition_t amf;
+
+				const size_t storage_dimensions;
 
 				Composition_t fusion(
 					const imf::Strided &imf_r,
 					const imf::Strided &imf_c,
-					const smf_type &smf
+					const MappingPolynomial &smf
 				) const {
 					return Composition_t(
 						smf.ax2 * imf_r.s * imf_r.s, // ax2 ( for x^2 )
@@ -323,8 +233,8 @@ namespace alp {
 
 			public:
 
-				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const smf_type &smf ) :
-					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ) {
+				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const MappingPolynomial &smf, const size_t storage_dimensions ) :
+					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ), storage_dimensions( storage_dimensions ) {
 				}
 
 				std::pair< size_t, size_t> getLogicalDimensions() const {
@@ -332,7 +242,7 @@ namespace alp {
 				}
 
 				std::size_t getStorageDimensions() const {
-					return SMF< storage >::getStorageDimensions( imf_r.n, imf_c.n );
+					return storage_dimensions;
 				}
 
 				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
@@ -356,23 +266,39 @@ namespace alp {
 
 			public:
 
+			template< typename MappingPolynomial >
+			static AMF<
+				imf::Id,
+				imf::Id,
+				MappingPolynomial
+			> Create(
+				imf::Id imf_r,
+				imf::Id imf_c,
+				MappingPolynomial smf,
+				const size_t storage_dimensions
+			) {
+				return AMF< imf::Id, imf::Id, MappingPolynomial >(
+					imf_r, imf_c, smf, storage_dimensions
+				);
+			}
+
 			template<
-				typename OriginalImfR, typename OriginalImfC, enum Scheme storage,
+				typename OriginalImfR, typename OriginalImfC, typename MappingPolynomial,
 				typename ViewImfR, typename ViewImfC
 			>
 			static AMF<
 				typename imf::composed_type< ViewImfR, OriginalImfR >::type,
 				typename imf::composed_type< ViewImfC, OriginalImfC >::type,
-				storage
+				MappingPolynomial
 			> Create(
-				const AMF< OriginalImfR, OriginalImfC, storage > &original_amf,
+				const AMF< OriginalImfR, OriginalImfC, MappingPolynomial > &original_amf,
 				ViewImfR view_imf_r,
 				ViewImfC view_imf_c
 			) {
 				return AMF<
 					typename imf::composed_type< ViewImfR, OriginalImfR >::type,
 					typename imf::composed_type< ViewImfC, OriginalImfC >::type,
-					storage
+					MappingPolynomial
 				>(
 					imf::ComposedFactory::create< ViewImfR, OriginalImfR >(
 						view_imf_r,
@@ -382,7 +308,8 @@ namespace alp {
 						view_imf_c,
 						original_amf.imf_c
 					),
-					original_amf.smf
+					original_amf.smf,
+					original_amf.storage_dimensions
 				);
 			}
 		}; // class AMFFactory
