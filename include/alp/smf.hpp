@@ -62,7 +62,7 @@ namespace alp {
 					ax( ax ), ay( ay ),
 					a0( a0 ) {}
 
-				size_t f( const size_t x, const size_t y ) const {
+				size_t evaluate( const size_t x, const size_t y ) const {
 					return (Ax2 * ax2 * x * x +
 						Ay2 * ay2 * y * y +
 						Axy * axy * x * y +
@@ -73,10 +73,10 @@ namespace alp {
 
 			}; // BivariateQuadratic
 
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_t;
-			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_t;
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_t; // TODO
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_t; // TODO
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_type;
+			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_type; // TODO
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type; // TODO
 
 			/**
 			 * Polynomial factory method
@@ -88,8 +88,8 @@ namespace alp {
 
 			/** Specialization for Full storage of type i * dim + j */
 			template<>
-			Full_t Create< Full_t >( size_t dim ) {
-				return Full_t( 0, 0, 0, dim, 1, 0 );
+			Full_type Create< Full_type >( size_t dim ) {
+				return Full_type( 0, 0, 0, dim, 1, 0 );
 			}
 
 		};
@@ -106,7 +106,7 @@ namespace alp {
 		};
 
 		template<>
-		struct Composition< imf::Strided, imf::Strided, polynomials::Full_t > {
+		struct Composition< imf::Strided, imf::Strided, polynomials::Full_type > {
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
 		};
 
@@ -132,13 +132,13 @@ namespace alp {
 
 				const ImfR imf_r;
 				const ImfC imf_c;
-				const MappingPolynomial smf;
+				const MappingPolynomial map_poly;
 				const size_t storage_dimensions;
 
 			public:
 
-				AMF( ImfR &&imf_r, ImfC &&imf_c, MappingPolynomial smf, const size_t storage_dimensions ) :
-					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), storage_dimensions( storage_dimensions ) {}
+				AMF( ImfR &&imf_r, ImfC &&imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
+					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), storage_dimensions( storage_dimensions ) {}
 
 				/**
 				 * Returns dimensions of the logical layout of the associated container.
@@ -176,7 +176,7 @@ namespace alp {
 #endif
 					(void)s;
 					(void)P;
-					return smf.f( imf_r.map( i ), imf_c.map( j ) );
+					return map_poly.evaluate( imf_r.map( i ), imf_c.map( j ) );
 				}
 
 				/**
@@ -204,32 +204,32 @@ namespace alp {
 				/** For size checks */
 				const imf::Strided imf_r;
 				const imf::Strided imf_c;
-				const MappingPolynomial smf;
-				typedef typename Composition< imf::Strided, imf::Strided, MappingPolynomial >::type Composition_t;
-				const Composition_t amf;
+				const MappingPolynomial map_poly;
+				typedef typename Composition< imf::Strided, imf::Strided, MappingPolynomial >::type Composition_type;
+				const Composition_type amf;
 
 				const size_t storage_dimensions;
 
-				Composition_t fusion(
+				Composition_type fusion(
 					const imf::Strided &imf_r,
 					const imf::Strided &imf_c,
-					const MappingPolynomial &smf
+					const MappingPolynomial &map_poly
 				) const {
-					return Composition_t(
-						smf.ax2 * imf_r.s * imf_r.s, // ax2 ( for x^2 )
-						smf.ay2 * imf_c.s * imf_c.s, // ay2 ( for y*2 )
-						smf.axy * imf_r.s * imf_c.s, // axy ( for x * y )
-						imf_r.s * ( 2 * smf.ax2 * imf_r.b + smf.axy * imf_c.b + smf.ax ), // ax ( for x )
-						imf_c.s * ( 2 * smf.ay2 * imf_c.b + smf.axy * imf_r.b + smf.ay ), // ay ( for y )
-						smf.ax2 * imf_r.b * imf_r.b + smf.ay2 * imf_c.b * imf_c.b +
-						smf.axy * imf_r.b * imf_c.b + smf.ax * imf_r.b + smf.ay * imf_c.b + smf.a0 // a0
+					return Composition_type(
+						map_poly.ax2 * imf_r.s * imf_r.s, // ax2 ( for x^2 )
+						map_poly.ay2 * imf_c.s * imf_c.s, // ay2 ( for y*2 )
+						map_poly.axy * imf_r.s * imf_c.s, // axy ( for x * y )
+						imf_r.s * ( 2 * map_poly.ax2 * imf_r.b + map_poly.axy * imf_c.b + map_poly.ax ), // ax ( for x )
+						imf_c.s * ( 2 * map_poly.ay2 * imf_c.b + map_poly.axy * imf_r.b + map_poly.ay ), // ay ( for y )
+						map_poly.ax2 * imf_r.b * imf_r.b + map_poly.ay2 * imf_c.b * imf_c.b +
+						map_poly.axy * imf_r.b * imf_c.b + map_poly.ax * imf_r.b + map_poly.ay * imf_c.b + map_poly.a0 // a0
 					);
 				}
 
 			public:
 
-				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const MappingPolynomial &smf, const size_t storage_dimensions ) :
-					imf_r( imf_r ), imf_c( imf_c ), smf( smf ), amf( fusion( imf_r, imf_c, smf ) ), storage_dimensions( storage_dimensions ) {
+				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const MappingPolynomial &map_poly, const size_t storage_dimensions ) :
+					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), amf( fusion( imf_r, imf_c, map_poly ) ), storage_dimensions( storage_dimensions ) {
 				}
 
 				std::pair< size_t, size_t> getLogicalDimensions() const {
@@ -250,7 +250,7 @@ namespace alp {
 					(void)P;
 					assert( i < imf_r.n );
 					assert( j < imf_c.n );
-					return amf.f( i, j );
+					return amf.evaluate( i, j );
 				}
 
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
@@ -269,11 +269,11 @@ namespace alp {
 			> Create(
 				imf::Id imf_r,
 				imf::Id imf_c,
-				MappingPolynomial smf,
+				MappingPolynomial map_poly,
 				const size_t storage_dimensions
 			) {
 				return AMF< imf::Id, imf::Id, MappingPolynomial >(
-					imf_r, imf_c, smf, storage_dimensions
+					imf_r, imf_c, map_poly, storage_dimensions
 				);
 			}
 
@@ -303,7 +303,7 @@ namespace alp {
 						view_imf_c,
 						original_amf.imf_c
 					),
-					original_amf.smf,
+					original_amf.map_poly,
 					original_amf.storage_dimensions
 				);
 			}

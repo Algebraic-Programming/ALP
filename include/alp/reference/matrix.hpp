@@ -733,7 +733,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -756,7 +756,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef storage::polynomials::Full_t mapping_polynomial_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix is an original container.
 			 * False if it is a view over another matrix or a functor.
@@ -855,7 +855,7 @@ namespace alp {
 	// Square Matrix
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -874,7 +874,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef storage::polynomials::Full_t mapping_polynomial_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
 
@@ -942,7 +942,7 @@ namespace alp {
 	// UpperTriangular Matrix
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -965,7 +965,7 @@ namespace alp {
 		public:
 			/** Exposes the element type and the structure. */
 			typedef structures::UpperTriangular structure;
-			typedef storage::polynomials::Full_t mapping_polynomial_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
 			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
 
