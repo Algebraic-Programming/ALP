@@ -39,7 +39,7 @@
 #include <alp/utils/autodeleter.hpp>
 //#include <alp/utils/pattern.hpp> //for help with dealing with pattern matrix input
 #include <alp/vector.hpp>
-#include <alp/smf.hpp>
+#include <alp/storage.hpp>
 #include <alp/structures.hpp>
 #include <alp/density.hpp>
 #include <alp/views.hpp>
@@ -359,28 +359,28 @@ namespace alp {
 
 	namespace internal {
 		/** Forward declaration */
-		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
+		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool is_original >
 		class MatrixContainer;
 
 		/** Container reference getters used by friend functions of specialized Matrix */
-		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
-		const Vector< T, reference > & getContainer( const MatrixContainer< T, ImfR, ImfC, Smf, is_original > & A );
+		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool is_original >
+		const Vector< T, reference > & getContainer( const MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > & A );
 
-		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
-		Vector< T, reference > & getContainer( MatrixContainer< T, ImfR, ImfC, Smf, is_original > & A );
+		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool is_original >
+		Vector< T, reference > & getContainer( MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
 		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 		const Vector< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
 			return getContainer( static_cast< const MatrixContainer< T, ImfR, ImfC,
-				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::smf_type,
+				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::mapping_polynomial_type,
 				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::is_original > & >( A ) );
 		}
 
 		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 		Vector< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
 			return getContainer( static_cast< MatrixContainer< T, ImfR, ImfC,
-				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::smf_type,
+				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::mapping_polynomial_type,
 				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::is_original > & >( A ) );
 		}
 
@@ -480,8 +480,8 @@ namespace alp {
 		 * @tparam is_original True if the class is an original container
 		 *                     False if the class is a view of another matrix
 		 */
-		template< typename T, typename ImfR, typename ImfC, typename Smf, bool is_original >
-		class MatrixContainer : public MatrixBase< MatrixContainer< T, ImfR, ImfC, Smf, is_original > > {
+		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool is_original >
+		class MatrixContainer : public MatrixBase< MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > > {
 			public:
 
 				/** Expose static properties */
@@ -495,7 +495,7 @@ namespace alp {
 				typedef ImfC imfc_type;
 
 			protected:
-				typedef MatrixContainer< T, ImfR, ImfC, Smf, is_original > self_type;
+				typedef MatrixContainer< T, ImfR, ImfC, MappingPolynomial, is_original > self_type;
 				friend MatrixBase< self_type >;
 
 				typedef typename std::conditional<
@@ -536,7 +536,7 @@ namespace alp {
 				 * \see AMF
 				 */
 			public: // TODO: Temporarily expose AMF publicly until proper getters are implemented
-				smf::AMF< ImfR, ImfC, Smf > amf;
+				storage::AMF< ImfR, ImfC, MappingPolynomial > amf;
 			protected:
 
 				/**
@@ -546,7 +546,7 @@ namespace alp {
 				 * @return A pair of dimensions.
 				 */
 				std::pair< size_t, size_t > _dims() const noexcept {
-					return std::make_pair( amf.imf_r.n, amf.imf_c.n );
+					return amf.getLogicalDimensions();
 				}
 
 				friend const Vector< T, reference > & getContainer( const self_type &A ) {
@@ -605,13 +605,13 @@ namespace alp {
 				 * TODO: Add the storage scheme a parameter to the constructor
 				 * so that allocation can be made accordingly, generalizing the full case.
 				 */
-				MatrixContainer( smf::AMF< ImfR, ImfC, Smf > amf ) :
+				MatrixContainer( storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
 					// enable only if ImfR and ImfC are imf::Id
-					container( internal::Vector< T, reference >( 10 /* TODO */ ) ),
+					container( internal::Vector< T, reference >( amf.getStorageDimensions() ) ),
 					amf( amf ) {}
 
 				/** View on another container */
-				MatrixContainer( Vector< T, reference > &container, smf::AMF< ImfR, ImfC, Smf > amf ) :
+				MatrixContainer( Vector< T, reference > &container, storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
 					container( container ),
 					amf( amf ) {}
 
@@ -733,7 +733,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -756,7 +756,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef smf::Full_t smf_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix is an original container.
 			 * False if it is a view over another matrix or a functor.
@@ -767,7 +767,7 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -801,11 +801,12 @@ namespace alp {
 				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						smf::SMFFactory::Full( cols )
+						storage::polynomials::Create< mapping_polynomial_type >( cols ),
+						rows * cols
 					)
 				) {
 				(void)cap;
@@ -825,19 +826,9 @@ namespace alp {
 					std::is_same< TargetMatrixType, target_type >::value >::type
 			>
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
 					getContainer( target_matrix ),
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/**
@@ -864,7 +855,7 @@ namespace alp {
 	// Square Matrix
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -883,9 +874,9 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef smf::Full_t smf_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
-			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
@@ -906,11 +897,12 @@ namespace alp {
 				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( dim ),
 						imf::Id( dim ),
-						smf::SMFFactory::Full( dim )
+						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+						dim * dim
 					)
 				) {
 				(void)cap;
@@ -924,19 +916,9 @@ namespace alp {
 					std::is_same< TargetMatrixType, target_type >::value >::type
 			>
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
 					getContainer( target_matrix ),
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/**
@@ -960,7 +942,7 @@ namespace alp {
 	// UpperTriangular Matrix
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, std::is_same< typename View::applied_to, void >::value > {
+		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
 		private:
 			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -983,9 +965,9 @@ namespace alp {
 		public:
 			/** Exposes the element type and the structure. */
 			typedef structures::UpperTriangular structure;
-			typedef smf::Full_t smf_type;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
 			static constexpr bool is_original = std::is_same< target_type, void >::value;
-			typedef internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original > base_type;
+			typedef internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original > base_type;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
@@ -1006,11 +988,12 @@ namespace alp {
 				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
 						imf::Id( rows ),
 						imf::Id( cols ),
-						smf::SMFFactory::Full( cols )
+						storage::polynomials::Create< mapping_polynomial_type >( cols ),
+						rows * cols
 					)
 				) {
 				(void)cap;
@@ -1024,19 +1007,9 @@ namespace alp {
 					std::is_same< TargetMatrixType, target_type >::value >::type
 			>
 			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::MatrixContainer< T, ImfR, ImfC, smf::Full_t, is_original >(
+				internal::MatrixContainer< T, ImfR, ImfC, mapping_polynomial_type, is_original >(
 					getContainer( target_matrix ),
-					smf::AMF< ImfR, ImfC, smf::Full_t >(
-						imf::ComposedFactory::create< typename target_type::imfr_type, ImfR >(
-							target_matrix.amf.imf_r,
-							imf_r
-						),
-						imf::ComposedFactory::create< typename target_type::imfc_type, ImfC >(
-							target_matrix.amf.imf_c,
-							imf_c
-						),
-						target_matrix.amf.smf
-					)
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
 			/** Constructor for a view over another matrix using default IMFs (Identity).
@@ -1267,7 +1240,15 @@ namespace alp {
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
 			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-		alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, TargetImfR, TargetImfC, backend >
+		alp::Matrix<
+			T,
+			TargetStructure,
+			density,
+			view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			typename imf::composed_type< TargetImfR, ImfR >::type,
+			typename imf::composed_type< TargetImfC, ImfC >::type,
+			backend
+		>
 		get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 				TargetImfR imf_r, TargetImfC imf_c ) {
 
@@ -1371,7 +1352,15 @@ namespace alp {
 
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Matrix< T, Structure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Strided, imf::Strided, backend >
+	Matrix<
+		T,
+		Structure,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		typename imf::composed_type< imf::Strided, ImfR >::type,
+		typename imf::composed_type< imf::Strided, ImfC >::type,
+		backend
+	>
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const utils::range &rng_r, const utils::range &rng_c ) {
 
@@ -1484,7 +1473,15 @@ namespace alp {
 		typename TargetStructure,
 		typename IndexType, typename IndexStructure, typename IndexView,
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	alp::Matrix< T, TargetStructure, density, view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Select, imf::Select, backend >
+	alp::Matrix<
+		T,
+		TargetStructure,
+		density,
+		view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		typename imf::composed_type< imf::Select, ImfR >::type,
+		typename imf::composed_type< imf::Select, ImfC >::type,
+		backend
+	>
 	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
 
