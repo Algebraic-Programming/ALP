@@ -625,6 +625,9 @@ namespace grb {
 			if( n != size( to_fold ) ) {
 				return MISMATCH;
 			}
+			if( masked && size( *m ) != n ) {
+				return MISMATCH;
+			}
 			if( dense_descr && sparse ) {
 				return ILLEGAL;
 			}
@@ -632,6 +635,9 @@ namespace grb {
 				return ILLEGAL;
 			}
 			if( !sparse && nnz( to_fold ) < n ) {
+				return ILLEGAL;
+			}
+			if( masked && !sparse && nnz( *m ) < n ) {
 				return ILLEGAL;
 			}
 			if( phase == RESIZE ) {
