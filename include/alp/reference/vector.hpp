@@ -372,60 +372,60 @@ namespace alp {
 	template< typename T, typename Structure >
 	class Vector< T, Structure, Density::Dense, view::Original< void >, reference > {
 
-	private:
+		private:
 
-		using self_type = Vector< T, Structure, Density::Dense, view::Original< void >, reference >;
+			using self_type = Vector< T, Structure, Density::Dense, view::Original< void >, reference >;
 
-		/*********************
-		    Storage info friends
-		******************** */
+			/*********************
+				Storage info friends
+			******************** */
 
-		friend size_t getLength<>( const self_type & ) noexcept;
+			friend size_t getLength<>( const self_type & ) noexcept;
 
-		// Physical layout
-		std::unique_ptr< internal::Vector< T, reference > > v;
+			// Physical layout
+			std::unique_ptr< internal::Vector< T, reference > > v;
 
-		std::shared_ptr<imf::IMF> imf;
+			std::shared_ptr<imf::IMF> imf;
 
-		/** Returns the length of the vector */
-		size_t _length() const {
-			return imf->n;
-		}
+			/** Returns the length of the vector */
+			size_t _length() const {
+				return imf->n;
+			}
 
 
-	public:
+		public:
 
-		/** @see Vector::value_type. */
-		using value_type = T;
+			/** @see Vector::value_type. */
+			using value_type = T;
 
-		/** @see Vector::lambda_reference */
-		typedef T& lambda_reference;
+			/** @see Vector::lambda_reference */
+			typedef T& lambda_reference;
 
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
 
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
-		};
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
+			};
 
-		Vector( const size_t length, const size_t cap = 0 ) :
-			v( std::make_unique< internal::Vector< T, reference > >( length, cap ) ),
-			imf( std::make_shared< imf::Id >( length ) ) {}
+			Vector( const size_t length, const size_t cap = 0 ) :
+				v( std::make_unique< internal::Vector< T, reference > >( length, cap ) ),
+				imf( std::make_shared< imf::Id >( length ) ) {}
 
-		/** \internal No implementation notes. */
-		lambda_reference operator[]( const size_t i ) noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *v ) );
-			return ( *v )[ i ];
-		}
+			/** \internal No implementation notes. */
+			lambda_reference operator[]( const size_t i ) noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *v ) );
+				return ( *v )[ i ];
+			}
 
-		/** \internal No implementation notes. */
-		const lambda_reference operator[]( const size_t i ) const noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *v ) );
-			return ( *v )[ i ];
-		}
+			/** \internal No implementation notes. */
+			const lambda_reference operator[]( const size_t i ) const noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *v ) );
+				return ( *v )[ i ];
+			}
 
 	}; // class Vector with physical container
 
@@ -442,71 +442,71 @@ namespace alp {
 	template< typename T, typename Structure, typename VectorT >
 	class Vector< T, Structure, Density::Dense, view::Original< VectorT >, reference > {
 
-	private:
+		private:
 
-		using self_type = Vector< T, Structure, Density::Dense, view::Original< VectorT >, reference >;
-		using target_type = VectorT;
+			using self_type = Vector< T, Structure, Density::Dense, view::Original< VectorT >, reference >;
+			using target_type = VectorT;
 
-		/*********************
-		    Storage info friends
-		******************** */
+			/*********************
+				Storage info friends
+			******************** */
 
-		friend size_t getLength<>( const self_type & ) noexcept;
+			friend size_t getLength<>( const self_type & ) noexcept;
 
-		/** Reference to Vector object upon which this view is applied */
-		target_type & ref;
+			/** Reference to Vector object upon which this view is applied */
+			target_type & ref;
 
-		/** Index-mapping function. @see IMF */
-		std::shared_ptr<imf::IMF> imf;
+			/** Index-mapping function. @see IMF */
+			std::shared_ptr<imf::IMF> imf;
 
-		size_t _length() const {
-			return imf->n;
-		}
-
-	public:
-
-		/** Exposes the element type. */
-		using value_type = T;
-
-		/** @see Vector::lambda_reference */
-		typedef T& lambda_reference;
-		
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
-		};
-
-		/** Constructor for creating a view over a given target vector */
-		Vector( target_type & vec_view ) : ref( vec_view ), imf( nullptr ) {
-			
-			imf = std::make_shared< imf::Id >( getLength( ref ) );
-
-		}
-
-		/** Constructor for creating a view over a given target vector and
-		 * applying the given index mapping function */
-		Vector( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( vec_view ), imf( imf ) {
-			if( getLength( vec_view ) != imf->N ) {
-				throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
+			size_t _length() const {
+				return imf->n;
 			}
-		}
 
-		/** \internal No implementation notes. */
-		lambda_reference operator[]( const size_t i ) noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *ref ) );
-			// TODO implement;
-		}
+		public:
 
-		/** \internal No implementation notes. */
-		const lambda_reference operator[]( const size_t i ) const noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *ref ) );
-			// TODO implement;
-		}
+			/** Exposes the element type. */
+			using value_type = T;
+
+			/** @see Vector::lambda_reference */
+			typedef T& lambda_reference;
+			
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
+			};
+
+			/** Constructor for creating a view over a given target vector */
+			Vector( target_type & vec_view ) : ref( vec_view ), imf( nullptr ) {
+				
+				imf = std::make_shared< imf::Id >( getLength( ref ) );
+
+			}
+
+			/** Constructor for creating a view over a given target vector and
+			 * applying the given index mapping function */
+			Vector( target_type & vec_view, std::shared_ptr< imf::IMF > imf ) : ref( vec_view ), imf( imf ) {
+				if( getLength( vec_view ) != imf->N ) {
+					throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
+				}
+			}
+
+			/** \internal No implementation notes. */
+			lambda_reference operator[]( const size_t i ) noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *ref ) );
+				// TODO implement;
+			}
+
+			/** \internal No implementation notes. */
+			const lambda_reference operator[]( const size_t i ) const noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *ref ) );
+				// TODO implement;
+			}
 
 	}; // Original Vector
 
@@ -517,65 +517,65 @@ namespace alp {
 	template< typename T, typename Structure, typename MatrixT >
 	class Vector< T, Structure, Density::Dense, view::Diagonal< MatrixT >, reference > {
 
-	private:
+		private:
 
-		/** Exposes the own type and the type of the Vector object over
-		 * which this view is created. */
-		using self_type = Vector< T, Structure, Density::Dense, view::Diagonal< MatrixT >, reference >;
-		using target_type = MatrixT;
+			/** Exposes the own type and the type of the Vector object over
+			 * which this view is created. */
+			using self_type = Vector< T, Structure, Density::Dense, view::Diagonal< MatrixT >, reference >;
+			using target_type = MatrixT;
 
-		/*********************
-		    Storage info friends
-		******************** */
+			/*********************
+				Storage info friends
+			******************** */
 
-		friend size_t getLength<>( const self_type & ) noexcept;
+			friend size_t getLength<>( const self_type & ) noexcept;
 
-		/** Reference to Vector object upon which this view is applied */
-		target_type & ref;
+			/** Reference to Vector object upon which this view is applied */
+			target_type & ref;
 
-		/** @see IMF */
-		std::shared_ptr<imf::IMF> imf;
+			/** @see IMF */
+			std::shared_ptr<imf::IMF> imf;
 
-		size_t _length() const {
-			return imf->n;
-		}
+			size_t _length() const {
+				return imf->n;
+			}
 
-	public:
+		public:
 
-		/** Exposes the element type. */
-		using value_type = T;
+			/** Exposes the element type. */
+			using value_type = T;
 
-		/** @see Vector::lambda_reference */
-		typedef T& lambda_reference;
-		
-		template < view::Views view_tag, bool d=false >
-		struct view_type;
-
-		template < bool d >
-		struct view_type< view::original, d > {
-			using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
-		};
-
-		Vector( target_type & struct_mat ) : ref( struct_mat ), imf( nullptr ) {
+			/** @see Vector::lambda_reference */
+			typedef T& lambda_reference;
 			
-			size_t _length = view::Diagonal< target_type >::getLength( dims( ref ) );
-			imf = std::make_shared< imf::Id >( _length  );
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
 
-		}
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Vector< T, Structure, Density::Dense, view::Original< self_type >, reference >;
+			};
 
-		/** \internal No implementation notes. */
-		lambda_reference operator[]( const size_t i ) noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *ref ) );
-			// TODO implement;
-		}
+			Vector( target_type & struct_mat ) : ref( struct_mat ), imf( nullptr ) {
+				
+				size_t _length = view::Diagonal< target_type >::getLength( dims( ref ) );
+				imf = std::make_shared< imf::Id >( _length  );
 
-		/** \internal No implementation notes. */
-		const lambda_reference operator[]( const size_t i ) const noexcept {
-			assert( i < _length() );
-			assert( getInitialized( *ref ) );
-			// TODO implement;
-		}
+			}
+
+			/** \internal No implementation notes. */
+			lambda_reference operator[]( const size_t i ) noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *ref ) );
+				// TODO implement;
+			}
+
+			/** \internal No implementation notes. */
+			const lambda_reference operator[]( const size_t i ) const noexcept {
+				assert( i < _length() );
+				assert( getInitialized( *ref ) );
+				// TODO implement;
+			}
 
 	}; // Diagonal Vector view
 
