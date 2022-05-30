@@ -94,7 +94,8 @@ namespace grb {
 
 	namespace internal {
 
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
 			class OP,
 			typename IOType, typename InputType, typename MaskType,
@@ -104,8 +105,7 @@ namespace grb {
 			IOType &fold_into,
 			const Vector< InputType, reference, Coords > &to_fold,
 			const Vector< MaskType, reference, Coords > &mask,
-			const OP &op,
-			const Phase phase
+			const OP &op
 		) {
 			// static sanity checks
 			static_assert( grb::is_associative< OP >::value,
@@ -113,10 +113,6 @@ namespace grb {
 				"function should not have been called-- please submit a "
 				"bugreport." );
 
-			if( phase == RESIZE ) {
-				return SUCCESS;
-			}
-			assert( phase == EXECUTE );
 
 			// mask must be of equal size as input vector
 			if( masked && size( to_fold ) != size( mask ) ) {
@@ -141,7 +137,7 @@ namespace grb {
 			// some globals used during the folding
 			RC ret = SUCCESS;         // final return code
 			IOType global = IOType(); // global variable in which to fold
-			size_t root = 0;          // which process is the root of the fold (in
+			size_t root = 1;          // which process is the root of the fold (in
 			                          // case we have multiple processes)
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 			// handle trivial sequential cases
@@ -168,7 +164,7 @@ namespace grb {
 				constexpr size_t s = 0;
 				constexpr size_t P = 1;
 				size_t i = 0;
-				const size_t end = internal::getCoordinates( to_fold ).size();
+				const size_t end = n;
 #else
 			{
 				#pragma omp parallel
@@ -190,7 +186,7 @@ namespace grb {
 					assert( i <= end );
 					assert( end <= n );
 #ifdef NDEBUG
-					(void)n;
+					(void) n;
 #endif
 					// assume current i needs to be processed
 					bool process_current_i = true;
@@ -207,7 +203,7 @@ namespace grb {
 						// if not
 						while( !process_current_i ) {
 							// forward to next element
-							++i;
+							(void) ++i;
 							// check that we are within bounds
 							if( i == end ) {
 								break;
@@ -233,42 +229,74 @@ namespace grb {
 #endif
 					{
 						// check if we have a root already
-						if( ! empty && root == P ) {
+						if( !empty && root == P ) {
 							// no, so take it
 							root = s;
 						}
 					}
 					// declare thread-local variable and set our variable to the first value in our block
-					IOType local = i < end ?
-						static_cast< IOType >( internal::getRaw( to_fold )[ i ] ) :
-						static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
+#ifndef NDEBUG
+					if( i < end ) {
+						assert( i < n );
+					}
+#endif
+
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
+					IOType local;
+					GRB_UTIL_RESTORE_WARNINGS
+					if( end > 0 ) {
+						if( i < end ) {
+							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
+						} else {
+							local = static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
+						}
+					}
+
 					// if we have a value to fold
-					if( !empty ) {
+					if( i + 1 < end ) {
+
 						while( true ) {
+
 							// forward to next variable
-							++i;
+							(void) ++i;
+
 							// forward more (possibly) if in the masked case
-							if( masked ) {
-								process_current_i = utils::interpretMask< descr >( internal::getCoordinates( mask ).assigned( i ), internal::getRaw( mask ), i );
-								while( ! process_current_i && i + 1 < end ) {
-									++i;
-									process_current_i = utils::interpretMask< descr >( internal::getCoordinates( mask ).assigned( i ), internal::getRaw( mask ), i );
+							if( masked && i < end ) {
+								assert( i < n );
+								process_current_i = utils::interpretMask< descr >(
+									internal::getCoordinates( mask ).assigned( i ),
+									internal::getRaw( mask ),
+									i
+								);
+
+								while( !process_current_i && i + 1 < end ) {
+									(void) ++i;
+									if( i < end ) {
+										assert( i < n );
+										process_current_i = utils::interpretMask< descr >(
+											internal::getCoordinates( mask ).assigned( i ),
+											internal::getRaw( mask ),
+											i
+										);
+									}
 								}
 							}
+
 							// stop if past end
-							if( i >= end || ! process_current_i ) {
+							if( i >= end || !process_current_i ) {
 								break;
 							}
 							// store result of fold in local variable
 							RC rc;
 
+							assert( i < n );
 							if( left ) {
 								rc = foldl< descr >( local, internal::getRaw( to_fold )[ i ], op );
 							} else {
 								rc = foldr< descr >( internal::getRaw( to_fold )[ i ], local, op );
 							}
-							// sanity check
 							assert( rc == SUCCESS );
+
 							// error propagation
 							if( rc != SUCCESS ) {
 								ret = rc;
@@ -283,9 +311,11 @@ namespace grb {
 						// if I am root
 						if( root == s ) {
 							// then I should be non-empty
-							assert( ! empty );
+							assert( !empty );
 							// set global value to locally computed value
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
 							global = local;
+							GRB_UTIL_RESTORE_WARNINGS
 						}
 					}
 					#pragma omp barrier
@@ -306,6 +336,8 @@ namespace grb {
 						}
 					}
 				} // end pragma omp parallel for
+#else
+				global = local;
 #endif
 			}
 #ifdef _DEBUG
@@ -670,6 +702,8 @@ namespace grb {
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, n, blocksize );
 					const size_t range = end - start;
+					assert( end <= n );
+					assert( range + start < n );
 					if( left ) {
 						op.eWiseFoldlAA( internal::getRaw( fold_into ) + start,
 							internal::getRaw( to_fold ) + start, range );
@@ -972,6 +1006,7 @@ namespace grb {
 				<< "Output now contains " << nnz( fold_into ) << " / "
 				<< size( fold_into ) << " nonzeroes.\n";
 #endif
+
 			// done
 			return SUCCESS;
 		}
@@ -1062,6 +1097,67 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, reference, Coords > &x,
+		const Vector< MaskType, reference, Coords > &mask,
+		IOType &beta,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::foldr",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::foldr",
+			"called with a vector mask type that is not boolean" );
+
+		// dynamic sanity checks
+		if( size( mask ) > 0 && size( mask ) != size( x ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != size( x ) ) {
+				return ILLEGAL;
+			}
+			if( size( mask ) > 0 && nnz( mask ) != size( mask ) ) {
+				return ILLEGAL;
+			}
+		}
+
+		if( size( mask ) > 0 ) {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, true, false
+			>( beta, x, mask, monoid.getOperator() );
+		} else {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, false, false
+			>( beta, x, mask, monoid.getOperator() );
+		}
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename IOType,
 		typename Coords
 	>
@@ -1069,17 +1165,40 @@ namespace grb {
 		const Vector< InputType, reference, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
-		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		grb::Vector< bool, reference, Coords > mask( 0 );
-		return internal::fold_from_vector_to_scalar_generic< descr, false, false >(
-			beta, x, mask, monoid.getOperator(), phase
-		);
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::foldr",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic sanity checks
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != size( x ) ) {
+				return ILLEGAL;
+			}
+		}
+
+		grb::Vector< bool, reference, Coords > empty_mask( 0 );
+		return internal::template fold_from_vector_to_scalar_generic<
+			descr, false, false
+		>( beta, x, empty_mask, monoid.getOperator() );
 	}
 
 	/**
@@ -1330,7 +1449,8 @@ namespace grb {
 		typename IOType, typename InputType,
 		typename Coords
 	>
-	RC foldr( const Vector< InputType, reference, Coords > &x,
+	RC foldr(
+		const Vector< InputType, reference, Coords > &x,
 		Vector< IOType, reference, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
@@ -2057,7 +2177,8 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP,
 		typename IOType, typename InputType, typename Coords
 	>
-	RC foldl( Vector< IOType, reference, Coords > &x,
+	RC foldl(
+		Vector< IOType, reference, Coords > &x,
 		const Vector< InputType, reference, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
@@ -8494,22 +8615,22 @@ namespace grb {
 
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< IOType, InputType >::value ), "grb::reduce",
+			std::is_same< IOType, InputType >::value ), "grb::foldl",
 			"called with a scalar IO type that does not match the input vector type" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the first "
 			"domain of the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
 			"called with an input vector type that does not match the second domain of "
 			"the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldl",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::reduce",
+			std::is_same< bool, MaskType >::value ), "grb::foldl",
 			"called with a vector mask type that is not boolean" );
 
 		// dynamic sanity checks
@@ -8525,85 +8646,15 @@ namespace grb {
 			}
 		}
 
-		// do minimal work
-		RC ret = SUCCESS;
-		IOType global_reduced = monoid.template getIdentity< IOType >();
-
-		// check if we have a mask
-		const bool masked = internal::getCoordinates( mask ).size() > 0;
-
-		// TODO internal issue #194
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		#pragma omp parallel
-		{
-			IOType local_x = monoid.template getIdentity< IOType >();
-			//#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value())
-			#pragma omp for //note: using the above dynamic schedule wreaks havoc on performance on this kernel (tested 25/08/2017)
-			for( size_t i = 0; i < internal::getCoordinates( y ).size(); ++i ) {
-				// if mask OK and there is a nonzero
-				if( ( !masked || internal::getCoordinates( mask ).template
-						mask< descr >( i, internal::getRaw( mask ) )
-					) &&
-					internal::getCoordinates( y ).assigned( i )
-				) {
-					const RC rc = foldl( local_x, internal::getRaw( y )[ i ],
-						monoid.getOperator() );
-					assert( rc == SUCCESS );
-					if( rc != SUCCESS ) {
-						ret = rc;
-					}
-				}
-			}
-			#pragma omp critical
-			{
-				const RC rc = foldl< descr >( global_reduced, local_x,
-					monoid.getOperator() );
-				assert( rc == SUCCESS );
-				if( rc != SUCCESS ) {
-					ret = rc;
-				}
-			}
-		}
-#else
-		// if masked or sparse
-		if( masked ||
-			internal::getCoordinates( y ).nonzeroes() <
-				internal::getCoordinates( y ).size()
-		) {
-			// sparse case
-			for( size_t i = 0; i < internal::getCoordinates( y ).size(); ++i ) {
-				// if mask OK and there is a nonzero
-				if( ( !masked || internal::getCoordinates( mask ).template
-						mask< descr >( i, internal::getRaw( mask ) )
-					) &&
-					internal::getCoordinates( y ).assigned( i )
-				) {
-					// fold it into y
-					RC rc = foldl( global_reduced, internal::getRaw( y )[ i ], monoid.getOperator() );
-					assert( rc == SUCCESS );
-					if( rc != SUCCESS ) {
-						ret = rc;
-					}
-				}
-			}
+		if( size( mask ) > 0 ) {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, true, true
+			>( x, y, mask, monoid.getOperator() );
 		} else {
-			// dense case relies on foldlArray
-			monoid.getOperator().foldlArray( global_reduced, internal::getRaw( y ),
-				internal::getCoordinates( y ).nonzeroes() );
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, false, true
+			>( x, y, mask, monoid.getOperator() );
 		}
-#endif
-
-		// do accumulation
-		if( ret == SUCCESS ) {
-#ifdef _DEBUG
-			std::cout << "Accumulating " << global_reduced << " into " << x
-				<< " using foldl\n";
-#endif
-			ret = foldl( x, global_reduced, monoid.getOperator() );
-		}
-
-		// done
-		return ret;
 	}
 
 	/**
@@ -8631,8 +8682,41 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+#ifdef _DEBUG
+		std::cout << "foldl: IOType <- [InputType] with a monoid called. "
+			<< "Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. "
+			<< "It has no mask.\n";
+#endif
+
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::reduce",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::reduce",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::reduce",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic sanity checks
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) != size( y ) ) {
+				return ILLEGAL;
+			}
+		}
+
+		// do reduction
 		Vector< bool, reference, Coords > empty_mask( 0 );
-		return foldl< descr >( x, y, empty_mask, monoid );
+		return internal::template fold_from_vector_to_scalar_generic<
+			descr, false, true
+		>( x, y, empty_mask, monoid.getOperator() );
 	}
 
 	/**
