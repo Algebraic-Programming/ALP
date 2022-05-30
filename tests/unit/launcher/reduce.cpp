@@ -27,8 +27,106 @@ using namespace grb;
 constexpr size_t n = 100000;
 constexpr size_t rep = 100;
 
+template< Descriptor descr, typename MonT >
+int expect_success(
+	grb::Vector< double > &xv,
+	MonT &mon,
+	const size_t n,
+	const double check,
+	const grb::Vector< bool > mask = NO_MASK
+) {
+	std::cout << "\nStarting functional tests ";
+	if( grb::size( mask ) > 0 ) {
+		std::cout << "with a mask holding " << grb::nnz( mask ) << " elements.\n";
+	} else {
+		std::cout << "without a mask.\n";
+	}
+	double alpha = 0.0;
+	if( grb::foldl< descr >( alpha, xv, mask, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool foldl_into_scalar_failed = false;
+		assert( foldl_into_scalar_failed );
+#endif
+		return 40;
+	}
+
+	double alpha_unmasked = 0.0;
+	if( grb::foldl< descr >( alpha_unmasked, xv, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool foldl_into_scalar_unmasked_failed = false;
+		assert( foldl_into_scalar_unmasked_failed );
+#endif
+		return 45;
+	}
+
+#ifdef _DEBUG
+	std::cerr << "Info: grbProgram (reduce) post foldl" << std::endl;
+#endif
+
+	double alpha_right = 0.0;
+	if( grb::foldr< descr >( xv, mask, alpha_right, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool foldr_into_scalar_failed = false;
+		assert( foldr_into_scalar_failed );
+#endif
+		return 50;
+	}
+
+	double alpha_right_unmasked = 0.0;
+	if( grb::foldr< descr >( xv, alpha_right_unmasked, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool foldr_into_scalar_unmasked_failed = false;
+		assert( foldr_into_scalar_unmasked_failed );
+#endif
+		return 60;
+	}
+
+#ifdef _DEBUG
+	std::cerr << "Info: grbProgram (reduce) post foldr" << std::endl;
+#endif
+
+	// verify computations
+	bool error = false;
+	if( !grb::utils::equals( alpha, alpha_right, n-1 ) ) {
+		std::cerr << "Error: " << alpha_right << " (foldr, masked) "
+			<< " does not equal " << alpha << " (foldl, masked).\n";
+		error = true;
+	}
+	if( !grb::utils::equals( alpha_unmasked, alpha_right_unmasked, n-1 ) ) {
+		std::cerr << "Error: " << alpha_unmasked << " (foldl, unmasked) "
+			<< "does not equal " << alpha_right_unmasked << " (foldr, unmasked).\n";
+		error = true;
+	}
+	if( size( mask ) == 0 ) {
+		if( !grb::utils::equals( alpha, alpha_right_unmasked, n-1 ) ) {
+			std::cerr << "Error: " << alpha_right_unmasked << " (foldr, unmasked) "
+				<< " does not equal " << alpha << " (foldl, masked).\n";
+			error = true;
+		}
+		if( !grb::utils::equals( alpha, alpha_unmasked, n-1 ) ) {
+			std::cerr << "Error: " << alpha_unmasked << " (foldl, unmasked) "
+				<< " does not equal " << alpha << " (foldl, masked).\n";
+			error = true;
+		}
+	}
+	if( !grb::utils::equals( check, alpha, n-1 ) ) {
+		std::cerr << "Error: " << alpha << " does not equal given checksum " << check
+			<< ".\n";
+		error = true;
+	}
+	if( !error ) {
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "Functional tests complete.\n";
+		}
+	} else {
+		std::cerr << std::flush;
+		return 70;
+	}
+	return 0;
+}
+
 void grbProgram( const size_t &P, int &exit_status ) {
-	(void)P;
+	(void) P;
 	assert( exit_status == 0 );
 
 #ifdef _DEBUG
@@ -40,12 +138,13 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	benchtimer.reset();
 
 	grb::Monoid< grb::operators::add< double >, grb::identities::zero > realm;
+	grb::operators::add< double > realop;
 
 	grb::Vector< double > xv( n );
 	double check = 0.0;
 	double * __restrict__ xr = nullptr;
 
-	int rc = posix_memalign( (void **)&xr,
+	int rc = posix_memalign( (void **) &xr,
 		grb::config::CACHE_LINE_SIZE::value(),
 		n * sizeof( double )
 	);
@@ -86,8 +185,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 	}
 	for( size_t i = 0; i < n; ++ i ) {
-		xr[ i ] = (double)i;
-		check += (double)i;
+		xr[ i ] = (double) i;
+		check += (double) i;
 	}
 
 #ifdef _DEBUG
@@ -95,104 +194,54 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		<< "Initialisation complete." << std::endl;
 #endif
 
-	double alpha = 0.0;
-	if( grb::foldl( alpha, xv, NO_MASK, realm ) != grb::SUCCESS ) {
-#ifndef NDEBUG
-		const bool foldl_into_scalar_failed = false;
-		assert( foldl_into_scalar_failed );
-#endif
-		exit_status = 40;
+	exit_status = expect_success< grb::descriptors::no_operation >( xv, realm,
+		n, check );
+	if( exit_status != 0 ) { return; }
+	exit_status = expect_success< grb::descriptors::dense >( xv, realm, n, check );
+	if( exit_status != 0 ) {
+		exit_status += 200;
 		return;
 	}
 
-	double alpha_unmasked = 0.0;
-	if( grb::foldl( alpha_unmasked, xv, realm ) != grb::SUCCESS ) {
+	grb::Vector< bool > even_mask( n );
+	check = 0.0;
+	for( size_t i = 0; i < n; i += 2 ) {
+		check += xr[ i ];
+		const grb::RC setrc = grb::setElement( even_mask, true, i );
 #ifndef NDEBUG
-		const bool foldl_into_scalar_unmasked_failed = false;
-		assert( foldl_into_scalar_unmasked_failed );
+		assert( setrc == grb::SUCCESS );
+#else
+		(void) setrc;
 #endif
-		exit_status = 45;
+	}
+	exit_status = expect_success< grb::descriptors::no_operation >( xv, realm, n,
+		check, even_mask );
+	if( exit_status != 0 ) {
+		exit_status += 300;
 		return;
 	}
 
-#ifdef _DEBUG
-	std::cerr << "Info: grbProgram (reduce) post foldl" << std::endl;
-#endif
+	check = 0.0;
+	for( size_t i = 1; i < n; i += 2 ) {
+		check += xr[ i ];
+	}
 
-	/*double alpha_right = 0.0;
-	if( grb::foldr( xv, NO_MASK, alpha_right, realm ) != grb::SUCCESS ) {
-#ifndef NDEBUG
-		const bool foldr_into_scalar_failed = false;
-		assert( foldr_into_scalar_failed );
-#endif
-		exit_status = 50;
-		return;
-	} TODO: internal issue #311 */
-
-	double alpha_right_unmasked = 0.0;
-	if( grb::foldr( xv, alpha_right_unmasked, realm ) != grb::SUCCESS ) {
-#ifndef NDEBUG
-		const bool foldr_into_scalar_unmasked_failed = false;
-		assert( foldr_into_scalar_unmasked_failed );
-#endif
-		exit_status = 60;
+	exit_status = expect_success< grb::descriptors::invert_mask >( xv, realm, n,
+		check, even_mask );
+	if( exit_status != 0 ) {
+		exit_status += 400;
 		return;
 	}
 
-#ifdef _DEBUG
-	std::cerr << "Info: grbProgram (reduce) post foldr" << std::endl;
-#endif
-
-	double beta = 0.0;
+	// then do a benchmark
+	std::cout << "Now starting benchmark run 1 (ALP foldl):" << std::endl;
+	check = 0.0;
 	for( size_t i = 0; i < n; ++i ) {
-		beta += xr[ i ];
-	}
-
-	// verify computations
-	bool error = false;
-	if( !grb::utils::equals( alpha, alpha_unmasked, n-1 ) ) {
-		std::cerr << "Error: " << alpha_unmasked << " (foldl, unmasked) "
-			<< " does not equal " << alpha << " (foldl, masked).\n";
-		error = true;
-	}
-	/*if( !grb::utils::equals( alpha, alpha_right, n-1 ) ) {
-		std::cerr << "Error: " << alpha_right << " (foldr, masked) "
-			<< " does not equal " << alpha << " (foldl, masked).\n";
-		error = true;
-	} TODO internal issue #311 */
-	if( !grb::utils::equals( alpha, alpha_right_unmasked, n-1 ) ) {
-		std::cerr << "Error: " << alpha_right_unmasked << " (foldr, unmasked) "
-			<< " does not equal " << alpha << " (foldl, masked).\n";
-		error = true;
-	}
-	if( !grb::utils::equals( check, alpha, n-1 ) ) {
-		std::cerr << "Error: " << alpha << " (ALP) does not equal "
-			<< check << ".\n";
-		error = true;
-	}
-	if( !grb::utils::equals( check, beta, n ) ) {
-		std::cerr << "Error: " << beta << " (compiler) does not equal "
-			<< check << ".\n";
-		error = true;
-	}
-	if( !grb::utils::equals( alpha, beta, n ) ) {
-		std::cerr << "Error: " << alpha << " (ALP) does not equal "
-			<< beta << " (compiler).\n";
-		error = true;
-	}
-
-	if( !error ) {
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Functional tests complete.\n\n"
-				<< "Now starting benchmark run 1 (ALP foldl):" << std::endl;
-		}
-	} else {
-		std::cerr << std::flush;
-		exit_status = 70;
-		return;
+		check += xr[ i ];
 	}
 
 	// first do a cold run
+	double alpha = 0.0;
 	if( grb::foldl( alpha, xv, realm ) != grb::SUCCESS ) {
 #ifndef NDEBUG
 		const bool cold_foldl_into_scalar_failed = false;
@@ -203,6 +252,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	double ttime = 0.0;
+	bool error = false;
 	// now benchmark hot runs
 	grb::utils::Timer timer;
 	for( size_t i = 0; i < rep; ++i ) {
@@ -284,6 +334,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// first do a cold run
+	double alpha_right_unmasked = 0.0;
 	if( grb::foldr( xv, alpha_right_unmasked, realm ) != grb::SUCCESS ) {
 #ifndef NDEBUG
 		const bool cold_foldr_into_scalar_failed = false;
