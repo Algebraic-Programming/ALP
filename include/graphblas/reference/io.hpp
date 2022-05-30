@@ -545,7 +545,8 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename T, typename Coords
 	>
-	RC setElement( Vector< DataType, reference, Coords > &x,
+	RC setElement(
+		Vector< DataType, reference, Coords > &x,
 		const T val,
 		const size_t i,
 		const Phase &phase = EXECUTE,
