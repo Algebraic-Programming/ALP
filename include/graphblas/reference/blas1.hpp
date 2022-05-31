@@ -706,7 +706,7 @@ namespace grb {
 					config::OMP::localRange( start, end, 0, n, blocksize );
 					const size_t range = end - start;
 					assert( end <= n );
-					assert( range + start < n );
+					assert( range + start <= n );
 					if( left ) {
 						op.eWiseFoldlAA( internal::getRaw( fold_into ) + start,
 							internal::getRaw( to_fold ) + start, range );
