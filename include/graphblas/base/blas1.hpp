@@ -375,7 +375,7 @@ namespace grb {
 	 * @tparam Monoid    The monoid to use for reduction.
 	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
 	 *                   vector \a y.
-	 * @tparam MaskTYpe  The type of the elements in the supplied ALP/GraphBLAS
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                   vector \a mask.
 	 * @tparam IOType    The type of the output scalar \a x.
 	 *
