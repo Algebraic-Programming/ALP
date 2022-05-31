@@ -129,8 +129,11 @@ namespace grb {
 				return ILLEGAL;
 			}
 
-			// handle trivial case
-			if( masked && nnz( mask ) == 0 ) {
+			// handle trivial cases
+			if( size( to_fold ) == 0 ) {
+				return SUCCESS;
+			}
+			if( masked && nnz( mask ) == 0 && !(descr & descriptors::invert_mask) ) {
 				return SUCCESS;
 			}
 
