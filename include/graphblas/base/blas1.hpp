@@ -339,11 +339,117 @@ namespace grb {
 	}
 
 	/**
-	 * Foldl from a vector into a scalar.
+	 * Reduces, or \em folds, a vector into a scalar.
 	 *
-	 * Unmasked monoid variant.
+	 * Reduction takes place according a monoid \f$ (\oplus,1) \f$, where
+	 * \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
 	 *
-	 * \todo Write specification.
+	 * Let \f$ x_0 = 1 \f$ and let
+	 * \f$ x_{i+1} = \begin{cases}
+	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }m_i\text{ evaluates true}
+	 *   x_i\text{ otherwise}
+	 * \end{cases},\f$
+	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$.
+	 *
+	 * \note Per this definition, the folding happens in a left-to-right direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied, or #grb::foldr may be used
+	 *       instead.
+	 *
+	 * After a successfull call, \a x will be equal to \f$ x_n \f$.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelising over
+	 * multiple user processes.
+	 *
+	 * \warning In so doing, the order of the evaluation of the reduction operation
+	 *          should not be expected to be a serial, left-to-right, evaluation of
+	 *          the computation chain.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   vector \a y.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   vector \a mask.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 *
+	 * @param[out]   x   The result of the reduction.
+	 * @param[in]    y   Any ALP/GraphBLAS vector. This vector may be sparse.
+	 * @param[in]  mask  Any ALP/GraphBLAS vector. This vector may be sparse.
+	 * @param[in] monoid The monoid under which to perform this reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 * @return grb::ILLEGAL  If the provided input vector \a y was not dense, while
+	 *                       #grb::descriptors::dense was given.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
+	 * grb::descriptors::dense, grb::descriptors::invert_mask,
+	 * grb::descriptors::structural, grb::descriptors::structural_complement
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * If grb::descriptors::no_casting is given, then 1) the first domain of
+	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
+	 * \a IOType, 3) the third domain must match \a IOType, and 4) the element type
+	 * of \a mask must be <tt>bool</tt>. If one of these is not true, the code
+	 * shall not compile.
+	 * \endparblock
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Backends must specify performance semantics in the amount of work, intra-
+	 * process data movement, inter-process data movement, and the number of
+	 * user process synchronisations required. They should also specify whether
+	 * any system calls may be made, in particularly those related to dynamic
+	 * memory management. If new memory may be allocated, they must specify how
+	 * much.
+	 * \endparblock
+	 *
+	 * @see grb::foldr provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		Backend backend, typename Coords
+	>
+	RC foldl(
+		IOType &x,
+		const Vector< InputType, backend, Coords > &y,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_foldl = false;
+		assert( should_not_call_base_scalar_foldl );
+#endif
+		(void) y;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Folds a vector into a scalar, left-to-right.
+	 *
+	 * Unmasked monoid variant. See masked variant for the full documentation.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -352,43 +458,49 @@ namespace grb {
 		Backend backend,
 		typename Coords
 	>
-	RC foldl( IOType &x,
+	RC foldl(
+		IOType &x,
 		const Vector< InputType, backend, Coords > &y,
 		const Monoid &monoid = Monoid(),
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value,
 		void >::type * const = nullptr
 	) {
 #ifndef NDEBUG
-		const bool should_not_call_base_scalar_foldl_monoid = false;
-		assert( should_not_call_base_scalar_foldl_monoid );
+		const bool should_not_call_base_scalar_foldl_nomask = false;
+		assert( should_not_call_base_scalar_foldl_nomask );
 #endif
 		(void) y;
 		(void) x;
 		(void) monoid;
-		(void) phase;
 		return UNSUPPORTED;
 	}
 
 	/**
-	 * Foldl from vector into scalar.
+	 * Folds a vector into a scalar, left-to-right.
 	 *
 	 * Unmasked operator variant.
 	 *
-	 * \todo Write specification.
+	 * \deprecated This signature is deprecated. It was implemented for reference
+	 *             (and reference_omp), but could not be implemented for BSP1D and
+	 *             other distributed-memory backends. This signature may be removed
+	 *             with any release beyond 0.6.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class OP,
-		typename IOType, typename InputType,
+		typename IOType, typename InputType, typename MaskType,
 		Backend backend, typename Coords
 	>
-	RC foldl( IOType &x,
+	RC foldl(
+		IOType &x,
 		const Vector< InputType, backend, Coords > &y,
+		const Vector< MaskType, backend, Coords > &mask,
 		const OP &op = OP(),
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
 			grb::is_operator< OP >::value,
 		void >::type * const = nullptr
 	) {
@@ -398,8 +510,73 @@ namespace grb {
 #endif
 		(void) x;
 		(void) y;
+		(void) mask;
 		(void) op;
-		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Folds a vector into a scalar, right-to-left.
+	 *
+	 * Masked variant. See the masked, left-to-right variant for the full
+	 * documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		Backend backend, typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, backend, Coords > &x,
+		const Vector< MaskType, backend, Coords > &mask,
+		IOType &y,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_foldr = false;
+		assert( should_not_call_base_scalar_foldr );
+#endif
+		(void) y;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Folds a vector into a scalar, right-to-left.
+	 *
+	 * Unmasked variant. See the masked, left-to-right variant for the full
+	 * documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		Backend backend, typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, backend, Coords > &y,
+		IOType &x,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_foldr_nomask = false;
+		assert( should_not_call_base_scalar_foldr_nomask );
+#endif
+		(void) y;
+		(void) x;
+		(void) monoid;
 		return UNSUPPORTED;
 	}
 
