@@ -28,6 +28,140 @@ constexpr size_t n = 100000;
 constexpr size_t rep = 100;
 
 template< Descriptor descr, typename MonT >
+int expect_mismatch(
+	const grb::Vector< double > &v0,
+	const grb::Vector< double > &v1,
+	const MonT &mon
+) {
+	static_assert( grb::is_monoid< MonT >::value, "must be called with a monoid" );
+	assert( grb::size( v0 ) + 1 == grb::size( v1 ) );
+
+	double alpha = -1.0;
+	bool error = false;
+	std::cout << "\nStarting tests for MISMATCH.\n";
+
+	grb::RC rc = foldl< descr >( alpha, v0, v1, mon );
+	if( rc != grb::MISMATCH) {
+		std::cerr << "\t mismatched call to foldl (T<-[T], masked) "
+			<< "returns " << grb::toString( rc ) << " instead of MISMATCH\n";
+		error = true;
+	}
+
+
+	rc = foldr< descr >( v1, v0, alpha, mon );
+	if( rc != grb::MISMATCH ) {
+		std::cerr << "\t mismatched call to foldr ([T]->T, masked) "
+			<< "returns " << grb::toString( rc ) << " instead of MISMATCH\n";
+		error = true;
+	}
+
+	if( alpha != -1.0 ) {
+		std::cerr << "One or more calls to foldl/foldr had a side effect on scalar\n";
+		error = true;
+	}
+
+	if( error ) {
+		std::cout << "One or more tests for MISMATCH failed\n";
+		return 79;
+	} else {
+		std::cout << "Tests for MISMATCH complete\n";
+		return 0;
+	}
+}
+
+template< Descriptor descr, typename MonT >
+int expect_illegal(
+	const grb::Vector< double > &dense_v,
+	const grb::Vector< double > &sparse_v,
+	const grb::Vector< double > &sparse_m,
+	const MonT &mon
+) {
+	static_assert( grb::is_monoid< MonT >::value, "must be called with a monoid" );
+	assert( grb::nnz( dense_v ) == grb::size( dense_v ) );
+	assert( grb::nnz( sparse_v ) < grb::size( sparse_v ) );
+	assert( grb::nnz( sparse_m ) < grb::size( sparse_m ) );
+	assert( grb::size( dense_v ) == grb::size( sparse_v ) );
+	assert( grb::size( dense_v ) == grb::size( sparse_m ) );
+
+	double alpha = -1.0;
+	bool error = false;
+	std::cout << "\nStarting tests for ILLEGAL.\n";
+
+	grb::RC rc = foldl< descr | grb::descriptors::dense >( alpha, sparse_v, mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldl (T<-[T], sparse [T], unmasked) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldl< descr | grb::descriptors::dense >( alpha, dense_v, sparse_m, mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldl (T<-[T], dense [T], sparse mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldl< descr | grb::descriptors::dense >( alpha, sparse_v, dense_v,
+		mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldl (T<-[T], sparse [T], dense mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldl< descr | grb::descriptors::dense >( alpha, sparse_v, sparse_m,
+		mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldl (T<-[T], sparse [T], sparse mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldr< descr | grb::descriptors::dense >( sparse_v, alpha, mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldr ([T]->T, sparse [T], unmasked) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldr< descr | grb::descriptors::dense >( dense_v, sparse_m, alpha, mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldr ([T]->T, dense [T], sparse mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldr< descr | grb::descriptors::dense >( sparse_v, dense_v, alpha,
+		mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldr ([T]->T, sparse [T], dense mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	rc = foldr< descr | grb::descriptors::dense >( sparse_v, sparse_m, alpha,
+		mon );
+	if( rc != grb::ILLEGAL ) {
+		std::cerr << "\t illegal call to foldr ([T]->T, sparse [T], sparse mask) "
+			<< "returns " << grb::toString( rc ) << " instead of ILLEGAL\n";
+		error = true;
+	}
+
+	if( alpha != -1.0 ) {
+		std::cerr << "One or more calls to foldl/foldr had a side effect on scalar\n";
+		error = true;
+	}
+
+	if( error ) {
+		std::cout << "One or more tests for ILLEGAL failed\n";
+		return 77;
+	} else {
+		std::cout << "Tests for ILLEGAL complete\n";
+		return 0;
+	}
+}
+
+template< Descriptor descr, typename MonT >
 int expect_success(
 	grb::Vector< double > &xv,
 	MonT &mon,
@@ -233,8 +367,52 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		return;
 	}
 
+	// check whether ILLEGAL is returned when appropriate
+	{
+		grb::Vector< double > half_sparse( n );
+		grb::Vector< double > very_sparse( n );
+		if( grb::set( half_sparse, even_mask, 1.0 ) != grb::SUCCESS ) {
+			std::cerr << "Could not initialise for illegal tests\n";
+			exit_status = 75;
+			return;
+		}
+
+		exit_status = expect_illegal< grb::descriptors::no_operation >( xv,
+			very_sparse, half_sparse, realm );
+		if( exit_status != 0 ) {
+			return;
+		}
+
+		exit_status = expect_illegal< grb::descriptors::invert_mask >( xv,
+			half_sparse, very_sparse, realm );
+		if( exit_status != 0 ) {
+			exit_status += 100;
+			return;
+		}
+	}
+
+	// check whether MISMATCH is returned when appropriate
+	{
+		grb::Vector< double > xp1( n + 1 );
+		exit_status = expect_mismatch< grb::descriptors::no_operation >( xv, xp1,
+			realm );
+		if( exit_status != 0 ) {
+			return;
+		}
+		exit_status = expect_mismatch< grb::descriptors::dense >( xv, xp1,
+			realm );
+		if( exit_status != 0 ) {
+			return;
+		}
+		exit_status = expect_mismatch< grb::descriptors::invert_mask >( xv, xp1,
+			realm );
+		if( exit_status != 0 ) {
+			return;
+		}
+	}
+
 	// then do a benchmark
-	std::cout << "Now starting benchmark run 1 (ALP foldl):" << std::endl;
+	std::cout << "\nNow starting benchmark run 1 (ALP foldl):" << std::endl;
 	check = 0.0;
 	for( size_t i = 0; i < n; ++i ) {
 		check += xr[ i ];
