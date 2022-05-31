@@ -273,8 +273,9 @@ namespace alp {
 	 * @param phase 	The execution phase.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-			  typename OutputType, typename InputType1, typename InputType2, 
-			  class Semiring >
+		typename OutputType, typename InputType1, typename InputType2,
+		class Semiring
+	>
 	RC mxm( internal::Matrix< OutputType, reference > & C,
 		const internal::Matrix< InputType1, reference > & A,
 		const internal::Matrix< InputType2, reference > & B,
@@ -318,10 +319,11 @@ namespace alp {
 	 * @param phase 	The execution phase.
 	 */
 	template< Descriptor descr = descriptors::no_operation, 
-			  typename OutputStructMatT, 
-			  typename InputStructMatT1, 
-			  typename InputStructMatT2, 
-			  class Semiring>
+		typename OutputStructMatT,
+		typename InputStructMatT1,
+		typename InputStructMatT2,
+		class Semiring
+	>
 	RC mxm( OutputStructMatT & C,
 		const InputStructMatT1 & A,
 		const InputStructMatT2 & B,
@@ -339,9 +341,10 @@ namespace alp {
 	 * Version with additive monoid and multiplicative operator
 	 */
 	template< typename OutputStructMatT, 
-			  typename InputStructMatT1, 
-			  typename InputStructMatT2, 
-			  class Operator, class Monoid >
+		typename InputStructMatT1,
+		typename InputStructMatT2,
+		class Operator, class Monoid
+	>
 	RC mxm( OutputStructMatT & C,
 		const InputStructMatT1 & A,
 		const InputStructMatT2 & B,
@@ -479,7 +482,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class MulMonoid >
+		class MulMonoid
+	>
 	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
@@ -531,7 +535,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class MulMonoid >
+		class MulMonoid
+	>
 	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const InputType1 &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
@@ -588,7 +593,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2,
-		class MulMonoid >
+		class MulMonoid
+	>
 	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const InputType2 &beta,
@@ -702,7 +708,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		typename Ring>
+		typename Ring
+	>
 	RC eWiseAdd( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
@@ -811,7 +818,8 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation, class Ring,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2 >
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
+	>
 	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
@@ -902,12 +910,13 @@ namespace alp {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2,
-		class Operator >
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Operator
+	>
 	RC outer( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & u,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & v,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & u,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & v,
 		const Operator & mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< OutputType >::value,
 			void >::type * const = NULL ) {
@@ -976,17 +985,18 @@ namespace alp {
 	 *         The structure of this matrix is General.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
 		class Operator
-		>
+	>
 	Matrix< typename Operator::D3, structures::General, Density::Dense,
 		view::Functor< std::function< void( InputType1 &, const size_t &, const size_t & ) > >,
 		imf::Id, imf::Id,
-		reference >
+		reference
+	>
 	outer(
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > &y,
 		const Operator &mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value &&
 			! alp::is_object< InputType1 >::value &&
@@ -1028,15 +1038,16 @@ namespace alp {
 	 * which results in a symmetric matrix.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename InputType, typename InputStructure, typename InputView,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
 		class Operator
-		>
+	>
 	Matrix< typename Operator::D3, structures::Symmetric, Density::Dense,
 		view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
 		imf::Id, imf::Id,
-		reference >
+		reference
+	>
 	outer(
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > &x,
 		const Operator &mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value &&
 			! alp::is_object< InputType >::value,
@@ -1087,7 +1098,8 @@ namespace alp {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
+	>
 	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A ) noexcept {
 		(void)C;
@@ -1122,7 +1134,8 @@ namespace alp {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure >
+		typename InputType, typename InputStructure
+	>
 	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Scalar< InputType, InputStructure, reference > &val ) noexcept {
 		(void)C;
