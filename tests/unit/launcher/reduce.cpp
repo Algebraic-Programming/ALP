@@ -328,15 +328,19 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		<< "Initialisation complete." << std::endl;
 #endif
 
+	// check happy paths, all fold-to-scalar variants
 	exit_status = expect_success< grb::descriptors::no_operation >( xv, realm,
 		n, check );
 	if( exit_status != 0 ) { return; }
+
+	// check happy paths, with dense descriptor
 	exit_status = expect_success< grb::descriptors::dense >( xv, realm, n, check );
 	if( exit_status != 0 ) {
 		exit_status += 200;
 		return;
 	}
 
+	// check happy paths, with masking
 	grb::Vector< bool > even_mask( n );
 	check = 0.0;
 	for( size_t i = 0; i < n; i += 2 ) {
@@ -360,6 +364,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		check += xr[ i ];
 	}
 
+	// check happy paths, with inverted masking
 	exit_status = expect_success< grb::descriptors::invert_mask >( xv, realm, n,
 		check, even_mask );
 	if( exit_status != 0 ) {
@@ -411,168 +416,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 	}
 
-	// then do a benchmark
-	std::cout << "\nNow starting benchmark run 1 (ALP foldl):" << std::endl;
-	check = 0.0;
-	for( size_t i = 0; i < n; ++i ) {
-		check += xr[ i ];
-	}
-
-	// first do a cold run
-	double alpha = 0.0;
-	if( grb::foldl( alpha, xv, realm ) != grb::SUCCESS ) {
-#ifndef NDEBUG
-		const bool cold_foldl_into_scalar_failed = false;
-		assert( cold_foldl_into_scalar_failed );
-#endif
-		exit_status = 80;
-		return;
-	}
-
-	double ttime = 0.0;
-	bool error = false;
-	// now benchmark hot runs
-	grb::utils::Timer timer;
-	for( size_t i = 0; i < rep; ++i ) {
-		alpha = realm.template getIdentity< double >();
-		timer.reset();
-		grb::RC looped_rc = grb::foldl( alpha, xv, realm );
-		ttime += timer.time() / static_cast< double >( rep );
-		if( looped_rc != grb::SUCCESS ) {
-			std::cerr << "Error: foldl into scalar during hot loop failed.\n";
-			error = true;
-		}
-		if( !grb::utils::equals( check, alpha, n-1 ) ) {
-			std::cerr << "Error: " << alpha << " (ALP foldl, re-entrant) "
-				<< "does not equal " << check << " (sequential).\n",
-			error = true;
-		}
-	}
-	if( grb::collectives<>::reduce( ttime, 0, grb::operators::max< double >() ) != grb::SUCCESS ) {
-		std::cerr << "Error: reduction of ALP reduction time failed.\n";
-		exit_status = 85;
-		return;
-	}
-	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "\t average time taken for ALP reduce by foldl: " << ttime << "." << std::endl;
-	}
-
-	if( !error ) {
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "\t benchmark run 1 complete and verified.\n\n"
-				<< "Now starting benchmark run 2 (compiler):" << std::endl;
-		}
-	} else {
-		std::cerr << std::flush;
-		exit_status = 90;
-		return;
-	}
-
-	// first do a cold run
-	alpha = xr[ 0 ];
-	for( size_t i = 1; i < n; ++i ) {
-		alpha += xr[ i ];
-	}
-	// now benchmark hot runs
-	double ctime = 0.0;
-	for( size_t k = 0; k < rep; ++k ) {
-		timer.reset();
-		alpha = xr[ 0 ];
-		for( size_t i = 1; i < n; ++i ) {
-			alpha += xr[ i ];
-		}
-		ctime += timer.time() / static_cast< double >( rep );
-		if( !grb::utils::equals( check, alpha, n-1 ) ) {
-			std::cerr << "Error: " << alpha << " (compiler, re-entrant) "
-				<< "does not equal " << check << " (sequential).\n";
-			error = true;
-		}
-	}
-	free( xr );
-	if( grb::collectives<>::reduce( ctime, 0, grb::operators::add< double >() ) != grb::SUCCESS ) {
-		std::cerr << "Error: reduction of compiler timings failed.\n";
-		exit_status = 95;
-		return;
-	}
-	if( grb::spmd<>::pid() == 0 ) {
-		ctime /= static_cast< double >( grb::spmd<>::nprocs() );
-		std::cout << "\t average time taken for compiler-optimised reduce: "
-			<< ctime << "." << std::endl;
-	}
-
-	if( !error ) {
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "\t benchmark run 2 complete and verified.\n\n"
-				<< "Now starting benchmark run 3 (ALP foldr):" << std::endl;
-		}
-	} else {
-		std::cerr << std::flush;
-		exit_status = 100;
-		return;
-	}
-
-	// first do a cold run
-	double alpha_right_unmasked = 0.0;
-	if( grb::foldr( xv, alpha_right_unmasked, realm ) != grb::SUCCESS ) {
-#ifndef NDEBUG
-		const bool cold_foldr_into_scalar_failed = false;
-		assert( cold_foldr_into_scalar_failed );
-#endif
-		exit_status = 110;
-		return;
-	}
-
-	// now benchmark hot runs
-	ttime = 0.0;
-	for( size_t i = 0; i < rep; ++i ) {
-		alpha_right_unmasked = realm.template getIdentity< double >();
-		timer.reset();
-		grb::RC looped_rc = grb::foldr( xv, alpha_right_unmasked, realm );
-		ttime += timer.time() / static_cast< double >( rep );
-		if( looped_rc != grb::SUCCESS ) {
-			std::cerr << "Error: foldl into scalar during hot loop failed.\n";
-			error = true;
-		}
-		if( !grb::utils::equals( check, alpha_right_unmasked, n-1 ) ) {
-			std::cerr << "Error: " << alpha_right_unmasked << " (ALP foldr, re-entrant) "
-				<< "does not equal " << check << ".\n",
-			error = true;
-		}
-	}
-	if( grb::collectives<>::reduce( ttime, 0, grb::operators::max< double >() ) != grb::SUCCESS ) {
-		std::cerr << "Error: reduction of ALP foldr timing failed.\n";
-		exit_status = 115;
-		return;
-	}
-	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "\t average time taken for ALP reduce by foldr: " << ttime << ".\n";
-		std::cout << "\t average time taken for compiler-optimised reduce: "
-			<< ctime << "." << std::endl;
-	}
-
-	if( !error ) {
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "\t benchmark run 3 complete and verified.\n" << std::endl;
-		}
-	} else {
-		std::cerr << std::flush;
-		exit_status = 120;
-		return;
-	}
-
 	// done
-	if( !error ) {
-		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Please check the above performance figures manually-- "
-				<< "the first two and last two timings should approximately match "
-				<< "whenever one user process and one thread is used.\n";
-#ifndef NDEBUG
-			std::cout << "Since compilation did NOT define the NDEBUG macro, "
-				<< "timings may differ more than usual.\n";
-#endif
-		}
-		assert( exit_status == 0 );
-	}
-
+	assert( exit_status == 0 );
 }
 
