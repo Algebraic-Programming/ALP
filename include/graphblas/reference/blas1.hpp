@@ -8512,70 +8512,18 @@ namespace grb {
 	}
 
 	/**
-	 * Reduces a vector into a scalar. Reduction takes place according a monoid
-	 * \f$ (\oplus,1) \f$, where \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with an
-	 * associated identity \f$ 1 \in \{D_1,D_2,D_3\} \f$. Elements from the given
-	 * vector \f$ y \in \{D_1,D_2\} \f$ will be applied at the left-hand or right-
-	 * hand side of \f$ \oplus \f$; which, exactly, is implementation-dependent
-	 * but should not matter since \f$ \oplus \f$ should be associative.
+	 * Reduces a vector into a scalar.
 	 *
-	 * Let \f$ x_0 = 1 \f$ and let
-	 * \f$ x_{i+1} = \begin{cases}
-	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero}
-	 *   x_i\text{ otherwise}
-	 * \end{cases},\f$
-	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$. On function exit \a x will be
-	 * set to \f$ x_n \f$.
-	 *
-	 * This function assumes that \f$ \odot \f$ under the given domains consitutes
-	 * a valid monoid, which for standard associative operators it usually means
-	 * that \f$ D_3 \subseteq D_2 \subseteq D_1 \f$. If not, or if the operator is
-	 * non-standard, the monoid axioms are to be enforced in some other way-- the
-	 * user is responsible for checking this is indeed the case or undefined
-	 * behaviour will occur.
-	 *
-	 * \note While the monoid identity may be used to easily provide parallel
-	 *       implementations of this function, having a notion of an identity is
-	 *       mandatory to be able to interpret sparse vectors; this is why we do
-	 *       not allow a plain operator to be passed to this function.
-	 *
-	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
-	 *                   left unspecified).
-	 * @tparam Monoid    The monoid to use for reduction. A monoid is required
-	 *                   because the output value \a y needs to be initialised
-	 *                   with an identity first.
-	 * @tparam InputType The type of the elements in the supplied GraphBLAS
-	 *                   vector \a y.
-	 * @tparam IOType    The type of the output value \a x.
-	 *
-	 * @param[out]   x   The result of reduction.
-	 * @param[in]    y   A valid GraphBLAS vector. This vector may be sparse.
-	 * @param[in] monoid The monoid under which to perform this reduction.
-	 *
-	 * @return grb::SUCCESS When the call completed successfully.
-	 * @return grb::ILLEGAL If the provided input vector \a y was not dense.
-	 * @return grb::ILLEGAL If the provided input vector \a y was empty.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
-	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
-	 * \a IOType, and 3) the third domain must match \a IOType. If one of
-	 * these is not true, the code shall not compile.
-	 * \endparblock
+	 * See the base documentation for the full specification.
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
+	 *      -# This call comprises \f$ \Theta(n) \f$ work. The quantity \f$ n \f$
+	 *         is specified below.
+	 *
+	 *      -# This call comprises \f$ \Theta(n) + \mathcal{O}(p) \f$ operator
+	 *         applications. The quantity \f$ n \f$ is specified below. The value
+	 *         \f$ p \f$ is is the number of user processes.
 	 *
 	 *      -# This call will not result in additional dynamic memory allocations.
 	 *         No system calls will be made.
@@ -8585,12 +8533,22 @@ namespace grb {
 	 *
 	 *      -# This call incurs at most
 	 *         \f$ n \mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. If \a y is sparse, a call to this function
-	 *         incurs at most \f$ n \mathit{sizeof}( \mathit{bool} ) \f$ extra
-	 *         bytes of data movement.
-	 * \endparblock
+	 *         bytes of intra-process data movement. The quantity \f$ n \f$ is
+	 *         specified below.
 	 *
-	 * @see grb::foldl provides similar functionality.
+	 *      -# This call incurs at most \f$ \mathcal{O}(p) \f$ inter-process data
+	 *         movement, where \f$ p \f$ is the number of user processes. It incurs
+	 *         at least \f$ \Omega(\log p) \f$ inter-process data movement.
+	 *
+	 *      -# This call incurs at most \f$ \mathcal{O}(\log p) \f$
+	 *         synchronisations, and at least one.
+	 *
+	 * If \a y is dense, then \f$ n \f$ is the size of \a y. If \a y is sparse,
+	 * then \f$ n \f$ is the number of nonzeroes in \a y. If \a mask is non-empty
+	 * and #grb::descriptors::invert_mask is given, then \f$ n \f$ equals the size
+	 * of \a y. If \a mask is non-empty (and the mask is not inverted), then
+	 * \f$ n \f$ is the minimum of the number of nonzeroes in \a y and \a mask.
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
