@@ -1135,19 +1135,6 @@ namespace grb {
 			std::is_same< bool, MaskType >::value ), "grb::foldr",
 			"called with a vector mask type that is not boolean" );
 
-		// dynamic sanity checks
-		if( size( mask ) > 0 && size( mask ) != size( x ) ) {
-			return MISMATCH;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) != size( x ) ) {
-				return ILLEGAL;
-			}
-			if( size( mask ) > 0 && nnz( mask ) != size( mask ) ) {
-				return ILLEGAL;
-			}
-		}
-
 		if( size( mask ) > 0 ) {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, true, false
@@ -1190,13 +1177,6 @@ namespace grb {
 			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldr",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
-
-		// dynamic sanity checks
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) != size( x ) ) {
-				return ILLEGAL;
-			}
-		}
 
 		grb::Vector< bool, reference, Coords > empty_mask( 0 );
 		return internal::template fold_from_vector_to_scalar_generic<
@@ -8594,19 +8574,6 @@ namespace grb {
 			std::is_same< bool, MaskType >::value ), "grb::foldl",
 			"called with a vector mask type that is not boolean" );
 
-		// dynamic sanity checks
-		if( size( mask ) > 0 && size( mask ) != size( y ) ) {
-			return MISMATCH;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( y ) != size( y ) ) {
-				return ILLEGAL;
-			}
-			if( size( mask ) > 0 && nnz( mask ) != size( mask ) ) {
-				return ILLEGAL;
-			}
-		}
-
 		if( size( mask ) > 0 ) {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, true, true
@@ -8665,13 +8632,6 @@ namespace grb {
 			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
-
-		// dynamic sanity checks
-		if( descr & descriptors::dense ) {
-			if( nnz( y ) != size( y ) ) {
-				return ILLEGAL;
-			}
-		}
 
 		// do reduction
 		Vector< bool, reference, Coords > empty_mask( 0 );
