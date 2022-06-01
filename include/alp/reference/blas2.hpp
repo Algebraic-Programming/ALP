@@ -52,8 +52,8 @@ namespace alp {
 	 *           bytes of memory.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputView, typename ImfR, typename ImfC >
-	size_t nnz( const Matrix< InputType, InputStructure, Density::Dense, InputView, ImfR, ImfC, reference > & A ) noexcept {
+	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
+	size_t nnz( const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & A ) noexcept {
 		return A.nz;
 	}
 
@@ -86,8 +86,8 @@ namespace alp {
 	 *        -# This function does not make system calls.
 	 * \endparblock
 	 */
-	template< typename InputType, typename InputStructure, typename InputView, typename ImfR, typename ImfC >
-	RC resize( Matrix< InputType, InputStructure, Density::Dense, InputView, ImfR, ImfC, reference > &A, const size_t new_nz ) noexcept {
+	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
+	RC resize( Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A, const size_t new_nz ) noexcept {
 		(void)A;
 		(void)new_nz;
 		// TODO implement
@@ -97,39 +97,41 @@ namespace alp {
 
 	/** \internal Delegates to fully masked variant */
 	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2,  typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class Ring
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
 	}
 
 	/** \internal Delegates to fully masked variant */
 	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+		class MultiplicativeOperator
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
 				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
 	}
 
@@ -137,17 +139,18 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
-		class Ring,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3,
-		typename InputType4, typename InputStructure4, typename InputView4 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, reference > & v_mask,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType4, typename InputStructure4, typename InputView4, typename InputImf4,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class Ring
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImf4, reference > & v_mask,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		throw std::runtime_error( "Needs an implementation." );
@@ -157,49 +160,53 @@ namespace alp {
 	/** \internal Delegates to fully masked version */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType = typename Ring::D4, typename IOStructure, typename IOView, 
-		typename InputType1 = typename Ring::D1, typename InputStructure1, typename InputView1, 
-		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+		typename IOType = typename Ring::D4, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType1 = typename Ring::D1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class AdditiveMonoid, class MultiplicativeOperator
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
 				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
 	}
 
 	/** \internal Delegates to fully masked version */
 	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3 = bool, typename InputStructure3, typename InputView3 >
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3 = bool, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		class Ring
+	>
+	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
 		const Ring & ring,
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
 	}
 
@@ -207,17 +214,18 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
-		class Ring,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3,
-		typename InputType4, typename InputStructure4, typename InputView4 >
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, reference > & v_mask,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType4, typename InputStructure4, typename InputView4, typename InputImf4,
+		class Ring
+	>
+	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImf4, reference > & v_mask,
 		const Ring & ring,
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
 
@@ -230,32 +238,35 @@ namespace alp {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename IOType = typename Ring::D4, typename IOStructure, typename IOView, 
-		typename InputType1 = typename Ring::D1, typename InputStructure1, typename InputView1,
-		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2 >
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
+		typename IOType = typename Ring::D4, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		typename InputType1 = typename Ring::D1, typename InputStructure1, typename InputView1, typename InputImf1
+	>
+	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
 		const Ring & ring,
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
 	}
 
 	/** \internal Delegates to fully masked version */
-	template< Descriptor descr = descriptors::no_operation, class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2 >
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		class AdditiveMonoid, class MultiplicativeOperator
+	>
+	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
 				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, reference > empty_mask( 0 );
+		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
 	}
 
@@ -265,18 +276,19 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType4, typename InputStructure4, typename InputView4, typename InputImf4,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3,
-		typename InputType4, typename InputStructure4, typename InputView4 >
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, reference > & v_mask,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
+		class MultiplicativeOperator
+	>
+	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImf4, reference > & v_mask,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
@@ -294,18 +306,19 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		typename InputType4, typename InputStructure4, typename InputView4, typename InputImf4,
 		class AdditiveMonoid,
-		class MultiplicativeOperator,
-		typename IOType, typename IOStructure, typename IOView,
-		typename InputType1, typename InputStructure1, typename InputView1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename ImfR2, typename ImfC2,
-		typename InputType3, typename InputStructure3, typename InputView3,
-		typename InputType4, typename InputStructure4, typename InputView4 >
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & u,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & mask,
-		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, ImfR2, ImfC2, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & v,
-		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, reference > & v_mask,
+		class MultiplicativeOperator
+	>
+	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & u,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & mask,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & v,
+		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImf4, reference > & v_mask,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
 		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
@@ -322,7 +335,9 @@ namespace alp {
 	 *
 	 * @see alp::eWiseLambda for the user-level specification.
 	 */
-	template< class ActiveDistribution, typename Func, typename DataType, typename Structure, typename View, typename ImfR, typename ImfC >
+	template< class ActiveDistribution, typename Func,
+		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC
+	>
 	RC eWiseLambda( const Func f,
 		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > & A,
 		const size_t s,
@@ -342,10 +357,13 @@ namespace alp {
 	 */
 	template< typename Func,
 		typename DataType1, typename DataStructure1, typename DataView1, typename DataImfR, typename DataImfC,
-		typename DataType2, typename DataStructure2, typename DataView2,  typename... Args >
+		typename DataType2, typename DataStructure2, typename DataView2, typename DataImf2,
+		typename... Args
+	>
 	RC eWiseLambda( const Func f,
 		const Matrix< DataType1, DataStructure1, Density::Dense, DataView1, DataImfR, DataImfC, reference > & A,
-		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, reference > x, Args... args ) {
+		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, DataImf2, reference > x,
+		Args... args ) {
 		// do size checking
 		if( ! ( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
 			std::cerr << "Mismatching dimensions: given vector of size " << size( x ) << " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
@@ -426,9 +444,11 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename InputType, typename InputStructure >
+		class Monoid
+	>
 	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
 		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & A,
 		const Monoid & monoid = Monoid(),

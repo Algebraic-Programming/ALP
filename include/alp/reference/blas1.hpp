@@ -173,10 +173,10 @@ namespace alp {
 	//  * \endparblock
 	 */
 	template<
-		typename DataType, typename DataStructure,  typename View
+		typename DataType, typename DataStructure, typename View, typename Imf
 	>
 	RC clear(
-		Vector< DataType, DataStructure, Density::Dense, View, reference > & x
+		Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x
 	) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
@@ -205,8 +205,8 @@ namespace alp {
 	//  *  -# shall not make any system calls.
 	//  * \endparblock
 	 */
-	template< typename DataType, typename DataStructure,  typename View >
-	size_t size( const Vector< DataType, DataStructure, Density::Dense, View, reference > & x ) noexcept {
+	template< typename DataType, typename DataStructure, typename View, typename Imf >
+	size_t size( const Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x ) noexcept {
 		return getLength( x );
 	}
 
@@ -232,8 +232,8 @@ namespace alp {
 	//  *   -# shall not make any system calls.
 	//  * \endparblock
 	 */
-	template< typename DataType, typename DataStructure,  typename View >
-	size_t nnz( const Vector< DataType, DataStructure, Density::Dense, View, reference > & x ) noexcept {
+	template< typename DataType, typename DataStructure, typename View, typename Imf >
+	size_t nnz( const Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x ) noexcept {
 		throw std::runtime_error( "Needs an implementation." );
 		return 0;
 	}
@@ -267,8 +267,8 @@ namespace alp {
 	 * \endparblock
 	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
 	 */
-	template< typename InputType, typename InputStructure, typename View, typename length_type >
-	RC resize( Vector< InputType, InputStructure, Density::Dense, View, reference > &x, const length_type new_nz ) {
+	template< typename InputType, typename InputStructure, typename View, typename Imf, typename length_type >
+	RC resize( Vector< InputType, InputStructure, Density::Dense, View, Imf, reference > &x, const length_type new_nz ) {
 		(void)x;
 		(void)new_nz;
 		// TODO implement
@@ -331,8 +331,8 @@ namespace alp {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC set( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
+		typename DataType, typename DataStructure, typename View, typename Imf, typename ValStructure, typename T >
+	RC set( Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x,
 		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if<
 			!alp::is_object< DataType >::value &&
@@ -409,11 +409,11 @@ namespace alp {
 	 * @see alp::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataView, typename DataStructure, 
-		typename MaskStructure,  typename MaskType, typename MaskView,
+		typename DataType, typename DataView, typename DataStructure, typename DataImf,
+		typename MaskStructure,  typename MaskType, typename MaskView, typename MaskImf,
 		typename T, typename ValStructure >
-	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, DataImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
@@ -445,11 +445,11 @@ namespace alp {
 
 	/** C++ scalar variant */
 	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataView, typename DataStructure, 
-		typename MaskStructure,  typename MaskType, typename MaskView,
+		typename DataType, typename DataView, typename DataStructure, typename DataImf,
+		typename MaskStructure,  typename MaskType, typename MaskView, typename MaskImf,
 		typename T >
-	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, DataImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const T val,
 		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
 #ifdef _DEBUG
@@ -507,8 +507,11 @@ namespace alp {
 	//  *   -# shall not make any system calls.
 	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View, typename Imf, typename ValStructure,
+		typename T
+	>
+	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x,
 		const Scalar< T, ValStructure, reference > val,
 		const size_t i,
 		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
@@ -524,8 +527,11 @@ namespace alp {
 	}
 
 	/** C++ scalar variant */
-	template< Descriptor descr = descriptors::no_operation, typename DataType, typename DataStructure, typename ValStructure,  typename View, typename T >
-	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View, typename Imf,
+		typename T
+	>
+	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, Imf, reference > & x,
 		const T val,
 		const size_t i,
 		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
@@ -594,8 +600,12 @@ namespace alp {
 	 * @see alp::operators::right_assign.
 	 * @see alp::setElement.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType, typename OutputStructure,  typename InputStructure,  typename OutputView, typename InputView >
-	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & x, const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y ) {
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf
+	>
+	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
 			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
@@ -686,13 +696,13 @@ namespace alp {
 	 * @see alp::setElement.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename MaskType, typename InputType,
-		typename OutputStructure, typename MaskStructure, typename InputStructure,
-		  
-		typename OutputView, typename MaskView, typename InputView >
-	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf
+	>
+	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * const = NULL ) {
 		// static sanity checks
 		NO_CAST_ASSERT(
@@ -798,9 +808,12 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename InputType, typename InputStructure,  typename InputView, typename IOType, typename IOStructure >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename IOType, typename IOStructure,
+		class Monoid
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
 		Scalar< IOType, IOStructure, reference > & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
@@ -810,9 +823,12 @@ namespace alp {
 	}
 
 	/** C++ scalar variant */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename InputType, typename InputStructure,  typename InputView, typename IOType >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename IOType,
+		class Monoid
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
@@ -891,9 +907,13 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class Monoid
+	>
 	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 		// static sanity checks
@@ -916,9 +936,13 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class OP
+	>
 	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< OP >::value, void >::type * const = NULL ) {
 		// static sanity checks
@@ -1008,13 +1032,13 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename IOType, typename InputType,
-		typename IOStructure, typename InputStructure,
-		 
-		typename IOView, typename InputView >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class OP
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1041,14 +1065,15 @@ namespace alp {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure, typename InputStructure,
-		  
-		typename IOView, typename MaskView, typename InputView >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class OP
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< IOType >::value, void >::type * =
 			NULL ) {
@@ -1149,13 +1174,13 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename InputType,
-		typename IOStructure, typename InputStructure,
-		 
-		typename IOView, typename InputView >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class Monoid
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1184,14 +1209,15 @@ namespace alp {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure, typename InputStructure,
-		  
-		typename IOView, typename MaskView, typename InputView >
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		Vector< IOType, IOStructure, Density::Dense, IOView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		class Monoid
+	>
+	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * =
 			NULL ) {
@@ -1298,8 +1324,12 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename InputType, typename IOStructure, typename InputStructure,  typename IOView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType, typename InputStructure,
+		class Op
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
 		const Scalar< InputType, InputStructure, reference > beta,
 		const Op & op = Op(),
 		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
@@ -1324,13 +1354,14 @@ namespace alp {
 	 *
 	 * Masked operator variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Op,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure, typename InputStructure,
-		 
-		typename IOView, typename MaskView, typename InputView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType, typename InputStructure,
+		class Op
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType, InputStructure, reference > &beta,
 		const Op & op = Op(),
 		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
@@ -1425,8 +1456,12 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename IOStructure,  typename IOView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType,
+		class Monoid
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * = NULL ) {
@@ -1451,13 +1486,14 @@ namespace alp {
 	 *
 	 * Masked monoid variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure,
-		 
-		typename IOView, typename MaskView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType,
+		class Monoid
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * =
@@ -1556,12 +1592,13 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename IOType, typename InputType,
-		typename IOStructure, typename InputStructure,
-		typename IOView, typename InputView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class OP
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1659,13 +1696,13 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename InputType,
-		typename IOStructure, typename InputStructure,
-		 
-		typename IOView, typename InputView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class Monoid
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
 		// static sanity checks
@@ -1694,14 +1731,15 @@ namespace alp {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure, typename InputStructure,
-		  
-		typename IOView, typename MaskView, typename InputView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class OP
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
 			NULL ) {
@@ -1737,14 +1775,15 @@ namespace alp {
 	 *
 	 * Masked variant.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename MaskType, typename InputType,
-		typename IOStructure, typename MaskStructure, typename InputStructure,
-		  
-		typename IOView, typename MaskView, typename InputView >
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure, typename IOView, typename IOImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class Monoid
+	>
+	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference > & x,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
 			NULL ) {
@@ -1846,13 +1885,14 @@ namespace alp {
 	//  *         this.
 	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView1 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf,
+		typename InputType2, typename InputStructure2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
@@ -1869,12 +1909,13 @@ namespace alp {
 	 *
 	 * Specialisation for \a x and \a y scalar, operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		
-		typename OutputView >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const OP & op = OP(),
@@ -1894,12 +1935,13 @@ namespace alp {
 	 *
 	 * Specialisation for \a x and \a y scalar, monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		
-		typename OutputView >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Monoid & monoid = Monoid(),
@@ -1917,14 +1959,16 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y, masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
@@ -1946,14 +1990,15 @@ namespace alp {
 	 *
 	 * Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -1969,14 +2014,15 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x. Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -1992,13 +2038,14 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y. Monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView1 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
@@ -2015,15 +2062,17 @@ namespace alp {
 	 *
 	 * Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_monoid< Monoid >::value,
@@ -2040,15 +2089,17 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x. Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_monoid< Monoid >::value,
@@ -2065,14 +2116,16 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y. Masked monoid version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Monoid
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
@@ -2153,14 +2206,15 @@ namespace alp {
 	//  *         this.
 	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
@@ -2176,15 +2230,17 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x. Masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_operator< OP >::value,
@@ -2270,14 +2326,15 @@ namespace alp {
 	//  *         used allow for this.
 	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
 			void >::type * const = NULL ) {
@@ -2293,15 +2350,17 @@ namespace alp {
 	 *
 	 * Masked operator version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class OP
+	>
+	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_operator< OP >::value,
@@ -2391,14 +2450,15 @@ namespace alp {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2424,14 +2484,15 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView2 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -2457,13 +2518,14 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView1 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
@@ -2490,12 +2552,13 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x and \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		
-		typename OutputView >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
@@ -2525,15 +2588,17 @@ namespace alp {
 	 *
 	 * Masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -2562,15 +2627,17 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x, masked version
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -2599,14 +2666,16 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
@@ -2636,13 +2705,15 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x and \a y, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename MaskView >
-	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
@@ -2674,15 +2745,17 @@ namespace alp {
 	 *
 	 * Specialisation for when \a a is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -2710,15 +2783,17 @@ namespace alp {
 	 *
 	 * Specialisation for when \a x is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename InputView1, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
 		const Scalar< InputType2, InputStructure2, reference> &chi,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -2745,14 +2820,16 @@ namespace alp {
 	 *
 	 * Specialisation for when \a y is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
 		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
@@ -2780,13 +2857,15 @@ namespace alp {
 	 *
 	 * Specialisation for when \a x and \a y are scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		 
-		typename OutputView, typename InputView1 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
@@ -2815,14 +2894,16 @@ namespace alp {
 	 *
 	 * Specialisation for when \a a and \a y are scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		 
-		typename OutputView, typename InputView2 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
 		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
@@ -2852,15 +2933,17 @@ namespace alp {
 	 *
 	 * \internal Dispatches to eWiseAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		 
-		typename OutputView, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & y,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -2893,12 +2976,14 @@ namespace alp {
 	 *
 	 * \internal Dispatches to set.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		
-		typename OutputView >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Scalar< InputType3, InputStructure3, reference> &gamma,
@@ -3032,15 +3117,17 @@ namespace alp {
 	//  *         and the operators used allow for this.
 	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		   
-		typename OutputView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value,
@@ -3146,14 +3233,15 @@ namespace alp {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		  
-		typename OutputView, typename InputView1, typename InputView2 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -3178,14 +3266,15 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a x.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView2 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
@@ -3210,13 +3299,14 @@ namespace alp {
 	 *
 	 * Specialisation for scalar \a y.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename OutputView, typename InputView1 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
@@ -3242,16 +3332,19 @@ namespace alp {
 	 *
 	 * Specialisation for when \a a is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		   
-		typename OutputView, typename MaskView, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
@@ -3280,16 +3373,19 @@ namespace alp {
 	 *
 	 * Specialisation for when \a x is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
 		const Scalar< InputType2, InputStructure2, reference> &chi,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
@@ -3317,15 +3413,18 @@ namespace alp {
 	 *
 	 * Specialisation for when \a y is a scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputView2,typename InputStructure2, typename InputImf2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
 		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
@@ -3354,14 +3453,17 @@ namespace alp {
 	 *
 	 * Specialisation for when \a x and \a y are scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename MaskView, typename InputView1 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Scalar< InputType3, InputStructure3, reference> &gamma,
 		const Ring & ring = Ring(),
@@ -3391,15 +3493,18 @@ namespace alp {
 	 *
 	 * Specialisation for when \a a and \a y are scalar, masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename MaskView, typename InputView2 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
 		const Scalar< InputType3, InputStructure3, reference > &gamma,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
@@ -3428,16 +3533,19 @@ namespace alp {
 	 *
 	 * Masked version.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		    
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & _z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & _m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & _a,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & _x,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & _y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & _z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & _m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & _a,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & _x,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & _y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
@@ -3470,15 +3578,17 @@ namespace alp {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		    
-		typename OutputView, typename MaskView, typename InputView1, typename InputView2, typename InputView3 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
 				alp::is_semiring< Ring >::value,
@@ -3507,15 +3617,17 @@ namespace alp {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure2, typename InputStructure3,
-		  typename InputStructure1,  
-		typename OutputView, typename MaskView, typename InputView2, typename InputView3 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > & y,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
 				alp::is_semiring< Ring >::value,
@@ -3544,14 +3656,16 @@ namespace alp {
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		   
-		typename OutputView, typename MaskView, typename InputView1, typename InputView3 >
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > & x,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2,
+		class Ring
+	>
+	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< MaskType >::value &&
@@ -3581,16 +3695,19 @@ namespace alp {
 	 *
 	 * \internal Dispatches to masked eWiseAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		  
-		typename OutputView, typename MaskView, typename InputView3 >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3, typename InputView3, typename InputImf3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
-		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, reference > & y,
+		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImf3, reference > & y,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value &&
 				alp::is_semiring< Ring >::value && ! alp::is_object< MaskType >::value,
@@ -3624,13 +3741,16 @@ namespace alp {
 	 *
 	 * \internal Dispatches to masked set.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename InputType3,
-		typename OutputStructure, typename MaskStructure, typename InputStructure1, typename InputStructure2, typename InputStructure3,
-		 
-		typename OutputView, typename MaskView >
-	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & m,
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2,
+		typename InputType3, typename InputStructure3,
+		class Ring
+	>
+	RC eWiseMulAdd( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImf, reference > & z,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & m,
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Scalar< InputType3, InputStructure3, reference> &gamma,
@@ -3671,14 +3791,14 @@ namespace alp {
 		/** @see alp::dot */
 		template<
 			Descriptor descr = descriptors::no_operation,
-			class AddMonoid, class AnyOp,
-			typename OutputType, typename InputType1, typename InputType2,
-			typename OutputStructure, typename InputStructure1, typename InputStructure2,
-			 
-			typename InputView1, typename InputView2 >
+			typename OutputType, typename OutputStructure,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+			class AddMonoid, class AnyOp
+		>
 		RC dot_generic( Scalar< OutputType, OutputStructure, reference > &z,
-			const alp::Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
-			const alp::Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
+			const alp::Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > &x,
+			const alp::Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > &y,
 			const AddMonoid &addMonoid = AddMonoid(),
 			const AnyOp &anyOp = AnyOp()
 		) {
@@ -3769,14 +3889,14 @@ namespace alp {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class AddMonoid, class AnyOp,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename OutputStructure, typename InputStructure1, typename InputStructure2,
-		 
-		typename InputView1, typename InputView2 >
+		typename OutputType, typename OutputStructure,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class AddMonoid, class AnyOp
+	>
 	RC dot( Scalar< OutputType, OutputStructure, reference > &z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
 		const typename std::enable_if< !alp::is_object< OutputType >::value &&
@@ -3817,14 +3937,14 @@ namespace alp {
 	/** C++ scalar specialization */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class AddMonoid, class AnyOp,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename InputStructure1, typename InputStructure2,
-		 
-		typename InputView1, typename InputView2 >
+		typename OutputType,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class AddMonoid, class AnyOp
+	>
 	RC dot( OutputType &z,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, reference > &x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, reference > &y,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
 		const typename std::enable_if< !alp::is_object< OutputType >::value &&
@@ -3871,14 +3991,15 @@ namespace alp {
 	 * and non-template arguments, @see alp::dot.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename IOStructure, typename InputStructure1, typename InputStructure2,
-		typename InputView1, typename InputView2,
+		Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		class Ring,
 		Backend backend >
 	RC dot( Scalar< IOType, IOStructure, backend > &x,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, backend > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, backend > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			!alp::is_object< InputType1 >::value &&
@@ -3898,14 +4019,14 @@ namespace alp {
 	/** C++ scalar specialization. */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputStructure1, typename InputStructure2,
-		 
-		typename InputView1, typename InputView2,
-		Backend backend >
+		typename IOType,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		Backend backend
+	>
 	RC dot( IOType &x,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, backend > &left,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, backend > &right,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, backend > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, backend > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			!alp::is_object< InputType1 >::value &&
@@ -3928,8 +4049,10 @@ namespace alp {
 	}
 
 	/** No implementation notes. */
-	template< typename Func, typename DataType, typename DataStructure,  typename DataView >
-	RC eWiseMap( const Func f, Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x ) {
+	template< typename Func,
+		typename DataType, typename DataStructure, typename DataView, typename DataImf
+	>
+	RC eWiseMap( const Func f, Vector< DataType, DataStructure, Density::Dense, DataView, DataImf, reference > & x ) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -3944,13 +4067,13 @@ namespace alp {
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func, typename DataType1, typename DataType2,
-		typename DataStructure1, typename DataStructure2,
-		typename DataView1, typename DataView2,
+	template< typename Func,
+		typename DataType1, typename DataStructure1, typename DataView1, typename InputImf1,
+		typename DataType2, typename DataStructure2, typename DataView2, typename InputImf2,
 		typename... Args >
 	RC eWiseLambda( const Func f,
-		const Vector< DataType1, DataStructure1, Density::Dense, DataView1, reference > & x,
-		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, reference > & y,
+		const Vector< DataType1, DataStructure1, Density::Dense, DataView1, InputImf1, reference > & x,
+		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, InputImf2, reference > & y,
 		Args const &... args ) {
 		// catch mismatch
 		if( size( x ) != size( y ) ) {
@@ -3967,8 +4090,10 @@ namespace alp {
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func, typename DataType, typename DataStructure,  typename DataView >
-	RC eWiseLambda( const Func f, const Vector< DataType, DataStructure, Density::Dense, DataView, reference > & x ) {
+	template< typename Func,
+		typename DataType, typename DataStructure, typename DataView, typename DataImf
+	>
+	RC eWiseLambda( const Func f, const Vector< DataType, DataStructure, Density::Dense, DataView, DataImf, reference > & x ) {
 	#ifdef _DEBUG
 		std::cout << "Info: entering eWiseLambda function on vectors.\n";
 	#endif
@@ -4057,14 +4182,15 @@ namespace alp {
 	 *
 	 * @see alp::foldl provides similar functionality.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Monoid,
-		typename InputType, typename IOType, typename MaskType,
-		typename IOStructure, typename InputStructure, typename MaskStructure,
-		 
-		typename InputView, typename MaskView >
+	template< Descriptor descr = descriptors::no_operation,
+		typename IOType, typename IOStructure,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImf,
+		class Monoid
+	>
 	RC foldl( Scalar< IOType, IOStructure, reference > &x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, reference > & y,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, reference > & mask,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > & y,
+		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImf, reference > & mask,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && ! alp::is_object< MaskType >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
@@ -4102,12 +4228,13 @@ namespace alp {
 	 * Complexity should be lower than O(n*log(n)), and space complexity should be lower than \Theta(n+T+P)
 	 */
 	template<
-		typename IndexType, typename IndexStructure, typename IndexView,
-		typename ValueType, typename ValueStructure, typename ValueView,
-		typename Compare >
+		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImf,
+		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImf,
+		typename Compare
+	>
 	RC sort(
-		Vector< IndexType, IndexStructure, Density::Dense, IndexView, reference > &permutation,
-		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, reference > &toSort,
+		Vector< IndexType, IndexStructure, Density::Dense, IndexView, IndexImf, reference > &permutation,
+		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImf, reference > &toSort,
 		Compare cmp
 		//PHASE &phase = EXECUTE
 	) noexcept {
@@ -4138,14 +4265,14 @@ namespace alp {
 	 *          itself under the supplied semiring.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType,
-		typename OutputStructure, typename InputStructure,
-		
-		typename InputView,
-		Backend backend >
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class Ring,
+		Backend backend
+	>
 	RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, backend > &y,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,
@@ -4160,16 +4287,15 @@ namespace alp {
 
 	/** C++ scalar version */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
-		typename OutputType, typename InputType,
-		typename InputStructure,
-		
-		typename InputView,
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType,
+		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		class Ring,
 		Backend backend
 	>
 	RC norm2(
 		OutputType &x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, backend > &y,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value,

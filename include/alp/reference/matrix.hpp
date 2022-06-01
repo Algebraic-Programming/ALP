@@ -735,7 +735,7 @@ namespace alp {
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
 		public internal::MatrixContainer< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
 
-		private:
+		protected:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
 			typedef typename View::applied_to target_type;
 
@@ -786,7 +786,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
 			};
 
 			/**
@@ -1399,14 +1399,14 @@ namespace alp {
 	 */
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const size_t &sel_r, const utils::range &rng_c ) {
 
 		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
 
 		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, sel_r, imf_c );
-		return Vector< T, structures::General, density, View, backend >();
+		return Vector< T, structures::General, density, View, imf::Id, backend >();
 	}
 
 	/**
@@ -1438,14 +1438,14 @@ namespace alp {
 	 */
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const utils::range &rng_r, const size_t &sel_c ) {
 
 		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
 
 		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, sel_c );
-		return Vector< T, structures::General, density, View, backend >();
+		return Vector< T, structures::General, density, View, imf::Id, backend >();
 	}
 
 	/**
@@ -1471,8 +1471,10 @@ namespace alp {
 		*/
 	template<
 		typename TargetStructure,
-		typename IndexType, typename IndexStructure, typename IndexView,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImf,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
+		enum Backend backend
+	>
 	alp::Matrix<
 		T,
 		TargetStructure,
@@ -1483,7 +1485,8 @@ namespace alp {
 		backend
 	>
 	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_r, const Vector< IndexType, IndexStructure, density, IndexView, backend > & sel_c ) {
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_r,
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_c ) {
 
 		imf::Select imf_r( nrows(source), sel_r );
 		imf::Select imf_c( ncols(source), sel_c );
