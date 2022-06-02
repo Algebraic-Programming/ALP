@@ -163,8 +163,8 @@ namespace alp {
 		(void)A;
 		(void)start;
 		(void)end;
+		internal::setInitialized(A, true);
 		return PANIC;
-		// return A.template buildMatrixUnique( start, end );
 	}
 
 } // end namespace ``alp''

@@ -37,15 +37,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	std::vector< double > A_data( n * n, 1 );
 	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
 
-	if( rc == SUCCESS ) {
-		alp::mxm( C, A, I, ring );
-		// C should be equal to A
-	}
+	//TODO: These should forward to alp::set
+	// if( rc == SUCCESS ) {
+	// 	alp::mxm( C, A, I, ring );
+	// 	// C should be equal to A
+	// }
 
-	if (rc == SUCCESS ) {
-		alp::mxm( C, A, Zero, ring );
-		// C should be a zero
-	}
+	// if (rc == SUCCESS ) {
+	// 	alp::mxm( C, A, Zero, ring );
+	// 	// C should be a zero
+	// }
 }
 
 int main( int argc, char ** argv ) {
