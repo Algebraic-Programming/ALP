@@ -32,10 +32,10 @@ void ask_questions( const StructuredMat & M, std::string name ) {
 	std::cout << name << "( " << alp::nrows( M ) << ", " << alp::ncols( M ) << " )" << std::endl;
 	std::cout << "Is " << name << ":" << std::endl;
 	std::cout << "\ta structured Matrix? " << alp::is_structured_matrix< M_type >::value << std::endl;
-	std::cout << "\tgeneral? " << alp::structures::is_a< M_type, alp::structures::General >::value << std::endl;
-	std::cout << "\tsquare? " << alp::structures::is_a< M_type, alp::structures::Square >::value << std::endl;
-	std::cout << "\tfull rank? " << alp::structures::is_a< M_type, alp::structures::FullRank >::value << std::endl;
-	std::cout << "\tnon-singular? " << alp::structures::is_a< M_type, alp::structures::NonSingular >::value << std::endl;
+	std::cout << "\tgeneral? " << alp::structures::is_a< typename M_type::structure, alp::structures::General >::value << std::endl;
+	std::cout << "\tsquare? " << alp::structures::is_a< typename M_type::structure, alp::structures::Square >::value << std::endl;
+	std::cout << "\tfull rank? " << alp::structures::is_a< typename M_type::structure, alp::structures::FullRank >::value << std::endl;
+	std::cout << "\tnon-singular? " << alp::structures::is_a< typename M_type::structure, alp::structures::NonSingular >::value << std::endl;
 }
 
 void alp_program( const size_t & n, alp::RC & rc ) {
