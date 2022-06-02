@@ -100,7 +100,7 @@ namespace alp {
 		}
 
 		template< typename D >
-		void setInitialized( alp::internal::Matrix< D, reference > & A, bool initialized ) noexcept {
+		void setInitialized( alp::internal::Matrix< D, reference > & A, const bool initialized ) noexcept {
 			A.initialized = initialized;
 		}
 
@@ -145,7 +145,7 @@ namespace alp {
 			friend const bool & internal::getInitialized( const alp::internal::Matrix< DataType, reference > & ) noexcept;
 
 			template< typename DataType >
-			friend void internal::setInitialized( alp::internal::Matrix< DataType, reference > & , bool ) noexcept;
+			friend void internal::setInitialized( alp::internal::Matrix< DataType, reference > & , const bool ) noexcept;
 
 			typedef Matrix< D, reference > self_type;
 
@@ -392,21 +392,11 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		// template< typename DerivedMatrix >
-		// bool getInitialized( MatrixBase< DerivedMatrix > & ) noexcept;
+		template< typename MatrixType >
+		bool getInitialized( const MatrixType &A ) noexcept;
 
-		// template< typename DerivedMatrix >
-		// void getInitialized( MatrixBase< DerivedMatrix > &, bool ) noexcept;
-
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-		bool getInitialized( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) noexcept {
-			return internal::getInitialized( internal::getContainer( A ) );
-		}
-
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-		void setInitialized( alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A, bool initialized ) noexcept {
-			internal::setInitialized( internal::getContainer( A ), initialized );
-		}
+		template< typename MatrixType >
+		void setInitialized( MatrixType &, const bool ) noexcept;
 
 	} // namespace internal
 
@@ -439,6 +429,12 @@ namespace alp {
 
 			friend std::pair< size_t, size_t > dims<>( const MatrixBase< DerivedMatrix > &A ) noexcept;
 
+			template< typename MatrixType >
+			friend bool getInitialized( const MatrixType &A ) noexcept;
+
+			template< typename MatrixType >
+			friend void setInitialized( MatrixType &A, const bool initialized ) noexcept;
+
 			protected:
 
 				std::pair< size_t, size_t > dims() const noexcept {
@@ -453,6 +449,15 @@ namespace alp {
 
 				template< typename MatrixType >
 				friend typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P );
+
+				bool getInitialized() const {
+					return static_cast< const DerivedMatrix & >( *this ).getInitialized();
+				}
+
+				void setInitialized( const bool initialized ) {
+					static_cast< DerivedMatrix & >( *this ).setInitialized( initialized );
+
+				}
 
 				template< typename AccessType, typename StorageIndexType >
 				const AccessType access( const StorageIndexType storageIndex ) const {
@@ -557,13 +562,13 @@ namespace alp {
 					return A.container;
 				}
 
-				// friend bool getInitialized( self_type & A ) noexcept {
-				// 	return getInitialized( getContainer( A ) );
-				// }
+				bool getInitialized() const noexcept {
+					return internal::getInitialized( container );
+				}
 
-				// friend void setInitialized( self_type & A, bool initialized ) noexcept {
-				// 	setInitialized( getContainer( A ), initialized );
-				// }
+				void setInitialized( const bool initialized ) noexcept {
+					internal::setInitialized( container , initialized );
+				}
 
 				/**
 				 * Returns a constant reference to the element corresponding to
@@ -1644,6 +1649,16 @@ namespace alp {
 
 	/** Definitions of previously declared global methods that operate on ALP Matrix */
 	namespace internal {
+
+		template< typename MatrixType >
+		bool getInitialized( const MatrixType &A ) noexcept {
+			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template getInitialized();
+		}
+
+		template< typename MatrixType >
+		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
+			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template setInitialized( initialized );
+		}
 
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
