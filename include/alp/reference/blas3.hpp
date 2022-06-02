@@ -221,18 +221,20 @@ namespace alp {
 				for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
 					 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
 					 ++j ) {
+
+					auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
 						 l < std::min( {k, i + u_a, j - l_b + 1} ); 
 						 ++l ) {
-						std::cout << "temp = A";
-						const auto ta { internal::get(A, i, l ) };
-						std::cout << ".mulOp.B";
-						const auto tb { internal::get(B, l, j ) };
+						// std::cout << "temp = A";
+						const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
+						// std::cout << ".mulOp.B";
+						const auto tb { internal::access( B, internal::getStorageIndex( B, l, j ) ) };
 						(void)internal::apply( temp, ta, tb, oper );
-						std::cout << ";\n";
-						std::cout << "C";
-						(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
-						std::cout << " addMon.= temp;\n";
+						// std::cout << ";\n";
+						// std::cout << "C";
+						(void)internal::foldl( c_val, temp, monoid.getOperator() );
+						// std::cout << " addMon.= temp;\n";
 					}
 				}
 			}

@@ -1164,21 +1164,6 @@ namespace alp {
 //
 //	}; // Matrix Identity, container
 
-	namespace internal {
-
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		const T & get( const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, size_t i, size_t j ) {
-			std::cout << "(const, " << i << ", " << j << ")";
-			return A.tmp;
-		}
-
-		template< typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		T & get( alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A, size_t i, size_t j ) {
-			std::cout << "(" << i << ", " << j << ")";
-			return A.tmp;
-		}
-
-	} 
 	namespace structures {
 
 		/**
