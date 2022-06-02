@@ -1095,6 +1095,7 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
+				internal::getInitialized( x ) && internal::getInitialized( y ),
 				lambda,
 				imf::Id( getLength( x ) ),
 				imf::Id( getLength( y ) )
@@ -1145,6 +1146,7 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
+				internal::getInitialized( x ),
 				lambda,
 				imf::Id( getLength( x ) )
 			);

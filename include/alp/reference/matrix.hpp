@@ -645,6 +645,9 @@ namespace alp {
 				typedef std::pair< size_t, size_t > storage_index_type;
 
 			protected:
+
+				const bool initialized;
+
 				ImfR imf_r;
 				ImfC imf_c;
 
@@ -664,11 +667,13 @@ namespace alp {
 			public:
 
 				MatrixFunctor(
+					const bool initialized,
 					lambda_function_type &lambda,
 					ImfR &&imf_r,
 					ImfC &&imf_c
 				) :
 					MatrixBase< MatrixFunctor< T, ImfR, ImfC, Ret, Args... > >( imf_r.N, imf_c.N ),
+					initialized( initialized ),
 					lambda( lambda ) {}
 
 		}; // class MatrixFunctor
