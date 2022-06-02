@@ -654,6 +654,14 @@ namespace alp {
 				typedef std::function< Ret( Args... ) > lambda_function_type;
 				lambda_function_type &lambda;
 
+				bool getInitialized() const noexcept {
+					return initialized;
+				}
+
+				void setInitialized( const bool ) noexcept {
+					static_assert( "Calling setInitialized on a MatrixFunctor is not allowed." );
+				}
+
 				access_type access( const storage_index_type &storage_index ) const {
 					return lambda( imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
 				}
