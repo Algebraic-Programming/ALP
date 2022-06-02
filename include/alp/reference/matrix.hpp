@@ -1184,7 +1184,7 @@ namespace alp {
 		};
 
 		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		std::ptrdiff_t get_lower_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
+		std::ptrdiff_t get_lower_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
 			const std::ptrdiff_t m = nrows( A );
 			constexpr std::ptrdiff_t cl_a = std::tuple_element< band, typename Structure::band_intervals >::type::left;
@@ -1196,7 +1196,7 @@ namespace alp {
 		}
 
 		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		std::ptrdiff_t get_upper_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > & A) {
+		std::ptrdiff_t get_upper_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
 			const std::ptrdiff_t n = ncols( A );
 			constexpr std::ptrdiff_t cu_a = std::tuple_element< band, typename Structure::band_intervals >::type::right;

@@ -45,7 +45,7 @@ namespace alp {
 	 * @tparam _right right boundary of the interval. Optional, in which case 
 	 *                _left == _right
 	 */
-	template <std::ptrdiff_t _left, std::ptrdiff_t _right = _left + 1 >
+	template < std::ptrdiff_t _left, std::ptrdiff_t _right = _left + 1 >
 	struct Interval {
 		
 		static_assert( _left < _right );
