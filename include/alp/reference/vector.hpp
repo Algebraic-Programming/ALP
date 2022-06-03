@@ -61,7 +61,7 @@ namespace alp {
 		const bool & getInitialized( const Vector< T, reference > & v ) noexcept;
 
 		template< typename T >
-		void setInitialized( Vector< T, reference > & v, bool initialized ) noexcept;
+		void setInitialized( Vector< T, reference > & v, const bool initialized ) noexcept;
 
 
 		/**
