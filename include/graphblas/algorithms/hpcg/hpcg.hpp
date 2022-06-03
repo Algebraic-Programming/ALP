@@ -31,10 +31,14 @@
 #include "hpcg_data.hpp"
 #include "multigrid_v_cycle.hpp"
 
+#include <utils/print_vec_mat.hpp>
 
 namespace grb {
 	namespace algorithms {
 
+
+
+		
 		/**
 		 * @brief High-Performance Conjugate Gradient algorithm implementation running entirely on GraphBLAS.
 		 *
@@ -140,9 +144,9 @@ namespace grb {
 			size_t iter { 0 };
 
 #ifdef HPCG_PRINT_STEPS
-			DBG_print_norm( p, "start p" );
-			DBG_print_norm( Ap, "start Ap" );
-			DBG_print_norm( r, "start r" );
+			print_norm( p, "start p" );
+			print_norm( Ap, "start Ap" );
+			print_norm( r, "start r" );
 #endif
 
 			do {
@@ -150,14 +154,16 @@ namespace grb {
 				DBG_println( "========= iteration " << iter << " =========" );
 #endif
 				if( with_preconditioning ) {
+					//ret = ret ? ret : grb::set( z, r ); // z = r;
 					ret = ret ? ret : internal::multi_grid( data, data.coarser_level, presmoother_steps, postsmoother_steps, ring, minus );
+					//ret = ret ? ret : grb::set( x, z );
 					assert( ret == SUCCESS );
 				} else {
 					ret = ret ? ret : grb::set( z, r ); // z = r;
 					assert( ret == SUCCESS );
 				}
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( z, "initial z" );
+				print_norm( z, "initial z" );
 #endif
 
 				ResidualType pAp;
@@ -182,14 +188,14 @@ namespace grb {
 					assert( ret == SUCCESS );
 				}
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( p, "middle p" );
+				print_norm( p, "middle p" );
 #endif
-
 				ret = ret ? ret : grb::set( Ap, 0 );
 				ret = ret ? ret : grb::mxv( Ap, A, p, ring ); // Ap = A * p;
+
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( Ap, "middle Ap" );
+				print_norm( Ap, "middle Ap" );
 #endif
 				pAp = static_cast< ResidualType >( 0.0 );
 				ret = ret ? ret : grb::dot( pAp, Ap, p, ring ); // pAp = p' * Ap
@@ -200,13 +206,12 @@ namespace grb {
 				ret = ret ? ret : grb::eWiseMul( x, alpha, p, ring ); // x += alpha * p;
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( x, "end x" );
+				print_norm( x, "end x" );
 #endif
-
 				ret = ret ? ret : grb::eWiseMul( r, -alpha, Ap, ring ); // r += - alpha * Ap;
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( r, "end r" );
+				print_norm( r, "end r" );
 #endif
 
 				norm_residual = static_cast< ResidualType >( 0.0 );
@@ -215,6 +220,9 @@ namespace grb {
 
 				norm_residual = std::sqrt( norm_residual );
 
+#ifdef HPCG_PRINT_STEPS				
+				std::cout << " ---> norm_residual=" << norm_residual << "\n";
+#endif
 				++iter;
 			} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );
 
