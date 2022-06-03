@@ -34,14 +34,23 @@
 #include "hpcg_data.hpp"
 #include "red_black_gauss_seidel.hpp"
 
+#include <utils/print_vec_mat.hpp>
+
+
+
+#define DBG_println( args ) std::cout << args << std::endl;
+
 
 namespace grb {
 	namespace algorithms {
+
+		
 		/**
 		 * @brief Namespace for interfaces that should not be used outside of the algorithm namespace.
 		 */
 		namespace internal {
 
+			
 			/**
 			 * @brief computes the coarser residual vector \p coarsening_data.r by coarsening
 			 *        \p coarsening_data.Ax_finer - \p r_fine via \p coarsening_data.coarsening_matrix.
@@ -116,6 +125,18 @@ namespace grb {
 				return ret;
 			}
 
+			template< typename IOType, typename NonzeroType, class Ring >
+			grb::RC spai0_smoother( system_data< IOType, NonzeroType > & data, const Ring & ring ) {
+				RC ret { SUCCESS };
+
+				NonzeroType alpha = 1.;
+				ret = ret ? ret : grb::eWiseMulAdd( data.z, alpha, data.A_diagonal, data.r, ring );
+				assert( ret == SUCCESS );
+					
+				return ret;
+			}
+			
+
 			/**
 			 * @brief Runs \p smoother_steps iteration of the Red-Black Gauss-Seidel smoother, with inputs and outputs stored
 			 * inside \p data.
@@ -131,14 +152,47 @@ namespace grb {
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *                          unsuccessful operation otherwise
 			 */
-			template< typename IOType, typename NonzeroType, class Ring >
-			grb::RC run_smoother( system_data< IOType, NonzeroType > & data, const std::size_t smoother_steps, const Ring & ring ) {
+			template< typename IOType, typename NonzeroType, class Ring, class Minus >
+			grb::RC run_spai0_smoother( system_data< IOType, NonzeroType > & data,
+								  const std::size_t smoother_steps, const Ring & ring, const Minus & minus ) {
 				RC ret { SUCCESS };
 
 				for( std::size_t i { 0 }; i < smoother_steps && ret == SUCCESS; i++ ) {
-					ret = ret ? ret : red_black_gauss_seidel( data, ring );
+					ret = ret ? ret : grb::set( data.smoother_temp, 0 );
+					ret = ret ? ret : grb::mxv( data.smoother_temp, data.A, data.z, ring );
+					ret = ret ? ret : grb::eWiseApply( data.smoother_temp, data.r, data.smoother_temp,
+													   minus ); 
+
+#ifdef HPCG_PRINT_STEPS
+					print_norm( data.A_diagonal, " data.A_diagonal" );
+					print_norm( data.smoother_temp, " data.smoother_temp" );
+					print_norm( data.z, " data.z" );
+#endif
+
+					ret = ret ? ret :
+						grb::eWiseLambda(
+										 [ &data ]( const size_t i ) {
+#ifdef HPCG_PRINT_STEPS											 
+											 if( i < 100 ){
+												 std::cout << " i= " << i
+														   << " data.z[i]= " << data.z[i]
+														   << " data.A_diagonal[i]= " << data.A_diagonal[i]
+														   << " data.smoother_temp[i]= " << data.smoother_temp[i]
+														   << "\n";
+											 }
+#endif											 
+											 data.z[ i ] += data.A_diagonal[ i ] * data.smoother_temp[ i ];
+										 },
+										 data.A_diagonal, data.z, data.smoother_temp );
+					
 					assert( ret == SUCCESS );
 				}
+				
+				
+				// for( std::size_t i { 0 }; i < smoother_steps && ret == SUCCESS; i++ ) {
+				// 	ret = ret ? ret : red_black_gauss_seidel( data, ring );
+				// 	assert( ret == SUCCESS );
+				// }
 				return ret;
 			}
 
@@ -184,21 +238,25 @@ namespace grb {
 				const Ring & ring,
 				const Minus & minus ) {
 				RC ret { SUCCESS };
+
 #ifdef HPCG_PRINT_STEPS
 				DBG_println( "mg BEGINNING {" );
 #endif
 
 				// clean destination vector
+				//ret = ret ? ret : grb::set( data.z, data.r );
 				ret = ret ? ret : grb::set( data.z, 0 );
+				
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( data.r, "initial r" );
+				print_norm( data.z, "first print smoothed z" );
+				print_norm( data.r, "initial r" );
 #endif
 				if( coarsening_data == nullptr ) {
-					// compute one round of Gauss Seidel and return
-					ret = ret ? ret : run_smoother( data, 1, ring );
+					//compute one round of smoother
+					ret = ret ? ret : run_spai0_smoother( data, 1, ring, minus );
 					assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
-					DBG_print_norm( data.z, "smoothed z" );
+					print_norm( data.z, "smoothed z" );
 					DBG_println( "} mg END" );
 #endif
 					return ret;
@@ -209,36 +267,45 @@ namespace grb {
 				};
 
 				// pre-smoother
-				ret = ret ? ret : run_smoother( data, presmoother_steps, ring );
+				ret = ret ? ret : run_spai0_smoother( data, presmoother_steps, ring, minus );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( data.z, "pre-smoothed z" );
+				print_norm( data.z, "pre-smoothed z" );
 #endif
 
 				ret = ret ? ret : grb::set( cd.Ax_finer, 0 );
 				ret = ret ? ret : grb::mxv( cd.Ax_finer, data.A, data.z, ring );
 				assert( ret == SUCCESS );
 
+#ifdef HPCG_PRINT_STEPS
+				print_norm( cd.r, "before coarse cd.r" );
+#endif				
+
 				ret = ret ? ret : compute_coarsening( data.r, cd, ring, minus );
 				assert( ret == SUCCESS );
+
+				
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( cd.r, "coarse r" );
+				print_norm( cd.z, "after cd.coarse z" );				
+				print_norm( cd.r, "after cd.coarse r" );
 #endif
 
-				ret = ret ? ret : multi_grid( cd, cd.coarser_level, presmoother_steps, postsmoother_steps, ring, minus );
+				ret = ret ? ret : multi_grid( cd, cd.coarser_level, presmoother_steps, postsmoother_steps, ring, minus );			
 				assert( ret == SUCCESS );
 
 				ret = ret ? ret : compute_prolongation( data.z, cd, ring );
 				assert( ret == SUCCESS );
+				
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( data.z, "prolonged z" );
+				print_norm( data.z, "prolonged z" );
 #endif
 
 				// post-smoother
-				ret = ret ? ret : run_smoother( data, postsmoother_steps, ring );
+				ret = ret ? ret : run_spai0_smoother( data, postsmoother_steps, ring, minus );
 				assert( ret == SUCCESS );
+				
 #ifdef HPCG_PRINT_STEPS
-				DBG_print_norm( data.z, "post-smoothed z" );
+				print_norm( data.z, "post-smoothed z" );
 				DBG_println( "} mg END" );
 #endif
 

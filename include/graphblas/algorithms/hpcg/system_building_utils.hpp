@@ -1,4 +1,3 @@
-
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -31,6 +30,7 @@
 #include <memory>
 
 #include <graphblas.hpp>
+#include <graphblas/utils/parser.hpp>
 
 #include "hpcg_data.hpp"
 #include "matrix_building_utils.hpp"
@@ -80,70 +80,149 @@ namespace grb {
 		 * @return grb::SUCCESS if every GraphBLAS operation (to generate vectors and matrices) succeeded,
 		 * otherwise the first unsuccessful return value
 		 */
-		template< std::size_t DIMS, typename T = double >
-		grb::RC build_hpcg_system( std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder, hpcg_system_params< DIMS, T > & params ) {
-			// n is the system matrix size
-			const std::size_t n { std::accumulate( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
-
-			grb::algorithms::hpcg_data< T, T, T > * data { new grb::algorithms::hpcg_data< T, T, T >( n ) };
-
+		template< std::size_t DIMS, typename T = double, typename SYSINP >
+		grb::RC build_hpcg_system( std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder, hpcg_system_params< DIMS, T > & params, SYSINP &in ) {
+			grb::RC rc { grb::SUCCESS };
+			std::size_t coarsening_level = 0UL;
+			grb::utils::MatrixFileReader< T, std::conditional<
+				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+												 grb::config::RowIndexType,
+												 grb::config::ColIndexType >::type
+										  > parser_A( in.matAfiles[coarsening_level].c_str(), true );
+			const size_t n_A = parser_A.n();
+			grb::algorithms::hpcg_data< T, T, T > * data { new grb::algorithms::hpcg_data< T, T, T >( n_A ) };
+			rc = buildMatrixUnique( data->A,
+									parser_A.begin( SEQUENTIAL ), parser_A.end( SEQUENTIAL),
+									SEQUENTIAL
+									);
+			/* Once internal issue #342 is resolved this can be re-enabled
+			   const RC rc = buildMatrixUnique( L,
+			   parser.begin( PARALLEL ), parser.end( PARALLEL),
+			   PARALLEL
+			   );*/
+			if( rc != SUCCESS ) {
+				std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+						  << "(" << toString( rc ) << ")." << std::endl;
+				return rc;
+			}
+			
 			assert( ! holder ); // should be empty
 			holder = std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > >( data );
 
-			// initialize the main (=uncoarsened) system matrix
-			grb::RC rc { grb::SUCCESS };
-			rc = build_ndims_system_matrix< DIMS, T >( data->A, params.physical_sys_sizes, params.halo_size, params.diag_value, params.non_diag_value );
-
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Failure to generate the initial system (" << toString( rc ) << ") of size " << n << std::endl;
-				return rc;
+			{
+				T *buffer;
+				std::ifstream inFile;
+				inFile.open(in.matMfiles[ coarsening_level ]);
+				if (inFile.is_open())  	{
+					size_t n=n_A;
+					buffer = new T [ n ];
+					for (size_t i = 0; i < n; i++) {
+						inFile >> buffer[i];
+					}
+						
+					inFile.close(); // CLose input file
+				
+					RC rc = grb::buildVector( data->A_diagonal, buffer, buffer + n, SEQUENTIAL );
+					if ( rc != SUCCESS ) {
+						std::cerr << " buildVector failed!\n ";
+						return rc;
+					}
+					delete [] buffer;
+				}
+				/* Once internal issue #342 is resolved this can be re-enabled
+				   const RC rc = buildMatrixUnique( L,
+				   parser.begin( PARALLEL ), parser.end( PARALLEL),
+				   PARALLEL
+				   );*/
 			}
 
-			// set values of diagonal vector
-			set( data->A_diagonal, params.diag_value );
-
-			build_static_color_masks( data->color_masks, n, params.num_colors );
-
+			std::size_t coarser_size;
+			std::size_t previous_size=n_A;
+			
 			// initialize coarsening with additional pointers and dimensions copies to iterate and divide
 			grb::algorithms::multi_grid_data< T, T > ** coarser = &data->coarser_level;
 			assert( *coarser == nullptr );
-			std::array< std::size_t, DIMS > coarser_sizes;
-			std::array< std::size_t, DIMS > previous_sizes( params.physical_sys_sizes );
-			std::size_t min_physical_coarsened_size { *std::min_element( previous_sizes.cbegin(), previous_sizes.cend() ) / params.coarsening_step };
-			// coarsen system sizes into coarser_sizes
-			divide_array( coarser_sizes, previous_sizes, params.coarsening_step );
-			std::size_t coarsening_level = 0UL;
-
+			
 			// generate linked list of hierarchical coarseners
-			while( min_physical_coarsened_size >= params.min_phys_size && coarsening_level < params.max_levels ) {
+			while( coarsening_level  < params.max_levels ) {
 				assert( *coarser == nullptr );
-				// compute size of finer and coarser matrices
-				std::size_t coarser_size { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
-				std::size_t previous_size { std::accumulate( previous_sizes.cbegin(), previous_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
+				
+				grb::utils::MatrixFileReader< T, std::conditional<
+					( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+													 grb::config::RowIndexType,
+													 grb::config::ColIndexType >::type
+											  > parser_A_next( in.matAfiles[ coarsening_level + 1 ].c_str(), true );
+				
+				coarser_size = parser_A_next.n();
+
 				// build data structures for new level
 				grb::algorithms::multi_grid_data< double, double > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
+				
 				// install coarser level immediately to cleanup in case of build error
 				*coarser = new_coarser;
 				// initialize coarsener matrix, system matrix and diagonal vector for the coarser level
-				rc = build_ndims_coarsener_matrix< DIMS >( new_coarser->coarsening_matrix, coarser_sizes, previous_sizes );
-				if( rc != grb::SUCCESS ) {
-					std::cerr << "Failure to generate coarsening matrix (" << toString( rc ) << ")." << std::endl;
-					return rc;
-				}
-				rc = build_ndims_system_matrix< DIMS, T >( new_coarser->A, coarser_sizes, params.halo_size, params.diag_value, params.non_diag_value );
-				if( rc != grb::SUCCESS ) {
-					std::cerr << "Failure to generate system matrix (" << toString( rc ) << ")for size " << coarser_size << std::endl;
-					return rc;
-				}
-				set( new_coarser->A_diagonal, params.diag_value );
-				// build color masks for coarser level (same masks, but with coarser system size)
-				rc = build_static_color_masks( new_coarser->color_masks, coarser_size, params.num_colors );
 
+				
+				{
+					grb::utils::MatrixFileReader< T, std::conditional<
+						( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+														 grb::config::RowIndexType,
+														 grb::config::ColIndexType >::type
+												  > parser_P( in.matRfiles[coarsening_level].c_str(), true );
+					
+					rc = buildMatrixUnique( new_coarser->coarsening_matrix,
+											parser_P.begin( SEQUENTIAL ), parser_P.end( SEQUENTIAL),
+											SEQUENTIAL
+											);
+
+					if( rc != SUCCESS ) {
+						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+								  << "(" << toString( rc ) << ")." << std::endl;
+						return rc;
+					}
+					
+				}
+				{
+					rc = buildMatrixUnique( new_coarser->A,
+											parser_A_next.begin( SEQUENTIAL ), parser_A_next.end( SEQUENTIAL),
+											SEQUENTIAL
+											);
+
+					if( rc != SUCCESS ) {
+						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+								  << "(" << toString( rc ) << ")." << std::endl;
+						return rc;
+					}					
+					
+				}				
+
+				//set( new_coarser->A_diagonal, params.diag_value );
+				if( coarsening_level + 1 < params.max_levels ) {
+					T *buffer;
+					std::ifstream inFile;
+					inFile.open(in.matMfiles[ coarsening_level + 1 ]);
+					if (inFile.is_open())  	{
+						size_t n=grb::nrows(new_coarser->A);
+						buffer = new T [ n ];
+						for (size_t i = 0; i < n; i++) {
+							inFile >> buffer[i];
+						}
+						
+						inFile.close(); // CLose input file
+				
+						RC rc = grb::buildVector( new_coarser->A_diagonal, buffer, buffer + n, SEQUENTIAL );
+						if ( rc != SUCCESS ) {
+							std::cerr << " buildVector failed!\n ";
+							return rc;
+						}
+						delete [] buffer;
+					}
+
+				}				
+				
 				// prepare for new iteration
 				coarser = &new_coarser->coarser_level;
-				min_physical_coarsened_size /= params.coarsening_step;
-				previous_sizes = coarser_sizes;
-				divide_array( coarser_sizes, coarser_sizes, params.coarsening_step );
+				previous_size = coarser_size;
 				coarsening_level++;
 			}
 			return rc;

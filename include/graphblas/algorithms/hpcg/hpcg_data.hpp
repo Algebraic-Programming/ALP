@@ -38,7 +38,7 @@ namespace grb {
 		/**
 		 * @brief basic data container for the HPCG algorithm, storing \b only the
 		 * data in common between the full CG run and the V-cycle multi-grid solver.
-		 * Additional data are stored in inheriting daata structures.
+		 * Additional data are stored in inheriting data structures.
 		 *
 		 * @tparam IOType type of values of the vectors for intermediate results
 		 * @tparam NonzeroType type of the values stored inside the system matrix #A

@@ -33,12 +33,17 @@
 #include <iostream>
 #include <memory>
 #include <type_traits>
+#include <string>
 
 #include <graphblas.hpp>
-#include <graphblas/algorithms/hpcg/hpcg.hpp>
-#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
 
-// here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
+
+// forward declaration for the tracing facility
+template< typename T,
+	class Ring = grb::Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+>
+void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
+
 #ifdef HPCG_PRINT_STEPS
 
 // HPCG_PRINT_STEPS requires defining the following symbols
@@ -48,17 +53,19 @@
  */
 #define DBG_println( args ) std::cout << args << std::endl;
 
-// forward declaration for the tracing facility
-template< typename T,
-	class Ring = grb::Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
->
-void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
 
 /**
  * @brief prints \p head and the norm of \p r.
  */
 #define DBG_print_norm( vec, head ) print_norm( vec, head )
 #endif
+
+
+#include <graphblas/algorithms/hpcg/hpcg.hpp>
+#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
+
+// here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
+
 
 #include <graphblas/utils/Timer.hpp>
 
@@ -104,11 +111,23 @@ struct system_input {
  * @brief Container for the parameters for the HPCG simulation.
  */
 struct simulation_input : public system_input {
-	size_t test_repetitions;
-	size_t max_iterations;
-	size_t smoother_steps;
+	std::size_t test_repetitions;
+	std::size_t max_iterations;
+	std::size_t smoother_steps;
+	const char * matAfile_c_str;
+	std::vector< std::string > matAfiles;
+	std::vector< std::string > matMfiles;
+	std::vector< std::string > matPfiles;
+	std::vector< std::string > matRfiles;
 	bool evaluation_run;
 	bool no_preconditioning;
+};
+
+struct preloaded_matrices {
+	std::vector< std::string > matAfiles;
+	std::vector< std::string > matMfiles;
+	std::vector< std::string > matPfiles;
+	std::vector< std::string > matRfiles;
 };
 
 /**
@@ -150,14 +169,16 @@ T static next_pow_2( T n ) {
  * @brief Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
  * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
  */
-static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
-	const std::array< size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
+static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in, preloaded_matrices & inMats ) {
+	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
 		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
 
-	return build_hpcg_system< 3, double >( holder, params );
+	return build_hpcg_system< 3, double >( holder, params, inMats );
 }
+
+
 
 #ifdef HPCG_PRINT_SYSTEM
 static void print_system( const hpcg_data< double, double, double > & data ) {
@@ -171,12 +192,12 @@ static void print_system( const hpcg_data< double, double, double > & data ) {
 }
 #endif
 
-#ifdef HPCG_PRINT_STEPS
+//#ifdef HPCG_PRINT_STEPS
 template< typename T,
 		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
 	>
 void print_norm( const grb::Vector< T > & r, const char * head, const Ring & ring ) {
-	T norm;
+	T norm=0;
 	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
 	(void)ret;
 	assert( ret == SUCCESS );
@@ -186,13 +207,14 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
 	}
 	std::cout << norm << std::endl;
 }
-#endif
+//#endif
 
 /**
  * @brief Main test, building an HPCG problem and running the simulation closely following the
  * parameters in the reference HPCG test.
  */
 void grbProgram( const simulation_input & in, struct output & out ) {
+	
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
 	grb::utils::Timer timer;
@@ -202,9 +224,17 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.error_code = SUCCESS;
 	RC rc { SUCCESS };
 
+	preloaded_matrices inputData;
+	inputData.matAfiles = in.matAfiles;
+	inputData.matMfiles = in.matMfiles;
+	inputData.matPfiles = in.matPfiles;
+	inputData.matRfiles = in.matRfiles;	
+	
+	
+
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
-	rc = build_3d_system( hpcg_state, in );
+	rc = build_3d_system( hpcg_state, in, inputData );
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
@@ -229,8 +259,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
-		print_vector( x, 50, "X" );
-		print_vector( b, 50, "B" );
+		print_vector( x, 50, " ---> X(1)" );
+		print_vector( b, 50, " ---> B(1)" );
 	}
 #endif
 
@@ -254,6 +284,11 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 			rc = set( x, 0.0 );
 			assert( rc == SUCCESS );
 			rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
+			std::cout << " ---> out.residual="<< out.residual << "\n";
+
+			rc = rc ? rc : grb::eWiseLambda( [ &x ]( const size_t i ) { x[ i ] -= 1;}, x );
+			print_norm (x, " ---> norm(x)");
+			
 			out.test_repetitions++;
 			if( rc != SUCCESS ) {
 				break;
@@ -263,6 +298,13 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
 		// sleep( 1 );
 	}
+
+#ifdef HPCG_PRINT_SYSTEM
+	if( spmd<>::pid() == 0 ) {
+		print_vector( x, 50, " ---> X(check out)" );
+		print_vector( b, 50, " ---> B(check out)" );
+	}
+#endif
 
 	if( spmd<>::pid() == 0 ) {
 		if( rc == SUCCESS ) {
@@ -368,13 +410,15 @@ int main( int argc, char ** argv ) {
 static void parse_arguments( simulation_input & sim_in, size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
 
 	argument_parser parser;
-	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
+	parser
+		.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
+								"maximum level for coarsening; 0 means no coarsening; note: actual "
+								"level may be limited by the minimum system dimension" )
+		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str, "","file pattern for files contining matrices A, M_diag, P, R "
+		 						"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read /path/to/dir/level_0_A.mtx,  /path/to/dir/level_1_A.mtx, /path/to/dir/level_2_A.mtx ... " )
+		.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
 		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
-		.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
-			"maximum level for coarsening; 0 means no coarsening; note: actual "
-			"level may be limited"
-			" by the minimum system dimension" )
 		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(), "consecutive test repetitions before benchmarking" )
 		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(), "test repetitions with complete initialization" )
 		.add_optional_argument( "--max_iter", sim_in.max_iterations, MAX_ITERATIONS_DEF, "maximum number of HPCG iterations" )
@@ -386,8 +430,51 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 			"launch single run directly, without benchmarker (ignore "
 			"repetitions)" )
 		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" );
+	
 
 	parser.parse( argc, argv );
+
+	std::string matAfile=sim_in.matAfile_c_str;
+	if ( !matAfile.empty() ) {
+		std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
+		for ( size_t i=0 ; i <= sim_in.max_coarsening_levels ; i++ ){
+			std::string fnamebase = matAfile + std::to_string(  i );
+			std::string fnameA = fnamebase + "_A.mtx";
+			std::string fnameM = fnamebase + "_M_diag.mtx";
+			std::string fnameP = fnamebase + "_P.mtx";
+			std::string fnameR = fnamebase + "_R.mtx";
+			sim_in.matAfiles.push_back (fnameA);
+			sim_in.matMfiles.push_back (fnameM);
+			sim_in.matPfiles.push_back (fnameP);
+			sim_in.matRfiles.push_back (fnameR);
+		}
+		{
+			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
+			std::string fnameA = fnamebase + "_A.mtx";
+			sim_in.matAfiles.push_back (fnameA);
+		}		
+
+		std::cout << "files to read matrices: " << std::endl;
+		for (std::string fname: sim_in.matAfiles) {
+			std::cout << fname << " \n";
+		}
+
+		for (std::string fname: sim_in.matMfiles) {
+			std::cout << fname << " \n";
+		}
+
+		for (std::string fname: sim_in.matPfiles) {
+			std::cout << fname << " \n";
+		}
+
+		for (std::string fname: sim_in.matRfiles) {
+			std::cout << fname << " \n";
+		}
+
+	}
+	else {
+		std::cout << "No pattern to read matrices provided" << std::endl;
+	}
 
 	// check for valid values
 	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
