@@ -646,7 +646,7 @@ namespace alp {
 
 			protected:
 
-				const bool initialized;
+				const bool initialized; // Temporary solution, proper implementation pending
 
 				ImfR imf_r;
 				ImfC imf_c;
