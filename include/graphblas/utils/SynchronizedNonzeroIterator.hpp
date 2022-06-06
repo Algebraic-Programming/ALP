@@ -477,6 +477,16 @@ namespace grb {
 				it1_end, it2_end, it3_end, std::random_access_iterator_tag() );
 		}
 
+		// overload for 3 pointers, number and with no tag: get the best (random access iterator)
+		template< typename RowT, typename ColT, typename V >
+		SynchronizedNonzeroIterator< RowT, ColT, V, const RowT *, const ColT *, const V *,
+			std::random_access_iterator_tag >
+		makeSynchronized( const RowT * const it1, const ColT * const it2, const V  * const it3,
+			size_t length ) {
+			return makeSynchronized( it1, it2, it3, it1 + length, it2 + length, it3 + length,
+				std::random_access_iterator_tag() );
+		}
+
 
 		// overload for 2 pointers and custom tag
 		template< typename RowIndexT, typename ColIndexT, typename iterator_category >
@@ -526,6 +536,14 @@ namespace grb {
 				typename iterator_value< fwd_it2 >::type,
 				void, fwd_it1, fwd_it2, void, iterator_category
 			>( it1, it2, it1_end, it2_end );
+		}
+
+		// overload for 2 pointers, number and with no tag: get the best (random access iterator)
+		template< typename RowT, typename ColT >
+		SynchronizedNonzeroIterator< RowT, ColT, void, const RowT *, const ColT *, void,
+			std::random_access_iterator_tag >
+		makeSynchronized( const RowT * const it1, const ColT * const it2, size_t length ) {
+			return makeSynchronized( it1, it2, it1 + length, it2 + length, std::random_access_iterator_tag() );
 		}
 
 		// overload for 2 iterators without tag: get common tag
