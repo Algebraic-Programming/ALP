@@ -24,6 +24,7 @@
 #define _H_NONZEROITERATOR
 
 #include <type_traits>
+#include <iostream>
 
 namespace grb {
 	namespace utils {
@@ -79,6 +80,28 @@ namespace grb {
 		NonzeroIterator< S1, S2, V, SubIterType > makeNonzeroIterator( const SubIterType & x ) {
 			return NonzeroIterator< S1, S2, V, SubIterType >( x );
 		}
+
+
+		template< typename R, typename T, typename V >
+		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< ! std::is_same< V, void >::value >::type* = nullptr ) {
+			s << ": " << nz.v();
+
+		}
+
+		template< typename R, typename T, typename V >
+		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< std::is_same< V, void >::value >::type* = nullptr ) {
+			(void)s;
+			(void)nz;
+		}
+
+		template< typename R, typename T, typename V >
+		std::ostream& operator<<( std::ostream& s, const NonZeroStorage< R, T, V >& nz ) {
+            s << "( " << nz.i() << ", " << nz.j() << " )";
+			__val_printer( s, nz );
+            return s;
+        }
 
 	} // namespace utils
 } // namespace grb

@@ -28,6 +28,7 @@
 #include <cassert>
 #include <sstream>
 #include <type_traits>
+#include <cstdlib>
 
 #include <graphblas/backends.hpp>
 
@@ -36,8 +37,12 @@
 void __trace_build_matrix_iomode( grb::Backend, bool );
 
 #include <graphblas.hpp>
-#include <utils/assertions.hpp>
 #include <graphblas/utils/NonZeroStorage.hpp>
+#include <graphblas/utils/NonzeroIterator.hpp>
+
+#include <utils/assertions.hpp>
+#include <utils/matrix_generators.hpp>
+#include <utils/matrix_values_check.hpp>
 
 using namespace grb;
 
@@ -49,454 +54,8 @@ void __trace_build_matrix_iomode( grb::Backend backend, bool iterator_parallel )
 
 
 #define LOG() std::cout
-const char * MISMATCH_HIGHLIGHT_BEGIN{ "<< " };
-const char * MISMATCH_HIGHLIGHT_END{ " >>" };
-const char * NO_MISMATCH{ "" };
+#define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
 
-
-static void compute_parallel_first_nonzero( std::size_t num_nonzeroes,
-	std::size_t& num_nonzeroes_per_process, std::size_t& first_local_nonzero ) {
-	std::size_t num_procs { spmd<>::nprocs() };
-	num_nonzeroes_per_process = ( num_nonzeroes + num_procs - 1 ) / num_procs; // round up
-	first_local_nonzero = num_nonzeroes_per_process * spmd<>::pid();
-}
-
-static std::size_t compute_parallel_first_nonzero( std::size_t num_nonzeroes ) {
-	std::size_t nnz_per_proc, first;
-	compute_parallel_first_nonzero( num_nonzeroes, nnz_per_proc, first);
-	return first;
-}
-
-static std::size_t compute_parallel_last_nonzero( std::size_t num_nonzeroes ) {
-	std::size_t num_non_zeroes_per_process, first_local_nonzero;
-	compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-	return std::min( num_nonzeroes, first_local_nonzero + num_non_zeroes_per_process );
-}
-
-static std::size_t compute_parallel_num_nonzeroes( std::size_t num_nonzereos ) {
-	return compute_parallel_last_nonzero( num_nonzereos ) -
-		compute_parallel_first_nonzero( num_nonzereos );
-}
-
-template< bool random = true > struct diag_iterator {
-
-	using row_coordinate_type = std::size_t;
-    using column_coordinate_type = std::size_t;
-    using nonzero_value_type = int;
-
-    struct coord_value {
-		std::size_t coord;
-
-		coord_value( std::size_t _c ): coord( _c ) {}
-	};
-
-	using iterator_category = typename std::conditional< random,
-		std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-	using value_type = coord_value;
-	using pointer = coord_value*;
-	using reference = coord_value&;
-	using difference_type = signed long;
-	using input_sizes_t = const std::size_t;
-
-    diag_iterator( const diag_iterator& ) = default;
-
-    diag_iterator& operator++() {
-		_v.coord++;
-		return *this;
-	}
-
-    diag_iterator& operator+=( std::size_t offset ) {
-		_v.coord += offset;
-		return *this;
-	}
-
-	bool operator!=( const diag_iterator& other ) const {
-        return other._v.coord != this->_v.coord;
-    }
-
-    bool operator==( const diag_iterator& other ) const {
-        return !( this->operator!=( other ) );
-    }
-
-    difference_type operator-( const diag_iterator& other ) const {
-		const std::size_t diff{ std::max( _v.coord, other._v.coord ) -
-			std::min( _v.coord, other._v.coord ) };
-		difference_type result{ static_cast< difference_type >( diff ) };
-        return _v.coord >= other._v.coord ? result : -result ;
-    }
-
-	pointer operator->() { return &_v; }
-
-    reference operator*() { return _v; }
-
-    row_coordinate_type i() const { return _v.coord; }
-
-    column_coordinate_type j() const { return _v.coord; }
-
-    nonzero_value_type v() const {
-		return static_cast< nonzero_value_type >( _v.coord ) + 1;
-	}
-
-    static diag_iterator make_begin( input_sizes_t& size ) {
-		(void)size;
-		return diag_iterator( 0 );
-	}
-
-    static diag_iterator make_end( input_sizes_t& size ) {
-		return diag_iterator( size );
-	}
-
-    static diag_iterator make_parallel_begin( input_sizes_t& size ) {
-		const std::size_t num_nonzeroes{ size };
-        std::size_t num_non_zeroes_per_process, first_local_nonzero;
-		compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-        return diag_iterator( first_local_nonzero );
-    }
-
-    static diag_iterator make_parallel_end( input_sizes_t& size ) {
-		const std::size_t num_nonzeroes{ size };
-		std::size_t last{ compute_parallel_last_nonzero( num_nonzeroes ) };
-        return diag_iterator( last );
-    }
-
-	static std::size_t compute_num_nonzeroes( std::size_t size ) {
-		return size;
-	}
-
-private:
-    value_type _v;
-
-    diag_iterator( std::size_t _c ): _v( _c ) {}
-
-    diag_iterator(): _v( 0) {}
-
-};
-
-
-template< std::size_t BAND, bool random = true > struct band_iterator {
-
-	static constexpr std::size_t MAX_ELEMENTS_PER_ROW{ BAND * 2 + 1 };
-	static constexpr std::size_t PROLOGUE_ELEMENTS{ ( 3* BAND * BAND + BAND ) / 2 };
-
-    using row_coordinate_type = std::size_t;
-    using column_coordinate_type = std::size_t;
-    using nonzero_value_type = int;
-
-    struct coord_value {
-		const std::size_t size;
-        row_coordinate_type row;
-		column_coordinate_type col;
-        coord_value() = delete;
-        coord_value( std::size_t _size, row_coordinate_type _r, column_coordinate_type _c ):
-			size( _size ), row( _r ), col( _c ) {}
-    };
-
-    using iterator_category = typename std::conditional< random,
-		std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-	using value_type = coord_value;
-	using pointer = coord_value*;
-	using reference = coord_value&;
-	using difference_type = signed long;
-	using input_sizes_t = const std::size_t;
-
-    band_iterator( const band_iterator& ) = default;
-
-    band_iterator& operator++() {
-		//std::cout << "INCREMENT" << std::endl;
-		const std::size_t max_col{ std::min( _v.row + BAND, _v.size - 1 ) };
-		if( _v.col < max_col ) {
-			_v.col++;
-		} else {
-			_v.row++;
-			_v.col = _v.row < BAND ? 0 : _v.row - BAND;
-		}
-        return *this;
-    }
-
-    band_iterator& operator+=( std::size_t offset ) {
-
-		//#pragma omp critical
-		{
-			//std::cout << "-- ADVANCE offset " << offset << std::endl;
-			//std::cout << "i " << _v.row << " j " << _v.col << " v " << std::endl;
-			const std::size_t position{ coords_to_linear( _v.size, _v.row, _v.col ) };
-			//std::cout << "position is " << position << std::endl;
-			linear_to_coords( _v.size, position + offset, _v.row, _v.col );
-			//std::cout << "++ i " << _v.row << " j " << _v.col << " v " << std::endl;
-		}
-        return *this;
-    }
-
-    bool operator!=( const band_iterator& other ) const {
-        return other._v.row != this->_v.row || other._v.col != this->_v.col;
-    }
-
-    bool operator==( const band_iterator& other ) const {
-        return !( this->operator!=( other ) );
-    }
-
-    difference_type operator-( const band_iterator& other ) const {
-        const std::size_t this_position{ coords_to_linear( _v.size, _v.row, _v.col ) };
-        const std::size_t other_position{
-			coords_to_linear( other._v.size, other._v.row, other._v.col ) };
-		/*
-		std::cout << " this:: " << _v.size << " " <<  _v.row << " " << _v.col << std::endl;
-		std::cout << " other:: " << other._v.size << " " <<  other._v.row << " " << other._v.col << std::endl;
-		std::cout << " this position " << this_position << std::endl;
-		std::cout << " other position " << other_position << std::endl;
-		*/
-
-		const std::size_t diff{ std::max( this_position, other_position ) -
-			std::min( this_position, other_position ) };
-		difference_type result{ static_cast< difference_type >( diff ) };
-        return this_position >= other_position ? result : -result ;
-    }
-
-    pointer operator->() { return &_v; }
-
-    reference operator*() { return _v; }
-
-    row_coordinate_type i() const { return _v.row; }
-
-    column_coordinate_type j() const { return _v.col; }
-
-    nonzero_value_type v() const {
-		return _v.row == _v.col ? static_cast< int >( MAX_ELEMENTS_PER_ROW ) : -1;
-	}
-
-    static band_iterator make_begin( input_sizes_t& size ) {
-		__check_size( size );
-		return band_iterator( size, 0, 0 );
-	}
-
-    static band_iterator make_end( input_sizes_t& size ) {
-		__check_size( size );
-		std::size_t row, col;
-		const std::size_t num_nonzeroes{ compute_num_nonzeroes( size ) };
-		linear_to_coords( size, num_nonzeroes, row, col );
-		//std::cout << "make_end: nnz " << num_nonzeroes << ", row " << row << ", col " << col << std::endl;
-		return band_iterator( size, row, col );
-	}
-
-    static band_iterator make_parallel_begin( input_sizes_t& size ) {
-		__check_size( size );
-		const std::size_t num_nonzeroes{ compute_num_nonzeroes( size ) };
-        std::size_t num_non_zeroes_per_process, first_local_nonzero;
-		compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-		std::size_t row, col;
-		linear_to_coords( size, first_local_nonzero, row, col );
-        return band_iterator( size, row, col );
-    }
-
-    static band_iterator make_parallel_end( input_sizes_t& size ) {
-		__check_size( size );
-		const std::size_t num_nonzeroes{ compute_num_nonzeroes( size ) };
-        /*
-		std::size_t num_non_zeroes_per_process, first_local_nonzero;
-		compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-		std::size_t last{ std::min( num_nonzeroes, first_local_nonzero + num_non_zeroes_per_process ) };
-		*/
-		std::size_t last{ compute_parallel_last_nonzero( num_nonzeroes ) };
-		std::size_t row, col;
-		linear_to_coords( size, last, row, col );
-        return band_iterator( size, row, col );
-    }
-
-	static std::size_t compute_num_nonzeroes( std::size_t size ) {
-		return 2 * PROLOGUE_ELEMENTS + ( size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-	}
-
-private:
-    value_type _v;
-
-    band_iterator( std::size_t size, std::size_t row, std::size_t col ):
-		_v( size, row, col ) {
-		static_assert( BAND > 0, "BAND must be > 0");
-	}
-
-    band_iterator(): _v( 0, 0) {
-		static_assert( BAND > 0, "BAND must be > 0");
-	}
-
-	static std::size_t __col_to_linear( std::size_t row, std::size_t col ) {
-		std::size_t min_col{ row < BAND ? 0 : row - BAND };
-		return col - min_col;
-	}
-
-	static std::size_t __coords_to_linear_in_prologue( std::size_t row, std::size_t col ) {
-		//std::cout << " row " << row << " col " << col << std::endl;
-		return row * BAND + row * ( row + 1 ) / 2 + __col_to_linear( row, col );
-	}
-
-	static std::size_t coords_to_linear( std::size_t matrix_size, std::size_t row, std::size_t col ) {
-		if( row < BAND ) {
-			//std::cout << "here!!!" << std::endl;
-			return __coords_to_linear_in_prologue( row, col );
-		}
-		if( row < matrix_size - BAND ) {
-			//std::cout << "here 2!!!" << std::endl;
-			return PROLOGUE_ELEMENTS + ( row - BAND ) * MAX_ELEMENTS_PER_ROW + __col_to_linear( row, col );
-		}
-		if( row < matrix_size ) {
-			//std::cout << "here 3!!!" << std::endl;
-			std::size_t mat_size{ 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW };
-			std::size_t prologue_els{ __coords_to_linear_in_prologue( matrix_size - row - 1, matrix_size - col - 1 ) };
-			//std::cout << " mat_size " << mat_size << std::endl;
-			//std::cout << " prologue els " << prologue_els << std::endl;
-			return  mat_size - 1 - prologue_els; // transpose coordinates
-		}
-		// for points outside of matrix: project to prologue
-		return 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW
-			+ ( row - matrix_size ) * BAND + col + BAND - row;
-	}
-
-	static void __linear_to_coords_in_prologue( std::size_t position, std::size_t& row, std::size_t& col ) {
-		std::size_t current_row{ 0 };
-		//linear search
-		for( ; position >= ( current_row + 1 + BAND ) && current_row < BAND; current_row++ ) {
-			position -= ( current_row + 1 + BAND );
-			//std::cout << "subtract " << ( _row + 1 + BAND ) << " get " << position << std::endl;
-		}
-		row = current_row;
-		col = position;
-	}
-
-	static void linear_to_coords( std::size_t matrix_size, std::size_t position,
-		std::size_t& row, std::size_t& col ) {
-		if( position < PROLOGUE_ELEMENTS ) {
-			//std::cout << "in prologue" << std::endl;
-			__linear_to_coords_in_prologue( position, row, col );
-			return;
-		}
-		//std::cout << "out of prologue" << std::endl;
-		position -= PROLOGUE_ELEMENTS;
-		const std::size_t max_inner_rows{ matrix_size - 2 * BAND };
-		if( position < max_inner_rows * MAX_ELEMENTS_PER_ROW ) {
-			const std::size_t inner_row{ position / MAX_ELEMENTS_PER_ROW };
-			row = BAND + inner_row;
-			position -= inner_row * MAX_ELEMENTS_PER_ROW;
-			col = row - BAND + position % MAX_ELEMENTS_PER_ROW;
-			return;
-		}
-		position -= ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-		if( position < PROLOGUE_ELEMENTS ) {
-			std::size_t end_row, end_col;
-
-			//__linear_to_coords_in_epilogue( position, end_row, end_col );
-			__linear_to_coords_in_prologue( PROLOGUE_ELEMENTS - 1 - position, end_row, end_col );
-			//std::cout << "== position " << PROLOGUE_ELEMENTS - 1 - position << ", end row " << end_row << ", end col " << end_col << std::endl;
-			row = matrix_size - 1 - end_row;
-			col = matrix_size - 1 - end_col;
-			//std::cout << "== final: row " << row << ", col " << col << std::endl;
-			return;
-		}
-		position -= PROLOGUE_ELEMENTS;
-		row = matrix_size + position / ( BAND + 1 );
-		col = row - BAND + position % ( BAND + 1 );
-	}
-
-	static void __check_size( std::size_t size ) {
-		if( size < 2 * BAND + 1 ) {
-			throw std::domain_error( "matrix too small for band" );
-		}
-	}
-};
-
-
-// simple iterator returning an incremental number
-// and generating a rectangular dense matrix
-template< typename ValueT = int, bool random = true  > struct dense_mat_iterator {
-
-	using row_coordinate_type = std::size_t;
-    using column_coordinate_type = std::size_t;
-    using nonzero_value_type = ValueT;
-
-    struct coord_value {
-		const std::size_t cols;
-        row_coordinate_type offset;
-        coord_value() = delete;
-        coord_value( std::size_t _cols, row_coordinate_type _off ):
-			cols( _cols ), offset( _off ) {}
-    };
-
-    using iterator_category = std::random_access_iterator_tag;
-	using value_type = coord_value;
-	using pointer = coord_value*;
-	using reference = coord_value&;
-	using difference_type = signed long;
-	using input_sizes_t = const std::array< std::size_t, 2 >;
-
-	dense_mat_iterator( std::size_t _cols, std::size_t _off ): _v( _cols, _off ) {}
-
-    dense_mat_iterator( const dense_mat_iterator& ) = default;
-
-    dense_mat_iterator& operator++() {
-		_v.offset++;
-		return *this;
-	}
-
-    dense_mat_iterator& operator+=( std::size_t offset ) {
-		_v.offset += offset;
-        return *this;
-    }
-
-    bool operator!=( const dense_mat_iterator& other ) const {
-        return other._v.offset != this->_v.offset;
-    }
-
-    bool operator==( const dense_mat_iterator& other ) const {
-        return !( this->operator!=( other ) );
-    }
-
-    difference_type operator-( const dense_mat_iterator& other ) const {
-        const std::size_t this_position{ this->_v.offset };
-        const std::size_t other_position{other._v.offset };
-		const std::size_t diff{ std::max( this_position, other_position ) -
-			std::min( this_position, other_position ) };
-		difference_type result{ static_cast< difference_type >( diff ) };
-        return this_position >= other_position ? result : -result ;
-    }
-
-    pointer operator->() { return &_v; }
-
-    reference operator*() { return _v; }
-
-    row_coordinate_type i() const { return _v.offset / _v.cols; }
-
-    column_coordinate_type j() const { return _v.offset % _v.cols; }
-
-    nonzero_value_type v() const {
-		return static_cast< nonzero_value_type >( _v.offset ) + 1;
-	}
-
-
-    static dense_mat_iterator make_begin( input_sizes_t& sizes ) {
-		return dense_mat_iterator( sizes[1], 0 );
-	}
-
-    static dense_mat_iterator make_end( input_sizes_t& sizes ) {
-		const std::size_t num_nonzeroes{ compute_num_nonzeroes( sizes ) };
-		return dense_mat_iterator( sizes[1], num_nonzeroes );
-	}
-
-    static dense_mat_iterator make_parallel_begin( input_sizes_t& sizes ) {
-        std::size_t num_non_zeroes_per_process, first_local_nonzero;
-		compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ), num_non_zeroes_per_process, first_local_nonzero );
-        return dense_mat_iterator( sizes[1], first_local_nonzero );
-    }
-
-    static dense_mat_iterator make_parallel_end( input_sizes_t& sizes ) {
-		std::size_t last{ compute_parallel_last_nonzero( compute_num_nonzeroes( sizes ) ) };
-        return dense_mat_iterator( sizes[1], last );
-    }
-
-	static std::size_t compute_num_nonzeroes( input_sizes_t& sizes ) {
-		return sizes[0] * sizes[1];
-	}
-
-private:
-    value_type _v;
-};
 
 
 template< typename T > void test_matrix_sizes_match( const Matrix< T >& mat1, const Matrix< T >& mat2) {
@@ -504,38 +63,29 @@ template< typename T > void test_matrix_sizes_match( const Matrix< T >& mat1, co
     ASSERT_EQ( grb::ncols( mat1 ), grb::ncols( mat2 ) );
 }
 
-template< typename T > struct sorter {
-	inline bool operator()( const utils::NonZeroStorage< std::size_t, std::size_t, T >& a,
-		const utils::NonZeroStorage< std::size_t, std::size_t, T >& b ) const {
-			if( a.i() != b.i() ) {
-				return a.i() < b.i();
-			}
-			return a.j() < b.j();
-		}
-};
+using DefRowT = std::size_t;
+using DefColT = std::size_t;
+template< typename T > using NZ = utils::NonZeroStorage< DefRowT, DefColT, T >;
 
 
-template< typename T > static void get_nnz_and_sort( const Matrix< T >& mat,
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > >& values ) {
-	auto beg1( mat.cbegin() );
-    auto end1( mat.cend() );
-	for( ; beg1 != end1; ++beg1 ) {
-		values.emplace_back( beg1->first.first, beg1->first.second, beg1->second );
-	}
-	sorter< T > s;
-	std::sort( values.begin(), values.end(), s );
+template< typename T, enum Backend implementation > static void get_nnz_and_sort(
+	const Matrix< T, implementation >& mat,
+	std::vector< NZ< T > >& values ) {
+	utils::get_matrix_nnz( mat, values );
+	utils::row_col_nz_sort< DefRowT, DefColT, T >( values.begin(), values.end() );
 }
 
 
 template< typename T, enum Backend implementation >
 	bool matrices_values_are_equal( const Matrix< T, implementation >& mat1,
 	const Matrix< T, implementation >& mat2,
+	std::size_t& num_mat1_nnz, std::size_t& num_mat2_nnz,
     bool log_all_differences = false ) {
 
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > > serial_values;
+	std::vector< NZ< T > > serial_values;
 	get_nnz_and_sort( mat1, serial_values );
 
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, T > > parallel_values;
+	std::vector< NZ< T > > parallel_values;
 	get_nnz_and_sort( mat2, parallel_values );
 
     const std::size_t mat_size{ grb::nnz( mat1) };
@@ -551,47 +101,30 @@ template< typename T, enum Backend implementation >
 		return false;
 	}
 
-    bool match{ true };
+	std::size_t checked_values;
+	bool match { grb::utils::compare_non_zeroes< T >( grb::nrows( mat1 ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, T >( serial_values.cbegin() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, T >( serial_values.cend() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, T >( parallel_values.cbegin() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, T >( parallel_values.cend() ),
+			checked_values, LOG(), log_all_differences ) };
 
-	auto pit = parallel_values.cbegin();
-	for( auto sit = serial_values.cbegin(); sit != serial_values.cend(); ++sit, ++pit ) {
-
-		const std::size_t row1{ sit->i() }, row2{ pit->i() };
-        const std::size_t col1{ sit->j() }, col2{ pit->j() };
-        const T val1{ sit->v() }, val2{ pit->v() };
-
-        const bool row_mismatch{ row1 != row2  }, col_mismatch{ col1 != col2 }, v_mismatch{ val1 != val2 };
-        const bool mismatch{ row_mismatch || col_mismatch || v_mismatch };
-        match &= ! mismatch;
-
-        if( mismatch ) {
-			LOG() << "row ";
-			if( row_mismatch ) {
-				LOG() << MISMATCH_HIGHLIGHT_BEGIN << row1 << ", " << row2 << MISMATCH_HIGHLIGHT_END;
-			} else {
-				LOG() << row1;
-			}
-			LOG() << " col ";
-			if( col_mismatch ) {
-				LOG() << MISMATCH_HIGHLIGHT_BEGIN << col1 << ", " << col2 << MISMATCH_HIGHLIGHT_END;
-			} else {
-				LOG() << col1;
-			}
-			LOG() << " val ";
-			if( v_mismatch ) {
-				LOG() << MISMATCH_HIGHLIGHT_BEGIN << val1 << ", " << val2 << MISMATCH_HIGHLIGHT_END;
-			} else {
-				LOG() << val1;
-			}
-			LOG() << std::endl;
-
-            if( ! log_all_differences ){
-                return false;
-            }
-        } else {
-            //LOG() << "row " << row1 << " col " << col1 << " val " << val1 << std::endl;
-        }
+	if( checked_values != parallel_values.size() ) {
+		LOG() << "cannot check all non-zeroes" << std::endl;
+        return false;
 	}
+	enum RC rc{ collectives<>::allreduce( checked_values, grb::operators::add< std::size_t >() ) };
+	ASSERT_RC_SUCCESS( rc );
+	if( checked_values != mat_size ) {
+		LOG() << "total number of non-zeroes different from matrix size" << std::endl;
+        return false;
+	}
+	num_mat1_nnz = serial_values.size();
+	rc = collectives<>::allreduce( num_mat1_nnz, grb::operators::add< std::size_t >() );
+	ASSERT_RC_SUCCESS( rc );
+	num_mat2_nnz = parallel_values.size();
+	rc = collectives<>::allreduce( num_mat2_nnz, grb::operators::add< std::size_t >() );
+	ASSERT_RC_SUCCESS( rc );
 
     return match;
 }
@@ -613,7 +146,7 @@ static bool test_build_matrix_iomode( const iomode_map_t& iomap ) {
 }
 
 template< typename T, typename IterT, enum Backend implementation = config::default_backend >
-	void build_matrix_and_check(Matrix< T, implementation >& m, IterT begin, IterT end,
+	void build_matrix_and_check( Matrix< T, implementation >& m, IterT begin, IterT end,
 	std::size_t expected_num_global_nnz, std::size_t expected_num_local_nnz, IOMode mode ) {
 
 	ASSERT_EQ( end - begin, static_cast< typename IterT::difference_type >( expected_num_local_nnz ) );
@@ -625,50 +158,147 @@ template< typename T, typename IterT, enum Backend implementation = config::defa
 
 
 template< typename T, typename IterT, enum Backend implementation >
-	void test_matrix_generation( Matrix< T, implementation > & sequential_matrix,
-		Matrix< T, implementation > parallel_matrix,
+	void test_matrix_generation( Matrix< T, implementation >& sequential_matrix,
+		Matrix< T, implementation >& parallel_matrix,
 		const typename IterT::input_sizes_t& iter_sizes ) {
 
 	constexpr bool iterator_is_random{ std::is_same< typename std::iterator_traits<IterT>::iterator_category,
-		std::random_access_iterator_tag>::value };
+		std::random_access_iterator_tag >::value };
 	iomode_map_t iomap( {
 		std::pair< enum Backend, bool >( implementation, iterator_is_random
 			&& ( ( implementation == Backend::reference_omp )
 #ifdef _GRB_BSP1D_BACKEND
-			|| (implementation == Backend::BSP1D && _GRB_BSP1D_BACKEND == Backend::reference_omp )
+			|| ( implementation == Backend::BSP1D && _GRB_BSP1D_BACKEND == Backend::reference_omp )
 #endif
 			) )
 #ifdef _GRB_BSP1D_BACKEND
 		, std::pair< enum Backend, bool >( _GRB_BSP1D_BACKEND,
-			( _GRB_BSP1D_BACKEND == Backend::reference_omp ) )
+			( _GRB_BSP1D_BACKEND == Backend::reference_omp )
+			// with 1 process, the BSP1D backend is directly delegated
+				&& ( spmd<>::nprocs() > 1 || iterator_is_random )
+		)
 #endif
 	} );
 
-	if( spmd<>::pid() == 0 ) {
-		LOG() << ">> " << ( iterator_is_random ? "RANDOM" : "FORWARD" ) << " ITERATOR ";
-		LOG() << "-- size " << nrows( sequential_matrix ) << " x "
-			<< ncols( sequential_matrix ) << std::endl;
-	}
+	MAIN_LOG( ">> " << ( iterator_is_random ? "RANDOM" : "FORWARD" ) << " ITERATOR "
+		<< "-- size " << nrows( sequential_matrix ) << " x "
+		<< ncols( sequential_matrix ) << std::endl
+	);
 
-	//Matrix< T, implementation > sequential_matrix( nrows, ncols );
 	const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
-	build_matrix_and_check( sequential_matrix, IterT::make_begin( iter_sizes),
-		IterT::make_end( iter_sizes), num_nnz, num_nnz, IOMode::SEQUENTIAL );
+	build_matrix_and_check( sequential_matrix, IterT::make_begin( iter_sizes ),
+		IterT::make_end( iter_sizes ), num_nnz, num_nnz, IOMode::SEQUENTIAL );
 	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
 
 	//Matrix< T, implementation > parallel_matrix( nrows, ncols );
-	const std::size_t par_num_nnz{ compute_parallel_num_nonzeroes( num_nnz ) };
+	const std::size_t par_num_nnz{ utils::compute_parallel_num_nonzeroes( num_nnz ) };
 
 	build_matrix_and_check( parallel_matrix, IterT::make_parallel_begin( iter_sizes),
 		IterT::make_parallel_end( iter_sizes), num_nnz, par_num_nnz, IOMode::PARALLEL );
 	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
 
 	test_matrix_sizes_match( sequential_matrix, parallel_matrix );
-	ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix, false ) );
+	std::size_t serial_nz, par_nz;
+	ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix,
+		serial_nz, par_nz, false ) );
+	ASSERT_EQ( par_nz, serial_nz );
 
-	if( spmd<>::pid() == 0 ) {
-		LOG() << "<< OK" << std::endl;
+	MAIN_LOG( "<< OK" << std::endl );
+}
+
+
+template< typename ValT, enum Backend implementation = config::default_backend >
+	void test_matrix_from_vectors(
+	std::size_t nrows, std::size_t ncols,
+	std::vector< NZ< ValT > >& mat_nzs,
+	bool sort_nzs = false
+) {
+	Matrix< ValT, implementation > mat( nrows, ncols );
+	const std::size_t num_original_nzs{ mat_nzs.size() };
+	const std::size_t per_proc{ ( num_original_nzs + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
+	const std::size_t first{ std::min( per_proc * spmd<>::pid(), num_original_nzs) };
+	const std::size_t last{ std::min( first + per_proc, num_original_nzs ) };
+
+#ifdef _DEBUG
+	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
+		if( spmd<>::pid() == i ) {
+			std::cout << "process " << i << " from " << first << " last " << last << std::endl;
+		}
+		spmd<>::barrier();
 	}
+#endif
+
+	RC ret{ buildMatrixUnique( mat,
+		utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( std::next( mat_nzs.begin(), first ) ),
+		utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( std::next( mat_nzs.begin(), last ) ),
+		IOMode::PARALLEL ) // PARALLEL is needed here because each process advances iterators
+							// differently via std::next()
+	};
+	ASSERT_RC_SUCCESS( ret );
+	ASSERT_EQ( nnz( mat ), mat_nzs.size() );
+
+	std::vector< NZ< ValT > > sorted_mat_values;
+	get_nnz_and_sort( mat, sorted_mat_values );
+	std::size_t num_sorted_mat_values{ sorted_mat_values.size() };
+	// reduce for sparse matrices: only the total number should be equal
+	RC rc{ collectives<>::allreduce( num_sorted_mat_values, grb::operators::add< std::size_t >() ) };
+	ASSERT_RC_SUCCESS( rc );
+	ASSERT_EQ( num_sorted_mat_values, mat_nzs.size() );
+
+	if ( sort_nzs ) {
+		utils::row_col_nz_sort< DefRowT, DefColT, ValT >( mat_nzs.begin(), mat_nzs.end() );
+	}
+
+	std::size_t checked_nzs;
+	ASSERT_TRUE(
+		grb::utils::compare_non_zeroes< ValT >( nrows,
+			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( mat_nzs.cbegin() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( mat_nzs.cend() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( sorted_mat_values.cbegin() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( sorted_mat_values.cend() ),
+			checked_nzs, LOG(), true )
+	);
+	rc = collectives<>::allreduce( checked_nzs, grb::operators::add< std::size_t >() );
+	ASSERT_RC_SUCCESS( rc );
+
+	ASSERT_EQ( checked_nzs, mat_nzs.size() );
+
+	MAIN_LOG( "<< OK" << std::endl );
+}
+
+template< typename ValT > void randomize_vector( std::vector< NZ< ValT > >& mat_nzs ) {
+	std::srand( 13 );
+	struct randomizer {
+		typename std::iterator_traits< typename std::vector< NZ< ValT > >::iterator >::difference_type
+			operator()( std::size_t n ) {
+				return std::rand() % n;
+			}
+	} r;
+	std::random_shuffle( mat_nzs.begin(), mat_nzs.end(), r );
+}
+
+template< typename ValT, typename ParIterT, enum Backend implementation = config::default_backend >
+	void test_matrix_from_permuted_iterators(
+	std::size_t nrows, std::size_t ncols,
+	const typename ParIterT::input_sizes_t& iter_sizes
+) {
+	using NZC = NZ< ValT >;
+	std::vector< NZC > mat_nz;
+
+	for( ParIterT it{ ParIterT::make_begin( iter_sizes ) }; it != ParIterT::make_end( iter_sizes ); ++it ) {
+		mat_nz.push_back( NZC( it.i(), it.j(), it.v() ) );
+	}
+	randomize_vector( mat_nz );
+
+	// std::cout << "permuted vector" << std::endl;
+	// std::size_t n{ 0 };
+	// for( const NZC& nz: mat_nz ) {
+	// 	std::cout << nz << std::endl;
+	// 	if( n > 10 ) break;
+	// 	n++;
+	// }
+
+	test_matrix_from_vectors( nrows, ncols, mat_nz, true );
 }
 
 template< typename T, typename ParIterT, typename SeqIterT, enum Backend implementation = config::default_backend >
@@ -676,150 +306,72 @@ template< typename T, typename ParIterT, typename SeqIterT, enum Backend impleme
 		std::size_t nrows, std::size_t ncols,
 		const typename ParIterT::input_sizes_t& iter_sizes ) {
 
-		Matrix< T, implementation > par_sequential_matrix( nrows, ncols );
-		Matrix< T, implementation > par_parallel_matrix( nrows, ncols );
-		test_matrix_generation< T, ParIterT, implementation >( par_sequential_matrix, par_parallel_matrix, iter_sizes );
+	Matrix< T, implementation > par_sequential_matrix( nrows, ncols );
+	Matrix< T, implementation > par_parallel_matrix( nrows, ncols );
+	test_matrix_generation< T, ParIterT, implementation >( par_sequential_matrix, par_parallel_matrix, iter_sizes );
 
-		Matrix< T, implementation > seq_sequential_matrix( nrows, ncols );
-		Matrix< T, implementation > seq_parallel_matrix( nrows, ncols );
-		test_matrix_generation< T, SeqIterT, implementation >( seq_sequential_matrix, seq_parallel_matrix, iter_sizes );
+	Matrix< T, implementation > seq_sequential_matrix( nrows, ncols );
+	Matrix< T, implementation > seq_parallel_matrix( nrows, ncols );
+	test_matrix_generation< T, SeqIterT, implementation >( seq_sequential_matrix, seq_parallel_matrix, iter_sizes );
 
-		// cross-check parallel vs sequential
-		ASSERT_TRUE( matrices_values_are_equal( par_parallel_matrix, seq_parallel_matrix, false ) );
+	// cross-check parallel vs sequential
+	std::size_t serial_nz, par_nz;
+	ASSERT_TRUE( matrices_values_are_equal( par_parallel_matrix, seq_parallel_matrix,
+		serial_nz, par_nz, true ) );
+	const std::size_t serial_num_nnz{ SeqIterT::compute_num_nonzeroes( iter_sizes) },
+		parallel_num_nnz{ ParIterT::compute_num_nonzeroes( iter_sizes) };
+
+	ASSERT_EQ( serial_num_nnz, parallel_num_nnz ); // check iterators work properly
+	// now check the number of non-zeroes returned via iterators globlly match
+	ASSERT_EQ( serial_nz, parallel_num_nnz );
+	ASSERT_EQ( par_nz, parallel_num_nnz );
+
+	MAIN_LOG( ">> RANDOMLY PERMUTED" << std::endl );
+	test_matrix_from_permuted_iterators< T, ParIterT >( nrows, ncols, iter_sizes );
 }
 
-// filter only local non-zeroes - useful with distributed backends, which split rows
-// template< enum Backend implementation = config::default_backend >
-// 	std::size_t count_local_rows( std::size_t nrows, const std::vector< std::size_t >& rows ) {
-
-// 	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
-// 	return static_cast< std::size_t > ( std::count_if(
-// 		rows.cbegin(), rows.cend(), [pid,nrows,nprocs]( std::size_t row ) {
-// 				return internal::Distribution< implementation >::global_index_to_process_id(
-// 					row, nrows, nprocs
-// 				) == pid;
-// 			}
-// 		)
-// 	);
-// }
-
-template< typename ValT, enum Backend implementation = config::default_backend >
-	void filter_local_nonzeroes( std::size_t nrows,
-	const std::vector< std::size_t >& rows,
-	const std::vector< std::size_t >& cols,
-	const std::vector< ValT >& values,
-	std::vector< std::size_t >& out_rows,
-	std::vector< std::size_t >& out_cols,
-	std::vector< ValT >& out_values ) {
-
-	const std::size_t pid{ spmd<>::pid() }, nprocs{ spmd<>::nprocs() };
-	for( std::size_t i{ 0 }; i < rows.size(); i++ ) {
-		if ( internal::Distribution< implementation >::global_index_to_process_id(
-			rows[ i ], nrows, nprocs ) == pid ) {
-			out_rows.push_back( rows[ i ] );
-			out_cols.push_back( cols[ i ] );
-			out_values.push_back( values[ i ] );
-		}
-	}
-}
-
-template< typename ValT, enum Backend implementation = config::default_backend > void test_matrix_from_vectors(
-	std::size_t nrows, std::size_t ncols,
-	const std::vector< std::size_t >& rows,
-	const std::vector< std::size_t >& cols,
-	const std::vector< ValT >& values
-) {
-	assert( rows.size() == cols.size() && rows.size() == values.size() );
-
-	Matrix< ValT, implementation > mat( nrows, ncols );
-	const std::size_t per_proc{ ( values.size() + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
-	const std::size_t first{ per_proc * spmd<>::pid() };
-	const std::size_t num_local{ std::min( per_proc, values.size() - first ) };
-
-#ifdef _DEBUG
-	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
-		if( spmd<>::pid() == i ) {
-			std::cout << "process " << i << " from " << first << " num " << num_local << std::endl;
-		}
-		spmd<>::barrier();
-	}
-#endif
-
-	RC ret{ buildMatrixUnique( mat, rows.data() + first, cols.data() + first,
-		values.data() + first, num_local, IOMode::PARALLEL ) };
-
-	ASSERT_RC_SUCCESS( ret );
-
-	std::vector< utils::NonZeroStorage< std::size_t, std::size_t, ValT > > sorted_local_values;
-	get_nnz_and_sort( mat, sorted_local_values );
-
-	std::vector< std::size_t > local_rows, local_cols;
-	std::vector< ValT > local_values;
-	filter_local_nonzeroes( nrows, rows, cols, values, local_rows, local_cols, local_values );
-	const std::size_t local_nnz{ local_rows.size() };
-
-#ifdef _DEBUG
-	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
-		if( spmd<>::pid() == i ) {
-			std::cout << "process " << i << " local count " << local_nnz << std::endl;
-		}
-		spmd<>::barrier();
-	}
-#endif
-
-
-	ASSERT_EQ( sorted_local_values.size(), local_nnz );
-	std::size_t k{ 0 };
-	for( auto it{ sorted_local_values.cbegin() }; it != sorted_local_values.cend() && k < values.size(); ++it, ++k ) {
-		// std::cout << "+++" << it->i() << ", " << it->j() << ", " << it->v() << std::endl;
-		// std::cout << "---" << rows[ k ] << ", " << cols[ k ] << ", " << values[ k ] << std::endl;
-		ASSERT_EQ( it->i(), local_rows[ k ] );
-		ASSERT_EQ( it->j(), local_cols[ k ] );
-		ASSERT_EQ( it->v(), local_values[ k ] );
-	}
-	ASSERT_EQ( k, local_nnz );
-
-	if( spmd<>::pid() == 0 ) {
-		LOG() << "<< OK" << std::endl;
-	}
-}
-
-
-
-/*
-	std::vector< std::size_t > rows{ 0, 0, 1, 2, 3, 4, 4, 5, 5, 5, 5, 5, 5 };
-	std::vector< std::size_t > cols{ 1, 3, 3, 2, 4, 0, 2, 0, 1, 2, 3, 4, 5 };
-	std::vector< int >       values{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-*/
-
-/*
-	std::vector< std::size_t > rows{ 0, 0, 2, 4, 4, 5, 5, 5, 5, 5, 5 };
-	std::vector< std::size_t > cols{ 1, 3, 1, 0, 2, 0, 1, 2, 3, 4, 5 };
-	std::vector< int >       values{ 0, 1, 3, 5, 6, 7, 8, 9, 10, 11, 12 };
-*/
 
 template< enum Backend implementation = config::default_backend > void test_matrix_from_user_vectors() {
-	constexpr std::size_t mat_size{ 7 };
-	std::vector< std::size_t > rows{ 0, 0, 0, 0, 0,  1, 1, 1, 1,  2,  3,  4, 4,  5, 5, 5, 5, 5, 5 };
-	std::vector< std::size_t > cols{ 1, 3, 4, 5, 6,  3, 4, 5, 6,  2,  4,  0, 2,  0, 1, 2, 3, 4, 5 };
-	std::vector< int >       values{ 0, 1,-1,-2,-3,  2,-4,-5,-6,  3,  4,  5, 6,  7, 8, 9,10,11,12 };
 
-	test_matrix_from_vectors( mat_size, mat_size, rows, cols, values );
-}
+	constexpr std::size_t num_matrices{ 2 };
 
+	using NZC = NZ< int >;
+	using SP = std::pair< std::size_t, std::size_t >;
 
+	std::array< SP, num_matrices > sizes{ SP( 7, 7 ), SP( 3456, 8912 ) };
 
-template< typename ValT, typename ParIterT, enum Backend implementation = config::default_backend >
-	void test_matrix_from_permuted_iterators(
-	std::size_t nrows, std::size_t ncols,
-	const typename ParIterT::input_sizes_t& iter_sizes
-) {
-	constexpr std::size_t mat_size{ 20 };
-	std::vector< std::size_t > rows{ 0, 0, 0, 0, 0,  1, 1, 1, 1,  2,  3,  4, 4,  5, 5, 5, 5, 5, 5 };
-	std::vector< std::size_t > cols{ 1, 3, 4, 5, 6,  3, 4, 5, 6,  2,  4,  0, 2,  0, 1, 2, 3, 4, 5 };
-	std::vector< int >       values{ 0, 1,-1,-2,-3,  2,-4,-5,-6,  3,  4,  5, 6,  7, 8, 9,10,11,12 };
+	std::array< std::vector< NZC >, num_matrices > coordinates{
+		std::vector< NZC >{ NZC(0,1,0), NZC(0,3,1), NZC(0,4,-1), NZC(0,5,-2), NZC(0,6,-3),
+			NZC(1,3,2), NZC(1,4,-4), NZC(1,5,-5), NZC(1,6,-6),
+			NZC(2,2,3),
+			NZC(3,4,4),
+			NZC(4,0,5), NZC(4,2,6),
+			NZC(5,0,7), NZC(5,1,8), NZC(5,2,9), NZC(5,3,10), NZC(5,4,11), NZC(5,5,12)
+		},
+		std::vector< NZC >{ NZC( 1, 2, 0 ), NZC( 1, 4, 1 ), NZC( 1, 5, 2 ), NZC( 1, 7, 3 ),
+			NZC( 2, 0, 4 ), NZC( 2, 1, 5 ), NZC( 2, 2, 6 ),
+			NZC( 3, 1, 7 ), NZC( 3, 2, 8 ), NZC( 3, 4, 9 ), NZC( 3, 8909, 10 ), NZC( 3, 8910, 11 ), NZC( 3, 8911, 12 ),
+			NZC( 3452, 2000, 13 ), NZC( 3452, 2002, 14 ), NZC( 3452, 8910, 15 ), NZC( 3452, 8911, 16 )
+		}
+	};
 
-	test_matrix_from_vectors( mat_size, mat_size, rows, cols, values );
+	for( std::size_t i{ 0 }; i < num_matrices; i++ ) {
+		std::vector< NZC >& mat_nz{ coordinates[ i ] };
+		SP& size{ sizes[ i ] };
+
+		MAIN_LOG( ">>>> CUSTOM " << size.first << " x " << size.second << std::endl
+			<< ">> SORTED NON-ZEROES" << std::endl );
+
+		test_matrix_from_vectors( size.first, size.second, mat_nz );
+
+		randomize_vector( mat_nz );
+		// std::cout << "permuted vector" << std::endl;
+		// for( const NZC& nz: mat_nz ) {
+		// 	std::cout << nz << std::endl;
+		// }
+		MAIN_LOG( ">> RANDOMLY PERMUTED NON-ZEROES" << std::endl );
+		test_matrix_from_vectors( size.first, size.second, mat_nz, true );
+	}
 }
 
 static const char* const std_caption{ "got exception: " };
@@ -840,36 +392,30 @@ void grbProgram( const void *, const size_t, int &error ) {
 
 	try {
 
+		/*
+
 		std::initializer_list< std::size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
 			spmd<>::nprocs() + 16, 100003 };
 
-		if( spmd<>::pid() == 0 ) {
-			LOG() << "==== Testing diagonal matrices" << std::endl;
-		}
+		MAIN_LOG( "==== Testing diagonal matrices" << std::endl );
 		for( const std::size_t& mat_size : diag_sizes ) {
-			test_sequential_and_parallel_matrix_generation< int, diag_iterator< true >,diag_iterator< false > >(
+			test_sequential_and_parallel_matrix_generation< int, utils::diag_iterator< true >, utils::diag_iterator< false > >(
 				mat_size, mat_size, mat_size );
 		}
 
 		std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467 };
 
 		for( const std::size_t& mat_size : band_sizes ) {
-			if( spmd<>::pid() == 0 ) {
-				LOG() << "==== Testing matrix with band 1" << std::endl;
-			}
-			test_sequential_and_parallel_matrix_generation< int, band_iterator< 1, true >, band_iterator< 1, false > >(
+			MAIN_LOG( "==== Testing matrix with band 1" << std::endl );
+			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 1, true >, utils::band_iterator< 1, false > >(
 				mat_size, mat_size, mat_size );
 
-			if( spmd<>::pid() == 0 ) {
-				LOG() << "==== Testing matrix with band 2" << std::endl;
-			}
-			test_sequential_and_parallel_matrix_generation< int, band_iterator< 2, true >, band_iterator< 2, false > >(
+			MAIN_LOG( "==== Testing matrix with band 2" << std::endl );
+			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 2, true >, utils::band_iterator< 2, false > >(
 				mat_size, mat_size, mat_size );
 
-			if( spmd<>::pid() == 0 ) {
-				LOG() << "==== Testing matrix with band 7" << std::endl;
-			}
-			test_sequential_and_parallel_matrix_generation< int, band_iterator< 7, true >, band_iterator< 7, false > >(
+			MAIN_LOG( "==== Testing matrix with band 7" << std::endl );
+			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 7, true >, utils::band_iterator< 7, false > >(
 				mat_size, mat_size, mat_size );
 		}
 
@@ -877,19 +423,14 @@ void grbProgram( const void *, const size_t, int &error ) {
 			{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 70 }, { 130, 139 }
 		};
 
-		if( spmd<>::pid() == 0 ) {
-			LOG() << "==== Testing dense matrices" << std::endl;
-		}
+		MAIN_LOG( "==== Testing dense matrices" << std::endl );
 		for( const std::array< std::size_t, 2 >& mat_size : matr_sizes ) {
-			test_sequential_and_parallel_matrix_generation< int, dense_mat_iterator< int, true >, dense_mat_iterator< int, false > >(
+			test_sequential_and_parallel_matrix_generation< int, utils::dense_mat_iterator< int, true >, utils::dense_mat_iterator< int, false > >(
 				mat_size[0], mat_size[1], mat_size );
 		}
+		*/
 
-
-
-		if( spmd<>::pid() == 0 ) {
-			LOG() << "==== Testing sparse matrix from user's vectors" << std::endl;
-		}
+		MAIN_LOG( "==== Testing sparse matrix from user's vectors" << std::endl );
 		test_matrix_from_user_vectors();
 
 	} catch ( const std::exception& e ) {
@@ -898,6 +439,16 @@ void grbProgram( const void *, const size_t, int &error ) {
 	} catch( ... ) {
 		LOG() << "unknown exception" <<std::endl;
 		error = 1;
+	}
+	// assumes SUCCESS is the smallest value in enum RC to perform reduction
+	assert( SUCCESS < FAILED );
+	RC rc_red = collectives<>::allreduce( error, grb::operators::max< int >() );
+	if ( rc_red != SUCCESS ) {
+		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
+		std::abort();
+	}
+	if( error != 0 ) {
+		LOG() << "Some process caught an exception" << std::endl;
 	}
 }
 

@@ -115,6 +115,7 @@ add_grb_executables( masked_vxm masked_vxm.cpp
 
 add_grb_executables( matrixIterator matrixIterator.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( matrixSet matrixSet.cpp
