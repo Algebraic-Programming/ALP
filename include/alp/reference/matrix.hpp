@@ -636,8 +636,8 @@ namespace alp {
 		 *       to matrix elements, which is not exposed to the user.
 		 *
 		 */
-		template< typename T, typename ImfR, typename ImfC, typename Ret, typename ... Args >
-		class FunctorBasedMatrix : public MatrixBase< FunctorBasedMatrix< T, ImfR, ImfC, Ret, Args... > > {
+		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
+		class FunctorBasedMatrix : public MatrixBase< FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > > {
 			public:
 
 				/** Expose static properties */
@@ -649,13 +649,14 @@ namespace alp {
 
 			protected:
 
+				typedef FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > self_type;
+
 				const bool initialized; // Temporary solution, proper implementation pending
 
 				ImfR imf_r;
 				ImfC imf_c;
 
-				typedef std::function< Ret( Args... ) > lambda_function_type;
-				lambda_function_type &lambda;
+				LambdaType lambda;
 
 				bool getInitialized() const noexcept {
 					return initialized;
@@ -679,12 +680,14 @@ namespace alp {
 
 				FunctorBasedMatrix(
 					const bool initialized,
-					lambda_function_type &lambda,
+					LambdaType lambda,
 					ImfR &&imf_r,
 					ImfC &&imf_c
 				) :
-					MatrixBase< FunctorBasedMatrix< T, ImfR, ImfC, Ret, Args... > >( imf_r.N, imf_c.N ),
+					MatrixBase< self_type > >( imf_r.N, imf_c.N ),
 					initialized( initialized ),
+					imf_r( imf_r ),
+					imf_c( imf_c ),
 					lambda( lambda ) {}
 
 		}; // class FunctorBasedMatrix
@@ -1134,6 +1137,30 @@ namespace alp {
 
 	}; // Matrix UpperTriangular
 
+	//template< typename Structure >
+	//struct MatrixFunctorLambda { };
+
+	//// Lambda function used by Identity matrix
+	//template<>
+	//struct MatrixFunctorLambda< structures::Identity > {
+	//	static auto lambda =
+	//		[]( const size_t i, const size_t j ) {
+	//				return ( i == j ) ? 1 : 0;
+	//		};
+
+	//	//typedef decltype( lambda ) type;	
+	//};
+
+	namespace lambdas {
+
+		auto identity =
+			[]( const size_t i, const size_t j ) {
+					return ( i == j ) ? 1 : 0;
+			};
+		typedef decltype( identity ) identity_type;
+
+	}; // namespace functor_lambdas
+
 	// Matrix Identity
 //	template< typename T, typename View, typename ImfR, typename ImfC >
 //	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
@@ -1184,6 +1211,48 @@ namespace alp {
 //			}
 //
 //	}; // Matrix Identity, container
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
+		//public internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type > {
+		public internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to > {
+
+		protected:
+			/*********************
+			 Storage info friends
+			******************** */
+
+			typedef Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > self_type;
+
+		public:
+			/** Exposes the element type and the structure. */
+			typedef structures::Identity structure;
+
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+			};
+
+			Matrix( typename View::applied_to lambda, const size_t rows, const size_t cap = 0 ) :
+				//internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type >(
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					true,
+					//MatrixFunctorLambda< structures::Identity >::lambda,
+					lambda,
+					imf::Id( rows ),
+					imf::Id( rows )
+				) {
+				(void)cap;
+			}
+
+	}; // Matrix Identity, container
 
 	namespace structures {
 
