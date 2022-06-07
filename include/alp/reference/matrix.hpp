@@ -653,10 +653,10 @@ namespace alp {
 
 				const bool initialized; // Temporary solution, proper implementation pending
 
-				ImfR imf_r;
-				ImfC imf_c;
+				const ImfR imf_r;
+				const ImfC imf_c;
 
-				LambdaType lambda;
+				const LambdaType lambda;
 
 				bool getInitialized() const noexcept {
 					return initialized;
@@ -680,7 +680,7 @@ namespace alp {
 
 				FunctorBasedMatrix(
 					const bool initialized,
-					LambdaType lambda,
+					const LambdaType lambda,
 					ImfR &&imf_r,
 					ImfC &&imf_c
 				) :
