@@ -28,14 +28,18 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	std::cout << "\tTesting dense Identity and Zero matrices\n";
 	// initialize test
-	alp::Matrix< double, structures::Square > A( n );
-	alp::Matrix< double, structures::Square > C( n );
-	auto I = alp::structures::constant::I< double >( n );
-	auto Zero = alp::structures::constant::Zero< double >( n, n );
+	rc = SUCCESS;
+	//alp::Matrix< double, structures::Square > A( n );
+	//alp::Matrix< double, structures::Square > C( n );
+	const auto I = alp::structures::constant::I< double >( n );
+	std::cout << (std::is_const<decltype(I)>::value ? "true" : "false") << std::endl;
+	std::cout << "I(0, 0) = " << internal::access( I, internal::getStorageIndex( I, 0, 0 ) ) << "\n";
+	std::cout << "I(1, 0) = " << internal::access( I, internal::getStorageIndex( I, 1, 0 ) ) << "\n";
+	//auto Zero = alp::structures::constant::Zero< double >( n, n );
 
 	// Initialize input matrix
-	std::vector< double > A_data( n * n, 1 );
-	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
+	//std::vector< double > A_data( n * n, 1 );
+	//rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
 
 	//TODO: These should forward to alp::set
 	// if( rc == SUCCESS ) {
