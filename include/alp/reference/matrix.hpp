@@ -1698,13 +1698,18 @@ namespace alp {
 
 	namespace structures {
 		namespace constant {
+			namespace internal {
+				auto identity_lambda = []( const size_t i, const size_t j ) {
+						return ( i == j ) ? 1 : 0;
+				};
+			};
+
 			/** Returns a constant reference to an Identity matrix of the provided size */
 			template< typename T >
-			const Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > &
+			const Matrix< T, structures::Identity, Density::Dense, view::Functor< decltype( internal::identity_lambda ) >, imf::Id, imf::Id, reference >
 			I( const size_t n ) {
-				using return_type = Matrix< T, structures::Identity, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
-				return_type * ret = new return_type( n );
-				return * ret;
+
+				return Matrix< T, structures::Identity, Density::Dense, view::Functor< decltype( internal::identity_lambda ) >, imf::Id, imf::Id, reference >( internal::identity_lambda, n );
 			}
 
 			/** Returns a constant reference to a Zero matrix of the provided size */
