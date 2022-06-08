@@ -680,9 +680,9 @@ namespace alp {
 
 				FunctorBasedMatrix(
 					const bool initialized,
-					const LambdaType lambda,
 					ImfR &&imf_r,
-					ImfC &&imf_c
+					ImfC &&imf_c,
+					const LambdaType lambda
 				) :
 					MatrixBase< self_type > >( imf_r.N, imf_c.N ),
 					initialized( initialized ),
@@ -1244,10 +1244,10 @@ namespace alp {
 				//internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type >(
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
 					true,
-					//MatrixFunctorLambda< structures::Identity >::lambda,
-					lambda,
 					imf::Id( rows ),
-					imf::Id( rows )
+					imf::Id( rows ),
+					//MatrixFunctorLambda< structures::Identity >::lambda,
+					lambda
 				) {
 				(void)cap;
 			}
