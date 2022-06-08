@@ -1222,6 +1222,7 @@ namespace alp {
 			******************** */
 
 			typedef Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to lambda_type;
 
 		public:
 			/** Exposes the element type and the structure. */
@@ -1240,9 +1241,9 @@ namespace alp {
 				using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
-			Matrix( typename View::applied_to lambda, const size_t rows, const size_t cap = 0 ) :
+			Matrix( lambda_type lambda, const size_t rows, const size_t cap = 0 ) :
 				//internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type >(
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, lambda_type >(
 					true,
 					imf::Id( rows ),
 					imf::Id( rows ),
