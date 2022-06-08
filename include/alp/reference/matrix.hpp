@@ -1665,12 +1665,12 @@ namespace alp {
 
 		template< typename MatrixType >
 		bool getInitialized( const MatrixType &A ) noexcept {
-			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template getInitialized();
+			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getInitialized();
 		}
 
 		template< typename MatrixType >
 		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
-			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template setInitialized( initialized );
+			return static_cast< MatrixBase< typename MatrixType::base_type > & >( A ).template setInitialized( initialized );
 		}
 
 		template< typename DerivedMatrix >
@@ -1694,13 +1694,13 @@ namespace alp {
 		 */
 		template< typename MatrixType >
 		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
-			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template access< const typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template access< const typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Non-constant variant. **/
 		template< typename MatrixType >
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
-			return static_cast< MatrixBase< typename MatrixType::base_type > >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			return static_cast< MatrixBase< typename MatrixType::base_type > &  >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Return a storage index in the physical layout.
@@ -1721,7 +1721,7 @@ namespace alp {
 		 */
 		template< typename MatrixType >
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
-			return static_cast< const MatrixBase< typename MatrixType::base_type > >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );
+			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );
 		}
 
 		/** Return a pair of coordinates in logical layout.
@@ -1755,8 +1755,8 @@ namespace alp {
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC >
 	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
-		return internal::dims( static_cast< internal::MatrixBase<
-			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type > > ( A ) );
+		return internal::dims( static_cast< const internal::MatrixBase<
+			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type > & > ( A ) );
 	}
 
 } // namespace alp
