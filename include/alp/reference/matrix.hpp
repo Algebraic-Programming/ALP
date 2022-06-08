@@ -680,8 +680,8 @@ namespace alp {
 
 				FunctorBasedMatrix(
 					const bool initialized,
-					ImfR &&imf_r,
-					ImfC &&imf_c,
+					ImfR imf_r,
+					ImfC imf_c,
 					const LambdaType lambda
 				) :
 					MatrixBase< self_type > >( imf_r.N, imf_c.N ),
@@ -1225,6 +1225,7 @@ namespace alp {
 			typedef typename View::applied_to lambda_type;
 
 		public:
+			typedef internal::MatrixFunctor< T, ImfR, ImfC, typename View::applied_to > base_type;
 			/** Exposes the element type and the structure. */
 			typedef structures::Identity structure;
 
@@ -1778,7 +1779,7 @@ namespace alp {
 		/** Non-constant variant. **/
 		template< typename MatrixType >
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
-			return static_cast< MatrixBase< typename MatrixType::base_type > &  >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			return static_cast< MatrixBase< typename MatrixType::base_type > & >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Return a storage index in the physical layout.
