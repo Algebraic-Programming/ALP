@@ -34,7 +34,9 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	const auto I = alp::structures::constant::I< double >( n );
 	std::cout << "I(0, 0) = " << internal::access( I, internal::getStorageIndex( I, 0, 0 ) ) << "\n";
 	std::cout << "I(1, 0) = " << internal::access( I, internal::getStorageIndex( I, 1, 0 ) ) << "\n";
-	//auto Zero = alp::structures::constant::Zero< double >( n, n );
+	auto Zero = alp::structures::constant::Zero< double >( n, n );
+	std::cout << "Zero(0, 0) = " << internal::access( Zero, internal::getStorageIndex( Zero, 0, 0 ) ) << "\n";
+	std::cout << "Zero(1, 0) = " << internal::access( Zero, internal::getStorageIndex( Zero, 1, 0 ) ) << "\n";
 
 	// Initialize input matrix
 	//std::vector< double > A_data( n * n, 1 );

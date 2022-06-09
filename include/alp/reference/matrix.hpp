@@ -1683,17 +1683,24 @@ namespace alp {
 						[]( const size_t i, const size_t j ) {
 							return ( i == j ) ? 1 : 0;
 						},
+						n,
 						n
 					);
 			}
 
 			/** Returns a constant reference to a Zero matrix of the provided size */
 			template< typename T >
-			const Matrix< T, structures::Zero, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > &
+			const Matrix< T, structures::Zero, Density::Dense, view::Functor< std::function< const T( const size_t, const size_t ) > >,
+				imf::Id, imf::Id, reference >
 			Zero( const size_t rows, const size_t cols ) {
-				using return_type = Matrix< T, structures::Zero, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference >;
-				return_type * ret = new return_type( rows, cols );
-				return * ret;
+				return Matrix< T, structures::Zero, Density::Dense, view::Functor< std::function< const T( const size_t, const size_t ) > >,
+					imf::Id, imf::Id, reference > (
+						[]( const size_t, const size_t ) {
+							return 0;
+						},
+						rows,
+						cols
+					);
 			}
 
 			namespace internal {
