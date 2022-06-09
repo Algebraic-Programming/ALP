@@ -1188,38 +1188,39 @@ namespace alp {
 //			}
 //
 //	}; // Matrix Identity, container
-	template< typename T, typename View, typename ImfR, typename ImfC >
-	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to > {
+	template< typename T, typename Structure, typename LambdaType, typename ImfR, typename ImfC >
+	class Matrix< T, Structure, Density::Dense, view::Functor< LambdaType >, ImfR, ImfC, reference > :
+		public internal::FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > {
 
 		protected:
 
-			typedef Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > self_type;
-			typedef typename View::applied_to lambda_type;
+			typedef Matrix< T, Structure, Density::Dense, view::Functor< LambdaType >, ImfR, ImfC, reference > self_type;
+			//typedef typename View::applied_to lambda_type;
+			typedef LambdaType lambda_type;
 
 		public:
-			typedef internal::MatrixFunctor< T, ImfR, ImfC, typename View::applied_to > base_type;
+			typedef internal::MatrixFunctor< T, ImfR, ImfC, LambdaType > base_type;
 			/** Exposes the element type and the structure. */
-			typedef structures::Identity structure;
+			typedef Structure structure;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
 
 			template < bool d >
 			struct view_type< view::original, d > {
-				using type = Matrix< T, structures::Identity, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
+				using type = Matrix< T, Structure, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
 			};
 
 			template < bool d >
 			struct view_type< view::transpose, d > {
-				using type = Matrix< T, structures::Identity, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+				using type = Matrix< T, Structure, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
-			Matrix( lambda_type lambda, const size_t rows, const size_t cap = 0 ) :
+			Matrix( lambda_type lambda, const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, lambda_type >(
 					true,
 					imf::Id( rows ),
-					imf::Id( rows ),
+					imf::Id( cols ),
 					lambda
 				) {
 				(void)cap;
