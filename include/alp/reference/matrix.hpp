@@ -1694,7 +1694,7 @@ namespace alp {
 		 */
 		template< typename MatrixType >
 		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
-			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template access< const typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Non-constant variant. **/
