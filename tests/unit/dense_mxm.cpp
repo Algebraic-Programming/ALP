@@ -33,13 +33,13 @@ void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
 	
 	std::cout << name << ":" << std::endl;
 	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "[ ";
+		std::cout << "[\t";
 		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
 			auto pos  = internal::getStorageIndex( A, row, col );
 			// std::cout << "(" << pos << "): ";
 			std::cout << internal::access(A, pos ) << "\t";
 		}
-		std::cout << "\t]" << std::endl;
+		std::cout << "]" << std::endl;
 	}
 }
 
@@ -171,15 +171,17 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::Matrix< T, structures::General > C( n, n );
 
 	// Initialize input matrices
-	// rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
-	// rc = alp::buildMatrix( B, B_data.begin(), B_data.end() );
-	// rc = alp::buildMatrix( C, C_data.begin(), C_data.end() );
+	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
+	rc = alp::buildMatrix( B, B_data.begin(), B_data.end() );
+	rc = alp::buildMatrix( C, C_data.begin(), C_data.end() );
 
-	// print_matrix("A", A);
-	// print_matrix("B", B);
-	// print_matrix("C", C);
+	print_matrix("A", A);
+	print_matrix("B", B);
+	print_matrix("C - PRE", C);
 
-	// rc = alp::mxm( C, A, B, ring );
+	rc = alp::mxm( C, A, B, ring );
+
+	print_matrix("C - POST", C);
 
 	std::vector< T > A_vec( n * n, one );
 	std::vector< T > B_vec( n * n, one );
@@ -187,17 +189,22 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
+	diff_stdvec_matrix( C_vec, n, n, n, C );
+
 	std::cout << "\n\n=========== Testing Uppertriangular ============\n\n";
 
-	// alp::Matrix< T, structures::UpperTriangular > UA( n );
-	// alp::Matrix< T, structures::UpperTriangular > UB( n );
-	// alp::Matrix< T, structures::UpperTriangular > UC( n );
+	alp::Matrix< T, structures::UpperTriangular > UA( n );
+	alp::Matrix< T, structures::UpperTriangular > UB( n );
+	alp::Matrix< T, structures::UpperTriangular > UC( n );
 
-	// rc = alp::buildMatrix( UA, A_data.begin(), A_data.end() );
-	// rc = alp::buildMatrix( UB, B_data.begin(), B_data.end() );
-	// rc = alp::buildMatrix( UC, C_data.begin(), C_data.end() );
+	rc = alp::buildMatrix( UA, A_data.begin(), A_data.end() );
+	rc = alp::buildMatrix( UB, B_data.begin(), B_data.end() );
+	stdvec_build_matrix< structures::General >( C_data, n, n, n, zero, zero );
+	rc = alp::buildMatrix( UC, C_data.begin(), C_data.end() );
 
-	// rc = alp::mxm( UC, UA, UB, ring );
+	print_matrix("UC - PRE", UC);
+	rc = alp::mxm( UC, UA, UB, ring );
+	print_matrix("UC - POST", UC);
 
 	stdvec_build_matrix< structures::UpperTriangular >( A_vec, n, n, n, zero, one );
 	stdvec_build_matrix< structures::UpperTriangular >( B_vec, n, n, n, zero, one );
@@ -205,18 +212,25 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
+	diff_stdvec_matrix( C_vec, n, n, n, UC );
+
 	std::cout << "\n\n=========== Testing Symmetric Output ============\n\n";
 
-	// alp::Matrix< T, structures::Symmetric > SC( n );
+	alp::Matrix< T, structures::Symmetric > SC( n );
 
-	// rc = alp::buildMatrix( SC, C_data.begin(), C_data.end() );
+	stdvec_build_matrix< structures::General >( C_data, n, n, n, zero, zero );
+	rc = alp::buildMatrix( SC, C_data.begin(), C_data.end() );
 
-	// rc = alp::mxm( SC, A, alp::get_view< alp::view::transpose >( A ), ring );
+	print_matrix("SC - PRE", SC);
+	rc = alp::mxm( SC, A, alp::get_view< alp::view::transpose >( A ), ring );
+	print_matrix("SC - POST", SC);
 
 	stdvec_build_matrix< structures::General >( A_vec, n, n, n, zero, one );
 	stdvec_build_matrix< structures::Symmetric >( C_vec, n, n, n, zero, zero );
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, A_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
+
+	diff_stdvec_matrix( C_vec, n, n, n, SC );
 
 }
 

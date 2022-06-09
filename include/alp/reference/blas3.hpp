@@ -233,7 +233,7 @@ namespace alp {
 					 j < std::min( N, i + u_a + u_b - 1 ); 
 					 ++j ) {
 					
-					auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+					auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 					// Size + Symmetry constraints
 					//    is_sym_a * i <= l < K * (~is_sym_b) + (j+1) * (is_sym_b)   
@@ -246,7 +246,9 @@ namespace alp {
 						const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
 						const auto tb { internal::access( B, internal::getStorageIndex( B, l, j ) ) };
 						(void)internal::apply( temp, ta, tb, oper );
+						// std::cout << c_val << " += " << temp << " = " << ta << " * " << tb << std::endl;
 						(void)internal::foldl( c_val, temp, monoid.getOperator() );
+						// std::cout << c_val << std::endl;
 					}
 				}
 			}
@@ -263,7 +265,7 @@ namespace alp {
 						j < std::min( N - 1, i + u_a + u_b - 1 ); 
 						++j ) {
 						
-						auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+						auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 						// Size + Symmetry constraints
 						//    max(is_sym_a * i, j) <= l < K
@@ -295,7 +297,7 @@ namespace alp {
 						j < std::min( N, i + u_a + u_b - 1 ); 
 						++j ) {
 						
-						auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+						auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 						// Size + Symmetry constraints
 						//    0                    <= l < min(i, 
@@ -330,7 +332,7 @@ namespace alp {
 							j < std::min( i - 1, i + u_a + u_b - 1 ); 
 							++j ) {
 							
-							auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+							auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 							// Size + Symmetry constraints
 							//    j + 1                <= l < i
@@ -479,7 +481,7 @@ namespace alp {
 		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
 		(void)phase;
-		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
+
 		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 

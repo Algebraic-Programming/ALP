@@ -164,6 +164,7 @@ namespace alp {
 		(void)start;
 		(void)end;
 
+		// Temporarily assuming 1-1 mapping with user container
 		internal::setInitialized(A, true);
 
 		InputType * praw, * p;
