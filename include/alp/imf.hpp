@@ -127,20 +127,20 @@ namespace alp {
 
 				std::vector< size_t > select;
 
-				size_t map( size_t i ) const {
+				size_t map( const size_t i ) const {
 #ifdef _DEBUG
 					std::cout << "Calling Select map.\n";
 #endif
 					return select.at( i );
 				}
 
-				Select(size_t N, std::vector< size_t > &select): IMF( select.size(), N ), select( select ) {
+				Select( size_t N, std::vector< size_t > &select ): IMF( select.size(), N ), select( select ) {
 					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
 					//	throw std::runtime_error("IMF Select beyond range.");
 					//}
 				}
 
-				Select(size_t N, std::vector< size_t > &&select): IMF( select.size(), N ), select( select ) {
+				Select( size_t N, std::vector< size_t > &&select ): IMF( select.size(), N ), select( select ) {
 #ifdef _DEBUG
 					std::cout << "Select move constructor\n";
 #endif
