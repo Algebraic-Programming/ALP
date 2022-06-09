@@ -201,9 +201,9 @@ namespace alp {
 
 			OutputType temp;
 
-			const std::ptrdiff_t m   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
-			const std::ptrdiff_t n   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
-			const std::ptrdiff_t k   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
+			const std::ptrdiff_t M   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
+			const std::ptrdiff_t N   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
+			const std::ptrdiff_t K   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
 
 			const std::ptrdiff_t l_a { structures::get_lower_bandwidth< BandPos1 >( A ) };
 			const std::ptrdiff_t u_a { structures::get_upper_bandwidth< BandPos1 >( A ) };
@@ -213,31 +213,145 @@ namespace alp {
 			
 			// In case of symmetry the iteration domain intersects the the upper 
 			// (or lower) domain of C
+			constexpr std::ptrdiff_t is_sym_a { structures::is_a< InputStructure1, structures::Symmetric >::value ? 1 : 0 };
+			constexpr std::ptrdiff_t is_sym_b { structures::is_a< InputStructure2, structures::Symmetric >::value ? 1 : 0 };
+			constexpr std::ptrdiff_t is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
 
-			constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
-			constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multiple symmetry directions
+			// Temporary until adding multiple symmetry directions
+			constexpr std::ptrdiff_t sym_up_a { is_sym_a }; 
+			constexpr std::ptrdiff_t sym_up_b { is_sym_b }; 
+			constexpr std::ptrdiff_t sym_up_c { is_sym_c }; 
 
-			for( std::ptrdiff_t i = 0; i < m; ++i ) {
-				for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
-					 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
+			// Intersecting potential symmetry of A and B, 
+			// in which case consider case Up( A ) * Up( B )
+			for( std::ptrdiff_t i = 0; i < M; ++i ) {
+				// Size + Symmetry constraints
+				//    is_sym_c* i   <= j < N
+				// Band constraints
+				// /\ i + l_a + l_b <= j < i + u_a + u_b - 1 (u is past-the-end)
+				for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+					 j < std::min( N, i + u_a + u_b - 1 ); 
 					 ++j ) {
-
+					
 					auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
-					for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
-						 l < std::min( {k, i + u_a, j - l_b + 1} ); 
+
+					// Size + Symmetry constraints
+					//    is_sym_a * i <= l < K * (~is_sym_b) + (j+1) * (is_sym_b)   
+					// Band constraints
+					// /\ i + l_a      <= l < i + u_a        
+					// /\ j - u_b + 1  <= l < j - l_b + 1
+					for( std::ptrdiff_t l = std::max( { is_sym_a * i, i + l_a, j - u_b + 1 } ); 
+						 l < std::min( { K * ( 1 - is_sym_b ) + ( j + 1 ) * is_sym_b, i + u_a, j - l_b + 1 } ); 
 						 ++l ) {
-						// std::cout << "temp = A";
 						const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
-						// std::cout << ".mulOp.B";
 						const auto tb { internal::access( B, internal::getStorageIndex( B, l, j ) ) };
 						(void)internal::apply( temp, ta, tb, oper );
-						// std::cout << ";\n";
-						// std::cout << "C";
 						(void)internal::foldl( c_val, temp, monoid.getOperator() );
-						// std::cout << " addMon.= temp;\n";
 					}
 				}
 			}
+
+			if ( is_sym_b ) {
+				// Intersecting potential symmetry of A and B, 
+				// in which case consider case Up( A ) * Lo( B )
+				for( std::ptrdiff_t i = 0; i < M; ++i ) {
+					// Size + Symmetry constraints
+					//    is_sym_c* i   <= j < N - 1 
+					// Band constraints
+					// /\ i + l_a + l_b <= j < i + u_a + u_b - 1
+					for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+						j < std::min( N - 1, i + u_a + u_b - 1 ); 
+						++j ) {
+						
+						auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+
+						// Size + Symmetry constraints
+						//    max(is_sym_a * i, j) <= l < K
+						// Band constraints
+						// /\ i + l_a              <= l < i + u_a 
+						// /\ j - u_b + 1          <= l < j - l_b + 1
+						for( std::ptrdiff_t l = std::max( { is_sym_a * i, j, i + l_a, j - u_b + 1 } ); 
+							l < std::min( { K, i + u_a, j - l_b + 1 } ); 
+							++l ) {
+							const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
+							// Access to B^T
+							const auto tb { internal::access( B, internal::getStorageIndex( B, j, l ) ) };
+							(void)internal::apply( temp, ta, tb, oper );
+							(void)internal::foldl( c_val, temp, monoid.getOperator() );
+						}
+					}
+				}
+			}
+
+			if ( is_sym_a ) {
+				// Intersecting potential symmetry of A and B, 
+				// in which case consider case Lo( A ) * Up( B )
+				for( std::ptrdiff_t i = 0; i < M; ++i ) {
+					// Size + Symmetry constraints
+					//    is_sym_c* i   <= j < N
+					// Band constraints
+					// /\ i + l_a + l_b <= j < i + u_a + u_b - 1
+					for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+						j < std::min( N, i + u_a + u_b - 1 ); 
+						++j ) {
+						
+						auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+
+						// Size + Symmetry constraints
+						//    0                    <= l < min(i, 
+						//                                    K * ( 1 - is_sym_b ) 
+						//                                    + ( j + 1 ) * is_sym_b
+						//                                    )
+						// Band constraints
+						// /\ i + l_a              <= l < i + u_a 
+						// /\ j - u_b + 1          <= l < j - l_b + 1
+						for( std::ptrdiff_t l = std::max( { ( std::ptrdiff_t )0, i + l_a, j - u_b + 1 } ); 
+							l < std::min( { i, K * ( 1 - is_sym_b ) + ( j + 1 ) * is_sym_b, i + u_a, j - l_b + 1 } ); 
+							++l ) {
+							// Access to A^T
+							const auto ta { internal::access( A, internal::getStorageIndex( A, l, i ) ) };
+							const auto tb { internal::access( B, internal::getStorageIndex( B, l, j ) ) };
+							(void)internal::apply( temp, ta, tb, oper );
+							(void)internal::foldl( c_val, temp, monoid.getOperator() );
+						}
+					}
+				}
+
+				if( ( 1 - is_sym_c ) * is_sym_b ) {
+					// Intersecting potential symmetry of A and B, 
+					// in which case consider case Lo( A ) * Lo( B ).
+					// Useful only if C is not sym
+					for( std::ptrdiff_t i = 2; i < M; ++i ) {
+						// Size + Symmetry constraints
+						//    0             <= j < i - 1
+						// Band constraints
+						// /\ i + l_a + l_b <= j < i + u_a + u_b - 1
+						for( std::ptrdiff_t j = std::max( ( std::ptrdiff_t )0, i + l_a + l_b ); 
+							j < std::min( i - 1, i + u_a + u_b - 1 ); 
+							++j ) {
+							
+							auto c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+
+							// Size + Symmetry constraints
+							//    j + 1                <= l < i
+							// Band constraints
+							// /\ i + l_a              <= l < i + u_a 
+							// /\ j - u_b + 1          <= l < j - l_b + 1
+							for( std::ptrdiff_t l = std::max( { j + 1, i + l_a, j - u_b + 1 } ); 
+								l < std::min( { i, i + u_a, j - l_b + 1 } ); 
+								++l ) {
+								// Access to A^T
+								const auto ta { internal::access( A, internal::getStorageIndex( A, l, i ) ) };
+								// Access to B^T
+								const auto tb { internal::access( B, internal::getStorageIndex( B, j, l ) ) };
+								(void)internal::apply( temp, ta, tb, oper );
+								(void)internal::foldl( c_val, temp, monoid.getOperator() );
+							}
+						}
+					}
+				}
+			}
+
 
 			return mxm_band_generic< BandPos1, BandPos2 + 1 >( C, A, B, oper, monoid, mulMonoid );
 		}
@@ -286,14 +400,14 @@ namespace alp {
 				"void)"
 			);
 
-			static_assert( 
-				!(
-					structures::is_a< InputStructure1, structures::Symmetric >::value ||
-					structures::is_a< InputStructure2, structures::Symmetric >::value
-				),
-				"alp::internal::mxm_generic: the generic version of mxm cannot be "
-				"used if either of the input matrices is symmetric."
-			);
+			// static_assert( 
+			// 	!(
+			// 		structures::is_a< InputStructure1, structures::Symmetric >::value ||
+			// 		structures::is_a< InputStructure2, structures::Symmetric >::value
+			// 	),
+			// 	"alp::internal::mxm_generic: the generic version of mxm cannot be "
+			// 	"used if either of the input matrices is symmetric."
+			// );
 
 #ifdef _DEBUG
 			std::cout << "In alp::internal::mxm_generic (reference)\n";
@@ -320,43 +434,6 @@ namespace alp {
 			}
 
 			return mxm_band_generic< 0, 0 >( C, A, B, oper, monoid, mulMonoid );
-			// // Currently assuming single band
-			// // extensions to multiple bands requires cartesian product 
-			// // btw A and B's bands.
-
-			// const std::ptrdiff_t l_a { structures::get_lower_bandwidth< 0 >( A ) };
-			// const std::ptrdiff_t u_a { structures::get_upper_bandwidth< 0 >( A ) };
-
-			// const std::ptrdiff_t l_b { structures::get_lower_bandwidth< 0 >( B ) };
-			// const std::ptrdiff_t u_b { structures::get_upper_bandwidth< 0 >( B ) };
-			
-			// // In case of symmetry the iteration domain intersects the the upper 
-			// // (or lower) domain of C
-
-			// constexpr std::ptrdiff_t is_sym { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
-			// constexpr std::ptrdiff_t sym_up { is_sym }; // Temporary until adding multi-choice symmetric layout
-
-			// for( std::ptrdiff_t i = 0; i < m; ++i ) {
-			// 	for( std::ptrdiff_t j = std::max( is_sym * sym_up * i, i + l_a + l_b ); 
-			// 		 j < std::min( (1 - is_sym + is_sym * sym_up) * n + is_sym * (1 - sym_up) * (i + 1), i + u_a + u_b - 1 ); 
-			// 		 ++j ) {
-			// 		for( std::ptrdiff_t l = std::max( { (std::ptrdiff_t)0, i + l_a, j - u_b - 1 } ); 
-			// 			 l < std::min( {k, i + u_a, j - l_b + 1} ); 
-			// 			 ++l ) {
-			// 			std::cout << "temp = A";
-			// 			const auto ta { internal::get(A, i, l ) };
-			// 			std::cout << ".mulOp.B";
-			// 			const auto tb { internal::get(B, l, j ) };
-			// 			(void)internal::apply( temp, ta, tb, oper );
-			// 			std::cout << ";\n";
-			// 			std::cout << "C";
-			// 			(void)internal::foldl( internal::get(C, i, j ), temp, monoid.getOperator() );
-			// 			std::cout << " addMon.= temp;\n";
-			// 		}
-			// 	}
-			// }
-
-			// return SUCCESS;
 		}
 
 	} // namespace internal
