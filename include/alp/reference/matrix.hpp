@@ -650,6 +650,7 @@ namespace alp {
 			protected:
 
 				typedef FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > self_type;
+				friend MatrixBase< self_type >;
 
 				const bool initialized; // Temporary solution, proper implementation pending
 
