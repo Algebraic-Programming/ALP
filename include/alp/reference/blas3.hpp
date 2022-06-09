@@ -218,9 +218,9 @@ namespace alp {
 			constexpr std::ptrdiff_t is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
 
 			// Temporary until adding multiple symmetry directions
-			constexpr std::ptrdiff_t sym_up_a { is_sym_a }; 
-			constexpr std::ptrdiff_t sym_up_b { is_sym_b }; 
-			constexpr std::ptrdiff_t sym_up_c { is_sym_c }; 
+			constexpr std::ptrdiff_t sym_up_a { is_sym_a }; (void)sym_up_a;
+			constexpr std::ptrdiff_t sym_up_b { is_sym_b }; (void)sym_up_b;
+			constexpr std::ptrdiff_t sym_up_c { is_sym_c }; (void)sym_up_c;
 
 			// Intersecting potential symmetry of A and B, 
 			// in which case consider case Up( A ) * Up( B )
@@ -317,7 +317,7 @@ namespace alp {
 					}
 				}
 
-				if( ( 1 - is_sym_c ) * is_sym_b ) {
+				if( ( 1 - is_sym_c ) && is_sym_b ) {
 					// Intersecting potential symmetry of A and B, 
 					// in which case consider case Lo( A ) * Lo( B ).
 					// Useful only if C is not sym
