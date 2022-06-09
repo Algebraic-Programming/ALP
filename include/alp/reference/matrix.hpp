@@ -1138,30 +1138,6 @@ namespace alp {
 
 	}; // Matrix UpperTriangular
 
-	//template< typename Structure >
-	//struct MatrixFunctorLambda { };
-
-	//// Lambda function used by Identity matrix
-	//template<>
-	//struct MatrixFunctorLambda< structures::Identity > {
-	//	static auto lambda =
-	//		[]( const size_t i, const size_t j ) {
-	//				return ( i == j ) ? 1 : 0;
-	//		};
-
-	//	//typedef decltype( lambda ) type;	
-	//};
-
-	namespace lambdas {
-
-		auto identity =
-			[]( const size_t i, const size_t j ) {
-					return ( i == j ) ? 1 : 0;
-			};
-		typedef decltype( identity ) identity_type;
-
-	}; // namespace functor_lambdas
-
 	// Matrix Identity
 //	template< typename T, typename View, typename ImfR, typename ImfC >
 //	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
@@ -1214,13 +1190,9 @@ namespace alp {
 //	}; // Matrix Identity, container
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > :
-		//public internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type > {
 		public internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to > {
 
 		protected:
-			/*********************
-			 Storage info friends
-			******************** */
 
 			typedef Matrix< T, structures::Identity, Density::Dense, View, ImfR, ImfC, reference > self_type;
 			typedef typename View::applied_to lambda_type;
@@ -1244,12 +1216,10 @@ namespace alp {
 			};
 
 			Matrix( lambda_type lambda, const size_t rows, const size_t cap = 0 ) :
-				//internal::MatrixFunctor< T, ImfR, ImfC, MatrixFunctorLambda< structures::Identity >::type >(
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, lambda_type >(
 					true,
 					imf::Id( rows ),
 					imf::Id( rows ),
-					//MatrixFunctorLambda< structures::Identity >::lambda,
 					lambda
 				) {
 				(void)cap;
