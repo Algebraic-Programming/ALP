@@ -317,8 +317,8 @@ namespace alp {
 
 	namespace internal {
 		template< typename T, typename Structure, typename View, typename Imf >
-		bool getInitialized( alp::Vector< T, Structure, Density::Dense, View, Imf, reference > & v ) noexcept {
-			return getInitialized( v );
+		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, Imf, reference > &v ) noexcept {
+			return getInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type >( v ) );
 		}
 
 		template< typename T, typename Structure, typename View, typename Imf >
