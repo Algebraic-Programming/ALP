@@ -349,10 +349,18 @@ namespace alp {
 	} // namespace internal
 
 	/**
-	 * @brief A reference Matrix is an ALP object.
+	 * Identifies a reference internal matrix is an ALP container.
+	 * \internal \todo Should this relation remain?
 	 */
 	template< typename T >
 	struct is_container< internal::Matrix< T, reference > > {
+		static const constexpr bool value = true;
+	};
+
+	/** Identifies any reference implementation of ALP matrix as an ALP matrix. */
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > {
+		/** A reference ALP matrix is an ALP matrix */
 		static const constexpr bool value = true;
 	};
 
@@ -742,13 +750,6 @@ namespace alp {
 	 */
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, Structure, density, View, ImfR, ImfC, reference > { };
-
-	// template specializations for ALP type traits
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > {
-		/** A reference Matrix is an ALP container */
-		static const constexpr bool value = true;
-	};
 
 	/**
 	 * @brief General matrix with physical container.

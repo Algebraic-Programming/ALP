@@ -181,8 +181,8 @@ namespace alp {
 
 	/** Identifies any reference scalar as an ALP scalar. */
 	template< typename T, typename Structure >
-	struct is_container< Scalar< T, Structure, reference > > {
-		/** A scalar is an ALP object. */
+	struct is_scalar< Scalar< T, Structure, reference > > {
+		/** A reference scalar is an ALP scalar. */
 		static const constexpr bool value = true;
 	};
 

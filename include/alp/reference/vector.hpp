@@ -366,13 +366,6 @@ namespace alp {
 	template< typename T, typename Structure, typename View, typename Imf >
 	class Vector< T, Structure, Density::Dense, View, Imf, reference > { };
 
-	// template specializations for ALP type traits
-	template< typename T, typename Structure, typename View, typename Imf >
-	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > {
-		/** A reference Matrix is an ALP container */
-		static const constexpr bool value = true;
-	};
-
 	/**
 	 * Original View over a vector container.
 	 */
@@ -458,10 +451,10 @@ namespace alp {
 
 	}; // class Vector with physical container
 
-	/** Identifies any reference vector as an ALP vector. */
+	/** Identifies any reference ALP vector as an ALP vector. */
 	template< typename T, typename Structure, typename View, typename Imf >
-	struct is_container< Vector< T, Structure, Density::Dense, View, Imf, reference > > {
-		/** A reference_vector is an ALP object. */
+	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > {
+		/** A reference vector is an ALP vector */
 		static const constexpr bool value = true;
 	};
 
