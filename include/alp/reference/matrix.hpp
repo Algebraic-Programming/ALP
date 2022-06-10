@@ -395,10 +395,14 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		template< typename MatrixType >
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+		>
 		bool getInitialized( const MatrixType &A ) noexcept;
 
-		template< typename MatrixType >
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
 	} // namespace internal
@@ -432,10 +436,10 @@ namespace alp {
 
 			friend std::pair< size_t, size_t > dims<>( const MatrixBase< DerivedMatrix > &A ) noexcept;
 
-			template< typename MatrixType >
+			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value, bool > >
 			friend bool getInitialized( const MatrixType &A ) noexcept;
 
-			template< typename MatrixType >
+			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value, bool > >
 			friend void setInitialized( MatrixType &A, const bool initialized ) noexcept;
 
 			protected:
@@ -459,7 +463,6 @@ namespace alp {
 
 				void setInitialized( const bool initialized ) {
 					static_cast< DerivedMatrix & >( *this ).setInitialized( initialized );
-
 				}
 
 				template< typename AccessType, typename StorageIndexType >
@@ -1723,12 +1726,16 @@ namespace alp {
 	/** Definitions of previously declared global methods that operate on ALP Matrix */
 	namespace internal {
 
-		template< typename MatrixType >
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+		>
 		bool getInitialized( const MatrixType &A ) noexcept {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getInitialized();
 		}
 
-		template< typename MatrixType >
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+		>
 		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
 			return static_cast< MatrixBase< typename MatrixType::base_type > & >( A ).template setInitialized( initialized );
 		}
