@@ -371,11 +371,13 @@ namespace alp {
 	class Vector< T, structures::General, Density::Dense, View, Imf, reference > :
 		public Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > {
 
-		private:
+		public:
 
 			typedef Vector< T, structures::General, Density::Dense, View, Imf, reference > self_type;
 			typedef Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > base_type;
 			typedef typename base_type::target_type target_type;
+
+		private:
 
 			/*********************
 				Storage info friends
