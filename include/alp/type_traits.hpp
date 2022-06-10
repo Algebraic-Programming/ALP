@@ -26,22 +26,61 @@
 namespace alp {
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS container.
+	 * Used to inspect whether a given type is an ALP scalar.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * There are only two GraphBLAS containers:
+	 */
+	template< typename T >
+	struct is_scalar {
+		/** Base case: an arbitrary type is not a ALP scalar. */
+		static const constexpr bool value = false;
+	};
+
+	/**
+	 * Used to inspect whether a given type is an ALP vector.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 */
+	template< typename T >
+	struct is_vector {
+		/** Base case: an arbitrary type is not a ALP vector. */
+		static const constexpr bool value = false;
+	};
+
+	/**
+	 * Used to inspect whether a given type is an ALP matrix.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 */
+	template< typename T >
+	struct is_matrix {
+		/** Base case: an arbitrary type is not a ALP matrix. */
+		static const constexpr bool value = false;
+	};
+
+	/**
+	 * Used to inspect whether a given type is an ALP container.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 * There are only three ALP containers:
+	 *  -# alp::Scalar,
 	 *  -# alp::Vector, and
 	 *  -# alp::Matrix.
 	 */
 	template< typename T >
 	struct is_container {
-		/** Base case: an arbitrary type is not a GraphBLAS object. */
-		static const constexpr bool value = false;
+		/** An ALP container is either a scalar, a vector, or a matrix. */
+		static const constexpr bool value = is_scalar< T >::value ||
+			is_vector< T >::value ||
+			is_matrix< T >::value;
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS semiring.
+	 * Used to inspect whether a given type is a ALP semiring.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -52,7 +91,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS monoid.
+	 * Used to inspect whether a given type is a ALP monoid.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -63,7 +102,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS operator.
+	 * Used to inspect whether a given type is a ALP operator.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -74,11 +113,11 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS object.
+	 * Used to inspect whether a given type is a ALP object.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * A GraphBLAS object is either a container, a semiring, a monoid, or an
+	 * A ALP object is either a container, a semiring, a monoid, or an
 	 * operator.
 	 *
 	 * @see #is_monoid
@@ -88,7 +127,7 @@ namespace alp {
 	 */
 	template< typename T >
 	struct is_object {
-		/** A GraphBLAS object is either a container, a semiring, a monoid, or an operator. */
+		/** A ALP object is either a container, a semiring, a monoid, or an operator. */
 		static const constexpr bool value = is_container< T >::value ||
 			is_semiring< T >::value ||
 			is_monoid< T >::value ||

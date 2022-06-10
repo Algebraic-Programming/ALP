@@ -743,6 +743,13 @@ namespace alp {
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, Structure, density, View, ImfR, ImfC, reference > { };
 
+	// template specializations for ALP type traits
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > {
+		/** A reference Matrix is an ALP container */
+		static const constexpr bool value = true;
+	};
+
 	/**
 	 * @brief General matrix with physical container.
 	 */
