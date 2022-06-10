@@ -758,7 +758,11 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value > {
+		public std::conditional<
+			std::is_same< view::Functor< typename View::applied_to >, View >::value,
+			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value >
+		>::type {
 
 		protected:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -874,6 +878,15 @@ namespace alp {
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
+
+			template<
+				typename ViewType = View,
+				typename = typename std::enable_if<
+					std::is_same< ViewType, view::Functor< typename View::applied_to > >::value &&
+					std::is_same< ViewType, View >::value >::type
+			>
+			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
 
 	}; // General Matrix
 
@@ -1202,7 +1215,7 @@ namespace alp {
 			typedef LambdaType lambda_type;
 
 		public:
-			typedef internal::MatrixFunctor< T, ImfR, ImfC, LambdaType > base_type;
+			typedef internal::FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > base_type;
 			/** Exposes the element type and the structure. */
 			typedef Structure structure;
 
