@@ -220,6 +220,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	grb::utils::Timer timer;
 	timer.reset();
 
+	out.times.io = timer.time();
+
 	// assume successful run
 	out.error_code = SUCCESS;
 	RC rc { SUCCESS };
@@ -247,6 +249,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
+	out.times.preamble = timer.time();
+
 	Matrix< double > & A { hpcg_state->A };
 	Vector< double > & x { hpcg_state->x };
 	Vector< double > & b { hpcg_state->b };
@@ -264,14 +268,12 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	out.times.preamble = timer.time();
-
 	const bool with_preconditioning = ! in.no_preconditioning;
+	out.test_repetitions = 0;
 	if( in.evaluation_run ) {
-		out.test_repetitions = 0;
-		timer.reset();
+		double single_time_start = timer.time();
 		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-		double single_time = timer.time();
+		double single_time = timer.time() - single_time_start;
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 		}
@@ -279,25 +281,34 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		out.test_repetitions = static_cast< size_t >( 1000.0 / single_time ) + 1;
 	} else {
 		// do benchmark
-		timer.reset();
+		double time_start = timer.time();
 		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
 			rc = set( x, 0.0 );
 			assert( rc == SUCCESS );
 			rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-			std::cout << " ---> out.residual="<< out.residual << "\n";
-
-			rc = rc ? rc : grb::eWiseLambda( [ &x ]( const size_t i ) { x[ i ] -= 1;}, x );
-			print_norm (x, " ---> norm(x)");
 			
 			out.test_repetitions++;
 			if( rc != SUCCESS ) {
 				break;
 			}
+
+#ifdef HPCG_PRINT_SYSTEM
+			std::cout << " ---> out.residual="<< out.residual << "\n";
+#endif
 		}
-		double time_taken { timer.time() };
+		double time_taken = timer.time() - time_start;
+		rc = rc ? rc : collectives<>::reduce( time_taken, 0, operators::max< double >() );
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
+
+#ifdef HPCG_PRINT_SYSTEM
+		rc = rc ? rc : grb::eWiseLambda( [ &x ]( const size_t i ) { x[ i ] -= 1;}, x );
+		print_norm (x, " ---> norm(x)");
+#endif
 		// sleep( 1 );
 	}
+
+	out.times.io = timer.time() - out.times.io;
+	out.times.preamble = timer.time() - out.times.preamble;
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -449,7 +460,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 			sim_in.matRfiles.push_back (fnameR);
 		}
 		{
-			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
+			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels + 1 );
 			std::string fnameA = fnamebase + "_A.mtx";
 			sim_in.matAfiles.push_back (fnameA);
 		}		
