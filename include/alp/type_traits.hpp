@@ -24,6 +24,7 @@
 #define _H_ALP_TYPE_TRAITS
 
 #include <type_traits>
+#include <alp/views.hpp>
 
 namespace alp {
 
@@ -229,6 +230,31 @@ namespace alp {
 	template< typename T >
 	struct is_concrete : internal::is_view_over_concrete_container< typename inspect_view< T >::type > {
 		static_assert( is_container< T >::value, "Argument to is_concrete must be an ALP container." );
+	};
+
+	/**
+	 * Inspects whether a provided ALP type is original container or a view over
+	 * another container.
+	 *
+	 * @tparam T The type of the ALP container to inspect.
+	 *
+	 * The value is true if the provided type corresponds to an ALP container with
+	 * original storage:
+	 * - physical container : a view over void type
+	 * - functor : a functor view over an functor
+	 * The value is false otherwise.
+	 *
+	 */
+	template< typename T >
+	struct is_original : std::integral_constant<
+		bool,
+		std::is_void< typename inspect_view< T >::type::applied_to >::value ||
+		std::is_same<
+			typename inspect_view< T >::type,
+			view::Functor< typename inspect_view< T >::type::applied_to >
+		>::value
+	> {
+		static_assert( is_container< T >::value, "Argument to is_original must be an ALP container." );
 	};
 
 } // namespace alp
