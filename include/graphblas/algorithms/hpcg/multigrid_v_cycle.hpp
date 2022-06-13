@@ -188,11 +188,6 @@ namespace grb {
 					assert( ret == SUCCESS );
 				}
 				
-				
-				// for( std::size_t i { 0 }; i < smoother_steps && ret == SUCCESS; i++ ) {
-				// 	ret = ret ? ret : red_black_gauss_seidel( data, ring );
-				// 	assert( ret == SUCCESS );
-				// }
 				return ret;
 			}
 
