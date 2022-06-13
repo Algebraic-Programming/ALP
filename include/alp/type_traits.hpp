@@ -205,6 +205,43 @@ namespace alp {
 	template< typename Container >
 	struct extract_view {};
 
+
+	namespace internal {
+
+		template< typename View >
+		struct is_view_over_concrete_container {
+			/**
+			 * If a view is a view over a container,
+			 * all views over this view are also views over a container.
+			 */
+			static const constexpr bool value = is_view_over_concrete_container< typename View::applied_to >::value;
+		};
+
+		template<>
+		struct is_view_over_concrete_container< void > {
+			/* View over a void type is a view over a container */
+			static const constexpr bool value = true;
+		};
+
+	} // namespace internal
+	/**
+	 * Inspects whether a provided ALP type is based on a concrete (physical) container.
+	 *
+	 * ALP containers can either be based on a physical container or a functor.
+	 *
+	 * @tparam T The ALP container to inspect.
+	 *
+	 * The value is true if the provided type corresponds to an ALP container with
+	 * physical container.
+	 * The value is false if the provided type corresponds to an ALP container
+	 * based on a functor object.
+	 */
+	template< typename T >
+	struct is_concrete {
+		static_assert( is_container< T >::value, "Supported only for ALP containers" );
+		static const constexpr bool value = internal::is_view_over_concrete_container< typename extract_view< T >::type >::value;
+	};
+
 } // namespace alp
 
 #endif
