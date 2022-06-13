@@ -206,9 +206,9 @@ namespace alp {
 
 	namespace internal {
 
-		template< typename View >
-		struct is_view_over_concrete_container : is_view_over_concrete_container< typename View::applied_to > {
-			//static_assert( /* TODO condition */, "Argument to internal::is_view_over_concrete_container must be a view.");
+		template< typename T >
+		struct is_view_over_concrete_container : is_view_over_concrete_container< typename inspect_view< T >::type::applied_to > {
+			static_assert( is_vector< T >::value || is_matrix< T >::value, "Argument to internal::is_view_over_concrete_container must be an ALP vector or an ALP matrix.");
 		};
 
 		template<>
@@ -228,7 +228,7 @@ namespace alp {
 	 * based on a functor object.
 	 */
 	template< typename T >
-	struct is_concrete : internal::is_view_over_concrete_container< typename inspect_view< T >::type > {
+	struct is_concrete : internal::is_view_over_concrete_container< T  > {
 		static_assert( is_container< T >::value, "Argument to is_concrete must be an ALP container." );
 	};
 
@@ -246,14 +246,7 @@ namespace alp {
 	 *
 	 */
 	template< typename T >
-	struct is_original : std::integral_constant<
-		bool,
-		std::is_void< typename inspect_view< T >::type::applied_to >::value ||
-		std::is_same<
-			typename inspect_view< T >::type,
-			view::Functor< typename inspect_view< T >::type::applied_to >
-		>::value
-	> {
+	struct is_original : std::integral_constant< bool, T::is_original > {
 		static_assert( is_container< T >::value, "Argument to is_original must be an ALP container." );
 	};
 
