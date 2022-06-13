@@ -228,7 +228,7 @@ namespace alp {
 	 */
 	template< typename T >
 	struct is_concrete : internal::is_view_over_concrete_container< typename extract_view< T >::type > {
-		static_assert( is_container< T >::value, "Supported only for ALP containers" );
+		static_assert( is_container< T >::value, "Argument to is_concrete must be an ALP container." );
 	};
 
 } // namespace alp
