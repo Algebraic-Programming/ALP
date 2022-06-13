@@ -187,6 +187,24 @@ namespace alp {
 
 	} // end namespace alp::internal
 
+	/**
+	 * Used to get a structure type of the given ALP container
+	 *
+	 * @tparam T The ALP container to inspect.
+	 *
+	 */
+	template< typename Container >
+	struct extract_structure {};
+
+	/**
+	 * Used to get a View type of the given ALP container
+	 *
+	 * @tparam T The ALP container to inspect.
+	 *
+	 */
+	template< typename Container >
+	struct extract_view {};
+
 } // namespace alp
 
 #endif
