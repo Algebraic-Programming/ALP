@@ -906,7 +906,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::transpose, d > {
-				using type = Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >;
+				using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
 			/** Constructor for an original matrix. */
