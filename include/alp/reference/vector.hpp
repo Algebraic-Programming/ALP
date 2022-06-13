@@ -273,10 +273,7 @@ namespace alp {
 
 	/** Identifies any reference vector as an ALP vector. */
 	template< typename T >
-	struct is_container< internal::Vector< T, reference > > {
-		/** A reference_vector is an ALP object. */
-		static const constexpr bool value = true;
-	};
+	struct is_container< internal::Vector< T, reference > > : std::true_type {};
 
 	namespace internal {
 
@@ -453,10 +450,7 @@ namespace alp {
 
 	/** Identifies any reference ALP vector as an ALP vector. */
 	template< typename T, typename Structure, typename View, typename Imf >
-	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > {
-		/** A reference vector is an ALP vector */
-		static const constexpr bool value = true;
-	};
+	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > : std::true_type {};
 
 	/**
 	 * @brief  Generate an original view of the input Vector. The function guarantees 

@@ -23,6 +23,8 @@
 #ifndef _H_ALP_TYPE_TRAITS
 #define _H_ALP_TYPE_TRAITS
 
+#include <type_traits>
+
 namespace alp {
 
 	/**
@@ -30,36 +32,33 @@ namespace alp {
 	 *
 	 * @tparam T The type to inspect.
 	 *
+	 * \note An arbitrary type is not an ALP scalar.
+	 *
 	 */
 	template< typename T >
-	struct is_scalar {
-		/** Base case: an arbitrary type is not a ALP scalar. */
-		static const constexpr bool value = false;
-	};
+	struct is_scalar : std::false_type {};
 
 	/**
 	 * Used to inspect whether a given type is an ALP vector.
 	 *
 	 * @tparam T The type to inspect.
 	 *
+	 * \note An arbitrary type is not an ALP vector.
+	 *
 	 */
 	template< typename T >
-	struct is_vector {
-		/** Base case: an arbitrary type is not a ALP vector. */
-		static const constexpr bool value = false;
-	};
+	struct is_vector : std::false_type {};
 
 	/**
 	 * Used to inspect whether a given type is an ALP matrix.
 	 *
 	 * @tparam T The type to inspect.
 	 *
+	 * \note An arbitrary type is not an ALP matrix.
+	 *
 	 */
 	template< typename T >
-	struct is_matrix {
-		/** Base case: an arbitrary type is not a ALP matrix. */
-		static const constexpr bool value = false;
-	};
+	struct is_matrix : std::false_type {};
 
 	/**
 	 * Used to inspect whether a given type is an ALP container.
@@ -72,12 +71,10 @@ namespace alp {
 	 *  -# alp::Matrix.
 	 */
 	template< typename T >
-	struct is_container {
-		/** An ALP container is either a scalar, a vector, or a matrix. */
-		static const constexpr bool value = is_scalar< T >::value ||
-			is_vector< T >::value ||
-			is_matrix< T >::value;
-	};
+	struct is_container : std::integral_constant<
+		bool,
+		is_scalar< T >::value || is_vector< T >::value || is_matrix< T >::value
+	> {};
 
 	/**
 	 * Used to inspect whether a given type is a ALP semiring.
@@ -209,19 +206,12 @@ namespace alp {
 	namespace internal {
 
 		template< typename View >
-		struct is_view_over_concrete_container {
-			/**
-			 * If a view is a view over a container,
-			 * all views over this view are also views over a container.
-			 */
-			static const constexpr bool value = is_view_over_concrete_container< typename View::applied_to >::value;
+		struct is_view_over_concrete_container : is_view_over_concrete_container< typename View::applied_to > {
+			//static_assert( /* TODO condition */, "Argument to internal::is_view_over_concrete_container must be a view.");
 		};
 
 		template<>
-		struct is_view_over_concrete_container< void > {
-			/* View over a void type is a view over a container */
-			static const constexpr bool value = true;
-		};
+		struct is_view_over_concrete_container< void > : std::true_type {};
 
 	} // namespace internal
 	/**
@@ -237,9 +227,8 @@ namespace alp {
 	 * based on a functor object.
 	 */
 	template< typename T >
-	struct is_concrete {
+	struct is_concrete : internal::is_view_over_concrete_container< typename extract_view< T >::type > {
 		static_assert( is_container< T >::value, "Supported only for ALP containers" );
-		static const constexpr bool value = internal::is_view_over_concrete_container< typename extract_view< T >::type >::value;
 	};
 
 } // namespace alp

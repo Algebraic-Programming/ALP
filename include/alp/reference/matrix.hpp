@@ -353,16 +353,11 @@ namespace alp {
 	 * \internal \todo Should this relation remain?
 	 */
 	template< typename T >
-	struct is_container< internal::Matrix< T, reference > > {
-		static const constexpr bool value = true;
-	};
+	struct is_container< internal::Matrix< T, reference > > : std::true_type {};
 
 	/** Identifies any reference implementation of ALP matrix as an ALP matrix. */
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
-	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > {
-		/** A reference ALP matrix is an ALP matrix */
-		static const constexpr bool value = true;
-	};
+	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > : std::true_type {};
 
 	// Matrix-related implementation
 
