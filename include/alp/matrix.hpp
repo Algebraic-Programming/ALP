@@ -54,12 +54,12 @@ namespace alp {
 
 	/** Specializations of ALP backend-agnostic type traits */
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	struct extract_structure< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
+	struct inspect_structure< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
 		typedef Structure type;
 	};
 
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	struct extract_view< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
+	struct inspect_view< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
 		typedef View type;
 	};
 

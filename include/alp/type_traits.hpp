@@ -191,7 +191,7 @@ namespace alp {
 	 *
 	 */
 	template< typename Container >
-	struct extract_structure {};
+	struct inspect_structure {};
 
 	/**
 	 * Used to get a View type of the given ALP container
@@ -200,7 +200,7 @@ namespace alp {
 	 *
 	 */
 	template< typename Container >
-	struct extract_view {};
+	struct inspect_view {};
 
 
 	namespace internal {
@@ -227,7 +227,7 @@ namespace alp {
 	 * based on a functor object.
 	 */
 	template< typename T >
-	struct is_concrete : internal::is_view_over_concrete_container< typename extract_view< T >::type > {
+	struct is_concrete : internal::is_view_over_concrete_container< typename inspect_view< T >::type > {
 		static_assert( is_container< T >::value, "Argument to is_concrete must be an ALP container." );
 	};
 
