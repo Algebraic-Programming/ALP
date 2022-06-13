@@ -100,17 +100,78 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 
 
 /**
- * @brief Container for system parameters to create the HPCG problem.
+ * @brief Container to store matrices loaded from a file.
  */
-struct system_input {
-	size_t nx, ny, nz;
-	size_t max_coarsening_levels;
+template< typename T = double >
+struct mat_data {
+	std::size_t *i_data;
+	std::size_t *j_data;
+	T *v_data;
+	std::size_t n;
+
+	void resize( std::size_t in ){
+		n=in;
+		i_data = new std::size_t [ in ];
+		j_data = new std::size_t [ in ];
+		v_data = new T [ in ];
+	};
+
+	mat_data( ){
+		n = 0;
+	};
+	
+	mat_data( std::size_t in ){
+		resize( in );
+	};
+
+	std::size_t size(){
+		return n;
+	}
+
+	~mat_data(){
+		delete [] i_data;
+		delete [] i_data;
+		delete [] v_data;
+	}
 };
+
+/**
+ * @brief Container to store vectors loaded from a file.
+ */
+template< typename T = double >
+struct vec_data {
+	T *v_data;
+	std::size_t n;
+
+	void resize( std::size_t in ){
+		n=in;
+		v_data = new T [ in ];
+	};
+
+	vec_data( ){
+		n = 0;
+	};
+	
+	vec_data( std::size_t in ){
+		resize( in );
+	};
+
+	std::size_t size(){
+		return n;
+	}
+
+	~vec_data(){
+		delete [] v_data;
+	}
+};
+
+
 
 /**
  * @brief Container for the parameters for the HPCG simulation.
  */
-struct simulation_input : public system_input {
+struct simulation_input {
+	std::size_t max_coarsening_levels;
 	std::size_t test_repetitions;
 	std::size_t max_iterations;
 	std::size_t smoother_steps;
@@ -119,16 +180,101 @@ struct simulation_input : public system_input {
 	std::vector< std::string > matMfiles;
 	std::vector< std::string > matPfiles;
 	std::vector< std::string > matRfiles;
+	
 	bool evaluation_run;
 	bool no_preconditioning;
 };
 
-struct preloaded_matrices {
-	std::vector< std::string > matAfiles;
-	std::vector< std::string > matMfiles;
-	std::vector< std::string > matPfiles;
-	std::vector< std::string > matRfiles;
+
+/**
+ * @brief Container to store all data for HPCG hierarchy.
+ */
+class preloaded_matrices : public simulation_input {
+
+public :
+	std::size_t nAmt, nMmt, nPmt, nRmt;
+	mat_data<double> *matAbuffer;
+	vec_data<double> *matMbuffer;
+	mat_data<double> *matPbuffer;
+	mat_data<double> *matRbuffer;
+
+	grb::RC read_matrix( std::vector< std::string > & fname,
+						  mat_data<double> * data ) {
+		grb::RC rc = SUCCESS;
+		for ( size_t i = 0; i < fname.size(); i++ ){
+			grb::utils::MatrixFileReader< double, std::conditional<
+				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+													  grb::config::RowIndexType,
+													  grb::config::ColIndexType >::type
+										  > parser_mat( fname[i].c_str(), true );
+#ifdef DEBUG			
+			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
+			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
+			std::cout << " ---> parser_mat.n()=" << parser_mat.n() << "\n";
+			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
+			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
+#endif
+			
+			data[i].resize( parser_mat.nz() );
+			size_t k = 0;
+			for (auto it=parser_mat.begin( SEQUENTIAL );
+				 it != parser_mat.end( SEQUENTIAL);
+				 ++it ){
+				data[i].i_data[k]=it.i();
+				data[i].j_data[k]=it.j();
+				data[i].v_data[k]=it.v();
+				k++;
+			}
+		}
+
+		return ( rc );
+	}
+
+
+	grb::RC read_vector( std::vector< std::string > & fname,
+						 vec_data<double> * data ) {
+		grb::RC rc = SUCCESS;
+		for ( size_t i = 0; i < fname.size(); i++ ){
+			std::ifstream inFile;
+			inFile.open(fname[i].c_str() );
+			std::string headder;
+			size_t n,m;
+			std::getline(inFile, headder); // skip the first line
+			inFile >> n >> m;
+			data[i].resize( n );
+			if (inFile.is_open())  	{
+				for (size_t j = 0; j < n; j++) {
+					inFile >> data[i].v_data[j];
+				}
+				inFile.close();
+			}
+		}
+		return ( rc );
+	}
+	
+	grb::RC read_vec_matrics(){
+		grb::RC rc = SUCCESS;
+
+		nAmt = matAfiles.size() ;
+		nMmt = matMfiles.size() ;
+		nPmt = matPfiles.size() ;
+		nRmt = matRfiles.size() ;
+
+		matAbuffer = new mat_data<double> [ nAmt ];
+		matMbuffer = new vec_data<double> [ nMmt ];
+		matPbuffer = new mat_data<double> [ nPmt ];
+		matRbuffer = new mat_data<double> [ nRmt ];
+		
+		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
+		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
+		rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
+		rc = rc ? rc : read_vector( matMfiles, matMbuffer );
+
+		return rc;
+	}
 };
+
+
 
 /**
  * @brief Containers for test outputs.
@@ -164,20 +310,6 @@ T static next_pow_2( T n ) {
 	}
 	return n + 1;
 }
-
-/**
- * @brief Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
- * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
- */
-static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in, preloaded_matrices & inMats ) {
-	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
-	struct hpcg_system_params< 3, double > params {
-		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
-	};
-
-	return build_hpcg_system< 3, double >( holder, params, inMats );
-}
-
 
 
 #ifdef HPCG_PRINT_SYSTEM
@@ -230,13 +362,17 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	inputData.matAfiles = in.matAfiles;
 	inputData.matMfiles = in.matMfiles;
 	inputData.matPfiles = in.matPfiles;
-	inputData.matRfiles = in.matRfiles;	
-	
-	
+	inputData.matRfiles = in.matRfiles;
+
+	rc = inputData.read_vec_matrics();
+	if( rc != SUCCESS ) {
+		std::cerr << "Failure to read data" << std::endl;
+	}
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
-	rc = build_3d_system( hpcg_state, in, inputData );
+	rc = build_hpcg_system< double >( hpcg_state, in.max_coarsening_levels, inputData );
+
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
@@ -359,9 +495,6 @@ int main( int argc, char ** argv ) {
 	double max_residual_norm;
 
 	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
-	thcout << "System size x: " << sim_in.nx << std::endl;
-	thcout << "System size y: " << sim_in.ny << std::endl;
-	thcout << "System size z: " << sim_in.nz << std::endl;
 	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels << std::endl;
 	thcout << "Test repetitions: " << sim_in.test_repetitions << std::endl;
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
@@ -427,9 +560,6 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 								"level may be limited by the minimum system dimension" )
 		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str, "","file pattern for files contining matrices A, M_diag, P, R "
 		 						"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read /path/to/dir/level_0_A.mtx,  /path/to/dir/level_1_A.mtx, /path/to/dir/level_2_A.mtx ... " )
-		.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
-		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
-		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
 		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(), "consecutive test repetitions before benchmarking" )
 		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(), "test repetitions with complete initialization" )
 		.add_optional_argument( "--max_iter", sim_in.max_iterations, MAX_ITERATIONS_DEF, "maximum number of HPCG iterations" )
@@ -444,7 +574,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	
 
 	parser.parse( argc, argv );
-
+	
 	std::string matAfile=sim_in.matAfile_c_str;
 	if ( !matAfile.empty() ) {
 		std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
@@ -458,6 +588,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 			sim_in.matMfiles.push_back (fnameM);
 			sim_in.matPfiles.push_back (fnameP);
 			sim_in.matRfiles.push_back (fnameR);
+			
 		}
 		{
 			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels + 1 );
@@ -488,21 +619,6 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	}
 
 	// check for valid values
-	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
-	if( ssize != sim_in.nx ) {
-		std::cout << "Setting system size x to " << ssize << " instead of " << sim_in.nx << std::endl;
-		sim_in.nx = ssize;
-	}
-	ssize = std::max( next_pow_2( sim_in.ny ), PHYS_SYSTEM_SIZE_MIN );
-	if( ssize != sim_in.ny ) {
-		std::cout << "Setting system size y to " << ssize << " instead of " << sim_in.ny << std::endl;
-		sim_in.ny = ssize;
-	}
-	ssize = std::max( next_pow_2( sim_in.nz ), PHYS_SYSTEM_SIZE_MIN );
-	if( ssize != sim_in.nz ) {
-		std::cout << "Setting system size z to " << ssize << " instead of " << sim_in.nz << std::endl;
-		sim_in.nz = ssize;
-	}
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
 		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS << " instead of " << sim_in.max_coarsening_levels << std::endl;
 		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
