@@ -554,7 +554,7 @@ namespace grb {
 		 * Should be followed by a manual call to #initialize.
 		 */
 		Matrix() : id( std::numeric_limits< uintptr_t >::max() ),
-			remove_id( false )
+			remove_id( false ), m( 0 ), n( 0 ), cap( 0 ), nz( 0 )
 		{}
 
 		/**
