@@ -54,12 +54,12 @@ namespace alp {
 
 	/** Specializations of ALP backend-agnostic type traits */
 	template< typename T, typename Structure, enum Density density, typename View, typename Imf, enum Backend backend >
-	struct inspect_structure< Vector< T, Structure, density, View, Imf, backend > > {
+	struct internal::inspect_structure< Vector< T, Structure, density, View, Imf, backend > > {
 		typedef Structure type;
 	};
 
 	template< typename T, typename Structure, enum Density density, typename View, typename Imf, enum Backend backend >
-	struct inspect_view< Vector< T, Structure, density, View, Imf, backend > > {
+	struct internal::inspect_view< Vector< T, Structure, density, View, Imf, backend > > {
 		typedef View type;
 	};
 
