@@ -213,35 +213,35 @@ namespace alp {
 			
 			// In case of symmetry the iteration domain intersects the the upper 
 			// (or lower) domain of C
-			constexpr std::ptrdiff_t is_sym_a { structures::is_a< InputStructure1, structures::Symmetric >::value ? 1 : 0 };
-			constexpr std::ptrdiff_t is_sym_b { structures::is_a< InputStructure2, structures::Symmetric >::value ? 1 : 0 };
-			constexpr std::ptrdiff_t is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value ? 1 : 0 };
+			constexpr bool is_sym_a { structures::is_a< InputStructure1, structures::Symmetric >::value };
+			constexpr bool is_sym_b { structures::is_a< InputStructure2, structures::Symmetric >::value };
+			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
 
 			// Temporary until adding multiple symmetry directions
-			constexpr std::ptrdiff_t sym_up_a { is_sym_a }; (void)sym_up_a;
-			constexpr std::ptrdiff_t sym_up_b { is_sym_b }; (void)sym_up_b;
-			constexpr std::ptrdiff_t sym_up_c { is_sym_c }; (void)sym_up_c;
+			constexpr bool sym_up_a { is_sym_a };
+			constexpr bool sym_up_b { is_sym_b };
+			constexpr bool sym_up_c { is_sym_c };
 
 			// Intersecting potential symmetry of A and B, 
 			// in which case consider case Up( A ) * Up( B )
 			for( std::ptrdiff_t i = 0; i < M; ++i ) {
 				// Size + Symmetry constraints
-				//    is_sym_c* i   <= j < N
+				//    sym_up_c * i   <= j < N
 				// Band constraints
 				// /\ i + l_a + l_b <= j < i + u_a + u_b - 1 (u is past-the-end)
-				for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+				for( std::ptrdiff_t j = std::max( sym_up_c * i, i + l_a + l_b ); 
 					 j < std::min( N, i + u_a + u_b - 1 ); 
 					 ++j ) {
 					
-					auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 					// Size + Symmetry constraints
-					//    is_sym_a * i <= l < K * (~is_sym_b) + (j+1) * (is_sym_b)   
+					//    sym_up_a * i <= l < K * (!sym_up_b) + (j+1) * (sym_up_b)   
 					// Band constraints
 					// /\ i + l_a      <= l < i + u_a        
 					// /\ j - u_b + 1  <= l < j - l_b + 1
-					for( std::ptrdiff_t l = std::max( { is_sym_a * i, i + l_a, j - u_b + 1 } ); 
-						 l < std::min( { K * ( 1 - is_sym_b ) + ( j + 1 ) * is_sym_b, i + u_a, j - l_b + 1 } ); 
+					for( std::ptrdiff_t l = std::max( { sym_up_a * i, i + l_a, j - u_b + 1 } ); 
+						 l < std::min( { K * ( !sym_up_b ) + ( j + 1 ) * sym_up_b, i + u_a, j - l_b + 1 } ); 
 						 ++l ) {
 						const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
 						const auto tb { internal::access( B, internal::getStorageIndex( B, l, j ) ) };
@@ -253,26 +253,26 @@ namespace alp {
 				}
 			}
 
-			if ( is_sym_b ) {
+			if ( sym_up_b ) {
 				// Intersecting potential symmetry of A and B, 
 				// in which case consider case Up( A ) * Lo( B )
 				for( std::ptrdiff_t i = 0; i < M; ++i ) {
 					// Size + Symmetry constraints
-					//    is_sym_c* i   <= j < N - 1 
+					//    sym_up_c * i   <= j < N - 1 
 					// Band constraints
 					// /\ i + l_a + l_b <= j < i + u_a + u_b - 1
-					for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+					for( std::ptrdiff_t j = std::max( sym_up_c * i, i + l_a + l_b ); 
 						j < std::min( N - 1, i + u_a + u_b - 1 ); 
 						++j ) {
 						
-						auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+						auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 						// Size + Symmetry constraints
-						//    max(is_sym_a * i, j) <= l < K
+						//    max(sym_up_a * i, j) <= l < K
 						// Band constraints
 						// /\ i + l_a              <= l < i + u_a 
 						// /\ j - u_b + 1          <= l < j - l_b + 1
-						for( std::ptrdiff_t l = std::max( { is_sym_a * i, j, i + l_a, j - u_b + 1 } ); 
+						for( std::ptrdiff_t l = std::max( { sym_up_a * i, j, i + l_a, j - u_b + 1 } ); 
 							l < std::min( { K, i + u_a, j - l_b + 1 } ); 
 							++l ) {
 							const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
@@ -285,30 +285,30 @@ namespace alp {
 				}
 			}
 
-			if ( is_sym_a ) {
+			if ( sym_up_a ) {
 				// Intersecting potential symmetry of A and B, 
 				// in which case consider case Lo( A ) * Up( B )
 				for( std::ptrdiff_t i = 0; i < M; ++i ) {
 					// Size + Symmetry constraints
-					//    is_sym_c* i   <= j < N
+					//    sym_up_c * i   <= j < N
 					// Band constraints
 					// /\ i + l_a + l_b <= j < i + u_a + u_b - 1
-					for( std::ptrdiff_t j = std::max( is_sym_c * i, i + l_a + l_b ); 
+					for( std::ptrdiff_t j = std::max( sym_up_c * i, i + l_a + l_b ); 
 						j < std::min( N, i + u_a + u_b - 1 ); 
 						++j ) {
 						
-						auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+						auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 						// Size + Symmetry constraints
 						//    0                    <= l < min(i, 
-						//                                    K * ( 1 - is_sym_b ) 
-						//                                    + ( j + 1 ) * is_sym_b
+						//                                    K * ( !sym_up_b ) 
+						//                                    + ( j + 1 ) * sym_up_b
 						//                                    )
 						// Band constraints
 						// /\ i + l_a              <= l < i + u_a 
 						// /\ j - u_b + 1          <= l < j - l_b + 1
 						for( std::ptrdiff_t l = std::max( { ( std::ptrdiff_t )0, i + l_a, j - u_b + 1 } ); 
-							l < std::min( { i, K * ( 1 - is_sym_b ) + ( j + 1 ) * is_sym_b, i + u_a, j - l_b + 1 } ); 
+							l < std::min( { i, K * ( !sym_up_b ) + ( j + 1 ) * sym_up_b, i + u_a, j - l_b + 1 } ); 
 							++l ) {
 							// Access to A^T
 							const auto ta { internal::access( A, internal::getStorageIndex( A, l, i ) ) };
@@ -319,7 +319,7 @@ namespace alp {
 					}
 				}
 
-				if( ( 1 - is_sym_c ) && is_sym_b ) {
+				if( ( !sym_up_c ) && sym_up_b ) {
 					// Intersecting potential symmetry of A and B, 
 					// in which case consider case Lo( A ) * Lo( B ).
 					// Useful only if C is not sym
@@ -332,7 +332,7 @@ namespace alp {
 							j < std::min( i - 1, i + u_a + u_b - 1 ); 
 							++j ) {
 							
-							auto & c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+							auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 							// Size + Symmetry constraints
 							//    j + 1                <= l < i
@@ -401,15 +401,6 @@ namespace alp {
 				"used if either of the input matrices is a pattern matrix (of type "
 				"void)"
 			);
-
-			// static_assert( 
-			// 	!(
-			// 		structures::is_a< InputStructure1, structures::Symmetric >::value ||
-			// 		structures::is_a< InputStructure2, structures::Symmetric >::value
-			// 	),
-			// 	"alp::internal::mxm_generic: the generic version of mxm cannot be "
-			// 	"used if either of the input matrices is symmetric."
-			// );
 
 #ifdef _DEBUG
 			std::cout << "In alp::internal::mxm_generic (reference)\n";
