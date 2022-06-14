@@ -54,7 +54,7 @@ namespace grb {
 		grb::RC build_hpcg_system( std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder, const std::size_t max_levels, SYSINP &in ) {
 			grb::RC rc { grb::SUCCESS };
 			std::size_t coarsening_level = 0UL;
-			const size_t n_A = in.matAbuffer[ coarsening_level ].size();
+			const size_t n_A = in.matAbuffer[ coarsening_level ].get_n();
 			grb::algorithms::hpcg_data< T, T, T > * data { new grb::algorithms::hpcg_data< T, T, T >( n_A ) };
 			rc = buildMatrixUnique( data->A,
 									in.matAbuffer[ coarsening_level ].i_data,
@@ -74,7 +74,9 @@ namespace grb {
 						  << "(" << toString( rc ) << ")." << std::endl;
 				return rc;
 			}
-			
+#ifdef HPCG_PRINT_STEPS
+			std::cout << " buildMatrixUnique: constructed data->A " << nrows(data->A) << " x " << ncols(data->A) << " matrix \n";
+#endif
 			assert( ! holder ); // should be empty
 			holder = std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > >( data );
 
@@ -87,6 +89,10 @@ namespace grb {
 					std::cerr << " buildVector failed!\n ";
 					return rc;
 				}
+#ifdef HPCG_PRINT_STEPS
+				std::cout << " buildVector: data->A_diagonal "
+						  << size(data->A_diagonal) << " vector \n";
+#endif
 			}
 
 			std::size_t coarser_size;
@@ -100,7 +106,7 @@ namespace grb {
 			while( coarsening_level  < max_levels ) {
 				assert( *coarser == nullptr );
 				
-				coarser_size = in.matAbuffer[ coarsening_level + 1 ].size();
+				coarser_size = in.matAbuffer[ coarsening_level + 1 ].get_n();
 
 				// build data structures for new level
 				grb::algorithms::multi_grid_data< double, double > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
@@ -123,7 +129,10 @@ namespace grb {
 								  << "(" << toString( rc ) << ")." << std::endl;
 						return rc;
 					}
-					
+#ifdef HPCG_PRINT_STEPS
+					std::cout << " buildMatrixUnique: constructed new_coarser->coarsening_matrix "
+							  << nrows(new_coarser->coarsening_matrix) << " x " << ncols(new_coarser->coarsening_matrix) << " matrix \n";
+#endif
 				}
 				{
 					rc = buildMatrixUnique( new_coarser->A,
@@ -138,8 +147,11 @@ namespace grb {
 						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
 								  << "(" << toString( rc ) << ")." << std::endl;
 						return rc;
-					}					
-					
+					}
+#ifdef HPCG_PRINT_STEPS
+					std::cout << " buildMatrixUnique: constructed new_coarser->A "
+							  << nrows(new_coarser->A) << " x " << ncols(new_coarser->A) << " matrix \n";
+#endif
 				}
 				
 				if( coarsening_level + 1 < max_levels ) {
@@ -151,6 +163,10 @@ namespace grb {
 						std::cerr << " buildVector failed!\n ";
 						return rc;
 					}
+#ifdef HPCG_PRINT_STEPS
+					std::cout << " buildVector: new_coarser->A_diagonal "
+							  << size(new_coarser->A_diagonal) << " vector \n";
+#endif
 				}
 				
 				// prepare for new iteration

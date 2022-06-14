@@ -164,6 +164,7 @@ namespace grb {
 													   minus ); 
 
 #ifdef HPCG_PRINT_STEPS
+					std::cout << " data.A(spai0): " << nrows(data.A) << " x " << ncols(data.A) << " \n";
 					print_norm( data.A_diagonal, " data.A_diagonal" );
 					print_norm( data.smoother_temp, " data.smoother_temp" );
 					print_norm( data.z, " data.z" );
@@ -172,7 +173,7 @@ namespace grb {
 					ret = ret ? ret :
 						grb::eWiseLambda(
 										 [ &data ]( const size_t i ) {
-#ifdef HPCG_PRINT_STEPS											 
+#ifdef HPCG_PRINT_STEPS
 											 if( i < 100 ){
 												 std::cout << " i= " << i
 														   << " data.z[i]= " << data.z[i]
@@ -180,14 +181,14 @@ namespace grb {
 														   << " data.smoother_temp[i]= " << data.smoother_temp[i]
 														   << "\n";
 											 }
-#endif											 
+#endif
 											 data.z[ i ] += data.A_diagonal[ i ] * data.smoother_temp[ i ];
 										 },
 										 data.A_diagonal, data.z, data.smoother_temp );
-					
+
 					assert( ret == SUCCESS );
 				}
-				
+
 				return ret;
 			}
 
@@ -272,7 +273,9 @@ namespace grb {
 				ret = ret ? ret : grb::mxv( cd.Ax_finer, data.A, data.z, ring );
 				assert( ret == SUCCESS );
 
+				
 #ifdef HPCG_PRINT_STEPS
+				std::cout << "  data.A: " << nrows(data.A) << " x " << ncols(data.A) << " \n";
 				print_norm( cd.r, "before coarse cd.r" );
 #endif				
 

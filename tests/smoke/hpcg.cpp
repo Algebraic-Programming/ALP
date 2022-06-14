@@ -107,17 +107,19 @@ struct mat_data {
 	std::size_t *i_data;
 	std::size_t *j_data;
 	T *v_data;
-	std::size_t n;
+	std::size_t nz, n, m;
 
-	void resize( std::size_t in ){
-		n=in;
-		i_data = new std::size_t [ in ];
-		j_data = new std::size_t [ in ];
-		v_data = new T [ in ];
+	void resize( std::size_t innz, std::size_t inn, std::size_t inm ){
+		nz=innz;
+		n=inn;
+		m=inm;
+		i_data = new std::size_t [ nz ];
+		j_data = new std::size_t [ nz ];
+		v_data = new T [ nz ];
 	};
 
 	mat_data( ){
-		n = 0;
+		nz = 0;
 	};
 	
 	mat_data( std::size_t in ){
@@ -125,14 +127,22 @@ struct mat_data {
 	};
 
 	std::size_t size(){
+		return nz;
+	};
+
+	std::size_t get_n(){
 		return n;
-	}
+	};
+
+	std::size_t get_m(){
+		return m;
+	};
 
 	~mat_data(){
 		delete [] i_data;
 		delete [] i_data;
 		delete [] v_data;
-	}
+	};
 };
 
 /**
@@ -145,7 +155,7 @@ struct vec_data {
 
 	void resize( std::size_t in ){
 		n=in;
-		v_data = new T [ in ];
+		v_data = new T [ n ];
 	};
 
 	vec_data( ){
@@ -158,11 +168,11 @@ struct vec_data {
 
 	std::size_t size(){
 		return n;
-	}
+	};
 
 	~vec_data(){
 		delete [] v_data;
-	}
+	};
 };
 
 
@@ -192,7 +202,7 @@ struct simulation_input {
 class preloaded_matrices : public simulation_input {
 
 public :
-	std::size_t nAmt, nMmt, nPmt, nRmt;
+	std::size_t nzAmt, nzMmt, nzPmt, nzRmt;
 	mat_data<double> *matAbuffer;
 	vec_data<double> *matMbuffer;
 	mat_data<double> *matPbuffer;
@@ -215,7 +225,7 @@ public :
 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
 #endif
 			
-			data[i].resize( parser_mat.nz() );
+			data[i].resize( parser_mat.nz(), parser_mat.n(), parser_mat.m() );
 			size_t k = 0;
 			for (auto it=parser_mat.begin( SEQUENTIAL );
 				 it != parser_mat.end( SEQUENTIAL);
@@ -255,15 +265,15 @@ public :
 	grb::RC read_vec_matrics(){
 		grb::RC rc = SUCCESS;
 
-		nAmt = matAfiles.size() ;
-		nMmt = matMfiles.size() ;
-		nPmt = matPfiles.size() ;
-		nRmt = matRfiles.size() ;
+		nzAmt = matAfiles.size() ;
+		nzMmt = matMfiles.size() ;
+		nzPmt = matPfiles.size() ;
+		nzRmt = matRfiles.size() ;
 
-		matAbuffer = new mat_data<double> [ nAmt ];
-		matMbuffer = new vec_data<double> [ nMmt ];
-		matPbuffer = new mat_data<double> [ nPmt ];
-		matRbuffer = new mat_data<double> [ nRmt ];
+		matAbuffer = new mat_data<double> [ nzAmt ];
+		matMbuffer = new vec_data<double> [ nzMmt ];
+		matPbuffer = new mat_data<double> [ nzPmt ];
+		matRbuffer = new mat_data<double> [ nzRmt ];
 		
 		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
 		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
@@ -346,13 +356,10 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
  * parameters in the reference HPCG test.
  */
 void grbProgram( const simulation_input & in, struct output & out ) {
-	
+	grb::utils::Timer timer;
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
-	grb::utils::Timer timer;
-	timer.reset();
 
-	out.times.io = timer.time();
 
 	// assume successful run
 	out.error_code = SUCCESS;
@@ -369,10 +376,13 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		std::cerr << "Failure to read data" << std::endl;
 	}
 
+	timer.reset();
+	// start timing after all data are in memory 
+	out.times.io = timer.time();
+
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
 	rc = build_hpcg_system< double >( hpcg_state, in.max_coarsening_levels, inputData );
-
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
@@ -396,6 +406,11 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	set( b, 0.0 );
 	rc = grb::mxv( b, A, x, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
 	set( x, 0.0 );
+
+	double norm_b=0;
+	rc = grb::dot( norm_b, b, b, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
+	(void)rc;
+	assert( rc == SUCCESS );
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -428,9 +443,6 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 				break;
 			}
 
-#ifdef HPCG_PRINT_SYSTEM
-			std::cout << " ---> out.residual="<< out.residual << "\n";
-#endif
 		}
 		double time_taken = timer.time() - time_start;
 		rc = rc ? rc : collectives<>::reduce( time_taken, 0, operators::max< double >() );
@@ -444,6 +456,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 
 	out.times.io = timer.time() - out.times.io;
+	
 	out.times.preamble = timer.time() - out.times.preamble;
 
 #ifdef HPCG_PRINT_SYSTEM
@@ -459,6 +472,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 				std::cout << "Info: cold HPCG completed within " << out.performed_iterations << " iterations. Last computed residual is " << out.residual << ". Time taken was " << out.times.useful
 						  << " ms. Deduced inner repetitions parameter of " << out.test_repetitions << " to take 1 second or more per inner benchmark." << std::endl;
 			} else {
+				std::cout << "Final residual= "<< out.residual << " relative error= " <<  out.residual/sqrt(norm_b) << "\n";
 				std::cout << "Average time taken for each of " << out.test_repetitions << " HPCG calls (hot start): " << out.times.useful << std::endl;
 			}
 		} else {
@@ -578,7 +592,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	std::string matAfile=sim_in.matAfile_c_str;
 	if ( !matAfile.empty() ) {
 		std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
-		for ( size_t i=0 ; i <= sim_in.max_coarsening_levels ; i++ ){
+		for ( size_t i=0 ; i < sim_in.max_coarsening_levels ; i++ ){
 			std::string fnamebase = matAfile + std::to_string(  i );
 			std::string fnameA = fnamebase + "_A.mtx";
 			std::string fnameM = fnamebase + "_M_diag.mtx";
@@ -591,7 +605,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 			
 		}
 		{
-			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels + 1 );
+			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
 			std::string fnameA = fnamebase + "_A.mtx";
 			sim_in.matAfiles.push_back (fnameA);
 		}		
