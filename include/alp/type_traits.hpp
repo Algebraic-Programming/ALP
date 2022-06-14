@@ -214,41 +214,95 @@ namespace alp {
 		template<>
 		struct is_view_over_concrete_container< void > : std::true_type {};
 
-	} // namespace internal
-	/**
-	 * Inspects whether a provided ALP type is based on a concrete (physical) container.
-	 *
-	 * ALP containers can either be based on a physical container or a functor.
-	 *
-	 * @tparam T The ALP container to inspect.
-	 *
-	 * The value is true if the provided type corresponds to an ALP container with
-	 * physical container.
-	 * The value is false if the provided type corresponds to an ALP container
-	 * based on a functor object.
-	 */
-	template< typename T >
-	struct is_concrete : internal::is_view_over_concrete_container< T  > {
-		static_assert( is_container< T >::value, "Argument to is_concrete must be an ALP container." );
-	};
+		/**
+		 * Inspects whether a view corresponds to a storage-based ALP container.
+		 *
+		 * ALP containers can either be storage-based or functor-based.
+		 *
+		 * @tparam T The view to inspect.
+		 *
+		 * \note A Matrix is storage-based if it has
+		 *       - an original view over void, or
+		 *       - any type of view over another storage-based matrix.
+		 *
+		 */
+		template< typename View >
+		struct is_storage_based : is_storage_based<
+			typename inspect_view< typename View::applied_to >::type
+		> {};
 
-	/**
-	 * Inspects whether a provided ALP type is original container or a view over
-	 * another container.
-	 *
-	 * @tparam T The type of the ALP container to inspect.
-	 *
-	 * The value is true if the provided type corresponds to an ALP container with
-	 * original storage:
-	 * - physical container : a view over void type
-	 * - functor : a functor view over an functor
-	 * The value is false otherwise.
-	 *
-	 */
-	template< typename T >
-	struct is_original : std::integral_constant< bool, T::is_original > {
-		static_assert( is_container< T >::value, "Argument to is_original must be an ALP container." );
-	};
+		/** Original view over void is by definition storage based ALP container. */
+		template<>
+		struct is_storage_based< view::Original< void > > : std::true_type {};
+
+		/** Functor views are not storage-based ALP containers. */
+		template< typename LambdaType >
+		struct is_storage_based< view::Functor< LambdaType > > : std::false_type {};
+
+		/**
+		 * A helper type trait for \a is_functor_based.
+		 *
+		 * @tparam View       The view to inspect.
+		 * @tparam AppliedTo  The type that View is applied to.
+		 *
+		 * @see is_functor_based
+		 *
+		 */
+		template< typename View, typename AppliedTo >
+		struct is_functor_based_helper : is_functor_based_helper<
+			/** The view of the ALP container this view is applied to */
+			typename inspect_view< typename View::applied_to >::type,
+			/** What the above view is applied to */
+			typename inspect_view< typename View::applied_to >::type::applied_to
+		> {};
+
+		/** Functor view over a lambda type is by definition functor-based ALP container. */
+		template< typename AppliedTo >
+		struct is_functor_based_helper< view::Functor< AppliedTo >, AppliedTo > : std::true_type {};
+
+		template< typename AppliedTo >
+		struct is_functor_based_helper< view::Original< void >, AppliedTo > : std::false_type {};
+
+		/**
+		 * Inspects whether a view corresponds to a functor-based ALP container.
+		 *
+		 * ALP containers can either be storage-based or functor-based.
+		 *
+		 * @tparam View  The view to inspect.
+		 *
+		 * \note A Matrix is functor-based if it has
+		 *       - a functor view over a lambda type, or
+		 *       - any type of view over another functor-based matrix.
+		 *
+		 * @see is_functor_based_helper
+		 *
+		 */
+		template< typename View >
+		struct is_functor_based : is_functor_based_helper< View, typename View::applied_to > {};
+
+		/**
+		 * Inspects whether a provided view is associated with a ALP container
+		 * that allocates the container data-related memory (either the storage
+		 * or the functor), or, in other words,
+		 * whether it is a view over another ALP container.
+		 *
+		 * @tparam T The view type to inspect.
+		 *
+		 * The value is true if the provided view corresponds to an ALP container that
+		 * - allocates memory for container storage, or
+		 * - allocates memory for a functor
+		 * The value is false otherwise, i.e., if the provided view type corresponds
+		 * to a view over another ALP container, and, therefore, does not need to
+		 * allocate memory for storage/functor.
+		 *
+		 */
+		template< typename View >
+		struct allocates_memory : std::integral_constant<
+			bool,
+			std::is_same< view::Original< void >, View >::value ||
+			std::is_same< view::Functor< typename View::applied_to >, View >::value
+		> {};
+	} // namespace internal
 
 } // namespace alp
 
