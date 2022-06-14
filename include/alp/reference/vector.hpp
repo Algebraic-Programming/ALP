@@ -286,7 +286,7 @@ namespace alp {
 		}
 
 		template< typename T >
-		const T * getRaw( Vector< T, reference > &v ) noexcept {
+		const T * getRaw( const Vector< T, reference > &v ) noexcept {
 			return v.data;
 		}
 

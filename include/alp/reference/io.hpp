@@ -163,7 +163,19 @@ namespace alp {
 		(void)A;
 		(void)start;
 		(void)end;
+
+		// Temporarily assuming 1-1 mapping with user container
 		internal::setInitialized(A, true);
+
+		InputType * praw, * p;
+		
+		size_t len = internal::getLength( internal::getContainer( A ) );
+		praw = p = internal::getRaw( internal::getContainer( A ) );
+
+		for( fwd_iterator it = start; p < praw + len && it != end; ++it, ++p ) {
+			*p = *it;
+		}
+
 		return PANIC;
 	}
 
