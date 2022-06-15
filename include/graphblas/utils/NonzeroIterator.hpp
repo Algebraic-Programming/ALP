@@ -29,12 +29,10 @@ namespace grb {
 	namespace utils {
 
 		template< typename S1, typename S2, typename V, typename SubIterType, class Enable = void >
-		class NonzeroIterator; /* {
-		    static_assert( std::is_same< V, void >::value, "" );
-		};*/
+		class NonzeroIterator; 
 
 		template< typename S1, typename S2, typename V, typename SubIterType >
-		class NonzeroIterator< S1, S2, V, SubIterType, typename std::enable_if< std::is_same< typename SubIterType::value_type, typename std::pair< std::pair< S1, S2 >, V > >::value >::type > :
+		class NonzeroIterator< S1, S2, V, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< std::pair< S1, S2 >, V >, typename SubIterType::value_type >::value >::type > :
 			public SubIterType {
 
 		private:
@@ -59,7 +57,7 @@ namespace grb {
 		};
 
 		template< typename S1, typename S2, typename SubIterType >
-		class NonzeroIterator< S1, S2, void, SubIterType, typename std::enable_if< std::is_same< typename SubIterType::value_type, typename std::pair< S1, S2 > >::value >::type > :
+		class NonzeroIterator< S1, S2, void, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< S1, S2 >, typename SubIterType::value_type >::value >::type > :
 			public SubIterType {
 
 		private:
@@ -81,18 +79,6 @@ namespace grb {
 		template< typename S1, typename S2, typename V, typename SubIterType >
 		NonzeroIterator< S1, S2, V, SubIterType > makeNonzeroIterator( const SubIterType & x ) {
 			return NonzeroIterator< S1, S2, V, SubIterType >( x );
-		}
-
-		template< typename S1, typename S2, typename V >
-		void updateNonzeroCoordinates( std::pair< std::pair< S1, S2 >, V > & update, const size_t row, const size_t col ) {
-			update.first.first = row;
-			update.first.second = col;
-		}
-
-		template< typename S1, typename S2 >
-		void updateNonzeroCoordinates( std::pair< S1, S2 > & update, const size_t row, const size_t col ) {
-			update.first = row;
-			update.second = col;
 		}
 
 	} // namespace utils

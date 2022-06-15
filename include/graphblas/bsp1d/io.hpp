@@ -28,8 +28,11 @@
 #include "graphblas/blas1.hpp"                 // for grb::size
 #include "graphblas/utils/NonzeroIterator.hpp" // for transforming an std::vector::iterator
                                                // into an ALP/GraphBLAS-compatible iterator
-#include "graphblas/utils/pattern.hpp"         // for handling pattern input
+#include <graphblas/utils/pattern.hpp>         // for handling pattern input
 #include <graphblas/base/io.hpp>
+#include <graphblas/type_traits.hpp>
+
+#include <graphblas/utils/NonZeroStorage.hpp>
 
 #include "lpf/core.h"
 #include "matrix.hpp" //for BSP1D matrix
@@ -990,15 +993,38 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		typedef typename fwd_iterator::row_coordinate_type IType;
-		typedef typename fwd_iterator::column_coordinate_type JType;
-		typedef typename fwd_iterator::nonzero_value_type VType;
+		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+			std::is_same< InputType,
+				typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
+				std::is_integral< RIT >::value &&
+				std::is_integral< CIT >::value
+		), "grb::buildMatrixUnique (BSP1D implementation)",
+			"Input iterator does not match output vector type while no_casting "
+			"descriptor was set"
+		);
+		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
+			"given iterator does not meet the required interface (i(), j() methods -- and v() for non-void matrices)" );
+
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::row_t,
+			RIT >::value,
+			"cannot convert input row to internal format" );
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::col_t,
+			CIT >::value,
+			"cannot convert input column to internal format" );
+		static_assert( std::is_convertible<
+			typename is_input_iterator< InputType, fwd_iterator >::val_t,
+			InputType >::value || std::is_same< InputType, void >::value,
+			"cannot convert input value to internal format" );
+		
+		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
 
 		// static checks
 		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
-				std::is_same< InputType, VType >::value &&
-				std::is_integral< IType >::value &&
-				std::is_integral< JType >::value
+				std::is_same< InputType, typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
+				std::is_integral< RIT >::value &&
+				std::is_integral< CIT >::value
 			), "grb::buildMatrixUnique (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set" );
@@ -1024,10 +1050,10 @@ namespace grb {
 		RC ret = clear( A );
 
 		// local cache, used to delegate to reference buildMatrixUnique
-		std::vector< typename fwd_iterator::value_type > cache;
+		std::vector< storage_t > cache;
 
 		// caches non-local nonzeroes (in case of Parallel IO)
-		std::vector< std::vector< typename fwd_iterator::value_type > > outgoing;
+		std::vector< std::vector< storage_t > > outgoing;
 		if( mode == PARALLEL ) {
 			outgoing.resize( data.P );
 		}
@@ -1077,10 +1103,12 @@ namespace grb {
 			// check if local
 			if( row_pid == data.s ) {
 				// push into cache
-				cache.push_back( *start );
+				cache.emplace_back(
+					utils::makeNonZeroStorage< RIT, CIT, InputType >( start )
+				);
 				// translate nonzero
 				utils::updateNonzeroCoordinates(
-					cache[ cache.size() - 1 ],
+					cache.back(),
 					row_local_index,
 					column_offset + column_local_index
 				);
@@ -1097,11 +1125,13 @@ namespace grb {
 					<< ", " << ( column_offset + column_local_index ) << " )\n";
 #endif
 				// send original nonzero to remote owner
-				outgoing[ row_pid ].push_back( *start );
+				outgoing[ row_pid ].emplace_back(
+					utils::makeNonZeroStorage< RIT, CIT, InputType >( start )
+				);
 				// translate nonzero here instead of at
 				// destination for brevity / code readibility
 				utils::updateNonzeroCoordinates(
-					outgoing[ row_pid ][ outgoing[ row_pid ].size() - 1 ],
+					outgoing[ row_pid ].back(),
 					row_local_index, column_offset + column_local_index
 				);
 			} else {
@@ -1113,9 +1143,9 @@ namespace grb {
 		}
 
 		// report on memory usage
-		(void)config::MEMORY::report( "grb::buildMatrixUnique",
+		(void) config::MEMORY::report( "grb::buildMatrixUnique",
 			"has local cache of size",
-			cache.size() * sizeof( typename fwd_iterator::value_type )
+			cache.size() * sizeof( storage_t )
 		);
 
 		if( mode == PARALLEL ) {
@@ -1157,7 +1187,7 @@ namespace grb {
 				// cache size into buffer
 				buffer_sizet[ k ] = outgoing[ k ].size();
 				outgoing_bytes += outgoing[ k ].size() *
-					sizeof( typename fwd_iterator::value_type );
+					sizeof( storage_t );
 #ifdef _DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends " << buffer_sizet[ k ]
@@ -1231,14 +1261,14 @@ namespace grb {
 				// enure local cache is large enough
 				(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
 					"will increase local cache to size",
-					buffer_sizet[ data.s ] * sizeof( typename fwd_iterator::value_type ) );
+					buffer_sizet[ data.s ] * sizeof( storage_t ) );
 				cache.resize( buffer_sizet[ data.s ] ); // see self-prefix comment above
 				// register memory slots for all-to-all
 				const lpf_err_t brc = cache.size() > 0 ?
 					lpf_register_global(
 						data.context,
 						&( cache[ 0 ] ), cache.size() *
-							sizeof( typename fwd_iterator::value_type ),
+							sizeof( storage_t ),
 						&cache_slot
 					) :
                                                 lpf_register_global(
@@ -1248,7 +1278,7 @@ namespace grb {
 						);
 #ifdef _DEBUG
 				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size "
-					<< cache.size() * sizeof( typename fwd_iterator::value_type )
+					<< cache.size() * sizeof( storage_t )
 					<< ") binds to slot " << cache_slot << "\n";
 #endif
 				if( brc != LPF_SUCCESS ) {
@@ -1265,7 +1295,7 @@ namespace grb {
 					lpf_register_local( data.context,
 						&(outgoing[ k ][ 0 ]),
 						outgoing[ k ].size() *
-							sizeof( typename fwd_iterator::value_type ),
+							sizeof( storage_t ),
 						&(out_slot[ k ])
 					) :
 					lpf_register_local( data.context,
@@ -1313,9 +1343,9 @@ namespace grb {
 					const lpf_err_t brc = lpf_put( data.context,
 							out_slot[ k ], 0,
 							k, cache_slot, buffer_sizet[ 2 * data.P + k ] *
-								sizeof( typename fwd_iterator::value_type ),
+								sizeof( storage_t ),
 							outgoing[ k ].size() *
-								sizeof( typename fwd_iterator::value_type ),
+								sizeof( storage_t ),
 							LPF_MSG_DEFAULT
 					);
 					if( brc != LPF_SUCCESS ) {
@@ -1348,7 +1378,7 @@ namespace grb {
 			// clean up outgoing slots, which goes from 2x to 1x memory store for the
 			// nonzeroes here contained
 			{
-				std::vector< std::vector< typename fwd_iterator::value_type > > emptyVector;
+				std::vector< std::vector< storage_t > > emptyVector;
 				std::swap( emptyVector, outgoing );
 			}
 		}
@@ -1364,8 +1394,8 @@ namespace grb {
 			assert( nnz( A._local ) == 0 );
 			// delegate and done!
 			ret = buildMatrixUnique< descr >( A._local,
-				utils::makeNonzeroIterator< IType, JType, VType >( cache.begin() ),
-				utils::makeNonzeroIterator< IType, JType, VType >( cache.end() ),
+				utils::makeNonzeroIterator< RIT, CIT, InputType >( cache.cbegin() ),
+				utils::makeNonzeroIterator< RIT, CIT, InputType >( cache.cend() ),
 				SEQUENTIAL
 			);
 			// sanity checks

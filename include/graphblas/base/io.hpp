@@ -1382,10 +1382,10 @@ namespace grb {
 	) {
 		// derive synchronized iterator
 		//first derive iterator access category in(3x random acc. it.) => out(random acc. it.)
-		typedef typename std::iterator_traits<fwd_iterator1>::iterator_category It1_cat ;
-		typedef typename std::iterator_traits<fwd_iterator2>::iterator_category It2_cat ;
-		typedef typename std::iterator_traits<fwd_iterator3>::iterator_category It3_cat ;
-		using  iterator_category = typename utils::common_it_tag<It1_cat,It2_cat,It3_cat>::it_tag;
+		typedef typename std::iterator_traits<fwd_iterator1>::iterator_category It1_cat;
+		typedef typename std::iterator_traits<fwd_iterator2>::iterator_category It2_cat;
+		typedef typename std::iterator_traits<fwd_iterator3>::iterator_category It3_cat;
+		typedef typename utils::common_it_tag<It1_cat,It2_cat,It3_cat>::it_tag iterator_category;
 		//using  iterator_category=std::forward_iterator_tag;  //testing only
 		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end, iterator_category() );
 		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end, iterator_category() );
@@ -1410,7 +1410,7 @@ namespace grb {
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
-	  
+
 		return buildMatrixUnique< descr >( A,
 			I, I + nz,
 			J, J + nz,
