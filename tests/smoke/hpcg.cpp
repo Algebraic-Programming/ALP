@@ -25,7 +25,6 @@
  *
  * @date 2021-04-30
  */
-
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -357,6 +356,8 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
  */
 void grbProgram( const simulation_input & in, struct output & out ) {
 	grb::utils::Timer timer;
+	timer.reset();
+
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
 
@@ -376,9 +377,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		std::cerr << "Failure to read data" << std::endl;
 	}
 
-	timer.reset();
-	// start timing after all data are in memory 
 	out.times.io = timer.time();
+	timer.reset();
+
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
@@ -394,8 +395,6 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		print_system( *hpcg_state );
 	}
 #endif
-
-	out.times.preamble = timer.time();
 
 	Matrix< double > & A { hpcg_state->A };
 	Vector< double > & x { hpcg_state->x };
@@ -418,6 +417,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		print_vector( b, 50, " ---> B(1)" );
 	}
 #endif
+
+	out.times.preamble = timer.time();
+	timer.reset();
 
 	const bool with_preconditioning = ! in.no_preconditioning;
 	out.test_repetitions = 0;
@@ -454,10 +456,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 #endif
 		// sleep( 1 );
 	}
-
-	out.times.io = timer.time() - out.times.io;
-	
-	out.times.preamble = timer.time() - out.times.preamble;
+	timer.reset();
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
