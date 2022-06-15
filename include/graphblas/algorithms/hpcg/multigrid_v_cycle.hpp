@@ -174,13 +174,14 @@ namespace grb {
 						grb::eWiseLambda(
 										 [ &data ]( const size_t i ) {
 #ifdef HPCG_PRINT_STEPS
-											 if( i < 100 ){
+											 if( i < 10 || i + 10 > size( data.A_diagonal ) ){
 												 std::cout << " i= " << i
 														   << " data.z[i]= " << data.z[i]
 														   << " data.A_diagonal[i]= " << data.A_diagonal[i]
 														   << " data.smoother_temp[i]= " << data.smoother_temp[i]
 														   << "\n";
 											 }
+											 std::cout << "\n";
 #endif
 											 data.z[ i ] += data.A_diagonal[ i ] * data.smoother_temp[ i ];
 										 },

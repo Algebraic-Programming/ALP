@@ -154,21 +154,19 @@ namespace grb {
 #endif
 				}
 				
-				if( coarsening_level + 1 < max_levels ) {
-					RC rc = grb::buildVector( new_coarser->A_diagonal,
-											  in.matMbuffer[ coarsening_level + 1 ].v_data,
-											  in.matMbuffer[ coarsening_level + 1 ].v_data + in.matMbuffer[ coarsening_level + 1 ].size(),
-											  SEQUENTIAL );
-					if ( rc != SUCCESS ) {
-						std::cerr << " buildVector failed!\n ";
-						return rc;
-					}
-#ifdef HPCG_PRINT_STEPS
-					std::cout << " buildVector: new_coarser->A_diagonal "
-							  << size(new_coarser->A_diagonal) << " vector \n";
-#endif
+				RC rc = grb::buildVector( new_coarser->A_diagonal,
+										  in.matMbuffer[ coarsening_level + 1 ].v_data,
+										  in.matMbuffer[ coarsening_level + 1 ].v_data + in.matMbuffer[ coarsening_level + 1 ].size(),
+										  SEQUENTIAL );
+				if ( rc != SUCCESS ) {
+					std::cerr << " buildVector failed!\n ";
+					return rc;
 				}
-				
+#ifdef HPCG_PRINT_STEPS
+				std::cout << " buildVector: new_coarser->A_diagonal "
+						  << size(new_coarser->A_diagonal) << " vector \n";
+#endif
+
 				// prepare for new iteration
 				coarser = &new_coarser->coarser_level;
 				previous_size = coarser_size;

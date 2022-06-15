@@ -216,14 +216,13 @@ public :
 													  grb::config::RowIndexType,
 													  grb::config::ColIndexType >::type
 										  > parser_mat( fname[i].c_str(), true );
-#ifdef DEBUG			
+#ifdef DEBUG
 			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
 			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
 			std::cout << " ---> parser_mat.n()=" << parser_mat.n() << "\n";
 			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
 #endif
-			
 			data[i].resize( parser_mat.nz(), parser_mat.n(), parser_mat.m() );
 			size_t k = 0;
 			for (auto it=parser_mat.begin( SEQUENTIAL );
@@ -244,21 +243,26 @@ public :
 						 vec_data<double> * data ) {
 		grb::RC rc = SUCCESS;
 		for ( size_t i = 0; i < fname.size(); i++ ){
+#ifdef DEBUG
+			std::cout << " Reading " << fname[i].c_str() << ".\n";
+#endif
 			std::ifstream inFile;
 			inFile.open(fname[i].c_str() );
+			if( ! inFile.is_open() ){
+				std::cout << " Cannot open "<< fname[i].c_str() <<  "\n";
+				return( PANIC );
+			}
 			std::string headder;
 			size_t n,m;
 			std::getline(inFile, headder); // skip the first line
 			inFile >> n >> m;
 			data[i].resize( n );
-			if (inFile.is_open())  	{
-				for (size_t j = 0; j < n; j++) {
-					inFile >> data[i].v_data[j];
-				}
-				inFile.close();
+			for (size_t j = 0; j < n; j++) {
+				inFile >> data[i].v_data[j];
 			}
+			inFile.close();
 		}
-		return ( rc );
+		return( rc );
 	}
 	
 	grb::RC read_vec_matrics(){
@@ -605,8 +609,12 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 		}
 		{
 			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
+
 			std::string fnameA = fnamebase + "_A.mtx";
 			sim_in.matAfiles.push_back (fnameA);
+
+			std::string fnameM = fnamebase + "_M_diag.mtx";
+			sim_in.matMfiles.push_back (fnameM);
 		}		
 
 		std::cout << "files to read matrices: " << std::endl;
