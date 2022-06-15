@@ -202,20 +202,20 @@ class preloaded_matrices : public simulation_input {
 
 public :
 	std::size_t nzAmt, nzMmt, nzPmt, nzRmt;
-	mat_data<double> *matAbuffer;
-	vec_data<double> *matMbuffer;
-	mat_data<double> *matPbuffer;
-	mat_data<double> *matRbuffer;
+	mat_data< double > * matAbuffer;
+	vec_data< double > * matMbuffer;
+	mat_data< double > * matPbuffer;
+	mat_data< double > * matRbuffer;
 
 	grb::RC read_matrix( std::vector< std::string > & fname,
 						  mat_data<double> * data ) {
 		grb::RC rc = SUCCESS;
-		for ( size_t i = 0; i < fname.size(); i++ ){
+		for ( size_t i = 0; i < fname.size(); i++ ) {
 			grb::utils::MatrixFileReader< double, std::conditional<
 				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
 													  grb::config::RowIndexType,
 													  grb::config::ColIndexType >::type
-										  > parser_mat( fname[i].c_str(), true );
+										  > parser_mat( fname[ i ].c_str(), true );
 #ifdef DEBUG
 			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
 			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
@@ -228,9 +228,9 @@ public :
 			for (auto it=parser_mat.begin( SEQUENTIAL );
 				 it != parser_mat.end( SEQUENTIAL);
 				 ++it ){
-				data[i].i_data[k]=it.i();
-				data[i].j_data[k]=it.j();
-				data[i].v_data[k]=it.v();
+				data[ i ].i_data[ k ]=it.i();
+				data[ i ].j_data[ k ]=it.j();
+				data[ i ].v_data[ k ]=it.v();
 				k++;
 			}
 		}
@@ -240,25 +240,29 @@ public :
 
 
 	grb::RC read_vector( std::vector< std::string > & fname,
-						 vec_data<double> * data ) {
+						 vec_data< double > * data ) {
 		grb::RC rc = SUCCESS;
 		for ( size_t i = 0; i < fname.size(); i++ ){
 #ifdef DEBUG
-			std::cout << " Reading " << fname[i].c_str() << ".\n";
+			std::cout << " Reading " << fname[ i ].c_str() << ".\n";
 #endif
 			std::ifstream inFile;
-			inFile.open(fname[i].c_str() );
-			if( ! inFile.is_open() ){
-				std::cout << " Cannot open "<< fname[i].c_str() <<  "\n";
+			inFile.open( fname[ i ].c_str() );
+			if( ! inFile.is_open() ) {
+				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
 			}
 			std::string headder;
-			size_t n,m;
-			std::getline(inFile, headder); // skip the first line
-			inFile >> n >> m;
-			data[i].resize( n );
-			for (size_t j = 0; j < n; j++) {
-				inFile >> data[i].v_data[j];
+			size_t n, m;
+			std::getline( inFile, headder ); // skip the first line
+			while( headder.at( 0 ) == '%' ) {
+				std::getline( inFile, headder );
+			}
+			std::stringstream ss( headder );
+			ss >> n >> m;						
+			data[ i ].resize( n );
+			for ( size_t j = 0; j < n; j++ ) {
+				inFile >> data[ i ].v_data[ j ];
 			}
 			inFile.close();
 		}
@@ -273,10 +277,10 @@ public :
 		nzPmt = matPfiles.size() ;
 		nzRmt = matRfiles.size() ;
 
-		matAbuffer = new mat_data<double> [ nzAmt ];
-		matMbuffer = new vec_data<double> [ nzMmt ];
-		matPbuffer = new mat_data<double> [ nzPmt ];
-		matRbuffer = new mat_data<double> [ nzRmt ];
+		matAbuffer = new mat_data< double > [ nzAmt ];
+		matMbuffer = new vec_data< double > [ nzMmt ];
+		matPbuffer = new mat_data< double > [ nzPmt ];
+		matRbuffer = new mat_data< double > [ nzRmt ];
 		
 		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
 		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
@@ -337,7 +341,7 @@ static void print_system( const hpcg_data< double, double, double > & data ) {
 }
 #endif
 
-//#ifdef HPCG_PRINT_STEPS
+#ifdef HPCG_PRINT_STEPS
 template< typename T,
 		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
 	>
@@ -352,7 +356,7 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
 	}
 	std::cout << norm << std::endl;
 }
-//#endif
+#endif
 
 /**
  * @brief Main test, building an HPCG problem and running the simulation closely following the
