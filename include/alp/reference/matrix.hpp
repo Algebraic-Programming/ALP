@@ -758,9 +758,9 @@ namespace alp {
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
 		public std::conditional<
-			std::is_same< view::Functor< typename View::applied_to >, View >::value,
+			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, std::is_same< typename View::applied_to, void >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
