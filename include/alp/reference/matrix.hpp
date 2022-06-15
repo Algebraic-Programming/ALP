@@ -688,7 +688,6 @@ namespace alp {
 					ImfC imf_c,
 					const LambdaType lambda
 				) :
-					MatrixBase< self_type > >( imf_r.N, imf_c.N ),
 					initialized( initialized ),
 					imf_r( imf_r ),
 					imf_c( imf_c ),
