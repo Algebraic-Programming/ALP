@@ -348,13 +348,6 @@ namespace alp {
 		}
 	} // namespace internal
 
-	/**
-	 * Identifies a reference internal matrix is an ALP container.
-	 * \internal \todo Should this relation remain?
-	 */
-	template< typename T >
-	struct is_container< internal::Matrix< T, reference > > : std::true_type {};
-
 	/** Identifies any reference implementation of ALP matrix as an ALP matrix. */
 	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > : std::true_type {};
