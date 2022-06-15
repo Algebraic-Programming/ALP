@@ -69,6 +69,7 @@
 #define ASSERT_TRUE( bool_cond )				\
 	if( ! ( bool_cond ) ) {                         \
 		__PRINT_BOOL_FALSE( STRINGIFY( bool_cond ) ) \
+		__EXIT( -1 );								 \
 	}
 
 /*

@@ -23,6 +23,9 @@
 #ifndef _H_GRB_TYPE_TRAITS
 #define _H_GRB_TYPE_TRAITS
 
+#include <type_traits>
+#include <iterator>
+
 namespace grb {
 
 	/**
@@ -129,7 +132,7 @@ namespace grb {
 	/**
 	 * @brief Used to select the iterator tag: if no IterT::iterator_category field, it assumes
 	 * 		std::forward_iterator_tag
-	 * 
+	 *
 	 * @tparam IterT iterator type
 	 */
 	template< typename IterT > class iterator_tag_selector {
@@ -144,8 +147,71 @@ namespace grb {
 
 	public:
 		using iterator_category = decltype( select< IterT >( 0 ) );
-
 	};
+
+	template< typename IterT1, typename... IterTs > class common_iterator_tag {
+	public:
+		using iterator_category = typename iterator_tag_selector< IterT1 >::iterator_category;
+	};
+
+	template< typename IterT1, typename IterT2, typename... IterTs >
+		class common_iterator_tag< IterT1, IterT2, IterTs... > {
+		using cat1 = typename iterator_tag_selector< IterT1 >::iterator_category;
+		using cats = typename common_iterator_tag< IterT2, IterTs... >::iterator_category;
+	public:
+		// STL iterator tags are a hierarchy with std::forward_iterator_tag at the base
+		using iterator_category = typename std::conditional<
+			std::is_base_of< cat1, cats>::value, cat1, cats >::type;
+	};
+
+	template< typename T > class iterator_has_value_method {
+		struct big { char a,b; };
+		template< typename U > static typename std::decay< decltype( std::declval< U >().v() ) >::type
+			match( typename std::decay< decltype( std::declval< U >().v() ) >::type* ) {
+			return std::declval< U >().v();
+		}
+		template< typename U > static void match( ... ) {}
+
+	public:
+		static constexpr bool value = ! std::is_same< decltype( match< T >( nullptr ) ), void >::value;
+	};
+
+	template< typename IterT > class iterator_value {
+	public:
+		using type = typename std::decay< decltype( *std::declval< IterT >() ) >::type;
+	};
+
+	template< typename MatrixValType, typename IterT > class is_input_iterator {
+
+		template< typename U > static typename std::decay< decltype( std::declval< U >().i() ) >::type
+			match_i( typename std::decay< decltype( std::declval< U >().i() ) >::type* ) {
+			return std::declval< U >().i();
+		}
+		template< typename U > static void match_i( ... ) {}
+
+		template< typename U > static typename std::decay< decltype( std::declval< IterT >().j() ) >::type
+			match_j( typename std::decay< decltype( std::declval< IterT >().j() ) >::type* ) {
+			return std::declval< U >().j();
+		}
+		template< typename U > static void match_j( ... ) {}
+
+		template< typename U > static typename std::decay< decltype( std::declval< U >().v() ) >::type
+			match_v( typename std::decay< decltype( std::declval< U >().v() ) >::type* ) {
+			return std::declval< U >().v();
+		}
+		template< typename U > static void match_v( ... ) {}
+
+	public:
+		using row_t = decltype( match_i< IterT >( nullptr ) );
+		using col_t = decltype( match_j< IterT >( nullptr ) );
+		using val_t = decltype( match_v< IterT >( nullptr ) );
+
+		static constexpr bool value =
+			! std::is_same< row_t, void >::value && std::is_integral< row_t >::value
+			&& ! std::is_same< col_t, void >::value && std::is_integral< col_t >::value
+			&& ( std::is_same< MatrixValType, void >::value || ( ! std::is_same< val_t, void >::value ) );
+	};
+
 
 
 	namespace internal {

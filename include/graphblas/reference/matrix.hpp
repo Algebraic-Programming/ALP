@@ -216,48 +216,49 @@ namespace grb {
 			sizetype bufferlen; //local buffer size
 			if(nsize==1){
 				bufferlen = imax-imin+1;
-#ifdef _DEBUG    
+#ifdef _DEBUG
 				std::cout << " readjustment:  bufferlen=" << bufferlen << " using full buffer with one thread  \n" ;
 #endif
 			} else {
 				bufferlen=(buffersize)/nsize;
 			}
-			
+
 			if (nz<=1) {
-				return ;
+				// why?
+				//return ;
 			}
-			
+
 			if (imin==imax) {
-				std::cout << " imin==imax=" << imax << ": return\n" ;	
+				std::cout << " imin==imax=" << imax << ": return\n" ;
 				return ;
 			}
-			
+
 			if( buffersize <= 1 ) {
 				std::cerr << "error: buffersize < 1 \n";
 				return ;
 			}
-	
+
 			if(bufferlen<=1){
 				while(bufferlen<=1 && nsize>=2){
 					(void)--nsize;
 					bufferlen=(buffersize)/nsize;
-#ifdef _DEBUG    
+#ifdef _DEBUG
 					std::cout << " readjustment:  bufferlen=" << bufferlen << " cannot use all threads \n" ;
 					std::cout << "                    nsize=" << nsize << "\n" ;
 #endif
 				}
 			}
-			
+
 			sizetype bucketlen=(imax-imin+1)/bufferlen ;
-			
+
 			if((imax-imin+1)==bufferlen){
 				bucketlen=0;
 			}
-	
-#ifdef _DEBUG    
+
+#ifdef _DEBUG
 			std::cout << " bucketlen=" << bucketlen << "\n" ;
 #endif
-			
+
 			#pragma omp for
 			for (sizetype i=0;i<buffersize;i++) buffer[i] = 0;
 
@@ -267,22 +268,22 @@ namespace grb {
 				if(irank<nsize) for (size_t i=irank*nz/nsize;i<(irank+1)*nz/nsize;i++)
 									buffer[irank*bufferlen+(a_get(it,i)-imin)/(bucketlen+1)]++ ;
 			}
-  
+
 			#pragma omp for
 			for (size_t irank=1;irank<nsize;irank++)
 				for (size_t i=0;i<bufferlen;i++)
 					buffer[irank*bufferlen+i]+=buffer[(irank-1)*bufferlen+i];
 
-			//this loop still not parallel, no significant speedup 
-			for (size_t i=1;i<bufferlen;i++)  
+			//this loop still not parallel, no significant speedup
+			for (size_t i=1;i<bufferlen;i++)
 				buffer[(nsize-1)*bufferlen+i]+=buffer[(nsize-1)*bufferlen+i-1];
 			//prefixsum_inplace(&buffer[(nsize-1)*bufferlen],bufferlen,threadsbuffer);
-  
-			#pragma omp for  
-			for (size_t i=1;i<bufferlen;i++)  
-				for (size_t irank=0;irank<nsize-1;irank++)  
+
+			#pragma omp for
+			for (size_t i=1;i<bufferlen;i++)
+				for (size_t irank=0;irank<nsize-1;irank++)
 					buffer[irank*bufferlen+i]+=buffer[(nsize-1)*bufferlen+i-1] ;
-			
+
 			#pragma omp parallel
 			{
 				const size_t irank = omp_get_thread_num();
@@ -296,7 +297,7 @@ namespace grb {
 					}
 				}
 			}
-			
+
 			#pragma omp for
 			for (size_t i=0;i<imax-imin;i++ ) CXX.col_start[ i ] =  buffer[i];
 
@@ -332,7 +333,7 @@ namespace grb {
 		  }
 		}
 #endif
-	  
+
 
 	} // namespace internal
 
@@ -1065,18 +1066,18 @@ namespace grb {
 		  return SUCCESS;
 		}
 
-	  
-	        template< Descriptor descr = descriptors::no_operation, std::size_t DIMS, typename T> 
+
+	        template< Descriptor descr = descriptors::no_operation, std::size_t DIMS, typename T>
 		RC buildMatrixUnique( const grb::algorithms::coarsener_generator_iterator<DIMS, T> & _start,
 				      const grb::algorithms::coarsener_generator_iterator<DIMS, T> & _end ) {
 		  buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
 		  return SUCCESS;
 		}
 
-	  
+
 	        template< Descriptor descr = descriptors::no_operation,
 			  typename T, typename V, typename SR = grb::config::RowIndexType,
-			  typename SC = grb::config::ColIndexType, Backend backend = grb::config::default_backend> 
+			  typename SC = grb::config::ColIndexType, Backend backend = grb::config::default_backend>
 		RC buildMatrixUnique( const grb::utils::MatrixVectorIterator<T, V,  SR, SC, backend> & _start,
 				      const grb::utils::MatrixVectorIterator<T, V,  SR, SC, backend> & _end ) {
 		  buildMatrixUniqueImpl(_start, _end, std::forward_iterator_tag() );
@@ -1084,7 +1085,7 @@ namespace grb {
 		}
 		*/
 
-	  
+
 	        //interface
    	        /** @see Matrix::buildMatrixUnique */
 	        template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
@@ -1107,7 +1108,7 @@ namespace grb {
 
 	        //forward iterator version
 	        template <typename fwd_iterator>
-		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {	  
+		RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {
 #ifdef _DEBUG
 		        std::cout << " fwrd acces iterator " << '\n';
 		        //compilation of the next lines should fail
@@ -1127,7 +1128,7 @@ namespace grb {
 
 			// keep count of nonzeroes
 			nz = 0;
-			
+
 
 			// reset col_start array to zero, fused loop
 			{
@@ -1228,7 +1229,7 @@ namespace grb {
 
 			// perform counting sort
 			fwd_iterator it = _start;
-			
+
 			for( size_t k = 0; it != _end; ++k, ++it ) {
 				const size_t crs_pos = --( CRS.col_start[ it.i() ] );
 				CRS.recordValue( crs_pos, false, it );
@@ -1262,13 +1263,13 @@ namespace grb {
 #endif
 			// done
 
-			
+
 			return SUCCESS;
 		}
 
 
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX		
-		//random access version 
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+		//random access version
 		template <typename rndacc_iterator>
 		RC buildMatrixUniqueImpl(rndacc_iterator _start, rndacc_iterator _end, std::random_access_iterator_tag) {
 #ifdef _DEBUG
@@ -1326,7 +1327,7 @@ namespace grb {
 			#pragma omp parallel
 			{
 			  nsize = omp_get_num_threads();
-			}							  
+			}
 
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
@@ -1339,7 +1340,7 @@ namespace grb {
 			// put final entries
 			CRS.col_start[ m ] = nz;
 			CCS.col_start[ n ] = nz;
-			
+
 			// allocate enough space
 			resize( nz );
 
