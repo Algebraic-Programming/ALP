@@ -78,7 +78,7 @@ namespace alp {
 	> {};
 
 	/**
-	 * Used to inspect whether a given type is a ALP semiring.
+	 * Used to inspect whether a given type is an ALP semiring.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -89,7 +89,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a ALP monoid.
+	 * Used to inspect whether a given type is an ALP monoid.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -100,7 +100,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a ALP operator.
+	 * Used to inspect whether a given type is an ALP operator.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -111,7 +111,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a ALP object.
+	 * Used to inspect whether a given type is an ALP object.
 	 *
 	 * @tparam T The type to inspect.
 	 *
@@ -281,7 +281,7 @@ namespace alp {
 		struct is_functor_based : is_functor_based_helper< View, typename View::applied_to > {};
 
 		/**
-		 * Inspects whether a provided view is associated with a ALP container
+		 * Inspects whether a provided view is associated with an ALP container
 		 * that allocates the container data-related memory (either the storage
 		 * or the functor), or, in other words,
 		 * whether it is a view over another ALP container.
