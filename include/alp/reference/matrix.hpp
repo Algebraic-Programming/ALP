@@ -346,15 +346,18 @@ namespace alp {
 		size_t ncols( const Matrix< T, reference > & m ) noexcept {
 			return m.n;
 		}
+
+		/**
+		 * Identifies any reference internal matrix is an internal container.
+		 */
+		template< typename T >
+		struct is_container< internal::Matrix< T, reference > > : std::true_type {};
+
 	} // namespace internal
 
-	/**
-	 * @brief A reference Matrix is an ALP object.
-	 */
-	template< typename T >
-	struct is_container< internal::Matrix< T, reference > > {
-		static const constexpr bool value = true;
-	};
+	/** Identifies any reference implementation of ALP matrix as an ALP matrix. */
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
+	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, reference > > : std::true_type {};
 
 	// Matrix-related implementation
 
@@ -903,7 +906,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::transpose, d > {
-				using type = Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >;
+				using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
 			/** Constructor for an original matrix. */

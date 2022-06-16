@@ -269,14 +269,12 @@ namespace alp {
 				// }
 
 		};
-	} // end namespace ``alp::internal''
 
-	/** Identifies any reference vector as an ALP vector. */
-	template< typename T >
-	struct is_container< internal::Vector< T, reference > > {
-		/** A reference_vector is an ALP object. */
-		static const constexpr bool value = true;
-	};
+		/** Identifies any reference internal vector as an internal container. */
+		template< typename T >
+		struct is_container< internal::Vector< T, reference > > : std::true_type {};
+
+	} // end namespace ``alp::internal''
 
 	namespace internal {
 
@@ -451,12 +449,9 @@ namespace alp {
 
 	}; // class Vector with physical container
 
-	/** Identifies any reference vector as an ALP vector. */
+	/** Identifies any reference ALP vector as an ALP vector. */
 	template< typename T, typename Structure, typename View, typename Imf >
-	struct is_container< Vector< T, Structure, Density::Dense, View, Imf, reference > > {
-		/** A reference_vector is an ALP object. */
-		static const constexpr bool value = true;
-	};
+	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > : std::true_type {};
 
 	/**
 	 * @brief  Generate an original view of the input Vector. The function guarantees 
