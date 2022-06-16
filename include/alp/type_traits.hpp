@@ -23,25 +23,78 @@
 #ifndef _H_ALP_TYPE_TRAITS
 #define _H_ALP_TYPE_TRAITS
 
+#include <type_traits>
+#include <alp/views.hpp>
+
 namespace alp {
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS container.
+	 * Used to inspect whether a given type is an ALP scalar.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * There are only two GraphBLAS containers:
+	 * \note An arbitrary type is not an ALP scalar.
+	 *
+	 */
+	template< typename T >
+	struct is_scalar : std::false_type {};
+
+	/**
+	 * Used to inspect whether a given type is an ALP vector.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 * \note An arbitrary type is not an ALP vector.
+	 *
+	 */
+	template< typename T >
+	struct is_vector : std::false_type {};
+
+	/**
+	 * Used to inspect whether a given type is an ALP matrix.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 * \note An arbitrary type is not an ALP matrix.
+	 *
+	 */
+	template< typename T >
+	struct is_matrix : std::false_type {};
+
+	/**
+	 * Used to inspect whether a given type is an ALP container.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 * There are only three ALP containers:
+	 *  -# alp::Scalar,
 	 *  -# alp::Vector, and
 	 *  -# alp::Matrix.
 	 */
 	template< typename T >
-	struct is_container {
-		/** Base case: an arbitrary type is not a GraphBLAS object. */
-		static const constexpr bool value = false;
-	};
+	struct is_container : std::integral_constant<
+		bool,
+		is_scalar< T >::value || is_vector< T >::value || is_matrix< T >::value
+	> {};
+
+	namespace internal {
+
+		/**
+		 * Used to inspect whether a given type is an internal container.
+		 *
+		 * @tparam T The type to inspect.
+		 *
+		 * There are only two internal containers:
+		 *  -# alp::internal::Vector, and
+		 *  -# alp::internal::Matrix.
+		 */
+		template< typename T >
+		struct is_container : std::false_type {};
+
+	} // namespace internal
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS semiring.
+	 * Used to inspect whether a given type is an ALP semiring.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -52,7 +105,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS monoid.
+	 * Used to inspect whether a given type is an ALP monoid.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -63,7 +116,7 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS operator.
+	 * Used to inspect whether a given type is an ALP operator.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -74,11 +127,11 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS object.
+	 * Used to inspect whether a given type is an ALP object.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * A GraphBLAS object is either a container, a semiring, a monoid, or an
+	 * A ALP object is either a container, a semiring, a monoid, or an
 	 * operator.
 	 *
 	 * @see #is_monoid
@@ -88,7 +141,7 @@ namespace alp {
 	 */
 	template< typename T >
 	struct is_object {
-		/** A GraphBLAS object is either a container, a semiring, a monoid, or an operator. */
+		/** A ALP object is either a container, a semiring, a monoid, or an operator. */
 		static const constexpr bool value = is_container< T >::value ||
 			is_semiring< T >::value ||
 			is_monoid< T >::value ||
@@ -147,6 +200,117 @@ namespace alp {
 		};
 
 	} // end namespace alp::internal
+
+	/**
+	 * Used to get a structure type of the given ALP container
+	 *
+	 * @tparam T The ALP container to inspect.
+	 *
+	 */
+	template< typename Container >
+	struct inspect_structure {};
+
+	namespace internal {
+
+		/**
+		 * Used to get a View type of the given ALP container
+		 *
+		 * @tparam T The ALP container to inspect.
+		 *
+		 */
+		template< typename Container >
+		struct inspect_view {};
+
+		/**
+		 * Inspects whether a view corresponds to a storage-based ALP container.
+		 *
+		 * ALP containers can either be storage-based or functor-based.
+		 *
+		 * @tparam T The view to inspect.
+		 *
+		 * \note A Matrix is storage-based if it has
+		 *       - an original view over void, or
+		 *       - any type of view over another storage-based matrix.
+		 *
+		 */
+		template< typename View >
+		struct is_view_over_storage : is_view_over_storage<
+			typename inspect_view< typename View::applied_to >::type
+		> {};
+
+		/** Original view over void is by definition storage based ALP container. */
+		template<>
+		struct is_view_over_storage< view::Original< void > > : std::true_type {};
+
+		/** Functor views are not storage-based ALP containers. */
+		template< typename LambdaType >
+		struct is_view_over_storage< view::Functor< LambdaType > > : std::false_type {};
+
+		/**
+		 * A helper type trait for \a is_view_over_functor.
+		 * Needed to expose the type the provided view is applied to.
+		 *
+		 * @tparam View       The view to inspect.
+		 * @tparam AppliedTo  The type that View is applied to.
+		 *
+		 * @see is_view_over_functor
+		 *
+		 */
+		template< typename View, typename AppliedTo >
+		struct is_view_over_functor_helper : is_view_over_functor_helper<
+			/** The view of the ALP container this view is applied to */
+			typename inspect_view< typename View::applied_to >::type,
+			/** What the above view is applied to */
+			typename inspect_view< typename View::applied_to >::type::applied_to
+		> {};
+
+		/** Functor view over a lambda type is by definition functor-based ALP container. */
+		template< typename AppliedTo >
+		struct is_view_over_functor_helper< view::Functor< AppliedTo >, AppliedTo > : std::true_type {};
+
+		template< typename AppliedTo >
+		struct is_view_over_functor_helper< view::Original< void >, AppliedTo > : std::false_type {};
+
+		/**
+		 * Inspects whether a view corresponds to a functor-based ALP container.
+		 *
+		 * ALP containers can either be storage-based or functor-based.
+		 *
+		 * @tparam View  The view to inspect.
+		 *
+		 * \note A Matrix is functor-based if it has
+		 *       - a functor view over a lambda type, or
+		 *       - any type of view over another functor-based matrix.
+		 *
+		 * @see is_view_over_functor_helper
+		 *
+		 */
+		template< typename View >
+		struct is_view_over_functor : is_view_over_functor_helper< View, typename View::applied_to > {};
+
+		/**
+		 * Inspects whether a provided view is associated with an ALP container
+		 * that allocates the container data-related memory (either the storage
+		 * or the functor), or, in other words,
+		 * whether it is a view over another ALP container.
+		 *
+		 * @tparam T The view type to inspect.
+		 *
+		 * The value is true if the provided view corresponds to an ALP container that
+		 * - allocates memory for container storage, or
+		 * - allocates memory for a functor
+		 * The value is false otherwise, i.e., if the provided view type corresponds
+		 * to a view over another ALP container, and, therefore, does not need to
+		 * allocate memory for storage/functor.
+		 *
+		 */
+		template< typename View >
+		struct requires_allocation : std::integral_constant<
+			bool,
+			std::is_same< view::Original< void >, View >::value ||
+			std::is_same< view::Functor< typename View::applied_to >, View >::value
+		> {};
+	} // namespace internal
 
 } // namespace alp
 
