@@ -34,9 +34,9 @@ void ask_questions( const MatrixType & M, std::string name ) {
 	std::cout << "\tan ALP Matrix? " << alp::is_matrix< M_type >::value << std::endl;
 	std::cout << "\tan ALP Vector? " << alp::is_vector< M_type >::value << std::endl;
 	std::cout << "\ta structured Matrix? " << alp::is_structured_matrix< M_type >::value << std::endl;
-	std::cout << "\ta storage-based Matrix? " << alp::internal::is_storage_based< M_view_type >::value << std::endl;
-	std::cout << "\ta functor-based Matrix? " << alp::internal::is_functor_based< M_view_type >::value << std::endl;
-	std::cout << "\ta view over another Matrix? " << !alp::internal::allocates_memory< M_view_type >::value << std::endl;
+	std::cout << "\ta storage-based Matrix? " << alp::internal::is_view_over_storage< M_view_type >::value << std::endl;
+	std::cout << "\ta functor-based Matrix? " << alp::internal::is_view_over_functor< M_view_type >::value << std::endl;
+	std::cout << "\ta view over another Matrix? " << !alp::internal::requires_allocation< M_view_type >::value << std::endl;
 	//std::cout << name << " has the following static properties:" << std::endl;
 	//std::cout << "\tstructure: " << typeid(typename alp::inspect_structure< M_type >::type).name() << std::endl;
 	//std::cout << "\tview type: " << typeid(typename alp::inspect_view< M_type >::type).name() << std::endl;
@@ -51,13 +51,13 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		<< "Does a view of a given type correspond to a storage/functor-based ALP container?\n";
 
 	std::cout << "\tFunctor< std::function< ... > > --> functor-based? "
-		<< alp::internal::is_functor_based< alp::view::Functor< std::function< int( int, int ) > > >::value << "\n";
+		<< alp::internal::is_view_over_functor< alp::view::Functor< std::function< int( int, int ) > > >::value << "\n";
 	std::cout << "\tOriginal< void >                --> functor-based? "
-		<< alp::internal::is_functor_based< alp::view::Original< void > >::value << "\n";
+		<< alp::internal::is_view_over_functor< alp::view::Original< void > >::value << "\n";
 	std::cout << "\tFunctor< std::function< ... > > --> storage-based? "
-		<< alp::internal::is_storage_based< alp::view::Functor< std::function< int( int, int ) > > >::value << "\n";
+		<< alp::internal::is_view_over_storage< alp::view::Functor< std::function< int( int, int ) > > >::value << "\n";
 	std::cout << "\tOriginal< void >                --> storage-based? "
-		<< alp::internal::is_storage_based< alp::view::Original< void > >::value << "\n";
+		<< alp::internal::is_view_over_storage< alp::view::Original< void > >::value << "\n";
 
 	/* Checks with container types */
 	alp::Matrix< float, alp::structures::General > M( n, n );

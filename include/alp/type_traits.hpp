@@ -234,29 +234,30 @@ namespace alp {
 		 *
 		 */
 		template< typename View >
-		struct is_storage_based : is_storage_based<
+		struct is_view_over_storage : is_view_over_storage<
 			typename inspect_view< typename View::applied_to >::type
 		> {};
 
 		/** Original view over void is by definition storage based ALP container. */
 		template<>
-		struct is_storage_based< view::Original< void > > : std::true_type {};
+		struct is_view_over_storage< view::Original< void > > : std::true_type {};
 
 		/** Functor views are not storage-based ALP containers. */
 		template< typename LambdaType >
-		struct is_storage_based< view::Functor< LambdaType > > : std::false_type {};
+		struct is_view_over_storage< view::Functor< LambdaType > > : std::false_type {};
 
 		/**
-		 * A helper type trait for \a is_functor_based.
+		 * A helper type trait for \a is_view_over_functor.
+		 * Needed to expose the type the provided view is applied to.
 		 *
 		 * @tparam View       The view to inspect.
 		 * @tparam AppliedTo  The type that View is applied to.
 		 *
-		 * @see is_functor_based
+		 * @see is_view_over_functor
 		 *
 		 */
 		template< typename View, typename AppliedTo >
-		struct is_functor_based_helper : is_functor_based_helper<
+		struct is_view_over_functor_helper : is_view_over_functor_helper<
 			/** The view of the ALP container this view is applied to */
 			typename inspect_view< typename View::applied_to >::type,
 			/** What the above view is applied to */
@@ -265,10 +266,10 @@ namespace alp {
 
 		/** Functor view over a lambda type is by definition functor-based ALP container. */
 		template< typename AppliedTo >
-		struct is_functor_based_helper< view::Functor< AppliedTo >, AppliedTo > : std::true_type {};
+		struct is_view_over_functor_helper< view::Functor< AppliedTo >, AppliedTo > : std::true_type {};
 
 		template< typename AppliedTo >
-		struct is_functor_based_helper< view::Original< void >, AppliedTo > : std::false_type {};
+		struct is_view_over_functor_helper< view::Original< void >, AppliedTo > : std::false_type {};
 
 		/**
 		 * Inspects whether a view corresponds to a functor-based ALP container.
@@ -281,11 +282,11 @@ namespace alp {
 		 *       - a functor view over a lambda type, or
 		 *       - any type of view over another functor-based matrix.
 		 *
-		 * @see is_functor_based_helper
+		 * @see is_view_over_functor_helper
 		 *
 		 */
 		template< typename View >
-		struct is_functor_based : is_functor_based_helper< View, typename View::applied_to > {};
+		struct is_view_over_functor : is_view_over_functor_helper< View, typename View::applied_to > {};
 
 		/**
 		 * Inspects whether a provided view is associated with an ALP container
@@ -304,7 +305,7 @@ namespace alp {
 		 *
 		 */
 		template< typename View >
-		struct allocates_memory : std::integral_constant<
+		struct requires_allocation : std::integral_constant<
 			bool,
 			std::is_same< view::Original< void >, View >::value ||
 			std::is_same< view::Functor< typename View::applied_to >, View >::value
