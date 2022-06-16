@@ -145,7 +145,7 @@ namespace grb {
             bool result{ true };
 
             while( mat_begin != mat_end && origin_begin != origin_end ) {
-                if ( ::grb::internal::Distribution< implementation >::global_index_to_process_id(
+                if( ::grb::internal::Distribution< implementation >::global_index_to_process_id(
                         origin_begin.i(), nrows, nprocs ) != pid ) {
                     // skip non-local non-zeroes
                     (void)++origin_begin;
@@ -158,13 +158,13 @@ namespace grb {
 
 				const bool all_match{ row_eq && col_eq && val_eq };
 				result &= all_match;
-				if ( ! all_match && log_all_differences ) {
+				if( ! all_match && log_all_differences ) {
 					outs << "-- different nz, matrix (" << mat_begin.i() << ", " << mat_begin.j() << ")";
-					if ( ! std::is_same< ValT, void >::value ) {
+					if( ! std::is_same< ValT, void >::value ) {
 						outs << ": " << __get_value< ValT >( mat_begin );
 					}
 					outs << ", original (" << origin_begin.i() << ", " << origin_begin.j() << ")";
-					if ( ! std::is_same< ValT, void >::value ) {
+					if( ! std::is_same< ValT, void >::value ) {
 						outs << ": " << __get_value< ValT >( origin_begin );
 					}
 					outs << std::endl;

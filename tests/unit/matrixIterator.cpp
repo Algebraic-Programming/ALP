@@ -51,7 +51,7 @@ static size_t J2[ 15 ] = { 0, 1, 4, 5, 8, 10, 11, 11, 12, 9, 11, 14, 2, 10, 14 }
 static bool test_vector_of_zeroes( std::vector< size_t >& v, const char* name ) {
 	std::vector< size_t >::const_iterator max_it = std::max_element( v.cbegin(), v.cend() );
 	bool result = true;
-	if ( *max_it != 0 ) {
+	if( *max_it != 0 ) {
 		std::cerr << "some " << name << " is wrong" << std::endl;
 		for( size_t i = 0; i < v.size(); i++ ) {
 			std::cerr << name << " " << i << ", count " << v[ i ] << std::endl;
@@ -97,7 +97,7 @@ template< typename ValT, typename OrigIterT > RC test_matrix_iter(
 
 	size_t count = num_local_matrix_nzs;
 	RC rc = collectives<>::allreduce( count, grb::operators::add< size_t >() );
-	if ( rc != SUCCESS ) {
+	if( rc != SUCCESS ) {
 		std::cerr << "Cannot reduce, communication issue!" << std::endl;
 		std::abort();
 	}
@@ -190,7 +190,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// assumes SUCCESS is the smallest value in enum RC to perform reduction
 	assert( SUCCESS < FAILED );
 	RC rc_red = collectives<>::allreduce( rc, grb::operators::max< RC >() );
-	if ( rc_red != SUCCESS ) {
+	if( rc_red != SUCCESS ) {
 		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
 		std::abort();
 	}

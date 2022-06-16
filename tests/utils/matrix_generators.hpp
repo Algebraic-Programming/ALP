@@ -55,7 +55,7 @@ namespace grb {
 		template< typename SizeT, typename DiffT > DiffT __compute_distance(
 			SizeT a, SizeT b ) {
 			const SizeT diff{ std::max( a, b ) - std::min( a, b ) };
-			if ( diff > static_cast< SizeT >( std::numeric_limits< DiffT >::max() ) ) {
+			if( diff > static_cast< SizeT >( std::numeric_limits< DiffT >::max() ) ) {
 				throw std::range_error( "cannot represent difference" );
 			}
 			DiffT result{ static_cast< DiffT >( diff ) };

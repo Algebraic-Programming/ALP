@@ -29,8 +29,8 @@
 #include <iterator>
 
 #ifdef _GRB_WITH_OMP
-#include <omp.h>
-#include <atomic>
+ #include <omp.h>
+ #include <atomic>
 #endif
 
 #include "graphblas/blas1.hpp"                 // for grb::size
@@ -990,8 +990,12 @@ namespace grb {
 
 	namespace internal {
 
-		template< typename fwd_iterator, typename IType, typename JType, typename VType  >
-		void __handleSignleNonZero(
+		template<
+			typename fwd_iterator,
+			typename IType,
+			typename JType,
+			typename VType
+		> void handleSingleNonZero(
 				const fwd_iterator &start,
 				const IOMode mode, size_t rows, size_t cols,
 				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
@@ -1065,9 +1069,13 @@ namespace grb {
 
 		}
 
-		template< typename fwd_iterator, typename IType, typename JType, typename VType  >
-		RC populateMatrixBuildCachesImpl(
-				fwd_iterator start, const fwd_iterator end,
+		template<
+			typename fwd_iterator,
+			typename IType,
+			typename JType,
+			typename VType
+		> RC populateMatrixBuildCachesImpl(
+				fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
 				size_t rows, size_t cols,
 				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
@@ -1075,18 +1083,15 @@ namespace grb {
 				const BSP1D_Data &data,
 				std::forward_iterator_tag
 		) {
-
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
 			::__trace_build_matrix_iomode( BSP1D, false );
 #endif
-
 		if( mode == PARALLEL ) {
 			outgoing.resize( data.P );
 		}
 
 		// loop over all input
 		for( ; start != end; ++start ) {
-
 			// sanity check on input
 			if( start.i() >= rows ) {
 				return MISMATCH;
@@ -1094,213 +1099,195 @@ namespace grb {
 			if( start.j() >= cols ) {
 				return MISMATCH;
 			}
-
-			__handleSignleNonZero( start, mode, rows, cols, cache, outgoing, data );
-
+			handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
 		}
-
 			return SUCCESS;
 		}
 
-
-
-
-
-	template< typename fwd_iterator, typename IType, typename JType, typename VType  >
-		RC populateMatrixBuildCachesImpl(
-				fwd_iterator start, const fwd_iterator end,
-				const IOMode mode,
-				size_t rows, size_t cols,
-				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
-				const BSP1D_Data &data,
-				// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
-				typename std::enable_if< _GRB_BSP1D_BACKEND == Backend::reference_omp
-					&& std::is_same< typename iterator_tag_selector<fwd_iterator>::iterator_category,
-						std::random_access_iterator_tag >::value, std::random_access_iterator_tag
-					>::type
+		template<
+			typename fwd_iterator,
+			typename IType,
+			typename JType,
+			typename VType
+		> RC populateMatrixBuildCachesImpl(
+			fwd_iterator &start, const fwd_iterator &end,
+			const IOMode mode,
+			const size_t rows, const size_t cols,
+			std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
+			std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
+			const BSP1D_Data &data,
+			// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
+			typename std::enable_if< _GRB_BSP1D_BACKEND == Backend::reference_omp
+				&& std::is_same< typename iterator_tag_selector<fwd_iterator>::iterator_category,
+					std::random_access_iterator_tag >::value, std::random_access_iterator_tag
+				>::type
 		) {
-
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
 			::__trace_build_matrix_iomode( BSP1D, true );
 #endif
+			typedef utils::NonZeroStorage< IType, JType, VType > storage_t;
 
-		typedef utils::NonZeroStorage< IType, JType, VType > storage_t;
+			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );
+			const std::unique_ptr< std::vector< std::vector< storage_t > >[] > parallel_non_zeroes(
+				new std::vector< std::vector< storage_t > >[ num_threads ] );
+			std::vector< std::vector< storage_t > > * const parallel_non_zeroes_ptr = parallel_non_zeroes.get();
+			RC ret = RC::SUCCESS;
 
-		const std::size_t num_threads{ static_cast< std::size_t >( omp_get_max_threads() ) };
-		const std::unique_ptr< std::vector< std::vector< storage_t > >[] > parallel_non_zeroes(
-			new std::vector< std::vector< storage_t > >[ num_threads ] );
-		std::vector< std::vector< storage_t > > * const parallel_non_zeroes_ptr{ parallel_non_zeroes.get() };
+			#pragma omp parallel
+			{
+				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
+				std::vector< std::vector< storage_t > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
+				local_outgoing.resize( data.P );
+				std::vector< storage_t > &local_data = local_outgoing[ data.s ];
 
-		const BSP1D_Data * const data_ptr{ &data }; // to avoid copy construction to OMP parallel region
-
-		RC ret{ RC::SUCCESS };
-
-		#pragma omp parallel default(none) firstprivate(start,end,num_threads, \
-			parallel_non_zeroes_ptr,data_ptr,mode,rows,cols) shared(ret)
-		{
-			const std::size_t thread_id{ static_cast< std::size_t >( omp_get_thread_num() )};
-			std::vector< std::vector< storage_t > > &local_outgoing{ parallel_non_zeroes_ptr[ thread_id ] };
-			local_outgoing.resize( data_ptr->P );
-			std::vector< storage_t > &local_data{ local_outgoing[ data_ptr->s ] };
-
-
-			#pragma omp for schedule( static )
-			for( fwd_iterator it = start; it != end; ++it ) {
-
-				// sanity check on input
-				if( it.i() >= rows || it.j() >= cols ) {
-					#pragma omp critical
-					{
+				#pragma omp for schedule( static )
+				for( fwd_iterator it = start; it != end; ++it ) {
+					// sanity check on input
+					if( it.i() >= rows || it.j() >= cols ) {
+						#pragma omp critical
+						{
 #ifdef _DEBUG
-						printf( "Process %u, thread %lu, row %lu col %lu\n", data_ptr->s, thread_id, it.i(), it.j() );
+						std::cout << "Process " << data.s << ", thread " << thread_id
+							<< ", row " << it.i() << " col " << it.j() << std::endl;
 #endif
-						ret = MISMATCH;
+							ret = MISMATCH;
+						}
+						// cannot break in case of mismatch because of omp for directive
+						// however, deeming this a rare case, so keep incrementing
+					} else {
+						handleSingleNonZero( it, mode, rows, cols, local_data, local_outgoing, data );
 					}
-					// cannot break in case of mismatch because of omp for directive
-					// however, deeming this a rare case, so keep incrementing
-				} else {
-					__handleSignleNonZero( it, mode, rows, cols, local_data, local_outgoing, *data_ptr );
 				}
-
 			}
-		}
-
 #ifdef _DEBUG
-			for( unsigned i{ 0 }; i < data.P; i++) {
-				if( data_ptr->s == i ) {
+			for( unsigned i = 0; i < data.P; i++) {
+				if( data.s == i ) {
 					std::cout << "Process " << data.s << std::endl;
-					for( std::size_t j{ 0 }; j < num_threads; j++) {
+					for( size_t j = 0; j < num_threads; j++) {
 						std::cout << "\tthread " << j << std::endl;
-							for( unsigned k{ 0 }; k < data.P; k++) {
+							for( unsigned k = 0; k < data.P; k++) {
 								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size() << std::endl;
 							}
-
 					}
 				}
-				lpf_sync( data_ptr->context, LPF_SYNC_DEFAULT );
+				const lpf_err_t lpf_err = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				if( lpf_err != LPF_SUCCESS ) {
+					std::cerr << "cannot synchronize" << std::endl;
+					return PANIC;
+				}
 			}
 #endif
-		if( ret != SUCCESS ){
-			return ret;
-		}
-
-		// use iteration_overlaps > 1 to allow multiple iterations to overlap: for example,
-		// thread 0 might be running the "single" region with pid = 1 (second iteration)
-		// while thread 1 might still be running with pid = 0 (first iteration);
-		// with iteration_overlaps > 1 thread 0 writes the new values for "first_nnz_per_thread_ptr"
-		// inside different memory locations than those thread 1 is reading, thus enabling overlap
-		// between consecutive iterations; the synchronization occurrs thanks to the implicit barrier
-		// at the end of the single region
-		constexpr std::size_t iteration_overlaps{ 2 };
-		const std::unique_ptr< std::size_t > first_nnz_per_thread( new std::size_t[ num_threads * iteration_overlaps ]() );
-		std::size_t * const first_nnz_per_thread_ptr{ first_nnz_per_thread.get() };
-		outgoing.resize( data.P );
-
-		// using pointers to prevent OMP from invoking copy constructors to pass output containers to threads
-		std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > *outgoing_ptr{ &outgoing };
-		std::vector< utils::NonZeroStorage< IType, JType, VType > > *cache_ptr{ &cache };
-
-		std::size_t pid_nnz{0};
-
-		// merge data: each thread merges the data for each process into the destination arrays
-#ifdef _DEBUG
-		#pragma omp parallel default(none) firstprivate(data_ptr,outgoing_ptr,cache_ptr,num_threads,\
-			parallel_non_zeroes_ptr,pid_nnz,first_nnz_per_thread_ptr,LPF_SYNC_DEFAULT)
-#else
-		#pragma omp parallel default(none) firstprivate(data_ptr,outgoing_ptr,cache_ptr,num_threads,\
-			parallel_non_zeroes_ptr,pid_nnz,first_nnz_per_thread_ptr)
-#endif
-		for( std::size_t pid{ 0 }; pid < data_ptr->P; ++pid ) {
-
-			std::vector< storage_t > &out{ pid != data_ptr->s ? (*outgoing_ptr)[ pid ] : *cache_ptr };
-			// alternate between different parts of the array to avoid concurrent read-write
-			// due to overlap between iterations
-			std::size_t * const first_nnz_ptr{ first_nnz_per_thread_ptr + num_threads * ( pid % iteration_overlaps ) };
-
-			static_assert( iteration_overlaps > 1, "enable OMP barrier" );
-			// enable if iteration_overlaps == 1
-			//#pragma omp barrier
-
-			#pragma omp single copyprivate(pid_nnz)
-			{
-				first_nnz_ptr[ 0 ] = 0;
-
-				// this is a prefix sum over num_threads values, hence with limited parallelism:
-				// leaving it sequential ATM
-				for( std::size_t tid{ 1 }; tid < num_threads; ++tid ) {
-
-					first_nnz_ptr[ tid ] = first_nnz_ptr[ tid - 1 ]
-						+ parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size();
-#ifdef _DEBUG
-					if( parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size() > 0 ) {
-						printf( "pid %u, destination process %lu, tid %d, destination thread %lu, prev num nnz %lu, offset %lu\n",
-							data_ptr->s, pid, omp_get_thread_num(), tid, parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size(),
-							first_nnz_ptr[ tid ] );
-					}
-#endif
-				}
-				pid_nnz = first_nnz_ptr[ num_threads - 1 ]
-					+ parallel_non_zeroes_ptr[ num_threads - 1 ][ pid ].size();
-				// enlarge to make room to copy data
-				out.resize( pid_nnz );
+			if( ret != SUCCESS ){
+				return ret;
 			}
-			// barrier here, implicit at the end of single construct
+			// use iteration_overlaps > 1 to allow multiple iterations to overlap: for example,
+			// thread 0 might be running the "single" region with pid = 1 (second iteration)
+			// while thread 1 might still be running with pid = 0 (first iteration);
+			// with iteration_overlaps > 1 thread 0 writes the new values for "first_nnz_per_thread_ptr"
+			// inside different memory locations than those thread 1 is reading, thus enabling overlap
+			// between consecutive iterations; the synchronization occurrs thanks to the implicit barrier
+			// at the end of the single region
+			constexpr size_t iteration_overlaps = 2;
+			const std::unique_ptr< size_t > first_nnz_per_thread(
+				new size_t[ num_threads * iteration_overlaps ]() );
+			size_t * const first_nnz_per_thread_ptr = first_nnz_per_thread.get();
+			outgoing.resize( data.P );
 
-			const std::size_t thread_id{ static_cast< std::size_t >( omp_get_thread_num() )};
-			std::vector< storage_t > &local_out{ parallel_non_zeroes_ptr[ thread_id ][ pid ] };
+			// using pointers to prevent OMP from invoking copy constructors to pass output containers to threads
+			std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
+			std::vector< utils::NonZeroStorage< IType, JType, VType > > *cache_ptr = &cache;
+			size_t pid_nnz = 0;
 
-			const std::size_t first_nnz_local{ first_nnz_ptr[ thread_id ] };
-			const std::size_t num_nnz_local{ local_out.size() };
+			// merge data: each thread merges the data for each process into the destination arrays
 
-#ifdef _DEBUG
-			for( unsigned i{ 0 }; i < data_ptr->P; i++) {
-				if( data_ptr->s == i ) {
-					if(omp_get_thread_num() == 0 ) {
-						printf("process %u, processing nnz for process %lu:\n", data_ptr->s, pid );
-					}
-					for( std::size_t j{ 0 }; j < num_threads; j++) {
-						if( j == std::size_t(omp_get_thread_num()) && num_nnz_local != 0 ) {
-							printf("\t thread number %lu\n", j );
-							printf("\t\t number of nnz to process %ld\n", pid_nnz );
+			#pragma omp parallel firstprivate(num_threads,parallel_non_zeroes_ptr,data,outgoing_ptr,cache_ptr)
+			for( size_t pid = 0; pid < data.P; ++pid ) {
+				std::vector< storage_t > &out = pid != data.s ? (*outgoing_ptr)[ pid ] : *cache_ptr;
+				// alternate between different parts of the array to avoid concurrent read-write
+				// due to overlap between iterations
+				size_t * const first_nnz_ptr = first_nnz_per_thread_ptr + num_threads * ( pid % iteration_overlaps );
 
-							printf("\t\t first nnz to process %ld\n", first_nnz_local );
-							printf("\t\t #nnz to process %ld\n", num_nnz_local );
+				static_assert( iteration_overlaps > 1, "enable OMP barrier" );
+				// enable if iteration_overlaps == 1
+				//#pragma omp barrier
 
-						}
-						#pragma omp barrier
-					}
-				}
 				#pragma omp single
 				{
-					lpf_sync( data_ptr->context, LPF_SYNC_DEFAULT );
-				}
-			}
-#endif
-
+					first_nnz_ptr[ 0 ] = 0;
+					// this is a prefix sum over num_threads values, hence with limited parallelism:
+					// leaving it sequential ATM
+					for( size_t tid = 1; tid < num_threads; ++tid ) {
+						first_nnz_ptr[ tid ] = first_nnz_ptr[ tid - 1 ]
+							+ parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size();
 #ifdef _DEBUG
-			if( num_nnz_local != 0 ) {
-				printf( "cpy: pid %u, dest process %lu, tid %lu, local nnz %lu, offset %lu, last %lu\n",
-					data_ptr->s, pid, thread_id, num_nnz_local, first_nnz_ptr[ thread_id ],
-					thread_id < num_threads - 1 ? first_nnz_ptr[ thread_id + 1 ] : pid_nnz );
-			}
+						if( parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size() > 0 ) {
+							std::cout << "pid " << data.s << ", destination process " << pid
+								<< ", tid " << omp_get_thread_num() << ", destination thread " << tid
+								<< ", prev num nnz " << parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size()
+								<< ", offset " << first_nnz_ptr[ tid ] << std::endl;
+						}
 #endif
-			// each thread writes to a different interval of the destination array
-			// give pointers to "hint" memmove (storage_t should be trivially copyable)
-			std::copy_n( local_out.data(), num_nnz_local, out.data() + first_nnz_local );
-			// release memory
-			local_out.clear();
-			local_out.shrink_to_fit();
-		}
+					}
+					pid_nnz = first_nnz_ptr[ num_threads - 1 ]
+						+ parallel_non_zeroes_ptr[ num_threads - 1 ][ pid ].size();
+					// enlarge to make room to copy data
+					out.resize( pid_nnz );
+				}
+				// barrier here, implicit at the end of single construct
+				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
+				std::vector< storage_t > &local_out = parallel_non_zeroes_ptr[ thread_id ][ pid ];
+				const size_t first_nnz_local = first_nnz_ptr[ thread_id ];
+				const size_t num_nnz_local = local_out.size();
+#ifdef _DEBUG
+				for( unsigned i = 0; i < data.P; i++ ) {
+					if( data.s == i ) {
+						if( omp_get_thread_num() == 0 ) {
+							std::cout << "process " << data.s << ", processing nnz for process"
+							<< pid << ":" << std::endl;
+						}
+						for( size_t j = 0; j < num_threads; j++ ) {
+							if( j == static_cast< size_t >( omp_get_thread_num() )
+								&& num_nnz_local != 0 ) {
+								std::cout << "\t thread number " << j << std::endl;
+								std::cout << "\t\t number of nnz to process " << pid_nnz << std::endl;
+								std::cout << "\t\t first nnz to process " << first_nnz_local << std::endl;
+								std::cout << "\t\t #nnz to process " << num_nnz_local << std::endl;
 
-		return SUCCESS;
-	}
+							}
+							#pragma omp barrier
+						}
+					}
+					#pragma omp single
+					{
+						const lpf_err_t brc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+						if( brc != LPF_SUCCESS ) {
+							std::cerr << "cannot synchronize" << std::endl;
+						}
+					}
+				}
+				if( num_nnz_local != 0 ) {
+					std::cout << "cpy: pid " << data.s << ", dest process " << pid
+						<< ", tid " << thread_id << ", local nnz " << num_nnz_local
+						<< ", offset " << first_nnz_ptr[ thread_id ] << ", last " <<
+						( thread_id < num_threads - 1 ? first_nnz_ptr[ thread_id + 1 ] : pid_nnz )
+						<< std::endl;
+				}
+#endif
+				// each thread writes to a different interval of the destination array
+				// give pointers to "hint" memmove (storage_t should be trivially copyable)
+				std::copy_n( local_out.data(), num_nnz_local, out.data() + first_nnz_local );
+				// release memory
+				local_out.clear();
+				local_out.shrink_to_fit();
+			}
+			return SUCCESS;
+		}
 
 		template< typename fwd_iterator, typename IType, typename JType, typename VType  >
 		inline RC populateMatrixBuildCaches(
-				fwd_iterator start, const fwd_iterator end,
+				fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
-				size_t rows, size_t cols,
+				const size_t rows, const size_t cols,
 				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
 				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data
@@ -1312,8 +1299,6 @@ namespace grb {
 					outgoing, data, category );
 		}
 	}
-
-
 
 	/**
 	 * \internal No implementation details.
@@ -1357,21 +1342,14 @@ namespace grb {
 		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
 
 		// get access to user process data on s and P
-		internal::BSP1D_Data & data = internal::grb_BSP1D.load();
-
+		internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifdef _DEBUG
 		std::cout << "buildMatrixUnique is called from process " << data.s << " "
 			<< "out of " << data.P << " processes total.\n";
 #endif
-
-
 		// delegate for sequential case
 		if( data.P == 1 ) {
-			return buildMatrixUnique< descr >(
-				internal::getLocal(A),
-				start, end,
-				/*SEQUENTIAL*/ mode // follow users's suggestion for local build
-			);
+			return buildMatrixUnique< descr >( internal::getLocal(A), start, end, mode );
 		}
 
 		// function semantics require the matrix be cleared first
@@ -1390,10 +1368,8 @@ namespace grb {
 		std::cout << "Local column-wise offset at PID " << data.s << " is "
 			<< my_offset << "\n";
 #endif
-
 		ret = internal::populateMatrixBuildCaches( start, end, mode, A._m, A._n, cache, outgoing, data );
-
-		if ( ret != SUCCESS ) {
+		if( ret != SUCCESS ) {
 #ifndef NDEBUG
 			std::cout << "Process " << data.s << " failure while reading input iterator" << std::endl;
 #endif
@@ -1401,15 +1377,19 @@ namespace grb {
 		}
 
 #ifdef _DEBUG
-		for( unsigned i{ 0 }; i < data.P; i++) {
+		for( unsigned i = 0; i < data.P; i++) {
 			if( data.s == i ) {
 				std::cout << "Process " << data.s << std::endl;
-				for( unsigned k{ 0 }; k < data.P; k++) {
+				for( unsigned k = 0; k < data.P; k++) {
 					std::cout << "\tnum nnz " << outgoing[ k ].size() << std::endl;
 				}
 				std::cout << "\tcache size " << cache.size() << std::endl;
 			}
-			lpf_sync( data.context, LPF_SYNC_DEFAULT );
+			const lpf_err_t lpf_err = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+			if( lpf_err != LPF_SUCCESS ) {
+				std::cerr << "cannot synchronize" << std::endl;
+				return PANIC;
+			}
 		}
 #endif
 
@@ -1478,7 +1458,7 @@ namespace grb {
 					ret = PANIC;
 				}
 			}
-			(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
+			(void) config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
 				"has an outgoing cache of size", outgoing_bytes
 			);
 			// wait for RDMA to finish
@@ -1530,7 +1510,7 @@ namespace grb {
 			// register nonzero memory areas for all-to-all: global
 			if( ret == SUCCESS ) {
 				// enure local cache is large enough
-				(void)config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
+				(void) config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
 					"will increase local cache to size",
 					buffer_sizet[ data.s ] * sizeof( storage_t ) );
 				cache.resize( buffer_sizet[ data.s ] ); // see self-prefix comment above
@@ -1607,7 +1587,11 @@ namespace grb {
 								sizeof( typename fwd_iterator::value_type )
 							<< ", LPF_MSG_DEFAULT );\n";
 					}
-					lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					const lpf_err_t lpf_err = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					if( lpf_err != LPF_SUCCESS ) {
+						std::cerr << "cannot synchronize" << std::endl;
+						return PANIC;
+					}
 				}
 #endif
 				if( outgoing[ k ].size() > 0 ) {
@@ -1681,7 +1665,6 @@ namespace grb {
 
 		return ret;
 	}
-
 
 	template<>
 	RC wait< BSP1D >();

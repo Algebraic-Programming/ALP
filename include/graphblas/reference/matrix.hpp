@@ -50,15 +50,9 @@
 
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/MatrixVectorIterator.hpp>
+
 #include "non_zero_wrapper.h"
-
-
 #include "forward.hpp"
-
-#ifndef __REF_BACKEND_NAME__
- #define __REF_BACKEND_NAME__ reference
-#endif
-
 
 namespace grb {
 
@@ -110,19 +104,19 @@ namespace grb {
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		const size_t & getNonzeroCapacity(
-			const grb::Matrix< D, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A
+			const grb::Matrix< D, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			return A.cap;
 		}
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		const size_t & getCurrentNonzeroes(
-			const grb::Matrix< D, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A
+			const grb::Matrix< D, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			return A.nz;
 		}
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		void setCurrentNonzeroes(
-			grb::Matrix< D, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A,
+			grb::Matrix< D, reference, RIT, CIT, NIT > &A,
 			const size_t nnz
 		) noexcept {
 			A.nz = nnz;
@@ -150,7 +144,7 @@ namespace grb {
 		void getMatrixBuffers(
 			char * &coorArr, char * &coorBuf, InputType * &valbuf,
 			const unsigned int k,
-			const grb::Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			assert( k < 2 );
 			coorArr = const_cast< char * >( A.coorArr[ k ] );
@@ -171,14 +165,14 @@ namespace grb {
 			typename Coords
 		>
 		void vxm_inner_kernel_scatter( RC &rc,
-			Vector< IOType, __REF_BACKEND_NAME__, Coords > &destination_vector,
+			Vector< IOType, reference, Coords > &destination_vector,
 			IOType * __restrict__ const &destination,
 			const size_t &destination_range,
-			const Vector< InputType1, __REF_BACKEND_NAME__, Coords > &source_vector,
+			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_index,
 			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
-			const Vector< InputType3, __REF_BACKEND_NAME__, Coords > &mask_vector,
+			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
@@ -196,11 +190,11 @@ namespace grb {
 			typename Coords, typename RIT, typename CIT, typename NIT
 		>
 		RC vxm_generic(
-			Vector< IOType, __REF_BACKEND_NAME__, Coords > &u,
-			const Vector< InputType3, __REF_BACKEND_NAME__, Coords > &mask,
-			const Vector< InputType1, __REF_BACKEND_NAME__, Coords > &v,
-			const Vector< InputType4, __REF_BACKEND_NAME__, Coords > &v_mask,
-			const Matrix< InputType2, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A,
+			Vector< IOType, reference, Coords > &u,
+			const Vector< InputType3, reference, Coords > &mask,
+			const Vector< InputType1, reference, Coords > &v,
+			const Vector< InputType4, reference, Coords > &v_mask,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const std::function< size_t( size_t ) > &row_l2g,
@@ -212,15 +206,15 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 
 		template< typename RowIndexType, typename itertype, bool populate_csr >
-		struct __col_getter_t {
-			RowIndexType operator()( const itertype& itr ) {
+		struct col_getter_t {
+			RowIndexType operator()( const itertype &itr ) {
 				return itr.i();
 			}
 		};
 
 		template< typename ColIndexType, typename itertype >
-		struct __col_getter_t< ColIndexType, itertype, true > {
-			ColIndexType operator()( const itertype& itr ) {
+		struct col_getter_t< ColIndexType, itertype, true > {
+			ColIndexType operator()( const itertype &itr ) {
 				return itr.j();
 			}
 		};
@@ -231,32 +225,33 @@ namespace grb {
 			typename RowIndexType,
 			typename ValType,
 			typename NonzeroIndexType
-		> RC __populateCXX_parallel(
+		> RC populate_storage_parallel(
 			const itertype _it, // get by copy, not to change user's iterator,
-			size_t nz,
-			size_t num_cols,
-			size_t num_threads,
-			size_t *prefix_sum_buffer,
+			const size_t nz,
+			const size_t num_cols,
+			const size_t num_threads,
+			size_t * const prefix_sum_buffer,
 			const size_t prefix_sum_buffer_size,
-			ColIndexType *col_values_buffer, // MUST have size nz, or be nullptr
-			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &CXX ){
+			ColIndexType * const col_values_buffer, // MUST have size nz, or be nullptr
+			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
+		) {
 
 			// if we are populating a CCS, we compute the bucket from the columns value
-			__col_getter_t< RowIndexType, itertype, populate_ccs > col_getter;
+			col_getter_t< RowIndexType, itertype, populate_ccs > col_getter;
 
-			if ( nz < 1) {
+			if( nz < 1) {
 #ifndef NDEBUG
 				std::cerr << "num non-zeroes is 0" << std::endl;
 #endif
 				return RC::ILLEGAL;
 			}
-			if ( num_cols == 0 ) {
+			if( num_cols == 0 ) {
 #ifndef NDEBUG
 				std::cerr << "num_cols = " << num_cols << ": return" << std::endl ;
 #endif
 				return RC::ILLEGAL;
 			}
-			if ( prefix_sum_buffer_size < num_threads ) {
+			if( prefix_sum_buffer_size < num_threads ) {
 #ifndef NDEBUG
 				std::cerr << "nonzeroes " << nz << std::endl;
 				std::cerr << "error: buffersize=" << prefix_sum_buffer_size << " < num_threads=" << num_threads << std::endl;
@@ -290,7 +285,7 @@ namespace grb {
 				for ( size_t i = 0; i < prefix_sum_buffer_size; i++ ) {
 					prefix_sum_buffer[ i ] = 0;
 				}
-				// implcit barrier, as per OMP std
+				// implicit barrier, as per OMP std
 
 				// count the number of elements per bucket
 				const size_t irank = static_cast< size_t >( omp_get_thread_num() );
@@ -301,11 +296,7 @@ namespace grb {
 					const size_t bucket_num = col_getter( it ) / bucketlen;
 					const size_t offset = irank * per_thread_buffer_size + bucket_num;
 					prefix_sum_buffer[ offset ]++ ;
-					/*
-					printf( "thread %lu: increment at %lu, val %lu\n", irank, irank * per_thread_buffer_size + bucket_num,
-						prefix_sum_buffer[ irank * per_thread_buffer_size + bucket_num ] );
-					*/
-					(void)++it;
+					(void) ++it;
 				}
 				// all threads MUST wait here for the prefix_sum_buffer to be populated
 				// otherwise the results are not consistent
@@ -372,7 +363,7 @@ namespace grb {
 					}
 				}
 #endif
-				// record value inside CXX data structure, with inter-bucket sorting
+				// record value inside storage data structure, with inter-bucket sorting
 				// but no intra-bucket sorting
 				i = ( irank * nz ) / num_threads;
 				itertype rit = _it; // create new iterator, 'cause the old one is "expired" and no copy assignment exists
@@ -381,24 +372,22 @@ namespace grb {
 					ColIndexType col = col_getter( rit );
 					const size_t bucket_num = col / bucketlen;
 					size_t i1 = irank * per_thread_buffer_size + bucket_num;
-					(void)--prefix_sum_buffer[ i1 ];
-					//printf( "thread %lu, set %u, %d into %lu\n", irank, col_getter( rit ), rit.v(), prefix_sum_buffer[ i1 ] );
-					CXX.recordValue( prefix_sum_buffer[ i1 ], populate_ccs, rit );
+					(void) --prefix_sum_buffer[ i1 ];
+					storage.recordValue( prefix_sum_buffer[ i1 ], populate_ccs, rit );
 					if( col_values_buffer != nullptr ) {
 						col_values_buffer[ prefix_sum_buffer[ i1 ] ] = col;
 					}
-					//printf( "thread %lu, %lu -> %u, %u, %d\n", irank, offset, col_getter( rit ), col_getter( rit ), rit.v() );
-					(void)++rit;
+					(void) ++rit;
 				}
 			}
 #ifdef _DEBUG
-			std::cout << "CSR data before sorting:" << std::endl;
+			std::cout << "CRS data before sorting:" << std::endl;
 			for( size_t s = 0; s < nz; s++ ) {
 				std::cout << s << ": ";
-				if ( col_values_buffer != nullptr ) {
+				if( col_values_buffer != nullptr ) {
 					std::cout << col_values_buffer[ s ] << ", ";
 				}
-				std::cout << CXX.row_index[s] << ", " << get_value( CXX, s) << std::endl;
+				std::cout << storage.row_index[s] << ", " << get_value( storage, s) << std::endl;
 			}
 #endif
 			if( bucketlen == 1UL ) {
@@ -413,7 +402,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "after col_start:" << std::endl;
 				for( size_t s = 0; s < ccs_col_buffer_size; s++ ) {
-					std::cout << s << ": " << CXX.col_start[ s ] << std::endl;
+					std::cout << s << ": " << storage.col_start[ s ] << std::endl;
 				}
 				std::cout << " **** array already fully sorted in the bucket sort  ***** \n";
 #endif
@@ -424,10 +413,10 @@ namespace grb {
 #endif
 			assert( col_values_buffer != nullptr );
 #ifdef _DEBUG
-			std::fill( CXX.col_start, CXX.col_start + ccs_col_buffer_size, 0);
+			std::fill( storage.col_start, storage.col_start + ccs_col_buffer_size, 0);
 			std::cout << "col_start before sorting:" << std::endl;
 			for( size_t s = 0; s < ccs_col_buffer_size; s++ ) {
-				std::cout << s << ": " << CXX.col_start[ s ] << std::endl;
+				std::cout << s << ": " << storage.col_start[ s ] << std::endl;
 			}
 #endif
 			#pragma omp parallel for schedule( dynamic ), num_threads( num_threads )
@@ -442,25 +431,27 @@ namespace grb {
 				if( ipsl_max == ipsl_min ) {
 					// the rows are all empty, then done here
 #ifdef _DEBUG
-					printf( "-- thread %d, empty cols fill [%u, %lu)\n", omp_get_thread_num(), previous_destination, max_col );
+					std::cout << "-- thread " << omp_get_thread_num() << ", empty cols fill ["
+						<< previous_destination << ", " << max_col << ")" << std::endl;
 #endif
-					std::fill( CXX.col_start + previous_destination, CXX.col_start + max_col, ipsl_min );
+					std::fill( storage.col_start + previous_destination, storage.col_start + max_col, ipsl_min );
 					continue ;
 				}
 				//do the sort
 				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
-					begin( CXX, col_values_buffer, ipsl_min );
+					begin( storage, col_values_buffer, ipsl_min );
 				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
-					end( CXX, col_values_buffer, ipsl_max );
+					end( storage, col_values_buffer, ipsl_max );
 				std::sort( begin, end );
 #ifdef _DEBUG
-				printf( "-- thread %d, sort [%u, %lu)\n", omp_get_thread_num(), previous_destination, max_col );
-				printf( ">> max_col=%lu\n", max_col );
+				std::cout << "-- thread " << omp_get_thread_num() <<", sort [" << previous_destination
+					<< ", " << max_col <<")\n" << ">> max_col= " << max_col << std::endl;
 #endif
 				// INIT: populate initial value with existing count
-				CXX.col_start[ previous_destination ] = ipsl_min;
+				storage.col_start[ previous_destination ] = ipsl_min;
 #ifdef _DEBUG
-				printf( "thread %d, init write %lu to pos %u\n", omp_get_thread_num(), ipsl_min, previous_destination );
+				std::cout << "thread " << omp_get_thread_num() << ", init write "
+					<< ipsl_min << " to pos " << previous_destination << std::endl;
 #endif
 				size_t count = ipsl_min;
 				size_t previous_count = count;
@@ -469,12 +460,13 @@ namespace grb {
 					const RowIndexType current_row = col_values_buffer[ row_buffer_index ];
 					const RowIndexType current_destination = current_row + 1;
 					// fill previous rows [previous_destination + 1, current_destinatio) if skipped because empty
-					if ( previous_destination + 1 <= current_row ) {
+					if( previous_destination + 1 <= current_row ) {
 #ifdef _DEBUG
-						printf( "thread %d, write %lu in range [%u - %u)\n",
-							omp_get_thread_num(), count, previous_destination + 1, current_destination );
+						std::cout << "thread " << omp_get_thread_num() << ", write "
+							<< count <<" in range [" << previous_destination + 1
+							<< " - " << current_destination << ")" << std::endl;
 #endif
-						std::fill( CXX.col_start + previous_destination + 1, CXX.col_start + current_destination, previous_count );
+						std::fill( storage.col_start + previous_destination + 1, storage.col_start + current_destination, previous_count );
 					}
 					// count occurrences of 'current_row'
 					for( ; col_values_buffer[ row_buffer_index ] == current_row && row_buffer_index < ipsl_max;
@@ -482,10 +474,11 @@ namespace grb {
 					assert( current_destination <= max_col );
 					// if current_destination < max_col, then write the count;
 					// otherwise, the next thread will do it in INIT
-					if ( current_destination < max_col ){
-						CXX.col_start[ current_destination ] = count;
+					if( current_destination < max_col ) {
+						storage.col_start[ current_destination ] = count;
 #ifdef _DEBUG
-						printf( "thread %d, write %lu to pos %u\n", omp_get_thread_num(), count, current_destination );
+						std::cout << "thread " << omp_get_thread_num() << ", write "
+							<< count <<" to pos " << current_destination << std::endl;
 #endif
 					}
 					previous_destination = current_destination;
@@ -493,38 +486,40 @@ namespace grb {
 				}
 				// if the rows in [ previous_destination + 1, max_col ) are empty,
 				// write the count also there, since the loop has skipped them
-				if ( previous_destination + 1 < max_col ) {
+				if( previous_destination + 1 < max_col ) {
 #ifdef _DEBUG
-					printf( "thread %d, final write %lu in range [%u, %lu)\n",
-						omp_get_thread_num(), previous_count, previous_destination + 1, max_col );
+					std::cout << "thread " << omp_get_thread_num() << ", final write "
+						<< previous_count << " in range [" << previous_destination + 1
+						<< ", " << max_col << ")" << std::endl;
 #endif
-					std::fill( CXX.col_start + previous_destination + 1, CXX.col_start + max_col, previous_count );
+					std::fill( storage.col_start + previous_destination + 1, storage.col_start + max_col, previous_count );
 				}
 			}
 			const ColIndexType last_existing_row = col_values_buffer[ nz - 1 ];
 #ifdef _DEBUG
-			printf( "final offset %u\n", last_existing_row );
+			std::cout << "final offset " << last_existing_row << std::endl;
 #endif
 
-			if ( last_existing_row + 1 <= num_cols ) {
+			if( last_existing_row + 1 <= num_cols ) {
 #ifdef _DEBUG
-				printf( "final write %lu into [%u, %lu]\n", nz, last_existing_row + 1, num_cols );
+				std::cout << "final write " << nz << " into [" << last_existing_row + 1
+					<<", " << num_cols << "]" << std::endl;
 #endif
-				std::fill( CXX.col_start + last_existing_row + 1, CXX.col_start + ccs_col_buffer_size, nz );
+				std::fill( storage.col_start + last_existing_row + 1, storage.col_start + ccs_col_buffer_size, nz );
 			}
 #ifdef _DEBUG
-			std::cout << "CSR data after sorting:" << std::endl;
+			std::cout << "CRS data after sorting:" << std::endl;
 			for( size_t s = 0; s < nz; s++ ) {
 				std::cout << s << ": ";
-				if ( col_values_buffer != nullptr ) {
+				if( col_values_buffer != nullptr ) {
 					std::cout << col_values_buffer[ s ] << ", ";
 				}
-				std::cout << CXX.row_index[s] << ", " << get_value( CXX, s) << std::endl;
+				std::cout << storage.row_index[s] << ", " << get_value( storage, s) << std::endl;
 			}
 
 			std::cout << "col_start after sorting:" << std::endl;
 			for( size_t s = 0; s < ccs_col_buffer_size; s++ ) {
-				std::cout << s << ": " << CXX.col_start[ s ] << std::endl;
+				std::cout << s << ": " << storage.col_start[ s ] << std::endl;
 			}
 #endif
 			return RC::SUCCESS;
@@ -540,8 +535,12 @@ namespace grb {
 		 * @param buf_size
 		 * @param num_threads
 		 */
-		static void __compute_buffer_size_num_threads( size_t nz, size_t sys_threads,
-			size_t& buf_size, size_t& num_threads ) {
+		static void compute_buffer_size_num_threads(
+			const size_t nz,
+			const size_t sys_threads,
+			size_t &buf_size,
+			size_t &num_threads
+		) {
 			// bucket_factor further increases parallelism, which is especially important
 			// to decrease the complexity of the last step (sorting), scaling as n log n
 			constexpr size_t bucket_factor = 8;
@@ -563,8 +562,12 @@ namespace grb {
 		template< bool populate_ccs, typename ColIndexType,
 			typename ValType, typename RowIndexType, typename NonzeroIndexType,
 			typename rndacc_iterator >
-		RC populateCXX( size_t num_cols , size_t nz, const rndacc_iterator& _start,
-			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &CCS ) {
+		RC populate_storage(
+			size_t num_cols,
+			size_t nz,
+			const rndacc_iterator &_start,
+			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
+		) {
 
 			const size_t max_num_threads = static_cast< size_t >( omp_get_max_threads() );
 			//const size_t range = num_cols + 1;
@@ -583,7 +586,7 @@ namespace grb {
 
 			size_t partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads;
 			// decide memory vs parallelism
-			__compute_buffer_size_num_threads( nz, max_num_threads,
+			compute_buffer_size_num_threads( nz, max_num_threads,
 				partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads );
 
 			// partial_parallel_prefix_sums_buffer_els = std::max( nz, max_num_threads );
@@ -598,7 +601,10 @@ namespace grb {
 			const size_t fully_parallel_buffer_els = max_num_threads * ( num_cols + 1 ); // + 1 for prefix sum
 			const size_t fully_parallel_buffer_size = fully_parallel_buffer_els * sizeof( size_t );
 
-			const bool is_fully_parallel = fully_parallel_buffer_size <= partial_parallel_buffer_size;
+			const size_t existing_buf_size = getCurrentBufferSize< size_t >();
+			const bool is_fully_parallel = fully_parallel_buffer_size <= partial_parallel_buffer_size
+				// a buffer already exists large enough for fully parallel execution
+				|| existing_buf_size >= fully_parallel_buffer_els;
 
 #ifdef _DEBUG
 			if( is_fully_parallel ) {
@@ -611,16 +617,16 @@ namespace grb {
 			}
 #endif
 
-			size_t bufferlen_tot = is_fully_parallel ? fully_parallel_buffer_size : partial_parallel_buffer_size;
-			if ( !internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
+			const size_t bufferlen_tot = is_fully_parallel ? fully_parallel_buffer_size : partial_parallel_buffer_size;
+			if( !internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
 #ifndef _DEBUG
-				std::cerr << "Not enough memory available for __populateCXX_parallel buffer" << std::endl;
+				std::cerr << "Not enough memory available for populate_storage_parallel buffer" << std::endl;
 #endif
 				return RC::OUTOFMEM;
 			}
 			const size_t prefix_sum_buffer_els = is_fully_parallel ? fully_parallel_buffer_els
 				: partial_parallel_prefix_sums_buffer_els;
-			unsigned char * const __buffer = grb::internal::getReferenceBuffer< unsigned char >(
+			unsigned char * const __buffer = getReferenceBuffer< unsigned char >(
 				bufferlen_tot );
 			size_t * pref_sum_buffer = is_fully_parallel ? reinterpret_cast < size_t * >( __buffer ) :
 				reinterpret_cast < size_t * >( __buffer + partial_parallel_col_values_buffer_size );
@@ -629,9 +635,8 @@ namespace grb {
 			const size_t num_threads = is_fully_parallel ? max_num_threads :
 				partial_parallel_num_threads;
 
-			return __populateCXX_parallel< populate_ccs >( _start, nz, num_cols, num_threads,
-				pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer, CCS );
-			internal::forceDeallocBuffer();
+			return populate_storage_parallel< populate_ccs >( _start, nz, num_cols, num_threads,
+				pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer, storage );
 		}
 #endif
 
@@ -639,20 +644,20 @@ namespace grb {
 	} // namespace internal
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t nrows( const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > & ) noexcept;
+	size_t nrows( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t ncols( const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > & ) noexcept;
+	size_t ncols( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t nnz( const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > & ) noexcept;
+	size_t nnz( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
-	RC clear( Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > & ) noexcept;
+	RC clear( Matrix< InputType, reference, RIT, CIT, NIT > & ) noexcept;
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
 	RC resize(
-		Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &,
+		Matrix< DataType, reference, RIT, CIT, NIT > &,
 		const size_t
 	) noexcept;
 
@@ -662,7 +667,7 @@ namespace grb {
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A,
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 		const size_t s, const size_t P
 	);
 
@@ -687,7 +692,7 @@ namespace grb {
 		typename ColIndexType,
 		typename NonzeroIndexType
 	>
-	class Matrix< D, __REF_BACKEND_NAME__, RowIndexType, ColIndexType, NonzeroIndexType > {
+	class Matrix< D, reference, RowIndexType, ColIndexType, NonzeroIndexType > {
 
 		static_assert( !grb::is_object< D >::value,
 			"Cannot create an ALP matrix of ALP objects!" );
@@ -698,27 +703,27 @@ namespace grb {
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
 		friend size_t nrows(
-			const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
 		friend size_t ncols(
-			const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
 		friend size_t nnz(
-			const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const Matrix< DataType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend RC clear(
-			Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT  >
 		friend RC resize(
-			Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &,
+			Matrix< DataType, reference, RIT, CIT, NIT > &,
 			const size_t
 		) noexcept;
 
@@ -728,7 +733,7 @@ namespace grb {
 		>
 		friend RC eWiseLambda(
 			const Func,
-			const Matrix< DataType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &,
+			const Matrix< DataType, reference, RIT, CIT, NIT > &,
 			const size_t, const size_t
 		);
 
@@ -745,16 +750,16 @@ namespace grb {
 		>
 		friend void internal::vxm_inner_kernel_scatter(
 			RC &rc,
-			Vector< IOType, __REF_BACKEND_NAME__, Coords > &destination_vector,
+			Vector< IOType, reference, Coords > &destination_vector,
 			IOType * __restrict__ const &destination,
 			const size_t &destination_range,
-			const Vector< InputType1, __REF_BACKEND_NAME__, Coords > &source_vector,
+			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_index,
 			const internal::Compressed_Storage<
 				InputType2, RowColType, NonzeroType
 			> &matrix,
-			const Vector< InputType3, __REF_BACKEND_NAME__, Coords > &mask_vector,
+			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
@@ -772,11 +777,11 @@ namespace grb {
 			typename Coords, typename RIT, typename CIT, typename NIT
 		>
 		friend RC internal::vxm_generic(
-			Vector< IOType, __REF_BACKEND_NAME__, Coords > &u,
-			const Vector< InputType3, __REF_BACKEND_NAME__, Coords > &mask,
-			const Vector< InputType1, __REF_BACKEND_NAME__, Coords > &v,
-			const Vector< InputType4, __REF_BACKEND_NAME__, Coords > &v_mask,
-			const Matrix< InputType2, __REF_BACKEND_NAME__, RIT, CIT, NIT > &A,
+			Vector< IOType, reference, Coords > &u,
+			const Vector< InputType3, reference, Coords > &mask,
+			const Vector< InputType1, reference, Coords > &v,
+			const Vector< InputType4, reference, Coords > &v_mask,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const std::function< size_t( size_t ) > &row_l2g,
@@ -795,7 +800,7 @@ namespace grb {
 			typename fwd_iterator
 		>
 		friend RC buildMatrixUnique(
-			Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &,
+			Matrix< InputType, reference, RIT, CIT, NIT > &,
 			fwd_iterator, const fwd_iterator,
 			const IOMode
 		);
@@ -803,7 +808,7 @@ namespace grb {
 		friend internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > &
 		internal::getCRS<>(
 			Matrix<
-				D, __REF_BACKEND_NAME__,
+				D, reference,
 				RowIndexType, ColIndexType, NonzeroIndexType
 			> &A
 		) noexcept;
@@ -813,7 +818,7 @@ namespace grb {
 			RowIndexType, NonzeroIndexType
 		> & internal::getCRS<>(
 			const Matrix<
-				D, __REF_BACKEND_NAME__,
+				D, reference,
 				RowIndexType, ColIndexType, NonzeroIndexType
 			> &A
 		) noexcept;
@@ -821,7 +826,7 @@ namespace grb {
 		friend internal::Compressed_Storage< D, ColIndexType, NonzeroIndexType > &
 		internal::getCCS<>(
 			Matrix<
-				D, __REF_BACKEND_NAME__,
+				D, reference,
 				RowIndexType, ColIndexType, NonzeroIndexType
 			> &A
 		) noexcept;
@@ -830,36 +835,36 @@ namespace grb {
 			D, ColIndexType, NonzeroIndexType
 		> & internal::getCCS<>(
 			const Matrix<
-				D, __REF_BACKEND_NAME__,
+				D, reference,
 				RowIndexType, ColIndexType, NonzeroIndexType
 			> &A
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend const size_t & internal::getNonzeroCapacity(
-			const grb::Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend const size_t & internal::getCurrentNonzeroes(
-			const grb::Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend void internal::setCurrentNonzeroes(
-			grb::Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &, const size_t
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &, const size_t
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend void internal::getMatrixBuffers(
 			char *&, char *&, InputType *&,
 			const unsigned int,
-			const grb::Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend uintptr_t getID(
-			const Matrix< InputType, __REF_BACKEND_NAME__, RIT, CIT, NIT > &
+			const Matrix< InputType, reference, RIT, CIT, NIT > &
 		);
 
 		/* *************************
@@ -867,10 +872,10 @@ namespace grb {
 		   ************************* */
 
 		friend const grb::Matrix<
-			D, __REF_BACKEND_NAME__,
+			D, reference,
 			ColIndexType, ColIndexType, NonzeroIndexType
 		>
-		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, __REF_BACKEND_NAME__ >(
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, reference >(
 			const D *__restrict__ const,
 			const ColIndexType *__restrict__ const,
 			const NonzeroIndexType *__restrict__ const,
@@ -878,10 +883,10 @@ namespace grb {
 		);
 
 		friend grb::Matrix<
-			D, __REF_BACKEND_NAME__,
+			D, reference,
 			ColIndexType, ColIndexType, NonzeroIndexType
 		>
-		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, __REF_BACKEND_NAME__ >(
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, reference >(
 			D *__restrict__ const,
 			ColIndexType *__restrict__ const,
 			NonzeroIndexType *__restrict__ const,
@@ -905,7 +910,7 @@ namespace grb {
 
 		/** Our own type. */
 		typedef Matrix<
-			D, __REF_BACKEND_NAME__,
+			D, reference,
 			RowIndexType, ColIndexType, NonzeroIndexType
 		> self_type;
 
@@ -1066,7 +1071,7 @@ namespace grb {
 			const size_t cap_in
 		) {
 #ifdef _DEBUG
-			std::cerr << "\t in Matrix< __REF_BACKEND_NAME__ >::initialize...\n"
+			std::cerr << "\t in Matrix< reference >::initialize...\n"
 				<< "\t\t matrix size " << rows << " by " << columns << "\n"
 				<< "\t\t requested capacity " << cap_in << "\n";
 #endif
@@ -1125,10 +1130,10 @@ namespace grb {
 				}
 				// get sizes of arrays that we need to allocate
 				size_t sizes[ 12 ];
-				sizes[ 0 ] = internal::Coordinates< __REF_BACKEND_NAME__ >::arraySize( m );
-				sizes[ 1 ] = internal::Coordinates< __REF_BACKEND_NAME__ >::arraySize( n );
-				sizes[ 2 ] = internal::Coordinates< __REF_BACKEND_NAME__ >::bufferSize( m );
-				sizes[ 3 ] = internal::Coordinates< __REF_BACKEND_NAME__ >::bufferSize( n );
+				sizes[ 0 ] = internal::Coordinates< reference >::arraySize( m );
+				sizes[ 1 ] = internal::Coordinates< reference >::arraySize( n );
+				sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( m );
+				sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( n );
 				sizes[ 4 ] = m * internal::SizeOf< D >::value;
 				sizes[ 5 ] = n * internal::SizeOf< D >::value;
 				if( cap_in > 0 ) {
@@ -1141,7 +1146,7 @@ namespace grb {
 				}
 				// allocate required arrays
 				alloc_ok = utils::alloc(
-					"grb::Matrix< T, __REF_BACKEND_NAME__ >::Matrix()",
+					"grb::Matrix< T, reference >::Matrix()",
 					"initial capacity allocation",
 					coorArr[ 0 ], sizes[ 0 ], false, _local_deleter[ 0 ],
 					coorArr[ 1 ], sizes[ 1 ], false, _local_deleter[ 1 ],
@@ -1164,7 +1169,7 @@ namespace grb {
 				coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
 				coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
 				alloc_ok = utils::alloc(
-					"grb::Matrix< T, __REF_BACKEND_NAME__ >::Matrix()",
+					"grb::Matrix< T, reference >::Matrix()",
 					"empty allocation",
 					alloc[ 6 ], sizes[ 0 ], false, _local_deleter[ 4 ],
 					alloc[ 7 ], sizes[ 1 ], false, _local_deleter[ 5 ]
@@ -1321,7 +1326,7 @@ namespace grb {
 
 			// do allocation
 			RC ret = utils::alloc(
-				"grb::Matrix< T, __REF_BACKEND_NAME__ >::resize", description.str(),
+				"grb::Matrix< T, reference >::resize", description.str(),
 				alloc[ 0 ], sizes[ 0 ], true, _deleter[ 2 ],
 				alloc[ 1 ], sizes[ 1 ], true, _deleter[ 3 ],
 				alloc[ 2 ], sizes[ 2 ], true, _deleter[ 4 ],
@@ -1344,7 +1349,7 @@ namespace grb {
 						freed += sizes[ i ];
 					}
 				}
-				if( config::MEMORY::report( "grb::Matrix< T, __REF_BACKEND_NAME__ >::resize",
+				if( config::MEMORY::report( "grb::Matrix< T, reference >::resize",
 					"freed (or will eventually free)", freed, false )
 				) {
 					std::cout << ", for " << cap << " nonzeroes "
@@ -1361,11 +1366,17 @@ namespace grb {
 
 
    		/** @see Matrix::buildMatrixUnique */
-		template< Descriptor descr = descriptors::no_operation, typename fwd_iterator>
-		RC buildMatrixUnique( const fwd_iterator & _start, const fwd_iterator & _end, const IOMode mode ) {
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename fwd_iterator
+		> RC buildMatrixUnique(
+			const fwd_iterator &_start,
+			const fwd_iterator &_end,
+			const IOMode mode
+		) {
 			// here we can safely ignore the mode and dispatch based only on the iterator type
 			// since in shared memory the input data reside by definition all on the same machine
-			(void)mode;
+			(void) mode;
 			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
 			return buildMatrixUniqueImpl( _start, _end, category );
 		}
@@ -1373,21 +1384,24 @@ namespace grb {
 
 		//forward iterator version
 		template <typename fwd_iterator>
-		inline RC buildMatrixUniqueImpl(fwd_iterator _start, fwd_iterator _end, std::forward_iterator_tag) {
+		inline RC buildMatrixUniqueImpl(
+			const fwd_iterator &_start,
+			const fwd_iterator &_end,
+			std::forward_iterator_tag
+		) {
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( __REF_BACKEND_NAME__, false );
+			::__trace_build_matrix_iomode( reference, false );
 #endif
-			return __buildMatrixUniqueImplSeq( _start, _end );
+			return buildMatrixUniqueImplSeq( _start, _end );
 		}
 
 		template <typename fwd_iterator>
-		RC __buildMatrixUniqueImplSeq(fwd_iterator _start, fwd_iterator _end) {
-
+		RC buildMatrixUniqueImplSeq(
+			const fwd_iterator &_start,
+			const fwd_iterator &_end
+		) {
 #ifdef _DEBUG
-		        std::cout << " fwrd acces iterator " << '\n';
-		        //compilation of the next lines should fail
-		        //#pragma omp parallel for
-  		        //for( fwd_iterator it = _start; it != _end; ++it ){}
+		    std::cout << " fwrd acces iterator " << '\n';
 			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 			std::cout << "buildMatrixUnique: input is\n";
 			for( fwd_iterator it = _start; it != _end; ++it ) {
@@ -1399,10 +1413,8 @@ namespace grb {
 			if( _start == _end || m == 0 || n == 0 ) {
 				return SUCCESS;
 			}
-
 			// keep count of nonzeroes
 			nz = 0;
-
 
 			// reset col_start array to zero, fused loop
 			{
@@ -1443,8 +1455,6 @@ namespace grb {
 				}
 			}
 
-
-
 			for( fwd_iterator it = _start; it != _end; ++it )
 			  {
 			    if( it.i() >= m ) {
@@ -1459,9 +1469,9 @@ namespace grb {
 					<< "input at " << it.j() << "\n";
 			      return MISMATCH;
 			    }
-			    (void)++( CRS.col_start[ it.i() ] );
-			    (void)++( CCS.col_start[ it.j() ] );
-			    (void)++nz;
+			    (void) ++( CRS.col_start[ it.i() ] );
+			    (void) ++( CCS.col_start[ it.j() ] );
+			    (void) ++nz;
 			  }
 
 
@@ -1498,9 +1508,6 @@ namespace grb {
 				CCS.col_start[ i ] += CCS.col_start[ i - 1 ];
 			}
 
-
-
-
 			// perform counting sort
 			fwd_iterator it = _start;
 
@@ -1526,53 +1533,54 @@ namespace grb {
 				// "original input was " << it.v() << ".\n";
 #endif
 			}
-
 #ifdef _DEBUG
 			for( size_t i = 0; i <= m; ++i ) {
-				(void)printf( "row_start[ %ld ] = %ld.\n", i, CRS.col_start[ i ] );
+				std::cout << "row_start[ " << i << " ] = " << CRS.col_start[ i ]
+					<< "." << std::endl;
 			}
 			for( size_t i = 0; i <= n; ++i ) {
-				(void)printf( "col_start[ %ld ] = %ld.\n", i, CCS.col_start[ i ] );
+				std::cout << "col_start[ " << i << " ] = " << CCS.col_start[ i ]
+					<< "." << std::endl;
 			}
 #endif
 			// done
-
-
 			return SUCCESS;
 		}
 
-
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 		//random access version
-		template <typename rndacc_iterator>
-		RC buildMatrixUniqueImpl(rndacc_iterator _start, rndacc_iterator _end, std::random_access_iterator_tag) {
+		template< typename rndacc_iterator >
+		RC buildMatrixUniqueImpl(
+			const rndacc_iterator &_start,
+			const rndacc_iterator &_end,
+			std::random_access_iterator_tag
+		) {
 #ifdef _DEBUG
-		        std::cout << " rnd access iterator " << '\n';
-				std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
-				std::cout << "buildMatrixUnique: input is\n";
-				for( rndacc_iterator it = _start; it != _end; ++it ) {
-					std::cout << "\t" << it.i() << ", " << it.j() << "\n";
-				}
-				std::cout << "buildMatrixUnique: end input.\n";
+			std::cout << " rnd access iterator " << '\n';
+			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
+			std::cout << "buildMatrixUnique: input is\n";
+			for( rndacc_iterator it = _start; it != _end; ++it ) {
+				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
+			}
+			std::cout << "buildMatrixUnique: end input.\n";
 #endif
 
 #ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( __REF_BACKEND_NAME__, true );
+			::__trace_build_matrix_iomode( reference, true );
 #endif
 
-				// detect trivial case
-				if( _start == _end || m == 0 || n == 0 ) {
-					return SUCCESS;
-				}
+			// detect trivial case
+			if( _start == _end || m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
 
-				// count of nonzeroes
-				nz = _end-_start;
+			// count of nonzeroes
+			nz = _end-_start;
 
-				// if ( nz <= static_cast< size_t >( omp_get_max_threads() ) ) {
-				// for small sizes, delegate to sequential routine
-				// 	return __buildMatrixUniqueImplSeq( _start, _end );
-				// }
-
+			// if( nz <= static_cast< size_t >( omp_get_max_threads() ) ) {
+			// for small sizes, delegate to sequential routine
+			// 	return buildMatrixUniqueImplSeq( _start, _end );
+			// }
 
 			// reset col_start array to zero, fused loop
 			{
@@ -1583,23 +1591,23 @@ namespace grb {
 					std::swap( min_dim, max_dim );
 				}
 				// fill until minimum
-				#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
+				#pragma omp parallel for schedule( dynamic, \
+					config::CACHE_LINE_SIZE::value() )
 				for( size_t i = 0; i < min_dim; ++i ) {
 					CRS.col_start[ i ] = 0;
 					CCS.col_start[ i ] = 0;
 				}
 				// if the minimum dimension is the row dimension
 				if( min_dim == static_cast< size_t >( m ) ) {
-					#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( dynamic, \
+						config::CACHE_LINE_SIZE::value() )
 					// then continue to fill column dimension
 					for( size_t i = min_dim; i < max_dim; ++i ) {
 						CCS.col_start[ i ] = 0;
 					}
 				} else {
-					#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel for schedule( dynamic, \
+						config::CACHE_LINE_SIZE::value() )
 					// otherwise, continue to fill row dimension
 					for( size_t i = min_dim; i < max_dim; ++i ) {
 						CRS.col_start[ i ] = 0;
@@ -1621,17 +1629,13 @@ namespace grb {
 
 			// allocate enough space
 			resize( nz );
-
-			RC ret = internal::populateCXX< false, grb::config::ColIndexType >( m, nz, _start, CRS );
-			if ( ret != SUCCESS ) {
+			RC ret = internal::populate_storage< false, grb::config::ColIndexType >( m, nz, _start, CRS );
+			if( ret != SUCCESS ) {
 				return ret;
 			}
-
-			return internal::populateCXX< true, grb::config::RowIndexType >( n, nz, _start, CCS );
-
+			return internal::populate_storage< true, grb::config::RowIndexType >( n, nz, _start, CCS );
 		}
 #endif
-
 
 	public:
 
@@ -1642,7 +1646,7 @@ namespace grb {
 		typedef typename internal::Compressed_Storage<
 			D, RowIndexType, NonzeroIndexType
 		>::template ConstIterator<
-			internal::Distribution< __REF_BACKEND_NAME__ >
+			internal::Distribution< reference >
 		> const_iterator;
 
 		/**
@@ -1719,7 +1723,7 @@ namespace grb {
 		 */
 		Matrix(
 			const Matrix<
-				D, __REF_BACKEND_NAME__,
+				D, reference,
 				RowIndexType, ColIndexType, NonzeroIndexType
 			> &other
 		) :
@@ -1813,7 +1817,7 @@ namespace grb {
 		 *
 		 * \todo should we specify performance semantics for retrieving iterators?
 		 */
-		template< class ActiveDistribution = internal::Distribution< __REF_BACKEND_NAME__ > >
+		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
 			RowIndexType, NonzeroIndexType
@@ -1822,7 +1826,7 @@ namespace grb {
 			const size_t s = 0, const size_t P = 1
 		) const {
 			assert( mode == PARALLEL );
-			(void)mode;
+			(void) mode;
 			typedef typename internal::Compressed_Storage<
 				D,
 				RowIndexType,
@@ -1839,7 +1843,7 @@ namespace grb {
 		 *
 		 * \todo should we specify performance semantics for retrieving iterators?
 		 */
-		template< class ActiveDistribution = internal::Distribution< __REF_BACKEND_NAME__ > >
+		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
 			RowIndexType,
@@ -1849,7 +1853,7 @@ namespace grb {
 			const size_t s = 0, const size_t P = 1
 		) const {
 			assert( mode == PARALLEL );
-			(void)mode;
+			(void) mode;
 			typedef typename internal::Compressed_Storage<
 				D,
 				RowIndexType,
@@ -1863,7 +1867,7 @@ namespace grb {
 		 *
 		 * \todo should we specify performance semantics for retrieving iterators?
 		 */
-		template< class ActiveDistribution = internal::Distribution< __REF_BACKEND_NAME__ > >
+		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
 			RowIndexType,
@@ -1879,7 +1883,7 @@ namespace grb {
 		 *
 		 * \todo should we specify performance semantics for retrieving iterators?
 		 */
-		template< class ActiveDistribution = internal::Distribution< __REF_BACKEND_NAME__ > >
+		template< class ActiveDistribution = internal::Distribution< reference > >
 		typename internal::Compressed_Storage<
 			D,
 			RowIndexType,
@@ -1894,7 +1898,7 @@ namespace grb {
 
 	// template specialisation for GraphBLAS type traits
 	template< typename D, typename RIT, typename CIT, typename NIT >
-	struct is_container< Matrix< D, __REF_BACKEND_NAME__, RIT, CIT, NIT > > {
+	struct is_container< Matrix< D, reference, RIT, CIT, NIT > > {
 		/** A reference Matrix is a GraphBLAS object. */
 		static const constexpr bool value = true;
 	};
@@ -1948,10 +1952,9 @@ namespace grb {
 #ifdef _GRB_WITH_OMP
  #ifndef _H_GRB_REFERENCE_OMP_MATRIX
   #define _H_GRB_REFERENCE_OMP_MATRIX
-  #undef __REF_BACKEND_NAME__
-  #define __REF_BACKEND_NAME__ reference_omp
+  #define reference reference_omp
   #include "matrix.hpp"
-  #undef __REF_BACKEND_NAME__
+  #undef reference
   #undef _H_GRB_REFERENCE_OMP_MATRIX
  #endif
 #endif
