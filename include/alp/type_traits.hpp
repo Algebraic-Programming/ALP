@@ -221,15 +221,6 @@ namespace alp {
 		template< typename Container >
 		struct inspect_view {};
 
-
-		template< typename T >
-		struct is_view_over_concrete_container : is_view_over_concrete_container< typename inspect_view< T >::type::applied_to > {
-			static_assert( is_vector< T >::value || is_matrix< T >::value, "Argument to internal::is_view_over_concrete_container must be an ALP vector or an ALP matrix.");
-		};
-
-		template<>
-		struct is_view_over_concrete_container< void > : std::true_type {};
-
 		/**
 		 * Inspects whether a view corresponds to a storage-based ALP container.
 		 *
