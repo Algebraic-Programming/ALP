@@ -35,7 +35,7 @@ namespace alp {
 
 	/** Specializations of ALP backend-agnostic type traits */
 	template< typename T, typename Structure, enum Backend backend >
-	struct internal::inspect_structure< Scalar< T, Structure, backend > > {
+	struct inspect_structure< Scalar< T, Structure, backend > > {
 		typedef Structure type;
 	};
 
