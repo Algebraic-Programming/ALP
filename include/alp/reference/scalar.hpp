@@ -181,10 +181,7 @@ namespace alp {
 
 	/** Identifies any reference scalar as an ALP scalar. */
 	template< typename T, typename Structure >
-	struct is_container< Scalar< T, Structure, reference > > {
-		/** A scalar is an ALP object. */
-		static const constexpr bool value = true;
-	};
+	struct is_scalar< Scalar< T, Structure, reference > > : std::true_type {};
 
 	namespace internal {
 		template< typename T, typename Structure >

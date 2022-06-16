@@ -33,6 +33,12 @@ namespace alp {
 	template< typename T, typename Structure = structures::General, enum Backend backend = config::default_backend >
 	class Scalar;
 
+	/** Specializations of ALP backend-agnostic type traits */
+	template< typename T, typename Structure, enum Backend backend >
+	struct inspect_structure< Scalar< T, Structure, backend > > {
+		typedef Structure type;
+	};
+
 }
 #endif
 

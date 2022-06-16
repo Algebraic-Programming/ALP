@@ -52,6 +52,17 @@ namespace alp {
 		enum Backend backend = config::default_backend >
 	class Matrix;
 
+	/** Specializations of ALP backend-agnostic type traits */
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	struct inspect_structure< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
+		typedef Structure type;
+	};
+
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	struct internal::inspect_view< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > {
+		typedef View type;
+	};
+
 } // namespace alp
 #endif
 
