@@ -63,15 +63,6 @@ grb::RC grb::init< grb::reference >( const size_t s, const size_t P, void * cons
 	return grb::SUCCESS;
 }
 
-void grb::internal::forceDeallocBuffer() {
-	if ( grb::internal::reference_bufsize > 0 ) {
-		delete [] grb::internal::reference_buffer;
-		grb::internal::reference_buffer = nullptr;
-		grb::internal::reference_bufsize = 0;
-	}
-}
-
-
 template<>
 grb::RC grb::finalize< grb::reference >() {
 	std::cerr << "Info: grb::finalize (reference) called.\n";

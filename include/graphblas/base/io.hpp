@@ -1392,8 +1392,6 @@ namespace grb {
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
 
-
-
 	/**
 	 * Alias that transforms a set of pointers and an array length to the
 	 * buildMatrixUnique variant based on iterators.
@@ -1409,7 +1407,6 @@ namespace grb {
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
-
 		return buildMatrixUnique< descr >( A,
 			I, I + nz,
 			J, J + nz,

@@ -54,7 +54,7 @@ void __trace_build_matrix_iomode( grb::Backend backend, bool iterator_parallel )
 
 
 #define LOG() std::cout
-#define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
+#define MAIN_LOG( text ) if( spmd<>::pid() == 0 ) { LOG() << text; }
 
 
 
@@ -245,7 +245,7 @@ template< typename ValT, enum Backend implementation = config::default_backend >
 	ASSERT_RC_SUCCESS( rc );
 	ASSERT_EQ( num_sorted_mat_values, mat_nzs.size() );
 
-	if ( sort_nzs ) {
+	if( sort_nzs ) {
 		utils::row_col_nz_sort< DefRowT, DefColT, ValT >( mat_nzs.begin(), mat_nzs.end() );
 	}
 
@@ -443,7 +443,7 @@ void grbProgram( const void *, const size_t, int &error ) {
 	// assumes SUCCESS is the smallest value in enum RC to perform reduction
 	assert( SUCCESS < FAILED );
 	RC rc_red = collectives<>::allreduce( error, grb::operators::max< int >() );
-	if ( rc_red != SUCCESS ) {
+	if( rc_red != SUCCESS ) {
 		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
 		std::abort();
 	}

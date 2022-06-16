@@ -47,6 +47,19 @@ namespace grb {
 
 		/**
 		 * \internal
+		 * Helper function to get the size of the current buffer.
+		 *  
+		 * @tparam D the data type to store in the buffer
+		 * @return size_t the number of elements of type #D that can be stored
+		 * 			in the current buffer
+		 */
+		template< typename D >
+		size_t getCurrentBufferSize() noexcept {
+			return reference_bufsize / sizeof( D );
+		}
+
+		/**
+		 * \internal
 		 * Helper function that ensures a given size is available.
 		 *
 		 * @tparam D The buffer element type desired.
@@ -60,7 +73,7 @@ namespace grb {
 		 * \endinternal
 		 */
 		template< typename D >
-		bool ensureReferenceBufsize( const size_t n ) {
+		bool ensureReferenceBufsize( const size_t n ) noexcept {
 			const size_t targetSize = n * sizeof( D );
 			if( reference_bufsize < targetSize ) {
 				size_t newSize = std::max( 2 * reference_bufsize, targetSize );
@@ -79,12 +92,6 @@ namespace grb {
 				return true;
 			}
 		}
-
-		/**
-		 * @brief forces buffer deallocation to release memory to the OS
-		 * 	and avoid Out-Of-Memory killer
-		 */
-		void forceDeallocBuffer();
 
 		/**
 		 * \internal
