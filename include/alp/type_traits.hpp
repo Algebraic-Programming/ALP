@@ -77,6 +77,22 @@ namespace alp {
 		is_scalar< T >::value || is_vector< T >::value || is_matrix< T >::value
 	> {};
 
+	namespace internal {
+
+		/**
+		 * Used to inspect whether a given type is an internal container.
+		 *
+		 * @tparam T The type to inspect.
+		 *
+		 * There are only two internal containers:
+		 *  -# alp::internal::Vector, and
+		 *  -# alp::internal::Matrix.
+		 */
+		template< typename T >
+		struct is_container : std::false_type {};
+
+	} // namespace internal
+
 	/**
 	 * Used to inspect whether a given type is an ALP semiring.
 	 *

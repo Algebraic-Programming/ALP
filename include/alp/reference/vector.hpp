@@ -269,11 +269,12 @@ namespace alp {
 				// }
 
 		};
-	} // end namespace ``alp::internal''
 
-	/** Identifies any reference vector as an ALP vector. */
-	template< typename T >
-	struct is_container< internal::Vector< T, reference > > : std::true_type {};
+		/** Identifies any reference internal vector as an internal container. */
+		template< typename T >
+		struct is_container< internal::Vector< T, reference > > : std::true_type {};
+
+	} // end namespace ``alp::internal''
 
 	namespace internal {
 
