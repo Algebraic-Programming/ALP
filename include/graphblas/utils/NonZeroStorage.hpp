@@ -161,6 +161,28 @@ namespace grb {
 			return NonZeroStorage< RowIndexT, ColIndexT, void >( it.i(), it.j() );
 		}
 
+#ifdef _DEBUG
+		template< typename R, typename T, typename V >
+		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< ! std::is_same< V, void >::value >::type* = nullptr ) {
+			s << ": " << nz.v();
+
+		}
+
+		template< typename R, typename T, typename V >
+		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< std::is_same< V, void >::value >::type* = nullptr ) {
+			(void)s;
+			(void)nz;
+		}
+
+		template< typename R, typename T, typename V >
+		std::ostream& operator<<( std::ostream& s, const NonZeroStorage< R, T, V >& nz ) {
+            s << "( " << nz.i() << ", " << nz.j() << " )";
+			__val_printer( s, nz );
+            return s;
+        }
+#endif
 	} // namespace utils
 } // namespace grb
 
