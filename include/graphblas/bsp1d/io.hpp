@@ -1084,9 +1084,6 @@ namespace grb {
 				const BSP1D_Data &data,
 				std::forward_iterator_tag
 		) {
-#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( BSP1D, false );
-#endif
 		if( mode == PARALLEL ) {
 			outgoing.resize( data.P );
 		}
@@ -1122,9 +1119,6 @@ namespace grb {
 					std::random_access_iterator_tag >::value, std::random_access_iterator_tag
 				>::type
 		) {
-#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( BSP1D, true );
-#endif
 			typedef utils::NonZeroStorage< IType, JType, VType > storage_t;
 
 			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );

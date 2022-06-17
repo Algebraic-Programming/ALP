@@ -30,12 +30,6 @@
 #include <type_traits>
 #include <cstdlib>
 
-#include <graphblas/backends.hpp>
-
-#define _GRB_BUILD_MATRIX_UNIQUE_TRACE
-
-void __trace_build_matrix_iomode( grb::Backend, bool );
-
 #include <graphblas.hpp>
 #include <graphblas/utils/NonZeroStorage.hpp>
 #include <graphblas/utils/NonzeroIterator.hpp>
@@ -46,17 +40,8 @@ void __trace_build_matrix_iomode( grb::Backend, bool );
 
 using namespace grb;
 
-static std::vector< std::pair< Backend, bool > > __iomodes;
-
-void __trace_build_matrix_iomode( grb::Backend backend, bool iterator_parallel ) {
-	__iomodes.emplace_back( backend, iterator_parallel );
-}
-
-
 #define LOG() std::cout
 #define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
-
-
 
 template< typename T > void test_matrix_sizes_match( const Matrix< T >& mat1, const Matrix< T >& mat2) {
     ASSERT_EQ( grb::nrows( mat1 ), grb::nrows( mat2 ) );
@@ -67,14 +52,12 @@ using DefRowT = std::size_t;
 using DefColT = std::size_t;
 template< typename T > using NZ = utils::NonZeroStorage< DefRowT, DefColT, T >;
 
-
 template< typename T, enum Backend implementation > static void get_nnz_and_sort(
 	const Matrix< T, implementation >& mat,
 	std::vector< NZ< T > >& values ) {
 	utils::get_matrix_nnz( mat, values );
 	utils::row_col_nz_sort< DefRowT, DefColT, T >( values.begin(), values.end() );
 }
-
 
 template< typename T, enum Backend implementation >
 	bool matrices_values_are_equal( const Matrix< T, implementation >& mat1,
@@ -129,22 +112,6 @@ template< typename T, enum Backend implementation >
     return match;
 }
 
-using iomode_map_t = std::unordered_map< enum Backend, bool >;
-
-static bool test_build_matrix_iomode( const iomode_map_t& iomap ) {
-	bool res{ true };
-	for( const std::pair< enum Backend, bool >& m : __iomodes ) {
-		typename iomode_map_t::const_iterator pos{ iomap.find( m.first ) };
-		if( pos == iomap.cend() ) {
-			FAIL();
-		}
-		ASSERT_EQ( m.second, pos->second );
-		res &= m.second == pos->second;
-	}
-	__iomodes.clear();
-	return res;
-}
-
 template< typename T, typename IterT, enum Backend implementation = config::default_backend >
 	void build_matrix_and_check( Matrix< T, implementation >& m, IterT begin, IterT end,
 	std::size_t expected_num_global_nnz, std::size_t expected_num_local_nnz, IOMode mode ) {
@@ -156,29 +123,14 @@ template< typename T, typename IterT, enum Backend implementation = config::defa
 	ASSERT_EQ( nnz( m ), expected_num_global_nnz );
 }
 
-
 template< typename T, typename IterT, enum Backend implementation >
 	void test_matrix_generation( Matrix< T, implementation >& sequential_matrix,
 		Matrix< T, implementation >& parallel_matrix,
 		const typename IterT::input_sizes_t& iter_sizes ) {
 
-	constexpr bool iterator_is_random{ std::is_same< typename std::iterator_traits<IterT>::iterator_category,
+	constexpr bool iterator_is_random{ std::is_same<
+		typename std::iterator_traits<IterT>::iterator_category,
 		std::random_access_iterator_tag >::value };
-	iomode_map_t iomap( {
-		std::pair< enum Backend, bool >( implementation, iterator_is_random
-			&& ( ( implementation == Backend::reference_omp )
-#ifdef _GRB_BSP1D_BACKEND
-			|| ( implementation == Backend::BSP1D && _GRB_BSP1D_BACKEND == Backend::reference_omp )
-#endif
-			) )
-#ifdef _GRB_BSP1D_BACKEND
-		, std::pair< enum Backend, bool >( _GRB_BSP1D_BACKEND,
-			( _GRB_BSP1D_BACKEND == Backend::reference_omp )
-			// with 1 process, the BSP1D backend is directly delegated
-				&& ( spmd<>::nprocs() > 1 || iterator_is_random )
-		)
-#endif
-	} );
 
 	MAIN_LOG( ">> " << ( iterator_is_random ? "RANDOM" : "FORWARD" ) << " ITERATOR "
 		<< "-- size " << nrows( sequential_matrix ) << " x "
@@ -188,14 +140,12 @@ template< typename T, typename IterT, enum Backend implementation >
 	const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
 	build_matrix_and_check( sequential_matrix, IterT::make_begin( iter_sizes ),
 		IterT::make_end( iter_sizes ), num_nnz, num_nnz, IOMode::SEQUENTIAL );
-	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
 
 	//Matrix< T, implementation > parallel_matrix( nrows, ncols );
 	const std::size_t par_num_nnz{ utils::compute_parallel_num_nonzeroes( num_nnz ) };
 
 	build_matrix_and_check( parallel_matrix, IterT::make_parallel_begin( iter_sizes),
 		IterT::make_parallel_end( iter_sizes), num_nnz, par_num_nnz, IOMode::PARALLEL );
-	ASSERT_TRUE( test_build_matrix_iomode( iomap ) );
 
 	test_matrix_sizes_match( sequential_matrix, parallel_matrix );
 	std::size_t serial_nz, par_nz;
@@ -205,7 +155,6 @@ template< typename T, typename IterT, enum Backend implementation >
 
 	MAIN_LOG( "<< OK" << std::endl );
 }
-
 
 template< typename ValT, enum Backend implementation = config::default_backend >
 	void test_matrix_from_vectors(
@@ -322,7 +271,6 @@ template< typename T, typename ParIterT, typename SeqIterT, enum Backend impleme
 	test_matrix_from_permuted_iterators< T, ParIterT >( nrows, ncols, iter_sizes );
 }
 
-
 template< enum Backend implementation = config::default_backend > void test_matrix_from_user_vectors() {
 
 	constexpr std::size_t num_matrices{ 2 };
@@ -377,7 +325,6 @@ static void print_exception_text( const char * text, const char * caption = std_
 }
 
 void test_invalid_inputs() {
-
 
 	using NZC = NZ< int >;
 	constexpr std::size_t rows{ 6 }, cols{ 7 };
