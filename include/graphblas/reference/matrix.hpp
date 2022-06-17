@@ -1431,9 +1431,6 @@ namespace grb {
 			const fwd_iterator &_end,
 			std::forward_iterator_tag
 		) {
-#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( reference, false );
-#endif
 			return buildMatrixUniqueImplSeq( _start, _end );
 		}
 
@@ -1557,10 +1554,6 @@ namespace grb {
 				std::cout << "\t" << it.i() << ", " << it.j() << "\n";
 			}
 			std::cout << "buildMatrixUnique: end input.\n";
-#endif
-
-#ifdef _GRB_BUILD_MATRIX_UNIQUE_TRACE
-			::__trace_build_matrix_iomode( reference, true );
 #endif
 
 			// detect trivial case
