@@ -54,7 +54,6 @@ struct output {
 
 // main label propagation algorithm
 void grbProgram( const struct input &data, struct output &out ) {
-
 	grb::utils::Timer timer;
 
 	const size_t s = spmd<>::pid();
@@ -90,13 +89,20 @@ void grbProgram( const struct input &data, struct output &out ) {
 
 	// ingest matrix
 	timer.reset();
-	out.error_code = buildMatrixUnique( mx, parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ), SEQUENTIAL );
+	out.error_code = buildMatrixUnique(
+		mx,
+		parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+		SEQUENTIAL
+	);
 	out.times.io += timer.time();
 
 	if( out.error_code != SUCCESS ) { return; }
 
 	// setup
-	Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	switch( test ) {
 
@@ -118,7 +124,10 @@ void grbProgram( const struct input &data, struct output &out ) {
 			double * chk = new double[ parser.m() ];
 			size_t * cnt = new size_t[ parser.m() ];
 			double * mag = new double[ parser.m() ];
-			for( size_t i = 0; i < parser.m(); ++i ) { chk[ i ] = mag[ i ] = 0.0; cnt[ i ] = 0;}
+			for( size_t i = 0; i < parser.m(); ++i ) {
+				chk[ i ] = mag[ i ] = 0.0;
+				cnt[ i ] = 0;
+			}
 			for( const auto &triple : parser ) {
 				const size_t i = triple.first.first;
 				chk[ i ] += triple.second;
@@ -128,17 +137,21 @@ void grbProgram( const struct input &data, struct output &out ) {
 			for( const auto &pair : vleft ) {
 				if( cnt[ pair.first ] == 0 ) {
 					if( pair.second != 0.0 ) {
-						std::cerr << "Verification FAILED; nonzero " << pair.second << " at output vector position " << pair.first << " while no contribution to that index was expected\n";
+						std::cerr << "Verification FAILED; nonzero " << pair.second
+							<< " at output vector position " << pair.first
+							<< " while no contribution to that index was expected\n";
 						out.error_code = FAILED;
 					}
 				} else {
 					const size_t epsilons = mag[ pair.first ] < 1
 						? cnt[ pair.first ] + 1
-						: cnt[ pair.first ] * ceil(mag[ pair.first ]) + 1;
+						: cnt[ pair.first ] * std::ceil( mag[ pair.first ] ) + 1;
 					const double allowedError =
 						epsilons * std::numeric_limits< double >::epsilon();
 					if( std::fabs( pair.second - chk[ pair.first ] ) > allowedError ) {
-						std::cerr << "Verification FAILED ( " << pair.second << " does not equal " << chk[ pair.first ] << " at output vector position " << pair.first << " )\n";
+						std::cerr << "Verification FAILED ( " << pair.second
+							<< " does not equal " << chk[ pair.first ]
+							<< " at output vector position " << pair.first << " )\n";
 						out.error_code = FAILED;
 					}
 				}
@@ -174,11 +187,15 @@ void grbProgram( const struct input &data, struct output &out ) {
 			if( out.error_code != SUCCESS ) { return; }
 
 			// functional check
-			out.error_code = mxv< grb::descriptors::dense | grb::descriptors::transpose_matrix >( vright, mx, vleft, ring );
+			out.error_code = mxv< grb::descriptors::dense |
+				grb::descriptors::transpose_matrix >( vright, mx, vleft, ring );
 			double * chk = new double[ parser.n() ];
 			size_t * cnt = new size_t[ parser.n() ];
 			double * mag = new double[ parser.n() ];
-			for( size_t i = 0; i < parser.n(); ++i ) { chk[ i ] = mag[ i ] = 0.0; cnt[ i ] = 0;}
+			for( size_t i = 0; i < parser.n(); ++i ) {
+				chk[ i ] = mag[ i ] = 0.0;
+				cnt[ i ] = 0;
+			}
 			for( const auto &triple : parser ) {
 				const size_t i = triple.first.second;
 				chk[ i ] += triple.second;
@@ -188,14 +205,21 @@ void grbProgram( const struct input &data, struct output &out ) {
 			for( const auto &pair : vright ) {
 				if( cnt[ pair.first ] == 0 ) {
 					if( pair.second != 0.0 ) {
-						std::cerr << "Verification FAILED; nonzero " << pair.second << " at output vector position " << pair.first << " while no contribution to that index was expected\n";
+						std::cerr << "Verification FAILED; nonzero " << pair.second
+							<< " at output vector position " << pair.first
+							<< " while no contribution to that index was expected\n";
 						out.error_code = FAILED;
 					}
 				} else {
-					const double releps = pair.second == 0 ? 0 : mag[ pair.first ] / fabs(pair.second);
-					const size_t epsilons = static_cast<size_t>(releps * static_cast<double>(cnt[ pair.first ])) + 1;
-					if( ! grb::utils::equals( pair.second, chk[ pair.first ], epsilons ) ) {
-						std::cerr << "Verification FAILED ( " << pair.second << " does not equal " << chk[ pair.first ] << " at output vector position " << pair.first << " )\n";
+					const size_t epsilons = mag[ pair.first ] < 1
+						? cnt[ pair.first ] + 1
+						: cnt[ pair.first ] * std::ceil( mag[ pair.first ] ) + 1;
+					const double allowedError =
+						epsilons * std::numeric_limits< double >::epsilon();
+					if( std::fabs( pair.second - chk[ pair.first ] ) > allowedError ) {
+						std::cerr << "Verification FAILED ( " << pair.second << " does not equal "
+							<< chk[ pair.first ] << " at output vector position " << pair.first
+							<< " )\n";
 						out.error_code = FAILED;
 					}
 				}
@@ -206,10 +230,12 @@ void grbProgram( const struct input &data, struct output &out ) {
 			if( out.error_code != SUCCESS ) { return; }
 
 			// do experiment
-			out.error_code = mxv< grb::descriptors::dense | descriptors::transpose_matrix >( vright, mx, vleft, ring );
+			out.error_code = mxv< grb::descriptors::dense |
+				descriptors::transpose_matrix >( vright, mx, vleft, ring );
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
-				out.error_code = mxv< grb::descriptors::dense | descriptors::transpose_matrix >( vright, mx, vleft, ring );
+				out.error_code = mxv< grb::descriptors::dense |
+					descriptors::transpose_matrix >( vright, mx, vleft, ring );
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done
@@ -235,7 +261,10 @@ void grbProgram( const struct input &data, struct output &out ) {
 			double * chk = new double[ parser.n() ];
 			size_t * cnt = new size_t[ parser.n() ];
 			double * mag = new double[ parser.n() ];
-			for( size_t i = 0; i < parser.n(); ++i ) { chk[ i ] = mag[ i ] = 0.0; cnt[ i ] = 0;}
+			for( size_t i = 0; i < parser.n(); ++i ) {
+				chk[ i ] = mag[ i ] = 0.0;
+				cnt[ i ] = 0;
+			}
 			for( const auto &triple : parser ) {
 				const size_t i = triple.first.second;
 				chk[ i ] += triple.second;
@@ -245,14 +274,21 @@ void grbProgram( const struct input &data, struct output &out ) {
 			for( const auto &pair : vright ) {
 				if( cnt[ pair.first ] == 0 ) {
 					if( pair.second != 0.0 ) {
-						std::cerr << "Verification FAILED; nonzero " << pair.second << " at output vector position " << pair.first << " while no contribution to that index was expected\n";
+						std::cerr << "Verification FAILED; nonzero " << pair.second
+							<< " at output vector position " << pair.first
+							<< " while no contribution to that index was expected\n";
 						out.error_code = FAILED;
 					}
 				} else {
-					const double releps = pair.second == 0 ? 0 : mag[ pair.first ] / fabs(pair.second);
-					const size_t epsilons = static_cast<size_t>(releps * static_cast<double>(cnt[ pair.first ])) + 1;
-					if( ! grb::utils::equals( pair.second, chk[ pair.first ], epsilons ) ) {
-						std::cerr << "Verification FAILED ( " << pair.second << " does not equal " << chk[ pair.first ] << " at output vector position " << pair.first << " )\n";
+					const size_t epsilons = mag[ pair.first ] < 1
+						? cnt[ pair.first ] + 1
+						: cnt[ pair.first ] * std::ceil( mag[ pair.first ] ) + 1;
+					const double allowedError =
+						epsilons * std::numeric_limits< double >::epsilon();
+					if( std::fabs( pair.second - chk[ pair.first ] ) > allowedError ) {
+						std::cerr << "Verification FAILED ( " << pair.second << " does not equal "
+							<< chk[ pair.first ] << " at output vector position " << pair.first
+							<< " )\n";
 						out.error_code = FAILED;
 					}
 				}
@@ -288,11 +324,15 @@ void grbProgram( const struct input &data, struct output &out ) {
 			if( out.error_code != SUCCESS ) { return; }
 
 			// functional check
-			out.error_code = vxm< grb::descriptors::dense | grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+			out.error_code = vxm< grb::descriptors::dense |
+				grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
 			double * chk = new double[ parser.m() ];
 			size_t * cnt = new size_t[ parser.m() ];
 			double * mag = new double[ parser.m() ];
-			for( size_t i = 0; i < parser.m(); ++i ) { chk[ i ] = mag[ i ] = 0.0; cnt[ i ] = 0;}
+			for( size_t i = 0; i < parser.m(); ++i ) {
+				chk[ i ] = mag[ i ] = 0.0;
+				cnt[ i ] = 0;
+			}
 			for( const auto &triple : parser ) {
 				const size_t i = triple.first.first;
 				chk[ i ] += triple.second;
@@ -302,14 +342,21 @@ void grbProgram( const struct input &data, struct output &out ) {
 			for( const auto &pair : vleft ) {
 				if( cnt[ pair.first ] == 0 ) {
 					if( pair.second != 0.0 ) {
-						std::cerr << "Verification FAILED; nonzero " << pair.second << " at output vector position " << pair.first << " while no contribution to that index was expected\n";
+						std::cerr << "Verification FAILED; nonzero " << pair.second
+							<< " at output vector position " << pair.first
+							<< " while no contribution to that index was expected\n";
 						out.error_code = FAILED;
 					}
 				} else {
-					const double releps = pair.second == 0 ? 0 : mag[ pair.first ] / fabs(pair.second);
-					const size_t epsilons = static_cast<size_t>(releps * static_cast<double>(cnt[ pair.first ])) + 1;
-					if( ! grb::utils::equals( pair.second, chk[ pair.first ], epsilons ) ) {
-						std::cerr << "Verification FAILED ( " << pair.second << " does not equal " << chk[ pair.first ] << " at output vector position " << pair.first << " )\n";
+					const size_t epsilons = mag[ pair.first ] < 1
+						? cnt[ pair.first ] + 1
+						: cnt[ pair.first ] * std::ceil( mag[ pair.first ] ) + 1;
+					const double allowedError =
+						epsilons * std::numeric_limits< double >::epsilon();
+					if( std::fabs( pair.second - chk[ pair.first ] ) > allowedError ) {
+						std::cerr << "Verification FAILED ( " << pair.second << " does not equal "
+							<< chk[ pair.first ] << " at output vector position " << pair.first
+							<< " )\n";
 						out.error_code = FAILED;
 					}
 				}
@@ -320,10 +367,12 @@ void grbProgram( const struct input &data, struct output &out ) {
 			if( out.error_code != SUCCESS ) { return; }
 
 			// do experiment
-			out.error_code = vxm< grb::descriptors::dense | grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+			out.error_code = vxm< grb::descriptors::dense |
+				grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data.rep; ++i ) {
-				out.error_code = vxm< grb::descriptors::dense | grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
+				out.error_code = vxm< grb::descriptors::dense |
+					grb::descriptors::transpose_matrix >( vleft, vright, mx, ring );
 			}
 			out.times.useful = timer.time() / static_cast< double >( data.rep );
 			// done
@@ -342,15 +391,16 @@ int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 3 || argc > 6 ) {
 		std::cout << "Usage: " << argv[ 0 ]
-			  << " <matrix file> <direct/indirect> <test case> (inner repititions) (outer repititions)"
-			  << std::endl;
+			<< " <matrix file> <direct/indirect> <test case> (inner repititions) "
+			<< "(outer repititions)"
+			<< std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
 	// the input struct
 	struct input in;
-	(void) strncpy( in.fn, argv[ 1 ], MAX_FN_LENGTH-1 );
+	(void) strncpy( in.fn, argv[ 1 ], MAX_FN_LENGTH - 1 );
 	if( strncmp( argv[ 2 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
 	} else {
@@ -363,23 +413,22 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		in.rep = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument for number of inner "
-						 "repititions."
-					  << std::endl;
+			std::cerr << "Could not parse argument for number of inner repititions."
+				<< std::endl;
 			return 25;
 		}
 	}
 	if( argc >= 6 ) {
 		outer = strtoumax( argv[ 5 ], &end, 10 );
 		if( argv[ 5 ] == end ) {
-			std::cerr << "Could not parse argument for number of outer "
-						 "reptitions."
-					  << std::endl;
+			std::cerr << "Could not parse argument for number of outer reptitions."
+				<< std::endl;
 			return 25;
 		}
 	}
 
-	std::cout << "Executable called with parameters: filename " << in.fn << " (" << (in.direct?"direct":"indirect") << "), test case ";
+	std::cout << "Executable called with parameters: filename " << in.fn << " ("
+		<< ( in.direct ? "direct" : "indirect" ) << "), test case ";
 	switch( in.test ) {
 		case 1:
 			std::cout << "Ax";
@@ -394,10 +443,12 @@ int main( int argc, char ** argv ) {
 			std::cout << "xA^T";
 			break;
 		default:
-			std::cout << " UNRECOGNISED TEST CASE, ABORTING.\nTest FAILED.\n" << std::endl;
+			std::cout << " UNRECOGNISED TEST CASE, ABORTING.\n"
+				<< "Test FAILED\n" << std::endl;
 			return 30;
 	}
-	std::cout << ", inner = " << in.rep << ", outer = " << outer << "." << std::endl;
+	std::cout << ", inner = " << in.rep << ", outer = " << outer << "."
+		<< std::endl;
 
 	// the output struct
 	struct output out;
@@ -408,28 +459,33 @@ int main( int argc, char ** argv ) {
 		grb::Launcher< AUTOMATIC > launcher;
 		const enum grb::RC rc = launcher.exec( &grbProgram, in, out, true );
 		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+			std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc
+				<< std::endl;
 			return 40;
 		}
 		// set guesstimate for inner repititions: a single experiment should take at least a second
 		in.rep = static_cast< double >( 1000.0 / out.times.useful ) + 1;
-		std::cout << "Auto-selected number of inner repetitions is " << in.rep << " (at an estimated time of " << out.times.useful << " ms. of useful work per benchmark).\n";
+		std::cout << "Auto-selected number of inner repetitions is " << in.rep
+			<< " (at an estimated time of " << out.times.useful
+			<< " ms. of useful work per benchmark).\n";
 	}
 
 	// start benchmarks
 	grb::Benchmarker< AUTOMATIC > benchmarker;
-	const enum grb::RC rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+	const enum grb::RC rc = benchmarker.exec( &grbProgram, in, out, 1, outer,
+		true );
 	if( rc != SUCCESS ) {
-		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc
+			<< std::endl;
 		return 50;
 	}
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED.\n\n";
+		std::cout << "Test FAILED\n\n";
 		return out.error_code;
 	}
-	std::cout << "Test OK.\n\n";
+	std::cout << "Test OK\n\n";
 	return 0;
 }
 
