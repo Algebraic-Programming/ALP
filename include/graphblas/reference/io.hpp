@@ -26,8 +26,8 @@
 #include <graphblas/base/io.hpp>
 #include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
-#include "vector.hpp"
-#include "matrix.hpp"
+#include <graphblas/vector.hpp>
+#include <graphblas/matrix.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
