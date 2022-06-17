@@ -71,24 +71,37 @@ namespace grb {
 		}
 
 		/**
-		 * Checks whether two floating point values are equal.
+		 * Checks whether two floating point values are equal using a relative error
+		 * bound, here expressed as the number of accumulated errors assuming all
+		 * arithmetic that produced the two floating point numbers had operands of
+		 * similar magnitude.
 		 *
-		 * This function takes into account round-off errors due to machine precision.
+		 * @tparam T The numerical type.
+		 * @tparam U The type used for \a epsilons.
 		 *
-		 * \warning This does not take into account accumulated numerical errors
-		 *          due to previous operations on the given values.
+		 * @param[in] a        One of the two values to comare against.
+		 * @param[in] b        One of the two values to comare against.
+		 * @param[in] epsilons How many floating point errors may have accumulated;
+		 *                     must be chosen larger or equal to one.
 		 *
-		 * @\tparam T The numerical type.
+		 * The error indicated by the number of epsilons is interpreted as an
+		 * \em relative error(!).
 		 *
-		 * @param a One of the two values to comare against.
-		 * @param b One of the two values to comare against.
-		 * @param epsilons How many floating point errors may have accumulated.
-		 *                 Should be chosen larger or equal to one.
+		 * This function automatically adapts to the floating-point type used, and
+		 * takes into account the border cases where one or more of \a a and \a b may
+		 * be zero or subnormal. It also guards against overflow of the normalisation
+		 * strategy employed in its implementation.
 		 *
-		 * @returns Whether a == b.
+		 * If one of \a a or \a b is zero, then \a epsilons shall lead to an absolute
+		 * acceptable error bound rather than a relative one.
+		 *
+		 * @returns Whether a == b, taking into account numerical drift within the
+		 *          relative range indicated by \a epsilons.
 		 */
 		template< typename T, typename U >
-		static bool equals( const T &a, const T &b, const U epsilons,
+		static bool equals(
+			const T &a, const T &b,
+			const U epsilons,
 			typename std::enable_if<
 				std::is_floating_point< T >::value
 			>::type * = nullptr
@@ -117,40 +130,49 @@ namespace grb {
 			const T min = std::numeric_limits< T >::min();
 			const T max = std::numeric_limits< T >::max();
 
-			// if the difference is a subnormal number, it should be smaller than
-			// machine epsilon times min;
-			// if this is not the case, then we cannot safely conclude anything from this
-			// small a difference.
-			// The same is true if a or b are zero.
-			if( a == 0 || b == 0 || absPlus < min ) {
+			// If the combined magnitudes of a or b are subnormal, then scale by the
+			// smallest subnormal rather than the combined magnitude
+			if( absPlus < min ) {
 #ifdef _DEBUG
-				std::cout << "\t Zero or close to zero difference\n";
+				std::cout << "\t Subnormal comparison requested, making it relative to the"
+					<< "smallest normal number\n";
 #endif
 				return absDiff < eps * min;
 			}
 
-			// we wish to normalise absDiff by (absA + absB),
-			// However, absA + absB might overflow.
+			// If either a or b is zero, then we use the relative epsilons as an absolute
+			// error on the nonzero argument
+			if( a == 0 || b == 0 ) {
+				assert( a != 0 || b != 0 );
+#ifdef _DEBUG
+				std::cout << "\t One of the arguments is zero\n";
+#endif
+				return absDiff < eps;
+			}
+
+			// we wish to normalise absDiff by (absA + absB), however, absA + absB might
+			// overflow. If it does, we normalise by the largest normal number instead
 			if( absA > absB ) {
 				if( absB > max - absA ) {
 #ifdef _DEBUG
 					std::cout << "\t Normalising absolute difference by max (I)\n";
 #endif
-					return absDiff / max < eps;
+					return absDiff < eps * max;
 				}
 			} else {
 				if( absA > max - absB ) {
 #ifdef _DEBUG
 					std::cout << "\t Normalising absolute difference by max (II)\n";
 #endif
-					return absDiff / max < eps;
+					return absDiff < eps * max;
 				}
 			}
-			// use of relative error should be safe
+
+			// at this point, the use of relative error vs. 0.5*absPlus should be safe
 #ifdef _DEBUG
 			std::cout << "\t Using relative error\n";
 #endif
-			return absDiff / absPlus < eps;
+			return (static_cast< T >(2) * (absDiff / absPlus)) < eps;
 		}
 
 		/**
