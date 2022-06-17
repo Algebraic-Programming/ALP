@@ -50,6 +50,7 @@
 
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/MatrixVectorIterator.hpp>
+#include <graphblas/utils/input_iterator_utils.hpp>
 
 #include "non_zero_wrapper.h"
 #include "forward.hpp"
@@ -205,30 +206,31 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 
-		template< typename RowIndexType, typename itertype, bool populate_csr >
+		template< typename RowIndexType, typename IterT, bool populate_csr >
 		struct col_getter_t {
-			RowIndexType operator()( const itertype &itr ) {
+			RowIndexType operator()( const IterT &itr ) {
 				return itr.i();
 			}
 		};
 
-		template< typename ColIndexType, typename itertype >
-		struct col_getter_t< ColIndexType, itertype, true > {
-			ColIndexType operator()( const itertype &itr ) {
+		template< typename ColIndexType, typename IterT >
+		struct col_getter_t< ColIndexType, IterT, true > {
+			ColIndexType operator()( const IterT &itr ) {
 				return itr.j();
 			}
 		};
 
 		template< bool populate_ccs, // false for CRS
-			typename itertype,
+			typename rndacc_iterator,
 			typename ColIndexType,
 			typename RowIndexType,
 			typename ValType,
 			typename NonzeroIndexType
 		> RC populate_storage_parallel(
-			const itertype _it, // get by copy, not to change user's iterator,
+			const rndacc_iterator &_it, // get by copy, not to change user's iterator,
 			const size_t nz,
 			const size_t num_cols,
+			const size_t num_rows,
 			const size_t num_threads,
 			size_t * const prefix_sum_buffer,
 			const size_t prefix_sum_buffer_size,
@@ -237,7 +239,7 @@ namespace grb {
 		) {
 
 			// if we are populating a CCS, we compute the bucket from the columns value
-			col_getter_t< RowIndexType, itertype, populate_ccs > col_getter;
+			col_getter_t< ColIndexType, rndacc_iterator, populate_ccs > col_getter;
 
 			if( nz < 1) {
 #ifndef NDEBUG
@@ -254,7 +256,8 @@ namespace grb {
 			if( prefix_sum_buffer_size < num_threads ) {
 #ifndef NDEBUG
 				std::cerr << "nonzeroes " << nz << std::endl;
-				std::cerr << "error: buffersize=" << prefix_sum_buffer_size << " < num_threads=" << num_threads << std::endl;
+				std::cerr << "error: buffersize=" << prefix_sum_buffer_size <<
+					" < num_threads=" << num_threads << std::endl;
 #endif
 				return RC::ILLEGAL;
 			}
@@ -264,6 +267,10 @@ namespace grb {
 			const size_t per_thread_buffer_size = prefix_sum_buffer_size / num_threads;
 			const size_t bucketlen = ( ccs_col_buffer_size == per_thread_buffer_size ? 0
 				: ccs_col_buffer_size / per_thread_buffer_size ) + 1;
+
+			// the actual matrix sizes depend on populate_ccs: flip them if it is  false
+			const size_t matrix_rows = populate_ccs ? num_rows : num_cols;
+			const size_t matrix_cols = populate_ccs ? num_cols : num_rows;
 
 #ifdef _DEBUG
 			std::cout << "nz =" << nz << ", num_threads = " << num_threads << ", bufferlen = "
@@ -277,6 +284,7 @@ namespace grb {
 			std::cout << "bucketlen= " << bucketlen << std::endl;
 #endif
 
+			RC global_rc = SUCCESS;
 			// firstprivate(it) is MANDATORY for each thread to have a private copy
 			// and NOT change the master's object (for the following loops)
 			#pragma omp parallel firstprivate( _it ), num_threads( num_threads )
@@ -288,97 +296,114 @@ namespace grb {
 				// implicit barrier, as per OMP std
 
 				// count the number of elements per bucket
+				RC local_rc = SUCCESS;
 				const size_t irank = static_cast< size_t >( omp_get_thread_num() );
+				size_t * const thread_prefix_sum_buffer = prefix_sum_buffer
+					+ irank * per_thread_buffer_size;
 				size_t i = ( irank * nz ) / num_threads;
-				itertype it = _it;
+				rndacc_iterator it = _it;
 				it += i;
 				for ( ; i < ( ( irank + 1 ) * nz ) / num_threads; i++) {
-					const size_t bucket_num = col_getter( it ) / bucketlen;
-					const size_t offset = irank * per_thread_buffer_size + bucket_num;
-					prefix_sum_buffer[ offset ]++ ;
+					const ColIndexType col = col_getter( it );
+					const size_t bucket_num = col / bucketlen;
+					local_rc = utils::internal::check_input_coordinates( it, matrix_rows, matrix_cols );
+					if( local_rc != SUCCESS ) {
+						break;
+					}
+					thread_prefix_sum_buffer[ bucket_num ]++ ;
 					(void) ++it;
 				}
+				if( local_rc != SUCCESS ) {
+					#pragma omp critical
+					global_rc = local_rc; // tell everybody there was an issue
+				}
 				// all threads MUST wait here for the prefix_sum_buffer to be populated
-				// otherwise the results are not consistent
+				// and for global_rc to be possibly set otherwise the results are not consistent
 				#pragma omp barrier
 
+				if( global_rc == SUCCESS ) { // go on only if no thread detected
 #ifdef _DEBUG
-				#pragma omp single
-				{
-					std::cout << "after first step:" << std::endl;
-					for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-						std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+					#pragma omp single
+					{
+						std::cout << "after first step:" << std::endl;
+						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
+							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+						}
 					}
-				}
 #endif
-				// cumulative sum along threads, for each bucket
-				#pragma omp for schedule( static )
-				for ( size_t i = 0; i < per_thread_buffer_size; i++ ) {
-					for ( size_t irank = 1; irank < num_threads; irank++ ) {
-						prefix_sum_buffer[ irank * per_thread_buffer_size + i ] +=
-							prefix_sum_buffer[ ( irank - 1 ) * per_thread_buffer_size + i ];
+					// cumulative sum along threads, for each bucket
+					#pragma omp for schedule( static )
+					for ( size_t i = 0; i < per_thread_buffer_size; i++ ) {
+						for ( size_t irank = 1; irank < num_threads; irank++ ) {
+							prefix_sum_buffer[ irank * per_thread_buffer_size + i ] +=
+								prefix_sum_buffer[ ( irank - 1 ) * per_thread_buffer_size + i ];
+						}
 					}
-				}
 #ifdef _DEBUG
-				#pragma omp single
-				{
-					std::cout << "after second step:" << std::endl;
-					for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-						std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+					#pragma omp single
+					{
+						std::cout << "after second step:" << std::endl;
+						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
+							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+						}
 					}
-				}
 #endif
-				#pragma omp single
-				{
-					// cumulative sum for each bucket on last thread, to get the final size of each bucket
-					// this loop is still not parallel, no significant speedup measured
-					for ( size_t i = 1; i < per_thread_buffer_size; i++ ) {
-						prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i ] +=
-							prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i - 1 ];
+					#pragma omp single
+					{
+						// cumulative sum for each bucket on last thread, to get the final size of each bucket
+						// this loop is still not parallel, no significant speedup measured
+						for ( size_t i = 1; i < per_thread_buffer_size; i++ ) {
+							prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i ] +=
+								prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i - 1 ];
+						}
 					}
-				}
 #ifdef _DEBUG
-				#pragma omp single
-				{
-					std::cout << "after third step:" << std::endl;
-					for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-						std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+					#pragma omp single
+					{
+						std::cout << "after third step:" << std::endl;
+						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
+							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+						}
 					}
-				}
 #endif
-				// propagate cumulative sums for each bucket on each thread, to get the final offset
-				#pragma omp for schedule( static )
-				for ( size_t irank = 0; irank < num_threads - 1; irank++ ) {
-					for ( size_t i = 1; i < per_thread_buffer_size; i++ ) {
-						prefix_sum_buffer[ irank * per_thread_buffer_size + i ] +=
-							prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i - 1 ];
+					// propagate cumulative sums for each bucket on each thread, to get the final offset
+					#pragma omp for schedule( static )
+					for ( size_t irank = 0; irank < num_threads - 1; irank++ ) {
+						for ( size_t i = 1; i < per_thread_buffer_size; i++ ) {
+							prefix_sum_buffer[ irank * per_thread_buffer_size + i ] +=
+								prefix_sum_buffer[ ( num_threads - 1 ) * per_thread_buffer_size + i - 1 ];
+						}
 					}
-				}
 #ifdef _DEBUG
-				#pragma omp single
-				{
-					std::cout << "after fourth step:" << std::endl;
-					for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-						std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+					#pragma omp single
+					{
+						std::cout << "after fourth step:" << std::endl;
+						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
+							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+						}
 					}
-				}
 #endif
-				// record value inside storage data structure, with inter-bucket sorting
-				// but no intra-bucket sorting
-				i = ( irank * nz ) / num_threads;
-				itertype rit = _it; // create new iterator, 'cause the old one is "expired" and no copy assignment exists
-				rit += i;
-				for ( ; i < ( ( irank + 1 ) * nz ) / num_threads; i++) {
-					ColIndexType col = col_getter( rit );
-					const size_t bucket_num = col / bucketlen;
-					size_t i1 = irank * per_thread_buffer_size + bucket_num;
-					(void) --prefix_sum_buffer[ i1 ];
-					storage.recordValue( prefix_sum_buffer[ i1 ], populate_ccs, rit );
-					if( col_values_buffer != nullptr ) {
-						col_values_buffer[ prefix_sum_buffer[ i1 ] ] = col;
+					// record value inside storage data structure, with inter-bucket sorting
+					// but no intra-bucket sorting
+					i = ( irank * nz ) / num_threads;
+					rndacc_iterator rit = _it; // create new iterator, 'cause the old one is "expired" and no copy assignment exists
+					rit += i;
+					for ( ; i < ( ( irank + 1 ) * nz ) / num_threads; i++) {
+						ColIndexType col = col_getter( rit );
+						const size_t bucket_num = col / bucketlen;
+						size_t i1 = irank * per_thread_buffer_size + bucket_num;
+						(void) --prefix_sum_buffer[ i1 ];
+						storage.recordValue( prefix_sum_buffer[ i1 ], populate_ccs, rit );
+						if( col_values_buffer != nullptr ) {
+							col_values_buffer[ prefix_sum_buffer[ i1 ] ] = col;
+						}
+						(void) ++rit;
 					}
-					(void) ++rit;
 				}
+			}
+			if( global_rc != SUCCESS ) {
+				std::cerr << "error while reading input values" << std::endl;
+				return global_rc;
 			}
 #ifdef _DEBUG
 			std::cout << "CRS data before sorting:" << std::endl;
@@ -559,12 +584,17 @@ namespace grb {
 		}
 
 		// internal naming is as for CCS, according to naming in Compressed_Storage<>
-		template< bool populate_ccs, typename ColIndexType,
-			typename ValType, typename RowIndexType, typename NonzeroIndexType,
+		template<
+			bool populate_ccs,
+			typename ColIndexType,
+			typename RowIndexType,
+			typename ValType,
+			typename NonzeroIndexType,
 			typename rndacc_iterator >
 		RC populate_storage(
-			size_t num_cols,
-			size_t nz,
+			const size_t num_cols,
+			const size_t num_rows,
+			const size_t nz,
 			const rndacc_iterator &_start,
 			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
 		) {
@@ -582,8 +612,6 @@ namespace grb {
 
 			// buffer to store prefix sums: to ensure good parallelism, allow storing nz elements
 			// TODO: this can be further limited by limiting the available parallelism
-
-
 			size_t partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads;
 			// decide memory vs parallelism
 			compute_buffer_size_num_threads( nz, max_num_threads,
@@ -618,7 +646,7 @@ namespace grb {
 #endif
 
 			const size_t bufferlen_tot = is_fully_parallel ? fully_parallel_buffer_size : partial_parallel_buffer_size;
-			if( !internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
+			if( ! internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
 #ifndef _DEBUG
 				std::cerr << "Not enough memory available for populate_storage_parallel buffer" << std::endl;
 #endif
@@ -635,8 +663,8 @@ namespace grb {
 			const size_t num_threads = is_fully_parallel ? max_num_threads :
 				partial_parallel_num_threads;
 
-			return populate_storage_parallel< populate_ccs >( _start, nz, num_cols, num_threads,
-				pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer, storage );
+			return populate_storage_parallel< populate_ccs >( _start, nz, num_cols, num_rows,
+				num_threads, pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer, storage );
 		}
 #endif
 
@@ -1245,6 +1273,32 @@ namespace grb {
 			other.nz = 0;
 		}
 
+		/**
+		 * @brief Clears crs and ccs only (and in parallel), and no clear any other field.
+		 * 	It relies on the values stored in the m and n fields for the sizes.
+		 */
+		void clear_crs_and_ccs() {
+			size_t min_dim = static_cast< size_t >( std::min( m, n ) );
+			size_t max_dim = static_cast< size_t >( std::max( m, n ) );
+
+			// fill until minimum
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+			#pragma omp parallel for schedule( static )
+#endif
+			for( size_t i = 0; i < min_dim; ++i ) {
+				CRS.col_start[ i ] = 0;
+				CCS.col_start[ i ] = 0;
+			}
+			// then continue to fill larger dimension
+			NonzeroIndexType * const larger = max_dim == m ? CRS.col_start : CCS.col_start;
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+			#pragma omp parallel for schedule( static )
+#endif
+			for( size_t i = min_dim; i < max_dim; ++i ) {
+				larger[ i ] = 0;
+			}
+		}
+
 		/** @see Matrix::clear */
 		RC clear() {
 			// update nonzero count
@@ -1263,22 +1317,7 @@ namespace grb {
 				return SUCCESS;
 			}
 
-			// do both CRS and CCS simultaneously as far as possible
-			const size_t min_dim = ( m < n ) ? m : n;
-			for( size_t i = 0; i < min_dim; ++i ) {
-				CRS.col_start[ i ] = CCS.col_start[ i ] = 0;
-			}
-
-			// do last remainder of either CRS or CCS
-			if( min_dim == m ) {
-				for( size_t i = min_dim; i < n; ++i ) {
-					CCS.col_start[ i ] = 0;
-				}
-			} else {
-				for( size_t i = min_dim; i < m; ++i ) {
-					CRS.col_start[ i ] = 0;
-				}
-			}
+			clear_crs_and_ccs();
 
 			// done
 			return SUCCESS;
@@ -1416,64 +1455,16 @@ namespace grb {
 			// keep count of nonzeroes
 			nz = 0;
 
-			// reset col_start array to zero, fused loop
-			{
-				// get minimum dimension
-				size_t min_dim = static_cast< size_t >( m );
-				size_t max_dim = static_cast< size_t >( n );
-				if( min_dim > max_dim ) {
-					std::swap( min_dim, max_dim );
+			clear_crs_and_ccs();
+
+			for( fwd_iterator it = _start; it != _end; ++it ) {
+				if( utils::internal::check_input_coordinates( it, m, n ) != SUCCESS ) {
+					return MISMATCH;
 				}
-				// fill until minimum
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-				#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
-				for( size_t i = 0; i < min_dim; ++i ) {
-					CRS.col_start[ i ] = 0;
-					CCS.col_start[ i ] = 0;
-				}
-				// if the minimum dimension is the row dimension
-				if( min_dim == static_cast< size_t >( m ) ) {
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-					#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
-					// then continue to fill column dimension
-					for( size_t i = min_dim; i < max_dim; ++i ) {
-						CCS.col_start[ i ] = 0;
-					}
-				} else {
-#ifdef _H_GRB_REFERENCE_OMP_MATRIX
-					#pragma omp parallel for schedule( \
- 		dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
-					// otherwise, continue to fill row dimension
-					for( size_t i = min_dim; i < max_dim; ++i ) {
-						CRS.col_start[ i ] = 0;
-					}
-				}
+				(void) ++( CRS.col_start[ it.i() ] );
+				(void) ++( CCS.col_start[ it.j() ] );
+				(void) ++nz;
 			}
-
-			for( fwd_iterator it = _start; it != _end; ++it )
-			  {
-			    if( it.i() >= m ) {
-			      std::cerr << "Error: " << m << " times " << n
-					<< " matrix nonzero ingestion encounters row "
-					<< "index at " << it.i() << "\n";
-			      return MISMATCH;
-			    }
-			    if( it.j() >= n ) {
-			      std::cerr << "Error: " << m << " times " << n
-					<< " matrix nonzero ingestion encounters column "
-					<< "input at " << it.j() << "\n";
-			      return MISMATCH;
-			    }
-			    (void) ++( CRS.col_start[ it.i() ] );
-			    (void) ++( CCS.col_start[ it.j() ] );
-			    (void) ++nz;
-			  }
-
 
 			// check if we can indeed store nz values
 			if( nz >= static_cast< size_t >(
@@ -1575,65 +1566,55 @@ namespace grb {
 			}
 
 			// count of nonzeroes
-			nz = _end-_start;
+			size_t _nz = _end - _start;
+
+			// check if we can indeed store nz values
+			if( _nz >= static_cast< size_t >(
+					std::numeric_limits< NonzeroIndexType >::max()
+				)
+			) {
+				// no need to clean here, since we did not allocate any additional memory
+				return RC::OVERFLW;
+			}
+			// after checkign it's possible, store it
+			nz = _nz;
 
 			// if( nz <= static_cast< size_t >( omp_get_max_threads() ) ) {
 			// for small sizes, delegate to sequential routine
 			// 	return buildMatrixUniqueImplSeq( _start, _end );
 			// }
 
-			// reset col_start array to zero, fused loop
-			{
-				// get minimum dimension
-				size_t min_dim = static_cast< size_t >( m );
-				size_t max_dim = static_cast< size_t >( n );
-				if( min_dim > max_dim ) {
-					std::swap( min_dim, max_dim );
-				}
-				// fill until minimum
-				#pragma omp parallel for schedule( dynamic, \
-					config::CACHE_LINE_SIZE::value() )
-				for( size_t i = 0; i < min_dim; ++i ) {
-					CRS.col_start[ i ] = 0;
-					CCS.col_start[ i ] = 0;
-				}
-				// if the minimum dimension is the row dimension
-				if( min_dim == static_cast< size_t >( m ) ) {
-					#pragma omp parallel for schedule( dynamic, \
-						config::CACHE_LINE_SIZE::value() )
-					// then continue to fill column dimension
-					for( size_t i = min_dim; i < max_dim; ++i ) {
-						CCS.col_start[ i ] = 0;
-					}
-				} else {
-					#pragma omp parallel for schedule( dynamic, \
-						config::CACHE_LINE_SIZE::value() )
-					// otherwise, continue to fill row dimension
-					for( size_t i = min_dim; i < max_dim; ++i ) {
-						CRS.col_start[ i ] = 0;
-					}
-				}
-			}
-
-			// check if we can indeed store nz values
-			if( nz >= static_cast< size_t >(
-					std::numeric_limits< NonzeroIndexType >::max()
-				)
-			) {
-				return RC::OVERFLW;
-			}
+			// reset col_start arrays to zero
+			clear_crs_and_ccs();
 
 			// put final entries
 			CRS.col_start[ m ] = nz;
 			CCS.col_start[ n ] = nz;
 
 			// allocate enough space
-			resize( nz );
-			RC ret = internal::populate_storage< false, grb::config::ColIndexType >( m, nz, _start, CRS );
+			RC ret = resize( nz );
 			if( ret != SUCCESS ) {
+#ifdef _DEBUG
+				std::cerr << "cannot resize the matrix to store the nonzero" << std::endl;
+#endif
 				return ret;
 			}
-			return internal::populate_storage< true, grb::config::RowIndexType >( n, nz, _start, CCS );
+			ret = internal::populate_storage< true, ColIndexType, RowIndexType >( n, m, nz, _start, CCS );
+			if( ret != SUCCESS ) {
+#ifdef _DEBUG
+				std::cerr << "cannot populate the CRS" << std::endl;
+#endif
+				clear(); // we resized before, so we need to clean the memory
+				return ret;
+			}
+			ret = internal::populate_storage< false, RowIndexType, ColIndexType >( m, n, nz, _start, CRS );
+			if( ret != SUCCESS ) {
+#ifdef _DEBUG
+				std::cerr << "cannot populate the CCS" << std::endl;
+#endif
+				clear();
+			}
+			return ret;
 		}
 #endif
 

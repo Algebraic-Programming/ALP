@@ -41,6 +41,7 @@
 #include <graphblas/type_traits.hpp>
 
 #include <graphblas/utils/NonZeroStorage.hpp>
+#include <graphblas/utils/input_iterator_utils.hpp>
 
 #include "lpf/core.h"
 #include "matrix.hpp" //for BSP1D matrix
@@ -1090,14 +1091,13 @@ namespace grb {
 			outgoing.resize( data.P );
 		}
 
-		// loop over all input
-		for( ; start != end; ++start ) {
-			// sanity check on input
-			if( start.i() >= rows ) {
-				return MISMATCH;
-			}
-			if( start.j() >= cols ) {
-				return MISMATCH;
+			// loop over all inputs
+			for( ; start != end; ++start ) {
+				// sanity check on input
+				if( utils::internal::check_input_coordinates( start, rows, cols ) != SUCCESS ) {
+					return MISMATCH;
+				}
+				handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
 			}
 			handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
 		}
@@ -1139,25 +1139,26 @@ namespace grb {
 				std::vector< std::vector< storage_t > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
 				local_outgoing.resize( data.P );
 				std::vector< storage_t > &local_data = local_outgoing[ data.s ];
+				RC local_rc = SUCCESS;
 
 				#pragma omp for schedule( static )
 				for( fwd_iterator it = start; it != end; ++it ) {
 					// sanity check on input
-					if( it.i() >= rows || it.j() >= cols ) {
-						#pragma omp critical
-						{
-#ifdef _DEBUG
-						std::cout << "Process " << data.s << ", thread " << thread_id
-							<< ", row " << it.i() << " col " << it.j() << std::endl;
-#endif
-							ret = MISMATCH;
-						}
+					local_rc = utils::internal::check_input_coordinates( it, rows, cols );
+					if( local_rc != SUCCESS ) {
 						// cannot break in case of mismatch because of omp for directive
 						// however, deeming this a rare case, so keep incrementing
+						#pragma omp critical
+						{
+							ret = MISMATCH;
+						}
 					} else {
 						handleSingleNonZero( it, mode, rows, cols, local_data, local_outgoing, data );
 					}
 				}
+			}
+			if( ret != SUCCESS ){
+				return ret;
 			}
 #ifdef _DEBUG
 			for( unsigned i = 0; i < data.P; i++) {
@@ -1177,9 +1178,6 @@ namespace grb {
 				}
 			}
 #endif
-			if( ret != SUCCESS ){
-				return ret;
-			}
 			// use iteration_overlaps > 1 to allow multiple iterations to overlap: for example,
 			// thread 0 might be running the "single" region with pid = 1 (second iteration)
 			// while thread 1 might still be running with pid = 0 (first iteration);
@@ -1338,7 +1336,7 @@ namespace grb {
 			typename is_input_iterator< InputType, fwd_iterator >::val_t,
 			InputType >::value || std::is_same< InputType, void >::value,
 			"cannot convert input value to internal format" );
-		
+
 		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
 
 		// get access to user process data on s and P

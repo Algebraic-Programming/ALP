@@ -54,7 +54,7 @@ void __trace_build_matrix_iomode( grb::Backend backend, bool iterator_parallel )
 
 
 #define LOG() std::cout
-#define MAIN_LOG( text ) if( spmd<>::pid() == 0 ) { LOG() << text; }
+#define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
 
 
 
@@ -245,7 +245,7 @@ template< typename ValT, enum Backend implementation = config::default_backend >
 	ASSERT_RC_SUCCESS( rc );
 	ASSERT_EQ( num_sorted_mat_values, mat_nzs.size() );
 
-	if( sort_nzs ) {
+	if ( sort_nzs ) {
 		utils::row_col_nz_sort< DefRowT, DefColT, ValT >( mat_nzs.begin(), mat_nzs.end() );
 	}
 
@@ -289,14 +289,6 @@ template< typename ValT, typename ParIterT, enum Backend implementation = config
 		mat_nz.push_back( NZC( it.i(), it.j(), it.v() ) );
 	}
 	randomize_vector( mat_nz );
-
-	// std::cout << "permuted vector" << std::endl;
-	// std::size_t n{ 0 };
-	// for( const NZC& nz: mat_nz ) {
-	// 	std::cout << nz << std::endl;
-	// 	if( n > 10 ) break;
-	// 	n++;
-	// }
 
 	test_matrix_from_vectors( nrows, ncols, mat_nz, true );
 }
@@ -365,10 +357,6 @@ template< enum Backend implementation = config::default_backend > void test_matr
 		test_matrix_from_vectors( size.first, size.second, mat_nz );
 
 		randomize_vector( mat_nz );
-		// std::cout << "permuted vector" << std::endl;
-		// for( const NZC& nz: mat_nz ) {
-		// 	std::cout << nz << std::endl;
-		// }
 		MAIN_LOG( ">> RANDOMLY PERMUTED NON-ZEROES" << std::endl );
 		test_matrix_from_vectors( size.first, size.second, mat_nz, true );
 	}
@@ -388,11 +376,47 @@ static void print_exception_text( const char * text, const char * caption = std_
 	LOG() << stream.str();
 }
 
+void test_invalid_inputs() {
+
+
+	using NZC = NZ< int >;
+	constexpr std::size_t rows{ 6 }, cols{ 7 };
+
+	std::array< std::vector< NZC >, 2 > coordinates{
+		std::vector< NZC >{ NZC(0,1,0), NZC(0,3,1), NZC(0,4,-1), NZC(0,5,-2), NZC(0,6,-3),
+			NZC(1,3,2), NZC(1,4,-4), NZC(1,5,-5), NZC(1,6,-6),
+			NZC(2,2,3),
+			NZC(rows,4,4), // wrong row
+			NZC(4,0,5), NZC(4,2,6),
+			NZC(5,0,7), NZC(5,1,8), NZC(5,2,9), NZC(5,3,10), NZC(5,4,11), NZC(5,5,12)
+		},
+		std::vector< NZC >{ NZC(0,1,0), NZC(0,3,1), NZC(0,4,-1), NZC(0,5,-2), NZC(0,6,-3),
+			NZC(1,3,2), NZC(1,4,-4), NZC(1,5,-5), NZC(1,6,-6),
+			NZC(2,2,3),
+			NZC(3,cols + 1,4), // wrong column
+			NZC(4,0,5), NZC(4,2,6),
+			NZC(5,0,7), NZC(5,1,8), NZC(5,2,9), NZC(5,3,10), NZC(5,4,11), NZC(5,5,12)
+		}
+	};
+
+	for( std::vector< NZC > &c : coordinates ) {
+		Matrix< int > m( rows, cols );
+		RC ret = buildMatrixUnique( m,
+			utils::makeNonzeroIterator< DefRowT, DefColT, int >( c.cbegin() ),
+			utils::makeNonzeroIterator< DefRowT, DefColT, int >( c.cend() ),
+			PARALLEL
+		);
+		ASSERT_NE( ret, SUCCESS );
+	}
+}
+
 void grbProgram( const void *, const size_t, int &error ) {
 
 	try {
 
-		/*
+		MAIN_LOG( "==== Testing building from invalid inputs" << std::endl );
+		test_invalid_inputs();
+		MAIN_LOG( "<< OK" << std::endl );
 
 		std::initializer_list< std::size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
 			spmd<>::nprocs() + 16, 100003 };
@@ -403,32 +427,41 @@ void grbProgram( const void *, const size_t, int &error ) {
 				mat_size, mat_size, mat_size );
 		}
 
-		std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467 };
+		std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467, 41673 };
 
 		for( const std::size_t& mat_size : band_sizes ) {
 			MAIN_LOG( "==== Testing matrix with band 1" << std::endl );
-			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 1, true >, utils::band_iterator< 1, false > >(
+			test_sequential_and_parallel_matrix_generation< int,
+				utils::band_iterator< 1, true >, utils::band_iterator< 1, false > >(
 				mat_size, mat_size, mat_size );
 
 			MAIN_LOG( "==== Testing matrix with band 2" << std::endl );
-			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 2, true >, utils::band_iterator< 2, false > >(
+			test_sequential_and_parallel_matrix_generation< int,
+				utils::band_iterator< 2, true >, utils::band_iterator< 2, false > >(
 				mat_size, mat_size, mat_size );
 
 			MAIN_LOG( "==== Testing matrix with band 7" << std::endl );
-			test_sequential_and_parallel_matrix_generation< int, utils::band_iterator< 7, true >, utils::band_iterator< 7, false > >(
+			test_sequential_and_parallel_matrix_generation< int,
+				utils::band_iterator< 7, true >, utils::band_iterator< 7, false > >(
+				mat_size, mat_size, mat_size );
+
+			MAIN_LOG( "==== Testing matrix with band 8" << std::endl );
+			test_sequential_and_parallel_matrix_generation< int,
+				utils::band_iterator< 8, true >, utils::band_iterator< 8, false > >(
 				mat_size, mat_size, mat_size );
 		}
 
 		std::initializer_list< std::array< std::size_t, 2 > > matr_sizes{
-			{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 70 }, { 130, 139 }
+			{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 70 }, { 130, 139 }, { 1463, 5376 }
 		};
 
 		MAIN_LOG( "==== Testing dense matrices" << std::endl );
 		for( const std::array< std::size_t, 2 >& mat_size : matr_sizes ) {
-			test_sequential_and_parallel_matrix_generation< int, utils::dense_mat_iterator< int, true >, utils::dense_mat_iterator< int, false > >(
+			test_sequential_and_parallel_matrix_generation< int,
+				utils::dense_mat_iterator< int, true >,
+				utils::dense_mat_iterator< int, false > >(
 				mat_size[0], mat_size[1], mat_size );
 		}
-		*/
 
 		MAIN_LOG( "==== Testing sparse matrix from user's vectors" << std::endl );
 		test_matrix_from_user_vectors();
@@ -443,7 +476,7 @@ void grbProgram( const void *, const size_t, int &error ) {
 	// assumes SUCCESS is the smallest value in enum RC to perform reduction
 	assert( SUCCESS < FAILED );
 	RC rc_red = collectives<>::allreduce( error, grb::operators::max< int >() );
-	if( rc_red != SUCCESS ) {
+	if ( rc_red != SUCCESS ) {
 		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
 		std::abort();
 	}
