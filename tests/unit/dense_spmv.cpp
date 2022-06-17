@@ -132,9 +132,12 @@ void grbProgram( const struct input &data, struct output &out ) {
 						out.error_code = FAILED;
 					}
 				} else {
-					const double releps = pair.second == 0 ? 0 : mag[ pair.first ] / fabs(pair.second);
-					const size_t epsilons = static_cast<size_t>(releps * static_cast<double>(cnt[ pair.first ])) + 1;
-					if( ! grb::utils::equals( pair.second, chk[ pair.first ], epsilons ) ) {
+					const size_t epsilons = mag[ pair.first ] < 1
+						? cnt[ pair.first ] + 1
+						: cnt[ pair.first ] * ceil(mag[ pair.first ]) + 1;
+					const double allowedError =
+						epsilons * std::numeric_limits< double >::epsilon();
+					if( std::fabs( pair.second - chk[ pair.first ] ) > allowedError ) {
 						std::cerr << "Verification FAILED ( " << pair.second << " does not equal " << chk[ pair.first ] << " at output vector position " << pair.first << " )\n";
 						out.error_code = FAILED;
 					}
