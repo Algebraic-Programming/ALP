@@ -238,9 +238,9 @@ namespace grb {
 				if( local_m == 0 ||
 					local_n == 0 ||
 					nz / local_m > local_n ||
-					nz / local_n / local_m ||
-					(nz / local_m == local_n && (nz % local_m > 0)) ||
-					(nz / local_n == local_m && (nz % local_n > 0))
+					nz / local_n > local_m ||
+					( nz / local_m == local_n && ( nz % local_m > 0 ) ) ||
+					( nz / local_n == local_m && ( nz % local_n > 0 ) )
 				) {
 					local_nz = local_m * local_n;
 #ifdef _DEBUG
