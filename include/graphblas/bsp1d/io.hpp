@@ -1303,7 +1303,10 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename InputType,
+		typename RIT,
+		typename CIT,
+		typename NIT,
 		typename fwd_iterator
 	>
 	RC buildMatrixUnique(
@@ -1311,6 +1314,9 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
+		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
+			"the given iterator is not a valid input iterator, "
+			"see the ALP specification for input iterators" );
 		// static checks
 		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
 			std::is_same< InputType,
@@ -1321,8 +1327,6 @@ namespace grb {
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set"
 		);
-		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
-			"given iterator does not meet the required interface (i(), j() methods -- and v() for non-void matrices)" );
 
 		static_assert( std::is_convertible<
 			typename is_input_iterator< InputType, fwd_iterator >::row_t,
