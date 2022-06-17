@@ -1582,10 +1582,11 @@ namespace grb {
 			// after checkign it's possible, store it
 			nz = _nz;
 
-			// if( nz <= static_cast< size_t >( omp_get_max_threads() ) ) {
-			// for small sizes, delegate to sequential routine
-			// 	return buildMatrixUniqueImplSeq( _start, _end );
-			// }
+			if( nz <= static_cast< size_t >( omp_get_max_threads() ) ) {
+				// for small sizes, delegate to sequential routine
+				// since the overheads of OMP dominate for small sizes
+				return buildMatrixUniqueImplSeq( _start, _end );
+			}
 
 			// reset col_start arrays to zero
 			clear_crs_and_ccs();
