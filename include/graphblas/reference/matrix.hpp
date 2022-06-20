@@ -206,27 +206,48 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 
-		template< typename RowIndexType, typename IterT, bool populate_csr >
+		/**
+		 * @brief utility to get the row value from an input iterator.
+		 */
+		template<
+			typename RowIndexType,
+			typename IterT,
+			bool populate_csr
+		>
 		struct col_getter_t {
 			RowIndexType operator()( const IterT &itr ) {
 				return itr.i();
 			}
 		};
 
-		template< typename ColIndexType, typename IterT >
+		/**
+		 * @brief utility to get the column value from an input iterator.
+		 */
+		template<
+			typename ColIndexType,
+			typename IterT
+		>
 		struct col_getter_t< ColIndexType, IterT, true > {
+
 			ColIndexType operator()( const IterT &itr ) {
 				return itr.j();
 			}
 		};
 
-		template< bool populate_ccs, // false for CRS
+		/**
+		 * @brief populates a matrix storage (namely a CRS/CCS) in parallel,
+		 * 	using multiple threads. It requires the input iterator \p _it to be
+		 * 	a random access iterator.
+		 */
+		template<
+			bool populate_ccs, // false for CRS
 			typename rndacc_iterator,
 			typename ColIndexType,
 			typename RowIndexType,
 			typename ValType,
 			typename NonzeroIndexType
-		> RC populate_storage_parallel(
+		>
+		RC populate_storage_parallel(
 			const rndacc_iterator &_it, // get by copy, not to change user's iterator,
 			const size_t nz,
 			const size_t num_cols,
@@ -321,7 +342,7 @@ namespace grb {
 				// and for global_rc to be possibly set otherwise the results are not consistent
 				#pragma omp barrier
 
-				if( global_rc == SUCCESS ) { // go on only if no thread detected
+				if( global_rc == SUCCESS ) { // go on only if no thread detected a wrong input
 #ifdef _DEBUG
 					#pragma omp single
 					{
@@ -444,6 +465,10 @@ namespace grb {
 				std::cout << s << ": " << storage.col_start[ s ] << std::endl;
 			}
 #endif
+			// within each bucket, sort all nonzeroes in-place in the storage,
+			// using also the col_values_buffer to store column values, and update
+			// the prefix sum in the col_start buffer accordingly;
+			// this is required if a bucket stores more than one column
 			#pragma omp parallel for schedule( dynamic ), num_threads( num_threads )
 			for( size_t i = 0; i < per_thread_buffer_size; i++ ) {
 				// ith bucket borders
@@ -462,7 +487,7 @@ namespace grb {
 					std::fill( storage.col_start + previous_destination, storage.col_start + max_col, ipsl_min );
 					continue ;
 				}
-				//do the sort
+				//do the sort in-place, using the storage and the columns buffer
 				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
 					begin( storage, col_values_buffer, ipsl_min );
 				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
@@ -478,24 +503,29 @@ namespace grb {
 				std::cout << "thread " << omp_get_thread_num() << ", init write "
 					<< ipsl_min << " to pos " << previous_destination << std::endl;
 #endif
+				// go through the per-bucket sorted list of nonzeroes and store
+				// them into the storage, also updating the prefix sum in col_start
+				// starting from the existing values in prefix_sum_buffer and copying
+				// the last value in empty columns
 				size_t count = ipsl_min;
 				size_t previous_count = count;
-				size_t row_buffer_index = ipsl_min; // start from next
-				while ( row_buffer_index < ipsl_max ) {
-					const RowIndexType current_row = col_values_buffer[ row_buffer_index ];
-					const RowIndexType current_destination = current_row + 1;
-					// fill previous rows [previous_destination + 1, current_destinatio) if skipped because empty
-					if( previous_destination + 1 <= current_row ) {
+				size_t col_buffer_index = ipsl_min; // start from next
+				while ( col_buffer_index < ipsl_max ) {
+					const ColIndexType current_col = col_values_buffer[ col_buffer_index ];
+					const ColIndexType current_destination = current_col + 1;
+					// fill previous columns [previous_destination + 1, current_destinatio) if skipped because empty
+					if( previous_destination + 1 <= current_col ) {
 #ifdef _DEBUG
 						std::cout << "thread " << omp_get_thread_num() << ", write "
 							<< count <<" in range [" << previous_destination + 1
 							<< " - " << current_destination << ")" << std::endl;
 #endif
-						std::fill( storage.col_start + previous_destination + 1, storage.col_start + current_destination, previous_count );
+						std::fill( storage.col_start + previous_destination + 1,
+						storage.col_start + current_destination, previous_count );
 					}
-					// count occurrences of 'current_row'
-					for( ; col_values_buffer[ row_buffer_index ] == current_row && row_buffer_index < ipsl_max;
-						row_buffer_index++, count++ );
+					// count occurrences of 'current_col'
+					for( ; col_values_buffer[ col_buffer_index ] == current_col
+						&& col_buffer_index < ipsl_max; col_buffer_index++, count++ );
 					assert( current_destination <= max_col );
 					// if current_destination < max_col, then write the count;
 					// otherwise, the next thread will do it in INIT
@@ -509,7 +539,7 @@ namespace grb {
 					previous_destination = current_destination;
 					previous_count = count;
 				}
-				// if the rows in [ previous_destination + 1, max_col ) are empty,
+				// if the columns in [ previous_destination + 1, max_col ) are empty,
 				// write the count also there, since the loop has skipped them
 				if( previous_destination + 1 < max_col ) {
 #ifdef _DEBUG
@@ -517,20 +547,21 @@ namespace grb {
 						<< previous_count << " in range [" << previous_destination + 1
 						<< ", " << max_col << ")" << std::endl;
 #endif
-					std::fill( storage.col_start + previous_destination + 1, storage.col_start + max_col, previous_count );
+					std::fill( storage.col_start + previous_destination + 1,
+						storage.col_start + max_col, previous_count );
 				}
 			}
-			const ColIndexType last_existing_row = col_values_buffer[ nz - 1 ];
+			const ColIndexType last_existing_col = col_values_buffer[ nz - 1 ];
 #ifdef _DEBUG
-			std::cout << "final offset " << last_existing_row << std::endl;
+			std::cout << "final offset " << last_existing_col << std::endl;
 #endif
 
-			if( last_existing_row + 1 <= num_cols ) {
+			if( last_existing_col + 1 <= num_cols ) {
 #ifdef _DEBUG
-				std::cout << "final write " << nz << " into [" << last_existing_row + 1
+				std::cout << "final write " << nz << " into [" << last_existing_col + 1
 					<<", " << num_cols << "]" << std::endl;
 #endif
-				std::fill( storage.col_start + last_existing_row + 1, storage.col_start + ccs_col_buffer_size, nz );
+				std::fill( storage.col_start + last_existing_col + 1, storage.col_start + ccs_col_buffer_size, nz );
 			}
 #ifdef _DEBUG
 			std::cout << "CRS data after sorting:" << std::endl;
@@ -555,10 +586,11 @@ namespace grb {
 		 * 	parallelism under a fixed memory budget. When trading memory for parallelism,
 		 * 	always prefer saving memory over increasing the parallelism.
 		 *
-		 * @param nz
-		 * @param sys_threads
-		 * @param buf_size
-		 * @param num_threads
+		 * @param[in] nz number of nonzeroes
+		 * @param[in] sys_threads maximum number of threads the system provides (usually
+		 * 	retrieved via OpenMP)
+		 * @param[out] buf_size size of the buffer for the nonzeroes
+		 * @param[out] num_threads number of threads to use
 		 */
 		static void compute_buffer_size_num_threads(
 			const size_t nz,
@@ -583,14 +615,21 @@ namespace grb {
 			buf_size = std::max( max_memory / num_threads, num_threads * bucket_factor ) * num_threads;
 		}
 
-		// internal naming is as for CCS, according to naming in Compressed_Storage<>
+		/**
+		 * @brief populates the storage \p storage with the nonzeroes retrieved
+		 * 	via the random access iterator \p _start.
+		 *
+		 * The naming of parameters and internal variables is as for CCS,
+		 * according to naming in Compressed_Storage.
+		 */
 		template<
 			bool populate_ccs,
 			typename ColIndexType,
 			typename RowIndexType,
 			typename ValType,
 			typename NonzeroIndexType,
-			typename rndacc_iterator >
+			typename rndacc_iterator
+		>
 		RC populate_storage(
 			const size_t num_cols,
 			const size_t num_rows,
@@ -598,7 +637,6 @@ namespace grb {
 			const rndacc_iterator &_start,
 			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
 		) {
-
 			const size_t max_num_threads = static_cast< size_t >( omp_get_max_threads() );
 			//const size_t range = num_cols + 1;
 
@@ -726,7 +764,7 @@ namespace grb {
 			"Cannot create an ALP matrix of ALP objects!" );
 
 		/* *********************
-		        BLAS2 friends
+			BLAS2 friends
 		   ********************* */
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
@@ -819,7 +857,7 @@ namespace grb {
 		);
 
 		/* ********************
-		        IO friends
+			IO friends
 		   ******************** */
 
 		template<
@@ -965,7 +1003,7 @@ namespace grb {
 #else
 				static_cast< size_t >( 0 )
 #endif
-		       );
+			);
 		}
 
 		/** The Row Compressed Storage */
@@ -1404,11 +1442,16 @@ namespace grb {
 		}
 
 
-   		/** @see Matrix::buildMatrixUnique */
+		/** @brief @see Matrix::buildMatrixUnique.
+		 *
+		 * This dispatcher calls the sequential or the paralle implementation based
+		 * 	on the tag of the input iterator of type \p input_iterator.
+		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
 			typename input_iterator
-		> RC buildMatrixUnique(
+		>
+		RC buildMatrixUnique(
 			const input_iterator &_start,
 			const input_iterator &_end,
 			const IOMode mode
@@ -1423,8 +1466,10 @@ namespace grb {
 			return buildMatrixUniqueImpl( _start, _end, category );
 		}
 
-
-		//forward iterator version
+		/**
+		 * @brief sequential implementation of ::buildMatrixUnique, assuming
+		 * 	in input a forward iterator.
+		 */
 		template <typename fwd_iterator>
 		inline RC buildMatrixUniqueImpl(
 			const fwd_iterator &_start,
@@ -1434,13 +1479,16 @@ namespace grb {
 			return buildMatrixUniqueImplSeq( _start, _end );
 		}
 
+		/**
+		 * @brief the actual sequential implementation of the ::buildMatrixUnique.
+		 */
 		template <typename fwd_iterator>
 		RC buildMatrixUniqueImplSeq(
 			const fwd_iterator &_start,
 			const fwd_iterator &_end
 		) {
 #ifdef _DEBUG
-		    std::cout << " fwrd acces iterator " << '\n';
+			std::cout << " fwrd acces iterator " << '\n';
 			std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 			std::cout << "buildMatrixUnique: input is\n";
 			for( fwd_iterator it = _start; it != _end; ++it ) {
@@ -1539,9 +1587,11 @@ namespace grb {
 		}
 
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
-		//random access version
-		template< typename rndacc_iterator >
-		RC buildMatrixUniqueImpl(
+		/**
+		 * @brief paralel implementation of @see Matrix::buildMatrixUnique, assuming
+		 * 	in input a random acces iterator.
+		 */
+		template< typename rndacc_iterator > RC buildMatrixUniqueImpl(
 			const rndacc_iterator &_start,
 			const rndacc_iterator &_end,
 			std::random_access_iterator_tag

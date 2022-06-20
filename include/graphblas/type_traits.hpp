@@ -222,9 +222,10 @@ namespace grb {
 	 * @brief checks whether #IterT is an ALP iterator, i.e.
 	 *  * it has a .i() method
 	 *  * it has a .j() method
-	 *  * it has a .v() method if #MatrixValType is not void
+	 *  * it has a .v() method; checked if #MatrixValType is not void
 	 *
-	 * @tparam MatrixValType
+	 * @tparam MatrixValType value type of the matrix; if void, does not check
+	 * 	for the presence of a .v() method (i.e., the field ::value is valid anyway)
 	 * @tparam IterT the iterator type
 	 */
 	template< typename MatrixValType, typename IterT > class is_input_iterator {
