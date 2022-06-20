@@ -48,7 +48,7 @@ namespace grb {
 		/**
 		 * \internal
 		 * Helper function to get the size of the current buffer.
-		 *  
+		 *
 		 * @tparam D the data type to store in the buffer
 		 * @return size_t the number of elements of type #D that can be stored
 		 * 			in the current buffer

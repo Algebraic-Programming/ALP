@@ -35,7 +35,7 @@ namespace grb {
 		/**
 		 * @brief Utiliy to store a nonzero with row, column and value,
 		 * 	implemented on top of two nested std::pair's
-		 * 
+		 *
 		 * @tparam RowIndexT type of row index
 		 * @tparam ColIndexT type of column index
 		 * @tparam ValueT type of values
@@ -44,7 +44,8 @@ namespace grb {
 			typename RowIndexT,
 			typename ColIndexT,
 			typename ValueT
-		> struct NonZeroStorage:
+		>
+		struct NonZeroStorage:
 			public std::pair< std::pair< RowIndexT, ColIndexT >, ValueT > {
 
 			using storage_t = std::pair< std::pair< RowIndexT, ColIndexT >, ValueT >;
@@ -52,7 +53,7 @@ namespace grb {
 			NonZeroStorage() = default;
 
 			// rely on compiler to do copy elision
-			NonZeroStorage( RowIndexT _row, ColIndexT _col, ValueT _val ):
+			NonZeroStorage( RowIndexT _row, ColIndexT _col, ValueT _val ) noexcept :
 				std::pair< std::pair< RowIndexT, ColIndexT >, ValueT >(
 					std::make_pair( _row, _col ), _val
 				) {}
@@ -69,10 +70,10 @@ namespace grb {
 
 			RowIndexT& i() { return this->first.first; }
 			const RowIndexT& i() const { return this->first.first; }
-			
+
 			ColIndexT& j() { return this->first.second; }
 			const ColIndexT& j() const { return this->first.second; }
-			
+
 			ValueT& v() { return this->second; }
 			const ValueT& v() const { return this->second; }
 
@@ -83,21 +84,22 @@ namespace grb {
 		/**
 		 * @brief Utiliy to store a nonzero with row and column for a pattern matrix,
 		 * 	implemented on top of std::pair
-		 * 
+		 *
 		 * @tparam RowIndexT type of row index
 		 * @tparam ColIndexT type of column index
 		 */
 		template<
 			typename RowIndexT,
 			typename ColIndexT
-		> struct NonZeroStorage< RowIndexT, ColIndexT, void >:
+		>
+		struct NonZeroStorage< RowIndexT, ColIndexT, void >:
 			public std::pair< RowIndexT, ColIndexT > {
 
 			using storage_t = std::pair< RowIndexT, ColIndexT >;
 
 			NonZeroStorage() = default;
 
-			NonZeroStorage( const RowIndexT _row, const ColIndexT _col ):
+			NonZeroStorage( const RowIndexT _row, const ColIndexT _col ) noexcept :
 				std::pair< RowIndexT, ColIndexT >( _row, _col ) {}
 
 			NonZeroStorage( NonZeroStorage< RowIndexT, ColIndexT, void >&& ) = default;
@@ -112,7 +114,7 @@ namespace grb {
 
 			RowIndexT& i() { return this->first; }
 			const RowIndexT& i() const { return this->first; }
-			
+
 			ColIndexT& j() { return this->second; }
 			const ColIndexT& j() const { return this->second; }
 
@@ -120,14 +122,21 @@ namespace grb {
 			const storage_t& storage() const { return *this; }
 		};
 
-		template< typename RowIndexT, typename ColIndexT >
+		template<
+			typename RowIndexT,
+			typename ColIndexT
+		>
 		void updateNonzeroCoordinates( NonZeroStorage< RowIndexT, ColIndexT, void > &update,
 			const size_t row, const size_t col ) {
 			update.first = row;
 			update.second = col;
 		}
 
-		template< typename RowIndexT, typename ColIndexT, typename V >
+		template<
+			typename RowIndexT,
+			typename ColIndexT,
+			typename V
+		>
 		void updateNonzeroCoordinates( NonZeroStorage< RowIndexT, ColIndexT, V > &update,
 			const size_t row, const size_t col ) {
 			update.first.first = row;
@@ -141,7 +150,9 @@ namespace grb {
 			typename ColIndexT,
 			typename ValueT,
 			typename IterT
-		> inline NonZeroStorage< RowIndexT, ColIndexT, ValueT > makeNonZeroStorage( const IterT & it,
+		>
+		inline NonZeroStorage< RowIndexT, ColIndexT, ValueT > makeNonZeroStorage(
+			const IterT & it,
 			typename std::enable_if< iterator_has_value_method< IterT >::value, void* >::type = nullptr
 		) {
 			return NonZeroStorage< RowIndexT, ColIndexT, ValueT >( it.i(), it.j(), it.v() );
@@ -155,29 +166,52 @@ namespace grb {
 			typename ColIndexT,
 			typename ValueT,
 			typename IterT
-		> inline NonZeroStorage< RowIndexT, ColIndexT, void > makeNonZeroStorage( const IterT & it,
+		>
+		inline NonZeroStorage< RowIndexT, ColIndexT, void > makeNonZeroStorage(
+			const IterT & it,
 			typename std::enable_if< ! iterator_has_value_method< IterT >::value, void* >::type = nullptr
 		) {
 			return NonZeroStorage< RowIndexT, ColIndexT, void >( it.i(), it.j() );
 		}
 
 #ifdef _DEBUG
-		template< typename R, typename T, typename V >
-		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
-			typename std::enable_if< ! std::is_same< V, void >::value >::type* = nullptr ) {
+		template<
+			typename R,
+			typename T,
+			typename V
+		>
+		void __val_printer(
+			std::ostream& s,
+			const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< ! std::is_same< V, void >::value >::type* = nullptr
+		) {
 			s << ": " << nz.v();
 
 		}
 
-		template< typename R, typename T, typename V >
-		void __val_printer( std::ostream& s, const NonZeroStorage< R, T, V >& nz,
-			typename std::enable_if< std::is_same< V, void >::value >::type* = nullptr ) {
+		template<
+			typename R,
+			typename T,
+			typename V
+		>
+		void __val_printer(
+			std::ostream& s,
+			const NonZeroStorage< R, T, V >& nz,
+			typename std::enable_if< std::is_same< V, void >::value >::type* = nullptr
+		) {
 			(void)s;
 			(void)nz;
 		}
 
-		template< typename R, typename T, typename V >
-		std::ostream& operator<<( std::ostream& s, const NonZeroStorage< R, T, V >& nz ) {
+		template<
+			typename R,
+			typename T,
+			typename V
+		>
+		std::ostream& operator<<(
+			std::ostream& s,
+			const NonZeroStorage< R, T, V >& nz
+		) {
             s << "( " << nz.i() << ", " << nz.j() << " )";
 			__val_printer( s, nz );
             return s;

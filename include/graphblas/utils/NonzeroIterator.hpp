@@ -30,7 +30,7 @@ namespace grb {
 	namespace utils {
 
 		template< typename S1, typename S2, typename V, typename SubIterType, class Enable = void >
-		class NonzeroIterator; 
+		class NonzeroIterator;
 
 		template< typename S1, typename S2, typename V, typename SubIterType >
 		class NonzeroIterator< S1, S2, V, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< std::pair< S1, S2 >, V >, typename SubIterType::value_type >::value >::type > :

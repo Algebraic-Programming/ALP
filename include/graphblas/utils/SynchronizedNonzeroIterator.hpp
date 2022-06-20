@@ -48,8 +48,8 @@ namespace grb {
 			typename fwd_it1,
 			typename fwd_it2,
 			typename _iterator_category
-		> class __SynchronizedIteratorBaseStorage {
-
+		>
+		class __SynchronizedIteratorBaseStorage {
 		protected:
 			// iterators to synchronise:
 			fwd_it1 row_it, row_end;
@@ -123,11 +123,10 @@ namespace grb {
 			}
 
 		public:
-
 			// STL iterator's typedefs:
 			using iterator_category = _iterator_category;
-    		using value_type = typename storage_t::storage_t;
-    		using difference_type = long;
+			using value_type = typename storage_t::storage_t;
+			using difference_type = long;
 			using reference = const value_type &;
 			using pointer = const value_type *;
 
@@ -169,13 +168,13 @@ namespace grb {
 			typename fwd_it2,
 			typename fwd_it3,
 			typename _iterator_category
-		> class __SynchronizedIteratorBase:
+		>
+		class __SynchronizedIteratorBase:
 			public __SynchronizedIteratorBaseStorage< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, _iterator_category > {
 
 			using base_t = __SynchronizedIteratorBaseStorage< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, _iterator_category>;
-
 		protected:
 			// iterators to synchronise:
 			fwd_it3 val_it, val_end;
@@ -244,7 +243,6 @@ namespace grb {
 			}
 
 		public:
-
 			// GraphBLAS typedefs:
 			using nonzero_value_type = V;
 
@@ -276,7 +274,8 @@ namespace grb {
 			typename fwd_it2,
 			typename fwd_it3,
 			class _iterator_category
-		> class SynchronizedNonzeroIterator:
+		>
+		class SynchronizedNonzeroIterator:
 			public __SynchronizedIteratorBase< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, fwd_it3, _iterator_category > {
 
@@ -284,7 +283,6 @@ namespace grb {
 				fwd_it1, fwd_it2, fwd_it3, _iterator_category >;
 
 		public:
-
 			using self_t = SynchronizedNonzeroIterator< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, fwd_it3, _iterator_category >;
 
@@ -358,7 +356,8 @@ namespace grb {
 			typename fwd_it1,
 			typename fwd_it2,
 			class _iterator_category
-		> class SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void,
+		>
+		class SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void,
 			fwd_it1, fwd_it2, void, _iterator_category >:
 			public __SynchronizedIteratorBaseStorage< RowIndexT, ColIndexT, void,
 				fwd_it1, fwd_it2, _iterator_category > {
@@ -367,7 +366,6 @@ namespace grb {
 				fwd_it1, fwd_it2, _iterator_category >;
 
 		public:
-
 			using self_t = SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void,
 				fwd_it1, fwd_it2, void, _iterator_category >;
 
@@ -401,7 +399,6 @@ namespace grb {
 				return *this;
 			}
 
-
 			/** Offset operator, enabled only for random access iterators */
 			template< typename __cat = _iterator_category > self_t & operator+=(
 				typename std::enable_if<
@@ -433,17 +430,34 @@ namespace grb {
 		};
 
 #ifdef _DEBUG
-		template< typename RowIndexT, typename ColIndexT, typename V,
-				  typename fwd_it1, typename fwd_it2, typename fwd_it3, typename iterator_category >
-		std::ostream & operator<<( std::ostream & os,
-			const SynchronizedNonzeroIterator< RowIndexT, ColIndexT, V, fwd_it1, fwd_it2, fwd_it3, iterator_category > & it ) {
+		template<
+			typename RowIndexT,
+			typename ColIndexT,
+			typename V,
+			typename fwd_it1,
+			typename fwd_it2,
+			typename fwd_it3,
+			typename iterator_category
+		>
+		std::ostream & operator<<(
+			std::ostream & os,
+			const SynchronizedNonzeroIterator< RowIndexT, ColIndexT, V, fwd_it1, fwd_it2, fwd_it3, iterator_category > & it
+		) {
 			os << it.i() << ", " << it.j() << ", " << it.v();
 			return os;
 		}
 
-		template< typename RowIndexT, typename ColIndexT, typename fwd_it1, typename fwd_it2, typename iterator_category >
-			std::ostream & operator<<( std::ostream & os,
-			const SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void, fwd_it1, fwd_it2, void, iterator_category > & it ) {
+		template<
+			typename RowIndexT,
+			typename ColIndexT,
+			typename fwd_it1,
+			typename fwd_it2,
+			typename iterator_category
+		>
+		std::ostream & operator<<(
+			std::ostream & os,
+			const SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void, fwd_it1, fwd_it2, void, iterator_category > & it
+		) {
 			os << it.i() << ", " << it.j();
 			return os;
 		}
@@ -455,12 +469,17 @@ namespace grb {
 			typename ColIndexT,
 			typename V,
 			typename iterator_category
-		> SynchronizedNonzeroIterator<RowIndexT, ColIndexT, V,
+		>
+		SynchronizedNonzeroIterator<RowIndexT, ColIndexT, V,
 			const RowIndexT *, const ColIndexT *, const V *, iterator_category >
-		makeSynchronized( const RowIndexT * const it1, const ColIndexT * const it2, const V  * const it3,
-			const RowIndexT * const it1_end, const ColIndexT * const it2_end, const V  * const it3_end, iterator_category ) {
-			return SynchronizedNonzeroIterator < RowIndexT, ColIndexT, V, const RowIndexT *, const ColIndexT *, const V *, iterator_category >
-		    	( it1, it2, it3, it1_end, it2_end, it3_end );
+		makeSynchronized(
+			const RowIndexT * const it1, const ColIndexT * const it2, const V  * const it3,
+			const RowIndexT * const it1_end, const ColIndexT * const it2_end, const V  * const it3_end,
+			iterator_category
+		) {
+			return SynchronizedNonzeroIterator < RowIndexT, ColIndexT, V,
+				const RowIndexT *, const ColIndexT *, const V *, iterator_category >
+				( it1, it2, it3, it1_end, it2_end, it3_end );
 		}
 
 
@@ -472,45 +491,60 @@ namespace grb {
 		> SynchronizedNonzeroIterator< RowIndexT, ColIndexT, V,
 			const RowIndexT *, const ColIndexT *, const V *, std::random_access_iterator_tag >
 		makeSynchronized( const RowIndexT * const it1, const ColIndexT * const it2, const V  * const it3,
-			const RowIndexT * const it1_end, const ColIndexT * const it2_end, const V  * const it3_end ) {
+			const RowIndexT * const it1_end, const ColIndexT * const it2_end, const V  * const it3_end
+		) {
 			return makeSynchronized( it1, it2, it3,
 				it1_end, it2_end, it3_end, std::random_access_iterator_tag() );
 		}
 
 		// overload for 3 pointers, number and with no tag: get the best (random access iterator)
-		template< typename RowT, typename ColT, typename V >
+		template<
+			typename RowT,
+			typename ColT,
+			typename V
+		>
 		SynchronizedNonzeroIterator< RowT, ColT, V, const RowT *, const ColT *, const V *,
 			std::random_access_iterator_tag >
 		makeSynchronized( const RowT * const it1, const ColT * const it2, const V  * const it3,
-			size_t length ) {
+			size_t length
+		) {
 			return makeSynchronized( it1, it2, it3, it1 + length, it2 + length, it3 + length,
 				std::random_access_iterator_tag() );
 		}
 
 
 		// overload for 2 pointers and custom tag
-		template< typename RowIndexT, typename ColIndexT, typename iterator_category >
+		template<
+			typename RowIndexT,
+			typename ColIndexT,
+			typename iterator_category
+		>
 		SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void,
 			const RowIndexT *, const ColIndexT *, void, iterator_category >
 		makeSynchronized( const RowIndexT * const it1, const ColIndexT * const it2,
-			const RowIndexT * const it1_end, const ColIndexT * const it2_end, iterator_category ) {
+			const RowIndexT * const it1_end, const ColIndexT * const it2_end, iterator_category
+		) {
 			return SynchronizedNonzeroIterator < RowIndexT, ColIndexT, void,
 				const RowIndexT *, const ColIndexT *, void, iterator_category >
-		    	( it1, it2, it1_end, it2_end );
+				( it1, it2, it1_end, it2_end );
 		}
 
 
 		// overload for 2 pointers with no tag: get the best (random access iterator)
-		template< typename RowIndexT, typename ColIndexT >
-		SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void, const RowIndexT *, const ColIndexT *, void,
-			std::random_access_iterator_tag >
+		template<
+			typename RowIndexT,
+			typename ColIndexT
+		>
+		SynchronizedNonzeroIterator< RowIndexT, ColIndexT, void,
+			const RowIndexT *, const ColIndexT *, void, std::random_access_iterator_tag >
 		makeSynchronized( const RowIndexT * const it1, const ColIndexT * const it2,
-			const RowIndexT * const it1_end, const ColIndexT * const it2_end ) {
+			const RowIndexT * const it1_end, const ColIndexT * const it2_end
+		) {
 #ifdef _DEBUG
 #ifndef _GRB_NO_STDIO
 			std::cout << "SynchronizedNonzeroIterator::makeSynchronized "
-						 "received iterators "
-					  << it1 << " (start) and " << it2 << " (end)\n";
+					"received iterators "
+				<< it1 << " (start) and " << it2 << " (end)\n";
 #else
 			printf( "SynchronizedNonzeroIterator::makeSynchronized received "
 					"iterators %p (start) and %p (end)\n",
@@ -529,8 +563,10 @@ namespace grb {
 			typename iterator_value< fwd_it1 >::type,
 			typename iterator_value< fwd_it2 >::type,
 			void, fwd_it1, fwd_it2, void, iterator_category
-		> makeSynchronized( const fwd_it1 it1, const fwd_it2 it2,
-			const fwd_it1 it1_end, const fwd_it2 it2_end, iterator_category ) {
+		>
+		makeSynchronized( const fwd_it1 it1, const fwd_it2 it2,
+			const fwd_it1 it1_end, const fwd_it2 it2_end, iterator_category
+		) {
 			return SynchronizedNonzeroIterator<
 				typename iterator_value< fwd_it1 >::type,
 				typename iterator_value< fwd_it2 >::type,
@@ -539,10 +575,14 @@ namespace grb {
 		}
 
 		// overload for 2 pointers, number and with no tag: get the best (random access iterator)
-		template< typename RowT, typename ColT >
-		SynchronizedNonzeroIterator< RowT, ColT, void, const RowT *, const ColT *, void,
-			std::random_access_iterator_tag >
-		makeSynchronized( const RowT * const it1, const ColT * const it2, size_t length ) {
+		template<
+			typename RowT,
+			typename ColT
+		>
+		SynchronizedNonzeroIterator< RowT, ColT, void,
+			const RowT *, const ColT *, void, std::random_access_iterator_tag >
+		makeSynchronized( const RowT * const it1, const ColT * const it2, size_t length
+		) {
 			return makeSynchronized( it1, it2, it1 + length, it2 + length, std::random_access_iterator_tag() );
 		}
 
@@ -550,15 +590,17 @@ namespace grb {
 		template<
 			typename fwd_it1,
 			typename fwd_it2
-		> SynchronizedNonzeroIterator<
+		>
+		SynchronizedNonzeroIterator<
 			typename iterator_value< fwd_it1 >::type,
 			typename iterator_value< fwd_it2 >::type,
 			void, fwd_it1, fwd_it2, void,
 			typename common_iterator_tag< fwd_it1, fwd_it2 >::iterator_category
 		> makeSynchronized( const fwd_it1 it1, const fwd_it2 it2,
-			const fwd_it1 it1_end, const fwd_it2 it2_end ) {
+			const fwd_it1 it1_end, const fwd_it2 it2_end
+		) {
 			using cat = typename common_iterator_tag< fwd_it1, fwd_it2 >::iterator_category;
-		  	return makeSynchronized(it1, it2, it1_end, it2_end, cat() );
+			return makeSynchronized(it1, it2, it1_end, it2_end, cat() );
 		}
 
 		// overload for 3 iterators with custom tag
@@ -567,14 +609,17 @@ namespace grb {
 			typename fwd_it2,
 			typename fwd_it3,
 			typename iterator_category
-		> SynchronizedNonzeroIterator<
+		>
+		SynchronizedNonzeroIterator<
 			typename iterator_value< fwd_it1 >::type,
 			typename iterator_value< fwd_it2 >::type,
 			typename iterator_value< fwd_it3 >::type,
 			fwd_it1, fwd_it2, fwd_it3, iterator_category
-		> makeSynchronized( const fwd_it1 it1, const fwd_it2 it2, const fwd_it3 it3,
-			const fwd_it1 it1_end, const fwd_it2 it2_end, const fwd_it3 it3_end, iterator_category ) {
-		  	return SynchronizedNonzeroIterator<
+		>
+		makeSynchronized( const fwd_it1 it1, const fwd_it2 it2, const fwd_it3 it3,
+			const fwd_it1 it1_end, const fwd_it2 it2_end, const fwd_it3 it3_end, iterator_category
+		) {
+			return SynchronizedNonzeroIterator<
 				typename iterator_value< fwd_it1 >::type,
 				typename iterator_value< fwd_it2 >::type,
 				typename iterator_value< fwd_it3 >::type,
@@ -587,16 +632,18 @@ namespace grb {
 			typename fwd_it1,
 			typename fwd_it2,
 			typename fwd_it3
-		> SynchronizedNonzeroIterator<
+		>
+		SynchronizedNonzeroIterator<
 			typename iterator_value< fwd_it1 >::type,
 			typename iterator_value< fwd_it2 >::type,
 			typename iterator_value< fwd_it3 >::type,
 			fwd_it1, fwd_it2, fwd_it3,
 			typename common_iterator_tag< fwd_it1, fwd_it2, fwd_it3 >::iterator_category
 		> makeSynchronized( const fwd_it1 it1, const fwd_it2 it2, const fwd_it3 it3,
-			const fwd_it1 it1_end, const fwd_it2 it2_end, const fwd_it3 it3_end ) {
+			const fwd_it1 it1_end, const fwd_it2 it2_end, const fwd_it3 it3_end
+		) {
 			using cat = typename common_iterator_tag< fwd_it1, fwd_it2, fwd_it3 >::iterator_category;
-		  	return makeSynchronized(it1, it2, it3, it1_end, it2_end, it3_end, cat() );
+			return makeSynchronized(it1, it2, it3, it1_end, it2_end, it3_end, cat() );
 		}
 
 	} // namespace utils

@@ -35,7 +35,7 @@
 
 #include "graphblas/blas1.hpp"                 // for grb::size
 #include "graphblas/utils/NonzeroIterator.hpp" // for transforming an std::vector::iterator
-                                               // into an ALP/GraphBLAS-compatible iterator
+											   // into an ALP/GraphBLAS-compatible iterator
 #include <graphblas/utils/pattern.hpp>         // for handling pattern input
 #include <graphblas/base/io.hpp>
 #include <graphblas/type_traits.hpp>
@@ -991,14 +991,21 @@ namespace grb {
 
 	namespace internal {
 
+		/**
+		 * @brief extracts the nonzero information and stores the into the right cache.
+		 * 	It also checks whether the nonzero coordinates are within the matrix sizes.
+		 */
 		template<
 			typename fwd_iterator,
 			typename IType,
 			typename JType,
 			typename VType
-		> void handleSingleNonZero(
+		>
+		void handleSingleNonZero(
 				const fwd_iterator &start,
-				const IOMode mode, size_t rows, size_t cols,
+				const IOMode mode,
+				const size_t rows,
+				const size_t cols,
 				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
 				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data
@@ -1070,23 +1077,29 @@ namespace grb {
 
 		}
 
+		/**
+		 * @brief sequential implementation of populateMatrixBuildCachesImpl().
+		 */
 		template<
 			typename fwd_iterator,
 			typename IType,
 			typename JType,
 			typename VType
-		> RC populateMatrixBuildCachesImpl(
-				fwd_iterator &start, const fwd_iterator &end,
+		>
+		RC populateMatrixBuildCachesImpl(
+				fwd_iterator &start,
+				const fwd_iterator &end,
 				const IOMode mode,
-				size_t rows, size_t cols,
+				const size_t rows,
+				const size_t cols,
 				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
 				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data,
 				std::forward_iterator_tag
 		) {
-		if( mode == PARALLEL ) {
-			outgoing.resize( data.P );
-		}
+			if( mode == PARALLEL ) {
+				outgoing.resize( data.P );
+			}
 
 			// loop over all inputs
 			for( ; start != end; ++start ) {
@@ -1096,17 +1109,19 @@ namespace grb {
 				}
 				handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
 			}
-			handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
-		}
 			return SUCCESS;
 		}
 
+		/**
+		 * @brief parallel implementation of populateMatrixBuildCachesImpl().
+		 */
 		template<
 			typename fwd_iterator,
 			typename IType,
 			typename JType,
 			typename VType
-		> RC populateMatrixBuildCachesImpl(
+		>
+		RC populateMatrixBuildCachesImpl(
 			fwd_iterator &start, const fwd_iterator &end,
 			const IOMode mode,
 			const size_t rows, const size_t cols,
@@ -1127,6 +1142,8 @@ namespace grb {
 			std::vector< std::vector< storage_t > > * const parallel_non_zeroes_ptr = parallel_non_zeroes.get();
 			RC ret = RC::SUCCESS;
 
+			// each thread separates the nonzeroes based on the destination, each
+			// thread to a different buffer
 			#pragma omp parallel
 			{
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
@@ -1191,7 +1208,6 @@ namespace grb {
 			size_t pid_nnz = 0;
 
 			// merge data: each thread merges the data for each process into the destination arrays
-
 			#pragma omp parallel firstprivate(num_threads,parallel_non_zeroes_ptr,data,outgoing_ptr,cache_ptr)
 			for( size_t pid = 0; pid < data.P; ++pid ) {
 				std::vector< storage_t > &out = pid != data.s ? (*outgoing_ptr)[ pid ] : *cache_ptr;
@@ -1275,7 +1291,20 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		template< typename fwd_iterator, typename IType, typename JType, typename VType  >
+		/**
+		 * @brief dispatcher to call the sequential or parallel cache population
+		 * 	based on the tag of the input iterator. It populates \p cache with
+		 * 	the local nonzeroes and \p outoing with the nonzeroes going to the
+		 * 	other processes, stored according to the destination process.
+		 *
+		 * Within each destination no order of nonzeroes is enforced.
+		 */
+		template<
+			typename fwd_iterator,
+			typename IType,
+			typename JType,
+			typename VType
+		>
 		inline RC populateMatrixBuildCaches(
 				fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
@@ -1284,13 +1313,12 @@ namespace grb {
 				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data
 		) {
-			// here we can ignore the mode and dispatch based only on the iterator type,
-			// the input data distribution is handled internally
+			// dispatch based only on the iterator type
 			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
 			return populateMatrixBuildCachesImpl( start, end, mode, rows, cols, cache,
 					outgoing, data, category );
 		}
-	}
+	} // namespace internal
 
 	/**
 	 * \internal No implementation details.
@@ -1518,7 +1546,7 @@ namespace grb {
 							sizeof( storage_t ),
 						&cache_slot
 					) :
-                                                lpf_register_global(
+					lpf_register_global(
 							data.context,
 							nullptr, 0,
 							&cache_slot
