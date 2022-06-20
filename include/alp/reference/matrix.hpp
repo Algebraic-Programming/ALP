@@ -366,6 +366,10 @@ namespace alp {
 		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
 		class StorageBasedMatrix;
 
+		/** Forward declaration */
+		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
+		class FunctorBasedMatrix;
+
 		/** Container reference getters used by friend functions of specialized Matrix */
 		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
 		const Vector< T, reference > & getContainer( const StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > & A );
@@ -386,6 +390,30 @@ namespace alp {
 			return getContainer( static_cast< StorageBasedMatrix< T, ImfR, ImfC,
 				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::mapping_polynomial_type,
 				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::requires_allocation > & >( A ) );
+		}
+
+		/** Functor reference getter used by friend functions of specialized Matrix */
+		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
+		const Vector< T, reference > & getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > &A );
+
+		/**
+		 * Getter for the functor of a functor-based matrix.
+		 *
+		 * @tparam MatrixType  The type of input matrix.
+		 *
+		 * @param[in] A        Input matrix.
+		 *
+		 * @returns A constant reference to a functor object within the
+		 *          provided functor-based matrix.
+		 */
+		template<
+			typename MatrixType,
+			typename = typename std::enable_if<
+				internal::is_functor_based< MatrixType >::value
+			>::type
+		>
+		const typename MatrixType::functor_type &getFunctor( const MatrixType &A ) {
+			return static_cast< const typename MatrixType::base_type & >( A ).getFunctor();
 		}
 
 		/** Forward declaration */
@@ -661,6 +689,10 @@ namespace alp {
 				const ImfC imf_c;
 
 				const LambdaType lambda;
+
+				const LambdaType &getFunctor() const noexcept {
+					return lambda;
+				}
 
 				bool getInitialized() const noexcept {
 					return initialized;
