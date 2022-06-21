@@ -858,8 +858,12 @@ namespace alp {
 			 *                          only for an original matrix.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -881,12 +885,14 @@ namespace alp {
 			 *                          only for matrix views.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
@@ -901,12 +907,14 @@ namespace alp {
 			 *                          only for matrix views.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix ) :
+			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
