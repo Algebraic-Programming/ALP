@@ -919,15 +919,65 @@ namespace alp {
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
+			/**
+			 * Constructor for a functor-based matrix.
+			 *
+			 * @tparam ViewType The dummy type of the source matrix.
+			 *                  Uses SFINAE to enable this constructor
+			 *                  only for matrix views.
+			 */
 			template<
 				typename ViewType = View,
-				typename = typename std::enable_if<
-					std::is_same< ViewType, view::Functor< typename View::applied_to > >::value &&
-					std::is_same< ViewType, View >::value >::type
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
 			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
 
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam TargetMatrixType The dummy type of the source matrix.
+			 *                          Uses SFINAE to enable this constructor
+			 *                          only for matrix views.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					getFunctor( target_matrix ),
+					imf_r, imf_c
+				) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam TargetMatrixType The dummy type of the source matrix.
+			 *                          Uses SFINAE to enable this constructor
+			 *                          only for matrix views.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( getFunctor( target_matrix ),
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) )
+				) {}
 	}; // General Matrix
 
 	// Square Matrix
