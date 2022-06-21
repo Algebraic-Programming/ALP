@@ -853,9 +853,9 @@ namespace alp {
 			/**
 			 * Constructor for an original matrix.
 			 *
-			 * @tparam TargetMatrixType The dummy type.
-			 *                          Uses SFINAE to enable this constructor
-			 *                          only for an original matrix.
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a storage-based matrix that allocates memory.
 			 */
 			template<
 				typename ViewType = View,
@@ -878,11 +878,11 @@ namespace alp {
 			}
 
 			/**
-			 * Constructor for a view over another matrix.
+			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetMatrixType The dummy type of the source matrix.
-			 *                          Uses SFINAE to enable this constructor
-			 *                          only for matrix views.
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
 			 */
 			template<
 				typename ViewType = View,
@@ -902,9 +902,9 @@ namespace alp {
 			 * Constructor for a view over another matrix using default IMFs (Identity).
 			 * Delegate to the general constructor.
 			 *
-			 * @tparam TargetMatrixType The dummy type of the source matrix.
-			 *                          Uses SFINAE to enable this constructor
-			 *                          only for matrix views.
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
 			 */
 			template<
 				typename ViewType = View,
@@ -920,11 +920,11 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
 			/**
-			 * Constructor for a functor-based matrix.
+			 * Constructor for a functor-based matrix that allocates memory.
 			 *
-			 * @tparam ViewType The dummy type of the source matrix.
-			 *                  Uses SFINAE to enable this constructor
-			 *                  only for matrix views.
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a functor-based matrix that allocates memory.
 			 */
 			template<
 				typename ViewType = View,
@@ -940,9 +940,9 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetMatrixType The dummy type of the source matrix.
-			 *                          Uses SFINAE to enable this constructor
-			 *                          only for matrix views.
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
 			 */
 			template<
 				typename ViewType = View,
@@ -961,9 +961,9 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetMatrixType The dummy type of the source matrix.
-			 *                          Uses SFINAE to enable this constructor
-			 *                          only for matrix views.
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
 			 */
 			template<
 				typename ViewType = View,
