@@ -980,19 +980,28 @@ namespace alp {
 				) {}
 	}; // General Matrix
 
-	// Square Matrix
+	/**
+	 * @brief Square matrix
+	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
-		public Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > {
+		public std::conditional<
+			internal::is_view_over_functor< View >::value,
+			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+		>::type {
 
-		private:
+		protected:
 			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
-			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > intermediate_type;
 			typedef typename View::applied_to target_type;
 
+			/*********************
+				Storage info friends
+			******************** */
+
 			template< typename fwd_iterator >
-			friend RC buildMatrix( Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > &,
-				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+			friend RC buildMatrix( Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
 
 			template< typename fwd_iterator >
 			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -1003,12 +1012,22 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			/**
+			 * Indicates if a matrix needs to allocate data-related memory
+			 * (for the internal container or functor object).
+			 * False if it is a view over another matrix or a functor.
+			 */
+			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** Inherit some of the static properties from the intermediate class */
-			typedef typename intermediate_type::mapping_polynomial_type mapping_polynomial_type;
-			static constexpr bool allocates_memory = intermediate_type::allocates_memory;
-			typedef typename intermediate_type::base_type base_type;
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
+			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
 
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
 
@@ -1022,85 +1041,21 @@ namespace alp {
 				using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
-			/** Constructor for an original matrix. */
-			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
-			>
-			Matrix( const size_t dim, const size_t cap = 0 ) :
-				intermediate_type( dim, dim, cap ) {}
-
-			/** Constructor for a view over another matrix. */
-			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
-			>
-			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				intermediate_type( target_matrix, imf_r, imf_c ) {}
+			template < bool d >
+			struct view_type< view::diagonal, d > {
+				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+			};
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for an original matrix.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
-			>
-			Matrix( TargetMatrixType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {}
-
-
-	}; // Square Matrix
-
-	// Symmetric Matrix
-	template< typename T, typename View, typename ImfR, typename ImfC >
-	class Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value > {
-
-		private:
-			typedef Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > self_type;
-			typedef typename View::applied_to target_type;
-
-			template< typename fwd_iterator >
-			friend RC buildMatrix( Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > &,
-				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
-
-			template< typename fwd_iterator >
-			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
-				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
-				return buildMatrix( *(this->_container), start, end );
-			}
-
-		public:
-			/** Exposes the types and the static properties. */
-			typedef structures::Symmetric structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
-			static constexpr bool requires_allocation = std::is_same< target_type, void >::value;
-			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
-
-			template < view::Views view_tag, bool d=false >
-			struct view_type;
-
-			template < bool d >
-			struct view_type< view::original, d > {
-				using type = Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >;
-			};
-
-			template < bool d >
-			struct view_type< view::transpose, d > {
-				using type = Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >;
-			};
-
-			/** Constructor for an original matrix. */
-			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1114,14 +1069,18 @@ namespace alp {
 				(void)cap;
 			}
 
-			/** Constructor for a view over another matrix. */
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
@@ -1132,26 +1091,80 @@ namespace alp {
 			 * Delegate to the general constructor.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix ) :
+			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
+			/**
+			 * Constructor for a functor-based matrix that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
 
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					getFunctor( target_matrix ),
+					imf_r, imf_c
+				) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( getFunctor( target_matrix ),
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) )
+				) {}
 	}; // Square Matrix
 
-	// UpperTriangular Matrix
+	/**
+	 * @brief Symmetric matrix
+	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
-	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value > {
+	class Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > :
+		public std::conditional<
+			internal::is_view_over_functor< View >::value,
+			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+		>::type {
 
-		private:
-			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
+		protected:
+			typedef Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > self_type;
 			typedef typename View::applied_to target_type;
 
 			/*********************
@@ -1159,8 +1172,8 @@ namespace alp {
 			******************** */
 
 			template< typename fwd_iterator >
-			friend RC buildMatrix( Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > &,
-				const fwd_iterator & start, const fwd_iterator & end ) noexcept;
+			friend RC buildMatrix( Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
 
 			template< typename fwd_iterator >
 			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
@@ -1169,18 +1182,202 @@ namespace alp {
 			}
 
 		public:
-			/** Exposes the element type and the structure. */
-			typedef structures::UpperTriangular structure;
+			/** Exposes the types and the static properties. */
+			typedef structures::Symmetric structure;
 			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			/**
+			 * Indicates if a matrix needs to allocate data-related memory
+			 * (for the internal container or functor object).
+			 * False if it is a view over another matrix or a functor.
+			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
+
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
 			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
 
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
 
 			template < bool d >
 			struct view_type< view::original, d > {
-				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference >;
+				using type = Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::diagonal, d > {
+				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+			};
+
+			/**
+			 * Constructor for an original matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( const size_t dim, const size_t cap = 0 ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
+						imf::Id( dim ),
+						imf::Id( dim ),
+						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+						dim * dim
+					)
+				) {
+				(void)cap;
+			}
+
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+				) {}
+
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
+
+			/**
+			 * Constructor for a functor-based matrix that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					getFunctor( target_matrix ),
+					imf_r, imf_c
+				) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( getFunctor( target_matrix ),
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) )
+				) {}
+	}; // Symmetric Matrix
+
+	/**
+	 * @brief UpperTriangular matrix with physical container.
+	 */
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
+		public std::conditional<
+			internal::is_view_over_functor< View >::value,
+			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+		>::type {
+
+		protected:
+			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
+
+			/*********************
+				Storage info friends
+			******************** */
+
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
+
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
+
+		public:
+			/** Exposes the types and the static properties. */
+			typedef structures::UpperTriangular structure;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			/**
+			 * Indicates if a matrix needs to allocate data-related memory
+			 * (for the internal container or functor object).
+			 * False if it is a view over another matrix or a functor.
+			 */
+			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
+
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
+			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
+
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference >;
 			};
 
 			template < bool d >
@@ -1188,52 +1385,140 @@ namespace alp {
 				using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
 			};
 
-			/** Constructor for an original matrix. */
+			template < bool d >
+			struct view_type< view::diagonal, d > {
+				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+			};
+
+			/**
+			 * Constructor for an original matrix.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a storage-based matrix that allocates memory.
+			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if< std::is_same< TargetMatrixType, void >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( const size_t rows, const size_t cap = 0 ) :
+			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
-						imf::Id( rows ),
-						imf::Id( rows ),
-						storage::polynomials::Create< mapping_polynomial_type >( rows ),
-						rows * rows
+						imf::Id( dim ),
+						imf::Id( dim ),
+						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+						dim * dim
 					)
 				) {
 				(void)cap;
 			}
 
-			/** Constructor for a view over another matrix. */
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
 				) {}
 
-			/** Constructor for a view over another matrix using default IMFs (Identity).
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
 			 * Delegate to the general constructor.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
 			 */
 			template<
-				typename TargetMatrixType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetMatrixType, void >::value &&
-					std::is_same< TargetMatrixType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
 			>
-			Matrix( TargetMatrixType &target_matrix ) :
+			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
+			/**
+			 * Constructor for a functor-based matrix that allocates memory.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a functor-based matrix that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, lambda ) {}
 
-	}; // Matrix UpperTriangular
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					getFunctor( target_matrix ),
+					imf_r, imf_c
+				) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value,
+					bool
+				>::type = true
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( getFunctor( target_matrix ),
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) )
+				) {}
+	}; // UpperTriangular Matrix
 
 	// Matrix Identity
 //	template< typename T, typename View, typename ImfR, typename ImfC >
