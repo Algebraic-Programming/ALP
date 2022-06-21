@@ -439,14 +439,16 @@ namespace alp {
 			lambda_reference operator[]( const size_t i ) noexcept {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
-				return this->access( this->amf.getStorageIndex( i, 0 ) );
+				/** \internal \todo revise the third and fourth parameter for parallel backends */
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
 			const lambda_reference operator[]( const size_t i ) const noexcept {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
-				return this->access( this->amf.getStorageIndex( i, 0 ) );
+				/** \internal \todo revise the third and fourth parameter for parallel backends */
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container
