@@ -683,7 +683,8 @@ namespace alp {
 				typedef FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > self_type;
 				friend MatrixBase< self_type >;
 
-				const bool initialized; // Temporary solution, proper implementation pending
+				typedef std::function< bool() > initialized_functor_type;
+				const initialized_functor_type initialized_lambda;
 
 				const ImfR imf_r;
 				const ImfC imf_c;
@@ -699,7 +700,7 @@ namespace alp {
 				}
 
 				bool getInitialized() const noexcept {
-					return initialized;
+					return initialized_lambda();
 				}
 
 				void setInitialized( const bool ) noexcept {
@@ -721,12 +722,12 @@ namespace alp {
 			public:
 
 				FunctorBasedMatrix(
-					const bool initialized,
+					initialized_functor_type initialized_lambda,
 					ImfR imf_r,
 					ImfC imf_c,
 					const LambdaType lambda
 				) :
-					initialized( initialized ),
+					initialized_lambda( initialized_lambda ),
 					imf_r( imf_r ),
 					imf_c( imf_c ),
 					lambda( lambda ) {}
@@ -940,7 +941,7 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
+			Matrix( std::function< bool() > initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
 
 			/**
@@ -1288,7 +1289,7 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
 
 			/**

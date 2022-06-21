@@ -1156,6 +1156,10 @@ namespace alp {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], y[ j ], mul );
 			};
+		std::function< bool() > init_lambda =
+			[ &x, &y ]() -> bool {
+				return internal::getInitialized( x ) && internal::getInitialized( y );
+			};
 		
 		return Matrix<
 			typename Operator::D3,
@@ -1165,7 +1169,7 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
-				internal::getInitialized( x ) && internal::getInitialized( y ), // Temporary solution, pending proper implemention
+				init_lambda,
 				getLength( x ),
 				getLength( y ),
 				lambda
@@ -1207,6 +1211,10 @@ namespace alp {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], x[ j ], mul );
 			};
+		std::function< bool() > init_lambda =
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
+			};
 		
 		return Matrix<
 			typename Operator::D3,
@@ -1216,7 +1224,7 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
-				internal::getInitialized( x ),
+				init_lambda,
 				getLength( x ),
 				lambda
 			);
