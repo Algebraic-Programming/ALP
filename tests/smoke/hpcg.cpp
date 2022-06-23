@@ -194,7 +194,7 @@ struct simulation_input {
 	bool no_preconditioning;
 };
 
-
+static bool matloaded=false;
 /**
  * @brief Container to store all data for HPCG hierarchy.
  */
@@ -223,7 +223,7 @@ public :
 			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
 #endif
-			data[i].resize( parser_mat.nz(), parser_mat.n(), parser_mat.m() );
+			data[i].resize( parser_mat.entries()*2, parser_mat.n(), parser_mat.m() );
 			size_t k = 0;
 			for (auto it=parser_mat.begin( SEQUENTIAL );
 				 it != parser_mat.end( SEQUENTIAL);
@@ -233,11 +233,11 @@ public :
 				data[ i ].v_data[ k ]=it.v();
 				k++;
 			}
+			data[i].nz=k;
 		}
 
 		return ( rc );
-	}
-
+	}	
 
 	grb::RC read_vector( std::vector< std::string > & fname,
 						 vec_data< double > * data ) {
@@ -284,7 +284,7 @@ public :
 		
 		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
 		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
-		rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
+		// rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
 		rc = rc ? rc : read_vector( matMfiles, matMbuffer );
 
 		return rc;
@@ -292,6 +292,8 @@ public :
 };
 
 
+
+preloaded_matrices inputData;
 
 /**
  * @brief Containers for test outputs.
@@ -374,15 +376,18 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.error_code = SUCCESS;
 	RC rc { SUCCESS };
 
-	preloaded_matrices inputData;
-	inputData.matAfiles = in.matAfiles;
-	inputData.matMfiles = in.matMfiles;
-	inputData.matPfiles = in.matPfiles;
-	inputData.matRfiles = in.matRfiles;
+	if(!matloaded){
+		//preloaded_matrices inputData;
+		inputData.matAfiles = in.matAfiles;
+		inputData.matMfiles = in.matMfiles;
+		inputData.matPfiles = in.matPfiles;
+		inputData.matRfiles = in.matRfiles;
 
-	rc = inputData.read_vec_matrics();
-	if( rc != SUCCESS ) {
-		std::cerr << "Failure to read data" << std::endl;
+		rc = inputData.read_vec_matrics();
+		if( rc != SUCCESS ) {
+			std::cerr << "Failure to read data" << std::endl;
+		}
+		matloaded=true;
 	}
 
 	out.times.io = timer.time();
@@ -419,12 +424,16 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	(void)rc;
 	assert( rc == SUCCESS );
 
+	
+
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
 		print_vector( x, 50, " ---> X(1)" );
 		print_vector( b, 50, " ---> B(1)" );
 	}
 #endif
+
+	std::cout  << " ---> before solver \n";
 
 	out.times.preamble = timer.time();
 	timer.reset();
