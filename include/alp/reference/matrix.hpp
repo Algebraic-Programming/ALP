@@ -394,7 +394,7 @@ namespace alp {
 
 		/** Functor reference getter used by friend functions of specialized Matrix */
 		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
-		const Vector< T, reference > & getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > &A );
+		const typename FunctorBasedMatrix< T, ImfR, ImfC, LambdaType >::functor_type &getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > &A );
 
 		/**
 		 * Getter for the functor of a functor-based matrix.
