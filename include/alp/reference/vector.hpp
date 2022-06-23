@@ -318,12 +318,12 @@ namespace alp {
 	namespace internal {
 		template< typename T, typename Structure, typename View, typename Imf >
 		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, Imf, reference > &v ) noexcept {
-			return getInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type >( v ) );
+			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ) );
 		}
 
 		template< typename T, typename Structure, typename View, typename Imf >
 		void setInitialized( alp::Vector< T, Structure, Density::Dense, View, Imf, reference > & v, bool initialized ) noexcept {
-			setInitialized( v, initialized );
+			setInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ), initialized );
 		}
 	} // end namespace ``alp::internal''
 
