@@ -1130,7 +1130,7 @@ namespace alp {
 		class Operator
 	>
 	Matrix< typename Operator::D3, structures::General, Density::Dense,
-		view::Functor< std::function< void( InputType1 &, const size_t &, const size_t & ) > >,
+		view::Functor< std::function< void( InputType1 &, const size_t, const size_t ) > >,
 		imf::Id, imf::Id,
 		reference
 	>
@@ -1151,8 +1151,8 @@ namespace alp {
 			"called with a postfactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 
-		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
-			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
+		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > lambda =
+			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], y[ j ], mul );
 			};
@@ -1161,7 +1161,7 @@ namespace alp {
 			typename Operator::D3,
 			structures::General,
 			Density::Dense,
-			view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+			view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
 			>(
@@ -1183,7 +1183,7 @@ namespace alp {
 		class Operator
 	>
 	Matrix< typename Operator::D3, structures::Symmetric, Density::Dense,
-		view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+		view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 		imf::Id, imf::Id,
 		reference
 	>
@@ -1202,8 +1202,8 @@ namespace alp {
 			"called with a prefactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 
-		std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > lambda =
-			[ &x, &mul ]( typename Operator::D3 &result, const size_t &i, const size_t &j ) {
+		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > lambda =
+			[ &x, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], x[ j ], mul );
 			};
@@ -1212,7 +1212,7 @@ namespace alp {
 			typename Operator::D3,
 			structures::Symmetric,
 			Density::Dense,
-			view::Functor< std::function< void( typename Operator::D3 &, const size_t &, const size_t & ) > >,
+			view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
 			>(
