@@ -473,7 +473,7 @@ namespace alp {
 			protected:
 
 				std::pair< size_t, size_t > dims() const noexcept {
-					return static_cast< const DerivedMatrix * >( this )->_dims();
+					return static_cast< const DerivedMatrix & >( *this ).dims();
 				}
 
 				template< typename MatrixType >
@@ -584,7 +584,7 @@ namespace alp {
 				 *
 				 * @return A pair of dimensions.
 				 */
-				std::pair< size_t, size_t > _dims() const noexcept {
+				std::pair< size_t, size_t > dims() const noexcept {
 					return amf.getLogicalDimensions();
 				}
 
@@ -689,6 +689,10 @@ namespace alp {
 				const ImfC imf_c;
 
 				const LambdaType lambda;
+
+				std::pair< size_t, size_t > dims() const noexcept {
+					return std::make_pair( imf_r.n, imf_c.n );
+				}
 
 				const LambdaType &getFunctor() const noexcept {
 					return lambda;
