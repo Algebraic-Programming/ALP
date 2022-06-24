@@ -408,9 +408,9 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			typename = typename std::enable_if<
+			std::enable_if_t<
 				internal::is_functor_based< MatrixType >::value
-			>::type
+			> * = nullptr
 		>
 		const typename MatrixType::functor_type &getFunctor( const MatrixType &A ) {
 			return static_cast< const typename MatrixType::base_type & >( A ).getFunctor();
@@ -424,12 +424,12 @@ namespace alp {
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		bool getInitialized( const MatrixType &A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
@@ -464,10 +464,10 @@ namespace alp {
 
 			friend std::pair< size_t, size_t > dims<>( const MatrixBase< DerivedMatrix > &A ) noexcept;
 
-			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value, bool > >
+			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value > * >
 			friend bool getInitialized( const MatrixType &A ) noexcept;
 
-			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value, bool > >
+			template< typename MatrixType, std::enable_if_t< is_matrix< MatrixType>::value > * >
 			friend void setInitialized( MatrixType &A, const bool initialized ) noexcept;
 
 			protected:
@@ -869,11 +869,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -896,11 +895,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -918,11 +916,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
@@ -938,11 +935,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
@@ -956,11 +952,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
@@ -977,11 +972,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( getFunctor( target_matrix ),
@@ -1061,11 +1055,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1084,11 +1077,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1102,11 +1094,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
@@ -1118,11 +1109,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
@@ -1132,11 +1122,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
@@ -1149,11 +1138,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( getFunctor( target_matrix ),
@@ -1233,11 +1221,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1256,11 +1243,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1274,11 +1260,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
@@ -1290,11 +1275,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
@@ -1304,11 +1288,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
@@ -1321,11 +1304,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( getFunctor( target_matrix ),
@@ -1409,11 +1391,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1436,11 +1417,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
@@ -1458,11 +1438,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( target_matrix,
@@ -1478,11 +1457,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, lambda ) {}
@@ -1496,11 +1474,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
@@ -1517,11 +1494,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix ) :
 				Matrix( getFunctor( target_matrix ),
@@ -2026,14 +2002,14 @@ namespace alp {
 	namespace internal {
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		bool getInitialized( const MatrixType &A ) noexcept {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getInitialized();
 		}
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value, bool > = true
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
 			return static_cast< MatrixBase< typename MatrixType::base_type > & >( A ).template setInitialized( initialized );

@@ -418,11 +418,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( const size_t length, const size_t cap = 0 ) :
 				base_type( length, 1, cap ) {}
@@ -436,11 +435,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( typename ViewType::applied_to &vec_view, Imf imf ) :
 				base_type( vec_view, imf, imf::Id( 1 ) ) {
@@ -459,11 +457,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( typename ViewType::applied_to &vec_view ) :
 				base_type( vec_view ) {}
@@ -477,11 +474,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( bool initialized, const size_t length, typename ViewType::applied_to lambda ) :
 				base_type( initialized, length, 1, lambda ) {}
@@ -495,11 +491,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( typename ViewType::applied_to &target_vector, Imf imf_r ) :
 				base_type( getFunctor( target_vector ), imf_r, imf::Id( 1 ) ) {}
@@ -513,11 +508,10 @@ namespace alp {
 			 */
 			template<
 				typename ViewType = View,
-				typename std::enable_if<
+				typename std::enable_if_t<
 					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value,
-					bool
-				>::type = true
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
 			Vector( typename ViewType::applied_to &target_vector ) :
 				base_type( getFunctor( target_vector ),
