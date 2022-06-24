@@ -707,7 +707,9 @@ namespace alp {
 				}
 
 				access_type access( const storage_index_type &storage_index ) const {
-					return lambda( imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
+					T result = 0;
+					lambda( result, imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
+					return static_cast< access_type >( result );
 				}
 
 				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
