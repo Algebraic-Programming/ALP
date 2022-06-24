@@ -1028,7 +1028,11 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
+			typedef typename std::conditional<
+				internal::is_view_over_functor< View >::value,
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1194,7 +1198,11 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
+			typedef typename std::conditional<
+				internal::is_view_over_functor< View >::value,
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1360,7 +1368,11 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation > base_type;
+			typedef typename std::conditional<
+				internal::is_view_over_functor< View >::value,
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
