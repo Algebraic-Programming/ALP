@@ -317,13 +317,13 @@ namespace alp {
 
 	namespace internal {
 		template< typename T, typename Structure, typename View, typename Imf >
-		bool getInitialized( alp::Vector< T, Structure, Density::Dense, View, Imf, reference > & v ) noexcept {
-			return getInitialized( v );
+		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, Imf, reference > &v ) noexcept {
+			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ) );
 		}
 
 		template< typename T, typename Structure, typename View, typename Imf >
 		void setInitialized( alp::Vector< T, Structure, Density::Dense, View, Imf, reference > & v, bool initialized ) noexcept {
-			setInitialized( v, initialized );
+			setInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ), initialized );
 		}
 	} // end namespace ``alp::internal''
 
@@ -371,11 +371,13 @@ namespace alp {
 	class Vector< T, structures::General, Density::Dense, View, Imf, reference > :
 		public Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > {
 
-		private:
+		public:
 
 			typedef Vector< T, structures::General, Density::Dense, View, Imf, reference > self_type;
 			typedef Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > base_type;
 			typedef typename base_type::target_type target_type;
+
+		private:
 
 			/*********************
 				Storage info friends
@@ -407,44 +409,130 @@ namespace alp {
 				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, TargetImf, reference > type;
 			};
 
-			Vector( const size_t length, const size_t cap = 0 ) : base_type( length, 1, cap ) {}
-
-			/** Constructor for creating a view over a given target vector */
+			/**
+			 * Constructor for an original vector.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a storage-based matrix that allocates memory.
+			 */
 			template<
-				typename TargetVectorType = target_type,
-				typename = typename std::enable_if<
-					!std::is_same< TargetVectorType, void >::value &&
-					std::is_same< TargetVectorType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
-			Vector( TargetVectorType &vec_view ) : base_type( vec_view ) {}
+			Vector( const size_t length, const size_t cap = 0 ) :
+				base_type( length, 1, cap ) {}
 
-			/** Constructor for creating a view over a given target vector and
-			 * applying the given index mapping function */
+			/**
+			 * Constructor for a view over another storage-based vector.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed vector.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based vector.
+			 */
 			template<
-				typename TargetVectorType = target_type,
-				typename TargetImf,
-				typename = typename std::enable_if<
-					!std::is_same< TargetVectorType, void >::value &&
-					std::is_same< TargetVectorType, target_type >::value >::type
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
 			>
-			Vector( TargetVectorType &vec_view, TargetImf imf ) : base_type( vec_view, imf, imf::Id( 1 ) ) {
+			Vector( typename ViewType::applied_to &vec_view, Imf imf ) :
+				base_type( vec_view, imf, imf::Id( 1 ) ) {
+
 				if( getLength( vec_view ) != imf.N ) {
 					throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
 				}
 			}
 
+			/**
+			 * Constructor for a view over another vector using default IMFs (Identity).
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Vector( typename ViewType::applied_to &vec_view ) :
+				base_type( vec_view ) {}
+
+			/**
+			 * Constructor for a functor-based vector that allocates memory.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a functor-based vector that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Vector( bool initialized, const size_t length, typename ViewType::applied_to lambda ) :
+				base_type( initialized, length, 1, lambda ) {}
+
+			/**
+			 * Constructor for a view over another functor-based vector.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed vector.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based vector.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Vector( typename ViewType::applied_to &target_vector, Imf imf_r ) :
+				base_type( getFunctor( target_vector ), imf_r, imf::Id( 1 ) ) {}
+
+			/**
+			 * Constructor for a view over another functor-based vector.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed vector.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based vector.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Vector( typename ViewType::applied_to &target_vector ) :
+				base_type( getFunctor( target_vector ),
+					imf::Id( nrows ( target_vector ) ),
+					imf::Id( 1 )
+				) {}
+
 			/** \internal No implementation notes. */
 			lambda_reference operator[]( const size_t i ) noexcept {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
-				return this->access( this->amf.getStorageIndex( i, 0 ) );
+				/** \internal \todo revise the third and fourth parameter for parallel backends */
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
 			const lambda_reference operator[]( const size_t i ) const noexcept {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
-				return this->access( this->amf.getStorageIndex( i, 0 ) );
+				/** \internal \todo revise the third and fourth parameter for parallel backends */
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container

@@ -208,7 +208,7 @@ add_grb_executables( dense_matrix_access dense_matrix_access.cpp
 	BACKENDS alp_reference
 )
 
-# Temporarily disable until containers rework is completed
+# Temporarily disable this test until the necessary Matrix class specialization are adapted to the new functor-based infrastructure.
 #add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
 #	BACKENDS alp_reference
 #)
@@ -229,10 +229,9 @@ add_grb_executables( dense_mxm dense_mxm.cpp
 	BACKENDS alp_reference
 )
 
-# Temporarily disable until containers rework is completed
-#add_grb_executables( dense_outer dense_outer.cpp
-#	BACKENDS alp_reference
-#)
+add_grb_executables( dense_outer dense_outer.cpp
+	BACKENDS alp_reference
+)
 
 add_grb_executables( dense_structured_matrix dense_structured_matrix.cpp
 	BACKENDS alp_reference
