@@ -20,33 +20,150 @@
 
 #include "alp.hpp"
 
+template< typename MatrixType >
+void print_matrix( std::string name, const MatrixType &A) {
 
-using namespace alp;
+	if( ! alp::internal::getInitialized( A ) ) {
+		std::cout << "Matrix " << name << " uninitialized.\n";
+		return;
+	}
+
+	std::cout << name << ":" << std::endl;
+	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
+		std::cout << "[\t";
+		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
+			auto pos  = alp::internal::getStorageIndex( A, row, col );
+			// std::cout << "(" << pos << "): ";
+			std::cout << alp::internal::access( A, pos ) << "\t";
+		}
+		std::cout << "]" << std::endl;
+	}
+}
+
+template< typename T >
+void print_stdvec_as_matrix( std::string name, const std::vector< T > &vA, const size_t m, const size_t n, const size_t lda ) {
+
+	std::cout << "Vec " << name << ":" << std::endl;
+	for( size_t row = 0; row < m; ++row ) {
+		std::cout << "[\t";
+		for( size_t col = 0; col < n; ++col ) {
+			std::cout << vA[ row * lda + col ] << "\t";
+		}
+		std::cout << "]" << std::endl;
+	}
+}
+
+template< typename T, typename Operator >
+void outer_stdvec_as_matrix(
+	std::vector< T > &vC, const size_t ldc,
+	const std::vector< T > &vA,
+	const std::vector< T > &vB,
+	const size_t m, const size_t n,
+	const Operator oper
+) {
+
+	print_stdvec_as_matrix("vA", vA, n, 1, 1);
+	print_stdvec_as_matrix("vB", vB, 1, n, n);
+	print_stdvec_as_matrix("vC - PRE", vC, m, n, n);
+
+	for( size_t i = 0; i < m; ++i ) {
+		for( size_t j = 0; j < n; ++j ) {
+			const T &a_val { vA[ i ] };
+			const T &b_val { vB[ j ] };
+			T &c_val { vC[ i * ldc + j ] };
+			(void)alp::internal::apply( c_val, a_val, b_val, oper );
+		}
+	}
+
+	print_stdvec_as_matrix("vC - POST", vC, m, n, n);
+
+}
+
+template< typename Structure, typename T >
+void stdvec_build_matrix( std::vector< T > &vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
+
+	if( std::is_same< Structure, alp::structures::General >::value ) {
+		std::fill( vA.begin(), vA.end(), one );
+	} else if( std::is_same< Structure, alp::structures::Symmetric >::value ) {
+		std::fill( vA.begin(), vA.end(), one );
+	}
+}
+
+template< typename MatType, typename T >
+void diff_stdvec_matrix(
+	const std::vector< T > &vA, const size_t m, const size_t n, const size_t lda,
+	const MatType &mA,
+	double threshold=1e-7
+) {
+
+	if( std::is_same< typename MatType::structure, alp::structures::General >::value ) {
+		for( size_t row = 0; row < m; ++row ) {
+			for( size_t col = 0; col < n; ++col ) {
+				double va = ( double )( vA[ row * lda + col ] );
+				double vm = ( double )( alp::internal::access( mA, alp::internal::getStorageIndex( mA, row, col ) ) );
+				double re = std::abs( ( va - vm ) / va );
+				if( re > threshold ) {
+					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl;
+				}
+			}
+		}
+	} else if( std::is_same< typename MatType::structure, alp::structures::Symmetric >::value ) {
+		for( size_t row = 0; row < m; ++row ) {
+			for( size_t col = row; col < n; ++col ) {
+				double va = ( double )( vA[ row * lda + col ] );
+				double vm = ( double )( alp::internal::access( mA, alp::internal::getStorageIndex( mA, row, col ) ) );
+				double re = std::abs( ( va - vm ) / va );
+				if( re > threshold ) {
+					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl;
+				}
+			}
+		}
+	}
+}
+
 
 // alp program
-void alpProgram( const size_t &n, RC &rc ) {
-	/** \internal TODO: Implement initialization and result checking.
-	 * Currently only serves as the interface showcase.
-	 * */
+void alpProgram( const size_t &n, alp::RC &rc ) {
 
-	// semiring
-	Semiring<
-		alp::operators::add< double >, alp::operators::mul< double >,
-		alp::identities::zero, alp::identities::one
-	> ring;
+	typedef double T;
+
+	alp::Semiring< alp::operators::add< T >, alp::operators::mul< T >, alp::identities::zero, alp::identities::one > ring;
+
+	T one  = ring.getOne< T >();
+	T zero = ring.getZero< T >();
+
 	// allocate
-	Vector< double > u( n );
-	Vector< double > v( n );
-	Matrix< double, structures::General > M( n, n );
+	const size_t m = 2 * n;
+	std::vector< T > u_data( m, one );
+	std::vector< T > v_data( n, one );
+	std::vector< T > M_data( n, zero );
 
-	rc = outer( M, u, v, ring.getMultiplicativeOperator());
+	alp::Vector< T > u( m );
+	alp::Vector< T > v( n );
+	alp::Matrix< T, alp::structures::General > M( m, n );
+
+	alp::buildVector( u, u_data.begin(), u_data.end() );
+	alp::buildVector( v, v_data.begin(), v_data.end() );
+
+	// Example with storage-based matrix
+	rc = alp::outer( M, u, v, ring.getMultiplicativeOperator() );
 
 	// Example with matrix view on a lambda function.
-	auto uvT = outer( u, v, ring.getMultiplicativeOperator() );
+	auto uvT = alp::outer( u, v, ring.getMultiplicativeOperator() );
+	print_matrix( "uvT", uvT );
+
+	std::vector< T > uvT_test( m * n, zero );
+	outer_stdvec_as_matrix( uvT_test, n, u_data, v_data, m, n, ring.getMultiplicativeOperator() );
+	diff_stdvec_matrix( uvT_test, m, n, n, uvT );
 
 	// Example when outer product takes the same vector as both inputs.
 	// This operation results in a symmetric positive definite matrix.
-	auto vvT = outer( v, ring.getMultiplicativeOperator() );
+	auto vvT = alp::outer( v, ring.getMultiplicativeOperator() );
+	print_matrix( "vvT", uvT );
+
+	std::vector< T > vvT_test( n * n, zero );
+	outer_stdvec_as_matrix( vvT_test, n, v_data, v_data, n, n, ring.getMultiplicativeOperator() );
+	diff_stdvec_matrix( vvT_test, n, n, n, vvT );
 
 }
 
@@ -85,13 +202,13 @@ int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	alp::Launcher< AUTOMATIC > launcher;
+	alp::Launcher< alp::AUTOMATIC > launcher;
 	alp::RC out;
-	if( launcher.exec( &alpProgram, in, out, true ) != SUCCESS ) {
+	if( launcher.exec( &alpProgram, in, out, true ) != alp::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
-	if( out != SUCCESS ) {
+	if( out != alp::SUCCESS ) {
 		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;

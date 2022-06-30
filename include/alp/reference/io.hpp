@@ -179,6 +179,32 @@ namespace alp {
 		return PANIC;
 	}
 
+	/**
+	 * @brief \a buildVector version.
+	 *
+	 */
+	template< typename InputType, typename Structure, typename View, typename Imf, typename fwd_iterator >
+	RC buildVector(
+		Vector< InputType, Structure, Density::Dense, View, Imf, reference > &v,
+		const fwd_iterator &start,
+		const fwd_iterator &end
+	) noexcept {
+
+		// Temporarily assuming 1-1 mapping with user container
+		internal::setInitialized(v, true);
+
+		InputType * praw, * p;
+		
+		size_t len = internal::getLength( internal::getContainer( v ) );
+		praw = p = internal::getRaw( internal::getContainer( v ) );
+
+		for( fwd_iterator it = start; p < praw + len && it != end; ++it, ++p ) {
+			*p = *it;
+		}
+
+		return PANIC;
+	}
+
 } // end namespace ``alp''
 
 #endif // end ``_H_ALP_REFERENCE_IO''
