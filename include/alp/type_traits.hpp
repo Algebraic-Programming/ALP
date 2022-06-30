@@ -289,6 +289,40 @@ namespace alp {
 		struct is_view_over_functor : is_view_over_functor_helper< View, typename View::applied_to > {};
 
 		/**
+		 * Inspects a type is a storage-based ALP container.
+		 *
+		 * @tparam T  The type to inspect.
+		 *
+		 * \note A Matrix is storage-based if its view is a view over a
+		 *       storage-based container.
+		 *
+		 * @see is_view_over_storage
+		 *
+		 */
+		template< typename T >
+		struct is_storage_based : is_view_over_storage< typename internal::inspect_view< T >::type > {
+			static_assert( is_matrix< T >::value || is_vector< T >::value,
+				"The argument to internal::is_storage_based must be an ALP matrix or an ALP vector." );
+		};
+
+		/**
+		 * Inspects a type is a functor-based ALP container.
+		 *
+		 * @tparam T  The type to inspect.
+		 *
+		 * \note A Matrix is functor-based if its view is a view over a
+		 *       storage-based container.
+		 *
+		 * @see is_view_over_functor
+		 *
+		 */
+		template< typename T >
+		struct is_functor_based : is_view_over_functor< typename internal::inspect_view< T >::type > {
+			static_assert( is_matrix< T >::value || is_vector< T >::value,
+				"The argument to internal::is_functor_based must be an ALP matrix or an ALP vector." );
+		};
+
+		/**
 		 * Inspects whether a provided view is associated with an ALP container
 		 * that allocates the container data-related memory (either the storage
 		 * or the functor), or, in other words,
