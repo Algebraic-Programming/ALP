@@ -29,6 +29,7 @@ namespace grb {
 					const Data &parameters,
 					grb::interfaces::PregelData &pregel
 				) {
+					(void) parameters;
 					if( pregel.round > 0 ) {
 						if( pregel.indegree == 0 ) {
 							pregel.voteToHalt = true;
@@ -49,15 +50,15 @@ namespace grb {
 				static grb::RC execute(
 					grb::interfaces::Pregel< PregelType > &pregel,
 					grb::Vector< VertexIDType > &group_ids,
-					const size_t max_steps = 1000
+					const size_t max_steps = 1000,
+					size_t * const steps_taken = nullptr
 				) {
 					const size_t n = pregel.num_vertices();
 					if( grb::size( group_ids ) != n ) {
 						return MISMATCH;
 					}
 
-					const grb::RC ret =
-						grb::set< grb::descriptors::use_index >( group_ids, 1 );
+					grb::RC ret = grb::set< grb::descriptors::use_index >( group_ids, 1 );
 					if( ret != SUCCESS ) {
 						return ret;
 					}
@@ -65,15 +66,25 @@ namespace grb {
 					grb::Vector< VertexIDType > in( n );
 					grb::Vector< VertexIDType > out( n );
 
-					return pregel.execute(
+					size_t steps;
+
+					ret = pregel.template execute<
+						grb::operators::max< VertexIDType >,
+						grb::identities::negative_infinity
+					> (
 						group_ids,
 						in, out,
 						program,
 						Data(),
-						grb::operators::max< VertexIDType >(),
-						grb::identities::negative_infinity(),
+						steps,
 						max_steps
 					);
+
+					if( ret == grb::SUCCESS && steps_taken != nullptr ) {
+						*steps_taken = steps;
+					}
+
+					return ret;
 				}
 
 			};
