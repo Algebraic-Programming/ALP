@@ -210,6 +210,104 @@ namespace grb {
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
 
+		template< typename T >
+		struct color_mask_iter {
+
+			using self_t = color_mask_iter< T >;
+			using iterator_category = std::random_access_iterator_tag;
+			using value_type = T;
+			using pointer = const value_type *;
+			using reference = value_type;
+			using difference_type = long;
+
+			color_mask_iter() = delete;
+
+			color_mask_iter( T _num_cols, T _pos ) noexcept:
+				color_num( _num_cols),
+				position( _pos ) {}
+
+
+			color_mask_iter( const self_t &o ):
+				color_num( o.color_num ),
+				position( o.position ) {}
+
+			//self_t & operator=( const self_t & ) = default;
+
+			bool operator!=( const self_t &o ) const {
+				return position != o.position;
+			}
+
+			self_t & operator++() noexcept {
+				position += color_num;
+				return *this;
+			}
+
+			self_t & operator++( int ) noexcept {
+				return operator++();
+			}
+
+			self_t & operator+=( size_t offset ) noexcept {
+				position += offset * color_num;
+				return *this;
+			}
+
+			difference_type operator-( const self_t &o ) const noexcept {
+				return static_cast< difference_type >( ( position - o.position ) / color_num );
+			}
+
+			pointer operator->() const {
+				return &position;
+			}
+
+			reference operator*() const {
+				// std::cout << "returning " << position << std::endl;
+				return position;
+			}
+
+			static self_t build_end_iterator( T vsize, T _num_cols, T _col ) {
+				T final_pos = ( ( vsize - _col + _num_cols - 1 ) / _num_cols ) * _num_cols + _col;
+				return self_t( _num_cols, final_pos );
+			}
+
+			private:
+			const T color_num;
+			T position;
+		};
+
+		struct true_iter {
+
+			static const bool TRUE = true;
+
+			using self_t = true_iter;
+			using iterator_category = std::random_access_iterator_tag;
+			using value_type = bool;
+			using pointer = const bool *;
+			using reference = bool;
+			using difference_type = long;
+
+			true_iter() = default;
+
+			bool operator!=( const self_t & ) const {
+				return true;
+			}
+
+			self_t & operator++() noexcept {
+				return *this;
+			}
+
+			self_t & operator++( int ) noexcept {
+				return operator++();
+			}
+
+			pointer operator->() const {
+				return &TRUE;
+			}
+
+			reference operator*() const {
+				return true;
+			}
+		};
+
 		/**
 		 * @brief Populates \p masks with static color mask generated for a squared matrix of size \p matrix_size .
 		 *
@@ -246,12 +344,18 @@ namespace grb {
 				grb::Vector< bool > & mask = masks.back();
 				// grb::set(mask, false); // DO NOT initialize false's explicitly, otherwise
 				// RBGS will touch them too and the runtime will increase!
+				/*
 				for( std::size_t j = i; j < matrix_size; j += colors ) {
 					rc = grb::setElement( mask, true, j );
 					assert( rc == grb::SUCCESS );
 					if( rc != grb::SUCCESS )
 						return rc;
 				}
+				*/
+				color_mask_iter< unsigned > begin( colors, i );
+				color_mask_iter< unsigned > end =
+					color_mask_iter< unsigned >::build_end_iterator( matrix_size, colors, i );
+				grb::buildVectorUnique( mask, begin, end, true_iter(), true_iter(), IOMode::SEQUENTIAL );
 			}
 			return rc;
 		}
