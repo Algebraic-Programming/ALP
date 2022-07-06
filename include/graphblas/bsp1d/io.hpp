@@ -30,17 +30,16 @@
 
 #ifdef _GRB_WITH_OMP
  #include <omp.h>
- #include <atomic>
 #endif
 
 #include "graphblas/blas1.hpp"                 // for grb::size
 #include "graphblas/utils/NonzeroIterator.hpp" // for transforming an std::vector::iterator
-											   // into an ALP/GraphBLAS-compatible iterator
+                                               // into an ALP/GraphBLAS-compatible iterator
 #include <graphblas/utils/pattern.hpp>         // for handling pattern input
 #include <graphblas/base/io.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include <graphblas/utils/NonZeroStorage.hpp>
+#include <graphblas/utils/NonzeroStorage.hpp>
 #include <graphblas/utils/input_iterator_utils.hpp>
 
 #include "lpf/core.h"
@@ -1001,13 +1000,13 @@ namespace grb {
 			typename JType,
 			typename VType
 		>
-		void handleSingleNonZero(
+		void handleSingleNonzero(
 				const fwd_iterator &start,
 				const IOMode mode,
-				const size_t rows,
-				const size_t cols,
-				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
+				const size_t &rows,
+				const size_t &cols,
+				std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+				std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data
 		) {
 			// compute process-local indices (even if remote, for code readability)
@@ -1038,7 +1037,7 @@ namespace grb {
 			if( row_pid == data.s ) {
 				// push into cache
 				cache.emplace_back(
-					utils::makeNonZeroStorage< IType, JType, VType >( start )
+					utils::makeNonzeroStorage< IType, JType, VType >( start )
 				);
 				// translate nonzero
 				utils::updateNonzeroCoordinates(
@@ -1060,7 +1059,7 @@ namespace grb {
 #endif
 				// send original nonzero to remote owner
 				outgoing[ row_pid ].emplace_back(
-					utils::makeNonZeroStorage< IType, JType, VType >( start )
+					utils::makeNonzeroStorage< IType, JType, VType >( start )
 				);
 				// translate nonzero here instead of at
 				// destination for brevity / code readibility
@@ -1087,15 +1086,15 @@ namespace grb {
 			typename VType
 		>
 		RC populateMatrixBuildCachesImpl(
-				fwd_iterator &start,
-				const fwd_iterator &end,
-				const IOMode mode,
-				const size_t rows,
-				const size_t cols,
-				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
-				const BSP1D_Data &data,
-				std::forward_iterator_tag
+			fwd_iterator &start,
+			const fwd_iterator &end,
+			const IOMode mode,
+			const size_t &rows,
+			const size_t &cols,
+			std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
+			const BSP1D_Data &data,
+			const std::forward_iterator_tag &
 		) {
 			if( mode == PARALLEL ) {
 				outgoing.resize( data.P );
@@ -1107,7 +1106,7 @@ namespace grb {
 				if( utils::internal::check_input_coordinates( start, rows, cols ) != SUCCESS ) {
 					return MISMATCH;
 				}
-				handleSingleNonZero( start, mode, rows, cols, cache, outgoing, data );
+				handleSingleNonzero( start, mode, rows, cols, cache, outgoing, data );
 			}
 			return SUCCESS;
 		}
@@ -1124,22 +1123,22 @@ namespace grb {
 		RC populateMatrixBuildCachesImpl(
 			fwd_iterator &start, const fwd_iterator &end,
 			const IOMode mode,
-			const size_t rows, const size_t cols,
-			std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
-			std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
+			const size_t &rows, const size_t &cols,
+			std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
 			const BSP1D_Data &data,
 			// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
 			typename std::enable_if< _GRB_BSP1D_BACKEND == Backend::reference_omp
-				&& std::is_same< typename iterator_tag_selector<fwd_iterator>::iterator_category,
+				&& std::is_same< typename iterator_tag_selector< fwd_iterator >::iterator_category,
 					std::random_access_iterator_tag >::value, std::random_access_iterator_tag
 				>::type
 		) {
-			typedef utils::NonZeroStorage< IType, JType, VType > storage_t;
+			typedef utils::NonzeroStorage< IType, JType, VType > StorageType;
 
 			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );
-			const std::unique_ptr< std::vector< std::vector< storage_t > >[] > parallel_non_zeroes(
-				new std::vector< std::vector< storage_t > >[ num_threads ] );
-			std::vector< std::vector< storage_t > > * const parallel_non_zeroes_ptr = parallel_non_zeroes.get();
+			const std::unique_ptr< std::vector< std::vector< StorageType > >[] > parallel_non_zeroes(
+				new std::vector< std::vector< StorageType > >[ num_threads ] );
+			std::vector< std::vector< StorageType > > * const parallel_non_zeroes_ptr = parallel_non_zeroes.get();
 			RC ret = RC::SUCCESS;
 
 			// each thread separates the nonzeroes based on the destination, each
@@ -1147,9 +1146,9 @@ namespace grb {
 			#pragma omp parallel
 			{
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
-				std::vector< std::vector< storage_t > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
+				std::vector< std::vector< StorageType > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
 				local_outgoing.resize( data.P );
-				std::vector< storage_t > &local_data = local_outgoing[ data.s ];
+				std::vector< StorageType > &local_data = local_outgoing[ data.s ];
 				RC local_rc = SUCCESS;
 
 				#pragma omp for schedule( static )
@@ -1164,7 +1163,7 @@ namespace grb {
 							ret = MISMATCH;
 						}
 					} else {
-						handleSingleNonZero( it, mode, rows, cols, local_data, local_outgoing, data );
+						handleSingleNonzero( it, mode, rows, cols, local_data, local_outgoing, data );
 					}
 				}
 			}
@@ -1172,12 +1171,12 @@ namespace grb {
 				return ret;
 			}
 #ifdef _DEBUG
-			for( unsigned i = 0; i < data.P; i++) {
+			for( lpf_pid_t i = 0; i < data.P; i++) {
 				if( data.s == i ) {
 					std::cout << "Process " << data.s << std::endl;
 					for( size_t j = 0; j < num_threads; j++) {
 						std::cout << "\tthread " << j << std::endl;
-							for( unsigned k = 0; k < data.P; k++) {
+							for( lpf_pid_t k = 0; k < data.P; k++) {
 								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size() << std::endl;
 							}
 					}
@@ -1203,14 +1202,14 @@ namespace grb {
 			outgoing.resize( data.P );
 
 			// using pointers to prevent OMP from invoking copy constructors to pass output containers to threads
-			std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
-			std::vector< utils::NonZeroStorage< IType, JType, VType > > *cache_ptr = &cache;
+			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
+			std::vector< utils::NonzeroStorage< IType, JType, VType > > *cache_ptr = &cache;
 			size_t pid_nnz = 0;
 
 			// merge data: each thread merges the data for each process into the destination arrays
 			#pragma omp parallel firstprivate(num_threads,parallel_non_zeroes_ptr,data,outgoing_ptr,cache_ptr)
-			for( size_t pid = 0; pid < data.P; ++pid ) {
-				std::vector< storage_t > &out = pid != data.s ? (*outgoing_ptr)[ pid ] : *cache_ptr;
+			for( lpf_pid_t pid = 0; pid < data.P; ++pid ) {
+				std::vector< StorageType > &out = pid != data.s ? (*outgoing_ptr)[ pid ] : *cache_ptr;
 				// alternate between different parts of the array to avoid concurrent read-write
 				// due to overlap between iterations
 				size_t * const first_nnz_ptr = first_nnz_per_thread_ptr + num_threads * ( pid % iteration_overlaps );
@@ -1243,11 +1242,11 @@ namespace grb {
 				}
 				// barrier here, implicit at the end of single construct
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
-				std::vector< storage_t > &local_out = parallel_non_zeroes_ptr[ thread_id ][ pid ];
+				std::vector< StorageType > &local_out = parallel_non_zeroes_ptr[ thread_id ][ pid ];
 				const size_t first_nnz_local = first_nnz_ptr[ thread_id ];
 				const size_t num_nnz_local = local_out.size();
 #ifdef _DEBUG
-				for( unsigned i = 0; i < data.P; i++ ) {
+				for( lpf_pid_t i = 0; i < data.P; i++ ) {
 					if( data.s == i ) {
 						if( omp_get_thread_num() == 0 ) {
 							std::cout << "process " << data.s << ", processing nnz for process"
@@ -1282,7 +1281,7 @@ namespace grb {
 				}
 #endif
 				// each thread writes to a different interval of the destination array
-				// give pointers to "hint" memmove (storage_t should be trivially copyable)
+				// give pointers to "hint" memmove (StorageType should be trivially copyable)
 				std::copy_n( local_out.data(), num_nnz_local, out.data() + first_nnz_local );
 				// release memory
 				local_out.clear();
@@ -1308,16 +1307,17 @@ namespace grb {
 		inline RC populateMatrixBuildCaches(
 				fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
-				const size_t rows, const size_t cols,
-				std::vector< utils::NonZeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonZeroStorage< IType, JType, VType > > > &outgoing,
+				const size_t &rows, const size_t &cols,
+				std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+				std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
 				const BSP1D_Data &data
 		) {
 			// dispatch based only on the iterator type
 			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
 			return populateMatrixBuildCachesImpl( start, end, mode, rows, cols, cache,
-					outgoing, data, category );
+				outgoing, data, category );
 		}
+
 	} // namespace internal
 
 	/**
@@ -1363,7 +1363,7 @@ namespace grb {
 			InputType >::value || std::is_same< InputType, void >::value,
 			"cannot convert input value to internal format" );
 
-		typedef utils::NonZeroStorage< RIT, CIT, InputType > storage_t;
+		typedef utils::NonzeroStorage< RIT, CIT, InputType > StorageType;
 
 		// get access to user process data on s and P
 		internal::BSP1D_Data &data = internal::grb_BSP1D.load();
@@ -1380,10 +1380,10 @@ namespace grb {
 		RC ret = clear( A );
 
 		// local cache, used to delegate to reference buildMatrixUnique
-		std::vector< storage_t > cache;
+		std::vector< StorageType > cache;
 
 		// caches non-local nonzeroes (in case of Parallel IO)
-		std::vector< std::vector< storage_t > > outgoing;
+		std::vector< std::vector< StorageType > > outgoing;
 		// NOTE: this copies a lot of the above methodology
 
 #ifdef _DEBUG
@@ -1401,10 +1401,10 @@ namespace grb {
 		}
 
 #ifdef _DEBUG
-		for( unsigned i = 0; i < data.P; i++) {
+		for( lpf_pid_t i = 0; i < data.P; i++) {
 			if( data.s == i ) {
 				std::cout << "Process " << data.s << std::endl;
-				for( unsigned k = 0; k < data.P; k++) {
+				for( lpf_pid_t k = 0; k < data.P; k++) {
 					std::cout << "\tnum nnz " << outgoing[ k ].size() << std::endl;
 				}
 				std::cout << "\tcache size " << cache.size() << std::endl;
@@ -1420,7 +1420,7 @@ namespace grb {
 		// report on memory usage
 		(void) config::MEMORY::report( "grb::buildMatrixUnique",
 			"has local cache of size",
-			cache.size() * sizeof( storage_t )
+			cache.size() * sizeof( StorageType )
 		);
 
 		if( mode == PARALLEL ) {
@@ -1462,7 +1462,7 @@ namespace grb {
 				// cache size into buffer
 				buffer_sizet[ k ] = outgoing[ k ].size();
 				outgoing_bytes += outgoing[ k ].size() *
-					sizeof( storage_t );
+					sizeof( StorageType );
 #ifdef _DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends " << buffer_sizet[ k ]
@@ -1536,14 +1536,14 @@ namespace grb {
 				// enure local cache is large enough
 				(void) config::MEMORY::report( "grb::buildMatrixUnique (PARALLEL mode)",
 					"will increase local cache to size",
-					buffer_sizet[ data.s ] * sizeof( storage_t ) );
+					buffer_sizet[ data.s ] * sizeof( StorageType ) );
 				cache.resize( buffer_sizet[ data.s ] ); // see self-prefix comment above
 				// register memory slots for all-to-all
 				const lpf_err_t brc = cache.size() > 0 ?
 					lpf_register_global(
 						data.context,
 						&( cache[ 0 ] ), cache.size() *
-							sizeof( storage_t ),
+							sizeof( StorageType ),
 						&cache_slot
 					) :
 					lpf_register_global(
@@ -1553,7 +1553,7 @@ namespace grb {
 						);
 #ifdef _DEBUG
 				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size "
-					<< cache.size() * sizeof( storage_t )
+					<< cache.size() * sizeof( StorageType )
 					<< ") binds to slot " << cache_slot << "\n";
 #endif
 				if( brc != LPF_SUCCESS ) {
@@ -1570,7 +1570,7 @@ namespace grb {
 					lpf_register_local( data.context,
 						&(outgoing[ k ][ 0 ]),
 						outgoing[ k ].size() *
-							sizeof( storage_t ),
+							sizeof( StorageType ),
 						&(out_slot[ k ])
 					) :
 					lpf_register_local( data.context,
@@ -1622,9 +1622,9 @@ namespace grb {
 					const lpf_err_t brc = lpf_put( data.context,
 							out_slot[ k ], 0,
 							k, cache_slot, buffer_sizet[ 2 * data.P + k ] *
-								sizeof( storage_t ),
+								sizeof( StorageType ),
 							outgoing[ k ].size() *
-								sizeof( storage_t ),
+								sizeof( StorageType ),
 							LPF_MSG_DEFAULT
 					);
 					if( brc != LPF_SUCCESS ) {
@@ -1657,7 +1657,7 @@ namespace grb {
 			// clean up outgoing slots, which goes from 2x to 1x memory store for the
 			// nonzeroes here contained
 			{
-				std::vector< std::vector< storage_t > > emptyVector;
+				std::vector< std::vector< StorageType > > emptyVector;
 				std::swap( emptyVector, outgoing );
 			}
 		}
