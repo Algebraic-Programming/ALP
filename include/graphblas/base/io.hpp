@@ -1504,7 +1504,7 @@ namespace grb {
 		(void) end;
 		(void) mode;
 #ifndef NDEBUG
-		std::cerr << "Should not call base grb::buildMatrixUnique" << std::endll
+		std::cerr << "Should not call base grb::buildMatrixUnique" << std::endl;
 		const bool should_not_call_base_buildMatrixUnique = false;
 		assert( should_not_call_base_buildMatrixUnique );
 #endif
