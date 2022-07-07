@@ -1092,7 +1092,11 @@ namespace grb {
 			const size_t &rows,
 			const size_t &cols,
 			std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
-			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
+			std::vector<
+				std::vector<
+					utils::NonzeroStorage< IType, JType, VType >
+				>
+			> &outgoing,
 			const BSP1D_Data &data,
 			const std::forward_iterator_tag &
 		) {
