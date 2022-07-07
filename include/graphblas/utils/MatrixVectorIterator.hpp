@@ -274,13 +274,13 @@ namespace grb {
 		public:
 
 			/** The return type of i(). */
-			typedef SR row_coordinate_type;
+			typedef SR RowIndexType;
 
 			/** The return type of j(). */
-			typedef SC column_coordinate_type;
+			typedef SC ColumnIndexType;
 
 			/** The return type of v() or <tt>void</tt>. */
-			typedef T nonzero_value_type;
+			typedef T ValueType;
 
 			/** The STL iterator output type. */
 			typedef OutputType value_type;

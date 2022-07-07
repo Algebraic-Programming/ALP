@@ -118,9 +118,9 @@ namespace sparseblas {
 					typedef value_type & reference;
 					typedef value_type * pointer;
 					typedef std::forward_iterator_tag iterator_category;
-					typedef int row_coordinate_type;
-					typedef int column_coordinate_type;
-					typedef T nonzero_value_type;
+					typedef int RowIndexType;
+					typedef int ColumnIndexType;
+					typedef T ValueType;
 
 					const_iterator( const const_iterator &other ) :
 						batches( other.batches ), last( other.last ),

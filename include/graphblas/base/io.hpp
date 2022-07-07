@@ -1476,9 +1476,9 @@ namespace grb {
 	 *     current nonzero.
 	 *
 	 * It also must provide the following public typedefs:
-	 *  -# <tt>fwd_iterator::row_coordinate_type</tt>
-	 *  -# <tt>fwd_iterator::column_coordinate_type</tt>
-	 *  -# <tt>fwd_iterator::nonzero_value_type</tt>
+	 *  -# <tt>fwd_iterator::RowIndexType</tt>
+	 *  -# <tt>fwd_iterator::ColumnIndexType</tt>
+	 *  -# <tt>fwd_iterator::ValueType</tt>
 	 *
 	 * This means a specialised iterator is required for use with this function.
 	 * See, for example, grb::utils::internal::MatrixFileIterator.

@@ -26,54 +26,74 @@
 #include <type_traits>
 #include <iostream>
 
+
 namespace grb {
+
 	namespace utils {
 
 		template< typename S1, typename S2, typename V, typename SubIterType, class Enable = void >
 		class NonzeroIterator;
 
 		template< typename S1, typename S2, typename V, typename SubIterType >
-		class NonzeroIterator< S1, S2, V, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< std::pair< S1, S2 >, V >, typename SubIterType::value_type >::value >::type > :
-			public SubIterType {
+		class NonzeroIterator<
+			S1, S2, V,
+			SubIterType,
+			typename std::enable_if<
+				std::is_base_of<
+					typename std::pair< std::pair< S1, S2 >, V >,
+					typename SubIterType::value_type
+				>::value
+			>::type
+		> : public SubIterType {
 
-		public:
-			typedef S1 row_coordinate_type;
-			typedef S2 column_coordinate_type;
-			typedef V nonzero_value_type;
+			public:
 
-			NonzeroIterator( const SubIterType & base ) : SubIterType( base ) {}
+				typedef S1 RowIndexType;
+				typedef S2 ColumnIndexType;
+				typedef V ValueType;
 
-			const S1 & i() const {
-				return this->operator*().first.first;
-			}
+				NonzeroIterator( const SubIterType & base ) : SubIterType( base ) {}
 
-			const S2 & j() const {
-				return this->operator*().first.second;
-			}
+				const S1 & i() const {
+					return this->operator*().first.first;
+				}
 
-			const V & v() const {
-				return this->operator*().second;
-			}
+				const S2 & j() const {
+					return this->operator*().first.second;
+				}
+
+				const V & v() const {
+					return this->operator*().second;
+				}
 		};
 
 		template< typename S1, typename S2, typename SubIterType >
-		class NonzeroIterator< S1, S2, void, SubIterType, typename std::enable_if< std::is_base_of< typename std::pair< S1, S2 >, typename SubIterType::value_type >::value >::type > :
-			public SubIterType {
+		class NonzeroIterator<
+			S1, S2, void,
+			SubIterType,
+			typename std::enable_if<
+				std::is_base_of<
+					typename std::pair< S1, S2 >,
+					typename SubIterType::value_type
+				>::value
+			>::type
+		> : public SubIterType {
 
-		private:
-		public:
-			typedef S1 row_coordinate_type;
-			typedef S2 column_coordinate_type;
+			public:
 
-			NonzeroIterator( const SubIterType & base ) : SubIterType( base ) {}
+				typedef S1 RowIndexType;
+				typedef S2 ColumnIndexType;
 
-			const S1 & i() const {
-				return this->operator*().first;
-			}
+				NonzeroIterator( const SubIterType &base ) : SubIterType( base ) {}
 
-			const S2 & j() const {
-				return this->operator*().second;
-			}
+				const S1 & i() const {
+					return this->operator*().first;
+				}
+
+				const S2 & j() const {
+					return this->operator*().second;
+				}
+
 		};
 
 		template< typename S1, typename S2, typename V, typename SubIterType >
@@ -82,6 +102,8 @@ namespace grb {
 		}
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif // end ``_H_NONZEROITERATOR''
+
