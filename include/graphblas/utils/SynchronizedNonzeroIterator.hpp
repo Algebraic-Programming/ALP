@@ -58,10 +58,10 @@ namespace grb {
 
 			using self_t = __SynchronizedIteratorBaseStorage< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, _iterator_category >;
-			using storage_t = NonzeroStorage< RowIndexT, ColIndexT, V >;
+			using StorageType = NonzeroStorage< RowIndexT, ColIndexT, V >;
 
 			mutable bool row_col_updated;
-			mutable storage_t nonzero;
+			mutable StorageType nonzero;
 
 			/** Base constructor. Takes three sub-iterators as arguments. */
 			__SynchronizedIteratorBaseStorage( fwd_it1 it1, fwd_it2 it2, fwd_it1 it1_end, fwd_it2 it2_end ) :
@@ -126,7 +126,7 @@ namespace grb {
 		public:
 			// STL iterator's typedefs:
 			using iterator_category = _iterator_category;
-			using value_type = typename storage_t::storage_t;
+			using value_type = typename StorageType::StorageType;
 			using difference_type = long;
 			using reference = const value_type &;
 			using pointer = const value_type *;
