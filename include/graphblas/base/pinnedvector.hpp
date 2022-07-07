@@ -287,7 +287,7 @@ namespace grb {
 			}
 
 
-	}; // namespace grb
+	}; // end class grb::PinnedVector
 
 } // end namespace ``grb''
 
