@@ -226,12 +226,12 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		bool compare_non_zeroes(
-			std::size_t nrows,
+			size_t nrows,
 			OrigIterT origin_begin,
 			OrigIterT origin_end,
 			MatIterT mat_begin,
 			MatIterT mat_end,
-			std::size_t& counted_values,
+			size_t& counted_values,
 			std::ostream& outs = std::cout,
 			bool log_all_differences = false
 		) {
@@ -240,9 +240,9 @@ namespace grb {
 			static_assert( grb::is_input_iterator< ValT, decltype( origin_begin )>::value,
 				"MatIterT does not have {i,j,v}() interface" );
 
-			std::size_t counted = 0;
+			size_t counted = 0;
 
-			const std::size_t pid= spmd<>::pid(), nprocs = spmd<>::nprocs();
+			const size_t pid= spmd<>::pid(), nprocs = spmd<>::nprocs();
 
 			bool result = true;
 

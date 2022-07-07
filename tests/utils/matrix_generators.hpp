@@ -117,9 +117,9 @@ namespace grb {
 		 * 	matrices
 		 */
 		struct __diag_coord_value {
-			std::size_t coord;
+			size_t coord;
 
-			__diag_coord_value( std::size_t _c ): coord( _c ) {}
+			__diag_coord_value( size_t _c ): coord( _c ) {}
 		};
 
 		/**
@@ -138,11 +138,11 @@ namespace grb {
 			using pointer = __diag_coord_value*;
 			using reference = __diag_coord_value&;
 
-			using RowIndexType = std::size_t;
-			using ColumnIndexType = std::size_t;
+			using RowIndexType = size_t;
+			using ColumnIndexType = size_t;
 			using ValueType = int;
 
-			using input_sizes_t = const std::size_t;
+			using input_sizes_t = const size_t;
 			using self_t = diag_iterator< random >;
 
 			diag_iterator( const self_t& ) = default;
@@ -152,7 +152,7 @@ namespace grb {
 				return *this;
 			}
 
-			self_t& operator+=( std::size_t offset ) noexcept {
+			self_t& operator+=( size_t offset ) noexcept {
 				_v.coord += offset;
 				return *this;
 			}
@@ -166,7 +166,7 @@ namespace grb {
 			}
 
 			typename self_t::difference_type operator-( const self_t &other ) const {
-				return __compute_distance< std::size_t, typename self_t::difference_type >(
+				return __compute_distance< size_t, typename self_t::difference_type >(
 					this->_v.coord, other._v.coord );
 			}
 
@@ -192,26 +192,26 @@ namespace grb {
 			}
 
 			static self_t make_parallel_begin( input_sizes_t &size ) {
-				const std::size_t num_nonzeroes = size;
-				std::size_t num_non_zeroes_per_process, first_local_nonzero;
+				const size_t num_nonzeroes = size;
+				size_t num_non_zeroes_per_process, first_local_nonzero;
 				compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
 				return self_t( first_local_nonzero );
 			}
 
 			static self_t make_parallel_end( input_sizes_t &size ) {
-				const std::size_t num_nonzeroes{ size };
-				std::size_t last{ compute_parallel_last_nonzero( num_nonzeroes ) };
+				const size_t num_nonzeroes{ size };
+				size_t last{ compute_parallel_last_nonzero( num_nonzeroes ) };
 				return self_t( last );
 			}
 
-			static std::size_t compute_num_nonzeroes( std::size_t size ) {
+			static size_t compute_num_nonzeroes( size_t size ) {
 				return size;
 			}
 
 		private:
 			typename self_t::value_type _v;
 
-			diag_iterator( std::size_t _c ): _v( _c ) {}
+			diag_iterator( size_t _c ): _v( _c ) {}
 
 			diag_iterator(): _v( 0) {}
 		};
@@ -220,14 +220,14 @@ namespace grb {
 		 * @brief utility storing row and column values for a band matrix
 		 */
 		struct __band_coord_value {
-			const std::size_t size;
-			std::size_t row;
-			std::size_t col;
+			const size_t size;
+			size_t row;
+			size_t col;
 			__band_coord_value() = delete;
 			__band_coord_value(
-				std::size_t _size,
-				std::size_t _r,
-				std::size_t _c
+				size_t _size,
+				size_t _r,
+				size_t _c
 			) noexcept :
 				size( _size ),
 				row( _r ),
@@ -240,7 +240,7 @@ namespace grb {
 		 * 	iff \p random is true
 		 */
 		template<
-			std::size_t BAND,
+			size_t BAND,
 			bool random
 		>
 		struct band_iterator {
@@ -252,19 +252,19 @@ namespace grb {
 			using pointer = __band_coord_value*;
 			using reference = __band_coord_value&;
 
-			static constexpr std::size_t MAX_ELEMENTS_PER_ROW = BAND * 2 + 1;
-			static constexpr std::size_t PROLOGUE_ELEMENTS = ( 3* BAND * BAND + BAND ) / 2;
+			static constexpr size_t MAX_ELEMENTS_PER_ROW = BAND * 2 + 1;
+			static constexpr size_t PROLOGUE_ELEMENTS = ( 3* BAND * BAND + BAND ) / 2;
 
-			using RowIndexType = std::size_t;
-			using ColumnIndexType = std::size_t;
+			using RowIndexType = size_t;
+			using ColumnIndexType = size_t;
 			using ValueType = int;
 			using self_t = band_iterator< BAND, random >;
-			using input_sizes_t = const std::size_t;
+			using input_sizes_t = const size_t;
 
 			band_iterator( const self_t& ) = default;
 
 			self_t& operator++() noexcept {
-				const std::size_t max_col = std::min( _v.row + BAND, _v.size - 1 );
+				const size_t max_col = std::min( _v.row + BAND, _v.size - 1 );
 				if( _v.col < max_col ) {
 					_v.col++;
 				} else {
@@ -274,8 +274,8 @@ namespace grb {
 				return *this;
 			}
 
-			self_t& operator+=( std::size_t offset ) noexcept {
-				const std::size_t position = coords_to_linear( _v.size, _v.row, _v.col );
+			self_t& operator+=( size_t offset ) noexcept {
+				const size_t position = coords_to_linear( _v.size, _v.row, _v.col );
 				linear_to_coords( _v.size, position + offset, _v.row, _v.col );
 				return *this;
 			}
@@ -289,10 +289,10 @@ namespace grb {
 			}
 
 			typename self_t::difference_type operator-( const self_t &other ) const {
-				const std::size_t this_position = coords_to_linear( _v.size, _v.row, _v.col );
-				const std::size_t other_position =
+				const size_t this_position = coords_to_linear( _v.size, _v.row, _v.col );
+				const size_t other_position =
 					coords_to_linear( other._v.size, other._v.row, other._v.col );
-				return __compute_distance< std::size_t, typename self_t::difference_type >(
+				return __compute_distance< size_t, typename self_t::difference_type >(
 					this_position, other_position );
 			}
 
@@ -315,39 +315,39 @@ namespace grb {
 
 			static self_t make_end( input_sizes_t &size ) {
 				__check_size( size );
-				std::size_t row, col;
-				const std::size_t num_nonzeroes = compute_num_nonzeroes( size );
+				size_t row, col;
+				const size_t num_nonzeroes = compute_num_nonzeroes( size );
 				linear_to_coords( size, num_nonzeroes, row, col );
 				return self_t( size, row, col );
 			}
 
 			static self_t make_parallel_begin( input_sizes_t &size ) {
 				__check_size( size );
-				const std::size_t num_nonzeroes = compute_num_nonzeroes( size );
-				std::size_t num_non_zeroes_per_process, first_local_nonzero;
+				const size_t num_nonzeroes = compute_num_nonzeroes( size );
+				size_t num_non_zeroes_per_process, first_local_nonzero;
 				compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-				std::size_t row, col;
+				size_t row, col;
 				linear_to_coords( size, first_local_nonzero, row, col );
 				return self_t( size, row, col );
 			}
 
 			static self_t make_parallel_end( input_sizes_t &size ) {
 				__check_size( size );
-				const std::size_t num_nonzeroes = compute_num_nonzeroes( size );
-				std::size_t last = compute_parallel_last_nonzero( num_nonzeroes );
-				std::size_t row, col;
+				const size_t num_nonzeroes = compute_num_nonzeroes( size );
+				size_t last = compute_parallel_last_nonzero( num_nonzeroes );
+				size_t row, col;
 				linear_to_coords( size, last, row, col );
 				return self_t( size, row, col );
 			}
 
-			static std::size_t compute_num_nonzeroes( std::size_t size ) {
+			static size_t compute_num_nonzeroes( size_t size ) {
 				return 2 * PROLOGUE_ELEMENTS + ( size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
 			}
 
 		private:
 			typename self_t::value_type _v;
 
-			band_iterator( std::size_t size, std::size_t row, std::size_t col ):
+			band_iterator( size_t size, size_t row, size_t col ):
 				_v( size, row, col ) {
 				static_assert( BAND > 0, "BAND must be > 0");
 			}
@@ -356,22 +356,22 @@ namespace grb {
 				static_assert( BAND > 0, "BAND must be > 0");
 			}
 
-			static std::size_t __col_to_linear( std::size_t row, std::size_t col ) {
-				std::size_t min_col{ row < BAND ? 0 : row - BAND };
+			static size_t __col_to_linear( size_t row, size_t col ) {
+				size_t min_col{ row < BAND ? 0 : row - BAND };
 				return col - min_col;
 			}
 
-			static std::size_t __coords_to_linear_in_prologue(
-					std::size_t row,
-					std::size_t col
+			static size_t __coords_to_linear_in_prologue(
+					size_t row,
+					size_t col
 			) {
 				return row * BAND + row * ( row + 1 ) / 2 + __col_to_linear( row, col );
 			}
 
-			static std::size_t coords_to_linear(
-				std::size_t matrix_size,
-				std::size_t row,
-				std::size_t col
+			static size_t coords_to_linear(
+				size_t matrix_size,
+				size_t row,
+				size_t col
 			) {
 				if( row < BAND ) {
 					return __coords_to_linear_in_prologue( row, col );
@@ -380,8 +380,8 @@ namespace grb {
 					return PROLOGUE_ELEMENTS + ( row - BAND ) * MAX_ELEMENTS_PER_ROW + __col_to_linear( row, col );
 				}
 				if( row < matrix_size ) {
-					std::size_t mat_size = 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-					std::size_t prologue_els = __coords_to_linear_in_prologue( matrix_size - row - 1, matrix_size - col - 1 );
+					size_t mat_size = 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
+					size_t prologue_els = __coords_to_linear_in_prologue( matrix_size - row - 1, matrix_size - col - 1 );
 					return  mat_size - 1 - prologue_els; // transpose coordinates
 				}
 				// for points outside of matrix: project to prologue
@@ -390,11 +390,11 @@ namespace grb {
 			}
 
 			static void __linear_to_coords_in_prologue(
-					std::size_t position,
-					std::size_t& row,
-					std::size_t& col
+					size_t position,
+					size_t& row,
+					size_t& col
 			) {
-				std::size_t current_row = 0;
+				size_t current_row = 0;
 				//linear search
 				for( ; position >= ( current_row + 1 + BAND ) && current_row < BAND; current_row++ ) {
 					position -= ( current_row + 1 + BAND );
@@ -404,19 +404,19 @@ namespace grb {
 			}
 
 			static void linear_to_coords(
-				std::size_t matrix_size,
-				std::size_t position,
-				std::size_t& row,
-				std::size_t& col
+				size_t matrix_size,
+				size_t position,
+				size_t &row,
+				size_t &col
 			) {
 				if( position < PROLOGUE_ELEMENTS ) {
 					__linear_to_coords_in_prologue( position, row, col );
 					return;
 				}
 				position -= PROLOGUE_ELEMENTS;
-				const std::size_t max_inner_rows = matrix_size - 2 * BAND;
+				const size_t max_inner_rows = matrix_size - 2 * BAND;
 				if( position < max_inner_rows * MAX_ELEMENTS_PER_ROW ) {
-					const std::size_t inner_row = position / MAX_ELEMENTS_PER_ROW;
+					const size_t inner_row = position / MAX_ELEMENTS_PER_ROW;
 					row = BAND + inner_row;
 					position -= inner_row * MAX_ELEMENTS_PER_ROW;
 					col = row - BAND + position % MAX_ELEMENTS_PER_ROW;
@@ -424,7 +424,7 @@ namespace grb {
 				}
 				position -= ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
 				if( position < PROLOGUE_ELEMENTS ) {
-					std::size_t end_row, end_col;
+					size_t end_row, end_col;
 
 					__linear_to_coords_in_prologue( PROLOGUE_ELEMENTS - 1 - position, end_row, end_col );
 					row = matrix_size - 1 - end_row;
@@ -436,7 +436,7 @@ namespace grb {
 				col = row - BAND + position % ( BAND + 1 );
 			}
 
-			static void __check_size( std::size_t size ) {
+			static void __check_size( size_t size ) {
 				if( size < 2 * BAND + 1 ) {
 					throw std::domain_error( "matrix too small for band" );
 				}
@@ -449,12 +449,12 @@ namespace grb {
 		 * 	from these values.
 		 */
 		struct __dense_mat_coord_value {
-			const std::size_t cols;
-			std::size_t offset;
+			const size_t cols;
+			size_t offset;
 			__dense_mat_coord_value() = delete;
 			__dense_mat_coord_value(
-				std::size_t _cols,
-				std::size_t _off
+				size_t _cols,
+				size_t _off
 			) noexcept :
 				cols( _cols ),
 				offset( _off )
@@ -480,15 +480,15 @@ namespace grb {
 			using pointer = __dense_mat_coord_value*;
 			using reference = __dense_mat_coord_value&;
 
-			using RowIndexType = std::size_t;
-			using ColumnIndexType = std::size_t;
+			using RowIndexType = size_t;
+			using ColumnIndexType = size_t;
 			using ValueType = ValT;
 			using self_t = dense_mat_iterator< ValT, random >;
-			using input_sizes_t = const std::array< std::size_t, 2 >;
+			using input_sizes_t = const std::array< size_t, 2 >;
 
 			dense_mat_iterator(
-				std::size_t _cols,
-				std::size_t _off
+				size_t _cols,
+				size_t _off
 			) noexcept :
 				_v( _cols, _off )
 			{}
@@ -500,7 +500,7 @@ namespace grb {
 				return *this;
 			}
 
-			self_t& operator+=( std::size_t offset ) noexcept {
+			self_t& operator+=( size_t offset ) noexcept {
 				_v.offset += offset;
 				return *this;
 			}
@@ -514,7 +514,7 @@ namespace grb {
 			}
 
 			typename self_t::difference_type operator-( const self_t& other ) const {
-				return __compute_distance< std::size_t, typename self_t::difference_type >(
+				return __compute_distance< size_t, typename self_t::difference_type >(
 					this->_v.offset, other._v.offset );
 			}
 
@@ -535,22 +535,22 @@ namespace grb {
 			}
 
 			static self_t make_end( input_sizes_t& sizes ) {
-				const std::size_t num_nonzeroes = compute_num_nonzeroes( sizes );
+				const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
 				return self_t( sizes[1], num_nonzeroes );
 			}
 
 			static self_t make_parallel_begin( input_sizes_t& sizes ) {
-				std::size_t num_non_zeroes_per_process, first_local_nonzero;
+				size_t num_non_zeroes_per_process, first_local_nonzero;
 				compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ), num_non_zeroes_per_process, first_local_nonzero );
 				return self_t( sizes[1], first_local_nonzero );
 			}
 
 			static self_t make_parallel_end( input_sizes_t& sizes ) {
-				std::size_t last = compute_parallel_last_nonzero( compute_num_nonzeroes( sizes ) );
+				size_t last = compute_parallel_last_nonzero( compute_num_nonzeroes( sizes ) );
 				return self_t( sizes[1], last );
 			}
 
-			static std::size_t compute_num_nonzeroes( input_sizes_t& sizes ) {
+			static size_t compute_num_nonzeroes( input_sizes_t& sizes ) {
 				return sizes[0] * sizes[1];
 			}
 

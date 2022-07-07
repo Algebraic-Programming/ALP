@@ -56,15 +56,15 @@ using namespace grb;
 #define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
 
 template< typename T > void test_matrix_sizes_match(
-	const Matrix< T >& mat1,
-	const Matrix< T >& mat2
+	const Matrix< T > &mat1,
+	const Matrix< T > &mat2
 ) {
 	ASSERT_EQ( grb::nrows( mat1 ), grb::nrows( mat2 ) );
 	ASSERT_EQ( grb::ncols( mat1 ), grb::ncols( mat2 ) );
 }
 
-using DefRowT = std::size_t;
-using DefColT = std::size_t;
+using DefRowT = size_t;
+using DefColT = size_t;
 template< typename T > using NZ = utils::NonzeroStorage< DefRowT, DefColT, T >;
 
 /**
@@ -75,8 +75,8 @@ template<
 	enum Backend implementation
 >
 static void get_nnz_and_sort(
-	const Matrix< T, implementation >& mat,
-	std::vector< NZ< T > >& values
+	const Matrix< T, implementation > &mat,
+	std::vector< NZ< T > > &values
 ) {
 	utils::get_matrix_nnz( mat, values );
 	utils::row_col_nz_sort< DefRowT, DefColT, T >( values.begin(), values.end() );
@@ -91,10 +91,10 @@ template<
 	enum Backend implementation
 >
 bool matrices_values_are_equal(
-	const Matrix< T, implementation >& mat1,
-	const Matrix< T, implementation >& mat2,
-	std::size_t& num_mat1_nnz,
-	std::size_t& num_mat2_nnz,
+	const Matrix< T, implementation > &mat1,
+	const Matrix< T, implementation > &mat2,
+	size_t &num_mat1_nnz,
+	size_t &num_mat2_nnz,
 	bool log_all_differences = false
 ) {
 
@@ -104,7 +104,7 @@ bool matrices_values_are_equal(
 	std::vector< NZ< T > > parallel_values;
 	get_nnz_and_sort( mat2, parallel_values );
 
-	const std::size_t mat_size{ grb::nnz( mat1) };
+	const size_t mat_size{ grb::nnz( mat1) };
 
 	if( serial_values.size() != parallel_values.size() ) {
 		LOG() << "the numbers of entries differ" << std::endl;
@@ -117,7 +117,7 @@ bool matrices_values_are_equal(
 		return false;
 	}
 
-	std::size_t checked_values;
+	size_t checked_values;
 	bool match { grb::utils::compare_non_zeroes< T >( grb::nrows( mat1 ),
 			utils::makeNonzeroIterator< DefRowT, DefColT, T >( serial_values.cbegin() ),
 			utils::makeNonzeroIterator< DefRowT, DefColT, T >( serial_values.cend() ),
@@ -129,17 +129,17 @@ bool matrices_values_are_equal(
 		LOG() << "cannot check all non-zeroes" << std::endl;
 		return false;
 	}
-	enum RC rc{ collectives<>::allreduce( checked_values, grb::operators::add< std::size_t >() ) };
+	enum RC rc{ collectives<>::allreduce( checked_values, grb::operators::add< size_t >() ) };
 	ASSERT_RC_SUCCESS( rc );
 	if( checked_values != mat_size ) {
 		LOG() << "total number of non-zeroes different from matrix size" << std::endl;
 		return false;
 	}
 	num_mat1_nnz = serial_values.size();
-	rc = collectives<>::allreduce( num_mat1_nnz, grb::operators::add< std::size_t >() );
+	rc = collectives<>::allreduce( num_mat1_nnz, grb::operators::add< size_t >() );
 	ASSERT_RC_SUCCESS( rc );
 	num_mat2_nnz = parallel_values.size();
-	rc = collectives<>::allreduce( num_mat2_nnz, grb::operators::add< std::size_t >() );
+	rc = collectives<>::allreduce( num_mat2_nnz, grb::operators::add< size_t >() );
 	ASSERT_RC_SUCCESS( rc );
 
 	return match;
@@ -167,11 +167,11 @@ template<
 	enum Backend implementation = config::default_backend
 >
 void build_matrix_and_check(
-	Matrix< T, implementation >& m,
+	Matrix< T, implementation > &m,
 	IterT begin,
 	IterT end,
-	std::size_t expected_num_global_nnz,
-	std::size_t expected_num_local_nnz,
+	size_t expected_num_global_nnz,
+	size_t expected_num_local_nnz,
 	IOMode mode
 ) {
 	ASSERT_EQ( end - begin, static_cast< typename IterT::difference_type >( expected_num_local_nnz ) );
@@ -199,9 +199,9 @@ template<
 	enum Backend implementation
 >
 void test_matrix_generation(
-	Matrix< T, implementation >& sequential_matrix,
-	Matrix< T, implementation >& parallel_matrix,
-	const typename IterT::input_sizes_t& iter_sizes
+	Matrix< T, implementation > &sequential_matrix,
+	Matrix< T, implementation > &parallel_matrix,
+	const typename IterT::input_sizes_t &iter_sizes
 ) {
 	constexpr bool iterator_is_random{ std::is_same<
 		typename std::iterator_traits<IterT>::iterator_category,
@@ -212,17 +212,17 @@ void test_matrix_generation(
 		<< ncols( sequential_matrix ) << std::endl
 	);
 
-	const std::size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
+	const size_t num_nnz{ IterT::compute_num_nonzeroes( iter_sizes) };
 	build_matrix_and_check( sequential_matrix, IterT::make_begin( iter_sizes ),
 		IterT::make_end( iter_sizes ), num_nnz, num_nnz, IOMode::SEQUENTIAL );
 
-	const std::size_t par_num_nnz{ utils::compute_parallel_num_nonzeroes( num_nnz ) };
+	const size_t par_num_nnz{ utils::compute_parallel_num_nonzeroes( num_nnz ) };
 
 	build_matrix_and_check( parallel_matrix, IterT::make_parallel_begin( iter_sizes),
 		IterT::make_parallel_end( iter_sizes), num_nnz, par_num_nnz, IOMode::PARALLEL );
 
 	test_matrix_sizes_match( sequential_matrix, parallel_matrix );
-	std::size_t serial_nz, par_nz;
+	size_t serial_nz, par_nz;
 	ASSERT_TRUE( matrices_values_are_equal( sequential_matrix, parallel_matrix,
 		serial_nz, par_nz, false ) );
 	ASSERT_EQ( par_nz, serial_nz );
@@ -239,15 +239,15 @@ template<
 	enum Backend implementation = config::default_backend
 >
 void test_matrix_from_vectors(
-	std::size_t nrows, std::size_t ncols,
-	std::vector< NZ< ValT > >& mat_nzs,
+	size_t nrows, size_t ncols,
+	std::vector< NZ< ValT > > &mat_nzs,
 	bool sort_nzs = false
 ) {
 	Matrix< ValT, implementation > mat( nrows, ncols );
-	const std::size_t num_original_nzs{ mat_nzs.size() };
-	const std::size_t per_proc{ ( num_original_nzs + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
-	const std::size_t first{ std::min( per_proc * spmd<>::pid(), num_original_nzs) };
-	const std::size_t last{ std::min( first + per_proc, num_original_nzs ) };
+	const size_t num_original_nzs{ mat_nzs.size() };
+	const size_t per_proc{ ( num_original_nzs + spmd<>::nprocs() - 1 ) / spmd<>::nprocs() };
+	const size_t first{ std::min( per_proc * spmd<>::pid(), num_original_nzs) };
+	const size_t last{ std::min( first + per_proc, num_original_nzs ) };
 
 #ifdef _DEBUG
 	for( unsigned i{ 0 }; i < spmd<>::nprocs(); i++) {
@@ -269,9 +269,9 @@ void test_matrix_from_vectors(
 
 	std::vector< NZ< ValT > > sorted_mat_values;
 	get_nnz_and_sort( mat, sorted_mat_values );
-	std::size_t num_sorted_mat_values{ sorted_mat_values.size() };
+	size_t num_sorted_mat_values{ sorted_mat_values.size() };
 	// reduce for sparse matrices: only the total number should be equal
-	RC rc{ collectives<>::allreduce( num_sorted_mat_values, grb::operators::add< std::size_t >() ) };
+	RC rc{ collectives<>::allreduce( num_sorted_mat_values, grb::operators::add< size_t >() ) };
 	ASSERT_RC_SUCCESS( rc );
 	ASSERT_EQ( num_sorted_mat_values, mat_nzs.size() );
 
@@ -279,7 +279,7 @@ void test_matrix_from_vectors(
 		utils::row_col_nz_sort< DefRowT, DefColT, ValT >( mat_nzs.begin(), mat_nzs.end() );
 	}
 
-	std::size_t checked_nzs;
+	size_t checked_nzs;
 	ASSERT_TRUE(
 		grb::utils::compare_non_zeroes< ValT >( nrows,
 			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( mat_nzs.cbegin() ),
@@ -288,7 +288,7 @@ void test_matrix_from_vectors(
 			utils::makeNonzeroIterator< DefRowT, DefColT, ValT >( sorted_mat_values.cend() ),
 			checked_nzs, LOG(), true )
 	);
-	rc = collectives<>::allreduce( checked_nzs, grb::operators::add< std::size_t >() );
+	rc = collectives<>::allreduce( checked_nzs, grb::operators::add< size_t >() );
 	ASSERT_RC_SUCCESS( rc );
 
 	ASSERT_EQ( checked_nzs, mat_nzs.size() );
@@ -303,12 +303,12 @@ void test_matrix_from_vectors(
  * numbers sequence, thus ensuring reproducibility.
  */
 template< typename ValT > void randomize_vector(
-	std::vector< NZ< ValT > >& mat_nzs
+	std::vector< NZ< ValT > > &mat_nzs
 ) {
 	std::srand( 13 );
 	struct randomizer {
 		typename std::iterator_traits< typename std::vector< NZ< ValT > >::iterator >::difference_type
-			operator()( std::size_t n ) {
+			operator()( size_t n ) {
 				return std::rand() % n;
 			}
 	} r;
@@ -326,8 +326,8 @@ template<
 	enum Backend implementation = config::default_backend
 >
 void test_matrix_from_permuted_iterators(
-	std::size_t nrows, std::size_t ncols,
-	const typename ParIterT::input_sizes_t& iter_sizes
+	size_t nrows, size_t ncols,
+	const typename ParIterT::input_sizes_t &iter_sizes
 ) {
 	using NZC = NZ< ValT >;
 	std::vector< NZC > mat_nz;
@@ -361,8 +361,8 @@ template<
 	enum Backend implementation = config::default_backend
 >
 void test_sequential_and_parallel_matrix_generation(
-		std::size_t nrows, std::size_t ncols,
-		const typename ParIterT::input_sizes_t& iter_sizes
+		size_t nrows, size_t ncols,
+		const typename ParIterT::input_sizes_t &iter_sizes
 ) {
 	Matrix< T, implementation > par_sequential_matrix( nrows, ncols );
 	Matrix< T, implementation > par_parallel_matrix( nrows, ncols );
@@ -373,10 +373,10 @@ void test_sequential_and_parallel_matrix_generation(
 	test_matrix_generation< T, SeqIterT, implementation >( seq_sequential_matrix, seq_parallel_matrix, iter_sizes );
 
 	// cross-check parallel vs sequential
-	std::size_t serial_nz, par_nz;
+	size_t serial_nz, par_nz;
 	ASSERT_TRUE( matrices_values_are_equal( par_parallel_matrix, seq_parallel_matrix,
 		serial_nz, par_nz, true ) );
-	const std::size_t serial_num_nnz{ SeqIterT::compute_num_nonzeroes( iter_sizes) },
+	const size_t serial_num_nnz{ SeqIterT::compute_num_nonzeroes( iter_sizes) },
 		parallel_num_nnz{ ParIterT::compute_num_nonzeroes( iter_sizes) };
 
 	ASSERT_EQ( serial_num_nnz, parallel_num_nnz ); // check iterators work properly
@@ -397,9 +397,9 @@ void test_sequential_and_parallel_matrix_generation(
 template< enum Backend implementation = config::default_backend >
 	void test_matrix_from_custom_vectors()
 {
-	constexpr std::size_t num_matrices{ 2 };
+	constexpr size_t num_matrices{ 2 };
 	using NZC = NZ< int >;
-	using SP = std::pair< std::size_t, std::size_t >;
+	using SP = std::pair< size_t, size_t >;
 
 	std::array< SP, num_matrices > sizes{ SP( 7, 7 ), SP( 3456, 8912 ) };
 	std::array< std::vector< NZC >, num_matrices > coordinates{
@@ -417,9 +417,9 @@ template< enum Backend implementation = config::default_backend >
 		}
 	};
 
-	for( std::size_t i{ 0 }; i < num_matrices; i++ ) {
-		std::vector< NZC >& mat_nz{ coordinates[ i ] };
-		SP& size{ sizes[ i ] };
+	for( size_t i{ 0 }; i < num_matrices; i++ ) {
+		std::vector< NZC > &mat_nz{ coordinates[ i ] };
+		SP &size{ sizes[ i ] };
 
 		MAIN_LOG( ">>>> CUSTOM " << size.first << " x " << size.second << std::endl
 			<< ">> SORTED NON-ZEROES" << std::endl );
@@ -457,7 +457,7 @@ void test_invalid_inputs()
 {
 
 	using NZC = NZ< int >;
-	constexpr std::size_t rows{ 6 }, cols{ 7 };
+	constexpr size_t rows{ 6 }, cols{ 7 };
 
 	std::array< std::vector< NZC >, 2 > coordinates{
 		std::vector< NZC >{ NZC(0,1,0), NZC(0,3,1), NZC(0,4,-1), NZC(0,5,-2), NZC(0,6,-3),
@@ -499,18 +499,18 @@ void grbProgram(
 		MAIN_LOG( "<< OK" << std::endl );
 
 		// test generation of diagonal matrices of multiple sizes
-		std::initializer_list< std::size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
+		std::initializer_list< size_t > diag_sizes{ spmd<>::nprocs(), spmd<>::nprocs() + 9,
 			spmd<>::nprocs() + 16, 100003 };
 
 		MAIN_LOG( "==== Testing diagonal matrices" << std::endl );
-		for( const std::size_t& mat_size : diag_sizes ) {
+		for( const size_t &mat_size : diag_sizes ) {
 			test_sequential_and_parallel_matrix_generation< int, utils::diag_iterator< true >, utils::diag_iterator< false > >(
 				mat_size, mat_size, mat_size );
 		}
 
 		// test the generation of badn matrices, of multiple sizes and bands
-		std::initializer_list< std::size_t > band_sizes{ 17, 77, 107, 11467, 41673 };
-		for( const std::size_t& mat_size : band_sizes ) {
+		std::initializer_list< size_t > band_sizes{ 17, 77, 107, 11467, 41673 };
+		for( const size_t &mat_size : band_sizes ) {
 			MAIN_LOG( "==== Testing matrix with band 1" << std::endl );
 			test_sequential_and_parallel_matrix_generation< int,
 				utils::band_iterator< 1, true >, utils::band_iterator< 1, false > >(
@@ -533,11 +533,11 @@ void grbProgram(
 		}
 
 		// test dense matrices
-		std::initializer_list< std::array< std::size_t, 2 > > matr_sizes{
+		std::initializer_list< std::array< size_t, 2 > > matr_sizes{
 			{ spmd<>::nprocs(), spmd<>::nprocs() }, { 77, 70 }, { 130, 139 }, { 1463, 5376 }
 		};
 		MAIN_LOG( "==== Testing dense matrices" << std::endl );
-		for( const std::array< std::size_t, 2 >& mat_size : matr_sizes ) {
+		for( const std::array< size_t, 2 > &mat_size : matr_sizes ) {
 			test_sequential_and_parallel_matrix_generation< int,
 				utils::dense_mat_iterator< int, true >,
 				utils::dense_mat_iterator< int, false > >(
@@ -548,7 +548,7 @@ void grbProgram(
 		MAIN_LOG( "==== Testing sparse matrix from custom vectors" << std::endl );
 		test_matrix_from_custom_vectors();
 
-	} catch ( const std::exception& e ) {
+	} catch ( const std::exception &e ) {
 		print_exception_text( e.what() );
 		error = 1;
 	} catch( ... ) {
