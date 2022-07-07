@@ -1366,28 +1366,34 @@ namespace grb {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
-		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique(
 		Matrix< InputType, implementation > &A,
-		fwd_iterator1 I, fwd_iterator1 I_end,
-		fwd_iterator2 J, fwd_iterator2 J_end,
-		fwd_iterator3 V, fwd_iterator3 V_end,
+		fwd_iterator1 I, const fwd_iterator1 I_end,
+		fwd_iterator2 J, const fwd_iterator2 J_end,
+		fwd_iterator3 V, const fwd_iterator3 V_end,
 		const IOMode mode
 	) {
 		// derive synchronized iterator
-		//first derive iterator access category in(3x random acc. it.) => out(random acc. it.)
-		typedef typename common_iterator_tag<fwd_iterator1, fwd_iterator2, fwd_iterator3 >::iterator_category
-			iterator_category;
-		//using  iterator_category=std::forward_iterator_tag;  //testing only
-		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end, iterator_category() );
-		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end, V_end,
-			iterator_category() );
+		// first derive iterator access category:
+		//  in(3x random acc. it.) => out(random acc. it.)
+		typedef typename common_iterator_tag<
+			fwd_iterator1, fwd_iterator2, fwd_iterator3
+		>::iterator_category iterator_category;
+		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end,
+			iterator_category );
+		const auto end = utils::makeSynchronized(
+			I_end, J_end, V_end,
+			I_end, J_end, V_end,
+			iterator_category
+		);
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1396,18 +1402,21 @@ namespace grb {
 	 * Alias that transforms a set of pointers and an array length to the
 	 * buildMatrixUnique variant based on iterators.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
-		typename length_type = size_t,
-		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( Matrix< InputType, implementation > &A,
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
-		return buildMatrixUnique< descr >( A,
+		return buildMatrixUnique< descr >(
+			A,
 			I, I + nz,
 			J, J + nz,
 			V, V + nz,
@@ -1415,7 +1424,10 @@ namespace grb {
 		);
 	}
 
-	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
+	/**
+	 * Version of the above #buildMatrixUnique that handles \a nullptr
+	 * value pointers.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename RIT, typename CIT, typename NIT,
@@ -1431,7 +1443,8 @@ namespace grb {
 	) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
-		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
+		const auto end = utils::makeSynchronized(
+			I + nz, J + nz, I + nz, J + nz );
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1486,10 +1499,15 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		(void)A;
-		(void)start;
-		(void)end;
-		(void)mode;
+		(void) A;
+		(void) start;
+		(void) end;
+		(void) mode;
+#ifndef NDEBUG
+		std::cerr << "Should not call base grb::buildMatrixUnique" << std::endll
+		const bool should_not_call_base_buildMatrixUnique = false;
+		assert( should_not_call_base_buildMatrixUnique );
+#endif
 		return PANIC;
 	}
 
