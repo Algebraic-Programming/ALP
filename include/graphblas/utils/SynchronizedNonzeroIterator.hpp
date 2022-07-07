@@ -37,6 +37,7 @@
  #endif
 #endif
 
+
 namespace grb {
 
 	namespace utils {
@@ -132,8 +133,8 @@ namespace grb {
 			using pointer = const value_type *;
 
 			// GraphBLAS typedefs:
-			using row_coordinate_type = RowIndexT;
-			using column_coordinate_type = ColIndexT;
+			using RowIndexType = RowIndexT;
+			using ColumnIndexType = ColIndexT;
 
 			/** Direct derefence operator. */
 			reference operator*() const {
@@ -148,13 +149,13 @@ namespace grb {
 			}
 
 			/** Returns the row coordinate. */
-			const row_coordinate_type & i() const {
+			const RowIndexType & i() const {
 				row_col_update_if_needed();
 				return nonzero.i();
 			}
 
 			/** Returns the column coordinate. */
-			const column_coordinate_type & j() const {
+			const ColumnIndexType & j() const {
 				row_col_update_if_needed();
 				return nonzero.j();
 			}
@@ -244,8 +245,9 @@ namespace grb {
 			}
 
 		public:
+
 			// GraphBLAS typedefs:
-			using nonzero_value_type = V;
+			using ValueType = V;
 
 			/** Direct derefence operator. */
 			typename base_t::reference operator*() const {
@@ -260,7 +262,7 @@ namespace grb {
 			}
 
 			/** Returns the nonzero coordinate. */
-			const nonzero_value_type & v() const {
+			const ValueType & v() const {
 				val_update_if_needed();
 				return this->nonzero.v();
 			}

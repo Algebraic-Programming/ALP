@@ -15,6 +15,15 @@
  * limitations under the License.
  */
 
+/**
+ * @author Alberto Scolari
+ * @date 20/06/2022
+ * @brief various utility classes to generate matrices of different shapes; they
+ * are all conformant to the STL random access iterator specification, but the tag
+ * can be set to forward iterator via a boolean template parameter for testing
+ * purposes
+ */
+
 #ifndef _GRB_UTILS_MATRIX_GENERATORS_
 #define _GRB_UTILS_MATRIX_GENERATORS_
 
@@ -24,16 +33,9 @@
 #include <iterator>
 #include <algorithm>
 
-/**
- * @author Alberto Scolari
- * @date 20/06/2022
- * @brief various utility classes to generate matrices of different shapes; they
- * 	are all conformant to the STL random access iterator specification, but the tag
- *  can be set to forward iterator via a boolean template parameter for testing
- * 	purposes
- */
 
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -136,9 +138,9 @@ namespace grb {
 			using pointer = __diag_coord_value*;
 			using reference = __diag_coord_value&;
 
-			using row_coordinate_type = std::size_t;
-			using column_coordinate_type = std::size_t;
-			using nonzero_value_type = int;
+			using RowIndexType = std::size_t;
+			using ColumnIndexType = std::size_t;
+			using ValueType = int;
 
 			using input_sizes_t = const std::size_t;
 			using self_t = diag_iterator< random >;
@@ -172,12 +174,12 @@ namespace grb {
 
 			typename self_t::reference operator*() { return _v; }
 
-			row_coordinate_type i() const { return _v.coord; }
+			RowIndexType i() const { return _v.coord; }
 
-			column_coordinate_type j() const { return _v.coord; }
+			ColumnIndexType j() const { return _v.coord; }
 
-			nonzero_value_type v() const {
-				return static_cast< nonzero_value_type >( _v.coord ) + 1;
+			ValueType v() const {
+				return static_cast< ValueType >( _v.coord ) + 1;
 			}
 
 			static self_t make_begin( input_sizes_t &size ) {
@@ -253,9 +255,9 @@ namespace grb {
 			static constexpr std::size_t MAX_ELEMENTS_PER_ROW = BAND * 2 + 1;
 			static constexpr std::size_t PROLOGUE_ELEMENTS = ( 3* BAND * BAND + BAND ) / 2;
 
-			using row_coordinate_type = std::size_t;
-			using column_coordinate_type = std::size_t;
-			using nonzero_value_type = int;
+			using RowIndexType = std::size_t;
+			using ColumnIndexType = std::size_t;
+			using ValueType = int;
 			using self_t = band_iterator< BAND, random >;
 			using input_sizes_t = const std::size_t;
 
@@ -298,11 +300,11 @@ namespace grb {
 
 			typename self_t::reference operator*() { return _v; }
 
-			typename self_t::row_coordinate_type i() const { return _v.row; }
+			typename self_t::RowIndexType i() const { return _v.row; }
 
-			typename self_t::column_coordinate_type j() const { return _v.col; }
+			typename self_t::ColumnIndexType j() const { return _v.col; }
 
-			nonzero_value_type v() const {
+			ValueType v() const {
 				return _v.row == _v.col ? static_cast< int >( MAX_ELEMENTS_PER_ROW ) : -1;
 			}
 
@@ -478,9 +480,9 @@ namespace grb {
 			using pointer = __dense_mat_coord_value*;
 			using reference = __dense_mat_coord_value&;
 
-			using row_coordinate_type = std::size_t;
-			using column_coordinate_type = std::size_t;
-			using nonzero_value_type = ValT;
+			using RowIndexType = std::size_t;
+			using ColumnIndexType = std::size_t;
+			using ValueType = ValT;
 			using self_t = dense_mat_iterator< ValT, random >;
 			using input_sizes_t = const std::array< std::size_t, 2 >;
 
@@ -520,14 +522,13 @@ namespace grb {
 
 			typename self_t::reference operator*() { return _v; }
 
-			row_coordinate_type i() const { return _v.offset / _v.cols; }
+			RowIndexType i() const { return _v.offset / _v.cols; }
 
-			column_coordinate_type j() const { return _v.offset % _v.cols; }
+			ColumnIndexType j() const { return _v.offset % _v.cols; }
 
-			nonzero_value_type v() const {
-				return static_cast< nonzero_value_type >( _v.offset ) + 1;
+			ValueType v() const {
+				return static_cast< ValueType >( _v.offset ) + 1;
 			}
-
 
 			static self_t make_begin( input_sizes_t& sizes ) {
 				return self_t( sizes[1], 0 );
