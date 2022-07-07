@@ -29,26 +29,32 @@
 #ifndef _GRB_UTILS_INPUT_ITERATOR_UTILS_H_
 #define _GRB_UTILS_INPUT_ITERATOR_UTILS_H_
 
+
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
 
 		/**
-		 * @brief checks whether the input iterator \p it stores valid row and
-		 * 	column coordinates.
+		 * Checks whether the input iterator \p it stores valid row and
+		 * column coordinates.
 		 *
 		 * @tparam IterT the iterator type
-		 * @param it input iterator
+		 *
+		 * @param it   input iterator
 		 * @param rows matrix rows
 		 * @param cols matrix columns
+		 *
 		 * @return RC SUCCESS if the iterator's row and column values ( \a .i()
 		 * 	and \a .j() methods, respectively) are both within the matrix boundaries,
 		 * 	MISMATCH otherwise
 		 */
-		template< typename IterT > inline RC check_input_coordinates(
+		template< typename IterT >
+		inline RC check_input_coordinates(
 			const IterT &it,
-			const size_t rows,
-			const size_t cols
+			const typename IterT::RowIndexType rows,
+			const typename IterT::ColumnIndexType cols
 		) {
 			static_assert( is_input_iterator< void, IterT >::value,
 				"IterT is not an input iterator" );
@@ -72,7 +78,9 @@ namespace grb {
 		}
 
 		} // namespace internal
+
 	} // namespace utils
+
 } // namespace grb
 
 #endif // _GRB_UTILS_INPUT_ITERATOR_UTILS_H_

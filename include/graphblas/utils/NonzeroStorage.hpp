@@ -30,12 +30,14 @@
 
 #include <graphblas/type_traits.hpp>
 
+
 namespace grb {
+
 	namespace utils {
 
 		/**
-		 * @brief Utiliy to store a nonzero with row, column and value,
-		 * 	implemented on top of two nested std::pair's
+		 * Utiliy to store a nonzero with row, column and value,
+		 * implemented on top of two nested std::pair instances.
 		 *
 		 * @tparam RowIndexT type of row index
 		 * @tparam ColIndexT type of column index
@@ -46,7 +48,11 @@ namespace grb {
 			typename ColIndexT,
 			typename ValueT
 		>
-		struct NonzeroStorage: public std::pair< std::pair< RowIndexT, ColIndexT >, ValueT > {
+		struct NonzeroStorage : public std::pair< std::pair< RowIndexT, ColIndexT >, ValueT > {
+
+			typedef RowIndexT RowIndexType;
+			typedef ColIndexT ColumnIndexType;
+			typedef ValueT ValueType;
 
 			using StorageType = std::pair< std::pair< RowIndexT, ColIndexT >, ValueT >;
 
@@ -94,6 +100,9 @@ namespace grb {
 			typename ColIndexT
 		>
 		struct NonzeroStorage< RowIndexT, ColIndexT, void > : public std::pair< RowIndexT, ColIndexT > {
+
+			typedef RowIndexT RowIndexType;
+			typedef ColIndexT ColumnIndexType;
 
 			using StorageType = std::pair< RowIndexT, ColIndexT >;
 
