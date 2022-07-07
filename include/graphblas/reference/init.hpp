@@ -20,7 +20,7 @@
  * @date 2nd of February, 2017
  */
 
-#if ! defined _H_GRB_REFERENCE_INIT || defined _H_GRB_REFERENCE_OMP_INIT
+#if !defined _H_GRB_REFERENCE_INIT || defined _H_GRB_REFERENCE_OMP_INIT
 #define _H_GRB_REFERENCE_INIT
 
 #include <new>
@@ -33,6 +33,7 @@
 namespace grb {
 
 	namespace internal {
+
 #ifndef _H_GRB_REFERENCE_OMP_INIT
 		// these are all the global fields for the reference backend
 
@@ -49,9 +50,16 @@ namespace grb {
 		 * \internal
 		 * Helper function to get the size of the current buffer.
 		 *
-		 * @tparam D the data type to store in the buffer
+		 * @tparam D      the data type to store in the buffer
 		 * @return size_t the number of elements of type #D that can be stored
-		 * 			in the current buffer
+		 *                in the current buffer
+		 *
+		 * \warning This function should never be used as a conditional to decide
+		 *          when to resize the global buffer: for this, use the
+		 *            -# #ensureBufferSize()
+		 *          function instead. This function is only intended for deciding
+		 *          when a larger buffer exists to use any extra space should that
+		 *          indeed be available.
 		 */
 		template< typename D >
 		size_t getCurrentBufferSize() noexcept {
