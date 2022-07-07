@@ -326,7 +326,7 @@ namespace grb {
 						&& std::is_same< typename self_t::iterator_category,
 							std::random_access_iterator_tag
 						>::value,
-					std::size_t
+					size_t
 				>::type offset ) {
 				this->row_it += offset;
 				this->col_it += offset;
@@ -409,7 +409,7 @@ namespace grb {
 						&& std::is_same< typename self_t::iterator_category,
 							std::random_access_iterator_tag
 						>::value,
-					std::size_t
+					size_t
 				>::type offset ) {
 				this->row_it += offset;
 				this->col_it += offset;
