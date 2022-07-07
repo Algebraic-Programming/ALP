@@ -34,9 +34,11 @@
 
 #include <graphblas.hpp>
 #include <graphblas/type_traits.hpp>
-#include <graphblas/utils/NonZeroStorage.hpp>
+#include <graphblas/utils/NonzeroStorage.hpp>
+
 
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -50,8 +52,8 @@ namespace grb {
 		struct __default_nz_sorter {
 
 			inline bool operator()(
-				const grb::utils::NonZeroStorage< RowT, ColT, ValT >& a,
-				const grb::utils::NonZeroStorage< RowT, ColT, ValT >& b
+				const grb::utils::NonzeroStorage< RowT, ColT, ValT >& a,
+				const grb::utils::NonzeroStorage< RowT, ColT, ValT >& b
 			) const {
 				if( a.i() != b.i() ) {
 					return a.i() < b.i();
@@ -93,7 +95,7 @@ namespace grb {
 		>
 		void get_matrix_nnz(
 			const Matrix< ValT, implementation >& mat,
-			std::vector< grb::utils::NonZeroStorage< RowT, ColT, ValT > >& values,
+			std::vector< grb::utils::NonzeroStorage< RowT, ColT, ValT > >& values,
 			typename std::enable_if< ! std::is_same< ValT, void >::value >::type* = nullptr
 		) {
 			auto beg1( mat.cbegin() );
@@ -116,7 +118,7 @@ namespace grb {
 		>
 		void get_matrix_nnz(
 			const Matrix< ValT, implementation >& mat,
-			std::vector< grb::utils::NonZeroStorage< RowT, ColT, ValT > >& values,
+			std::vector< grb::utils::NonzeroStorage< RowT, ColT, ValT > >& values,
 			typename std::enable_if< std::is_same< ValT, void >::value >::type* = nullptr
 		) {
 			auto beg1( mat.cbegin() );
@@ -275,7 +277,9 @@ namespace grb {
 			counted_values = counted;
 			return result;
 		}
+
 	} // namespace utils
+
 } // namespace grb
 
 #endif // _H_GRB_UTILS_MATRIX_CHECK

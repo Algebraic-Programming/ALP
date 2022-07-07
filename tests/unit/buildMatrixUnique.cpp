@@ -42,12 +42,13 @@
 #include <cstdlib>
 
 #include <graphblas.hpp>
-#include <graphblas/utils/NonZeroStorage.hpp>
+#include <graphblas/utils/NonzeroStorage.hpp>
 #include <graphblas/utils/NonzeroIterator.hpp>
 
 #include <utils/assertions.hpp>
 #include <utils/matrix_generators.hpp>
 #include <utils/matrix_values_check.hpp>
+
 
 using namespace grb;
 
@@ -64,7 +65,7 @@ template< typename T > void test_matrix_sizes_match(
 
 using DefRowT = std::size_t;
 using DefColT = std::size_t;
-template< typename T > using NZ = utils::NonZeroStorage< DefRowT, DefColT, T >;
+template< typename T > using NZ = utils::NonzeroStorage< DefRowT, DefColT, T >;
 
 /**
  * @brief gets the nonzeroes of \p mat, stores them into \p values and sorts them.
