@@ -64,7 +64,7 @@ static bool test_vector_of_zeroes( std::vector< size_t >& v, const char* name ) 
 template< typename ValT, typename OrigIterT > RC test_matrix_iter(
 	OrigIterT orig_begin, OrigIterT orig_end, size_t row_col_offset, const Matrix< ValT >& mat ) {
 
-	using NZC = utils::NonZeroStorage< size_t, size_t, ValT >;
+	using NZC = utils::NonzeroStorage< size_t, size_t, ValT >;
 	std::vector< NZC > mat_values;
 	utils::get_matrix_nnz( mat, mat_values );
 	utils::row_col_nz_sort< size_t, size_t, ValT >( mat_values.begin(), mat_values.end() );

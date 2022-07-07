@@ -29,15 +29,16 @@
 #include <iterator>
 #include <type_traits>
 
-#include "NonZeroStorage.hpp"
+#include "NonzeroStorage.hpp"
 
 #ifdef _DEBUG
-#ifndef _GRB_NO_STDIO
-#include <iostream>
-#endif
+ #ifndef _GRB_NO_STDIO
+  #include <iostream>
+ #endif
 #endif
 
 namespace grb {
+
 	namespace utils {
 
 		// base class for storage, where V can be void
@@ -57,7 +58,7 @@ namespace grb {
 
 			using self_t = __SynchronizedIteratorBaseStorage< RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2, _iterator_category >;
-			using storage_t = NonZeroStorage< RowIndexT, ColIndexT, V >;
+			using storage_t = NonzeroStorage< RowIndexT, ColIndexT, V >;
 
 			mutable bool row_col_updated;
 			mutable storage_t nonzero;
@@ -647,6 +648,8 @@ namespace grb {
 		}
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif // end ``_H_SYNCHRONIZEDNONZEROITERATOR''
+
