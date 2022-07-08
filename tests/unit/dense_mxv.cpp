@@ -22,46 +22,9 @@
 
 #include <alp.hpp>
 
+#include <utils/alp_matvec_utils.hpp>
+
 using namespace alp;
-
-template< typename T, typename Structure >
-void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
-
-	if( ! alp::internal::getInitialized( A ) ) {
-		std::cout << "Matrix " << name << " uninitialized.\n";
-		return;
-	}
-	
-	std::cout << name << ":" << std::endl;
-	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "[\t";
-		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-			auto pos  = internal::getStorageIndex( A, row, col );
-			// std::cout << "(" << pos << "): ";
-			std::cout << internal::access(A, pos ) << "\t";
-		}
-		std::cout << "]" << std::endl;
-	}
-}
-
-template< typename T, typename Structure >
-void print_vector( std::string name, const alp::Vector< T, Structure > & v) {
-
-	print_matrix( name, static_cast< const typename alp::Vector< T, Structure >::base_type & >( v ) );
-}
-
-template< typename T >
-void print_stdvec_as_matrix( std::string name, const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda ) {
-
-	std::cout << "Vec " << name << ":" << std::endl;
-	for( size_t row = 0; row < m; ++row ) {
-		std::cout << "[\t";
-		for( size_t col = 0; col < n; ++col ) {
-			std::cout << vA[ row * lda + col ] << "\t";
-		}
-		std::cout << "]" << std::endl;
-	}
-}
 
 template< typename T, typename Operator, typename Monoid >
 void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
@@ -73,89 +36,16 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
     
 	T temp;
 
-	// print_stdvec_as_matrix("vA", vA, m, k, lda);
-	// print_stdvec_as_matrix("vB", vB, k, n, ldb);
-	// print_stdvec_as_matrix("vC - PRE", vC, m, n, ldc);
-
 	for( size_t i = 0; i < m; ++i ) {
 		for( size_t j = 0; j < n; ++j ) {
 			T & c_val { vC[ i * ldc + j ] };
 			for( size_t l = 0; l < k; ++l ) {
 					const T & a_val { vA[ i * lda + l ] };
 					const T & b_val { vB[ l * ldb + j ] };
-					// std::cout << c_val << " += " << a_val << " * " << b_val << std::endl;
 					(void)internal::apply( temp, a_val, b_val, oper );
-					// std::cout << "temp = " << temp << std::endl;
 					(void)internal::foldl( c_val, temp, monoid.getOperator() );
 			}
 		}
-	}
-
-	// print_stdvec_as_matrix("vC - POST", vC, m, n, ldc);
-
-}
-
-template< 
-	typename Structure, 
-	typename T, size_t band_pos,
-	std::enable_if_t<
-		band_pos == std::tuple_size< typename Structure::band_intervals >::value
-	> * = nullptr
-> void stdvec_build_matrix_band( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
-	(void)vA;
-	(void)m;
-	(void)n;
-	(void)lda;
-	(void)zero;
-	(void)one;
-}
-
-template< 
-	typename Structure, 
-	typename T, 
-	size_t band_pos,
-	std::enable_if_t<
-		band_pos < std::tuple_size< typename Structure::band_intervals >::value
-	> * = nullptr
-> void stdvec_build_matrix_band( std::vector< T > & vA, const std::ptrdiff_t m, const std::ptrdiff_t n, const size_t lda, const T zero, const T one ) {
-
-	constexpr std::ptrdiff_t cl_a = std::tuple_element< band_pos, typename Structure::band_intervals >::type::left;
-	constexpr std::ptrdiff_t cu_a = std::tuple_element< band_pos, typename Structure::band_intervals >::type::right;
-
-	const std::ptrdiff_t l_a = ( cl_a < -m + 1 ) ? -m + 1 : cl_a ;
-	const std::ptrdiff_t u_a = ( cu_a > n ) ? n : cu_a ;
-
-	for( std::ptrdiff_t b_idx = l_a; b_idx < u_a; ++b_idx  ) {
-		std::ptrdiff_t row = ( b_idx < 0 ) ? -b_idx : 0;
-		std::ptrdiff_t col = ( b_idx < 0 ) ? 0 : b_idx;
-		for(  ; row < m && col < n; ++row, ++col ) {
-			vA[ row * lda + col ] = one;
-		}
-	}
-
-	stdvec_build_matrix_band< Structure, T, band_pos + 1 >( vA, m, n, lda, zero, one);
-
-}
-
-template< typename Structure = structures::General, typename T >
-void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
-
-	if( std::is_same< Structure, structures::General >::value ) {
-		std::fill( vA.begin(), vA.end(), one );
-	} else if( std::is_same< Structure, structures::Symmetric >::value ) {
-		std::fill( vA.begin(), vA.end(), one );
-	} else if( std::is_same< Structure, structures::UpperTriangular >::value ) {
-		for( size_t row = 0; row < m; ++row ) {
-			for( size_t col = 0; col < row; ++col ) {
-				vA[ row * lda + col ] = zero;
-			}
-			for( size_t col = row; col < n; ++col ) {
-				vA[ row * lda + col ] = one;
-			}
-		}
-	} else { // Treat as Band Matrix
-		std::fill( vA.begin(), vA.end(), zero );
-		stdvec_build_matrix_band< Structure, T, 0 >( vA, m, n, lda, zero, one);
 	}
 
 }
@@ -230,13 +120,13 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	rc = alp::buildVector( v, v_data.begin(), v_data.end() );
 	rc = alp::buildVector( u, u_data.begin(), u_data.end() );
 
-	print_matrix("A", A);
-	print_vector("v", v);
-	print_vector("u - PRE", u);
+	print_alp_container("A", A);
+	print_alp_container("v", v);
+	print_alp_container("u - PRE", u);
 
 	rc = alp::mxv( u, A, v, ring );
 
-	print_vector("u - POST", u);
+	print_alp_container("u - POST", u);
 
 	std::vector< T > A_vec( n * n, one );
 	std::vector< T > v_vec( n, one );
@@ -244,7 +134,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	mxm_stdvec_as_matrix( u_vec, 1, A_vec, n, v_vec, 1, n, n, 1, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
-	diff_stdvec_vector( u_vec, n, u );
+	check_inf_norm_relerr( u_vec, n, u );
 
 	std::cout << "\n\n=========== Testing Uppertriangular ============\n\n";
 
@@ -253,16 +143,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	rc = alp::buildMatrix( UA, A_data.begin(), A_data.end() );
 	rc = alp::buildVector( u, u_data.begin(), u_data.end() );
 
-	print_vector("u - PRE", u);
+	print_alp_container("u - PRE", u);
 	rc = alp::mxv( u, UA, v, ring );
-	print_vector("u - POST", u);
+	print_alp_container("u - POST", u);
 
 	stdvec_build_matrix< structures::UpperTriangular >( A_vec, n, n, n, zero, one );
 	stdvec_build_matrix( u_vec, n, 1, 1, zero, zero );
 
 	mxm_stdvec_as_matrix( u_vec, 1, A_vec, n, v_vec, 1, n, n, 1, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
-	diff_stdvec_vector( u_vec, n, u );
+	check_inf_norm_relerr( u_vec, n, u );
 
 	std::cout << "\n\n=========== Testing Symmetric ============\n\n";
 
@@ -271,16 +161,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	rc = alp::buildMatrix( SA, A_data.begin(), A_data.end() );
 	rc = alp::buildVector( u, u_data.begin(), u_data.end() );
 
-	print_vector("u - PRE", u);
+	print_alp_container("u - PRE", u);
 	rc = alp::mxv( u, SA, v, ring );
-	print_vector("u - POST", u);
+	print_alp_container("u - POST", u);
 
 	stdvec_build_matrix< structures::Symmetric >( A_vec, n, n, n, zero, one );
 	stdvec_build_matrix( u_vec, n, 1, 1, zero, zero );
 
 	mxm_stdvec_as_matrix( u_vec, 1, A_vec, n, v_vec, 1, n, n, 1, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
-	diff_stdvec_vector( u_vec, n, u );
+	check_inf_norm_relerr( u_vec, n, u );
 
 	std::cout << "\n\n=========== Testing Band ============\n\n";
 
@@ -290,16 +180,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	rc = alp::buildMatrix( BA, A_data.begin(), A_data.end() );
 	rc = alp::buildVector( u, u_data.begin(), u_data.end() );
 
-	print_vector("u - PRE", u);
+	print_alp_container("u - PRE", u);
 	rc = alp::mxv( u, BA, v, ring );
-	print_vector("u - POST", u);
+	print_alp_container("u - POST", u);
 
 	stdvec_build_matrix< BandT >( A_vec, n, n, n, zero, one );
 	stdvec_build_matrix( u_vec, n, 1, 1, zero, zero );
 
 	mxm_stdvec_as_matrix( u_vec, 1, A_vec, n, v_vec, 1, n, n, 1, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
-	diff_stdvec_vector( u_vec, n, u );
+	check_inf_norm_relerr( u_vec, n, u );
 
 }
 
