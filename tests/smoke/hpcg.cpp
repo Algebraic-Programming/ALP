@@ -195,6 +195,22 @@ struct simulation_input {
 };
 
 static bool matloaded=false;
+
+
+template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+class vectorwrapbuf :
+	public std::basic_streambuf<CharT, TraitsT> {
+public:
+    vectorwrapbuf(std::vector<CharT> &vec) {
+		this->setg(vec.data(), vec.data(), vec.data() + vec.size());
+    }
+};
+std::istream& operator>>(std::istream& is, std::string& s){
+	std::getline(is, s);
+	return is;
+}
+
+
 /**
  * @brief Container to store all data for HPCG hierarchy.
  */
@@ -224,13 +240,46 @@ public :
 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
 #endif
 			data[i].resize( parser_mat.entries()*2, parser_mat.n(), parser_mat.m() );
+			std::ifstream inFile(fname[ i ], std::ios::binary | std::ios::ate);
+			if( ! inFile.is_open() ) {
+				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
+				return( PANIC );
+			}
+			std::streamsize size = inFile.tellg();
+			inFile.seekg(0, std::ios::beg);
+			std::vector<char> buffer(size);
+			if (inFile.read(buffer.data(), size))	{
+				/* alles gut! */
+			}
+			else {
+				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
+				return( PANIC );
+			} 
+			inFile.close();
+			vectorwrapbuf<char> databuf(buffer);
+			std::istream isdata(&databuf);
+			std::string headder;
+			isdata >> headder;
+			while( headder.at( 0 ) == '%' ) {
+				isdata >> headder;
+			}
+			std::stringstream ss( headder );
+			size_t n, m, nz;
+			ss >> n >> m >> nz ;
 			size_t k = 0;
-			for (auto it=parser_mat.begin( SEQUENTIAL );
-				 it != parser_mat.end( SEQUENTIAL);
-				 ++it ){
-				data[ i ].i_data[ k ]=it.i();
-				data[ i ].j_data[ k ]=it.j();
-				data[ i ].v_data[ k ]=it.v();
+			for ( size_t j = 0; j < nz; j++ ) {
+				// 	data[ i ].i_data[ k ]=it.i();
+				// 	data[ i ].j_data[ k ]=it.j();
+				// 	data[ i ].v_data[ k ]=it.v();
+				size_t itmp,jtmp;
+				double vtmp;
+				isdata >> itmp >> jtmp >> vtmp;
+				data[ i ].i_data[ k ]=itmp-1;
+				data[ i ].j_data[ k ]=jtmp-1;
+				data[ i ].v_data[ k ]=vtmp;				
+				// isdata >> data[ i ].i_data[ k ]
+				// 	   >> data[ i ].j_data[ k ]
+				// 	   >> data[ i ].v_data[ k ] ;
 				k++;
 			}
 			data[i].nz=k;
@@ -246,25 +295,38 @@ public :
 #ifdef DEBUG
 			std::cout << " Reading " << fname[ i ].c_str() << ".\n";
 #endif
-			std::ifstream inFile;
-			inFile.open( fname[ i ].c_str() );
+			std::ifstream inFile(fname[ i ], std::ios::binary | std::ios::ate);
 			if( ! inFile.is_open() ) {
 				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
 			}
+			std::streamsize size = inFile.tellg();
+			inFile.seekg(0, std::ios::beg);
+			std::vector<char> buffer(size);
+			if (inFile.read(buffer.data(), size))	{
+				/* alles gut! */
+			}
+			else {
+				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
+				return( PANIC );
+			} 
+			inFile.close();
+			vectorwrapbuf<char> databuf(buffer);
+			std::istream isdata(&databuf);
 			std::string headder;
 			size_t n, m;
-			std::getline( inFile, headder ); // skip the first line
+			std::getline( isdata, headder ); // skip the first line
 			while( headder.at( 0 ) == '%' ) {
-				std::getline( inFile, headder );
+				std::getline( isdata, headder );
 			}
 			std::stringstream ss( headder );
-			ss >> n >> m;						
+			ss >> n >> m;
+			std::cout << " Reading from" << fname[ i ] << " dense matrix with dimensions: "
+					  << " n x m = " << n << " x " << m << "\n";
 			data[ i ].resize( n );
 			for ( size_t j = 0; j < n; j++ ) {
-				inFile >> data[ i ].v_data[ j ];
+				isdata >> data[ i ].v_data[ j ];
 			}
-			inFile.close();
 		}
 		return( rc );
 	}
