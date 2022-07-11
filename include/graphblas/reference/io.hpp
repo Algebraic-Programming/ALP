@@ -26,8 +26,8 @@
 #include <graphblas/base/io.hpp>
 #include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
-#include "graphblas/base/vector.hpp"
-#include "graphblas/base/matrix.hpp"
+#include <graphblas/vector.hpp>
+#include <graphblas/matrix.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -335,6 +335,9 @@ namespace grb {
 
 	} // namespace internal
 
+	extern "C" void foo();
+
+
 	/**
 	 * Sets all elements of a vector to the given value.
 	 *
@@ -395,7 +398,7 @@ namespace grb {
 		DataType * const raw = internal::getRaw( x );
 		const size_t n = internal::getCoordinates( x ).size();
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 		for( size_t i = 0; i < n; ++ i ) {
@@ -476,7 +479,7 @@ namespace grb {
 		const auto & m_coors = internal::getCoordinates( m );
 		auto m_p = internal::getRaw( m );
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel
 		{
 			auto localUpdate = coors.EMPTY_UPDATE();
@@ -495,7 +498,7 @@ namespace grb {
 			const size_t n = loop_over_vector_length ?
 				coors.size() :
 				m_coors.nonzeroes();
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value()) nowait
 #endif
 			for( size_t k = 0; k < n; ++k ) {
@@ -503,7 +506,7 @@ namespace grb {
 				if( !m_coors.template mask< descr >( index, m_p ) ) {
 					continue;
 				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				if( !coors.asyncAssign( index, localUpdate ) ) {
 					(void)++asyncAssigns;
 				}
@@ -518,7 +521,7 @@ namespace grb {
 					internal::ValueOrIndex< descr, DataType, DataType >::getFromScalar(
 						toCopy, index );
 			}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			while( !coors.joinUpdate( localUpdate ) ) {}
 		} // end pragma omp parallel
 #endif
@@ -658,7 +661,7 @@ namespace grb {
 		// first copy contents
 		if( src == nullptr && dst == nullptr ) {
 			// then source is a pattern vector, just copy its pattern
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
 			for( size_t i = 0; i < nz; ++i ) {
@@ -672,7 +675,7 @@ namespace grb {
 			}
 #endif
 			// otherwise, the regular copy variant:
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 #endif
 			for( size_t i = 0; i < nz; ++i ) {
@@ -790,7 +793,7 @@ namespace grb {
 			( y_coors.nonzeroes() < m_coors.nonzeroes() );
 		const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		// keeps track of updates of the sparsity pattern
 		#pragma omp parallel
 		{
@@ -924,12 +927,12 @@ namespace grb {
 				}
 			}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel
 #endif
 			{
 				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				size_t start, end;
 				config::OMP::localRange( start, end, 0, range );
 #else
@@ -946,7 +949,7 @@ namespace grb {
 					);
 				}
 				range = internal::getCCS( C ).copyFromRange( nz, n );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				config::OMP::localRange( start, end, 0, range );
 #else
 				end = range;
