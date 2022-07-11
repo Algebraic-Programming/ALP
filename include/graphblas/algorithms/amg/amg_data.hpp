@@ -16,14 +16,14 @@
  */
 
 /**
- * @file hpcg_data.hpp
+ * @file amg_data.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Data structures to store HPCG input/output data.
+ * @brief Data structures to store AMG input/output data.
  * @date 2021-04-30
  */
 
-#ifndef _H_GRB_ALGORITHMS_HPCG_DATA
-#define _H_GRB_ALGORITHMS_HPCG_DATA
+#ifndef _H_GRB_ALGORITHMS_AMG_DATA
+#define _H_GRB_ALGORITHMS_AMG_DATA
 
 #include <vector>
 #include <cstddef>
@@ -35,9 +35,9 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * @brief basic data container for the HPCG algorithm, storing \b only the
+		 * @brief basic data container for the AMG algorithm, storing \b only the
 		 * data in common between the full CG run and the V-cycle multi-grid solver.
-		 * Additional data are stored in inheriting daata structures.
+		 * Additional data are stored in inheriting data structures.
 		 *
 		 * @tparam IOType type of values of the vectors for intermediate results
 		 * @tparam NonzeroType type of the values stored inside the system matrix #A
@@ -139,7 +139,7 @@ namespace grb {
 		};
 
 		/**
-		 * @brief Data stucture to store the data for a full HPCG run: system vectors and matrix,
+		 * @brief Data stucture to store the data for a full AMG run: system vectors and matrix,
 		 * coarsening information and temporary vectors.
 		 *
 		 * This data structures contains all the needed vectors and matrices to solve a linear system
@@ -155,7 +155,7 @@ namespace grb {
 		 * @tparam InputType type of the values of the right-hand side vector #b
 		 */
 		template< typename IOType, typename NonzeroType, typename InputType >
-		struct hpcg_data : public system_data< IOType, NonzeroType > {
+		struct amg_data : public system_data< IOType, NonzeroType > {
 
 			grb::Vector< InputType > b; ///< right-side vector of known values
 			grb::Vector< IOType > u;    ///< temporary vectors (typically for CG exploration directions)
@@ -167,19 +167,19 @@ namespace grb {
 			                                                               ///< the multi-grid run
 
 			/**
-			 * @brief Construct a new \c hpcg_data object by building vectors and matrices and by setting
+			 * @brief Construct a new \c amg_data object by building vectors and matrices and by setting
 			 * #coarser_level to \c nullptr (i.e. no coarser level is assumed).
 			 *
 			 * @param[in] sys_size the size of the simulated system, i.e. of all the internal vectors and matrices
 			 */
-			hpcg_data( std::size_t sys_size ) : system_data< IOType, NonzeroType >( sys_size ), b( sys_size ), u( sys_size ), p( sys_size ), x( sys_size ) {
+			amg_data( std::size_t sys_size ) : system_data< IOType, NonzeroType >( sys_size ), b( sys_size ), u( sys_size ), p( sys_size ), x( sys_size ) {
 				coarser_level = nullptr;
 			}
 
 			/**
-			 * @brief Destroy the \c hpcg_data object by destroying the #coarser_level informartion, if any.
+			 * @brief Destroy the \c amg_data object by destroying the #coarser_level informartion, if any.
 			 */
-			virtual ~hpcg_data() {
+			virtual ~amg_data() {
 				if( coarser_level != nullptr ) {
 					delete coarser_level;
 				}
@@ -189,4 +189,4 @@ namespace grb {
 	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_HPCG_DATA
+#endif // _H_GRB_ALGORITHMS_AMG_DATA
