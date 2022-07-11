@@ -69,7 +69,6 @@ namespace grb {
 			}
 			grb::algorithms::matrix_generator_iterator< DIMS, T > begin( sys_sizes, 0UL, halo_size, diag_value, non_diag_value );
 			grb::algorithms::matrix_generator_iterator< DIMS, T > end( sys_sizes, n, halo_size, diag_value, non_diag_value );
-
 			return buildMatrixUnique( M, begin, end, grb::IOMode::SEQUENTIAL );
 		}
 
@@ -116,7 +115,6 @@ namespace grb {
 
 			grb::algorithms::coarsener_generator_iterator< DIMS, T > begin( coarser_sizes, finer_sizes, 0 );
 			grb::algorithms::coarsener_generator_iterator< DIMS, T > end( coarser_sizes, finer_sizes, rows );
-			
 			return buildMatrixUnique( M, begin, end, grb::IOMode::SEQUENTIAL );
 		}
 
