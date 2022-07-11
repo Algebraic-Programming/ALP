@@ -74,18 +74,10 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
 
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference HPCG
-constexpr std::size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
-constexpr std::size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
 constexpr std::size_t DEF_COARSENING_LEVELS{ 1U };
 constexpr std::size_t MAX_COARSENING_LEVELS{ 4U };
 constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
 constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
-
-// internal values
-constexpr double SYSTEM_DIAG_VALUE { 26.0 };
-constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
-constexpr std::size_t BAND_WIDTH_3D { 13UL };
-constexpr std::size_t HALO_RADIUS { 1U };
 //============================================
 
 constexpr double MAX_NORM { 4.0e-14 };
@@ -175,6 +167,7 @@ struct vec_data {
 };
 
 
+static bool matloaded = false;
 
 /**
  * @brief Container for the parameters for the HPCG simulation.
@@ -194,15 +187,12 @@ struct simulation_input {
 	bool no_preconditioning;
 };
 
-static bool matloaded=false;
-
-
 template<typename CharT, typename TraitsT = std::char_traits<CharT> >
 class vectorwrapbuf :
 	public std::basic_streambuf<CharT, TraitsT> {
 public:
     vectorwrapbuf(std::vector<CharT> &vec) {
-		this->setg(vec.data(), vec.data(), vec.data() + vec.size());
+		this->setg( vec.data(), vec.data(), vec.data() + vec.size() );
     }
 };
 std::istream& operator>>(std::istream& is, std::string& s){
@@ -248,8 +238,8 @@ public :
 			std::streamsize size = inFile.tellg();
 			inFile.seekg(0, std::ios::beg);
 			std::vector<char> buffer(size);
-			if (inFile.read(buffer.data(), size))	{
-				/* alles gut! */
+			if ( inFile.read(buffer.data(), size) )	{
+				/* all fine! */
 			}
 			else {
 				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
@@ -274,7 +264,7 @@ public :
 				data[ i ].i_data[ k ] = itmp - 1;
 				data[ i ].j_data[ k ] = jtmp - 1;
 				data[ i ].v_data[ k ] = vtmp;
-				k+=1;
+				k += 1;
 			}
 			data[ i ].nz = k;
 		}
@@ -304,8 +294,8 @@ public :
 				return( PANIC );
 			} 
 			inFile.close();
-			vectorwrapbuf<char> databuf(buffer);
-			std::istream isdata(&databuf);
+			vectorwrapbuf< char > databuf( buffer );
+			std::istream isdata( &databuf );
 			std::string headder;
 			size_t n, m;
 			std::getline( isdata, headder ); // skip the first line
@@ -431,7 +421,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.error_code = SUCCESS;
 	RC rc { SUCCESS };
 
-	if(!matloaded){
+	if( ! matloaded ) {
 		//preloaded_matrices inputData;
 		inputData.matAfiles = in.matAfiles;
 		inputData.matMfiles = in.matMfiles;
@@ -442,12 +432,11 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure to read data" << std::endl;
 		}
-		matloaded=true;
+		matloaded = true ;
 	}
 
 	out.times.io = timer.time();
 	timer.reset();
-
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
