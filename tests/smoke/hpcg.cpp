@@ -256,8 +256,8 @@ public :
 				return( PANIC );
 			} 
 			inFile.close();
-			vectorwrapbuf<char> databuf(buffer);
-			std::istream isdata(&databuf);
+			vectorwrapbuf< char > databuf( buffer );
+			std::istream isdata( &databuf );
 			std::string headder;
 			isdata >> headder;
 			while( headder.at( 0 ) == '%' ) {
@@ -268,23 +268,16 @@ public :
 			ss >> n >> m >> nz ;
 			size_t k = 0;
 			for ( size_t j = 0; j < nz; j++ ) {
-				// 	data[ i ].i_data[ k ]=it.i();
-				// 	data[ i ].j_data[ k ]=it.j();
-				// 	data[ i ].v_data[ k ]=it.v();
-				size_t itmp,jtmp;
+				size_t itmp, jtmp;
 				double vtmp;
 				isdata >> itmp >> jtmp >> vtmp;
-				data[ i ].i_data[ k ]=itmp-1;
-				data[ i ].j_data[ k ]=jtmp-1;
-				data[ i ].v_data[ k ]=vtmp;				
-				// isdata >> data[ i ].i_data[ k ]
-				// 	   >> data[ i ].j_data[ k ]
-				// 	   >> data[ i ].v_data[ k ] ;
-				k++;
+				data[ i ].i_data[ k ] = itmp - 1;
+				data[ i ].j_data[ k ] = jtmp - 1;
+				data[ i ].v_data[ k ] = vtmp;
+				k+=1;
 			}
-			data[i].nz=k;
+			data[ i ].nz = k;
 		}
-
 		return ( rc );
 	}	
 

@@ -334,6 +334,9 @@ namespace grb {
 
 	} // namespace internal
 
+	extern "C" void foo();
+
+
 	/**
 	 * Sets all elements of a vector to the given value.
 	 *
