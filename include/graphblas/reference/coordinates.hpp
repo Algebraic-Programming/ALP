@@ -378,7 +378,7 @@ namespace grb {
 					// and initialise _assigned (but only if necessary)
 					if( dim > 0 && !arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() * 8 )
 #endif
 						for( size_t i = 0; i < dim; ++i ) {
 							_assigned[ i ] = false;
