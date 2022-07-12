@@ -1592,12 +1592,13 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > & source ) {
+		typename SourceMatrixType,
+		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+	>
+	typename SourceMatrixType::template view_type< view::original >::type
+	get_view( SourceMatrixType &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_strmat_t = typename source_strmat_t::template view_type< view::original >::type;
+		using target_strmat_t = typename SourceMatrixType::template view_type< view::original >::type;
 
 		target_strmat_t target( source );
 
@@ -1635,12 +1636,13 @@ namespace alp {
 	 */
 	template<
 		enum view::Views target_view,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< target_view >::type
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source ) {
+		typename SourceMatrixType,
+		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+	>
+	typename SourceMatrixType::template view_type< target_view >::type
+	get_view( SourceMatrixType &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_strmat_t = typename source_strmat_t::template view_type< target_view >::type;
+		using target_strmat_t = typename SourceMatrixType::template view_type< target_view >::type;
 
 		target_strmat_t target( source );
 
