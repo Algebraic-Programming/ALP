@@ -64,11 +64,23 @@ namespace alp {
 			 * @tparam A0   Static coefficient corresponding to constant term
 			 * @tparam Denominator  Static denominator dividing the whole polynomial
 			 */
-			template< size_t Ax2, size_t Ay2, size_t Axy, size_t Ax, size_t Ay, size_t A0, size_t Denominator >
+			template<
+				size_t coeffAx2, size_t coeffAy2, size_t coeffAxy,
+				size_t coeffAx, size_t coeffAy,
+				size_t coeffA0,
+				size_t Denominator
+			>
 			struct BivariateQuadratic {
 
 				static_assert( Denominator != 0, "Denominator cannot be zero (division by zero).");
 
+				static constexpr size_t Ax2 = coeffAx2;
+				static constexpr size_t Ay2 = coeffAy2;
+				static constexpr size_t Axy = coeffAxy;
+				static constexpr size_t Ax  = coeffAx;
+				static constexpr size_t Ay  = coeffAy;
+				static constexpr size_t A0  = coeffA0;
+				static constexpr size_t D   = Denominator;
 				const size_t ax2, ay2, axy, ax, ay, a0;
 
 				BivariateQuadratic(
@@ -85,7 +97,7 @@ namespace alp {
 						Axy * axy * x * y +
 						Ax * ax * x +
 						Ay * ay * y +
-						A0 * a0) / Denominator;
+						A0 * a0) / D;
 				}
 
 			}; // BivariateQuadratic
