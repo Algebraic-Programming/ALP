@@ -121,6 +121,15 @@ namespace alp {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
 			}
 
+			/**
+			 * Exposes the polynomial type that is a result of swapping x and y
+			 * coefficients of the provided polynomial type.
+			 */
+			template< typename Polynomial >
+			struct swap_x_y_coefficients {
+				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
+			};
+
 		}; // namespace polynomials
 
 		/**
