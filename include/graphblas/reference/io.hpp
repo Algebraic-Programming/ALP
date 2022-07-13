@@ -672,7 +672,7 @@ namespace grb {
 #endif
 			// otherwise, the regular copy variant:
 #ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel for schedule( static, ( 4096 + sizeof( OutputType ) - 1 ) / sizeof( OutputType ) )
 #endif
 			for( size_t i = 0; i < nz; ++i ) {
 				const auto index = internal::getCoordinates( x ).asyncCopy(
