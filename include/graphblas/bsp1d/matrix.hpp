@@ -193,14 +193,25 @@ namespace grb {
 				std::cerr << "\t in initialize helper function (BSP1D matrix)\n";
 #endif
 				auto &data = internal::grb_BSP1D.load();
-				_m = rows;
-				_n = cols;
-				if( _m > 0 && _n > 0 ) {
-					// check capacity
-					if( nz / _m > _n ||
-						nz / _n > _m ||
-						(nz / _m == _n && (nz % _m > 0)) ||
-						(nz / _n == _m && (nz % _n > 0))
+
+				// check default fields that should have been set by public constructor
+				assert( _m == 0 );
+				assert( _n == 0 );
+				assert( _id = std::numeric_limits< uintptr_t >::max() );
+				assert( _ptr == nullptr );
+				assert( _cap == 0 );
+				// these default values correspond to an empty matrix and which the
+				// destructor handles separately. These values must only be overridden when
+				// construction can no longer fail.
+
+				// switch between (non-)trivial cases
+				if( rows > 0 && cols > 0 ) {
+
+					// check requested capacity
+					if( nz / rows > cols ||
+						nz / cols > rows ||
+						(nz / rows == cols && (nz % rows > 0)) ||
+						(nz / cols == rows && (nz % cols > 0))
 					) {
 #ifdef _DEBUG
 						std::cerr << "\t requested capacity is too large\n";
@@ -215,12 +226,6 @@ namespace grb {
 					) {
 						throw std::runtime_error( "Error during resizing of global buffer " );
 					}
-
-					// all OK, so assign ID
-					_ptr = new char[1];
-					_id = data.mapper.insert(
-						reinterpret_cast< uintptr_t >(_ptr)
-					);
 
 					// derive local sizes
 					const size_t local_m =
@@ -249,22 +254,46 @@ namespace grb {
 #endif
 					}
 
-					// delegate
-					_local.initialize( &_id, local_m, local_n, local_nz );
+					// see if we can get an ID
+					const auto ptr = new char[ 1 ];
+					const auto id = data.mapper.insert(
+						reinterpret_cast< uintptr_t >( ptr )
+					);
 
-					// sync global capacity
-					size_t global_cap = capacity( _local );
-					if( collectives< BSP1D >::allreduce(
-							global_cap,
-							operators::add< size_t >()
-						) != SUCCESS
-					) {
-						std::cerr << "Fatal error while synchronising global capacity\n";
-						throw PANIC;
+					// now we changed our internal state, so we should be careful how to
+					// handle any subsequent exceptions
+					size_t global_cap = 0;
+					try {
+						// complete local initialisation
+						_local.initialize( &_id, local_m, local_n, local_nz );
+
+						// sync global capacity
+						global_cap = capacity( _local );
+						if( collectives< BSP1D >::allreduce(
+								global_cap,
+								operators::add< size_t >()
+							) != SUCCESS
+						) {
+							std::cerr << "Fatal error while synchronising global capacity\n";
+							throw std::runtime_error( toString( PANIC ) );
+						}
+					} catch( ... ) {
+						// unwind the state change on the mapper
+						data.mapper.remove( id );
+						// then pass up the exception
+						throw;
 					}
+
+					// all OK, so assign all local fields
+					_id = id;
+					_ptr = ptr;
+					_m = rows;
+					_n = cols;
 					_cap = global_cap;
 				} else {
 					_local.initialize( nullptr, 0, 0, 0 );
+					// the default values that have already been set (and asserted earlier)
+					// correspond to that of an empty matrix, so no further action required.
 				}
 			}
 
