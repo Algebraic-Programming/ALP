@@ -46,6 +46,8 @@ namespace alp {
 
 			using applied_to = OriginalType;
 
+			static constexpr Views type_id = Views::original;
+
 			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.first, dims_pair.second );
 			}
@@ -56,6 +58,8 @@ namespace alp {
 
 			using applied_to = OriginalType;
 
+			static constexpr Views type_id = Views::transpose;
+
 			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.second, dims_pair.first );
 			}
@@ -65,6 +69,8 @@ namespace alp {
 		struct Diagonal {
 
 			using applied_to = OriginalType;
+
+			static constexpr Views type_id = Views::diagonal;
 
 			static size_t getLength( std::pair< size_t, size_t > dims_pair ) {
 				return std::min( dims_pair.first, dims_pair.second );
