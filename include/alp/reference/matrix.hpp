@@ -930,6 +930,26 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
 			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					amf
+				) {}
+
+			/**
 			 * Constructor for a functor-based matrix that allocates memory.
 			 *
 			 * @tparam ViewType A dummy type.
@@ -1110,6 +1130,26 @@ namespace alp {
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
+
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					amf
+				) {}
 
 			/**
 			 * Constructor for a functor-based matrix that allocates memory.

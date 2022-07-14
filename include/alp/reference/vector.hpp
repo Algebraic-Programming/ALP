@@ -39,6 +39,7 @@
 #include <alp/imf.hpp>
 #include <alp/matrix.hpp>
 #include <alp/density.hpp>
+#include <alp/storage.hpp>
 #include <alp/views.hpp>
 
 #include <alp/base/vector.hpp>
@@ -464,6 +465,30 @@ namespace alp {
 			>
 			Vector( typename ViewType::applied_to &vec_view ) :
 				base_type( vec_view ) {}
+
+			/**
+			 * Constructor for a view over another storage-based vector.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed vector.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based vector.
+			 */
+			template<
+				typename ViewType = View,
+				typename std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Vector(
+				typename ViewType::applied_to &vec_view,
+				storage::AMF<
+					typename base_type::imf_r_type,
+					typename base_type::imf_c_type,
+					typename base_type::mapping_polynomial_type
+				> amf
+			) :
+				base_type( vec_view, amf ) {}
 
 			/**
 			 * Constructor for a functor-based vector that allocates memory.
