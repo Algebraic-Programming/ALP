@@ -340,9 +340,7 @@ namespace grb {
 #endif
 
 			RC global_rc __attribute__ ((aligned)) = SUCCESS;
-			// firstprivate(it) is MANDATORY for each thread to have a private copy
-			// and NOT change the master's object (for the following loops)
-			#pragma omp parallel firstprivate( _it ), num_threads( num_threads )
+			#pragma omp parallel num_threads( num_threads )
 			{
 				const size_t irank = grb::config::OMP::current_thread_ID();
 				assert( irank < num_threads );
