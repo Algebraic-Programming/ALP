@@ -205,7 +205,7 @@ namespace alp {
 
 			public:
 
-				AMF( ImfR &&imf_r, ImfC &&imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
+				AMF( ImfR imf_r, ImfC imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
 					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), storage_dimensions( storage_dimensions ) {}
 
 				/**
