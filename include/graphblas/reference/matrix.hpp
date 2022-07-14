@@ -242,12 +242,18 @@ namespace grb {
 		 * random access iterator.
 		 *
 		 * @tparam populate_ccs <tt>true</tt> if ingesting into a CCS, <tt>false</tt>
-		 *                      if ingesting into a CRS.
+		 *                      if ingesting into a CRS. Without loss of generality,
+		 *                      the below assumes CCS.
 		 *
 		 * @param[in] _it The input random access iterator.
 		 * @param[in] nz  The number of nonzeroes \a _it iterates over.
 		 * @param[in] num_cols The number of columns in the matrix.
 		 * @param[in] num_rows The number of rows in the matrix.
+		 *
+		 * \warning When \a populate_ccs is <tt>false</tt>, \a num_cols and
+		 *          \a num_rows correspond to the number of rows and columns,
+		 *          respectively.
+		 *
 		 * @param[in] num_threads The number of threads used during ingestion.
 		 * @param[in] prefix_sum_buffer Workspace for computing index prefix sums.
 		 * @param[in] prefix_sum_buffer_size The size (in elements) of
@@ -308,14 +314,14 @@ namespace grb {
 				return RC::PANIC;
 			}
 
-			// the actual matrix sizes depend on populate_ccs: flip them if it is  false
+			// the actual matrix sizes depend on populate_ccs: flip them if it is false
 			const size_t matrix_rows = populate_ccs ? num_rows : num_cols;
 			const size_t matrix_cols = populate_ccs ? num_cols : num_rows;
 
 			// compute thread-local buffer size
-			const size_t ccs_col_buffer_size = matrix_cols + 1;
+			const size_t ccs_col_buffer_size = num_cols + 1;
 			const size_t per_thread_buffer_size = prefix_sum_buffer_size / num_threads;
-			assert( ccs_col_buffer_size >= per_thread_buffer_size );
+			assert( per_thread_buffer_size >= num_threads );
 			const size_t bucketlen = ( ccs_col_buffer_size == per_thread_buffer_size
 					? 0
 					: ccs_col_buffer_size / per_thread_buffer_size
@@ -358,7 +364,7 @@ namespace grb {
 					config::CACHE_LINE_SIZE::value(), irank, num_threads );
 				rndacc_iterator it = _it;
 				it += start;
-				for ( size_t i = start; i < end; i++ ) {
+				for( size_t i = start; i < end; i++ ) {
 					const ColIndexType col = col_getter( it );
 					const size_t bucket_num = col / bucketlen;
 					local_rc = utils::internal::check_input_coordinates( it, matrix_rows,
@@ -404,6 +410,9 @@ namespace grb {
 								prefix_sum_buffer[ ( irank - 1 ) * per_thread_buffer_size + i ];
 						}
 					}
+
+					#pragma omp barrier
+
 					// at this point, the following array of length per_thread_buffer_size
 					// holds the number of elements in each bucket across all threads:
 					//   - prefix_sum_buffer + (num_threads - 1) * per_thread_buffer_size
@@ -453,12 +462,14 @@ namespace grb {
 								prefix_sum_buffer[ (num_threads - 1) * per_thread_buffer_size + i - 1 ];
 						}
 					}
+
+					#pragma omp barrier
 #ifdef _DEBUG
 					#pragma omp single
 					{
 						std::cout << "after fourth step:" << std::endl;
 						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+							std::cout << s << ": " << prefix_sum_buffer[ s ] << std::endl;
 						}
 					}
 #endif
@@ -498,6 +509,7 @@ namespace grb {
 					<< std::endl;
 			}
 #endif
+
 			if( bucketlen == 1UL ) {
 				// if( bucketlen == 1UL ) (i.e. we had full parallelism), we are
 				// almost done: we must only write the values of the prefix sum
@@ -683,11 +695,21 @@ namespace grb {
 		}
 
 		/**
-		 * @brief populates the storage \p storage with the nonzeroes retrieved
-		 * 	via the random access iterator \p _start.
+		 * Populates the storage \p storage with the nonzeroes retrieved via the
+		 * random access iterator \p _start.
 		 *
-		 * The naming of parameters and internal variables is as for CCS,
-		 * according to naming in Compressed_Storage.
+		 * @tparam populate_ccs Whether \a storage refers to a CRS or CCS. Without
+		 *                      loss of generality, the below assumes CCS.
+		 *
+		 * @param[in] num_cols The number of columns (in case of CCS)
+		 * @param[in] num_rows The number of rows (in case of CCS)
+		 *
+		 * \warning When \a populate_ccs is <tt>false</tt>, \a num_cols refers to the
+		 *          number of rows while \a num_rows refers to the number of columns.
+		 *
+		 * @param[in]  nz      The number of elements in the container to be ingested.
+		 * @param[in]  _start  The random access iterator to ingest.
+		 * @param[out] storage Where to store the \a nz elements from \a start.
 		 */
 		template<
 			bool populate_ccs,
