@@ -801,7 +801,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -825,7 +827,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1015,7 +1017,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1039,7 +1043,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1205,7 +1209,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1229,7 +1235,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Symmetric structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1375,7 +1381,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1399,7 +1407,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::UpperTriangular structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
