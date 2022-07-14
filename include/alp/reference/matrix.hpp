@@ -1694,7 +1694,10 @@ namespace alp {
 
 		using target_strmat_t = typename SourceMatrixType::template view_type< target_view >::type;
 
-		target_strmat_t target( source );
+		target_strmat_t target(
+			source,
+			storage::AMFFactory::Transform<	target_view, decltype( source.amf ) >::Create( source.amf )
+		);
 
 		return target;
 	}
