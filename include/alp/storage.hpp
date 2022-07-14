@@ -469,11 +469,21 @@ namespace alp {
 						typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type
 					>
 					Create( const AMFType &amf ) {
+						typedef typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type new_mapping_polynomial_type;
 						return AMF<
 							typename AMFType::imf_c_type,
 							typename AMFType::imf_r_type,
-							typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type
-						>( amf.imf_c, amf.imf_r, amf.map_poly, amf.storage_dimensions);
+							new_mapping_polynomial_type
+						>(
+							amf.imf_c,
+							amf.imf_r,
+							new_mapping_polynomial_type(
+								amf.map_poly.ay2, amf.map_poly.ax2, amf.map_poly.axy,
+								amf.map_poly.ay, amf.map_poly.ax,
+								amf.map_poly.a0
+							),
+							amf.storage_dimensions
+						);
 					}
 				};
 
