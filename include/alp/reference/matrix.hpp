@@ -528,6 +528,8 @@ namespace alp {
 				/** Expose static properties */
 
 				typedef T value_type;
+				typedef ImfR imf_r_type;
+				typedef ImfC imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */

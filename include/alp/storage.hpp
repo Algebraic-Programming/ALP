@@ -193,6 +193,11 @@ namespace alp {
 
 			private:
 
+				/** Expose static properties */
+				typedef ImfR imf_r_type;
+				typedef ImfC imf_c_type;
+				typedef MappingPolynomial mapping_polynomial_type;
+
 				const ImfR imf_r;
 				const ImfC imf_c;
 				const MappingPolynomial map_poly;
@@ -268,6 +273,11 @@ namespace alp {
 			friend AMFFactory;
 
 			private:
+
+				/** Expose static properties */
+				typedef imf::Strided imf_r_type;
+				typedef imf::Strided imf_c_type;
+				typedef MappingPolynomial mapping_polynomial_type;
 
 				/** For size checks */
 				const imf::Strided imf_r;
