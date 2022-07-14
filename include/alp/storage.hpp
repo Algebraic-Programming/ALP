@@ -130,6 +130,29 @@ namespace alp {
 				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
 			};
 
+			template< enum view::Views view, typename Polynomial >
+			struct apply_view {};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::original, Polynomial > {
+				typedef Polynomial type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::transpose, Polynomial > {
+				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::diagonal, Polynomial > {
+				typedef Polynomial type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::_internal, Polynomial > {
+				typedef None_type type;
+			};
+
 		}; // namespace polynomials
 
 		/**
