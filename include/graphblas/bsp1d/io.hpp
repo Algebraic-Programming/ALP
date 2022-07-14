@@ -1147,30 +1147,31 @@ namespace grb {
 
 			// each thread separates the nonzeroes based on the destination, each
 			// thread to a different buffer
+			// TODO FIXME BSP1D should not call OpenMP directly
 			#pragma omp parallel
 			{
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
 				std::vector< std::vector< StorageType > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
 				local_outgoing.resize( data.P );
 				std::vector< StorageType > &local_data = local_outgoing[ data.s ];
-				RC local_rc = SUCCESS;
+				RC local_rc __attribute__ ((aligned)) = SUCCESS;
 
-				#pragma omp for schedule( static )
-				for( fwd_iterator it = start; it != end; ++it ) {
+				size_t loop_start, loop_end;
+				config::OMP::localRange( loop_start, loop_end, 0, (end-start) );
+				fwd_iterator it = start;
+				it += loop_start;
+
+				for( size_t i = loop_start; i < loop_end; ++it, ++i ) {
 					// sanity check on input
 					local_rc = utils::internal::check_input_coordinates( it, rows, cols );
 					if( local_rc != SUCCESS ) {
-						// cannot break in case of mismatch because of omp for directive
-						// however, deeming this a rare case, so keep incrementing
-						#pragma omp critical
-						{
-							ret = MISMATCH;
-						}
+						// rely on atomic writes to global ret enum
+						ret = MISMATCH;
 					} else {
 						handleSingleNonzero( it, mode, rows, cols, local_data, local_outgoing, data );
 					}
 				}
-			}
+			} // note: implicit thread barrier
 			if( ret != SUCCESS ){
 				return ret;
 			}
