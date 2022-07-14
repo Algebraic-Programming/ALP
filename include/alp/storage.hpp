@@ -381,6 +381,112 @@ namespace alp {
 					);
 				}
 
+				/**
+				 * Exposes the type of AMF resulting from applying the provided
+				 * view on the provided AMF type.
+				 */
+				template<
+					enum view::Views view,
+					typename Amf,
+					typename ImfR = typename Amf::imf_r_type,
+					typename ImfC = typename Amf::imf_c_type,
+					typename MappingPolynomial = typename Amf::mapping_polynomial_type
+				>
+				struct apply_view {};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::original, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfR,
+						ImfC,
+						typename polynomials::apply_view< view::Views::original, MappingPolynomial >::type
+					> type;
+				};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::transpose, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfC,
+						ImfR,
+						typename polynomials::apply_view< view::Views::transpose, MappingPolynomial >::type
+					> type;
+				};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::diagonal, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfR,
+						ImfC,
+						typename polynomials::apply_view< view::Views::diagonal, MappingPolynomial >::type
+					> type;
+				};
+
+				template< enum view::Views view, typename AMFType >
+				struct Transform {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						throw std::invalid_argument( "Not implemented for the provided view type." );
+						return amf;
+					}
+
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::original, AMFType > {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						return amf;
+					}
+
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::transpose, AMFType > {
+
+					static
+					AMF<
+						typename AMFType::imf_c_type,
+						typename AMFType::imf_r_type,
+						typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type
+					>
+					Create( const AMFType &amf ) {
+						return AMF<
+							typename AMFType::imf_c_type,
+							typename AMFType::imf_r_type,
+							typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type
+						>( amf.imf_c, amf.imf_r, amf.map_poly, amf.storage_dimensions);
+					}
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::diagonal, AMFType > {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						return amf;
+					}
+				};
+
 		}; // class AMFFactory
 
 	}; // namespace storage
