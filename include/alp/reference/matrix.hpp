@@ -456,6 +456,13 @@ namespace alp {
 		template< typename MatrixType >
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
+		/** Get the reference to the AMF of a storage-based matrix */
+		template<
+			typename MatrixType,
+			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
+
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
@@ -523,6 +530,14 @@ namespace alp {
 		 */
 		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
 		class StorageBasedMatrix : public MatrixBase< StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > > {
+
+			/** Get the reference to the AMF of a storage-based matrix */
+			template<
+				typename MatrixType,
+				std::enable_if< internal::is_storage_based< MatrixType >::value > *
+			>
+			friend const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
+
 			public:
 
 				/** Expose static properties */
@@ -534,6 +549,8 @@ namespace alp {
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
+				/** Type of the AMF */
+				typedef storage::AMF< ImfR, ImfC, MappingPolynomial > amf_type;
 
 			protected:
 				typedef StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > self_type;
@@ -576,10 +593,7 @@ namespace alp {
 				 * into the concrete coordinate inside the actual container.
 				 * \see AMF
 				 */
-			public: // TODO: Temporarily expose AMF publicly until proper getters are implemented
-				storage::AMF< ImfR, ImfC, MappingPolynomial > amf;
-			protected:
-
+				amf_type amf;
 				/**
 				 * @brief determines the size of the matrix via the domain of
 				 * the index mapping functions.
@@ -604,6 +618,10 @@ namespace alp {
 
 				void setInitialized( const bool initialized ) noexcept {
 					internal::setInitialized( container , initialized );
+				}
+
+				const amf_type &getAmf() const noexcept {
+					return amf;
 				}
 
 				/**
@@ -646,13 +664,13 @@ namespace alp {
 				 * TODO: Add the storage scheme a parameter to the constructor
 				 * so that allocation can be made accordingly, generalizing the full case.
 				 */
-				StorageBasedMatrix( storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
+				StorageBasedMatrix( amf_type amf ) :
 					// enable only if ImfR and ImfC are imf::Id
 					container( internal::Vector< T, reference >( amf.getStorageDimensions() ) ),
 					amf( amf ) {}
 
 				/** View on another container */
-				StorageBasedMatrix( Vector< T, reference > &container, storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
+				StorageBasedMatrix( Vector< T, reference > &container, amf_type amf ) :
 					container( container ),
 					amf( amf ) {}
 
@@ -908,7 +926,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Create( internal::getAmf( target_matrix ), imf_r, imf_c )
 				) {}
 
 			/**
@@ -1116,7 +1134,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Create( internal::getAmf( target_matrix ), imf_r, imf_c )
 				) {}
 
 			/**
@@ -1488,7 +1506,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Create( internal::getAmf( target_matrix ), imf_r, imf_c )
 				) {}
 
 			/**
@@ -1696,7 +1714,7 @@ namespace alp {
 
 		target_strmat_t target(
 			source,
-			storage::AMFFactory::Transform<	target_view, decltype( source.amf ) >::Create( source.amf )
+			storage::AMFFactory::Transform<	target_view, typename SourceMatrixType::amf_type >::Create( internal::getAmf( source ) )
 		);
 
 		return target;
@@ -2150,6 +2168,15 @@ namespace alp {
 		 */
 		template< typename MatrixType >
 		std::pair< size_t, size_t > getCoords( const MatrixType &A, const size_t storageIndex, const size_t s, const size_t P );
+
+		/** Get the reference to the AMF of a storage-based matrix */
+		template<
+			typename MatrixType,
+			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept {
+			return A.getAmf();
+		}
 
 	} // namespace internal
 
