@@ -801,26 +801,33 @@ namespace grb {
 			}
 #endif
 
-			const size_t bufferlen_tot = is_fully_parallel ? fully_parallel_buffer_size : partial_parallel_buffer_size;
-			if( ! internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
+			const size_t bufferlen_tot = is_fully_parallel
+				? fully_parallel_buffer_size
+				: partial_parallel_buffer_size;
+			if( !internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
 #ifndef _DEBUG
 				std::cerr << "Not enough memory available for populate_storage_parallel buffer" << std::endl;
 #endif
 				return RC::OUTOFMEM;
 			}
+
 			const size_t prefix_sum_buffer_els = is_fully_parallel
 				? fully_parallel_buffer_els
 				: partial_parallel_prefix_sums_buffer_els;
+
 			unsigned char * const __buffer =
 				getReferenceBuffer< unsigned char >( bufferlen_tot );
+
 			size_t * pref_sum_buffer = is_fully_parallel
 				? reinterpret_cast < size_t * >( __buffer )
 				: reinterpret_cast < size_t * >(
 						__buffer + partial_parallel_col_values_buffer_size
 					);
+
 			ColIndexType* col_values_buffer = is_fully_parallel
 				? nullptr
 				: reinterpret_cast < ColIndexType * >( __buffer );
+
 			const size_t num_threads = is_fully_parallel
 				? max_num_threads
 				: partial_parallel_num_threads;
