@@ -348,7 +348,7 @@ namespace grb {
 				size_t start, end;
 				config::OMP::localRange( start, end, 0, prefix_sum_buffer_size,
 						grb::config::CACHE_LINE_SIZE::value(), irank, num_threads );
-				for ( size_t i = start; i < end; i++ ) {
+				for( size_t i = start; i < end; i++ ) {
 					prefix_sum_buffer[ i ] = 0;
 				}
 
@@ -455,7 +455,7 @@ namespace grb {
 					// propagate cumulative sums for each bucket on each thread, to get the
 					// final, global, offset
 					if( irank < num_threads - 1 ) {
-						for ( size_t i = 1; i < per_thread_buffer_size; i++ ) {
+						for( size_t i = 1; i < per_thread_buffer_size; i++ ) {
 							prefix_sum_buffer[ irank * per_thread_buffer_size + i ] +=
 								prefix_sum_buffer[ (num_threads - 1) * per_thread_buffer_size + i - 1 ];
 						}
@@ -509,13 +509,20 @@ namespace grb {
 #endif
 
 			if( bucketlen == 1UL ) {
-				// if( bucketlen == 1UL ) (i.e. we had full parallelism), we are
-				// almost done: we must only write the values of the prefix sum
-				// into col_start
+				// if( bucketlen == 1UL ) (i.e., one bucket corresponds to one column, then
+				// we are almost done: we must only write the values of the prefix sum into
+				// col_start
 				assert( prefix_sum_buffer_size >= ccs_col_buffer_size );
-				#pragma omp parallel for schedule( static, grb::config::CACHE_LINE_SIZE::value() ), num_threads( num_threads )
-				for ( size_t i = 0; i < ccs_col_buffer_size ; i++ ) {
-					storage.col_start[ i ] = prefix_sum_buffer[ i ];
+				// we still limit the threads by num_threads as it is a good indicator of
+				// when the problem is (way) too small to use the full number of available
+				// threads
+				#pragma omp parallel num_threads( num_threads )
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, ccs_col_buffer_size );
+					for( size_t i = start; i < end; i++ ) {
+						storage.col_start[ i ] = prefix_sum_buffer[ i ];
+					}
 				}
 #ifdef _DEBUG
 				std::cout << "\t col_start array already fully sorted after bucket sort:\n";
@@ -534,6 +541,8 @@ namespace grb {
 #endif
 			assert( col_values_buffer != nullptr );
 #ifdef _DEBUG
+			// fill is not parallel, but so is (not) the printout-- and this is debug
+			// mode only
 			std::fill( storage.col_start, storage.col_start + ccs_col_buffer_size, 0 );
 			std::cout << "\t col_start before sorting:" << std::endl;
 			for( size_t s = 0; s < ccs_col_buffer_size; s++ ) {
@@ -561,14 +570,16 @@ namespace grb {
 					std::cout << "-- thread " << omp_get_thread_num() << ", empty cols fill ["
 						<< previous_destination << ", " << max_col << ")" << std::endl;
 #endif
-					std::fill( storage.col_start + previous_destination, storage.col_start + max_col, ipsl_min );
+					std::fill( storage.col_start + previous_destination,
+						storage.col_start + max_col, ipsl_min );
 					continue ;
 				}
+
 				//do the sort in-place, using the storage and the columns buffer
-				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
-					begin( storage, col_values_buffer, ipsl_min );
-				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType >
-					end( storage, col_values_buffer, ipsl_max );
+				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType > begin(
+					storage, col_values_buffer, ipsl_min );
+				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType > end(
+					storage, col_values_buffer, ipsl_max );
 				std::sort( begin, end );
 #ifdef _DEBUG
 				std::cout << "-- thread " << omp_get_thread_num() <<", sort [" << previous_destination
@@ -587,10 +598,11 @@ namespace grb {
 				size_t count = ipsl_min;
 				size_t previous_count = count;
 				size_t col_buffer_index = ipsl_min; // start from next
-				while ( col_buffer_index < ipsl_max ) {
+				while( col_buffer_index < ipsl_max ) {
 					const ColIndexType current_col = col_values_buffer[ col_buffer_index ];
 					const ColIndexType current_destination = current_col + 1;
-					// fill previous columns [previous_destination + 1, current_destinatio) if skipped because empty
+					// fill previous columns [previous_destination + 1, current_destination)
+					// if skipped because empty
 					if( previous_destination + 1 <= current_col ) {
 #ifdef _DEBUG
 						std::cout << "thread " << omp_get_thread_num() << ", write "
@@ -598,24 +610,31 @@ namespace grb {
 							<< " - " << current_destination << ")" << std::endl;
 #endif
 						std::fill( storage.col_start + previous_destination + 1,
-						storage.col_start + current_destination, previous_count );
+							storage.col_start + current_destination, previous_count );
 					}
 					// count occurrences of 'current_col'
-					for( ; col_values_buffer[ col_buffer_index ] == current_col
-						&& col_buffer_index < ipsl_max; col_buffer_index++, count++ );
+					for( ;
+						col_buffer_index < ipsl_max &&
+							col_values_buffer[ col_buffer_index ] == current_col;
+						col_buffer_index++, count++
+					);
 					assert( current_destination <= max_col );
+
 					// if current_destination < max_col, then write the count;
 					// otherwise, the next thread will do it in INIT
 					if( current_destination < max_col ) {
 						storage.col_start[ current_destination ] = count;
 #ifdef _DEBUG
 						std::cout << "thread " << omp_get_thread_num() << ", write "
-							<< count <<" to pos " << current_destination << std::endl;
+							<< count << " to pos " << current_destination << std::endl;
 #endif
 					}
+
+					// go for next column
 					previous_destination = current_destination;
 					previous_count = count;
 				}
+
 				// if the columns in [ previous_destination + 1, max_col ) are empty,
 				// write the count also there, since the loop has skipped them
 				if( previous_destination + 1 < max_col ) {
@@ -638,7 +657,8 @@ namespace grb {
 				std::cout << "final write " << nz << " into [" << last_existing_col + 1
 					<<", " << num_cols << "]" << std::endl;
 #endif
-				std::fill( storage.col_start + last_existing_col + 1, storage.col_start + ccs_col_buffer_size, nz );
+				std::fill( storage.col_start + last_existing_col + 1,
+					storage.col_start + ccs_col_buffer_size, nz );
 			}
 #ifdef _DEBUG
 			std::cout << "CRS data after sorting:" << std::endl;
@@ -647,7 +667,8 @@ namespace grb {
 				if( col_values_buffer != nullptr ) {
 					std::cout << col_values_buffer[ s ] << ", ";
 				}
-				std::cout << storage.row_index[s] << ", " << get_value( storage, s) << std::endl;
+				std::cout << storage.row_index[s] << ", " << get_value( storage, s)
+					<< std::endl;
 			}
 
 			std::cout << "col_start after sorting:" << std::endl;
@@ -659,14 +680,12 @@ namespace grb {
 		}
 
 		/**
-		 * @brief computes size of memory buffer and threads to use, thus maximizing
-		 * 	parallelism under a fixed memory budget. When trading memory for parallelism,
-		 * 	always prefer saving memory over increasing the parallelism.
+		 * Computes size of memory buffer and threads to use, allowing for maximised
+		 * number of threads within a fixed memory budget.
 		 *
-		 * @param[in] nz number of nonzeroes
-		 * @param[in] sys_threads maximum number of threads the system provides (usually
-		 * 	retrieved via OpenMP)
-		 * @param[out] buf_size size of the buffer for the nonzeroes
+		 * @param[in] nz           number of nonzeroes
+		 * @param[in] sys_threads  maximum number of threads
+		 * @param[out] buf_size    size of the buffer for the nonzeroes
 		 * @param[out] num_threads number of threads to use
 		 */
 		static void compute_buffer_size_num_threads(
@@ -680,16 +699,26 @@ namespace grb {
 			constexpr size_t bucket_factor = 8;
 
 			// maximum amout of memory we want to use: if sys_threads * sys_threads * bucket_factor > nz,
-			// we have to inevitably reduce the parallelism
-			const size_t max_memory = std::min( nz, sys_threads * sys_threads * bucket_factor );
+			// we have to inevitably reduce the number of threads we may employ
+			const size_t max_memory = std::min(
+				nz,
+				sys_threads * sys_threads * bucket_factor
+			);
 
-			// minimum between what is required for full parallelism and what is available
-			num_threads = std::min( static_cast< size_t >( std::sqrt( static_cast< double >( max_memory ) ) ),
-				sys_threads );
+			// minimum between
+			//  - using all threads vs.
+			//  - all threads for which there is available memory
+			num_threads = std::min(
+				static_cast< size_t >(std::sqrt(static_cast< double >(max_memory))),
+				sys_threads
+			);
 
 			// set buffer size accordingly, also rounding down
 			// this is the total number, so it must be multiplied by num_threads
-			buf_size = std::max( max_memory / num_threads, num_threads * bucket_factor ) * num_threads;
+			buf_size = std::max(
+					max_memory / num_threads,
+					num_threads * bucket_factor
+				) * num_threads;
 		}
 
 		/**
@@ -718,29 +747,31 @@ namespace grb {
 			typename rndacc_iterator
 		>
 		RC populate_storage(
-			const size_t num_cols,
-			const size_t num_rows,
-			const size_t nz,
+			const size_t num_cols, const size_t num_rows, const size_t nz,
 			const rndacc_iterator &_start,
 			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
 		) {
-			const size_t max_num_threads = static_cast< size_t >( omp_get_max_threads() );
-			//const size_t range = num_cols + 1;
-
-			// ensure enugh parallelism while using a reasonable memory amount: the maximum parallelism
-			// is achieved with num_threads * range, but this might much larger than nz when there are many cores
-			// and the matrix is very sparse ( nz ~= nrows ); hence the std::min()
-			const size_t partial_parallel_col_values_buffer_size = (
-					( nz * sizeof( ColIndexType ) + config::CACHE_LINE_SIZE::value() - 1 )
-					/ config::CACHE_LINE_SIZE::value()
-				) * config::CACHE_LINE_SIZE::value(); // round up to config::CACHE_LINE_SIZE::value()
-
-			// buffer to store prefix sums: to ensure good parallelism, allow storing nz elements
-			// TODO: this can be further limited by limiting the available parallelism
+			// buffer to store prefix sums
 			size_t partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads;
-			// decide memory vs parallelism
-			compute_buffer_size_num_threads( nz, max_num_threads,
-				partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads );
+
+			const size_t max_num_threads =
+				static_cast< size_t >( omp_get_max_threads() );
+
+			// maximise the number of threads employed while using a reasonable memory
+			// amount: we may use all threads available if we have num_threads * range
+			// memory available, but this memory requirement may be (much) larger than
+			// nz (when there are many cores or the matrix is very sparse as in nz ~ m).
+			// First, compute how many blocks of cache lines correspond to nz nonzeroes:
+			const size_t partial_parallel_col_values_buffer_size = (
+					(nz * sizeof( ColIndexType ) + config::CACHE_LINE_SIZE::value() - 1)
+					/ config::CACHE_LINE_SIZE::value()
+				) * config::CACHE_LINE_SIZE::value();
+
+			// Second, decide how many threads we may use
+			compute_buffer_size_num_threads(
+				nz, max_num_threads,
+				partial_parallel_prefix_sums_buffer_els, partial_parallel_num_threads
+			);
 
 			// partial_parallel_prefix_sums_buffer_els = std::max( nz, max_num_threads );
 			// num_threads = max_num_threads;
@@ -777,19 +808,28 @@ namespace grb {
 #endif
 				return RC::OUTOFMEM;
 			}
-			const size_t prefix_sum_buffer_els = is_fully_parallel ? fully_parallel_buffer_els
+			const size_t prefix_sum_buffer_els = is_fully_parallel
+				? fully_parallel_buffer_els
 				: partial_parallel_prefix_sums_buffer_els;
-			unsigned char * const __buffer = getReferenceBuffer< unsigned char >(
-				bufferlen_tot );
-			size_t * pref_sum_buffer = is_fully_parallel ? reinterpret_cast < size_t * >( __buffer ) :
-				reinterpret_cast < size_t * >( __buffer + partial_parallel_col_values_buffer_size );
-			ColIndexType* col_values_buffer = is_fully_parallel ? nullptr :
-				reinterpret_cast < ColIndexType * >( __buffer );
-			const size_t num_threads = is_fully_parallel ? max_num_threads :
-				partial_parallel_num_threads;
+			unsigned char * const __buffer =
+				getReferenceBuffer< unsigned char >( bufferlen_tot );
+			size_t * pref_sum_buffer = is_fully_parallel
+				? reinterpret_cast < size_t * >( __buffer )
+				: reinterpret_cast < size_t * >(
+						__buffer + partial_parallel_col_values_buffer_size
+					);
+			ColIndexType* col_values_buffer = is_fully_parallel
+				? nullptr
+				: reinterpret_cast < ColIndexType * >( __buffer );
+			const size_t num_threads = is_fully_parallel
+				? max_num_threads
+				: partial_parallel_num_threads;
 
-			return populate_storage_parallel< populate_ccs >( _start, nz, num_cols, num_rows,
-				num_threads, pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer, storage );
+			return populate_storage_parallel< populate_ccs >(
+				_start, nz, num_cols, num_rows,
+				num_threads, pref_sum_buffer, prefix_sum_buffer_els, col_values_buffer,
+				storage
+			);
 		}
 #endif
 
