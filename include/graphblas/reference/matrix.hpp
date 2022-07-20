@@ -215,7 +215,7 @@ namespace grb {
 			typename IterT,
 			bool populate_csr
 		>
-		struct col_getter_t {
+		struct ColGetter {
 			RowIndexType operator()( const IterT &itr ) {
 				return itr.i();
 			}
@@ -228,7 +228,7 @@ namespace grb {
 			typename ColIndexType,
 			typename IterT
 		>
-		struct col_getter_t< ColIndexType, IterT, true > {
+		struct ColGetter< ColIndexType, IterT, true > {
 
 			ColIndexType operator()( const IterT &itr ) {
 				return itr.j();
@@ -287,7 +287,7 @@ namespace grb {
 			// if we are populating a CCS, we compute the bucket from the column indices;
 			// if CRS, buckets are computed from row indices. From the below code's POV,
 			// and without loss of generality, we assume CCS.
-			col_getter_t< ColIndexType, rndacc_iterator, populate_ccs > col_getter;
+			ColGetter< ColIndexType, rndacc_iterator, populate_ccs > col_getter;
 
 			if( nz < 1 ) {
 #ifdef _DEBUG
