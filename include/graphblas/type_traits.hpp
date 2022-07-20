@@ -26,6 +26,7 @@
 #include <type_traits>
 #include <iterator>
 
+
 namespace grb {
 
 	/**
@@ -130,65 +131,6 @@ namespace grb {
 	};
 
 	/**
-	 * @brief Used to select the iterator tag: if no IterT::iterator_category field, it assumes
-	 * 		std::forward_iterator_tag
-	 *
-	 * @tparam IterT iterator type
-	 */
-	template< typename IterT > class iterator_tag_selector {
-
-		template< typename It> static typename std::iterator_traits<It>::iterator_category select( int ) {
-			return typename std::iterator_traits<It>::iterator_category();
-		}
-
-		template< typename It> static typename std::forward_iterator_tag select( ... ) {
-			return typename std::forward_iterator_tag();
-		}
-
-	public:
-		using iterator_category = decltype( select< IterT >( 0 ) );
-	};
-
-	/**
-	 * @brief selects the common iterator tag from multiple iterators of potentially
-	 * 	different kinds, in a "lowest-watermark" way: the most basic one is returned.
-	 *
-	 * This assumes iterators tags are STL-style: they all inherit from std::forward_iterator_tag
-	 * and form a hierarchy.
-	 *
-	 * This is the version for the base of recursion.
-	 *
-	 * @tparam IterT1 first iterator type
-	 * @tparam IterTs second iterator type
-	 */
-	template< typename IterT1, typename... IterTs > class common_iterator_tag {
-	public:
-		using iterator_category = typename iterator_tag_selector< IterT1 >::iterator_category;
-	};
-
-	/**
-	 * @brief selects the common iterator tag from multiple iterators of potentially
-	 * 	different kinds, in a "lowest-watermark" way: the most basic one is returned.
-	 *
-	 * This assumes iterators tags are STL-style: they all inherit from std::forward_iterator_tag
-	 * and form a hierarchy.
-	 *
-	 * This is the recursive version.
-	 *
-	 * @tparam IterT1 first iterator type
-	 * @tparam IterTs second iterator type
-	 */
-	template< typename IterT1, typename IterT2, typename... IterTs >
-		class common_iterator_tag< IterT1, IterT2, IterTs... > {
-		using cat1 = typename iterator_tag_selector< IterT1 >::iterator_category;
-		using cats = typename common_iterator_tag< IterT2, IterTs... >::iterator_category;
-	public:
-		// STL iterator tags are a hierarchy with std::forward_iterator_tag at the base
-		using iterator_category = typename std::conditional<
-			std::is_base_of< cat1, cats>::value, cat1, cats >::type;
-	};
-
-	/**
 	 * @brief checks whether an iterator type has a .v() method, i.e. it can be
 	 * 	used for a value matrix
 	 *
@@ -287,3 +229,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+
