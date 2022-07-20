@@ -56,7 +56,7 @@ namespace grb {
 			const typename IterT::RowIndexType rows,
 			const typename IterT::ColumnIndexType cols
 		) {
-			static_assert( is_input_iterator< void, IterT >::value,
+			static_assert( grb::internal::is_input_iterator< void, IterT >::value,
 				"IterT is not an input iterator" );
 			if( it.i() >= rows ) {
 #ifndef NDEBUG

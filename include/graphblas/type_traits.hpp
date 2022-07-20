@@ -92,7 +92,11 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_object {
-		/** A GraphBLAS object is either a container, a semiring, a monoid, or an operator. */
+
+		/**
+		 * A GraphBLAS object is either a container, a semiring, a monoid, or an
+		 * operator.
+		 */
 		static const constexpr bool value = is_container< T >::value ||
 			is_semiring< T >::value ||
 			is_monoid< T >::value ||
@@ -109,7 +113,8 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_idempotent {
-		static_assert( is_operator< T >::value, "Template argument to grb::is_idempotent must be an operator!" );
+		static_assert( is_operator< T >::value,
+			"Template argument to grb::is_idempotent must be an operator!" );
 		static const constexpr bool value = false;
 	};
 
@@ -128,50 +133,6 @@ namespace grb {
 			"Template argument to grb::has_immutable_nonzeroes must be a "
 			"semiring!" );
 		static const constexpr bool value = false;
-	};
-
-	/**
-	 * @brief checks whether #IterT is an ALP iterator, i.e.
-	 *  * it has a .i() method
-	 *  * it has a .j() method
-	 *  * it has a .v() method; checked if #MatrixValType is not void
-	 *
-	 * @tparam MatrixValType value type of the matrix; if void, does not check
-	 * 	for the presence of a .v() method (i.e., the field ::value is valid anyway)
-	 * @tparam IterT the iterator type
-	 */
-	template< typename MatrixValType, typename IterT > class is_input_iterator {
-
-		template< typename U > static typename std::decay< decltype( std::declval< U >().i() ) >::type
-			match_i( typename std::decay< decltype( std::declval< U >().i() ) >::type* ) {
-			return std::declval< U >().i();
-		}
-		template< typename U > static void match_i( ... ) {}
-
-		template< typename U > static typename std::decay< decltype( std::declval< IterT >().j() ) >::type
-			match_j( typename std::decay< decltype( std::declval< IterT >().j() ) >::type* ) {
-			return std::declval< U >().j();
-		}
-		template< typename U > static void match_j( ... ) {}
-
-		template< typename U > static typename std::decay< decltype( std::declval< U >().v() ) >::type
-			match_v( typename std::decay< decltype( std::declval< U >().v() ) >::type* ) {
-			return std::declval< U >().v();
-		}
-		template< typename U > static void match_v( ... ) {}
-
-	public:
-		using row_t = decltype( match_i< IterT >( nullptr ) ); //< type of row index
-		using col_t = decltype( match_j< IterT >( nullptr ) ); //< type of column index
-		using val_t = decltype( match_v< IterT >( nullptr ) ); //< type of value
-
-		/**
-		 * @brief whether #IterT is an ALP input iterator
-		 */
-		static constexpr bool value =
-			! std::is_same< row_t, void >::value && std::is_integral< row_t >::value
-			&& ! std::is_same< col_t, void >::value && std::is_integral< col_t >::value
-			&& ( std::is_same< MatrixValType, void >::value || ( ! std::is_same< val_t, void >::value ) );
 	};
 
 	namespace internal {
@@ -195,10 +156,99 @@ namespace grb {
 		};
 
 		/**
-		 * Checks whether an iterator type has a .v() method, i.e. it can be used for
-		 * a value (non-void) ALP matrix.
+		 * Used to gauge whether a given type is an ALP matrix iterator.
+		 *
+		 * @tparam MatrixValType Value type of the matrix; if void, does not check for
+		 *                       the presence of a v() method that returns a nonzero
+		 *                       value.
+		 * @tparam IterT         The iterator type
+		 *
+		 * An ALP matrix iterator has the following methods:
+		 *  -# i(),
+		 *  -# j(), and
+		 *  -# v(), iff #MatrixValType is not void
+		 *
+		 * This iterator is only used internally, within ALP. It will never materialise
+		 * as a requirement on iterators in user-space.
+		 */
+		template< typename MatrixValType, typename IterT >
+		class is_input_iterator {
+
+			private:
+
+				// helper functions for determining, by return type, whether i, j, and v are
+				// defined
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().i())
+				>::type match_i(
+					typename std::decay< decltype(std::declval< U >().i()) >::type*
+				) {
+					return std::declval< U >().i();
+				}
+
+				template< typename U >
+				static void match_i( ... ) {}
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().j())
+				>::type match_j(
+					typename std::decay< decltype(std::declval< U >().j()) >::type*
+				) {
+					return std::declval< U >().j();
+				}
+
+				template< typename U >
+				static void match_j( ... ) {}
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().v())
+				>::type match_v(
+					typename std::decay< decltype(std::declval< U >().v()) >::type*
+				) {
+					return std::declval< U >().v();
+				}
+
+				template< typename U >
+				static void match_v( ... ) {}
+
+
+			public:
+
+				/** Type of the row index */
+				using RowIndexType = decltype( match_i< IterT >( nullptr ) );
+
+				/** Type of the column index */
+				using ColumnIndexType = decltype( match_j< IterT >( nullptr ) );
+
+				/** Type of the nonzero value */
+				using ValueType = decltype( match_v< IterT >( nullptr ) );
+
+				/**
+				 * Whether #IterT is an ALP matrix iterator
+				 */
+				static constexpr bool value =
+					!std::is_same< RowIndexType, void >::value &&
+					!std::is_same< ColumnIndexType, void >::value &&
+					std::is_integral< RowIndexType >::value &&
+					std::is_integral< ColumnIndexType >::value &&
+					(
+						std::is_same< MatrixValType, void >::value ||
+						!std::is_same< ValueType, void >::value
+					);
+
+		};
+
+		/**
+		 * Checks whether a given iterator type has a .v() method.
 		 *
 		 * @tparam T the iterator type
+		 *
+		 * I.e., whether \a T can be used for ingesting into a value (non-void) ALP
+		 * matrix.
 		 */
 		template< typename T >
 		class iterator_has_value_method {
@@ -219,7 +269,12 @@ namespace grb {
 
 			public:
 
-				static constexpr bool value = !std::is_same< decltype( match< T >( nullptr ) ), void >::value;
+				/**
+				 * Whether \a T defines the .v() method.
+				 */
+				static constexpr bool value = !std::is_same<
+					decltype( match< T >( nullptr ) ), void
+				>::value;
 
 		};
 
@@ -227,5 +282,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif
+#endif // end _H_GRB_TYPE_TRAITS
 

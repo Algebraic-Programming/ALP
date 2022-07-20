@@ -141,8 +141,8 @@ namespace grb {
 			const OrigIterT& b,
 			typename std::enable_if< ! std::is_same< ValT, void >::value >::type* = nullptr
 		) {
-			static_assert( grb::is_input_iterator< ValT, decltype( a )>::value, "MatIterT does not have {i,j,v}() interface" );
-			static_assert( grb::is_input_iterator< ValT, decltype( b )>::value, "MatIterT does not have {i,j,v}() interface" );
+			static_assert( grb::internal::is_input_iterator< ValT, decltype( a )>::value, "MatIterT does not have {i,j,v}() interface" );
+			static_assert( grb::internal::is_input_iterator< ValT, decltype( b )>::value, "MatIterT does not have {i,j,v}() interface" );
 			return a.v() == b.v();
 		}
 
@@ -235,9 +235,9 @@ namespace grb {
 			std::ostream& outs = std::cout,
 			bool log_all_differences = false
 		) {
-			static_assert( grb::is_input_iterator< ValT, decltype( mat_begin )>::value,
+			static_assert( grb::internal::is_input_iterator< ValT, decltype( mat_begin )>::value,
 				"MatIterT does not have {i,j,v}() interface" );
-			static_assert( grb::is_input_iterator< ValT, decltype( origin_begin )>::value,
+			static_assert( grb::internal::is_input_iterator< ValT, decltype( origin_begin )>::value,
 				"MatIterT does not have {i,j,v}() interface" );
 
 			size_t counted = 0;
