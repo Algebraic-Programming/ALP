@@ -1132,10 +1132,14 @@ namespace grb {
 			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
 			const BSP1D_Data &data,
 			// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
-			typename std::enable_if< _GRB_BSP1D_BACKEND == Backend::reference_omp
-				&& std::is_same< typename iterator_tag_selector< fwd_iterator >::iterator_category,
-					std::random_access_iterator_tag >::value, std::random_access_iterator_tag
-				>::type
+			typename std::enable_if<
+				_GRB_BSP1D_BACKEND == Backend::reference_omp &&
+				std::is_same<
+					typename std::iterator_traits< fwd_iterator >::iterator_category,
+					std::random_access_iterator_tag
+				>::value,
+				std::random_access_iterator_tag
+			>::type
 		) {
 			typedef utils::NonzeroStorage< IType, JType, VType > StorageType;
 
@@ -1314,11 +1318,15 @@ namespace grb {
 				const IOMode mode,
 				const size_t &rows, const size_t &cols,
 				std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
+				std::vector<
+					std::vector<
+						utils::NonzeroStorage< IType, JType, VType >
+					>
+				> &outgoing,
 				const BSP1D_Data &data
 		) {
 			// dispatch based only on the iterator type
-			typename iterator_tag_selector< fwd_iterator >::iterator_category category;
+			typename std::iterator_traits< fwd_iterator >::iterator_category category;
 			return populateMatrixBuildCachesImpl( start, end, mode, rows, cols, cache,
 				outgoing, data, category );
 		}

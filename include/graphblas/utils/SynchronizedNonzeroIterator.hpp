@@ -30,6 +30,7 @@
 #include <type_traits>
 
 #include "NonzeroStorage.hpp"
+#include "iterators/type_traits.hpp"
 
 #ifdef _DEBUG
  #ifndef _GRB_NO_STDIO

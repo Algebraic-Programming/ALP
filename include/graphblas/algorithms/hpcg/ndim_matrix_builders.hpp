@@ -45,7 +45,9 @@
 #include <utility>
 #include <vector>
 
+
 namespace grb {
+
 	namespace algorithms {
 
 		/**
@@ -219,13 +221,11 @@ namespace grb {
 			matrix_generator_iterator( const array_t & sizes, RowIndexType row, RowIndexType _halo, ValueType diag, ValueType non_diag ) :
 				row_generator< DIMS >( sizes, row ), halo( _halo ), diagonal_value( diag ), non_diagonal_value( non_diag ) {
 				if( halo <= 0 ) {
-					throw std::invalid_argument( "halo should be higher than "
-												 "0" );
+					throw std::invalid_argument( "halo should be higher than 0" );
 				}
 				for( const auto i : sizes ) {
 					if( i < static_cast< RowIndexType >( 2 * halo + 1 ) ) {
-						throw std::invalid_argument( "Iteration halo goes "
-													 "beyond system sizes" );
+						throw std::invalid_argument( "Iteration halo goes beyond system sizes" );
 					}
 				}
 				current_values.first.first = row;
@@ -540,7 +540,57 @@ namespace grb {
 			}
 		};
 
-	} // namespace algorithms
-} // namespace grb
+	} // end namespace algorithms
+
+} // end namespace grb
+
+namespace std {
+
+	/**
+	 * Specialises the standard STL iterator traits for
+	 * #grb::algorithms::matrix_generator_iterator
+	 */
+	template< size_t DIMS, typename T >
+	class iterator_traits<
+		grb::algorithms::matrix_generator_iterator< DIMS, T >
+	> {
+
+		private:
+
+			typedef grb::algorithms::matrix_generator_iterator< DIMS, T > SelfType;
+
+
+		public:
+
+			typedef typename SelfType::ValueType value_type;
+			typedef const value_type * pointer_type;
+			typedef const value_type & reference_type;
+			typedef size_t difference_type;
+			typedef forward_iterator_tag iterator_category;
+
+	};
+
+	template< size_t DIMS, typename T >
+	class iterator_traits<
+		grb::algorithms::coarsener_generator_iterator< DIMS, T >
+	> {
+
+		private:
+
+			typedef grb::algorithms::coarsener_generator_iterator< DIMS, T > SelfType;
+
+
+		public:
+
+			typedef typename SelfType::ValueType value_type;
+			typedef const value_type * pointer_type;
+			typedef const value_type & reference_type;
+			typedef size_t difference_Type;
+			typedef forward_iterator_tag iterator_category;
+
+	};
+
+} // end namespace std
 
 #endif // _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS
+

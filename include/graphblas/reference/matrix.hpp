@@ -1609,20 +1609,20 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
-			typename input_iterator
+			typename InputIterator
 		>
 		RC buildMatrixUnique(
-			const input_iterator &_start,
-			const input_iterator &_end,
+			const InputIterator &_start,
+			const InputIterator &_end,
 			const IOMode mode
 		) {
 			// here we can safely ignore the mode and dispatch based only on the iterator type
 			// since in shared memory the input data reside by definition all on the same machine
 			(void) mode;
-			static_assert( is_input_iterator< D, input_iterator >::value,
+			static_assert( is_input_iterator< D, InputIterator >::value,
 				"the given iterator is not a valid input iterator, "
 				"see the ALP specification for input iterators" );
-			typename iterator_tag_selector< input_iterator >::iterator_category category;
+			typename std::iterator_traits< InputIterator >::iterator_category category;
 			return buildMatrixUniqueImpl( _start, _end, category );
 		}
 

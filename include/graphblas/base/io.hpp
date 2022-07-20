@@ -30,6 +30,7 @@
 #include <graphblas/phase.hpp>
 #include <graphblas/iomode.hpp>
 #include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/utils/iterators/type_traits.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
@@ -1384,7 +1385,7 @@ namespace grb {
 		// derive synchronized iterator
 		// first derive iterator access category:
 		//  in(3x random acc. it.) => out(random acc. it.)
-		typename common_iterator_tag<
+		typename utils::common_iterator_tag<
 			fwd_iterator1, fwd_iterator2, fwd_iterator3
 		>::iterator_category iterator_category;
 		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end,
