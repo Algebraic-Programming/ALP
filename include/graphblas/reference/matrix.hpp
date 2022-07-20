@@ -1619,9 +1619,10 @@ namespace grb {
 			// here we can safely ignore the mode and dispatch based only on the iterator type
 			// since in shared memory the input data reside by definition all on the same machine
 			(void) mode;
-			static_assert( is_input_iterator< D, InputIterator >::value,
+			static_assert( internal::is_input_iterator< D, InputIterator >::value,
 				"the given iterator is not a valid input iterator, "
-				"see the ALP specification for input iterators" );
+				"see the ALP specification for input iterators"
+			);
 			typename std::iterator_traits< InputIterator >::iterator_category category;
 			return buildMatrixUniqueImpl( _start, _end, category );
 		}

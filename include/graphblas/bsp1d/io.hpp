@@ -1349,32 +1349,53 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		static_assert( is_input_iterator< InputType, fwd_iterator >::value,
+		static_assert( internal::is_input_iterator< InputType, fwd_iterator >::value,
 			"the given iterator is not a valid input iterator, "
 			"see the ALP specification for input iterators" );
 		// static checks
 		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
 			std::is_same< InputType,
-				typename is_input_iterator< InputType, fwd_iterator >::val_t >::value &&
-				std::is_integral< RIT >::value &&
-				std::is_integral< CIT >::value
+				typename internal::is_input_iterator<
+					InputType, fwd_iterator
+				>::ValueType
+			>::value &&
+			std::is_integral< RIT >::value &&
+			std::is_integral< CIT >::value
 		), "grb::buildMatrixUnique (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set"
 		);
 
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::row_t,
-			RIT >::value,
-			"cannot convert input row to internal format" );
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::col_t,
-			CIT >::value,
-			"cannot convert input column to internal format" );
-		static_assert( std::is_convertible<
-			typename is_input_iterator< InputType, fwd_iterator >::val_t,
-			InputType >::value || std::is_same< InputType, void >::value,
-			"cannot convert input value to internal format" );
+		static_assert(
+			std::is_convertible<
+				typename internal::is_input_iterator<
+					InputType, fwd_iterator
+				>::RowIndexType,
+				RIT
+			>::value,
+			"grb::buildMatrixUnique (BSP1D): cannot convert input iterator row type to "
+			"internal format"
+		);
+		static_assert(
+			std::is_convertible<
+				typename internal::is_input_iterator<
+					InputType, fwd_iterator
+				>::ColumnIndexType,
+				CIT
+			>::value,
+			"grb::buildMatrixUnique (BSP1D): cannot convert input iterator column type "
+			"to internal format"
+		);
+		static_assert(
+			std::is_convertible<
+				typename internal::is_input_iterator<
+					InputType, fwd_iterator
+				>::ValueType,
+				InputType
+			>::value || std::is_same< InputType, void >::value,
+			"grb::buildMatrixUnique (BSP1D): cannot convert input value type to "
+			"internal format"
+		);
 
 		typedef utils::NonzeroStorage< RIT, CIT, InputType > StorageType;
 
