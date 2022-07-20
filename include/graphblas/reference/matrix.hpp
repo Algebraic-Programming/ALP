@@ -694,15 +694,29 @@ namespace grb {
 			size_t &buf_size,
 			size_t &num_threads
 		) {
-			// bucket_factor further increases parallelism, which is especially important
-			// to decrease the complexity of the last step (sorting), scaling as n log n
-			constexpr size_t bucket_factor = 8;
+			// in case the global buffer already has more memory allocated than would be
+			// sufficient for us, make use of that
+			const size_t existing_buf_size = getCurrentBufferSize< size_t >();
+			const size_t luxury_bucket_factor =
+				existing_buf_size / static_cast< double >( nz );
+			const size_t luxury_num_threads = sys_threads;
+			const size_t luxury_buf_size = existing_buf_size;
+			const bool luxury_enabled = luxury_num_threads * luxury_bucket_factor >=
+				existing_buf_size / luxury_num_threads;
 
-			// maximum amout of memory we want to use: if sys_threads * sys_threads * bucket_factor > nz,
-			// we have to inevitably reduce the number of threads we may employ
+			// Ideally, we have at least one bucket per thread. However:
+			// we may consider making this configurable and so require a minimum number
+			// of buckets per threads -- but this may push memory-constrained deployments
+			// to run out of memory. That is why we keep it at one for now. Please raise
+			// an issue if you would like this functionality.
+			constexpr size_t ideal_bucket_factor = 1;
+
+			// if we do not have enough memory for either the luxury or ideal case
+			// (compared to nz to ensure memory scalability), then we must reduce the
+			// number of threads
 			const size_t max_memory = std::min(
 				nz,
-				sys_threads * sys_threads * bucket_factor
+				sys_threads * sys_threads * ideal_bucket_factor
 			);
 
 			// minimum between
@@ -717,8 +731,20 @@ namespace grb {
 			// this is the total number, so it must be multiplied by num_threads
 			buf_size = std::max(
 					max_memory / num_threads,
-					num_threads * bucket_factor
+					num_threads * ideal_bucket_factor
 				) * num_threads;
+
+			// NOTE: this buf_size may or may not be larger than existing_buf_size, in
+			//       which case the callee must resize the global buffer. (Only in the
+			//       `luxury' case are we guaranteed to not have to resize.)
+
+			// If the above selects the full number of threads *and* we are in a luxury
+			// situation with regards to the pre-existing buffer size, then use those
+			// settings instead.
+			if( num_threads == sys_threads && luxury_enabled ) {
+				buf_size = luxury_buf_size;
+				num_threads = luxury_num_threads;
+			}
 		}
 
 		/**
