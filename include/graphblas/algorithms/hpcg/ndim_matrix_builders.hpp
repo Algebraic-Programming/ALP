@@ -563,8 +563,8 @@ namespace std {
 		public:
 
 			typedef typename SelfType::ValueType value_type;
-			typedef const value_type * pointer_type;
-			typedef const value_type & reference_type;
+			typedef const value_type * pointer;
+			typedef const value_type & reference;
 			typedef size_t difference_type;
 			typedef forward_iterator_tag iterator_category;
 
@@ -583,9 +583,9 @@ namespace std {
 		public:
 
 			typedef typename SelfType::ValueType value_type;
-			typedef const value_type * pointer_type;
-			typedef const value_type & reference_type;
-			typedef size_t difference_Type;
+			typedef const value_type * pointer;
+			typedef const value_type & reference;
+			typedef size_t difference_type;
 			typedef forward_iterator_tag iterator_category;
 
 	};
