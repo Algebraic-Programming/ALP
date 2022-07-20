@@ -189,9 +189,9 @@ namespace alp {
 				typedef ImfC imf_c_type;
 				typedef MappingPolynomial mapping_polynomial_type;
 
-				const ImfR imf_r;
-				const ImfC imf_c;
-				const MappingPolynomial map_poly;
+				const imf_r_type imf_r;
+				const imf_c_type imf_c;
+				const mapping_polynomial_type map_poly;
 				const size_t storage_dimensions;
 
 			public:
@@ -266,26 +266,26 @@ namespace alp {
 			private:
 
 				/** Expose static properties */
-				typedef imf::Strided imf_r_type;
-				typedef imf::Strided imf_c_type;
-				typedef MappingPolynomial mapping_polynomial_type;
+				/** After fusing input IMFs into polynomial, the remaining IMFs are IDs */
+				typedef imf::Id imf_r_type;
+				typedef imf::Id imf_c_type;
+				/** Type of polynomial after fusing with input IMFs */
+				typedef typename Composition< imf::Strided, imf::Strided, MappingPolynomial >::type mapping_polynomial_type;
 
 				/** For size checks */
-				const imf::Strided imf_r;
-				const imf::Strided imf_c;
-				const MappingPolynomial map_poly;
-				typedef typename Composition< imf::Strided, imf::Strided, MappingPolynomial >::type Composition_type;
-				const Composition_type amf;
+				const imf_r_type imf_r;
+				const imf_c_type imf_c;
+				const mapping_polynomial_type map_poly;
 
 				const size_t storage_dimensions;
 
 				/** Returns a polynomial representing fusion of the IMFs and the original polynomial */
-				Composition_type fusion(
+				static mapping_polynomial_type fusion(
 					const imf::Strided &imf_r,
 					const imf::Strided &imf_c,
 					const MappingPolynomial &map_poly
-				) const {
-					return Composition_type(
+				) {
+					return mapping_polynomial_type(
 						map_poly.ax2 * imf_r.s * imf_r.s, // ax2 ( for x^2 )
 						map_poly.ay2 * imf_c.s * imf_c.s, // ay2 ( for y*2 )
 						map_poly.axy * imf_r.s * imf_c.s, // axy ( for x * y )
@@ -299,7 +299,10 @@ namespace alp {
 			public:
 
 				AMF( const imf::Strided &imf_r, const imf::Strided &imf_c, const MappingPolynomial &map_poly, const size_t storage_dimensions ) :
-					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), amf( fusion( imf_r, imf_c, map_poly ) ), storage_dimensions( storage_dimensions ) {
+					imf_r( imf_r.n ), // keep only the size
+					imf_c( imf_c.n ), // keep only the size
+					map_poly( AMF::fusion( imf_r, imf_c, map_poly ) ),
+					storage_dimensions( storage_dimensions ) {
 				}
 
 				std::pair< size_t, size_t> getLogicalDimensions() const {
@@ -320,7 +323,7 @@ namespace alp {
 					(void)P;
 					assert( i < imf_r.n );
 					assert( j < imf_c.n );
-					return amf.evaluate( i, j );
+					return map_poly.evaluate( i, j );
 				}
 
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
