@@ -16,8 +16,9 @@
  */
 
 /**
- * @brief utilities to store and update nonzeroes, for both value- and
- *        pattern-matrices
+ * Utilities to store and update nonzeroes, for both value and pattern
+ * ALP matrices (non-void and void matrices, resp.).
+ *
  * @author Alberto Scolari
  * @date 15/06/2022
  */
@@ -48,7 +49,9 @@ namespace grb {
 			typename ColIndexT,
 			typename ValueT
 		>
-		struct NonzeroStorage : public std::pair< std::pair< RowIndexT, ColIndexT >, ValueT > {
+		struct NonzeroStorage :
+			public std::pair< std::pair< RowIndexT, ColIndexT >, ValueT >
+		{
 
 			typedef RowIndexT RowIndexType;
 			typedef ColIndexT ColumnIndexType;
@@ -59,20 +62,28 @@ namespace grb {
 			NonzeroStorage() = default;
 
 			// rely on compiler to do copy elision
-			NonzeroStorage( RowIndexT _row, ColIndexT _col, ValueT _val ) noexcept :
+			NonzeroStorage(
+				const RowIndexT _row, const ColIndexT _col,
+				const ValueT _val
+			) noexcept :
 				std::pair< std::pair< RowIndexT, ColIndexT >, ValueT >(
 					std::make_pair( _row, _col ), _val
-				) {}
+				)
+			{}
 
 			NonzeroStorage( NonzeroStorage< RowIndexT, ColIndexT, ValueT >&& ) = default;
 
-			NonzeroStorage( const NonzeroStorage< RowIndexT, ColIndexT, ValueT >& ) = default;
+			NonzeroStorage(
+				const NonzeroStorage< RowIndexT, ColIndexT, ValueT >&
+			) = default;
 
 			NonzeroStorage< RowIndexT, ColIndexT, ValueT >& operator=(
-				NonzeroStorage< RowIndexT, ColIndexT, ValueT > && ) = default;
+				NonzeroStorage< RowIndexT, ColIndexT, ValueT > &&
+			) = default;
 
 			NonzeroStorage< RowIndexT, ColIndexT, ValueT >& operator=(
-				const NonzeroStorage< RowIndexT, ColIndexT, ValueT > & ) = default;
+				const NonzeroStorage< RowIndexT, ColIndexT, ValueT > &
+			) = default;
 
 			RowIndexT & i() { return this->first.first; }
 			const RowIndexT & i() const { return this->first.first; }
@@ -99,7 +110,9 @@ namespace grb {
 			typename RowIndexT,
 			typename ColIndexT
 		>
-		struct NonzeroStorage< RowIndexT, ColIndexT, void > : public std::pair< RowIndexT, ColIndexT > {
+		struct NonzeroStorage< RowIndexT, ColIndexT, void > :
+			public std::pair< RowIndexT, ColIndexT >
+		{
 
 			typedef RowIndexT RowIndexType;
 			typedef ColIndexT ColumnIndexType;
@@ -109,17 +122,21 @@ namespace grb {
 			NonzeroStorage() = default;
 
 			NonzeroStorage( const RowIndexT _row, const ColIndexT _col ) noexcept :
-				std::pair< RowIndexT, ColIndexT >( _row, _col ) {}
+				std::pair< RowIndexT, ColIndexT >( _row, _col )
+			{}
 
 			NonzeroStorage( NonzeroStorage< RowIndexT, ColIndexT, void >&& ) = default;
 
-			NonzeroStorage( const NonzeroStorage< RowIndexT, ColIndexT, void >& ) = default;
+			NonzeroStorage(
+				const NonzeroStorage< RowIndexT, ColIndexT, void >&
+			) = default;
 
 			NonzeroStorage< RowIndexT, ColIndexT, void >& operator=(
 				const NonzeroStorage< RowIndexT, ColIndexT, void > & ) = default;
 
 			NonzeroStorage< RowIndexT, ColIndexT, void >& operator=(
-				NonzeroStorage< RowIndexT, ColIndexT, void > && ) = default;
+				NonzeroStorage< RowIndexT, ColIndexT, void > &&
+			) = default;
 
 			RowIndexT & i() { return this->first; }
 			const RowIndexT& i() const { return this->first; }
@@ -161,14 +178,14 @@ namespace grb {
 		 * @brief makes a nonzero out of an input iterator
 		 */
 		template<
-			typename RowIndexT,
-			typename ColIndexT,
-			typename ValueT,
+			typename RowIndexT, typename ColIndexT, typename ValueT,
 			typename IterT
 		>
 		inline NonzeroStorage< RowIndexT, ColIndexT, ValueT > makeNonzeroStorage(
 			const IterT &it,
-			typename std::enable_if< iterator_has_value_method< IterT >::value, void * >::type = nullptr
+			typename std::enable_if<
+				grb::internal::iterator_has_value_method< IterT >::value, void *
+			>::type = nullptr
 		) {
 			return NonzeroStorage< RowIndexT, ColIndexT, ValueT >( it.i(), it.j(), it.v() );
 		}
@@ -184,53 +201,56 @@ namespace grb {
 		>
 		inline NonzeroStorage< RowIndexT, ColIndexT, void > makeNonzeroStorage(
 			const IterT &it,
-			typename std::enable_if< ! iterator_has_value_method< IterT >::value, void * >::type = nullptr
+			typename std::enable_if<
+				!grb::internal::iterator_has_value_method< IterT >::value, void *
+			>::type = nullptr
 		) {
 			return NonzeroStorage< RowIndexT, ColIndexT, void >( it.i(), it.j() );
 		}
 
 #ifdef _DEBUG
-		template<
-			typename R,
-			typename T,
-			typename V
-		>
-		void __val_printer(
-			std::ostream &s,
-			const NonzeroStorage< R, T, V > &nz,
-			typename std::enable_if< !std::is_same< V, void >::value >::type * = nullptr
-		) {
-			s << ": " << nz.v();
+		namespace internal {
 
-		}
+			template<
+				typename R,
+				typename T,
+				typename V
+			>
+			void val_printer(
+				std::ostream &s,
+				const NonzeroStorage< R, T, V > &nz,
+				typename std::enable_if< !std::is_same< V, void >::value >::type * = nullptr
+			) {
+				s << ": " << nz.v();
+			}
 
-		template<
-			typename R,
-			typename T,
-			typename V
-		>
-		void __val_printer(
-			std::ostream& s,
-			const NonzeroStorage< R, T, V > &nz,
-			typename std::enable_if< std::is_same< V, void >::value >::type * = nullptr
-		) {
-			(void) s;
-			(void) nz;
-		}
+			template<
+				typename R,
+				typename T,
+				typename V
+			>
+			void val_printer(
+				std::ostream& s,
+				const NonzeroStorage< R, T, V > &nz,
+				typename std::enable_if< std::is_same< V, void >::value >::type * = nullptr
+			) {
+				(void) s;
+				(void) nz;
+			}
 
-		template<
-			typename R,
-			typename T,
-			typename V
-		>
-		std::ostream& operator<<(
-			std::ostream& s,
-			const NonzeroStorage< R, T, V > &nz
-		) {
-            s << "( " << nz.i() << ", " << nz.j() << " )";
-			__val_printer( s, nz );
-            return s;
-        }
+			template<
+				typename R,
+				typename T,
+				typename V
+			>
+			std::ostream& operator<<(
+				std::ostream& s,
+				const NonzeroStorage< R, T, V > &nz
+			) {
+				s << "( " << nz.i() << ", " << nz.j() << " )";
+					val_printer( s, nz );
+				return s;
+			}
 #endif
 
 	} // namespace utils
