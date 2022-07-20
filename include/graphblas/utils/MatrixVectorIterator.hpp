@@ -585,10 +585,11 @@ namespace std {
 			public:
 
 				typedef typename SelfType::value_type value_type;
-				typedef typename SelfType::pointer_type pointer_type;
-				typedef typename SelfType::reference_type reference_type;
+				typedef typename SelfType::pointer_type pointer;
+				typedef typename SelfType::reference_type reference;
 				typedef typename SelfType::iterator_category iterator_category;
 				typedef size_t difference_type;
+
 		};
 
 } // end namespace std
