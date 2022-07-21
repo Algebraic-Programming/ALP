@@ -24,7 +24,6 @@
 #define _H_GRB_REFERENCE_IO
 
 #include <graphblas/base/io.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
 #include <graphblas/vector.hpp>
 #include <graphblas/matrix.hpp>
