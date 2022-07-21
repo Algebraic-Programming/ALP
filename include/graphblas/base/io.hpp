@@ -1388,8 +1388,11 @@ namespace grb {
 		typename utils::common_iterator_tag<
 			fwd_iterator1, fwd_iterator2, fwd_iterator3
 		>::iterator_category iterator_category;
-		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end,
-			iterator_category );
+		auto start = utils::makeSynchronized(
+			I, J, V,
+			I_end, J_end, V_end,
+			iterator_category
+		);
 		const auto end = utils::makeSynchronized(
 			I_end, J_end, V_end,
 			I_end, J_end, V_end,
