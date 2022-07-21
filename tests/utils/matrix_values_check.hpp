@@ -34,38 +34,114 @@
 
 #include <graphblas.hpp>
 #include <graphblas/type_traits.hpp>
-#include <graphblas/utils/NonzeroStorage.hpp>
+#include <graphblas/NonzeroStorage.hpp>
 
 
 namespace grb {
 
 	namespace utils {
 
-		/**
-		 * @brief class to sort nonzeroes based on a standard ordering: (ascending rows, descending columns)
-		 */
-		template<
-			typename RowT,
-			typename ColT,
-			typename ValT
-		>
-		struct __default_nz_sorter {
+		namespace internal {
 
-			inline bool operator()(
-				const grb::utils::NonzeroStorage< RowT, ColT, ValT >& a,
-				const grb::utils::NonzeroStorage< RowT, ColT, ValT >& b
-			) const {
-				if( a.i() != b.i() ) {
-					return a.i() < b.i();
+			/**
+			 * Class to sort nonzeroes based on ascending rows, descending columns.
+			 */
+			template<
+				typename RowT,
+				typename ColT,
+				typename ValT
+			>
+			struct default_nz_sorter {
+
+				inline bool operator()(
+					const grb::internal::NonzeroStorage< RowT, ColT, ValT >& a,
+					const grb::internal::NonzeroStorage< RowT, ColT, ValT >& b
+				) const {
+					if( a.i() != b.i() ) {
+						return a.i() < b.i();
+					}
+					return a.j() < b.j();
 				}
-				return a.j() < b.j();
+			};
+
+			/**
+			 * Whether two values of input iterators are equal.
+			 */
+			template<
+				typename ValT,
+				typename MatIterT,
+				typename OrigIterT
+			>
+			inline bool compare_values(
+				const MatIterT& a,
+				const OrigIterT& b,
+				typename std::enable_if< !std::is_same< ValT, void >::value >::type* =
+					nullptr
+			) {
+				static_assert( grb::internal::is_input_iterator< ValT, decltype( a )>::value,
+					"MatIterT does not have {i,j,v}() interface" );
+				static_assert( grb::internal::is_input_iterator< ValT, decltype( b )>::value,
+					"MatIterT does not have {i,j,v}() interface" );
+				return a.v() == b.v();
 			}
-		};
+
+			/**
+			 * Returns value equality for pattern-matrix input iterator, which is defined
+			 * as true always.
+			 */
+			template<
+				typename ValT,
+				typename MatIterT,
+				typename OrigIterT
+			>
+			inline bool compare_values(
+				const MatIterT& a,
+				const OrigIterT& b,
+				typename std::enable_if< std::is_same< ValT, void >::value >::type* =
+					nullptr
+			) {
+				(void)a;
+				(void)b;
+				return true;
+			}
+
+			/**
+			 * Extracts the value to print from the given input iterator.
+			 */
+			template<
+				typename ValT,
+				typename IterT
+			>
+			inline ValT get_value(
+				const IterT& a,
+				typename std::enable_if< !std::is_same< ValT, void >::value >::type* =
+					nullptr
+			) {
+				return a.v();
+			}
+
+			/**
+			 * Extracts the value to print from the given input iterator, for pattern
+			 * matrices.
+			 */
+			template<
+				typename ValT,
+				typename IterT
+			>
+			inline char get_value(
+				const IterT& a,
+				typename std::enable_if< std::is_same< ValT, void >::value >::type* =
+					nullptr
+			) {
+				(void)a;
+				return '\0'; // print nothing
+			}
+
+		} // end namespace grb::utils::internal
 
 		/**
-		 * @brief sorts nonzeroes in-place according to the sorting criterion
-		 * 	implemented in __default_nz_sorter. The boundaries are passed via
-		 * 	random access iterators.
+		 * Sorts nonzeroes in-place according to the sorting criterion implemented in
+		 * default_nz_sorter. The boundaries are passed via random access iterators.
 		 */
 		template<
 			typename RowT,
@@ -77,15 +153,18 @@ namespace grb {
 			IterT begin,
 			IterT end
 		) {
-			static_assert( std::is_move_assignable< decltype( *begin ) >::value, "*IterT must be move-assignable");
-			static_assert( std::is_move_constructible< decltype( *begin ) >::value, "*IterT must be move-constructible");
-			__default_nz_sorter< RowT, ColT, ValT > s;
+			static_assert( std::is_move_assignable< decltype( *begin ) >::value,
+				"*IterT must be move-assignable");
+			static_assert( std::is_move_constructible< decltype( *begin ) >::value,
+				"*IterT must be move-constructible");
+			internal::default_nz_sorter< RowT, ColT, ValT > s;
 			std::sort( begin, end, s );
 		}
 
 		/**
-		 * @brief extracts all the nonzeroes from matrix \p mat and stores them
-		 * 	into  \p values. For value matrices.
+		 * Extracts all the nonzeroes from matrix \a mat and stores them in \a values.
+		 *
+		 * This is the value (non-pattern) variant.
 		 */
 		template<
 			typename RowT,
@@ -94,21 +173,23 @@ namespace grb {
 			enum Backend implementation
 		>
 		void get_matrix_nnz(
-			const Matrix< ValT, implementation >& mat,
-			std::vector< grb::utils::NonzeroStorage< RowT, ColT, ValT > >& values,
-			typename std::enable_if< ! std::is_same< ValT, void >::value >::type* = nullptr
+			const Matrix< ValT, implementation > &mat,
+			std::vector< grb::internal::NonzeroStorage< RowT, ColT, ValT > > &values,
+			typename std::enable_if< !std::is_same< ValT, void >::value >::type* =
+				nullptr
 		) {
 			auto beg1( mat.cbegin() );
 			auto end1( mat.cend() );
 			for( ; beg1 != end1; ++beg1 ) {
 				values.emplace_back( beg1->first.first, beg1->first.second, beg1->second );
 			}
-
 		}
 
 		/**
-		 * @brief extracts all the nonzeroes from matrix \p mat and stores them
-		 * 	into  \p values. For pattern matrices.
+		 * Extracts all the nonzeroes from matrix \a mat and stores them in
+		 * \a values.
+		 *
+		 * Pattern matrix variant.
 		 */
 		template<
 			typename RowT,
@@ -117,9 +198,10 @@ namespace grb {
 			enum Backend implementation
 		>
 		void get_matrix_nnz(
-			const Matrix< ValT, implementation >& mat,
-			std::vector< grb::utils::NonzeroStorage< RowT, ColT, ValT > >& values,
-			typename std::enable_if< std::is_same< ValT, void >::value >::type* = nullptr
+			const Matrix< ValT, implementation > &mat,
+			std::vector< grb::internal::NonzeroStorage< RowT, ColT, ValT > > &values,
+			typename std::enable_if< std::is_same< ValT, void >::value >::type* =
+				nullptr
 		) {
 			auto beg1( mat.cbegin() );
 			auto end1( mat.cend() );
@@ -129,92 +211,29 @@ namespace grb {
 		}
 
 		/**
-		 * @brief returns value equality for value-matrix input iterator.
-		 */
-		template<
-			typename ValT,
-			typename MatIterT,
-			typename OrigIterT
-		>
-		inline bool __compare_values(
-			const MatIterT& a,
-			const OrigIterT& b,
-			typename std::enable_if< ! std::is_same< ValT, void >::value >::type* = nullptr
-		) {
-			static_assert( grb::internal::is_input_iterator< ValT, decltype( a )>::value, "MatIterT does not have {i,j,v}() interface" );
-			static_assert( grb::internal::is_input_iterator< ValT, decltype( b )>::value, "MatIterT does not have {i,j,v}() interface" );
-			return a.v() == b.v();
-		}
-
-		/**
-		 * @brief returns value equality for pattern-matrix input iterator.
-		 * 	It is always true.
-		 */
-		template<
-			typename ValT,
-			typename MatIterT,
-			typename OrigIterT
-		>
-		inline bool __compare_values(
-			const MatIterT& a,
-			const OrigIterT& b,
-			typename std::enable_if< std::is_same< ValT, void >::value >::type* = nullptr
-		) {
-			(void)a;
-			(void)b;
-			return true;
-		}
-
-		/**
-		 * @brief extracts the value to print from the given input iterator.
-		 */
-		template<
-			typename ValT,
-			typename IterT
-		>
-		inline ValT __get_value(
-			const IterT& a,
-			typename std::enable_if< ! std::is_same< ValT, void >::value >::type* = nullptr
-		) {
-			return a.v();
-		}
-
-		/**
-		 * @brief extracts the value to print from the given input iterator, for
-		 * 	pattern matrices.
-		 */
-		template<
-			typename ValT,
-			typename IterT
-		>
-		inline char __get_value(
-			const IterT& a,
-			typename std::enable_if< std::is_same< ValT, void >::value >::type* = nullptr
-		) {
-			(void)a;
-			return '\0'; // print nothing
-		}
-
-		/**
-		 * @brief compares two sequences of nonzeroes via the input iterators of
-		 * 	the respective containers, both sequences passed via beginnin and end
-		 * 	iterator. The nonzeroes of both sequences MUST ALREADY BE SORTED
-		 * 	according to the same ordering. The iterators must implement the {i,j,v}()
-		 * 	interface.
+		 * Compares two sequences of nonzeroes via the input iterators of
+		 * the respective containers.
 		 *
-		 * @tparam ValT value type
-		 * @tparam MatIterT iterator type for the first sequence
+		 * Both sequences are passed via begin and end iterator. The nonzeroes of
+		 * both sequences MUST ALREADY BE SORTED according to the same ordering.
+		 * The iterators must implement the {i,j,v}() interface.
+		 *
+		 * @tparam ValT      value type
+		 * @tparam MatIterT  iterator type for the first sequence
 		 * @tparam OrigIterT iterator type for the second sequence
-		 * @tparam implementation ALp backend
+		 *
+		 * @tparam implementation ALP backend
+		 *
 		 * @param nrows number of rows of the original matrix
 		 * @param mat_begin beginning iterator for the first sequence
 		 * @param mat_end end iterator for the first sequence
 		 * @param origin_begin beginning iterator for the second sequence
 		 * @param origin_end end iterator for the second sequence
 		 * @param counted_values number of values being checked, i.e. minimum
-		 * 	between the length of the two sequences
+		 *                       between the length of the two sequences
 		 * @param outs ostream to print to
 		 * @param log_all_differences whether to print all differences
+		 *
 		 * @return true if all nonzeroes are equal, i.e. have the same number of
 		 * 	elements, in the same order and with equal values
 		 * @return false if any of the above conditions is not met
@@ -248,37 +267,40 @@ namespace grb {
 
 			while( mat_begin != mat_end && origin_begin != origin_end ) {
 				if( ::grb::internal::Distribution< implementation >::global_index_to_process_id(
-						origin_begin.i(), nrows, nprocs ) != pid ) {
+					origin_begin.i(), nrows, nprocs ) != pid
+				) {
 					// skip non-local non-zeroes
 					(void)++origin_begin;
 					continue;
 				}
-				(void)counted++;
+				(void) counted++;
 				const bool row_eq = mat_begin.i() == origin_begin.i();
 				const bool col_eq = mat_begin.j() == origin_begin.j();
-				const bool val_eq = __compare_values< ValT >( mat_begin, origin_begin );
+				const bool val_eq = internal::compare_values< ValT >( mat_begin, origin_begin );
 
 				const bool all_match = row_eq && col_eq && val_eq;
 				result &= all_match;
-				if( ! all_match && log_all_differences ) {
-					outs << "-- different nz, matrix (" << mat_begin.i() << ", " << mat_begin.j() << ")";
-					if( ! std::is_same< ValT, void >::value ) {
-						outs << ": " << __get_value< ValT >( mat_begin );
+				if( !all_match && log_all_differences ) {
+					outs << "-- different nz, matrix (" << mat_begin.i() << ", "
+						<< mat_begin.j() << ")";
+					if( !std::is_same< ValT, void >::value ) {
+						outs << ": " << internal::get_value< ValT >( mat_begin );
 					}
-					outs << ", original (" << origin_begin.i() << ", " << origin_begin.j() << ")";
-					if( ! std::is_same< ValT, void >::value ) {
-						outs << ": " << __get_value< ValT >( origin_begin );
+					outs << ", original (" << origin_begin.i() << ", " << origin_begin.j()
+						<< ")";
+					if( !std::is_same< ValT, void >::value ) {
+						outs << ": " << internal::get_value< ValT >( origin_begin );
 					}
 					outs << std::endl;
 				}
-				(void)++origin_begin;
-				(void)++mat_begin;
+				(void) ++origin_begin;
+				(void) ++mat_begin;
 			}
 			counted_values = counted;
 			return result;
 		}
 
-	} // namespace utils
+	} // namespace grb::utils
 
 } // namespace grb
 

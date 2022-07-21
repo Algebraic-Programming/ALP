@@ -33,13 +33,13 @@
 #endif
 
 #include "graphblas/blas1.hpp"                 // for grb::size
+#include <graphblas/NonzeroStorage.hpp>
 #include "graphblas/utils/NonzeroIterator.hpp" // for transforming an std::vector::iterator
                                                // into an ALP/GraphBLAS-compatible iterator
 #include <graphblas/utils/pattern.hpp>         // for handling pattern input
 #include <graphblas/base/io.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include <graphblas/utils/NonzeroStorage.hpp>
 #include <graphblas/utils/input_iterator_utils.hpp>
 
 #include "lpf/core.h"
@@ -791,7 +791,10 @@ namespace grb {
 	) {
 		// static checks
 		NO_CAST_ASSERT( (!(descr & descriptors::no_casting) ||
-				std::is_same< InputType, typename std::iterator_traits< fwd_iterator >::value_type >::value
+				std::is_same<
+					InputType,
+					typename std::iterator_traits< fwd_iterator >::value_type
+				>::value
 			), "grb::buildVector (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set"
@@ -883,7 +886,8 @@ namespace grb {
 		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
 		typename Coords, class Dup = operators::right_assign< InputType >
 	>
-	RC buildVector( Vector< InputType, BSP1D, Coords > &x,
+	RC buildVector(
+		Vector< InputType, BSP1D, Coords > &x,
 		fwd_iterator1 ind_start,
 		const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start,
@@ -893,31 +897,40 @@ namespace grb {
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
+				std::is_same<
+					InputType,
+					decltype( *std::declval< fwd_iterator2 >() )
+				>::value ||
 				std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value
 			), "grb::buildVector (BSP1D implementation)",
 			"Input iterator does not match output vector type while no_casting "
 			"descriptor was set" );
 
 		// get access to user process data on s and P
-		const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 
-		// sequential case first. This one is easier as it simply discards input iterator elements
-		// whenever they are not local
+		// sequential case first. This one is easier as it simply discards input
+		// iterator elements whenever they are not local
 		if( mode == SEQUENTIAL ) {
 #ifdef _DEBUG
-			std::cout << "buildVector< BSP1D > called, index + value "
-						 "iterators, SEQUENTIAL mode\n";
+			std::cout << "buildVector< BSP1D > called, index + value iterators, "
+				<< "SEQUENTIAL mode\n";
 #endif
 
-			// sequential mode is not performant anyway, so let us just rely on the reference
-			// implementation of the buildVector routine for Vector< InputType, reference >.
+			// sequential mode is not performant anyway, so let us just rely on the
+			// reference implementation of the buildVector routine for
+			// Vector< InputType, reference >.
 			std::vector< InputType > value_cache;
-			std::vector< typename std::iterator_traits< fwd_iterator1 >::value_type > index_cache;
+			std::vector<
+				typename std::iterator_traits< fwd_iterator1 >::value_type
+			> index_cache;
 			const size_t n = grb::size( x );
 
 			// loop over all input
-			for( ; ind_start != ind_end && val_start != val_end; ++ind_start, ++val_start ) {
+			for( ;
+				ind_start != ind_end && val_start != val_end;
+				++ind_start, ++val_start
+			) {
 
 				// sanity check on input
 				if( *ind_start >= n ) {
@@ -945,7 +958,8 @@ namespace grb {
 #endif
 				} else {
 #ifdef _DEBUG
-					std::cout << "\t remote nonzero at " << ( *ind_start ) << " will be skipped.\n";
+					std::cout << "\t remote nonzero at " << ( *ind_start )
+						<< " will be skipped.\n";
 #endif
 				}
 			}
@@ -1005,8 +1019,12 @@ namespace grb {
 				const IOMode mode,
 				const size_t &rows,
 				const size_t &cols,
-				std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
-				std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
+				std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+				std::vector<
+					std::vector<
+						internal::NonzeroStorage< IType, JType, VType >
+					>
+				> &outgoing,
 				const BSP1D_Data &data
 		) {
 			// compute process-local indices (even if remote, for code readability)
@@ -1037,10 +1055,10 @@ namespace grb {
 			if( row_pid == data.s ) {
 				// push into cache
 				cache.emplace_back(
-					utils::makeNonzeroStorage< IType, JType, VType >( start )
+					internal::makeNonzeroStorage< IType, JType, VType >( start )
 				);
 				// translate nonzero
-				utils::updateNonzeroCoordinates(
+				internal::updateNonzeroCoordinates(
 					cache.back(),
 					row_local_index,
 					column_offset + column_local_index
@@ -1059,11 +1077,11 @@ namespace grb {
 #endif
 				// send original nonzero to remote owner
 				outgoing[ row_pid ].emplace_back(
-					utils::makeNonzeroStorage< IType, JType, VType >( start )
+					internal::makeNonzeroStorage< IType, JType, VType >( start )
 				);
 				// translate nonzero here instead of at
 				// destination for brevity / code readibility
-				utils::updateNonzeroCoordinates(
+				internal::updateNonzeroCoordinates(
 					outgoing[ row_pid ].back(),
 					row_local_index, column_offset + column_local_index
 				);
@@ -1091,10 +1109,10 @@ namespace grb {
 			const IOMode mode,
 			const size_t &rows,
 			const size_t &cols,
-			std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
 			std::vector<
 				std::vector<
-					utils::NonzeroStorage< IType, JType, VType >
+					internal::NonzeroStorage< IType, JType, VType >
 				>
 			> &outgoing,
 			const BSP1D_Data &data,
@@ -1128,8 +1146,8 @@ namespace grb {
 			fwd_iterator &start, const fwd_iterator &end,
 			const IOMode mode,
 			const size_t &rows, const size_t &cols,
-			std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
-			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > &outgoing,
+			std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector< std::vector< internal::NonzeroStorage< IType, JType, VType > > > &outgoing,
 			const BSP1D_Data &data,
 			// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
 			typename std::enable_if<
@@ -1141,7 +1159,7 @@ namespace grb {
 				std::random_access_iterator_tag
 			>::type
 		) {
-			typedef utils::NonzeroStorage< IType, JType, VType > StorageType;
+			typedef internal::NonzeroStorage< IType, JType, VType > StorageType;
 
 			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );
 			const std::unique_ptr< std::vector< std::vector< StorageType > >[] > parallel_non_zeroes(
@@ -1211,8 +1229,8 @@ namespace grb {
 			outgoing.resize( data.P );
 
 			// using pointers to prevent OMP from invoking copy constructors to pass output containers to threads
-			std::vector< std::vector< utils::NonzeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
-			std::vector< utils::NonzeroStorage< IType, JType, VType > > *cache_ptr = &cache;
+			std::vector< std::vector< internal::NonzeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
+			std::vector< internal::NonzeroStorage< IType, JType, VType > > *cache_ptr = &cache;
 			size_t pid_nnz = 0;
 
 			// merge data: each thread merges the data for each process into the destination arrays
@@ -1317,10 +1335,10 @@ namespace grb {
 				fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
 				const size_t &rows, const size_t &cols,
-				std::vector< utils::NonzeroStorage< IType, JType, VType > > &cache,
+				std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
 				std::vector<
 					std::vector<
-						utils::NonzeroStorage< IType, JType, VType >
+						internal::NonzeroStorage< IType, JType, VType >
 					>
 				> &outgoing,
 				const BSP1D_Data &data
@@ -1397,7 +1415,7 @@ namespace grb {
 			"internal format"
 		);
 
-		typedef utils::NonzeroStorage< RIT, CIT, InputType > StorageType;
+		typedef internal::NonzeroStorage< RIT, CIT, InputType > StorageType;
 
 		// get access to user process data on s and P
 		internal::BSP1D_Data &data = internal::grb_BSP1D.load();

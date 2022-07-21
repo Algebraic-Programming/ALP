@@ -24,7 +24,7 @@
 
 #include <graphblas.hpp>
 #include <graphblas/utils.hpp> // grb::equals
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/SynchronizedNonzeroIterator.hpp>
 
 
 #include <utils/matrix_values_check.hpp>
@@ -68,7 +68,7 @@ RC test_matrix_iter(
 	OrigIterT orig_begin, OrigIterT orig_end,
 	size_t row_col_offset, const Matrix< ValT > &mat
 ) {
-	using NZC = utils::NonzeroStorage< size_t, size_t, ValT >;
+	using NZC = internal::NonzeroStorage< size_t, size_t, ValT >;
 	std::vector< NZC > mat_values;
 	utils::get_matrix_nnz( mat, mat_values );
 	utils::row_col_nz_sort< size_t, size_t, ValT >( mat_values.begin(),
@@ -127,8 +127,8 @@ RC test_matrix(
 	size_t num_nnz, const size_t * rows, const size_t * cols,
 	const ValT * values, size_t row_col_offset, const Matrix< ValT > &mat
 ) {
-	auto orig_begin = utils::makeSynchronized( rows, cols, values, num_nnz );
-	auto orig_end = utils::makeSynchronized( rows + num_nnz, cols + num_nnz,
+	auto orig_begin = internal::makeSynchronized( rows, cols, values, num_nnz );
+	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz,
 		values + num_nnz, 0 );
 	return test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
 }
@@ -138,8 +138,8 @@ RC test_matrix(
 	size_t num_nnz, const size_t * rows, const size_t * cols,
 	size_t row_col_offset, const Matrix< ValT > &mat
 ) {
-	auto orig_begin = utils::makeSynchronized( rows, cols, num_nnz );
-	auto orig_end = utils::makeSynchronized( rows + num_nnz, cols + num_nnz, 0 );
+	auto orig_begin = internal::makeSynchronized( rows, cols, num_nnz );
+	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz, 0 );
 	return test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
 }
 
@@ -222,7 +222,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 }
 
 int main( int argc, char ** argv ) {
-
 	// defaults
 	bool printUsage = false;
 	size_t in = 100;
