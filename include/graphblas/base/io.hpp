@@ -29,7 +29,7 @@
 #include <graphblas/rc.hpp>
 #include <graphblas/phase.hpp>
 #include <graphblas/iomode.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/SynchronizedNonzeroIterator.hpp>
 #include <graphblas/utils/iterators/type_traits.hpp>
 
 #include "matrix.hpp"
@@ -1388,12 +1388,12 @@ namespace grb {
 		typename utils::common_iterator_tag<
 			fwd_iterator1, fwd_iterator2, fwd_iterator3
 		>::iterator_category iterator_category;
-		auto start = utils::makeSynchronized(
+		auto start = internal::makeSynchronized(
 			I, J, V,
 			I_end, J_end, V_end,
 			iterator_category
 		);
-		const auto end = utils::makeSynchronized(
+		const auto end = internal::makeSynchronized(
 			I_end, J_end, V_end,
 			I_end, J_end, V_end,
 			iterator_category
@@ -1446,8 +1446,8 @@ namespace grb {
 		const length_type nz, const IOMode mode
 	) {
 		// derive synchronized iterator
-		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
-		const auto end = utils::makeSynchronized(
+		auto start = internal::makeSynchronized( I, J, I + nz, J + nz );
+		const auto end = internal::makeSynchronized(
 			I + nz, J + nz, I + nz, J + nz );
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
