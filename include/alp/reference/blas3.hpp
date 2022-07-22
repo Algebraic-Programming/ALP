@@ -1151,10 +1151,14 @@ namespace alp {
 			"called with a postfactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 
-		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > lambda =
+		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], y[ j ], mul );
+			};
+		std::function< bool() > init_lambda =
+			[ &x, &y ]() -> bool {
+				return internal::getInitialized( x ) && internal::getInitialized( y );
 			};
 		
 		return Matrix<
@@ -1165,10 +1169,10 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
-				internal::getInitialized( x ) && internal::getInitialized( y ), // Temporary solution, pending proper implemention
+				init_lambda,
 				getLength( x ),
 				getLength( y ),
-				lambda
+				data_lambda
 			);
 
 	}
@@ -1202,10 +1206,14 @@ namespace alp {
 			"called with a prefactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 
-		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > lambda =
+		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
 				internal::apply( result, x[ i ], x[ j ], mul );
+			};
+		std::function< bool() > init_lambda =
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
 			};
 		
 		return Matrix<
@@ -1216,9 +1224,9 @@ namespace alp {
 			imf::Id, imf::Id,
 			reference
 			>(
-				internal::getInitialized( x ),
+				init_lambda,
 				getLength( x ),
-				lambda
+				data_lambda
 			);
 
 	}

@@ -142,15 +142,16 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	alp::Vector< T > v( n );
 	alp::Matrix< T, alp::structures::General > M( m, n );
 
+	// Example with matrix view on a lambda function.
+	// Create before building vector to test functor init status mechanism
+	auto uvT = alp::outer( u, v, ring.getMultiplicativeOperator() );
+
+	std::cout << "Is uvt initialized before initializing source containers? " << alp::internal::getInitialized( uvT ) << "\n";
+
 	alp::buildVector( u, u_data.begin(), u_data.end() );
 	alp::buildVector( v, v_data.begin(), v_data.end() );
 
-	// Example with storage-based matrix
-	rc = alp::outer( M, u, v, ring.getMultiplicativeOperator() );
-
-	// Example with matrix view on a lambda function.
-	auto uvT = alp::outer( u, v, ring.getMultiplicativeOperator() );
-	print_matrix( "uvT", uvT );
+	std::cout << "Is uvT initialized after initializing source containers? " << alp::internal::getInitialized( uvT ) << "\n";
 
 	std::vector< T > uvT_test( m * n, zero );
 	outer_stdvec_as_matrix( uvT_test, n, u_data, v_data, m, n, ring.getMultiplicativeOperator() );
@@ -164,6 +165,9 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	std::vector< T > vvT_test( n * n, zero );
 	outer_stdvec_as_matrix( vvT_test, n, v_data, v_data, n, n, ring.getMultiplicativeOperator() );
 	diff_stdvec_matrix( vvT_test, n, n, n, vvT );
+
+	// Example with storage-based matrix
+	rc = alp::outer( M, u, v, ring.getMultiplicativeOperator() );
 
 }
 

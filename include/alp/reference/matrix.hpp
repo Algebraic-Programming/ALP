@@ -367,7 +367,7 @@ namespace alp {
 		class StorageBasedMatrix;
 
 		/** Forward declaration */
-		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
+		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
 		class FunctorBasedMatrix;
 
 		/** Container reference getters used by friend functions of specialized Matrix */
@@ -393,8 +393,8 @@ namespace alp {
 		}
 
 		/** Functor reference getter used by friend functions of specialized Matrix */
-		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
-		const typename FunctorBasedMatrix< T, ImfR, ImfC, LambdaType >::functor_type &getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > &A );
+		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
+		const typename FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType >::functor_type &getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType > &A );
 
 		/**
 		 * Getter for the functor of a functor-based matrix.
@@ -667,8 +667,8 @@ namespace alp {
 		 *       to matrix elements, which is not exposed to the user.
 		 *
 		 */
-		template< typename T, typename ImfR, typename ImfC, typename LambdaType >
-		class FunctorBasedMatrix : public MatrixBase< FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > > {
+		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
+		class FunctorBasedMatrix : public MatrixBase< FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType > > {
 			public:
 
 				/** Expose static properties */
@@ -680,26 +680,27 @@ namespace alp {
 
 			protected:
 
-				typedef FunctorBasedMatrix< T, ImfR, ImfC, LambdaType > self_type;
+				typedef FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType > self_type;
 				friend MatrixBase< self_type >;
 
-				const bool initialized; // Temporary solution, proper implementation pending
+				typedef std::function< bool() > initialized_functor_type;
+				const initialized_functor_type initialized_lambda;
 
 				const ImfR imf_r;
 				const ImfC imf_c;
 
-				const LambdaType lambda;
+				const DataLambdaType data_lambda;
 
 				std::pair< size_t, size_t > dims() const noexcept {
 					return std::make_pair( imf_r.n, imf_c.n );
 				}
 
-				const LambdaType &getFunctor() const noexcept {
-					return lambda;
+				const DataLambdaType &getFunctor() const noexcept {
+					return data_lambda;
 				}
 
 				bool getInitialized() const noexcept {
-					return initialized;
+					return initialized_lambda();
 				}
 
 				void setInitialized( const bool ) noexcept {
@@ -708,7 +709,7 @@ namespace alp {
 
 				access_type access( const storage_index_type &storage_index ) const {
 					T result = 0;
-					lambda( result, imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
+					data_lambda( result, imf_r.map( storage_index.first ), imf_c.map( storage_index.second ) );
 					return static_cast< access_type >( result );
 				}
 
@@ -721,15 +722,15 @@ namespace alp {
 			public:
 
 				FunctorBasedMatrix(
-					const bool initialized,
+					initialized_functor_type initialized_lambda,
 					ImfR imf_r,
 					ImfC imf_c,
-					const LambdaType lambda
+					const DataLambdaType data_lambda
 				) :
-					initialized( initialized ),
+					initialized_lambda( initialized_lambda ),
 					imf_r( imf_r ),
 					imf_c( imf_c ),
-					lambda( lambda ) {}
+					data_lambda( data_lambda ) {}
 
 		}; // class FunctorBasedMatrix
 	} // namespace internal
@@ -940,7 +941,7 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
+			Matrix( std::function< bool() > initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
 
 			/**
@@ -1288,7 +1289,7 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
 
 			/**
