@@ -121,15 +121,6 @@ namespace alp {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
 			}
 
-			/**
-			 * Exposes the polynomial type that is a result of swapping x and y
-			 * coefficients of the provided polynomial type.
-			 */
-			template< typename Polynomial >
-			struct swap_x_y_coefficients {
-				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
-			};
-
 			template< enum view::Views view, typename Polynomial >
 			struct apply_view {};
 
@@ -466,10 +457,13 @@ namespace alp {
 					AMF<
 						typename AMFType::imf_c_type,
 						typename AMFType::imf_r_type,
-						typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type
+						typename polynomials::apply_view<
+							view::Views::transpose,
+							typename AMFType::mapping_polynomial_type
+						>::type
 					>
 					Create( const AMFType &amf ) {
-						typedef typename polynomials::swap_x_y_coefficients< typename AMFType::mapping_polynomial_type >::type new_mapping_polynomial_type;
+						typedef typename polynomials::apply_view< view::Views::transpose, typename AMFType::mapping_polynomial_type >::type new_mapping_polynomial_type;
 						return AMF<
 							typename AMFType::imf_c_type,
 							typename AMFType::imf_r_type,
