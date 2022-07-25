@@ -36,15 +36,30 @@ namespace alp {
 
 	namespace view {
 
+		/**
+		 * Lists the view types exposed to the user.
+		 *
+		 * \note View type "_internal" shall not be used by the user and
+		 *       its use may result in an undefined behaviour.
+		 *
+		 * \note \internal "_internal" value is added so that all view types have
+		 *                 a defined type_id field, which is used by internal
+		 *                 type traits.
+		 *
+		 */
 		enum Views {
 			original,
 			transpose,
-			diagonal
+			diagonal,
+			_internal
 		};
+
 		template< typename OriginalType >
 		struct Original {
 
 			using applied_to = OriginalType;
+
+			static constexpr Views type_id = Views::original;
 
 			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.first, dims_pair.second );
@@ -56,6 +71,8 @@ namespace alp {
 
 			using applied_to = OriginalType;
 
+			static constexpr Views type_id = Views::transpose;
+
 			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.second, dims_pair.first );
 			}
@@ -66,6 +83,8 @@ namespace alp {
 
 			using applied_to = OriginalType;
 
+			static constexpr Views type_id = Views::diagonal;
+
 			static size_t getLength( std::pair< size_t, size_t > dims_pair ) {
 				return std::min( dims_pair.first, dims_pair.second );
 			}
@@ -75,6 +94,9 @@ namespace alp {
 		struct Functor {
 
 			using applied_to = LambdaFunctionType;
+
+			/** Functor views are not exposed to the user */
+			static constexpr Views type_id = Views::_internal;
 
 			static std::pair< size_t, size_t > getLength( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.first, dims_pair.second );

@@ -64,11 +64,23 @@ namespace alp {
 			 * @tparam A0   Static coefficient corresponding to constant term
 			 * @tparam Denominator  Static denominator dividing the whole polynomial
 			 */
-			template< size_t Ax2, size_t Ay2, size_t Axy, size_t Ax, size_t Ay, size_t A0, size_t Denominator >
+			template<
+				size_t coeffAx2, size_t coeffAy2, size_t coeffAxy,
+				size_t coeffAx, size_t coeffAy,
+				size_t coeffA0,
+				size_t Denominator
+			>
 			struct BivariateQuadratic {
 
 				static_assert( Denominator != 0, "Denominator cannot be zero (division by zero).");
 
+				static constexpr size_t Ax2 = coeffAx2;
+				static constexpr size_t Ay2 = coeffAy2;
+				static constexpr size_t Axy = coeffAxy;
+				static constexpr size_t Ax  = coeffAx;
+				static constexpr size_t Ay  = coeffAy;
+				static constexpr size_t A0  = coeffA0;
+				static constexpr size_t D   = Denominator;
 				const size_t ax2, ay2, axy, ax, ay, a0;
 
 				BivariateQuadratic(
@@ -85,7 +97,7 @@ namespace alp {
 						Axy * axy * x * y +
 						Ax * ax * x +
 						Ay * ay * y +
-						A0 * a0) / Denominator;
+						A0 * a0) / D;
 				}
 
 			}; // BivariateQuadratic
@@ -108,6 +120,29 @@ namespace alp {
 			Full_type Create< Full_type >( size_t dim ) {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
 			}
+
+			template< enum view::Views view, typename Polynomial >
+			struct apply_view {};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::original, Polynomial > {
+				typedef Polynomial type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::transpose, Polynomial > {
+				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::diagonal, Polynomial > {
+				typedef Polynomial type;
+			};
+
+			template< typename Polynomial >
+			struct apply_view< view::Views::_internal, Polynomial > {
+				typedef None_type type;
+			};
 
 		}; // namespace polynomials
 
@@ -149,6 +184,11 @@ namespace alp {
 
 			private:
 
+				/** Expose static properties */
+				typedef ImfR imf_r_type;
+				typedef ImfC imf_c_type;
+				typedef MappingPolynomial mapping_polynomial_type;
+
 				const ImfR imf_r;
 				const ImfC imf_c;
 				const MappingPolynomial map_poly;
@@ -156,7 +196,7 @@ namespace alp {
 
 			public:
 
-				AMF( ImfR &&imf_r, ImfC &&imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
+				AMF( ImfR imf_r, ImfC imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
 					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), storage_dimensions( storage_dimensions ) {}
 
 				/**
@@ -224,6 +264,11 @@ namespace alp {
 			friend AMFFactory;
 
 			private:
+
+				/** Expose static properties */
+				typedef imf::Strided imf_r_type;
+				typedef imf::Strided imf_c_type;
+				typedef MappingPolynomial mapping_polynomial_type;
 
 				/** For size checks */
 				const imf::Strided imf_r;
@@ -326,6 +371,125 @@ namespace alp {
 						original_amf.storage_dimensions
 					);
 				}
+
+				/**
+				 * Exposes the type of AMF resulting from applying the provided
+				 * view on the provided AMF type.
+				 */
+				template<
+					enum view::Views view,
+					typename Amf,
+					typename ImfR = typename Amf::imf_r_type,
+					typename ImfC = typename Amf::imf_c_type,
+					typename MappingPolynomial = typename Amf::mapping_polynomial_type
+				>
+				struct apply_view {};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::original, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfR,
+						ImfC,
+						typename polynomials::apply_view< view::Views::original, MappingPolynomial >::type
+					> type;
+				};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::transpose, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfC,
+						ImfR,
+						typename polynomials::apply_view< view::Views::transpose, MappingPolynomial >::type
+					> type;
+				};
+
+				template<
+					typename Amf,
+					typename ImfR,
+					typename ImfC,
+					typename MappingPolynomial
+				>
+				struct apply_view< view::Views::diagonal, Amf, ImfR, ImfC, MappingPolynomial > {
+					typedef AMF<
+						ImfR,
+						ImfC,
+						typename polynomials::apply_view< view::Views::diagonal, MappingPolynomial >::type
+					> type;
+				};
+
+				template< enum view::Views view, typename AMFType >
+				struct Transform {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						throw std::invalid_argument( "Not implemented for the provided view type." );
+						return amf;
+					}
+
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::original, AMFType > {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						return amf;
+					}
+
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::transpose, AMFType > {
+
+					static
+					AMF<
+						typename AMFType::imf_c_type,
+						typename AMFType::imf_r_type,
+						typename polynomials::apply_view<
+							view::Views::transpose,
+							typename AMFType::mapping_polynomial_type
+						>::type
+					>
+					Create( const AMFType &amf ) {
+						typedef typename polynomials::apply_view< view::Views::transpose, typename AMFType::mapping_polynomial_type >::type new_mapping_polynomial_type;
+						return AMF<
+							typename AMFType::imf_c_type,
+							typename AMFType::imf_r_type,
+							new_mapping_polynomial_type
+						>(
+							amf.imf_c,
+							amf.imf_r,
+							new_mapping_polynomial_type(
+								amf.map_poly.ay2, amf.map_poly.ax2, amf.map_poly.axy,
+								amf.map_poly.ay, amf.map_poly.ax,
+								amf.map_poly.a0
+							),
+							amf.storage_dimensions
+						);
+					}
+				};
+
+				template< typename AMFType >
+				struct Transform< view::Views::diagonal, AMFType > {
+
+					static
+					AMFType
+					Create( const AMFType &amf ) {
+						return amf;
+					}
+				};
 
 		}; // class AMFFactory
 

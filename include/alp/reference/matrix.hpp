@@ -528,6 +528,8 @@ namespace alp {
 				/** Expose static properties */
 
 				typedef T value_type;
+				typedef ImfR imf_r_type;
+				typedef ImfC imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */
@@ -799,7 +801,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -823,7 +827,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -928,6 +932,26 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
 			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					amf
+				) {}
+
+			/**
 			 * Constructor for a functor-based matrix that allocates memory.
 			 *
 			 * @tparam ViewType A dummy type.
@@ -993,7 +1017,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1017,7 +1043,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1110,6 +1136,26 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
 			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					amf
+				) {}
+
+			/**
 			 * Constructor for a functor-based matrix that allocates memory.
 			 */
 			template<
@@ -1163,7 +1209,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1187,7 +1235,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Symmetric structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1333,7 +1381,9 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T, ImfR, ImfC,
+				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
+				internal::requires_allocation< View >::value >
 		>::type {
 
 		protected:
@@ -1357,7 +1407,7 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::UpperTriangular structure;
-			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1592,12 +1642,13 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > & source ) {
+		typename SourceMatrixType,
+		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+	>
+	typename SourceMatrixType::template view_type< view::original >::type
+	get_view( SourceMatrixType &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_strmat_t = typename source_strmat_t::template view_type< view::original >::type;
+		using target_strmat_t = typename SourceMatrixType::template view_type< view::original >::type;
 
 		target_strmat_t target( source );
 
@@ -1635,14 +1686,18 @@ namespace alp {
 	 */
 	template<
 		enum view::Views target_view,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< target_view >::type
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source ) {
+		typename SourceMatrixType,
+		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+	>
+	typename SourceMatrixType::template view_type< target_view >::type
+	get_view( SourceMatrixType &source ) {
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_strmat_t = typename source_strmat_t::template view_type< target_view >::type;
+		using target_strmat_t = typename SourceMatrixType::template view_type< target_view >::type;
 
-		target_strmat_t target( source );
+		target_strmat_t target(
+			source,
+			storage::AMFFactory::Transform<	target_view, decltype( source.amf ) >::Create( source.amf )
+		);
 
 		return target;
 	}
