@@ -47,19 +47,20 @@ namespace alp {
 		typename Structure = structures::General,
 		enum Density density = Density::Dense,
 		typename View = view::Original< void >,
-		typename Imf = imf::Id,
+		typename ImfR = imf::Id,
+		typename ImfC = imf::Id,
 		enum Backend backend = config::default_backend
 	>
 	class Vector;
 
 	/** Specializations of ALP backend-agnostic type traits */
-	template< typename T, typename Structure, enum Density density, typename View, typename Imf, enum Backend backend >
-	struct inspect_structure< Vector< T, Structure, density, View, Imf, backend > > {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	struct inspect_structure< Vector< T, Structure, density, View, ImfR, ImfC, backend > > {
 		typedef Structure type;
 	};
 
-	template< typename T, typename Structure, enum Density density, typename View, typename Imf, enum Backend backend >
-	struct internal::inspect_view< Vector< T, Structure, density, View, Imf, backend > > {
+	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	struct internal::inspect_view< Vector< T, Structure, density, View, ImfR, ImfC, backend > > {
 		typedef View type;
 	};
 

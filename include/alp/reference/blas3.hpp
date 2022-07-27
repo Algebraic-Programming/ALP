@@ -1050,13 +1050,13 @@ namespace alp {
 	 */
 	template< Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Operator
 	>
 	RC outer( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & A,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > & u,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > & v,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & u,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & v,
 		const Operator & mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< OutputType >::value,
 			void >::type * const = NULL ) {
@@ -1125,8 +1125,8 @@ namespace alp {
 	 *         The structure of this matrix is General.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImf1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImf2,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Operator
 	>
 	Matrix< typename Operator::D3, structures::General, Density::Dense,
@@ -1135,8 +1135,8 @@ namespace alp {
 		reference
 	>
 	outer(
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference > &x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImf2, reference > &y,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const Operator &mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value &&
 			! alp::is_object< InputType1 >::value &&
@@ -1183,7 +1183,7 @@ namespace alp {
 	 * which results in a symmetric matrix.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
-		typename InputType, typename InputStructure, typename InputView, typename InputImf,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 		class Operator
 	>
 	Matrix< typename Operator::D3, structures::Symmetric, Density::Dense,
@@ -1192,7 +1192,7 @@ namespace alp {
 		reference
 	>
 	outer(
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImf, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		const Operator &mul = Operator(),
 		const typename std::enable_if< alp::is_operator< Operator >::value &&
 			! alp::is_object< InputType >::value,

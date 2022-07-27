@@ -963,7 +963,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1185,7 +1185,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1383,7 +1383,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1561,7 +1561,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -2044,14 +2044,14 @@ namespace alp {
 	 */
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, imf::Id, backend >
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const size_t &sel_r, const utils::range &rng_c ) {
 
 		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
 
 		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, sel_r, imf_c );
-		return Vector< T, structures::General, density, View, imf::Id, backend >();
+		return Vector< T, structures::General, density, View, imf::Id, imf::Id, backend >();
 	}
 
 	/**
@@ -2083,14 +2083,14 @@ namespace alp {
 	 */
 	template<
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
+	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, imf::Id, backend >
 	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
 		const utils::range &rng_r, const size_t &sel_c ) {
 
 		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
 
 		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, sel_c );
-		return Vector< T, structures::General, density, View, imf::Id, backend >();
+		return Vector< T, structures::General, density, View, imf::Id, imf::Id, backend >();
 	}
 
 	/**
@@ -2116,7 +2116,7 @@ namespace alp {
 		*/
 	template<
 		typename TargetStructure,
-		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImf,
+		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
 		enum Backend backend
 	>
@@ -2130,8 +2130,8 @@ namespace alp {
 		backend
 	>
 	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_r,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_c ) {
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_r,
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_c ) {
 
 		imf::Select imf_r( nrows(source), sel_r );
 		imf::Select imf_c( ncols(source), sel_c );
