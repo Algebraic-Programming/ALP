@@ -326,8 +326,11 @@ namespace alp {
 				}
 
 				/**
-				 * Returns a storage index based on the coordinates in the
-				 * logical iteration space.
+				 * @brief Returns a storage index based on the coordinates in the
+				 *        logical iteration space.
+				 *
+				 * @tparam R  ImfR type
+				 * @tparam C  ImfC type
 				 *
 				 * @param[in] i  row-coordinate
 				 * @param[in] j  column-coordinate
@@ -336,14 +339,70 @@ namespace alp {
 				 *
 				 * @return  storage index corresponding to the provided logical
 				 *          coordinates and parameters s and P.
+				 *
+				 * \note It is not necessary to call imf.map() function if the imf
+				 *       has the type imf::Id. To implement SFINAE-driven selection
+				 *       of the getStorageIndex, dummy parameters R and C are added.
+				 *       They are set to the ImfR and ImfC by default and a static
+				 *       assert ensures that external caller does not force a call
+				 *       to wrong implementation by explicitly specifying values
+				 *       for R and/or C.
+				 *
 				 */
+				template<
+					typename R = ImfR, typename C = ImfC,
+					std::enable_if_t< !std::is_same< R, imf::Id >::value && !std::is_same< C, imf::Id >::value > * = nullptr
+				>
 				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
-#ifdef _DEBUG
-					std::cout << "Calling AMF::getStorageIndex()\n";
-#endif
+					static_assert(
+						std::is_same< R, ImfR >::value && std::is_same< C, ImfC >::value,
+						"Explicit specialization of getStorageIndex is not allowed."
+					);
 					(void)s;
 					(void)P;
 					return map_poly.evaluate( imf_r.map( i ), imf_c.map( j ) );
+				}
+
+				template<
+					typename R = ImfR, typename C = ImfC,
+					std::enable_if_t< std::is_same< R, imf::Id >::value && !std::is_same< C, imf::Id >::value > * = nullptr
+				>
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					static_assert(
+						std::is_same< R, ImfR >::value && std::is_same< C, ImfC >::value,
+						"Explicit specialization of getStorageIndex is not allowed."
+					);
+					(void)s;
+					(void)P;
+					return map_poly.evaluate( i, imf_c.map( j ) );
+				}
+
+				template<
+					typename R = ImfR, typename C = ImfC,
+					std::enable_if_t< !std::is_same< R, imf::Id >::value && std::is_same< C, imf::Id >::value > * = nullptr
+				>
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					static_assert(
+						std::is_same< R, ImfR >::value && std::is_same< C, ImfC >::value,
+						"Explicit specialization of getStorageIndex is not allowed."
+					);
+					(void)s;
+					(void)P;
+					return map_poly.evaluate( imf_r.map( i ), j );
+				}
+
+				template<
+					typename R = ImfR, typename C = ImfC,
+					std::enable_if_t< std::is_same< R, imf::Id >::value && std::is_same< C, imf::Id >::value > * = nullptr
+				>
+				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
+					static_assert(
+						std::is_same< R, ImfR >::value && std::is_same< C, ImfC >::value,
+						"Explicit specialization of getStorageIndex is not allowed."
+					);
+					(void)s;
+					(void)P;
+					return map_poly.evaluate( i, j );
 				}
 
 				/**
