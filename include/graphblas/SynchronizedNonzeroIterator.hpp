@@ -43,31 +43,60 @@ namespace grb {
 
 	namespace internal {
 
-		// base class for storage, where V can be void
+		/**
+		 * Base class for the #SynchronizedIterator which allows for <tt>void</tt>
+		 * value types.
+		 */
 		template<
 			typename RowIndexT, typename ColIndexT, typename V,
 			typename fwd_it1, typename fwd_it2,
-			typename _iterator_category
+			typename IteratorCategory
 		>
 		class SynchronizedIteratorBaseStorage {
 
 			protected:
 
 				// iterators to synchronise:
-				fwd_it1 row_it, row_end;
-				fwd_it2 col_it, col_end;
 
+				/** The row coordinate iterator in start position. */
+				fwd_it1 row_it;
+
+				/** The row coordinate iterator in end position. */
+				fwd_it1 row_end;
+
+				/** The column coordinate iterator in start position. */
+				fwd_it2 col_it;
+
+				/** The column coordinate iterator in end position. */
+				fwd_it2 col_end;
+
+				/** The type of this class. */
 				using SelfType = SynchronizedIteratorBaseStorage<
 					RowIndexT, ColIndexT, V,
-					fwd_it1, fwd_it2, _iterator_category
+					fwd_it1, fwd_it2, IteratorCategory
 				>;
 
+				/** The type of the storage of a single nonzero. */
 				using StorageType = NonzeroStorage< RowIndexT, ColIndexT, V >;
 
+				/** Whether the row or column coordinate fields have been updated. */
 				mutable bool row_col_updated;
+
+				/**
+				 * Stores a nonzero.
+				 *
+				 * In the <tt>void</tt> case, this corresponds to a single coordinate pair.
+				 *
+				 * In the non-void case, this corresponds to a pair of coordinates with a
+				 * value, where the coordinate is a pair of integers.
+				 */
 				mutable StorageType nonzero;
 
-				/** Base constructor. Takes three sub-iterators as arguments. */
+				/**
+				 * Base constructor.
+				 *
+				 * Takes the coordinate iterators as arguments.
+				 */
 				SynchronizedIteratorBaseStorage(
 					fwd_it1 it1, fwd_it2 it2,
 					fwd_it1 it1_end, fwd_it2 it2_end
@@ -94,10 +123,14 @@ namespace grb {
 					return *this;
 				}
 
-				bool row_col_iterators_are_valid() const {
+				/** Whether the current coordinate iterators are in a valid position. */
+				inline bool row_col_iterators_are_valid() const {
 					return row_it != row_end && col_it != col_end;
 				}
 
+				/**
+				 * Checks whether the coordinates require updating and, if so, updates them.
+				 */
 				inline void row_col_update_if_needed() const {
 					if( !row_col_updated ) {
 						assert( row_col_iterators_are_valid() );
@@ -106,7 +139,7 @@ namespace grb {
 				}
 
 				/** Updates the #nonzero fields using the current iterator values. */
-				void row_col_update() const {
+				inline void row_col_update() const {
 					assert( row_col_iterators_are_valid() );
 					nonzero.i() = *row_it;
 					nonzero.j() = *col_it;
@@ -124,7 +157,7 @@ namespace grb {
 				}
 
 				/** Increment operator. */
-				SelfType& operator++() {
+				SelfType & operator++() {
 					(void) ++row_it;
 					(void) ++col_it;
 					row_col_updated = false;
@@ -135,10 +168,10 @@ namespace grb {
 			public:
 
 				// STL iterator's typedefs:
-				typedef _iterator_category iterator_category;
+				typedef IteratorCategory iterator_category;
 				typedef typename StorageType::StorageType value_type;
 				typedef size_t difference_type;
-				typedef const value_type& reference;
+				typedef const value_type &reference;
 				typedef const value_type * pointer;
 
 				// ALP typedefs:
@@ -158,100 +191,126 @@ namespace grb {
 				}
 
 				/** Returns the row coordinate. */
-				const RowIndexType& i() const {
+				const RowIndexType & i() const {
 					row_col_update_if_needed();
 					return nonzero.i();
 				}
 
 				/** Returns the column coordinate. */
-				const ColumnIndexType& j() const {
+				const ColumnIndexType & j() const {
 					row_col_update_if_needed();
 					return nonzero.j();
 				}
 
 		};
 
+		/**
+		 * Synchronises three input iterators to act as a single iterator over matrix
+		 * nonzeroes.
+		 *
+		 * This is the non-void (for value types) variant-- entries consist of a
+		 * coordinate with a nonzero value. A coordinate consists of a pair of integer
+		 * values.
+		 */
 		template<
 			typename RowIndexT, typename ColIndexT, typename V,
 			typename fwd_it1, typename fwd_it2, typename fwd_it3,
-			typename _iterator_category
+			class iterator_category
 		>
-		class SynchronizedIteratorBase :
-			public SynchronizedIteratorBaseStorage<
+		class SynchronizedNonzeroIterator :
+			public internal::SynchronizedIteratorBaseStorage<
 				RowIndexT, ColIndexT, V,
 				fwd_it1, fwd_it2,
-				_iterator_category
+				iterator_category
 			>
 		{
 
 			private:
 
-				using BaseType = SynchronizedIteratorBaseStorage<
+				/** Short name of the parent class */
+				using BaseType = internal::SynchronizedIteratorBaseStorage<
 					RowIndexT, ColIndexT, V,
 					fwd_it1, fwd_it2,
-					_iterator_category
+					iterator_category
 				>;
 
 
 			protected:
 
-				// iterators to synchronise:
-				fwd_it3 val_it, val_end;
+				/**
+				 * The value iterator in start position.
+				 */
+				fwd_it3 val_it;
+
+				/**
+				 * The value iterator in end position.
+				 */
+				fwd_it3 val_end;
+
+				/** Whether the value was updated. */
 				mutable bool val_updated;
 
-				using SelfType = SynchronizedIteratorBase<
+				/** Short name for the type of this class. */
+				using SelfType = SynchronizedNonzeroIterator<
 					RowIndexT, ColIndexT, V,
 					fwd_it1, fwd_it2, fwd_it3,
-					_iterator_category
+					iterator_category
 				>;
 
+				/** Updates the #nonzero.v() field using the current iterator value. */
+				inline void val_update() const {
+					assert( val_it != val_end );
+					this->nonzero.v() = *val_it;
+					val_updated = true;
+				}
+
+				/**
+				 * If the value storage was not updated, updates it.
+				 */
+				inline void val_update_if_needed() const {
+					if( !val_updated ) {
+						val_update();
+					}
+				}
+
+				/**
+				 * Check whether all nonzero entries are up to date.
+				 */
+				inline void update_if_needed() const {
+					this->row_col_update_if_needed();
+					val_update_if_needed();
+				}
+
+
+			public:
+
+				/** ALP value typedef */
+				typedef V ValueType;
+
 				/** Base constructor. Takes three sub-iterators as arguments. */
-				SynchronizedIteratorBase(
+				SynchronizedNonzeroIterator(
 					fwd_it1 it1, fwd_it2 it2, fwd_it3 it3,
 					fwd_it1 it1_end, fwd_it2 it2_end, fwd_it3 it3_end
-				) :
-					BaseType(
+				) : BaseType(
 						it1, it2,
 						it1_end, it2_end
 					), val_it( it3 ), val_end( it3_end ), val_updated( false )
 				{}
 
 				/** Copy constructor. */
-				SynchronizedIteratorBase( const SelfType &other ) :
+				SynchronizedNonzeroIterator( const SelfType &other ):
 					BaseType( other ),
 					val_it( other.val_it ), val_end( other.val_end ),
 					val_updated( other.val_updated )
 				{}
 
 				/** Assignment operator. */
-				SelfType& operator=( const SelfType &other ) {
+				SelfType & operator=( const SelfType &other ) {
 					(void) BaseType::operator=( other );
 					val_it = other.val_it;
 					val_end = other.val_end;
 					val_updated = other.val_updated;
 					return *this;
-				}
-
-				bool val_iterator_is_valid() const {
-					return val_it != val_end;
-				}
-
-				/** Updates the #nonzero.v() field using the current iterator value. */
-				void val_update() const {
-					assert( val_iterator_is_valid() );
-					this->nonzero.v() = *val_it;
-					val_updated = true;
-				}
-
-				void val_update_if_needed() const {
-					if( !val_updated ) {
-						val_update();
-					}
-				}
-
-				inline void update_if_needed() const {
-					this->row_col_update_if_needed();
-					val_update_if_needed();
 				}
 
 				/** Equality check. */
@@ -260,23 +319,50 @@ namespace grb {
 				}
 
 				/** Inequality check. */
-				bool operator!=( const SelfType & other ) const {
+				bool operator!=( const SelfType &other ) const {
 					return BaseType::operator!=( other ) || val_it != other.val_it;
 				};
 
 				/** Increment operator. */
-				SelfType& operator++() {
+				SelfType & operator++() {
 					(void) BaseType::operator++();
 					(void) ++val_it;
 					val_updated = false;
 					return *this;
 				}
 
+				/** Offset operator, enabled only for random access iterators */
+				template< typename cat = iterator_category > SelfType & operator+=(
+					typename std::enable_if<
+						std::is_same< cat, std::random_access_iterator_tag >::value &&
+						std::is_same< typename SelfType::iterator_category,
+								std::random_access_iterator_tag
+							>::value,
+						size_t
+					>::type offset
+				) {
+					this->row_it += offset;
+					this->col_it += offset;
+					this->val_it += offset;
+					this->row_col_updated = false;
+					this->val_updated = false;
+					return *this;
+				}
 
-			public:
-
-				// ALP typedefs:
-				typedef V ValueType;
+				/** Difference operator, enabled only for random access iterators */
+				template< typename _cat = iterator_category >
+					typename SelfType::difference_type operator-(
+					typename std::enable_if<
+						std::is_same< _cat, std::random_access_iterator_tag >::value
+							&& std::is_same< iterator_category,
+							std::random_access_iterator_tag
+						>::value,
+						const SelfType&
+					>::type other
+				) const {
+					return static_cast< typename SelfType::difference_type >(
+						this->row_it - other.row_it );
+				}
 
 				/** Direct derefence operator. */
 				typename BaseType::reference operator*() const {
@@ -298,136 +384,45 @@ namespace grb {
 
 		};
 
-		// for value matrices
-		template<
-			typename RowIndexT, typename ColIndexT, typename V,
-			typename fwd_it1, typename fwd_it2, typename fwd_it3,
-			class _iterator_category
-		>
-		class SynchronizedNonzeroIterator :
-			public internal::SynchronizedIteratorBase<
-				RowIndexT, ColIndexT, V,
-				fwd_it1, fwd_it2, fwd_it3,
-				_iterator_category
-			>
-		{
-
-			private:
-
-				using BaseType = internal::SynchronizedIteratorBase<
-					RowIndexT, ColIndexT, V,
-					fwd_it1, fwd_it2, fwd_it3,
-					_iterator_category
-				>;
-
-
-			public:
-
-				using SelfType = SynchronizedNonzeroIterator<
-					RowIndexT, ColIndexT, V,
-					fwd_it1, fwd_it2, fwd_it3,
-					_iterator_category
-				>;
-
-				/** Base constructor. Takes three sub-iterators as arguments. */
-				SynchronizedNonzeroIterator(
-					fwd_it1 it1, fwd_it2 it2, fwd_it3 it3,
-					fwd_it1 it1_end, fwd_it2 it2_end, fwd_it3 it3_end
-				) : BaseType(
-					it1, it2, it3,
-					it1_end, it2_end, it3_end
-				) {}
-
-				/** Copy constructor. */
-				SynchronizedNonzeroIterator( const SelfType &other ): BaseType( other ) {}
-
-				/** Assignment operator. */
-				SelfType & operator=( const SelfType &other ) {
-					(void) BaseType::operator=( other );
-					return *this;
-				}
-
-				/** Equality check. */
-				bool operator==( const SelfType &other ) const {
-					return BaseType::operator==( other );
-				}
-
-				/** Inequality check. */
-				bool operator!=( const SelfType &other ) const {
-					return BaseType::operator!=( other );
-				};
-
-				/** Increment operator. */
-				SelfType & operator++() {
-					(void) BaseType::operator++();
-					return *this;
-				}
-
-				/** Offset operator, enabled only for random access iterators */
-				template< typename cat = _iterator_category > SelfType & operator+=(
-					typename std::enable_if<
-						std::is_same< cat, std::random_access_iterator_tag >::value &&
-						std::is_same< typename SelfType::iterator_category,
-								std::random_access_iterator_tag
-							>::value,
-						size_t
-					>::type offset
-				) {
-					this->row_it += offset;
-					this->col_it += offset;
-					this->val_it += offset;
-					this->row_col_updated = false;
-					this->val_updated = false;
-					return *this;
-				}
-
-				/* Difference operator, enabled only for random access iterators */
-				template< typename _cat = _iterator_category >
-					typename SelfType::difference_type operator-(
-					typename std::enable_if<
-						std::is_same< _cat, std::random_access_iterator_tag >::value
-							&& std::is_same< _iterator_category,
-							std::random_access_iterator_tag
-						>::value,
-						const SelfType&
-					>::type other
-				) const {
-					return static_cast< typename SelfType::difference_type >(
-						this->row_it - other.row_it );
-				}
-		};
-
-		// for pattern matrices
+		/**
+		 * Synchronises two input iterators to act as a single iterator over matrix
+		 * nonzeroes.
+		 *
+		 * This is the <tt>void</tt> (for value types) variant-- nonzeroes consist
+		 * solely of a single nonzero coordinate, without any value.
+		 */
 		template<
 			typename RowIndexT, typename ColIndexT,
 			typename fwd_it1, typename fwd_it2,
-			class _iterator_category
+			typename iterator_category
 		>
 		class SynchronizedNonzeroIterator<
 			RowIndexT, ColIndexT, void,
 			fwd_it1, fwd_it2, void,
-			_iterator_category
+			iterator_category
 		> :
 			public internal::SynchronizedIteratorBaseStorage<
 				RowIndexT, ColIndexT, void,
-				fwd_it1, fwd_it2, _iterator_category
+				fwd_it1, fwd_it2, iterator_category
 			>
 		{
 
 			private:
 
+				/** The base type this class inherits from. */
 				using BaseType = internal::SynchronizedIteratorBaseStorage<
 					RowIndexT, ColIndexT, void,
-					fwd_it1, fwd_it2, _iterator_category
+					fwd_it1, fwd_it2, iterator_category
 				>;
 
 
 			public:
 
+				/** The type of this class for a short-hand. */
 				using SelfType = SynchronizedNonzeroIterator<
 					RowIndexT, ColIndexT, void,
 					fwd_it1, fwd_it2, void,
-					_iterator_category
+					iterator_category
 				>;
 
 				/** Base constructor. Takes three sub-iterators as arguments. */
@@ -462,7 +457,7 @@ namespace grb {
 				}
 
 				/** Offset operator, enabled only for random access iterators */
-				template< typename cat = _iterator_category > SelfType& operator+=(
+				template< typename cat = iterator_category > SelfType& operator+=(
 					typename std::enable_if<
 						std::is_same< cat, std::random_access_iterator_tag >::value &&
 						std::is_same< typename SelfType::iterator_category,
@@ -478,11 +473,11 @@ namespace grb {
 				}
 
 				/* Difference operator, enabled only for random access iterators */
-				template< typename _cat = _iterator_category >
+				template< typename _cat = iterator_category >
 				typename SelfType::difference_type operator-(
 					typename std::enable_if<
 						std::is_same< _cat, std::random_access_iterator_tag >::value
-							&& std::is_same< _iterator_category,
+							&& std::is_same< iterator_category,
 							std::random_access_iterator_tag
 						>::value,
 						const SelfType&
@@ -491,6 +486,7 @@ namespace grb {
 					return static_cast< typename SelfType::difference_type >(
 						this->row_it - other.row_it );
 				}
+
 		};
 
 #ifdef _DEBUG
