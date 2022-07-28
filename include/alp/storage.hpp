@@ -422,15 +422,9 @@ namespace alp {
 		}; // class AMF
 
 		/**
-		 * Factory class that creates AMF objects of the appropriate type
-		 * depending on the types of provided IMFs and polynomials.
+		 * @brief Collects AMF factory classes
 		 */
-		/**
-		 * Define the AMF type resulting from applying a view defined by
-		 * two view IMFs on the target container with the associated
-		 * target AMF.
-		 */
-		class AMFFactory {
+		struct AMFFactory {
 
 			/**
 			 * @brief Describes an AMF for a container that requires allocation
@@ -443,15 +437,13 @@ namespace alp {
 			 *
 			 */
 			template< typename PolyType >
-			class New {
+			struct New {
 
-				public:
+				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
-					typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
-
-					static amf_type Create( size_t nrows, size_t ncols, PolyType poly, size_t storage_dimensions ) {
-						return amf_type( nrows, ncols, poly, storage_dimensions );
-					}
+				static amf_type Create( size_t nrows, size_t ncols, PolyType poly, size_t storage_dimensions ) {
+					return amf_type( nrows, ncols, poly, storage_dimensions );
+				}
 
 			}; // class New
 
@@ -484,7 +476,7 @@ namespace alp {
 			 *
 			 */
 			template< typename ViewImfR, typename ViewImfC, typename SourceAMF >
-			class View {
+			struct View {
 
 				private:
 
