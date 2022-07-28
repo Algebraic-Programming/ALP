@@ -26,6 +26,7 @@
 
 template< typename MatrixType >
 void setElements( MatrixType &M, const typename MatrixType::value_type value ) {
+	// Temporary until proper matrix building is implemented
 	alp::internal::setInitialized( M, true );
 	const size_t height = alp::ncols( M );
 	const size_t width = alp::nrows( M );

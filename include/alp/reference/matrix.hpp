@@ -761,13 +761,6 @@ namespace alp {
 		}; // class FunctorBasedMatrix
 
 		/**
-		 * @brief Determines the AMF type for a matrix with the provided view and IMF types.
-		 *
-		 * For a matrix that requires allocation, the AMF consists of two Id IMFs and
-		 * the pre-defined mapping polynomial.
-		 * For a view over another matrix, the AMF is created by one of the following ways:
-
-		/**
 		 * @brief Determines the AMF type for a matrix
 		 *        with the provided view and the IMF types.
 		 *

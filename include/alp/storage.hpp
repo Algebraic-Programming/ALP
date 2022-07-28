@@ -265,9 +265,6 @@ namespace alp {
 			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
 		};
 
-		/** Forward declaration */
-		class AMFFactory;
-
 		/**
 		 * Access Mapping Function (AMF) maps logical matrix coordinates (i, j)
 		 * to the corresponding matrix element's location in the physical container.
@@ -628,6 +625,7 @@ namespace alp {
 
 			}; // class Transform< transpose, ... >
 
+			/** \internal \todo This is currently incomplete, will be implemented in future. */
 			template< typename SourceAMF >
 			struct Transform< view::Views::diagonal, SourceAMF > {
 
