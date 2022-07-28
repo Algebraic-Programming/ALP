@@ -778,38 +778,46 @@ namespace alp {
 		 * @tparam ImfC  Column IMF type.
 		 *
 		 * The valid combinations of the input parameters are as follows:
-		 *  - original view with any type of IMFs
+		 *  - original view on void with Id IMFs.
+		 *  - original view on ALP matrix with any type of IMFs
 		 *  - other type of views (e.g. transposed, diagonal) with only Id IMFs.
 		 * Invocation using incompatible parameters may result in an undefined behavior.
+		 * The first parameter combination is handled by a specialization of this trait.
 		 *
 		 */
 		template< typename View, typename ImfR, typename ImfC >
 		struct determine_amf_type {
 
-			/** Check the compatibility of the provided parameters */
+			/** Ensure that the view is not on a void type */
 			static_assert(
-				( View::type_id != view::Views::original && std::is_same< ImfR, imf::Id >::value && std::is_same< ImfC, imf::Id >::value )
-				||
-				( View::type_id == view::Views::original ),
-				"Incompatible combination of parameters provided to determine_amf_type."
+				!std::is_same< typename View::applied_to, void >::value,
+				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
 			typedef typename std::conditional<
-				internal::requires_allocation< View >::value,
-				typename storage::AMFFactory::New< storage::polynomials::Full_type >::amf_type,
-				typename std::conditional<
-					View::type_id == view::Views::original,
-					typename storage::AMFFactory::View<
-						ImfR, ImfC, typename internal::get_amf_type< typename View::applied_to >::type
-					>::amf_type,
-					typename storage::AMFFactory::Transform<
-						View::type_id,
-						typename internal::get_amf_type< typename View::applied_to >::type
-					>::amf_type	
-				>::type
+				View::type_id == view::Views::original,
+				typename storage::AMFFactory::View<
+					ImfR, ImfC, typename View::applied_to::amf_type
+				>::amf_type,
+				typename storage::AMFFactory::Transform<
+					View::type_id,
+					typename View::applied_to::amf_type
+				>::amf_type	
 			>::type type;
 
 		};
+
+		template< typename ImfR, typename ImfC >
+		struct determine_amf_type< view::Original< void >, ImfR, ImfC > {
+
+			static_assert(
+				std::is_same< ImfR, imf::Id >::value && std::is_same< ImfC, imf::Id >::value,
+				"Incompatible combination of parameters provided to determine_amf_type."
+			);
+
+			typedef typename storage::AMFFactory::New< storage::polynomials::Full_type >::amf_type type;
+		};
+
 	} // namespace internal
 
 	/**

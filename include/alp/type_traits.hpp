@@ -346,26 +346,6 @@ namespace alp {
 			std::is_same< view::Functor< typename View::applied_to >, View >::value
 		> {};
 
-		/**
-		 * Exposes the AMF type of the provided ALP container.
-		 * If a void type is passed as the ALP container type, return a generic
-		 * invalid AMF type.
-		 *
-		 * @tparam T The type to inspect.
-		 *
-		 * \note This type trait serves to enable std::conditional clauses
-		 *       that refer to members of View::applied_to, which may be void
-		 *       for containers that require allocation.
-		 */
-		template< typename T >
-		struct get_amf_type {
-			typedef typename T::amf_type type;
-		};
-
-		template<>
-		struct get_amf_type< void > {
-			typedef alp::storage::AMF< alp::imf::Id, alp::imf::Id, alp::storage::polynomials::None_type > type;
-		};
 	} // namespace internal
 
 } // namespace alp
