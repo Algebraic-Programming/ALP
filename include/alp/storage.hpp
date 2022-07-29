@@ -287,10 +287,19 @@ namespace alp {
 				const mapping_polynomial_type map_poly;
 				const size_t storage_dimensions;
 
-			public:
-
 				AMF( ImfR imf_r, ImfC imf_c, MappingPolynomial map_poly, const size_t storage_dimensions ) :
 					imf_r( imf_r ), imf_c( imf_c ), map_poly( map_poly ), storage_dimensions( storage_dimensions ) {}
+
+				AMF( const AMF & ) = delete;
+				AMF &operator=( const AMF & ) = delete;
+
+			public:
+
+				AMF( AMF &&amf ) :
+					imf_r( std::move( amf.imf_r ) ),
+					imf_c( std::move( amf.imf_c ) ),
+					map_poly( std::move( amf.map_poly ) ),
+					storage_dimensions( std::move( amf.storage_dimensions ) ) {}
 
 				/**
 				 * Returns dimensions of the logical layout of the associated container.
@@ -496,7 +505,7 @@ namespace alp {
 
 					static
 					amf_type
-					Create( ViewImfR imf_r, ViewImfC imf_c, AMF< SourceImfR, SourceImfC, SourcePoly > amf ) {
+					Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
 						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( imf_r, amf.imf_r ) };
 						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( imf_c, amf.imf_c ) };
 						return amf_type(
@@ -544,7 +553,7 @@ namespace alp {
 				static
 				amf_type
 				Create( const SourceAMF &amf ) {
-					return amf;
+					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
 			}; // class Transform< original, ... >
@@ -592,7 +601,7 @@ namespace alp {
 				static
 				amf_type
 				Create( const SourceAMF &amf ) {
-					return amf;
+					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
 			}; // class Transform< diagonal, ... >
