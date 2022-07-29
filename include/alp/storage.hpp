@@ -251,21 +251,6 @@ namespace alp {
 		}; // namespace polynomials
 
 		/**
-		 * Provides a type of composed Access Mapping Function
-		 * expressed as a BivariateQuadratic polynomial depending
-		 * on the types of the IMFs and the Mapping Polynomial.
-		 */
-		template< typename ImfR, typename ImfC, typename MappingPolynomial >
-		struct Composition {
-			typedef polynomials::BivariateQuadratic< 1, 1, 1, 1, 1, 1, 1 > type;
-		};
-
-		template<>
-		struct Composition< imf::Strided, imf::Strided, polynomials::Full_type > {
-			typedef polynomials::BivariateQuadratic< 0, 0, 0, 1, 1, 1, 1 > type;
-		};
-
-		/**
 		 * Access Mapping Function (AMF) maps logical matrix coordinates (i, j)
 		 * to the corresponding matrix element's location in the physical container.
 		 *
