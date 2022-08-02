@@ -171,7 +171,7 @@ namespace grb {
 				typedef IteratorCategory iterator_category;
 				typedef typename StorageType::StorageType value_type;
 				typedef size_t difference_type;
-				typedef const value_type &reference;
+				typedef const value_type & reference;
 				typedef const value_type * pointer;
 
 				// ALP typedefs:
