@@ -16,14 +16,15 @@
  */
 
 /*
+ * Tests for the buildMatrixUnique() API call
+ *
  * @author Alberto Scolari
  * @date 20/06/2022
- * @brief test facilities for the buildMatrixUnique() API call
  *
- * They test whether the generated matrix stores all the elements, but NOT
+ * Tests whether the generated matrix stores all the elements, but NOT
  * whether they are stored in a specific order or format, since the
  * specification does not prescribe any of these details for the matrix produced
- * via buildMatrixUnique() (nor for matrices in gineral).
+ * via buildMatrixUnique(), nor for matrices in general.
  */
 
 #include <iostream>
