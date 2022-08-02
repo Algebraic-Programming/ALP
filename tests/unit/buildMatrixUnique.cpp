@@ -50,11 +50,11 @@
 #include <utils/matrix_generators.hpp>
 #include <utils/matrix_values_check.hpp>
 
-
-using namespace grb;
-
 #define LOG() std::cout
 #define MAIN_LOG( text ) if ( spmd<>::pid() == 0 ) { LOG() << text; }
+
+
+using namespace grb;
 
 template< typename T >
 void test_matrix_sizes_match(
