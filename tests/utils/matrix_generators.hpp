@@ -16,16 +16,18 @@
  */
 
 /**
+ * Various utility classes to generate matrices of different shapes.
+ *
+ * Matrix generators conform to the STL random access iterator specification,
+ * but the tag can be set to forward iterator via a boolean template parameter
+ * for testing purposes.
+ *
  * @author Alberto Scolari
  * @date 20/06/2022
- * @brief various utility classes to generate matrices of different shapes; they
- * are all conformant to the STL random access iterator specification, but the tag
- * can be set to forward iterator via a boolean template parameter for testing
- * purposes
  */
 
-#ifndef _GRB_UTILS_MATRIX_GENERATORS_
-#define _GRB_UTILS_MATRIX_GENERATORS_
+#ifndef _GRB_UTILS_MATRIX_GENERATORS
+#define _GRB_UTILS_MATRIX_GENERATORS
 
 #include <cstddef>
 #include <limits>
@@ -39,527 +41,599 @@ namespace grb {
 	namespace utils {
 
 		/**
-		 * @brief from the number of total nonzeroes \p num_nonzeroes it computes
-		 * 	the maximum number of per-process nonzeroes \p num_nonzeroes_per_process
-		 * 	and the index of the first nonzero on the current process into
-		 * 	\p first_local_nonzero; if there are more processes than nonzeroes
-		 * (i.e., \p num_nonzeroes_per_process * \a processes > \p num_nonzeroes),
-		 * then set \p first_local_nonzero to \p num_nonzeroes.
+		 * Computes the first nonzero ID as well as the number of nonzeroes per
+		 * process.
+		 *
+		 * From the number of total nonzeroes \a num_nonzeroes, compute the maximum
+		 * number of per-process nonzeroes \a num_nonzeroes_per_process as well as
+		 * the first nonzero on the current process into \a first_local_nonzero; if
+		 * there are more processes than nonzeroes, i.e.,
+		 *   - \a num_nonzeroes_per_process * \a processes > \a num_nonzeroes,
+		 * then sets \a first_local_nonzero to \a num_nonzeroes.
+		 *
+		 * \warning The returned nonzeroes per process is an upper bound.
+		 *
+		 * @param[in]  num_nonzeroes The number of nonzeroes to store.
+		 * @param[out] num_nonzeroes_per_process Upper bound on the number of
+		 *                                       nonzeroes per process.
+		 * @param[out] first_local_nonzero The first ID of the block of nonzeroes
+		 *                                 local to this process.
 		 */
-		template< typename T > void compute_parallel_first_nonzero(
-			T num_nonzeroes,
+		template< typename T >
+		void compute_parallel_first_nonzero(
+			const T num_nonzeroes,
 			T &num_nonzeroes_per_process,
 			T &first_local_nonzero
 		) {
-			T num_procs { spmd<>::nprocs() };
-			num_nonzeroes_per_process = ( num_nonzeroes + num_procs - 1 ) / num_procs; // round up
-			first_local_nonzero = std::min( num_nonzeroes_per_process * spmd<>::pid(),
-				num_nonzeroes );
+			const T num_procs = spmd<>::nprocs();
+			num_nonzeroes_per_process = (num_nonzeroes + num_procs - 1) / num_procs;
+			first_local_nonzero =
+				std::min(
+					num_nonzeroes_per_process * spmd<>::pid(),
+					num_nonzeroes
+				);
 		}
 
 		/**
-		 * @brief it computes the index of the first nonzero for the current process
+		 * Computes the index of the first nonzero for the current process.
+		 *
+		 * Relies on #compute_parallel_first_nonzero and ignores the returned upper
+		 * bound.
 		 */
-		template< typename T > T compute_parallel_first_nonzero( T num_nonzeroes ) {
+		template< typename T >
+		T compute_parallel_first_nonzero( const T num_nonzeroes ) {
 			T nnz_per_proc, first;
 			compute_parallel_first_nonzero( num_nonzeroes, nnz_per_proc, first );
 			return first;
 		}
 
 		/**
-		 * @brief it computes the index of the last paralle nonzero + 1 for the current
-		 * 	process: local nonzeroes are thus in the range
+		 * Computes the index of the last parallel nonzero + 1 (i.e., exclusive).
+		 *
+		 * Local nonzeroes are thus in the range
 		 * 	[ compute_parallel_first_nonzero( num_nonzeroes ) ,
 		 * 		compute_parallel_last_nonzero( num_nonzeroes ) )
-		 *
-		 * @tparam T
-		 * @param num_nonzeroes
-		 * @return T
 		 */
-		template< typename T > T compute_parallel_last_nonzero( T num_nonzeroes ) {
+		template< typename T >
+		T compute_parallel_last_nonzero( const T num_nonzeroes ) {
 			T num_non_zeroes_per_process, first_local_nonzero;
-			compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-			return std::min( num_nonzeroes, first_local_nonzero + num_non_zeroes_per_process );
+			compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process,
+				first_local_nonzero );
+			return std::min( num_nonzeroes, first_local_nonzero +
+				num_non_zeroes_per_process );
 		}
 
 		/**
-		 * @brief returns the number of nonzeroes stored locally
+		 * Returns the number of nonzeroes stored locally
 		 */
-		template< typename T > T compute_parallel_num_nonzeroes( T num_nonzereos ) {
+		template< typename T >
+		T compute_parallel_num_nonzeroes( const T num_nonzereos ) {
 			return compute_parallel_last_nonzero( num_nonzereos ) -
 				compute_parallel_first_nonzero( num_nonzereos );
 		}
 
-		/**
-		 * @brief computes the difference between \p a and \p b and returns it as
-		 * 	type \p DiffT, also taking into account representation issues due to
-		 * 	the different types (if the output type \p DiffT cannot store the difference,
-		 * 	an exception is raised).
-		 */
-		template<
-			typename SizeT,
-			typename DiffT
-		>
-		DiffT __compute_distance(
-			SizeT a,
-			SizeT b
-		) {
-			const SizeT diff = std::max( a, b ) - std::min( a, b );
-			if( diff > static_cast< SizeT >( std::numeric_limits< DiffT >::max() ) ) {
-				throw std::range_error( "cannot represent difference" );
+		namespace internal {
+
+			/**
+			 * Computes the difference between \a a and \a b and returns it as the given
+			 * type \a DiffT.
+			 *
+			 * Raises an exception if \a DiffT cannot store the difference.
+			 */
+			template<
+				typename SizeT,
+				typename DiffT
+			>
+			DiffT compute_distance(
+				const SizeT a,
+				const SizeT b
+			) {
+				const SizeT diff = std::max( a, b ) - std::min( a, b );
+				if( diff > static_cast< SizeT >( std::numeric_limits< DiffT >::max() ) ) {
+					throw std::range_error( "cannot represent difference" );
+				}
+				DiffT result = static_cast< DiffT >( diff );
+				return a >= b ? result : -result ;
 			}
-			DiffT result = static_cast< DiffT >( diff );
-			return a >= b ? result : -result ;
-		}
+
+			/**
+			 * Stores the coordinate for a generator of diagonal matrices.
+			 */
+			struct DiagCoordValue {
+				size_t coord;
+				DiagCoordValue( size_t _c ): coord( _c ) {}
+			};
+
+			/**
+			 * Stores row and column values for a band matrix
+			 */
+			struct BandCoordValueType {
+				const size_t size;
+				size_t row;
+				size_t col;
+				BandCoordValueType() = delete;
+				BandCoordValueType(
+					size_t _size,
+					size_t _r,
+					size_t _c
+				) noexcept :
+					size( _size ),
+					row( _r ),
+					col( _c )
+				{}
+
+			};
+
+			/**
+			 * Store the number of columns and the current nonzero index of a dense
+			 * matrix; the coordinates can be retrieved from these values.
+			 */
+			struct DenseMatCoordValueType {
+				const size_t cols;
+				size_t offset;
+				DenseMatCoordValueType() = delete;
+				DenseMatCoordValueType( const size_t _cols, const size_t _off ) noexcept :
+					cols( _cols ), offset( _off )
+				{}
+
+			};
+
+		} // end namespace ``grb::utils::internal''
 
 		/**
-		 * @brief utility class to store the coordinate for a generator of diagonal
-		 * 	matrices
-		 */
-		struct __diag_coord_value {
-			size_t coord;
-
-			__diag_coord_value( size_t _c ): coord( _c ) {}
-		};
-
-		/**
-		 * @brief random access iterator to generate a diagonal matrix, emitting
-		 * 	as value the coordinate + 1.
+		 * Random access iterator to generate a diagonal matrix.
+		 *
+		 * Values are set equal to the coordinate plus one.
 		 *
 		 * @tparam random whether the iterator is a random access one, forward
-		 * 	iterator otherwise
+		 *                iterator otherwise
 		 */
-		template< bool random > struct diag_iterator {
-			// STL iterator type members
-			using iterator_category = typename std::conditional< random,
-				std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-			using value_type = __diag_coord_value;
-			using difference_type = long;
-			using pointer = __diag_coord_value*;
-			using reference = __diag_coord_value&;
+		template< bool random >
+		class DiagIterator {
 
-			using RowIndexType = size_t;
-			using ColumnIndexType = size_t;
-			using ValueType = int;
+			public:
 
-			using input_sizes_t = const size_t;
-			using self_t = diag_iterator< random >;
+				using SelfType = DiagIterator< random >;
+				using value_type = internal::DiagCoordValue;
 
-			diag_iterator( const self_t& ) = default;
 
-			self_t& operator++() noexcept {
-				_v.coord++;
-				return *this;
-			}
+			private:
 
-			self_t& operator+=( size_t offset ) noexcept {
-				_v.coord += offset;
-				return *this;
-			}
+				typename SelfType::value_type _v;
 
-			bool operator!=( const self_t &other ) const {
-				return other._v.coord != this->_v.coord;
-			}
+				DiagIterator( const size_t _c ): _v( _c ) {}
 
-			bool operator==( const self_t &other ) const {
-				return !( this->operator!=( other ) );
-			}
+				DiagIterator(): _v( 0 ) {}
 
-			typename self_t::difference_type operator-( const self_t &other ) const {
-				return __compute_distance< size_t, typename self_t::difference_type >(
-					this->_v.coord, other._v.coord );
-			}
 
-			typename self_t::pointer operator->() { return &_v; }
+			public:
 
-			typename self_t::reference operator*() { return _v; }
+				// STL iterator type members
+				using iterator_category = typename std::conditional< random,
+					std::random_access_iterator_tag, std::forward_iterator_tag >::type;
+				using difference_type = long;
+				using pointer = internal::DiagCoordValue *;
+				using reference = internal::DiagCoordValue &;
 
-			RowIndexType i() const { return _v.coord; }
+				using RowIndexType = size_t;
+				using ColumnIndexType = size_t;
+				using ValueType = int;
 
-			ColumnIndexType j() const { return _v.coord; }
+				using InputSizesType = const size_t;
 
-			ValueType v() const {
-				return static_cast< ValueType >( _v.coord ) + 1;
-			}
+				DiagIterator( const SelfType & ) = default;
 
-			static self_t make_begin( input_sizes_t &size ) {
-				(void)size;
-				return self_t( 0 );
-			}
+				SelfType & operator++() noexcept {
+					_v.coord++;
+					return *this;
+				}
 
-			static self_t make_end( input_sizes_t &size ) {
-				return self_t( size );
-			}
+				SelfType & operator+=( size_t offset ) noexcept {
+					_v.coord += offset;
+					return *this;
+				}
 
-			static self_t make_parallel_begin( input_sizes_t &size ) {
-				const size_t num_nonzeroes = size;
-				size_t num_non_zeroes_per_process, first_local_nonzero;
-				compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-				return self_t( first_local_nonzero );
-			}
+				bool operator!=( const SelfType &other ) const {
+					return other._v.coord != this->_v.coord;
+				}
 
-			static self_t make_parallel_end( input_sizes_t &size ) {
-				const size_t num_nonzeroes{ size };
-				size_t last{ compute_parallel_last_nonzero( num_nonzeroes ) };
-				return self_t( last );
-			}
+				bool operator==( const SelfType &other ) const {
+					return !( this->operator!=( other ) );
+				}
 
-			static size_t compute_num_nonzeroes( size_t size ) {
-				return size;
-			}
+				typename SelfType::difference_type operator-(
+					const SelfType &other
+				) const {
+					return internal::compute_distance<
+						size_t, typename SelfType::difference_type
+					>( this->_v.coord, other._v.coord );
+				}
 
-		private:
-			typename self_t::value_type _v;
+				typename SelfType::pointer operator->() { return &_v; }
 
-			diag_iterator( size_t _c ): _v( _c ) {}
+				typename SelfType::reference operator*() { return _v; }
 
-			diag_iterator(): _v( 0) {}
+				RowIndexType i() const { return _v.coord; }
+
+				ColumnIndexType j() const { return _v.coord; }
+
+				ValueType v() const {
+					return static_cast< ValueType >( _v.coord ) + 1;
+				}
+
+				static SelfType make_begin( InputSizesType &size ) {
+					(void) size;
+					return SelfType( 0 );
+				}
+
+				static SelfType make_end( InputSizesType &size ) {
+					return SelfType( size );
+				}
+
+				static SelfType make_parallel_begin( InputSizesType &size ) {
+					const size_t num_nonzeroes = size;
+					size_t num_non_zeroes_per_process, first_local_nonzero;
+					compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process,
+						first_local_nonzero );
+					return SelfType( first_local_nonzero );
+				}
+
+				static SelfType make_parallel_end( InputSizesType &size ) {
+					const size_t num_nonzeroes = size;
+					size_t last = compute_parallel_last_nonzero( num_nonzeroes );
+					return SelfType( last );
+				}
+
+				static size_t compute_num_nonzeroes( const size_t size ) {
+					return size;
+				}
+
 		};
 
 		/**
-		 * @brief utility storing row and column values for a band matrix
-		 */
-		struct __band_coord_value {
-			const size_t size;
-			size_t row;
-			size_t col;
-			__band_coord_value() = delete;
-			__band_coord_value(
-				size_t _size,
-				size_t _r,
-				size_t _c
-			) noexcept :
-				size( _size ),
-				row( _r ),
-				col( _c )
-			{}
-		};
-
-		/**
-		 * @brief iterator to generate a band matrix of band \p BAND, random acces
-		 * 	iff \p random is true
+		 * Iterator to generate a band matrix of band \a BAND.
+		 *
+		 * Random acces iff \a random is <tt>true</tt>.
 		 */
 		template<
 			size_t BAND,
 			bool random
 		>
-		struct band_iterator {
-			// STL iterator type members
-			using iterator_category = typename std::conditional< random,
-				std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-			using value_type = __band_coord_value;
-			using difference_type = long;
-			using pointer = __band_coord_value*;
-			using reference = __band_coord_value&;
+		class BandIterator {
 
-			static constexpr size_t MAX_ELEMENTS_PER_ROW = BAND * 2 + 1;
-			static constexpr size_t PROLOGUE_ELEMENTS = ( 3* BAND * BAND + BAND ) / 2;
+			public:
 
-			using RowIndexType = size_t;
-			using ColumnIndexType = size_t;
-			using ValueType = int;
-			using self_t = band_iterator< BAND, random >;
-			using input_sizes_t = const size_t;
+				// STL iterator type members
+				using iterator_category = typename std::conditional<
+						random, std::random_access_iterator_tag, std::forward_iterator_tag
+					>::type;
+				using value_type = internal::BandCoordValueType;
+				using difference_type = long;
+				using pointer = internal::BandCoordValueType *;
+				using reference = internal::BandCoordValueType &;
 
-			band_iterator( const self_t& ) = default;
 
-			self_t& operator++() noexcept {
-				const size_t max_col = std::min( _v.row + BAND, _v.size - 1 );
-				if( _v.col < max_col ) {
-					_v.col++;
-				} else {
-					_v.row++;
-					_v.col = _v.row < BAND ? 0 : _v.row - BAND;
+			private:
+
+				using SelfType = BandIterator< BAND, random >;
+
+				typename SelfType::value_type _v;
+
+				BandIterator( const size_t size, const size_t row, const size_t col ) :
+					_v( size, row, col ) {
+					static_assert( BAND > 0, "BAND must be > 0");
 				}
-				return *this;
-			}
 
-			self_t& operator+=( size_t offset ) noexcept {
-				const size_t position = coords_to_linear( _v.size, _v.row, _v.col );
-				linear_to_coords( _v.size, position + offset, _v.row, _v.col );
-				return *this;
-			}
-
-			bool operator!=( const self_t &other ) const {
-				return other._v.row != this->_v.row || other._v.col != this->_v.col;
-			}
-
-			bool operator==( const self_t &other ) const {
-				return !( this->operator!=( other ) );
-			}
-
-			typename self_t::difference_type operator-( const self_t &other ) const {
-				const size_t this_position = coords_to_linear( _v.size, _v.row, _v.col );
-				const size_t other_position =
-					coords_to_linear( other._v.size, other._v.row, other._v.col );
-				return __compute_distance< size_t, typename self_t::difference_type >(
-					this_position, other_position );
-			}
-
-			typename self_t::pointer operator->() { return &_v; }
-
-			typename self_t::reference operator*() { return _v; }
-
-			typename self_t::RowIndexType i() const { return _v.row; }
-
-			typename self_t::ColumnIndexType j() const { return _v.col; }
-
-			ValueType v() const {
-				return _v.row == _v.col ? static_cast< int >( MAX_ELEMENTS_PER_ROW ) : -1;
-			}
-
-			static self_t make_begin( input_sizes_t &size ) {
-				__check_size( size );
-				return self_t( size, 0, 0 );
-			}
-
-			static self_t make_end( input_sizes_t &size ) {
-				__check_size( size );
-				size_t row, col;
-				const size_t num_nonzeroes = compute_num_nonzeroes( size );
-				linear_to_coords( size, num_nonzeroes, row, col );
-				return self_t( size, row, col );
-			}
-
-			static self_t make_parallel_begin( input_sizes_t &size ) {
-				__check_size( size );
-				const size_t num_nonzeroes = compute_num_nonzeroes( size );
-				size_t num_non_zeroes_per_process, first_local_nonzero;
-				compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process, first_local_nonzero );
-				size_t row, col;
-				linear_to_coords( size, first_local_nonzero, row, col );
-				return self_t( size, row, col );
-			}
-
-			static self_t make_parallel_end( input_sizes_t &size ) {
-				__check_size( size );
-				const size_t num_nonzeroes = compute_num_nonzeroes( size );
-				size_t last = compute_parallel_last_nonzero( num_nonzeroes );
-				size_t row, col;
-				linear_to_coords( size, last, row, col );
-				return self_t( size, row, col );
-			}
-
-			static size_t compute_num_nonzeroes( size_t size ) {
-				return 2 * PROLOGUE_ELEMENTS + ( size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-			}
-
-		private:
-			typename self_t::value_type _v;
-
-			band_iterator( size_t size, size_t row, size_t col ):
-				_v( size, row, col ) {
-				static_assert( BAND > 0, "BAND must be > 0");
-			}
-
-			band_iterator(): _v( 0, 0) {
-				static_assert( BAND > 0, "BAND must be > 0");
-			}
-
-			static size_t __col_to_linear( size_t row, size_t col ) {
-				size_t min_col{ row < BAND ? 0 : row - BAND };
-				return col - min_col;
-			}
-
-			static size_t __coords_to_linear_in_prologue(
-					size_t row,
-					size_t col
-			) {
-				return row * BAND + row * ( row + 1 ) / 2 + __col_to_linear( row, col );
-			}
-
-			static size_t coords_to_linear(
-				size_t matrix_size,
-				size_t row,
-				size_t col
-			) {
-				if( row < BAND ) {
-					return __coords_to_linear_in_prologue( row, col );
+				BandIterator() : _v( 0, 0 ) {
+					static_assert( BAND > 0, "BAND must be > 0");
 				}
-				if( row < matrix_size - BAND ) {
-					return PROLOGUE_ELEMENTS + ( row - BAND ) * MAX_ELEMENTS_PER_ROW + __col_to_linear( row, col );
-				}
-				if( row < matrix_size ) {
-					size_t mat_size = 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-					size_t prologue_els = __coords_to_linear_in_prologue( matrix_size - row - 1, matrix_size - col - 1 );
-					return  mat_size - 1 - prologue_els; // transpose coordinates
-				}
-				// for points outside of matrix: project to prologue
-				return 2 * PROLOGUE_ELEMENTS + ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW
-					+ ( row - matrix_size ) * BAND + col + BAND - row;
-			}
 
-			static void __linear_to_coords_in_prologue(
+				static size_t col_to_linear( const size_t row, const size_t col ) {
+					size_t min_col = row < BAND ? 0 : row - BAND;
+					return col - min_col;
+				}
+
+				static size_t coords_to_linear_in_prologue(
+					const size_t row, const size_t col
+				) {
+					return row * BAND + row * (row + 1) / 2 + col_to_linear( row, col );
+				}
+
+				static size_t coords_to_linear(
+					const size_t matrix_size, const size_t row, const size_t col
+				) {
+					if( row < BAND ) {
+						return coords_to_linear_in_prologue( row, col );
+					}
+					if( row < matrix_size - BAND ) {
+						return PROLOGUE_ELEMENTS + ( row - BAND ) * MAX_ELEMENTS_PER_ROW +
+							col_to_linear( row, col );
+					}
+					if( row < matrix_size ) {
+						const size_t mat_size = 2 * PROLOGUE_ELEMENTS +
+							(matrix_size - 2 * BAND) * MAX_ELEMENTS_PER_ROW;
+						const size_t prologue_els = coords_to_linear_in_prologue(
+							matrix_size - row - 1, matrix_size - col - 1
+						);
+						return mat_size - prologue_els - 1; // transpose coordinates
+					}
+					// for points outside of matrix: project to prologue
+					return 2 * PROLOGUE_ELEMENTS +
+						(matrix_size - 2 * BAND) * MAX_ELEMENTS_PER_ROW +
+						(row - matrix_size) * BAND +
+						col + BAND - row;
+				}
+
+				static void linear_to_coords_in_prologue(
 					size_t position,
-					size_t& row,
-					size_t& col
-			) {
-				size_t current_row = 0;
-				//linear search
-				for( ; position >= ( current_row + 1 + BAND ) && current_row < BAND; current_row++ ) {
-					position -= ( current_row + 1 + BAND );
+					size_t &row,
+					size_t &col
+				) {
+					size_t current_row = 0;
+					//linear search
+					for( ;
+						position >= ( current_row + 1 + BAND ) && current_row < BAND;
+						(void) current_row++
+					) {
+						position -= ( current_row + 1 + BAND );
+					}
+					row = current_row;
+					col = position;
 				}
-				row = current_row;
-				col = position;
-			}
 
-			static void linear_to_coords(
-				size_t matrix_size,
-				size_t position,
-				size_t &row,
-				size_t &col
-			) {
-				if( position < PROLOGUE_ELEMENTS ) {
-					__linear_to_coords_in_prologue( position, row, col );
-					return;
-				}
-				position -= PROLOGUE_ELEMENTS;
-				const size_t max_inner_rows = matrix_size - 2 * BAND;
-				if( position < max_inner_rows * MAX_ELEMENTS_PER_ROW ) {
-					const size_t inner_row = position / MAX_ELEMENTS_PER_ROW;
-					row = BAND + inner_row;
-					position -= inner_row * MAX_ELEMENTS_PER_ROW;
-					col = row - BAND + position % MAX_ELEMENTS_PER_ROW;
-					return;
-				}
-				position -= ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
-				if( position < PROLOGUE_ELEMENTS ) {
-					size_t end_row, end_col;
+				static void linear_to_coords(
+					const size_t matrix_size,
+					size_t position,
+					size_t &row,
+					size_t &col
+				) {
+					if( position < PROLOGUE_ELEMENTS ) {
+						linear_to_coords_in_prologue( position, row, col );
+						return;
+					}
+					position -= PROLOGUE_ELEMENTS;
+					const size_t max_inner_rows = matrix_size - 2 * BAND;
+					if( position < max_inner_rows * MAX_ELEMENTS_PER_ROW ) {
+						const size_t inner_row = position / MAX_ELEMENTS_PER_ROW;
+						row = BAND + inner_row;
+						position -= inner_row * MAX_ELEMENTS_PER_ROW;
+						col = row - BAND + position % MAX_ELEMENTS_PER_ROW;
+						return;
+					}
+					position -= ( matrix_size - 2 * BAND ) * MAX_ELEMENTS_PER_ROW;
+					if( position < PROLOGUE_ELEMENTS ) {
+						size_t end_row, end_col;
 
-					__linear_to_coords_in_prologue( PROLOGUE_ELEMENTS - 1 - position, end_row, end_col );
-					row = matrix_size - 1 - end_row;
-					col = matrix_size - 1 - end_col;
-					return;
+						linear_to_coords_in_prologue( PROLOGUE_ELEMENTS - 1 - position, end_row,
+							end_col );
+						row = matrix_size - 1 - end_row;
+						col = matrix_size - 1 - end_col;
+						return;
+					}
+					position -= PROLOGUE_ELEMENTS;
+					row = matrix_size + position / ( BAND + 1 );
+					col = row - BAND + position % ( BAND + 1 );
 				}
-				position -= PROLOGUE_ELEMENTS;
-				row = matrix_size + position / ( BAND + 1 );
-				col = row - BAND + position % ( BAND + 1 );
-			}
 
-			static void __check_size( size_t size ) {
-				if( size < 2 * BAND + 1 ) {
-					throw std::domain_error( "matrix too small for band" );
+				static void check_size( const size_t size ) {
+					if( size < 2 * BAND + 1 ) {
+						throw std::domain_error( "matrix too small for band" );
+					}
 				}
-			}
+
+
+			public:
+
+				static constexpr size_t MAX_ELEMENTS_PER_ROW = BAND * 2 + 1;
+				static constexpr size_t PROLOGUE_ELEMENTS = (3 * BAND * BAND + BAND) / 2;
+
+				using RowIndexType = size_t;
+				using ColumnIndexType = size_t;
+				using ValueType = int;
+				using InputSizesType = const size_t;
+
+				BandIterator( const SelfType & ) = default;
+
+				SelfType & operator++() noexcept {
+					const size_t max_col = std::min( _v.row + BAND, _v.size - 1 );
+					if( _v.col < max_col ) {
+						(void) _v.col++;
+					} else {
+						(void) _v.row++;
+						_v.col = _v.row < BAND ? 0 : _v.row - BAND;
+					}
+					return *this;
+				}
+
+				SelfType & operator+=( size_t offset ) noexcept {
+					const size_t position = coords_to_linear( _v.size, _v.row, _v.col );
+					linear_to_coords( _v.size, position + offset, _v.row, _v.col );
+					return *this;
+				}
+
+				bool operator!=( const SelfType &other ) const {
+					return other._v.row != this->_v.row || other._v.col != this->_v.col;
+				}
+
+				bool operator==( const SelfType &other ) const {
+					return !( this->operator!=( other ) );
+				}
+
+				typename SelfType::difference_type operator-(
+					const SelfType &other
+				) const {
+					const size_t this_position = coords_to_linear( _v.size, _v.row, _v.col );
+					const size_t other_position =
+						coords_to_linear( other._v.size, other._v.row, other._v.col );
+					return internal::compute_distance<
+						size_t, typename SelfType::difference_type
+					>( this_position, other_position );
+				}
+
+				typename SelfType::pointer operator->() { return &_v; }
+
+				typename SelfType::reference operator*() { return _v; }
+
+				typename SelfType::RowIndexType i() const { return _v.row; }
+
+				typename SelfType::ColumnIndexType j() const { return _v.col; }
+
+				ValueType v() const {
+					return _v.row == _v.col ? static_cast< int >( MAX_ELEMENTS_PER_ROW ) : -1;
+				}
+
+				static SelfType make_begin( InputSizesType &size ) {
+					check_size( size );
+					return SelfType( size, 0, 0 );
+				}
+
+				static SelfType make_end( InputSizesType &size ) {
+					check_size( size );
+					size_t row, col;
+					const size_t num_nonzeroes = compute_num_nonzeroes( size );
+					linear_to_coords( size, num_nonzeroes, row, col );
+					return SelfType( size, row, col );
+				}
+
+				static SelfType make_parallel_begin( InputSizesType &size ) {
+					check_size( size );
+					const size_t num_nonzeroes = compute_num_nonzeroes( size );
+					size_t num_non_zeroes_per_process, first_local_nonzero;
+					compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process,
+						first_local_nonzero );
+					size_t row, col;
+					linear_to_coords( size, first_local_nonzero, row, col );
+					return SelfType( size, row, col );
+				}
+
+				static SelfType make_parallel_end( InputSizesType &size ) {
+					check_size( size );
+					const size_t num_nonzeroes = compute_num_nonzeroes( size );
+					size_t last = compute_parallel_last_nonzero( num_nonzeroes );
+					size_t row, col;
+					linear_to_coords( size, last, row, col );
+					return SelfType( size, row, col );
+				}
+
+				static size_t compute_num_nonzeroes( const size_t size ) {
+					return 2 * PROLOGUE_ELEMENTS + (size - 2 * BAND) * MAX_ELEMENTS_PER_ROW;
+				}
+
 		};
 
 		/**
-		 * @brief utility class to store the number of columns and the current
-		 * 	nonzero index of a dense matrix; the coordinates can be retrieved
-		 * 	from these values.
-		 */
-		struct __dense_mat_coord_value {
-			const size_t cols;
-			size_t offset;
-			__dense_mat_coord_value() = delete;
-			__dense_mat_coord_value(
-				size_t _cols,
-				size_t _off
-			) noexcept :
-				cols( _cols ),
-				offset( _off )
-			{}
-		};
-
-		// simple iterator returning an incremental number
-		// and generating a rectangular dense matrix
-		/**
-		 * @brief iterator generating a dense matrix of value type \p ValT, random
-		 * 	access iff \p random is true.
+		 * Iterator generating a dense matrix of value type \a ValT.
+		 *
+		 * Random access iff \a random is true.
 		 */
 		template<
 			typename ValT,
 			bool random
 		>
-		struct dense_mat_iterator {
-			// STL iterator type members
-			using iterator_category = typename std::conditional< random,
-				std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-			using value_type = __dense_mat_coord_value;
-			using difference_type = long;
-			using pointer = __dense_mat_coord_value*;
-			using reference = __dense_mat_coord_value&;
+		class DenseMatIterator {
 
-			using RowIndexType = size_t;
-			using ColumnIndexType = size_t;
-			using ValueType = ValT;
-			using self_t = dense_mat_iterator< ValT, random >;
-			using input_sizes_t = const std::array< size_t, 2 >;
+			public:
 
-			dense_mat_iterator(
-				size_t _cols,
-				size_t _off
-			) noexcept :
-				_v( _cols, _off )
-			{}
+				// STL iterator type members
+				using iterator_category = typename std::conditional<
+						random, std::random_access_iterator_tag, std::forward_iterator_tag
+					>::type;
+				using value_type = internal::DenseMatCoordValueType;
+				using difference_type = long;
+				using pointer = internal::DenseMatCoordValueType *;
+				using reference = internal::DenseMatCoordValueType &;
 
-			dense_mat_iterator( const self_t& ) = default;
 
-			self_t& operator++() noexcept {
-				_v.offset++;
-				return *this;
-			}
+			private:
 
-			self_t& operator+=( size_t offset ) noexcept {
-				_v.offset += offset;
-				return *this;
-			}
+				using SelfType = DenseMatIterator< ValT, random >;
 
-			bool operator!=( const self_t& other ) const {
-				return other._v.offset != this->_v.offset;
-			}
+				typename SelfType::value_type _v;
 
-			bool operator==( const dense_mat_iterator& other ) const {
-				return !( this->operator!=( other ) );
-			}
 
-			typename self_t::difference_type operator-( const self_t& other ) const {
-				return __compute_distance< size_t, typename self_t::difference_type >(
-					this->_v.offset, other._v.offset );
-			}
+			public:
 
-			typename self_t::pointer operator->() { return &_v; }
+				using RowIndexType = size_t;
+				using ColumnIndexType = size_t;
+				using ValueType = ValT;
+				using InputSizesType = const std::array< size_t, 2 >;
 
-			typename self_t::reference operator*() { return _v; }
+				DenseMatIterator(
+					size_t _cols,
+					size_t _off
+				) noexcept :
+					_v( _cols, _off )
+				{}
 
-			RowIndexType i() const { return _v.offset / _v.cols; }
+				DenseMatIterator( const SelfType& ) = default;
 
-			ColumnIndexType j() const { return _v.offset % _v.cols; }
+				SelfType& operator++() noexcept {
+					_v.offset++;
+					return *this;
+				}
 
-			ValueType v() const {
-				return static_cast< ValueType >( _v.offset ) + 1;
-			}
+				SelfType& operator+=( size_t offset ) noexcept {
+					_v.offset += offset;
+					return *this;
+				}
 
-			static self_t make_begin( input_sizes_t& sizes ) {
-				return self_t( sizes[1], 0 );
-			}
+				bool operator!=( const SelfType& other ) const {
+					return other._v.offset != this->_v.offset;
+				}
 
-			static self_t make_end( input_sizes_t& sizes ) {
-				const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
-				return self_t( sizes[1], num_nonzeroes );
-			}
+				bool operator==( const DenseMatIterator& other ) const {
+					return !( this->operator!=( other ) );
+				}
 
-			static self_t make_parallel_begin( input_sizes_t& sizes ) {
-				size_t num_non_zeroes_per_process, first_local_nonzero;
-				compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ), num_non_zeroes_per_process, first_local_nonzero );
-				return self_t( sizes[1], first_local_nonzero );
-			}
+				typename SelfType::difference_type operator-( const SelfType& other ) const {
+					return internal::compute_distance<
+						size_t, typename SelfType::difference_type
+					>( this->_v.offset, other._v.offset );
+				}
 
-			static self_t make_parallel_end( input_sizes_t& sizes ) {
-				size_t last = compute_parallel_last_nonzero( compute_num_nonzeroes( sizes ) );
-				return self_t( sizes[1], last );
-			}
+				typename SelfType::pointer operator->() { return &_v; }
 
-			static size_t compute_num_nonzeroes( input_sizes_t& sizes ) {
-				return sizes[0] * sizes[1];
-			}
+				typename SelfType::reference operator*() { return _v; }
 
-		private:
-			typename self_t::value_type _v;
+				RowIndexType i() const { return _v.offset / _v.cols; }
+
+				ColumnIndexType j() const { return _v.offset % _v.cols; }
+
+				ValueType v() const {
+					return static_cast< ValueType >( _v.offset ) + 1;
+				}
+
+				static SelfType make_begin( InputSizesType &sizes ) {
+					return SelfType( sizes[1], 0 );
+				}
+
+				static SelfType make_end( InputSizesType &sizes ) {
+					const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
+					return SelfType( sizes[1], num_nonzeroes );
+				}
+
+				static SelfType make_parallel_begin( InputSizesType &sizes ) {
+					size_t num_non_zeroes_per_process, first_local_nonzero;
+					compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ),
+						num_non_zeroes_per_process, first_local_nonzero );
+					return SelfType( sizes[1], first_local_nonzero );
+				}
+
+				static SelfType make_parallel_end( InputSizesType &sizes ) {
+					size_t last = compute_parallel_last_nonzero(
+						compute_num_nonzeroes( sizes ) );
+					return SelfType( sizes[1], last );
+				}
+
+				static size_t compute_num_nonzeroes( InputSizesType &sizes ) {
+					return sizes[0] * sizes[1];
+				}
+
 		};
 
-	}
-}
+	} // end namespace grb::utils
 
-#endif // _GRB_UTILS_MATRIX_GENERATORS_
+} // end namespace grb
+
+#endif // _GRB_UTILS_MATRIX_GENERATORS
 
