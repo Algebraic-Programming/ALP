@@ -1383,20 +1383,13 @@ namespace grb {
 		const IOMode mode
 	) {
 		// derive synchronized iterator
-		// first derive iterator access category:
-		//  in(3x random acc. it.) => out(random acc. it.)
-		typename utils::common_iterator_tag<
-			fwd_iterator1, fwd_iterator2, fwd_iterator3
-		>::iterator_category iterator_category;
 		auto start = internal::makeSynchronized(
 			I, J, V,
-			I_end, J_end, V_end,
-			iterator_category
+			I_end, J_end, V_end
 		);
 		const auto end = internal::makeSynchronized(
 			I_end, J_end, V_end,
-			I_end, J_end, V_end,
-			iterator_category
+			I_end, J_end, V_end
 		);
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
