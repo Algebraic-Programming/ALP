@@ -48,13 +48,13 @@ static size_t J2[ 15 ] = { 0, 1, 4, 5, 8, 10, 11, 11, 12, 9, 11, 14, 2, 10, 14 }
 // empty cols: 2, 3, 6, 7, 9, 13
 
 static bool test_vector_of_zeroes(
-	std::vector< size_t > &v, const char * name
+	std::vector< size_t > &v, const char * const name
 ) {
 	std::vector< size_t >::const_iterator max_it =
 		std::max_element( v.cbegin(), v.cend() );
 	bool result = true;
 	if( *max_it != 0 ) {
-		std::cerr << "some " << name << " is wrong" << std::endl;
+		std::cerr << "a " << name << " entry is wrong" << std::endl;
 		for( size_t i = 0; i < v.size(); i++ ) {
 			std::cerr << name << " " << i << ", count " << v[ i ] << std::endl;
 		}
@@ -108,8 +108,8 @@ RC test_matrix_iter(
 	size_t count = num_local_matrix_nzs;
 	RC rc = collectives<>::allreduce( count, grb::operators::add< size_t >() );
 	if( rc != SUCCESS ) {
-		std::cerr << "Cannot reduce, communication issue!" << std::endl;
-		std::abort();
+		std::cerr << "Cannot reduce nonzero count\n";
+		return PANIC;
 	}
 	if( count != 15 ) {
 		std::cerr << "\tunexpected number of entries ( " << count << " ), "
@@ -125,12 +125,20 @@ RC test_matrix_iter(
 template< typename ValT >
 RC test_matrix(
 	size_t num_nnz, const size_t * rows, const size_t * cols,
-	const ValT * values, size_t row_col_offset, const Matrix< ValT > &mat
+	const ValT * values,
+	size_t row_col_offset, const Matrix< ValT > &mat
 ) {
 	auto orig_begin = internal::makeSynchronized( rows, cols, values, num_nnz );
 	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz,
 		values + num_nnz, 0 );
-	return test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	if(
+		collectives<>::allreduce( rc, grb::operators::any_or< RC >() ) != SUCCESS
+	) {
+		std::cerr << "Cannot reduce error code\n";
+		ret = PANIC;
+	}
+	return ret;
 }
 
 template< typename ValT >
@@ -140,7 +148,14 @@ RC test_matrix(
 ) {
 	auto orig_begin = internal::makeSynchronized( rows, cols, num_nnz );
 	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz, 0 );
-	return test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	if(
+		collectives<>::allreduce( rc, grb::operators::any_or< RC >() ) != SUCCESS
+	) {
+		std::cerr << "Cannot reduce error code\n";
+		ret = PANIC;
+	}
+	return ret;
 }
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -208,16 +223,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "\tsubtest 4 (diagonal pattern " << n << " x " << n << " "
 			<< "matrix) FAILED" << std::endl;
 		return;
-	}
-
-	// assumes SUCCESS is the smallest value in enum RC to perform reduction
-	assert( SUCCESS < FAILED );
-	RC rc_red = collectives<>::allreduce( rc, grb::operators::any_or< RC >() );
-	if( rc_red != SUCCESS ) {
-		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
-		rc = PANIC;
-	} else {
-		rc = rc_red;
 	}
 }
 
