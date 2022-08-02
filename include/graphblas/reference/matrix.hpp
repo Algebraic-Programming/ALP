@@ -50,7 +50,7 @@
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
 
-#include "non_zero_wrapper.h"
+#include "nonzero_wrapper.hpp"
 #include "forward.hpp"
 
 
@@ -500,7 +500,8 @@ namespace grb {
 				if( col_values_buffer != nullptr ) {
 					std::cout << col_values_buffer[ s ] << ", ";
 				}
-				std::cout << storage.row_index[ s ] << ", " << get_value( storage, s )
+				std::cout << storage.row_index[ s ] << ", "
+					<< storage.getPrintValue( s )
 					<< std::endl;
 			}
 #endif
@@ -664,7 +665,8 @@ namespace grb {
 				if( col_values_buffer != nullptr ) {
 					std::cout << col_values_buffer[ s ] << ", ";
 				}
-				std::cout << storage.row_index[s] << ", " << get_value( storage, s)
+				std::cout << storage.row_index[ s ] << ", "
+					<< storage.getPrintValue( s )
 					<< std::endl;
 			}
 
