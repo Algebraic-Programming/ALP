@@ -24,7 +24,6 @@
 #define _H_GRB_TYPE_TRAITS
 
 #include <type_traits>
-#include <iterator>
 
 
 namespace grb {
