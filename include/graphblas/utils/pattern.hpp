@@ -34,58 +34,49 @@ namespace grb {
 
 	namespace utils {
 
-		/** Helper function to increment an iterator to a values array. */
-		template< typename Iterator >
-		static inline void incValueIterator( Iterator & it ) {
-			++it; // standard behaviour
-		}
-
 		/**
-		 * Overload the above standard helper function in case we are reading in a
-		 * pattern matrix. In this case, the iterator will never be derefenced, but
-		 * may also never be incremented.
-		 */
-		static inline void incValueIterator( void *& it ) {
-			(void)it; // cannot iterate on pattern matrix input
-		}
-
-		/**
-		 * Wrapper class for caching nonzero values. It is an alias to some of the
-		 * std::vector functionalities used while parsing an input matrix in
-		 * coordinate format.
+		 * Wrapper class for caching nonzero values. It wraps around std::vector
+		 * functionalities used while parsing an input matrix in coordinate format.
+		 * It exposes a subset of std::vector functionalities.
 		 */
 		template< typename T >
 		class VectorWrapper {
 
-		private:
-			/** The vector to wrap around. */
-			std::vector< T > vector;
+			private:
 
-		public:
-			/**
-			 * We normally dereference an iterator and push back its value.
-			 * @tparam Iterator The iterator type.
-			 * @param[in] it The iterator whose dereferenced value is to be pushed back
-			 *               into \a vector.
-			 */
-			template< typename Iterator >
-			void push_back( const Iterator it ) {
-				vector.push_back( *it );
-			}
+				/** The vector to wrap around. */
+				std::vector< T > vector;
 
-			/**
-			 * @returns The start iterator to the \a vector.
-			 */
-			typename std::vector< T >::const_iterator begin() const {
-				return vector.begin();
-			}
 
-			/**
-			 * @returns The end iterator to the \a vector.
-			 */
-			typename std::vector< T >::const_iterator end() const {
-				return vector.end();
-			}
+			public:
+
+				/**
+				 * We dereference an iterator and push back its value.
+				 *
+				 * @tparam Iterator The iterator type.
+				 *
+				 * @param[in] it The iterator whose dereferenced value is to be pushed back
+				 *               into \a vector.
+				 */
+				template< typename Iterator >
+				void push_back( const Iterator it ) {
+					vector.push_back( *it );
+				}
+
+				/**
+				 * @returns The start iterator to the underlying vector.
+				 */
+				typename std::vector< T >::const_iterator begin() const {
+					return vector.begin();
+				}
+
+				/**
+				 * @returns The end iterator to the underlying vector.
+				 */
+				typename std::vector< T >::const_iterator end() const {
+					return vector.end();
+				}
+
 		};
 
 		/**
@@ -95,37 +86,37 @@ namespace grb {
 		 */
 		template<>
 		class VectorWrapper< void > {
-		public:
-			/**
-			 * This function does nothing. It expects an iterator of type a pointer to
-			 * \a void. It asserts \a it equal to \a NULL as any other use is a highly
-			 * probable indicator of a coding failure.
-			 *
-			 * @param[in] it The \a NULL pointer that corresponds to a `fake' iterator.
-			 */
-			void push_back( void * const it ) const {
+
+			public:
+
+				/**
+				 * This function does nothing. It expects an iterator of type a pointer to
+				 * \a void. It asserts \a it equal to a null pointer.
+				 *
+				 * @param[in] it The \a null pointer that corresponds to an empty iterator.
+				 */
+				void push_back( void * const it ) const {
 #ifdef NDEBUG
-				(void)it;
+					(void) it;
 #else
-				assert( it == NULL );
+					assert( it == nullptr );
 #endif
-			}
+				}
 
-			/**
-			 * @returns An \a NULL pointer to signal there are no nonzero values
-			 *          cached.
-			 */
-			void * begin() const {
-				return NULL;
-			}
+				/**
+				 * @returns A <tt>void *</tt> null pointer.
+				 */
+				void * begin() const {
+					return nullptr;
+				}
 
-			/**
-			 * @returns An \a NULL pointer to signal there are no nonzero values
-			 *          cached.
-			 */
-			void * end() const {
-				return NULL;
-			}
+				/**
+				 * @returns A <tt>void *</tt> null pointer.
+				 */
+				void * end() const {
+					return nullptr;
+				}
+
 		};
 
 		/**
@@ -151,12 +142,16 @@ namespace grb {
 		 */
 		template<>
 		struct iterator_value_trait< void * > {
-			/** An `iterator' of type <code>void *</code> can only return nothing; i.e., \a void. */
+			/**
+			 * An `iterator' of type <code>void *</code> can only return nothing; i.e.,
+			 * \a void.
+			 */
 			typedef void type;
 		};
 
-	} // namespace utils
+	} // end namespace utils
 
-} // namespace grb
+} // end namespace grb
 
 #endif // end ``_H_GRB_UTILS_PATTERN''
+
