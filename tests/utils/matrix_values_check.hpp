@@ -127,11 +127,11 @@ namespace grb {
 				typename IterT
 			>
 			inline char get_value(
-				const IterT& a,
+				const IterT &a,
 				typename std::enable_if< std::is_same< ValT, void >::value >::type* =
 					nullptr
 			) {
-				(void)a;
+				(void) a;
 				return '\0'; // print nothing
 			}
 
@@ -243,14 +243,14 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		bool compare_non_zeroes(
-			size_t nrows,
+			const size_t nrows,
 			OrigIterT origin_begin,
-			OrigIterT origin_end,
+			const OrigIterT origin_end,
 			MatIterT mat_begin,
-			MatIterT mat_end,
-			size_t& counted_values,
-			std::ostream& outs = std::cout,
-			bool log_all_differences = false
+			const MatIterT mat_end,
+			size_t &counted_values,
+			std::ostream &outs = std::cout,
+			const bool log_all_differences = false
 		) {
 			static_assert(
 				grb::internal::is_input_iterator<
