@@ -16,12 +16,10 @@
  */
 
 /**
+ * Various utility classes to compare matrice for equality.
+ *
  * @author Alberto Scolari
  * @date 20/06/2022
- * @brief various utility classes to generate matrices of different shapes; they
- * 	are all conformant to the STL random access iterator specification, but the tag
- *  can be set to forward iterator via a boolean template parameter for testing
- * 	purposes
  */
 
 #ifndef _H_GRB_UTILS_MATRIX_CHECK
@@ -254,10 +252,18 @@ namespace grb {
 			std::ostream& outs = std::cout,
 			bool log_all_differences = false
 		) {
-			static_assert( grb::internal::is_input_iterator< ValT, decltype( mat_begin )>::value,
-				"MatIterT does not have {i,j,v}() interface" );
-			static_assert( grb::internal::is_input_iterator< ValT, decltype( origin_begin )>::value,
-				"MatIterT does not have {i,j,v}() interface" );
+			static_assert(
+				grb::internal::is_input_iterator<
+					ValT, decltype( mat_begin )
+				>::value,
+				"MatIterT does not have {i,j,v}() interface"
+			);
+			static_assert(
+				grb::internal::is_input_iterator<
+					ValT, decltype( origin_begin )
+				>::value,
+				"MatIterT does not have {i,j,v}() interface"
+			);
 
 			size_t counted = 0;
 
@@ -266,17 +272,21 @@ namespace grb {
 			bool result = true;
 
 			while( mat_begin != mat_end && origin_begin != origin_end ) {
-				if( ::grb::internal::Distribution< implementation >::global_index_to_process_id(
-					origin_begin.i(), nrows, nprocs ) != pid
+				if( ::grb::internal::Distribution<
+						implementation
+					>::global_index_to_process_id(
+						origin_begin.i(), nrows, nprocs
+					) != pid
 				) {
 					// skip non-local non-zeroes
-					(void)++origin_begin;
+					(void) ++origin_begin;
 					continue;
 				}
 				(void) counted++;
 				const bool row_eq = mat_begin.i() == origin_begin.i();
 				const bool col_eq = mat_begin.j() == origin_begin.j();
-				const bool val_eq = internal::compare_values< ValT >( mat_begin, origin_begin );
+				const bool val_eq = internal::compare_values< ValT >( mat_begin,
+					origin_begin );
 
 				const bool all_match = row_eq && col_eq && val_eq;
 				result &= all_match;
