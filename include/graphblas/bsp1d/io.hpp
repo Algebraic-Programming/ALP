@@ -40,7 +40,7 @@
 #include <graphblas/base/io.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include <graphblas/utils/input_iterator_utils.hpp>
+#include <graphblas/utils/iterators/utils.hpp>
 
 #include "lpf/core.h"
 #include "matrix.hpp" //for BSP1D matrix
