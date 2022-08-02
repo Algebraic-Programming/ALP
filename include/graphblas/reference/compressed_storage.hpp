@@ -1223,9 +1223,9 @@ namespace grb {
 
 		};
 
-	} // namespace internal
+	} // end namespace grb::internal
 
-} // namespace grb
+} // end namespace grb
 
 #endif // end `_H_GRB_REFERENCE_COMPRESSED_STORAGE'
 
