@@ -85,6 +85,127 @@ namespace grb {
 	
 		};
 
+		/**
+		 * Used to gauge whether a given type is an ALP matrix iterator.
+		 *
+		 * @tparam MatrixValType Value type of the matrix; if void, does not check for
+		 *                       the presence of a v() method that returns a nonzero
+		 *                       value.
+		 *
+		 * @tparam IterT         The iterator type.
+		 *
+		 * An ALP matrix iterator has the following methods:
+		 *  -# i(),
+		 *  -# j(), and
+		 *  -# v(), iff #MatrixValType is not void
+		 */
+		template< typename MatrixValType, typename IterT >
+		class is_alp_matrix_iterator {
+
+			private:
+
+				// helper functions for determining, by return type, whether i, j, and v are
+				// defined
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().i())
+				>::type match_i(
+					typename std::decay< decltype(std::declval< U >().i()) >::type*
+				) {
+					return std::declval< U >().i();
+				}
+
+				template< typename U >
+				static void match_i( ... ) {}
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().j())
+				>::type match_j(
+					typename std::decay< decltype(std::declval< U >().j()) >::type*
+				) {
+					return std::declval< U >().j();
+				}
+
+				template< typename U >
+				static void match_j( ... ) {}
+
+				template< typename U >
+				static typename std::decay<
+					decltype(std::declval< U >().v())
+				>::type match_v(
+					typename std::decay< decltype(std::declval< U >().v()) >::type*
+				) {
+					return std::declval< U >().v();
+				}
+
+				template< typename U >
+				static void match_v( ... ) {}
+
+
+			public:
+
+				/** Type of the row index */
+				using RowIndexType = decltype( match_i< IterT >( nullptr ) );
+
+				/** Type of the column index */
+				using ColumnIndexType = decltype( match_j< IterT >( nullptr ) );
+
+				/** Type of the nonzero value */
+				using ValueType = decltype( match_v< IterT >( nullptr ) );
+
+				/**
+				 * Whether #IterT is an ALP matrix iterator
+				 */
+				static constexpr bool value =
+					!std::is_same< RowIndexType, void >::value &&
+					!std::is_same< ColumnIndexType, void >::value &&
+					std::is_integral< RowIndexType >::value &&
+					std::is_integral< ColumnIndexType >::value &&
+					(
+						std::is_same< MatrixValType, void >::value ||
+						!std::is_same< ValueType, void >::value
+					);
+
+		};
+
+		/**
+		 * Checks whether a given ALP matrix iterator type has a .v() method.
+		 *
+		 * @tparam T the iterator type
+		 *
+		 * This type trait determines whether \a T can be used for ingesting into a
+		 * value (non-void, non-pattern) ALP matrix.
+		 */
+		template< typename T >
+		class has_value_method {
+
+			private:
+
+				template< typename U >
+				static typename std::decay< decltype( std::declval< U >().v() ) >::type	match(
+					typename std::decay< decltype( std::declval< U >().v() ) >::type*
+				) {
+					return std::declval< U >().v();
+				}
+
+				template< typename U >
+				static void match( ... ) {}
+
+
+			public:
+
+				/**
+				 * Whether \a T defines the .v() method and is an ALP matrix iterator.
+				 */
+				static constexpr bool value = !std::is_same<
+						decltype( match< T >( nullptr ) ), void
+					>::value &&
+					is_alp_matrix_iterator< decltype( match< T >( nullptr ) ), T >::value;
+
+		};
+
 	} // end namespace utils
 
 } // end namespace grb

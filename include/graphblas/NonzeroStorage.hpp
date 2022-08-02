@@ -29,7 +29,7 @@
 #include <utility>
 #include <type_traits>
 
-#include <graphblas/type_traits.hpp>
+#include <graphblas/utils/iterators/type_traits.hpp>
 
 
 namespace grb {
@@ -207,7 +207,7 @@ namespace grb {
 		inline NonzeroStorage< RowIndexT, ColIndexT, ValueT > makeNonzeroStorage(
 			const IterT &it,
 			typename std::enable_if<
-				grb::internal::iterator_has_value_method< IterT >::value, void *
+				grb::utils::has_value_method< IterT >::value, void *
 			>::type = nullptr
 		) {
 			return NonzeroStorage< RowIndexT, ColIndexT, ValueT >(
@@ -233,7 +233,7 @@ namespace grb {
 		inline NonzeroStorage< RowIndexT, ColIndexT, void > makeNonzeroStorage(
 			const IterT &it,
 			typename std::enable_if<
-				!grb::internal::iterator_has_value_method< IterT >::value, void *
+				!grb::utils::has_value_method< IterT >::value, void *
 			>::type = nullptr
 		) {
 			return NonzeroStorage< RowIndexT, ColIndexT, void >( it.i(), it.j() );
