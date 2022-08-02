@@ -535,40 +535,6 @@ namespace grb {
 		}
 #endif
 
-		//TODO The variants where the tag is explicitly given instead of automatically
-		//     inferred seem dangerous to me. A two-step commit will first disable and
-		//     rewrite the dependent statements, and finally remove these variants.
-#if 0
-		// overload for 3 pointers and custom tag
-		template<
-			typename RowIndexT, typename ColIndexT, typename V,
-			typename iterator_category
-		>
-		SynchronizedNonzeroIterator<
-			RowIndexT, ColIndexT, V,
-			const RowIndexT *, const ColIndexT *, const V *,
-			iterator_category
-		>
-		makeSynchronized(
-			const RowIndexT * const it1,
-			const ColIndexT * const it2,
-			const V  * const it3,
-			const RowIndexT * const it1_end,
-			const ColIndexT * const it2_end,
-			const V  * const it3_end,
-			iterator_category
-		) {
-			return SynchronizedNonzeroIterator<
-				RowIndexT, ColIndexT, V,
-				const RowIndexT *, const ColIndexT *, const V *,
-				iterator_category
-			>(
-				it1, it2, it3,
-				it1_end, it2_end, it3_end
-			);
-		}
-#endif
-
 		/**
 		 * Make a synchronized iterator out of three source pointers.
 		 *
@@ -630,31 +596,6 @@ namespace grb {
 			);
 		}
 
-		// TODO see above
-#if 0
-		// overload for 2 pointers and custom tag
-		template<
-			typename RowIndexT,
-			typename ColIndexT,
-			typename iterator_category
-		>
-		SynchronizedNonzeroIterator<
-			RowIndexT, ColIndexT, void,
-			const RowIndexT *, const ColIndexT *, void, iterator_category
-		>
-		makeSynchronized(
-			const RowIndexT * const it1, const ColIndexT * const it2,
-			const RowIndexT * const it1_end, const ColIndexT * const it2_end,
-			iterator_category
-		) {
-			return SynchronizedNonzeroIterator<
-				RowIndexT, ColIndexT, void,
-				const RowIndexT *, const ColIndexT *, void,
-				iterator_category
-			>( it1, it2, it1_end, it2_end );
-		}
-#endif
-
 		/**
 		 * Make a synchronized iterator out of two source pointers.
 		 *
@@ -714,31 +655,6 @@ namespace grb {
 				std::random_access_iterator_tag
 			>( it1, it2, it1 + length, it2 + length );
 		}
-
-		// TODO see above
-#if 0
-		// overload for 2 iterators with custom tag
-		template<
-			typename fwd_it1,
-			typename fwd_it2,
-			typename iterator_category
-		> SynchronizedNonzeroIterator<
-			typename std::iterator_traits< fwd_it1 >::value_type,
-			typename std::iterator_traits< fwd_it2 >::value_type,
-			void, fwd_it1, fwd_it2, void, iterator_category
-		>
-		makeSynchronized(
-			const fwd_it1 it1, const fwd_it2 it2,
-			const fwd_it1 it1_end, const fwd_it2 it2_end,
-			iterator_category
-		) {
-			return SynchronizedNonzeroIterator<
-				typename std::iterator_traits< fwd_it1 >::value_type,
-				typename std::iterator_traits< fwd_it2 >::value_type,
-				void, fwd_it1, fwd_it2, void, iterator_category
-			>( it1, it2, it1_end, it2_end );
-		}
-#endif
 
 		/**
 		 * Creates a synchronized iterator out of two source iterators.
