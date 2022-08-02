@@ -40,8 +40,6 @@
 #include "graphblas/utils/iterators/NonzeroIterator.hpp"
 
 #include <graphblas/base/io.hpp>
-#include <graphblas/type_traits.hpp>
-
 #include <graphblas/utils/iterators/utils.hpp>
 
 #include "lpf/core.h"
@@ -1127,7 +1125,7 @@ namespace grb {
 			// loop over all inputs
 			for( ; start != end; ++start ) {
 				// sanity check on input
-				if( utils::internal::check_input_coordinates( start, rows, cols ) != SUCCESS ) {
+				if( utils::check_input_coordinates( start, rows, cols ) != SUCCESS ) {
 					return MISMATCH;
 				}
 				handleSingleNonzero( start, mode, rows, cols, cache, outgoing, data );
@@ -1187,7 +1185,7 @@ namespace grb {
 
 				for( size_t i = loop_start; i < loop_end; ++it, ++i ) {
 					// sanity check on input
-					local_rc = utils::internal::check_input_coordinates( it, rows, cols );
+					local_rc = utils::check_input_coordinates( it, rows, cols );
 					if( local_rc != SUCCESS ) {
 						// rely on atomic writes to global ret enum
 						ret = MISMATCH;
@@ -1369,13 +1367,17 @@ namespace grb {
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		static_assert( internal::is_input_iterator< InputType, fwd_iterator >::value,
+		static_assert(
+			utils::is_alp_matrix_iterator<
+				InputType, fwd_iterator
+			>::value,
 			"the given iterator is not a valid input iterator, "
-			"see the ALP specification for input iterators" );
+			"see the ALP specification for input iterators"
+		);
 		// static checks
-		NO_CAST_ASSERT( !( descr & descriptors::no_casting ) || (
+		NO_CAST_ASSERT( !(descr & descriptors::no_casting) || (
 			std::is_same< InputType,
-				typename internal::is_input_iterator<
+				typename utils::is_alp_matrix_iterator<
 					InputType, fwd_iterator
 				>::ValueType
 			>::value &&
@@ -1388,7 +1390,7 @@ namespace grb {
 
 		static_assert(
 			std::is_convertible<
-				typename internal::is_input_iterator<
+				typename utils::is_alp_matrix_iterator<
 					InputType, fwd_iterator
 				>::RowIndexType,
 				RIT
@@ -1398,7 +1400,7 @@ namespace grb {
 		);
 		static_assert(
 			std::is_convertible<
-				typename internal::is_input_iterator<
+				typename utils::is_alp_matrix_iterator<
 					InputType, fwd_iterator
 				>::ColumnIndexType,
 				CIT
@@ -1408,7 +1410,7 @@ namespace grb {
 		);
 		static_assert(
 			std::is_convertible<
-				typename internal::is_input_iterator<
+				typename utils::is_alp_matrix_iterator<
 					InputType, fwd_iterator
 				>::ValueType,
 				InputType

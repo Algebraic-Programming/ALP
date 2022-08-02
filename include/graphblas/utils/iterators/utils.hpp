@@ -21,64 +21,62 @@
  * @date 20/06/2022
  */
 
+#ifndef _H_GRB_ITERATOR_UTILS
+#define _H_GRB_ITERATOR_UTILS
+
 #include <cstddef>
 
 #include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
 
-#ifndef _H_GRB_ITERATOR_UTILS
-#define _H_GRB_ITERATOR_UTILS
+#include "type_traits.hpp"
 
 
 namespace grb {
 
 	namespace utils {
 
-		namespace internal {
-
-			/**
-			 * Checks whether the input iterator \a it stores valid row and column
-			 * coordinates.
-			 *
-			 * @tparam IterT the iterator type
-			 *
-			 * @param[in] it   The given input iterator.
-			 * @param[in] rows The number of matrix rows.
-			 * @param[in] cols The number of matrix columns.
-			 *
-			 * @return RC SUCCESS if the iterator's row and column values (i.e.,
-			 *                    <tt>it.i()</tt> <tt>it.j()</tt>, respectively) are both
-			 *                    within the given matrix boundaries, and MISMATCH
-			 *                    otherwise.
-			 */
-			template< typename IterT >
-			inline RC check_input_coordinates(
-				const IterT &it,
-				const typename IterT::RowIndexType rows,
-				const typename IterT::ColumnIndexType cols
-			) {
-				static_assert( grb::internal::is_input_iterator< void, IterT >::value,
-					"IterT is not an input iterator" );
-				if( it.i() >= rows ) {
+		/**
+		 * Checks whether the input iterator \a it stores valid row and column
+		 * coordinates.
+		 *
+		 * @tparam IterT the iterator type
+		 *
+		 * @param[in] it   The given input iterator.
+		 * @param[in] rows The number of matrix rows.
+		 * @param[in] cols The number of matrix columns.
+		 *
+		 * @return RC SUCCESS if the iterator's row and column values (i.e.,
+		 *                    <tt>it.i()</tt> <tt>it.j()</tt>, respectively) are both
+		 *                    within the given matrix boundaries, and MISMATCH
+		 *                    otherwise.
+		 */
+		template< typename IterT >
+		inline RC check_input_coordinates(
+			const IterT &it,
+			const typename IterT::RowIndexType rows,
+			const typename IterT::ColumnIndexType cols
+		) {
+			static_assert( grb::utils::is_alp_matrix_iterator< void, IterT >::value,
+				"IterT is not an ALP matrix iterator" );
+			if( it.i() >= rows ) {
 #ifndef NDEBUG
-					std::cerr << "Error: " << rows << " x " << cols
-					<< " matrix nonzero ingestion encounters row "
-					<< "index at " << it.i() << std::endl;
+				std::cerr << "Error: " << rows << " x " << cols
+				<< " matrix nonzero ingestion encounters row "
+				<< "index at " << it.i() << std::endl;
 #endif
-					return MISMATCH;
-				}
-				if( it.j() >= cols ) {
-#ifndef NDEBUG
-					std::cerr << "Error: " << rows << " x " << cols
-					<< " matrix nonzero ingestion encounters column "
-					<< "input at " << it.j() << std::endl;
-#endif
-					return MISMATCH;
-				}
-				return SUCCESS;
+				return MISMATCH;
 			}
-
-		} // end namespace internal
+			if( it.j() >= cols ) {
+#ifndef NDEBUG
+				std::cerr << "Error: " << rows << " x " << cols
+				<< " matrix nonzero ingestion encounters column "
+				<< "input at " << it.j() << std::endl;
+#endif
+				return MISMATCH;
+			}
+			return SUCCESS;
+		}
 
 	} // end namespace utils
 

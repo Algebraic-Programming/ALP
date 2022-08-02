@@ -31,8 +31,7 @@
 #include <algorithm>
 
 #include <graphblas.hpp>
-#include <graphblas/type_traits.hpp>
-#include <graphblas/NonzeroStorage.hpp>
+#include <graphblas/utils/iterators/type_traits.hpp>
 
 
 namespace grb {
@@ -76,9 +75,9 @@ namespace grb {
 				typename std::enable_if< !std::is_same< ValT, void >::value >::type* =
 					nullptr
 			) {
-				static_assert( grb::internal::is_input_iterator< ValT, decltype( a )>::value,
+				static_assert( grb::utils::is_alp_matrix_iterator< ValT, decltype( a )>::value,
 					"MatIterT does not have {i,j,v}() interface" );
-				static_assert( grb::internal::is_input_iterator< ValT, decltype( b )>::value,
+				static_assert( grb::utils::is_alp_matrix_iterator< ValT, decltype( b )>::value,
 					"MatIterT does not have {i,j,v}() interface" );
 				return a.v() == b.v();
 			}
@@ -253,13 +252,13 @@ namespace grb {
 			const bool log_all_differences = false
 		) {
 			static_assert(
-				grb::internal::is_input_iterator<
+				grb::utils::is_alp_matrix_iterator<
 					ValT, decltype( mat_begin )
 				>::value,
 				"MatIterT does not have {i,j,v}() interface"
 			);
 			static_assert(
-				grb::internal::is_input_iterator<
+				grb::utils::is_alp_matrix_iterator<
 					ValT, decltype( origin_begin )
 				>::value,
 				"MatIterT does not have {i,j,v}() interface"

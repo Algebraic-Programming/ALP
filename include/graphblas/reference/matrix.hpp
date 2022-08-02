@@ -363,8 +363,7 @@ namespace grb {
 				for( size_t i = start; i < end; i++ ) {
 					const ColIndexType col = col_getter( it );
 					const size_t bucket_num = col / bucketlen;
-					local_rc = utils::internal::check_input_coordinates( it, matrix_rows,
-						matrix_cols );
+					local_rc = utils::check_input_coordinates( it, matrix_rows, matrix_cols );
 					if( local_rc != SUCCESS ) {
 						break;
 					}
@@ -1617,7 +1616,7 @@ namespace grb {
 			// here we can safely ignore the mode and dispatch based only on the iterator type
 			// since in shared memory the input data reside by definition all on the same machine
 			(void) mode;
-			static_assert( internal::is_input_iterator< D, InputIterator >::value,
+			static_assert( utils::is_alp_matrix_iterator< D, InputIterator >::value,
 				"the given iterator is not a valid input iterator, "
 				"see the ALP specification for input iterators"
 			);
@@ -1665,7 +1664,7 @@ namespace grb {
 			clear_crs_and_ccs();
 
 			for( fwd_iterator it = _start; it != _end; ++it ) {
-				if( utils::internal::check_input_coordinates( it, m, n ) != SUCCESS ) {
+				if( utils::check_input_coordinates( it, m, n ) != SUCCESS ) {
 					return MISMATCH;
 				}
 				(void) ++( CRS.col_start[ it.i() ] );
