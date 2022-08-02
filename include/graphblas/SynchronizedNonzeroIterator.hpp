@@ -647,7 +647,8 @@ namespace grb {
 			std::random_access_iterator_tag
 		>
 		makeSynchronized(
-			const RowT * const it1, const ColT * const it2, size_t length
+			const RowT * const it1, const ColT * const it2,
+			const size_t length
 		) {
 			return SynchronizedNonzeroIterator<
 				RowT, ColT, void,
