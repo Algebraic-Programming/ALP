@@ -286,10 +286,10 @@ namespace grb {
 			typedef OutputType value_type;
 
 			/** The STL pointer type. */
-			typedef const value_type * pointer_type;
+			typedef const value_type * pointer;
 
 			/** The STL reference type. */
-			typedef const value_type & reference_type;
+			typedef const value_type & reference;
 
 			/** The STL tag type. */
 			typedef std::forward_iterator_tag iterator_category;
@@ -585,8 +585,8 @@ namespace std {
 			public:
 
 				typedef typename SelfType::value_type value_type;
-				typedef typename SelfType::pointer_type pointer;
-				typedef typename SelfType::reference_type reference;
+				typedef typename SelfType::pointer pointer;
+				typedef typename SelfType::reference reference;
 				typedef typename SelfType::iterator_category iterator_category;
 				typedef size_t difference_type;
 
