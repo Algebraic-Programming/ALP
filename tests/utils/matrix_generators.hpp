@@ -141,7 +141,7 @@ namespace grb {
 			 */
 			struct DiagCoordValue {
 				size_t coord;
-				DiagCoordValue( size_t _c ): coord( _c ) {}
+				DiagCoordValue( const size_t _c ): coord( _c ) {}
 			};
 
 			/**
@@ -153,14 +153,10 @@ namespace grb {
 				size_t col;
 				BandCoordValueType() = delete;
 				BandCoordValueType(
-					size_t _size,
-					size_t _r,
-					size_t _c
-				) noexcept :
-					size( _size ),
-					row( _r ),
-					col( _c )
-				{}
+					const size_t _size,
+					const size_t _r,
+					const size_t _c
+				) noexcept : size( _size ), row( _r ), col( _c ) {}
 
 			};
 
@@ -193,11 +189,18 @@ namespace grb {
 
 			public:
 
-				using SelfType = DiagIterator< random >;
+				// STL iterator type members
+				using iterator_category = typename std::conditional< random,
+					std::random_access_iterator_tag, std::forward_iterator_tag >::type;
 				using value_type = internal::DiagCoordValue;
+				using difference_type = long;
+				using pointer = internal::DiagCoordValue *;
+				using reference = internal::DiagCoordValue &;
 
 
 			private:
+
+				using SelfType = DiagIterator< random >;
 
 				typename SelfType::value_type _v;
 
@@ -207,13 +210,6 @@ namespace grb {
 
 
 			public:
-
-				// STL iterator type members
-				using iterator_category = typename std::conditional< random,
-					std::random_access_iterator_tag, std::forward_iterator_tag >::type;
-				using difference_type = long;
-				using pointer = internal::DiagCoordValue *;
-				using reference = internal::DiagCoordValue &;
 
 				using RowIndexType = size_t;
 				using ColumnIndexType = size_t;
@@ -261,16 +257,16 @@ namespace grb {
 					return static_cast< ValueType >( _v.coord ) + 1;
 				}
 
-				static SelfType make_begin( InputSizesType &size ) {
+				static SelfType make_begin( const InputSizesType &size ) {
 					(void) size;
 					return SelfType( 0 );
 				}
 
-				static SelfType make_end( InputSizesType &size ) {
+				static SelfType make_end( const InputSizesType &size ) {
 					return SelfType( size );
 				}
 
-				static SelfType make_parallel_begin( InputSizesType &size ) {
+				static SelfType make_parallel_begin( const InputSizesType &size ) {
 					const size_t num_nonzeroes = size;
 					size_t num_non_zeroes_per_process, first_local_nonzero;
 					compute_parallel_first_nonzero( num_nonzeroes, num_non_zeroes_per_process,
@@ -278,7 +274,7 @@ namespace grb {
 					return SelfType( first_local_nonzero );
 				}
 
-				static SelfType make_parallel_end( InputSizesType &size ) {
+				static SelfType make_parallel_end( const InputSizesType &size ) {
 					const size_t num_nonzeroes = size;
 					size_t last = compute_parallel_last_nonzero( num_nonzeroes );
 					return SelfType( last );
@@ -482,12 +478,12 @@ namespace grb {
 					return _v.row == _v.col ? static_cast< int >( MAX_ELEMENTS_PER_ROW ) : -1;
 				}
 
-				static SelfType make_begin( InputSizesType &size ) {
+				static SelfType make_begin( const InputSizesType &size ) {
 					check_size( size );
 					return SelfType( size, 0, 0 );
 				}
 
-				static SelfType make_end( InputSizesType &size ) {
+				static SelfType make_end( const InputSizesType &size ) {
 					check_size( size );
 					size_t row, col;
 					const size_t num_nonzeroes = compute_num_nonzeroes( size );
@@ -495,7 +491,7 @@ namespace grb {
 					return SelfType( size, row, col );
 				}
 
-				static SelfType make_parallel_begin( InputSizesType &size ) {
+				static SelfType make_parallel_begin( const InputSizesType &size ) {
 					check_size( size );
 					const size_t num_nonzeroes = compute_num_nonzeroes( size );
 					size_t num_non_zeroes_per_process, first_local_nonzero;
@@ -506,7 +502,7 @@ namespace grb {
 					return SelfType( size, row, col );
 				}
 
-				static SelfType make_parallel_end( InputSizesType &size ) {
+				static SelfType make_parallel_end( const InputSizesType &size ) {
 					check_size( size );
 					const size_t num_nonzeroes = compute_num_nonzeroes( size );
 					size_t last = compute_parallel_last_nonzero( num_nonzeroes );
@@ -565,27 +561,29 @@ namespace grb {
 					_v( _cols, _off )
 				{}
 
-				DenseMatIterator( const SelfType& ) = default;
+				DenseMatIterator( const SelfType & ) = default;
 
-				SelfType& operator++() noexcept {
+				SelfType & operator++() noexcept {
 					_v.offset++;
 					return *this;
 				}
 
-				SelfType& operator+=( size_t offset ) noexcept {
+				SelfType & operator+=( const size_t offset ) noexcept {
 					_v.offset += offset;
 					return *this;
 				}
 
-				bool operator!=( const SelfType& other ) const {
+				bool operator!=( const SelfType &other ) const {
 					return other._v.offset != this->_v.offset;
 				}
 
-				bool operator==( const DenseMatIterator& other ) const {
+				bool operator==( const DenseMatIterator &other ) const {
 					return !( this->operator!=( other ) );
 				}
 
-				typename SelfType::difference_type operator-( const SelfType& other ) const {
+				typename SelfType::difference_type operator-(
+					const SelfType &other
+				) const {
 					return internal::compute_distance<
 						size_t, typename SelfType::difference_type
 					>( this->_v.offset, other._v.offset );
@@ -603,29 +601,29 @@ namespace grb {
 					return static_cast< ValueType >( _v.offset ) + 1;
 				}
 
-				static SelfType make_begin( InputSizesType &sizes ) {
+				static SelfType make_begin( const InputSizesType &sizes ) {
 					return SelfType( sizes[1], 0 );
 				}
 
-				static SelfType make_end( InputSizesType &sizes ) {
+				static SelfType make_end( const InputSizesType &sizes ) {
 					const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
 					return SelfType( sizes[1], num_nonzeroes );
 				}
 
-				static SelfType make_parallel_begin( InputSizesType &sizes ) {
+				static SelfType make_parallel_begin( const InputSizesType &sizes ) {
 					size_t num_non_zeroes_per_process, first_local_nonzero;
 					compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ),
 						num_non_zeroes_per_process, first_local_nonzero );
 					return SelfType( sizes[1], first_local_nonzero );
 				}
 
-				static SelfType make_parallel_end( InputSizesType &sizes ) {
+				static SelfType make_parallel_end( const InputSizesType &sizes ) {
 					size_t last = compute_parallel_last_nonzero(
 						compute_num_nonzeroes( sizes ) );
 					return SelfType( sizes[1], last );
 				}
 
-				static size_t compute_num_nonzeroes( InputSizesType &sizes ) {
+				static size_t compute_num_nonzeroes( const InputSizesType &sizes ) {
 					return sizes[0] * sizes[1];
 				}
 
