@@ -31,9 +31,28 @@ namespace grb {
 
 	namespace utils {
 
+		/**
+		 * A class that wraps around an iterator around a nested pair and exposes an
+		 * ALP matrix iterator of matching types.
+		 *
+		 * The value type of a given iterator must be
+		 *   - <tt>std::pair< std::pair< S1, S2 >, V ></tt>
+		 *
+		 * @tparam S1 An integral type for indicating row coordinates.
+		 * @tparam S2 An integral type for indicating column coordinates.
+		 * @tparam V  A nonzero value type.
+		 *
+		 * @tparam SubIterType The given base iterator.
+		 *
+		 * This declaration uses SFINAE in order to expose implementations for
+		 * supported value types only, based on the given \a SubIterType.
+		 */
 		template< typename S1, typename S2, typename V, typename SubIterType, class Enable = void >
 		class NonzeroIterator;
 
+		/**
+		 * \internal Specialisation for types that are direved from the required type.
+		 */
 		template< typename S1, typename S2, typename V, typename SubIterType >
 		class NonzeroIterator<
 			S1, S2, V,
@@ -42,31 +61,54 @@ namespace grb {
 				std::is_base_of<
 					typename std::pair< std::pair< S1, S2 >, V >,
 					typename SubIterType::value_type
-				>::value
+				>::value &&
+				std::is_integral< S1 >::value &&
+				std::is_integral< S2 >::value
 			>::type
 		> : public SubIterType {
 
 			public:
 
+				// ALP typedefs
+
 				typedef S1 RowIndexType;
 				typedef S2 ColumnIndexType;
 				typedef V ValueType;
 
-				NonzeroIterator( const SubIterType & base ) : SubIterType( base ) {}
+				// STL typedefs
 
+				typedef typename std::iterator_traits< SubIterType >::value_type value_type;
+				typedef typename std::iterator_traits< SubIterType >::pointer pointer;
+				typedef typename std::iterator_traits< SubIterType >::reference reference;
+				typedef typename std::iterator_traits< SubIterType >::iterator_category
+					iterator_category;
+				typedef typename std::iterator_traits< SubIterType >::difference_type
+					difference_type;
+
+				NonzeroIterator() = delete;
+
+				/** The base constructor. */
+				NonzeroIterator( const SubIterType &base ) : SubIterType( base ) {}
+
+				/** Returns the row coordinate. */
 				const S1 & i() const {
 					return this->operator*().first.first;
 				}
 
+				/** Returns the column coordinate. */
 				const S2 & j() const {
 					return this->operator*().first.second;
 				}
 
+				/** Returns the nonzero value. */
 				const V & v() const {
 					return this->operator*().second;
 				}
 		};
 
+		/**
+		 * \internal Specialisation for pattern matrices.
+		 */
 		template< typename S1, typename S2, typename SubIterType >
 		class NonzeroIterator<
 			S1, S2, void,
@@ -75,29 +117,52 @@ namespace grb {
 				std::is_base_of<
 					typename std::pair< S1, S2 >,
 					typename SubIterType::value_type
-				>::value
+				>::value &&
+				std::is_integral< S1 >::value &&
+				std::is_integral< S2 >::value
 			>::type
 		> : public SubIterType {
 
 			public:
 
+				// ALP typedefs
+
 				typedef S1 RowIndexType;
 				typedef S2 ColumnIndexType;
+				typedef void ValueType;
 
+				// STL typedefs
+
+				typedef typename std::iterator_traits< SubIterType >::value_type value_type;
+				typedef typename std::iterator_traits< SubIterType >::pointer pointer;
+				typedef typename std::iterator_traits< SubIterType >::reference reference;
+				typedef typename std::iterator_traits< SubIterType >::iterator_category
+					iterator_category;
+				typedef typename std::iterator_traits< SubIterType >::difference_type
+					difference_type;
+
+				NonzeroIterator() = delete;
+
+				/** The base constructor. */
 				NonzeroIterator( const SubIterType &base ) : SubIterType( base ) {}
 
+				/** Returns the row coordinate. */
 				const S1 & i() const {
 					return this->operator*().first;
 				}
 
+				/** Returns the column coordinate. */
 				const S2 & j() const {
 					return this->operator*().second;
 				}
 
 		};
 
+		/** Creates a nonzero iterator from a given iterator over nested pairs. */
 		template< typename S1, typename S2, typename V, typename SubIterType >
-		NonzeroIterator< S1, S2, V, SubIterType > makeNonzeroIterator( const SubIterType & x ) {
+		NonzeroIterator< S1, S2, V, SubIterType > makeNonzeroIterator(
+			const SubIterType &x
+		) {
 			return NonzeroIterator< S1, S2, V, SubIterType >( x );
 		}
 
