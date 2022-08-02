@@ -44,7 +44,7 @@
 
 #include <graphblas.hpp>
 #include <graphblas/NonzeroStorage.hpp>
-#include <graphblas/utils/NonzeroIterator.hpp>
+#include <graphblas/utils/iterators/NonzeroIterator.hpp>
 
 #include <utils/assertions.hpp>
 #include <utils/matrix_generators.hpp>

@@ -18,7 +18,7 @@
 #include <cstdio>
 #include <utility>
 
-#include "graphblas/utils/MatrixVectorIterator.hpp"
+#include "graphblas/utils/iterators/MatrixVectorIterator.hpp"
 
 #include "graphblas.hpp"
 

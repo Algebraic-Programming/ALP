@@ -28,7 +28,7 @@
 
 
 #include <utils/matrix_values_check.hpp>
-#include <graphblas/utils/NonzeroIterator.hpp>
+#include <graphblas/utils/iterators/NonzeroIterator.hpp>
 
 
 using namespace grb;
