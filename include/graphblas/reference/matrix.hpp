@@ -45,7 +45,6 @@
 #include <graphblas/type_traits.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
-#include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
 #include <graphblas/type_traits.hpp>
 
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
