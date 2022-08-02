@@ -39,7 +39,6 @@
 // iterator:
 #include "graphblas/utils/iterators/NonzeroIterator.hpp"
 
-#include <graphblas/utils/pattern.hpp>         // for handling pattern input
 #include <graphblas/base/io.hpp>
 #include <graphblas/type_traits.hpp>
 
