@@ -50,7 +50,7 @@
 
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/MatrixVectorIterator.hpp>
-#include <graphblas/utils/input_iterator_utils.hpp>
+#include <graphblas/utils/iterators/utils.hpp>
 
 #include "non_zero_wrapper.h"
 #include "forward.hpp"
