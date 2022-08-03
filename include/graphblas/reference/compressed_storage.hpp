@@ -651,9 +651,13 @@ namespace grb {
 				 * This function shall not change the position of the iterator passed.
 				 */
 				template< typename fwd_it >
-				void recordValue( const size_t & pos, const bool row, const fwd_it & it ) {
+				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					values[ pos ] = it.v();
+#ifdef _DEBUG
+					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
+						<< " is stored at position " << pos << " has value " << it.v() << ".\n";
+#endif
 				}
 
 				/**
@@ -1147,6 +1151,11 @@ namespace grb {
 				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					// values are ignored for pattern matrices
+#ifdef _DEBUG
+					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
+						<< " is stored at position " << pos << ". "
+						<< "It records no nonzero value as this is a pattern matrix.\n";
+#endif
 				}
 
 				/**
