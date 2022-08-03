@@ -17,16 +17,25 @@
 
 #include <iostream>
 #include <sstream>
-
-#include <graphblas/utils.hpp> // grb::equals
+#include <vector>
+#include <algorithm>
+#include <type_traits>
+#include <cstdlib>
 
 #include <graphblas.hpp>
+#include <graphblas/utils.hpp> // grb::equals
+#include <graphblas/SynchronizedNonzeroIterator.hpp>
+
+
+#include <utils/matrix_values_check.hpp>
+#include <graphblas/utils/iterators/NonzeroIterator.hpp>
 
 
 using namespace grb;
 
 // nonzero values
 static const int data[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
+static const double data_double[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 
 // diagonal matrix
 static size_t I1[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
@@ -38,20 +47,155 @@ static size_t J2[ 15 ] = { 0, 1, 4, 5, 8, 10, 11, 11, 12, 9, 11, 14, 2, 10, 14 }
 // empty rows: 0, 2, 4, 5, 8, 9, 10, 11, 14
 // empty cols: 2, 3, 6, 7, 9, 13
 
-void grb_program( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+static bool test_vector_of_zeroes(
+	std::vector< size_t > &v, const char * const name
+) {
+	std::vector< size_t >::const_iterator max_it =
+		std::max_element( v.cbegin(), v.cend() );
+	bool result = true;
+	if( *max_it != 0 ) {
+		std::cerr << "a " << name << " entry is wrong" << std::endl;
+		for( size_t i = 0; i < v.size(); i++ ) {
+			std::cerr << name << " " << i << ", count " << v[ i ] << std::endl;
+		}
+		result = false;
+	}
+	return result;
+}
+
+template< typename ValT, typename OrigIterT >
+RC test_matrix_iter(
+	OrigIterT orig_begin, OrigIterT orig_end,
+	size_t row_col_offset, const Matrix< ValT > &mat
+) {
+	using NZC = internal::NonzeroStorage< size_t, size_t, ValT >;
+	std::vector< NZC > mat_values;
+	utils::get_matrix_nnz( mat, mat_values );
+	utils::row_col_nz_sort< size_t, size_t, ValT >( mat_values.begin(),
+		mat_values.end() );
+
+	size_t num_local_matrix_nzs;
+	bool locally_equal = utils::compare_non_zeroes< ValT >(
+		nrows(mat),
+		utils::makeNonzeroIterator< size_t, size_t, ValT >( orig_begin ),
+		utils::makeNonzeroIterator< size_t, size_t, ValT >( orig_end ),
+		utils::makeNonzeroIterator< size_t, size_t, ValT >( mat_values.cbegin() ),
+		utils::makeNonzeroIterator< size_t, size_t, ValT >( mat_values.cend() ),
+		num_local_matrix_nzs, std::cerr, true
+	);
+
+	static_assert( std::is_unsigned< size_t >::value, "use unsigned count" );
+	std::vector< size_t > row_count( 15, 0 ), col_count( 15, 0 );
+	for( auto it = orig_begin; it != orig_end; ++it ) {
+		if( grb::internal::Distribution<>::global_index_to_process_id(
+				it.i(), 15, grb::spmd<>::nprocs()
+			) != spmd<>::pid()
+		) {
+			continue;
+		}
+		(void) row_count[ it.i() - row_col_offset ]++;
+		(void) col_count[ it.j() - row_col_offset ]++;
+	}
+	for( const NZC &nz : mat_values ) {
+		(void) row_count[ nz.i() - row_col_offset ]--;
+		(void) col_count[ nz.j() - row_col_offset ]--;
+	}
+
+	// in case of negative count, use arithmetic wrap-around of size_t (unsigned)
+	bool rows_match = test_vector_of_zeroes( row_count, "row" );
+	bool cols_match = test_vector_of_zeroes( col_count, "column" );
+
+	size_t count = num_local_matrix_nzs;
+	RC rc = collectives<>::allreduce( count, grb::operators::add< size_t >() );
+	if( rc != SUCCESS ) {
+		std::cerr << "Cannot reduce nonzero count\n";
+		return PANIC;
+	}
+	if( count != 15 ) {
+		std::cerr << "\tunexpected number of entries ( " << count << " ), "
+			<< "expected 15.\n";
+		return FAILED;
+	}
+
+	return locally_equal && count == nnz( mat ) && rows_match && cols_match
+		? SUCCESS
+		: FAILED;
+}
+
+template< typename ValT >
+RC test_matrix(
+	size_t num_nnz, const size_t * rows, const size_t * cols,
+	const ValT * values,
+	size_t row_col_offset, const Matrix< ValT > &mat
+) {
+	auto orig_begin = internal::makeSynchronized( rows, cols, values, num_nnz );
+	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz,
+		values + num_nnz, 0 );
+	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	if(
+		collectives<>::allreduce( ret, grb::operators::any_or< RC >() ) != SUCCESS
+	) {
+		std::cerr << "Cannot reduce error code\n";
+		ret = PANIC;
+	}
+	return ret;
+}
+
+template< typename ValT >
+RC test_matrix(
+	size_t num_nnz, const size_t * rows, const size_t * cols,
+	size_t row_col_offset, const Matrix< ValT > &mat
+) {
+	auto orig_begin = internal::makeSynchronized( rows, cols, num_nnz );
+	auto orig_end = internal::makeSynchronized( rows + num_nnz, cols + num_nnz, 0 );
+	grb::RC ret = test_matrix_iter( orig_begin, orig_end, row_col_offset, mat );
+	if(
+		collectives<>::allreduce( ret, grb::operators::any_or< RC >() ) != SUCCESS
+	) {
+		std::cerr << "Cannot reduce error code\n";
+		ret = PANIC;
+	}
+	return ret;
+}
+
+void grb_program( const size_t &n, grb::RC &rc ) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 
 	// initialize test
 	grb::Matrix< double > A( 15, 15 );
 	grb::Matrix< double > B( 15, 15 );
 	grb::Matrix< double > C( n, n );
 	grb::Matrix< void > D( n, n );
+
 	rc = grb::resize( A, 15 );
 	rc = rc ? rc : grb::resize( B, 15 );
 	rc = rc ? rc : grb::resize( C, 15 );
 	rc = rc ? rc : grb::resize( D, 15 );
 	rc = rc ? rc : grb::buildMatrixUnique( A, I1, J1, data, 15, SEQUENTIAL );
 	rc = rc ? rc : grb::buildMatrixUnique( B, I2, J2, data, 15, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\tinitialisation FAILED\n";
+		std::cerr << std::flush;
+		return;
+	}
+
+	// test output iteration for A
+	rc = test_matrix( 15, I1, J1, data_double, 0, A );
+	if( rc != SUCCESS ) {
+		std::cerr << "\tsubtest 1 (diagonal 15 x 15 matrix) FAILED" << std::endl;
+		return;
+	}
+
+	// test output iteration for B
+	rc = test_matrix( 15, I2, J2, data_double, 0, B );
+	if( rc != SUCCESS ) {
+		std::cerr << "\tsubtest 2 (general 15 x 15 matrix) FAILED" << std::endl;
+		return;
+	}
+
 	const size_t offset = n - 15;
 	for( size_t i = 0; i < 15; ++i ) {
 		I1[ i ] += offset;
@@ -62,140 +206,22 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	rc = rc ? rc : grb::buildMatrixUnique( C, I2, J2, data, 15, SEQUENTIAL );
 	rc = rc ? rc : grb::buildMatrixUnique( D, I1, J1, 15, SEQUENTIAL );
 	if( rc != SUCCESS ) {
-		std::cerr << "\tinitialisation FAILED\n";
-		std::cerr << std::flush;
-		return;
-	}
-
-	// test output iteration for A
-	size_t count = 0;
-	for( const std::pair< std::pair< size_t, size_t >, double > & pair : A ) {
-		if( pair.first.first != pair.first.second ) {
-			std::cerr << "\tunexpected entry at ( " << pair.first.first << ", " << pair.first.second << " ), value " << pair.second << ": expected diagonal values only\n";
-			rc = FAILED;
-		} else if( ! grb::utils::template equals< int >( data[ pair.first.first ], pair.second ) ) {
-			std::cerr << "\tunexpected entry at ( " << pair.first.first << ", " << pair.first.second << " ), value " << pair.second << ": expected value " << data[ pair.first.first ] << "\n";
-			rc = FAILED;
-		}
-		(void)++count;
-	}
-	rc = rc ? rc : collectives<>::allreduce( count, grb::operators::add< size_t >() );
-	if( count != 15 ) {
-		std::cerr << "\tunexpected number of entries ( " << count << " ), expected 15.\n";
-		rc = FAILED;
-	}
-	if( rc != SUCCESS ) {
-		std::cerr << "\tsubtest 1 (diagonal 15 x 15 matrix) FAILED\n";
-		std::cerr << std::flush;
-		return;
-	}
-
-	// test output iteration for B
-	std::vector< size_t > rowCount( 15, 0 ), colCount( 15, 0 );
-	for( size_t i = 0; i < 15; ++i ) {
-		const size_t row_index = I2[ i ] - offset;
-		if( grb::internal::Distribution<>::global_index_to_process_id( row_index, 15, grb::spmd<>::nprocs() ) == spmd<>::pid() ) {
-			(void)++( rowCount[ row_index ] );
-			(void)++( colCount[ J2[ i ] - offset ] );
-		}
-	}
-	count = 0;
-	// serialise output of B to stdout across potentially multiple user processes
-	for( size_t k = 0; k < spmd<>::nprocs(); ++k ) {
-		if( k == spmd<>::pid() ) {
-			for( const std::pair< std::pair< size_t, size_t >, double > & triple : B ) {
-				(void)--( rowCount[ triple.first.first ] );
-				(void)--( colCount[ triple.first.second ] );
-				(void)++count;
-				std::cout << "( " << triple.first.first << ", " << triple.first.second << " ): " << triple.second << "\n";
-			}
-		}
-		std::cout << std::flush;
-#ifndef NDEBUG
-		const auto sync_rc = spmd<>::sync();
-		assert( sync_rc == SUCCESS );
-#else
-		(void) spmd<>::sync();
-#endif
-	}
-	rc = rc ? rc : collectives<>::allreduce( count, grb::operators::add< size_t >() );
-	for( size_t i = 0; i < 15; ++i ) {
-		if( rowCount[ i ] != 0 ) {
-			std::cerr << "\tunexpected row checksum " << rowCount[ i ] << " (expected 0) at row " << i << "\n";
-			rc = FAILED;
-		}
-		if( colCount[ i ] != 0 ) {
-			std::cerr << "\tunexpected column checksum " << colCount[ i ] << " (expected 0) at column " << i << "\n";
-			rc = FAILED;
-		}
-	}
-	if( count != 15 ) {
-		std::cerr << "\tunexpected number of entries " << count << "; expected 15.\n";
-		rc = FAILED;
-	}
-	if( rc != SUCCESS ) {
-		std::cerr << "\tsubtest 2 (general 15 x 15 matrix) FAILED\n";
-		std::cerr << std::flush;
+		std::cerr << "\tinitialisation 2 FAILED" << std::endl;
 		return;
 	}
 
 	// test output iteration for C
-	for( size_t i = 0; i < 15; ++i ) {
-		assert( I2[ i ] >= offset );
-		assert( J2[ i ] >= offset );
-		const size_t row_index = I2[ i ];
-		if( grb::internal::Distribution<>::global_index_to_process_id( row_index, n, grb::spmd<>::nprocs() ) == spmd<>::pid() ) {
-			(void)++( rowCount[ row_index - offset ] );
-			(void)++( colCount[ J2[ i ] - offset ] );
-		}
-	}
-	count = 0;
-	for( const std::pair< std::pair< size_t, size_t >, double > & triple : C ) {
-		assert( triple.first.first >= offset );
-		assert( triple.first.second >= offset );
-		(void)--( rowCount[ triple.first.first - offset ] );
-		(void)--( colCount[ triple.first.second - offset ] );
-		(void)++count;
-		std::cout << "( " << ( triple.first.first - offset ) << ", " << ( triple.first.second - offset ) << " ): " << triple.second << "\n";
-	}
-	rc = rc ? rc : collectives<>::allreduce( count, grb::operators::add< size_t >() );
-	for( size_t i = 0; i < 15; ++i ) {
-		if( rowCount[ i ] != 0 ) {
-			std::cerr << "\tunexpected row checksum " << rowCount[ i ] << " (expected 0) at row " << i << "\n";
-			rc = FAILED;
-		}
-		if( colCount[ i ] != 0 ) {
-			std::cerr << "\tunexpected column checksum " << colCount[ i ] << " (expected 0) at column " << i << "\n";
-			rc = FAILED;
-		}
-	}
-	if( count != 15 ) {
-		std::cerr << "\tunexpected number of entries " << count << "; expected 15.\n";
-		rc = FAILED;
-	}
+	rc = test_matrix( 15, I2, J2, data_double, offset, C );
 	if( rc != SUCCESS ) {
-		std::cerr << "\tsubtest 3 (general " << n << " x " << n << " matrix) FAILED\n";
-		std::cerr << std::flush;
+		std::cerr << "\tsubtest 3 (general " << n << " x " << n << " matrix) FAILED"
+			<< std::endl;
 		return;
 	}
 
-	// test output iteration for D
-	count = 0;
-	for( const std::pair< size_t, size_t > & pair : D ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second << " ), expected diagonal values only\n";
-			rc = FAILED;
-		}
-		(void)++count;
-	}
-	rc = rc ? rc : collectives<>::allreduce( count, grb::operators::add< size_t >() );
-	if( count != 15 ) {
-		std::cerr << "\tunexpected number of entries ( " << count << " ), expected 15.\n";
-		rc = FAILED;
-	}
+	rc = test_matrix( 15, I1, J1, offset, D );
 	if( rc != SUCCESS ) {
-		std::cerr << "\tsubtest 4 (diagonal pattern " << n << " x " << n << " matrix) FAILED\n";
-		std::cerr << std::flush;
+		std::cerr << "\tsubtest 4 (diagonal pattern " << n << " x " << n << " "
+			<< "matrix) FAILED" << std::endl;
 		return;
 	}
 }
@@ -212,10 +238,10 @@ int main( int argc, char ** argv ) {
 	if( argc == 2 ) {
 		size_t read;
 		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+		if( !(ss >> read)) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
+		} else if( !ss.eof() ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
 		} else if( read % 2 != 0 ) {
@@ -228,8 +254,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): "
-			<< "an even integer, the test size."
+		std::cerr << "  -n (optional, default is 100): an even integer (test size)"
 			<< std::endl;
 		return 1;
 	}
@@ -238,10 +263,12 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
 	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+		std::cout << std::flush;
 		std::cerr << "Launching test FAILED" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
+		std::cout << std::flush;
 		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 		return 255;
 	} else {
@@ -249,3 +276,4 @@ int main( int argc, char ** argv ) {
 		return 0;
 	}
 }
+

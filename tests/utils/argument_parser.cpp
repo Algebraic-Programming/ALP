@@ -41,6 +41,7 @@
 #include "internal_argument_parser.hpp"
 #include "internal_argument_parser_defs.hpp"
 
+
 argument_parse_info::argument_parse_info( void * _target,
 	parser_t & _parser,
 	bool option,
@@ -67,10 +68,10 @@ argument_parser::argument_parser() {
 #define DEFINE_PARSER( _t ) argument_parser::parser_t const argument_parser::PARSER_NAME( _t )
 
 DEFINE_PARSER( size_parse_t ) = []( const char * arg, void * tgt ) -> void {
-	std::size_t * ptr = static_cast< std::size_t * >( tgt );
+	size_t * ptr = static_cast< size_t * >( tgt );
 	errno = 0;
 	char * end = NULL;
-	std::size_t res = strtoul( arg, &end, 10 );
+	size_t res = strtoul( arg, &end, 10 );
 	if( errno != 0 ) {
 		throw std::invalid_argument( std::string( "Could not parse numerical argument " ) + arg );
 	}
@@ -176,7 +177,7 @@ void argument_parser::print_all_arguments() {
 	std::cout << "ARGUMENTS:" << std::endl << std::endl;
 	mandatory_set::const_iterator cend { mandatory_args.cend() };
 	argument_parser::print_argument( args[ 0 ], parsers[ 0 ], false );
-	for( std::size_t i = 1; i < parsers.size(); ++i ) {
+	for( size_t i = 1; i < parsers.size(); ++i ) {
 		argument_parser::print_argument( args[ i ], parsers[ i ], mandatory_args.find( i ) != cend );
 	}
 }
@@ -196,8 +197,8 @@ void argument_parser::parse( int argc, const char * const * argv ) {
 	arg_map::const_iterator args_end { args_info.cend() };
 	mandatory_set::const_iterator mandatory_end { mandatory_args.cend() };
 
-	const std::size_t num_args { static_cast< std::size_t >( argc ) };
-	std::size_t i = 1;
+	const size_t num_args { static_cast< size_t >( argc ) };
+	size_t i = 1;
 	while( i < num_args ) {
 		const char * const arg { argv[ i ] };
 		const std::string str_arg( arg );
@@ -207,7 +208,7 @@ void argument_parser::parse( int argc, const char * const * argv ) {
 			print_all_arguments();
 			std::exit( -1 );
 		}
-		std::size_t position { pos->second };
+		size_t position { pos->second };
 		if( found[ position ] ) {
 			std::cerr << "Argument \"" << arg << "\" specified twice" << std::endl;
 			std::exit( -1 );
@@ -248,7 +249,7 @@ void argument_parser::parse( int argc, const char * const * argv ) {
 	}
 
 	// then assign remaining arguments as default and check for mandatory arguments not passed
-	for( std::size_t i = 1; i < found.size(); i++ ) {
+	for( size_t i = 1; i < found.size(); i++ ) {
 		if( ! found[ i ] ) {
 			argument_parse_info & info { parsers[ i ] };
 			if( mandatory_args.find( i ) != mandatory_end ) {
@@ -263,3 +264,4 @@ void argument_parser::parse( int argc, const char * const * argv ) {
 	// reset everything for another call
 	found.clear();
 }
+

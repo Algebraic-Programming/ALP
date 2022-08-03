@@ -68,18 +68,18 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
 
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference HPCG
-constexpr std::size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
-constexpr std::size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
-constexpr std::size_t DEF_COARSENING_LEVELS{ 1U };
-constexpr std::size_t MAX_COARSENING_LEVELS{ 4U };
-constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
-constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
+constexpr size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
+constexpr size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
+constexpr size_t DEF_COARSENING_LEVELS{ 1U };
+constexpr size_t MAX_COARSENING_LEVELS{ 4U };
+constexpr size_t MAX_ITERATIONS_DEF{ 56UL };
+constexpr size_t SMOOTHER_STEPS_DEF{ 1 };
 
 // internal values
 constexpr double SYSTEM_DIAG_VALUE { 26.0 };
 constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
-constexpr std::size_t BAND_WIDTH_3D { 13UL };
-constexpr std::size_t HALO_RADIUS { 1U };
+constexpr size_t BAND_WIDTH_3D { 13UL };
+constexpr size_t HALO_RADIUS { 1U };
 //============================================
 
 constexpr double MAX_NORM { 4.0e-14 };
@@ -96,17 +96,17 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
  * @brief Container for system parameters to create the HPCG problem.
  */
 struct system_input {
-	std::size_t nx, ny, nz;
-	std::size_t max_coarsening_levels;
+	size_t nx, ny, nz;
+	size_t max_coarsening_levels;
 };
 
 /**
  * @brief Container for the parameters for the HPCG simulation.
  */
 struct simulation_input : public system_input {
-	std::size_t test_repetitions;
-	std::size_t max_iterations;
-	std::size_t smoother_steps;
+	size_t test_repetitions;
+	size_t max_iterations;
+	size_t smoother_steps;
 	bool evaluation_run;
 	bool no_preconditioning;
 };
@@ -134,7 +134,7 @@ struct output {
 /**
  * @brief Returns the closets power of 2 bigger or equal to \p n .
  */
-template< typename T = std::size_t >
+template< typename T = size_t >
 T static next_pow_2( T n ) {
 	static_assert( std::is_integral< T >::value, "Integral required." );
 	--n;
@@ -151,7 +151,7 @@ T static next_pow_2( T n ) {
  * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
  */
 static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
-	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
+	const std::array< size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
 		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
@@ -298,7 +298,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 /**
  * @brief Parser the command-line arguments to extract the simulation information and checks they are valid.
  */
-static void parse_arguments( simulation_input &, std::size_t &, double &, int, char ** );
+static void parse_arguments( simulation_input &, size_t &, double &, int, char ** );
 
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
@@ -365,7 +365,7 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
+static void parse_arguments( simulation_input & sim_in, size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
 
 	argument_parser parser;
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
@@ -390,7 +390,7 @@ static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iter
 	parser.parse( argc, argv );
 
 	// check for valid values
-	std::size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
+	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
 	if( ssize != sim_in.nx ) {
 		std::cout << "Setting system size x to " << ssize << " instead of " << sim_in.nx << std::endl;
 		sim_in.nx = ssize;
@@ -418,3 +418,4 @@ static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iter
 		sim_in.max_iterations = 1;
 	}
 }
+

@@ -20,8 +20,11 @@
  * @date 2nd of February, 2017
  */
 
-#if ! defined _H_GRB_REFERENCE_INIT || defined _H_GRB_REFERENCE_OMP_INIT
+#if !defined _H_GRB_REFERENCE_INIT || defined _H_GRB_REFERENCE_OMP_INIT
 #define _H_GRB_REFERENCE_INIT
+
+#include <new>
+#include <algorithm>
 
 #include <graphblas/base/init.hpp>
 #include <graphblas/utils/DMapper.hpp>
@@ -30,6 +33,7 @@
 namespace grb {
 
 	namespace internal {
+
 #ifndef _H_GRB_REFERENCE_OMP_INIT
 		// these are all the global fields for the reference backend
 
@@ -41,6 +45,26 @@ namespace grb {
 
 		/** \internal Shared buffer size */
 		extern size_t reference_bufsize;
+
+		/**
+		 * \internal
+		 * Helper function to get the size of the current buffer.
+		 *
+		 * @tparam D      the data type to store in the buffer
+		 * @return size_t the number of elements of type #D that can be stored
+		 *                in the current buffer
+		 *
+		 * \warning This function should never be used as a conditional to decide
+		 *          when to resize the global buffer: for this, use the
+		 *            -# #ensureBufferSize()
+		 *          function instead. This function is only intended for deciding
+		 *          when a larger buffer exists to use any extra space should that
+		 *          indeed be available.
+		 */
+		template< typename D >
+		size_t getCurrentBufferSize() noexcept {
+			return reference_bufsize / sizeof( D );
+		}
 
 		/**
 		 * \internal
@@ -57,18 +81,15 @@ namespace grb {
 		 * \endinternal
 		 */
 		template< typename D >
-		bool ensureReferenceBufsize( const size_t n ) {
+		bool ensureReferenceBufsize( const size_t n ) noexcept {
 			const size_t targetSize = n * sizeof( D );
 			if( reference_bufsize < targetSize ) {
-				size_t newSize = 2 * reference_bufsize;
-				if( newSize < targetSize ) {
-					newSize = targetSize;
-				}
+				size_t newSize = std::max( 2 * reference_bufsize, targetSize );
 				if( reference_bufsize > 0 ) {
 					delete[] reference_buffer;
 				}
-				reference_buffer = new char[ newSize ];
-				if( reference_buffer == NULL ) {
+				reference_buffer = new( std::nothrow ) char[ newSize ];
+				if( reference_buffer == nullptr ) {
 					reference_bufsize = 0;
 					return false;
 				} else {

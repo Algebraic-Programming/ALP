@@ -42,10 +42,10 @@
  * @param head optional heading to print \b before the vector
  */
 template< typename T, enum grb::Backend B >
-void print_vector( const grb::Vector< T, B > & x, std::size_t _limit = 10UL, const char * head = nullptr ) {
+void print_vector( const grb::Vector< T, B > & x, size_t _limit = 10UL, const char * head = nullptr ) {
 	// const T * const raw{grb::internal::getRaw(x)};
-	std::size_t x_size { grb::size( x ) };
-	std::size_t limit { _limit == 0 ? x_size : std::min( x_size, _limit ) };
+	size_t x_size { grb::size( x ) };
+	size_t limit { _limit == 0 ? x_size : std::min( x_size, _limit ) };
 
 	if( head != nullptr ) {
 		std::cout << "<<< " << head << " >>>" << std::endl;
@@ -58,16 +58,16 @@ void print_vector( const grb::Vector< T, B > & x, std::size_t _limit = 10UL, con
 	typename grb::Vector< T, B >::const_iterator it { x.cbegin() };
 	typename grb::Vector< T, B >::const_iterator end { x.cend() };
 
-	std::size_t previous_nnz { it == end ? limit : it->first };
+	size_t previous_nnz { it == end ? limit : it->first };
 	if( previous_nnz == 0 ) {
 		std::cout << it->second;
 		++it;
 	} else if( x_size > 0 ) {
 		std::cout << 0;
 	}
-	std::size_t next_nnz { it == end ? limit : it->first }, position { 1 };
+	size_t next_nnz { it == end ? limit : it->first }, position { 1 };
 	while( position < limit ) {
-		std::size_t zero_streak { std::min( next_nnz, limit ) };
+		size_t zero_streak { std::min( next_nnz, limit ) };
 		// print sequence of zeroes
 		for( ; position < zero_streak; ++position ) {
 			std::cout << ", ";
@@ -97,7 +97,7 @@ void print_vector( const grb::Vector< T, B > & x, std::size_t _limit = 10UL, con
  */
 template< typename T, enum grb::Backend B >
 void print_vector( const grb::PinnedVector< T, B > &v,
-	const std::size_t limit = 10UL,
+	const size_t limit = 10UL,
 	const char * const head = nullptr
 ) {
 	static_assert( !std::is_same< T, void >::value,
@@ -111,7 +111,7 @@ void print_vector( const grb::PinnedVector< T, B > &v,
 	if( k < v.nonzeroes() && limit > 0 ) {
 		std::cout << v.getNonzeroValue( k++ );
 	}
-	for( std::size_t nnzs { 1 }; nnzs < limit && k < v.nonzeroes(); k++ ) {
+	for( size_t nnzs { 1 }; nnzs < limit && k < v.nonzeroes(); k++ ) {
 		std::cout << ", " << v.getNonzeroValue( k );
 		++nnzs;
 	}
@@ -126,14 +126,14 @@ void print_vector( const grb::PinnedVector< T, B > &v,
  */
 template< typename T >
 struct dense_mat {
-	const std::size_t rows, cols; ///< matrix dimensions
+	const size_t rows, cols; ///< matrix dimensions
 	T * const dense;              ///< pointer to data, stored in a linear format (row-wise)
 
 	/**
 	 * @brief Construct a new dense_mat object of given rows and columns, <b>allocating the necessary
 	 *          physical memory for dense storage</b>.
 	 */
-	dense_mat( std::size_t _nrows, std::size_t _ncols ) :
+	dense_mat( size_t _nrows, size_t _ncols ) :
 		rows( _nrows ), cols( _ncols ), dense( new T[ rows * cols ] ) // we assume new throws if not enough memory
 	{
 		assert( rows != 0 );
@@ -149,7 +149,7 @@ struct dense_mat {
 	 * @brief Operator to access an entire row, which simply returns the pointer to the first row element;
 	 *          this way, one can conveniently write \code mat[i][j]] \endcode to access each element.
 	 */
-	inline T * operator[]( std::size_t row ) {
+	inline T * operator[]( size_t row ) {
 		return dense + row * cols;
 	}
 
@@ -157,7 +157,7 @@ struct dense_mat {
 	 * @brief Operator to access an entire row, which simply returns the const pointer to the first row element;
 	 *          this way, one can conveniently write \code mat[i][j]] \endcode to access each element.
 	 */
-	inline const T * operator[]( std::size_t row ) const {
+	inline const T * operator[]( size_t row ) const {
 		return dense + row * cols;
 	}
 };
@@ -172,16 +172,16 @@ struct dense_mat {
  * @param head optional heading to print \b before the matrix
  */
 template< typename T, enum grb::Backend B >
-void print_matrix( const grb::Matrix< T, B > & mat, std::size_t _limit = 0, const char * head = nullptr ) {
-	const std::size_t rows = grb::nrows( mat );
-	const std::size_t cols = grb::ncols( mat );
-	std::size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
-	std::size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
+void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
+	const size_t rows = grb::nrows( mat );
+	const size_t cols = grb::ncols( mat );
+	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
+	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
 	// create and dump only relevant portion
 	dense_mat< T > dump( row_limit, col_limit );
 	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
-		std::size_t row { t.first.first };
-		std::size_t col { t.first.second };
+		size_t row { t.first.first };
+		size_t col { t.first.second };
 		if( row < row_limit && col < col_limit ) {
 			dump[ row ][ col ] = t.second;
 		}
@@ -192,8 +192,8 @@ void print_matrix( const grb::Matrix< T, B > & mat, std::size_t _limit = 0, cons
 	}
 	std::cout << "=== MATRIX ===" << std::endl;
 	std::cout << "Size: " << rows << " x " << cols << std::endl;
-	for( std::size_t i = 0; i < row_limit; ++i ) {
-		for( std::size_t j = 0; j < col_limit; ++j ) {
+	for( size_t i = 0; i < row_limit; ++i ) {
+		for( size_t j = 0; j < col_limit; ++j ) {
 			double val = dump[ i ][ j ];
 			std::cout << val;
 			if( val == 0.0 ) {
@@ -208,3 +208,4 @@ void print_matrix( const grb::Matrix< T, B > & mat, std::size_t _limit = 0, cons
 }
 
 #endif // _H_TEST_UTILS_PRINT_VEC_MAT
+

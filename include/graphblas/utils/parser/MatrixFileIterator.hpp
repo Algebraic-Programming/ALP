@@ -197,9 +197,9 @@ namespace grb {
 					typedef std::forward_iterator_tag iterator_category;
 
 					// standard GraphBLAS iterator typedefs
-					typedef S row_coordinate_type;
-					typedef S column_coordinate_type;
-					typedef T nonzero_value_type;
+					typedef S RowIndexType;
+					typedef S ColumnIndexType;
+					typedef T ValueType;
 
 					/** Base constructor, starts in begin position. */
 					MatrixFileIterator(
@@ -907,9 +907,9 @@ namespace grb {
 				typedef std::forward_iterator_tag iterator_category;
 
 				// standard GraphBLAS iterator typedefs
-				typedef S row_coordinate_type;
-				typedef S column_coordinate_type;
-				typedef void nonzero_value_type;
+				typedef S RowIndexType;
+				typedef S ColumnIndexType;
+				typedef void ValueType;
 
 				/** Base constructor, starts in begin position. */
 				MatrixFileIterator( MatrixFileProperties & props, IOMode mode_in, const bool end = false ) :

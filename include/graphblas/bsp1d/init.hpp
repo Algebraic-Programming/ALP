@@ -81,6 +81,7 @@ namespace grb {
 
 
 		public:
+
 			/** The user process ID. */
 			lpf_pid_t s;
 

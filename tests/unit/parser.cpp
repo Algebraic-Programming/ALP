@@ -21,22 +21,33 @@
 #include <map>
 #include <sstream>
 
-#include "graphblas/utils/SynchronizedNonzeroIterator.hpp"
+#include "graphblas/SynchronizedNonzeroIterator.hpp"
+
 
 /**
  * Read a list of edges from a graph dataset.
  * Assuming they are comments, this parser skips lines that start with # or %.
- * If the first non-comment line consists out of three integers, the first two of those three integers shall be taken as the dimensions of the graph, while the third integer shall be taken as the
- * number of edges in the graph.
+ * If the first non-comment line consists out of three integers, the first two
+ * of those three integers shall be taken as the dimensions of the graph, while
+ * the third integer shall be taken as the number of edges in the graph.
  *
  * @param[in]  filename     The name of the file to read from.
- * @param[in]  use_indirect If true, the nodes use an indirect labelling scheme, otherwise the nodes are used directly and 1-based indicing is assumed (MatrixMarket).
- * @param[in,out]  n        If not equal to SIZE_MAX on input, value reflects the maximum number of distinct nodes (i.e the size of the matrix).
- *                          If equal to SIZE_MAX on input, the parser will attempt to derice the maximum number of distinct nodes from the input file.
- * @param[out] nz           A pointer to the number of non-zero matrix elements (i.e. the number of edges).
+ * @param[in]  use_indirect If true, the nodes use an indirect labelling scheme,
+ *                          otherwise the nodes are used directly and 1-based
+ *                          indicing is assumed (MatrixMarket).
+ * @param[in,out]  n        If not equal to SIZE_MAX on input, value reflects
+ *                          the maximum number of distinct nodes (i.e the size
+ *                          of the matrix).
+ *                          If equal to SIZE_MAX on input, the parser will
+ *                          attempt to derice the maximum number of distinct
+ *                          nodes from the input file.
+ * @param[out] nz           A pointer to the number of non-zero matrix elements
+ *                          (i.e. the number of edges).
  * @param[out] I            The source nodes that make up each edge.
  * @param[out] J            The destination nodes that make up each edge.
- * @param[out] weights      An optional weight applied to each edge - allocated but not initialised. Can be NULL in which case no allocation shall take place either.
+ * @param[out] weights      An optional weight applied to each edge - allocated
+ *                          but not initialised. Can be NULL in which case no
+ *                          allocation shall take place either.
  */
 bool readEdges(
 	const std::string filename,
@@ -45,7 +56,8 @@ bool readEdges(
 	size_t ** const I, size_t ** const J,
 	double ** const weights
 ) {
-	// find the number of edges in the input file i.e. the non-zeros in the weight matrix
+	// find the number of edges in the input file i.e. the non-zeros in the weight
+	// matrix
 	*nz = 0;
 	std::ifstream myfile;
 	myfile.open( filename );
@@ -247,7 +259,7 @@ int main( int argc, char ** argv ) {
 	}*/
 
 	// check synchronised iterator
-	auto synced_it = grb::utils::makeSynchronized( I, J, I + nz, J + nz );
+	auto synced_it = grb::internal::makeSynchronized( I, J, I + nz, J + nz );
 	for( size_t k = 0; ret == 0 && k < nz; ++k, ++synced_it ) {
 		if( I[ k ] != synced_it.i() ) {
 			std::cerr << "Synchronised file iterator has mismatching row indices at position "

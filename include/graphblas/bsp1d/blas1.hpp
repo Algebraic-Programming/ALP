@@ -3283,7 +3283,7 @@ namespace grb {
 
 	/** @} */
 
-}; // namespace grb
+} // namespace grb
 
 #undef NO_CAST_ASSERT
 

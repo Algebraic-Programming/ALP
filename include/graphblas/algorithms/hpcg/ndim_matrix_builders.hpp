@@ -45,7 +45,9 @@
 #include <utility>
 #include <vector>
 
+
 namespace grb {
+
 	namespace algorithms {
 
 		/**
@@ -81,8 +83,8 @@ namespace grb {
 		template< std::size_t DIMS >
 		struct row_generator {
 
-			using row_coordinate_type = std::size_t; ///< numeric type of rows
-			using array_t = std::array< row_coordinate_type,
+			using RowIndexType = std::size_t; ///< numeric type of rows
+			using array_t = std::array< RowIndexType,
 				DIMS >; ///< type for the array storing the coordinates.
 
 			const array_t physical_sizes; ///< size of each dimension, starting from the one to be explored first
@@ -94,10 +96,10 @@ namespace grb {
 			 * @param[in] first_row first row to iterate from; it is allowed to be beyond the matrix size, e.g. to create
 			 *                      an end iterator (no check occurs)
 			 */
-			row_generator( const array_t & _sizes, row_coordinate_type first_row ) : physical_sizes( _sizes ) {
+			row_generator( const array_t & _sizes, RowIndexType first_row ) : physical_sizes( _sizes ) {
 				static_assert( DIMS > 0, "DIMS should be higher than 0" );
 				for( const auto i : _sizes ) {
-					if( i == static_cast< row_coordinate_type >( 0U ) ) {
+					if( i == static_cast< RowIndexType >( 0U ) ) {
 						throw std::invalid_argument( "All dimension sizes must "
 													 "be > 0" );
 					}
@@ -122,7 +124,7 @@ namespace grb {
 			 *
 			 * @param[in] rowcol row number to convert; it can be any number
 			 */
-			void row_to_coords( row_coordinate_type rowcol ) {
+			void row_to_coords( RowIndexType rowcol ) {
 				std::size_t s = 1;
 				for( std::size_t i { 0 }; i < row_coords.size() - 1; i++ )
 					s *= physical_sizes[ i ];
@@ -138,11 +140,11 @@ namespace grb {
 			/**
 			 * @brief Pure function converting an array of coordinates into a row number, based on #physical_sizes.
 			 * @param a the #array_t array of coordinates to convert
-			 * @return #row_coordinate_type the row corresponding to the coordinates in \p a
+			 * @return #RowIndexType the row corresponding to the coordinates in \p a
 			 */
-			row_coordinate_type coords_to_rowcol( const array_t & a ) const {
-				row_coordinate_type row { 0 };
-				row_coordinate_type s { 1 };
+			RowIndexType coords_to_rowcol( const array_t & a ) const {
+				RowIndexType row { 0 };
+				RowIndexType s { 1 };
 				for( typename array_t::size_type i { 0 }; i < a.size(); i++ ) {
 					row += s * a[ i ];
 					s *= physical_sizes[ i ];
@@ -195,16 +197,16 @@ namespace grb {
 		template< std::size_t DIMS, typename T = double >
 		struct matrix_generator_iterator : public row_generator< DIMS > {
 
-			using row_coordinate_type = typename row_generator< DIMS >::row_coordinate_type;
-			using column_coordinate_type = typename row_generator< DIMS >::row_coordinate_type;
-			using nonzero_value_type = T;
+			using RowIndexType = typename row_generator< DIMS >::RowIndexType;
+			using ColumnIndexType = typename row_generator< DIMS >::RowIndexType;
+			using ValueType = T;
 			using array_t = typename row_generator< DIMS >::array_t;
-			using value_type = std::pair< std::pair< row_coordinate_type, column_coordinate_type >, T >;
+			using value_type = std::pair< std::pair< RowIndexType, ColumnIndexType >, T >;
 
 			// halo may in future become a DIM-size array to iterate in arbitrary shapes
-			const row_coordinate_type halo;              ///< number of points per dimension to iterate around
-			const nonzero_value_type diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
-			const nonzero_value_type non_diagonal_value; ///< value to emit outside of the diagonal
+			const RowIndexType halo;              ///< number of points per dimension to iterate around
+			const ValueType diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
+			const ValueType non_diagonal_value; ///< value to emit outside of the diagonal
 
 			/**
 			 * @brief Construct a new \c matrix_generator_iterator object, setting the current row as \p row
@@ -216,16 +218,14 @@ namespace grb {
 			 * @param diag value to emit when on the diagonal
 			 * @param non_diag value to emit outside the diagonal
 			 */
-			matrix_generator_iterator( const array_t & sizes, row_coordinate_type row, row_coordinate_type _halo, nonzero_value_type diag, nonzero_value_type non_diag ) :
+			matrix_generator_iterator( const array_t & sizes, RowIndexType row, RowIndexType _halo, ValueType diag, ValueType non_diag ) :
 				row_generator< DIMS >( sizes, row ), halo( _halo ), diagonal_value( diag ), non_diagonal_value( non_diag ) {
 				if( halo <= 0 ) {
-					throw std::invalid_argument( "halo should be higher than "
-												 "0" );
+					throw std::invalid_argument( "halo should be higher than 0" );
 				}
 				for( const auto i : sizes ) {
-					if( i < static_cast< row_coordinate_type >( 2 * halo + 1 ) ) {
-						throw std::invalid_argument( "Iteration halo goes "
-													 "beyond system sizes" );
+					if( i < static_cast< RowIndexType >( 2 * halo + 1 ) ) {
+						throw std::invalid_argument( "Iteration halo goes beyond system sizes" );
 					}
 				}
 				current_values.first.first = row;
@@ -302,24 +302,24 @@ namespace grb {
 			/**
 			 * @brief Returns current row.
 			 */
-			inline row_coordinate_type i() const {
+			inline RowIndexType i() const {
 				return current_values.first.first;
 			}
 
 			/**
 			 * @brief Returns current column.
 			 */
-			inline column_coordinate_type j() const {
+			inline ColumnIndexType j() const {
 				return current_values.first.second;
 			}
 
 			/**
 			 * @brief Returns the current matrix value.
 			 *
-			 * @return nonzero_value_type #diagonal_value if \code row == column \endcode (i.e. if \code this-> \endcode
+			 * @return ValueType #diagonal_value if \code row == column \endcode (i.e. if \code this-> \endcode
 			 * #i() \code == \endcode \code this-> \endcode #j()), #non_diagonal_value otherwise
 			 */
-			inline nonzero_value_type v() const {
+			inline ValueType v() const {
 				return j() == i() ? diagonal_value : non_diagonal_value;
 			}
 
@@ -411,11 +411,11 @@ namespace grb {
 		template< std::size_t DIMS, typename T = double >
 		struct coarsener_generator_iterator : public row_generator< DIMS > {
 
-			using row_coordinate_type = typename row_generator< DIMS >::row_coordinate_type;
-			using column_coordinate_type = typename row_generator< DIMS >::row_coordinate_type;
-			using nonzero_value_type = T;
+			using RowIndexType = typename row_generator< DIMS >::RowIndexType;
+			using ColumnIndexType = typename row_generator< DIMS >::RowIndexType;
+			using ValueType = T;
 			using array_t = typename row_generator< DIMS >::array_t;
-			using value_type = std::pair< std::pair< row_coordinate_type, column_coordinate_type >, T >;
+			using value_type = std::pair< std::pair< RowIndexType, ColumnIndexType >, T >;
 
 			// the sizes to project from
 			const array_t finer_sizes; ///< the size of the finer system (columns)
@@ -434,7 +434,7 @@ namespace grb {
 			 * @param _finer_sizes sizes of the finer system (columns)
 			 * @param _current_row row (in the coarser system) to set the iterator on
 			 */
-			coarsener_generator_iterator( const array_t & _coarser_sizes, const array_t & _finer_sizes, row_coordinate_type _current_row ) :
+			coarsener_generator_iterator( const array_t & _coarser_sizes, const array_t & _finer_sizes, RowIndexType _current_row ) :
 				row_generator< DIMS >( _coarser_sizes, _current_row ), finer_sizes( _finer_sizes ), steps( { 0 } ) {
 				for( std::size_t i { 0 }; i < DIMS; i++ ) {
 					// finer size MUST be an exact multiple of coarser_size
@@ -503,22 +503,22 @@ namespace grb {
 			/**
 			 * @brief Returns the current row, according to the coarser system.
 			 */
-			inline row_coordinate_type i() const {
+			inline RowIndexType i() const {
 				return current_values.first.first;
 			}
 
 			/**
 			 * @brief Returns the current column, according to the finer system.
 			 */
-			inline column_coordinate_type j() const {
+			inline ColumnIndexType j() const {
 				return current_values.first.second;
 			}
 
 			/**
 			 * @brief Returns always 1, as the coarsening keeps the same value.
 			 */
-			inline nonzero_value_type v() const {
-				return static_cast< nonzero_value_type >( 1 );
+			inline ValueType v() const {
+				return static_cast< ValueType >( 1 );
 			}
 
 		private:
@@ -528,9 +528,9 @@ namespace grb {
 			 * @brief Returns the row coordinates converted to the finer system, to compute
 			 * the column value.
 			 */
-			column_coordinate_type coords_to_finer_col() const {
-				column_coordinate_type row { 0 };
-				column_coordinate_type s { 1 };
+			ColumnIndexType coords_to_finer_col() const {
+				ColumnIndexType row { 0 };
+				ColumnIndexType s { 1 };
 				for( typename array_t::size_type i { 0 }; i < this->row_coords.size(); i++ ) {
 					s *= steps[ i ];
 					row += s * this->row_coords[ i ];
@@ -540,7 +540,57 @@ namespace grb {
 			}
 		};
 
-	} // namespace algorithms
-} // namespace grb
+	} // end namespace algorithms
+
+} // end namespace grb
+
+namespace std {
+
+	/**
+	 * Specialises the standard STL iterator traits for
+	 * #grb::algorithms::matrix_generator_iterator
+	 */
+	template< size_t DIMS, typename T >
+	class iterator_traits<
+		grb::algorithms::matrix_generator_iterator< DIMS, T >
+	> {
+
+		private:
+
+			typedef grb::algorithms::matrix_generator_iterator< DIMS, T > SelfType;
+
+
+		public:
+
+			typedef typename SelfType::ValueType value_type;
+			typedef const value_type * pointer;
+			typedef const value_type & reference;
+			typedef size_t difference_type;
+			typedef forward_iterator_tag iterator_category;
+
+	};
+
+	template< size_t DIMS, typename T >
+	class iterator_traits<
+		grb::algorithms::coarsener_generator_iterator< DIMS, T >
+	> {
+
+		private:
+
+			typedef grb::algorithms::coarsener_generator_iterator< DIMS, T > SelfType;
+
+
+		public:
+
+			typedef typename SelfType::ValueType value_type;
+			typedef const value_type * pointer;
+			typedef const value_type & reference;
+			typedef size_t difference_type;
+			typedef forward_iterator_tag iterator_category;
+
+	};
+
+} // end namespace std
 
 #endif // _H_GRB_ALGORITHMS_NDIM_MATRIX_BUILDERS
+

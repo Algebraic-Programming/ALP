@@ -24,10 +24,9 @@
 #define _H_GRB_REFERENCE_IO
 
 #include <graphblas/base/io.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
-#include "graphblas/base/vector.hpp"
-#include "graphblas/base/matrix.hpp"
+#include <graphblas/vector.hpp>
+#include <graphblas/matrix.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -1426,7 +1425,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
 #endif
-		return A.template buildMatrixUnique< descr >( start, end );
+		return A.template buildMatrixUnique< descr >( start, end, mode );
 	}
 
 	/**

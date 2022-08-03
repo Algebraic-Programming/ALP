@@ -28,7 +28,9 @@
 #include <graphblas/base/alloc.hpp>
 
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
 
 			/**
@@ -189,7 +191,7 @@ public:
 	banshee_allocator( banshee_allocator< U > const & ) noexcept {}
 
 	value_type * // Use pointer if pointer is not a value_type*
-	allocate( std::size_t size ) {
+	allocate( size_t size ) {
 		value_type * pointer = nullptr;
 		grb::utils::AutoDeleter< T > _raw_deleter;
 
@@ -198,7 +200,7 @@ public:
 	}
 
 	void deallocate( value_type * p,
-		std::size_t ) noexcept // Use pointer if pointer is not a value_type*
+		size_t ) noexcept // Use pointer if pointer is not a value_type*
 	{
 		(void)p;
 	}
@@ -215,3 +217,4 @@ bool operator!=( banshee_allocator< T > const & x, banshee_allocator< U > const 
 }
 
 #endif
+
