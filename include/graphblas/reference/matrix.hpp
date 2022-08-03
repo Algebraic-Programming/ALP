@@ -206,12 +206,18 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 
 		/**
-		 * @brief utility to get the row value from an input iterator.
+		 * \internal
+		 * Utility to get the major coordinate from an input iterator.
+		 *
+		 * @tparam populate_crs Whether to assume CRS or CSC.
+		 *
+		 * This is the CSR implementation.
+		 * \endinternal
 		 */
 		template<
 			typename RowIndexType,
 			typename IterT,
-			bool populate_csr
+			bool populate_crs
 		>
 		struct ColGetter {
 			RowIndexType operator()( const IterT &itr ) {
@@ -220,14 +226,17 @@ namespace grb {
 		};
 
 		/**
-		 * @brief utility to get the column value from an input iterator.
+		 * \internal
+		 * Utility to get the major coordinate from an input iterator.
+		 *
+		 * This is the CSC implementation.
+		 * \endinternal
 		 */
 		template<
 			typename ColIndexType,
 			typename IterT
 		>
 		struct ColGetter< ColIndexType, IterT, true > {
-
 			ColIndexType operator()( const IterT &itr ) {
 				return itr.j();
 			}
@@ -235,9 +244,9 @@ namespace grb {
 
 		/**
 		 * \internal
-		 * @brief populates a matrix storage (namely a CRS/CCS) in parallel,
-		 * using multiple threads. It requires the input iterator \p _it to be a
-		 * random access iterator.
+		 * Populates a matrix storage (CRS or CCS) in parallel, using multiple
+		 * threads. It requires the input iterator \a _it to be a random access
+		 * iterator.
 		 *
 		 * @tparam populate_ccs <tt>true</tt> if ingesting into a CCS, <tt>false</tt>
 		 *                      if ingesting into a CRS. Without loss of generality,
@@ -263,7 +272,7 @@ namespace grb {
 		 * \endinternal
 		 */
 		template<
-			bool populate_ccs, // false for CRS
+			bool populate_ccs,
 			typename rndacc_iterator,
 			typename ColIndexType,
 			typename RowIndexType,
@@ -281,7 +290,6 @@ namespace grb {
 			ColIndexType * const col_values_buffer,
 			Compressed_Storage< ValType, RowIndexType, NonzeroIndexType > &storage
 		) {
-
 			// if we are populating a CCS, we compute the bucket from the column indices;
 			// if CRS, buckets are computed from row indices. From the below code's POV,
 			// and without loss of generality, we assume CCS.
@@ -435,6 +443,8 @@ namespace grb {
 						// TODO FIXME Such a recursive call should use
 						//            grb::config::OMP::minLoopSize to determine whether to
 						//            parallelise.
+						//
+						// See also internal issue #192 and internal issue #320.
 						for( size_t i = 1; i < per_thread_buffer_size; i++ ) {
 							prefix_sum_buffer[ (num_threads - 1) * per_thread_buffer_size + i ] +=
 								prefix_sum_buffer[ (num_threads - 1) * per_thread_buffer_size + i - 1 ];
@@ -1751,7 +1761,8 @@ namespace grb {
 		 * @brief paralel implementation of @see Matrix::buildMatrixUnique, assuming
 		 * 	in input a random acces iterator.
 		 */
-		template< typename rndacc_iterator > RC buildMatrixUniqueImpl(
+		template< typename rndacc_iterator >
+		RC buildMatrixUniqueImpl(
 			const rndacc_iterator &_start,
 			const rndacc_iterator &_end,
 			std::random_access_iterator_tag
@@ -1806,7 +1817,9 @@ namespace grb {
 #endif
 				return ret;
 			}
-			ret = internal::populate_storage< true, ColIndexType, RowIndexType >( n, m, nz, _start, CCS );
+			ret = internal::populate_storage<
+				true, ColIndexType, RowIndexType
+			>( n, m, nz, _start, CCS );
 			if( ret != SUCCESS ) {
 #ifdef _DEBUG
 				std::cerr << "cannot populate the CRS" << std::endl;
@@ -1814,7 +1827,9 @@ namespace grb {
 				clear(); // we resized before, so we need to clean the memory
 				return ret;
 			}
-			ret = internal::populate_storage< false, RowIndexType, ColIndexType >( m, n, nz, _start, CRS );
+			ret = internal::populate_storage<
+				false, RowIndexType, ColIndexType
+			>( m, n, nz, _start, CRS );
 			if( ret != SUCCESS ) {
 #ifdef _DEBUG
 				std::cerr << "cannot populate the CCS" << std::endl;
@@ -2141,7 +2156,7 @@ namespace grb {
  #ifndef _H_GRB_REFERENCE_OMP_MATRIX
   #define _H_GRB_REFERENCE_OMP_MATRIX
   #define reference reference_omp
-  #include "matrix.hpp"
+  #include "graphblas/reference/matrix.hpp"
   #undef reference
   #undef _H_GRB_REFERENCE_OMP_MATRIX
  #endif
