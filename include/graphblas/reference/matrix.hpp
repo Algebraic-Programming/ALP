@@ -97,7 +97,7 @@ namespace grb {
 			ValType *__restrict__ const buf3 = nullptr
 		);
 
-	} // namespace internal
+	} // end namespace internal
 #endif
 
 	namespace internal {
@@ -876,7 +876,7 @@ namespace grb {
 #endif
 
 
-	} // namespace internal
+	} // end namespace internal
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
 	size_t nrows( const Matrix< DataType, reference, RIT, CIT, NIT > & ) noexcept;
