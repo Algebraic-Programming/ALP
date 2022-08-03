@@ -327,7 +327,7 @@ namespace grb {
 			// compute thread-local buffer size
 			const size_t ccs_col_buffer_size = num_cols + 1;
 			const size_t per_thread_buffer_size = prefix_sum_buffer_size / num_threads;
-			assert( per_thread_buffer_size >= num_threads );
+			assert( per_thread_buffer_size > 0 );
 			const size_t bucketlen = ( ccs_col_buffer_size == per_thread_buffer_size
 					? 0
 					: ccs_col_buffer_size / per_thread_buffer_size
