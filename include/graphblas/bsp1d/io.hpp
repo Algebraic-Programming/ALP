@@ -1005,8 +1005,17 @@ namespace grb {
 	namespace internal {
 
 		/**
-		 * @brief extracts the nonzero information and stores the into the right cache.
-		 * 	It also checks whether the nonzero coordinates are within the matrix sizes.
+		 * Extracts the nonzero information and stores the into the cache.
+		 *
+		 * It also checks whether the nonzero coordinates are within the matrix sizes.
+		 *
+		 * @param[in]  data     The parallel context.
+		 * @param[in]  start    An iterator pointing to the current nonzero to handle.
+		 * @param[in]  mode     The ingestion mode.
+		 * @param[in]  rows     The row size of the matrix in which to ingest.
+		 * @param[in]  cols     The column size of the matrix in which to ingest.
+		 * @param[out] cache    Cache of local nonzeroes.
+		 * @param[out] outgoing Cache of remote nonzeroes for later communication.
 		 */
 		template<
 			typename fwd_iterator,
@@ -1015,6 +1024,7 @@ namespace grb {
 			typename VType
 		>
 		void handleSingleNonzero(
+				const BSP1D_Data &data,
 				const fwd_iterator &start,
 				const IOMode mode,
 				const size_t &rows,
@@ -1024,8 +1034,7 @@ namespace grb {
 					std::vector<
 						internal::NonzeroStorage< IType, JType, VType >
 					>
-				> &outgoing,
-				const BSP1D_Data &data
+				> &outgoing
 		) {
 			// compute process-local indices (even if remote, for code readability)
 			const size_t global_row_index = start.i();
@@ -1095,7 +1104,25 @@ namespace grb {
 		}
 
 		/**
-		 * @brief sequential implementation of populateMatrixBuildCachesImpl().
+		 * Caches all nonzeroes in an container defined by an iterator pair.
+		 *
+		 * @param[in]  data     The parallel context.
+		 * @param[in]  start    Iterator to a container of nonzeroes.
+		 * @param[in]  end      Iterator matching \a start pointing to the end of the
+		 *                      container.
+		 * @param[in]  mode     Which I/O mode is used.
+		 * @param[in]  rows     The number of rows in the matrix to be ingested into.
+		 * @param[in]  cols     The number of columns of that matrix.
+		 * @param[out] cache    The nonzeroes that this process should ingest.
+		 * @param[out] outgoing The nonzeroes that this process should send to
+		 *                      another one.
+		 *
+		 * \note \a outgoing shall not be populated in grb::SEQUENTIAL I/O mode.
+		 *
+		 * Sequential implementation activated by passing a forward iterator tag.
+		 *
+		 * \note An overload for random access iterator tags defines a (shared-memory)
+		 *       parallel implementation.
 		 */
 		template<
 			typename fwd_iterator,
@@ -1104,8 +1131,8 @@ namespace grb {
 			typename VType
 		>
 		RC populateMatrixBuildCachesImpl(
-			fwd_iterator &start,
-			const fwd_iterator &end,
+			const BSP1D_Data &data,
+			const fwd_iterator &start, const fwd_iterator &end,
 			const IOMode mode,
 			const size_t &rows,
 			const size_t &cols,
@@ -1115,7 +1142,6 @@ namespace grb {
 					internal::NonzeroStorage< IType, JType, VType >
 				>
 			> &outgoing,
-			const BSP1D_Data &data,
 			const std::forward_iterator_tag &
 		) {
 			if( mode == PARALLEL ) {
@@ -1123,18 +1149,25 @@ namespace grb {
 			}
 
 			// loop over all inputs
-			for( ; start != end; ++start ) {
+			for( fwd_iterator it = start; it != end; ++it ) {
 				// sanity check on input
-				if( utils::check_input_coordinates( start, rows, cols ) != SUCCESS ) {
+				if( utils::check_input_coordinates( it, rows, cols ) != SUCCESS ) {
 					return MISMATCH;
 				}
-				handleSingleNonzero( start, mode, rows, cols, cache, outgoing, data );
+				handleSingleNonzero( data, it, mode, rows, cols, cache, outgoing );
 			}
 			return SUCCESS;
 		}
 
 		/**
-		 * @brief parallel implementation of populateMatrixBuildCachesImpl().
+		 * Caches all nonzeroes in an container defined by an iterator pair.
+		 *
+		 * Parallel implementation for random access iterators. Parallelisation by
+		 * OpenMP. Using SFINAE, this overload only is only available when the
+		 * underlying backend is shared-memory parallel (as well as only when the
+		 * given tag is a random access iterator one).
+		 *
+		 * For more detailed documentation, see the sequential implementation.
 		 */
 		template<
 			typename fwd_iterator,
@@ -1143,12 +1176,14 @@ namespace grb {
 			typename VType
 		>
 		RC populateMatrixBuildCachesImpl(
-			fwd_iterator &start, const fwd_iterator &end,
+			const BSP1D_Data &data,
+			const fwd_iterator &start, const fwd_iterator &end,
 			const IOMode mode,
 			const size_t &rows, const size_t &cols,
 			std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
-			std::vector< std::vector< internal::NonzeroStorage< IType, JType, VType > > > &outgoing,
-			const BSP1D_Data &data,
+			std::vector<
+				std::vector< internal::NonzeroStorage< IType, JType, VType > >
+			> &outgoing,
 			// must depend on _GRB_BSP1D_BACKEND and on a condition on the iterator type
 			typename std::enable_if<
 				_GRB_BSP1D_BACKEND == Backend::reference_omp &&
@@ -1161,20 +1196,28 @@ namespace grb {
 		) {
 			typedef internal::NonzeroStorage< IType, JType, VType > StorageType;
 
-			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );
-			const std::unique_ptr< std::vector< std::vector< StorageType > >[] > parallel_non_zeroes(
-				new std::vector< std::vector< StorageType > >[ num_threads ] );
-			std::vector< std::vector< StorageType > > * const parallel_non_zeroes_ptr = parallel_non_zeroes.get();
 			RC ret = RC::SUCCESS;
+			const size_t num_threads = static_cast< size_t >( omp_get_max_threads() );
+
+			// using pointers throughout this function to prevent OMP from invoking copy
+			// constructors
+			const std::unique_ptr<
+				std::vector< std::vector< StorageType > >[]
+			> parallel_non_zeroes(
+				new std::vector< std::vector< StorageType > >[ num_threads ]
+			);
+			std::vector< std::vector< StorageType > > * const parallel_non_zeroes_ptr =
+				parallel_non_zeroes.get();
 
 			// each thread separates the nonzeroes based on the destination, each
 			// thread to a different buffer
-			// TODO FIXME BSP1D should not call OpenMP directly
 			#pragma omp parallel
 			{
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
-				std::vector< std::vector< StorageType > > &local_outgoing = parallel_non_zeroes_ptr[ thread_id ];
+				std::vector< std::vector< StorageType > > &local_outgoing =
+					parallel_non_zeroes_ptr[ thread_id ];
 				local_outgoing.resize( data.P );
+
 				std::vector< StorageType > &local_data = local_outgoing[ data.s ];
 				RC local_rc __attribute__ ((aligned)) = SUCCESS;
 
@@ -1190,7 +1233,8 @@ namespace grb {
 						// rely on atomic writes to global ret enum
 						ret = MISMATCH;
 					} else {
-						handleSingleNonzero( it, mode, rows, cols, local_data, local_outgoing, data );
+						handleSingleNonzero( data, it, mode, rows, cols, local_data,
+							local_outgoing );
 					}
 				}
 			} // note: implicit thread barrier
@@ -1204,7 +1248,8 @@ namespace grb {
 					for( size_t j = 0; j < num_threads; j++) {
 						std::cout << "\tthread " << j << std::endl;
 							for( lpf_pid_t k = 0; k < data.P; k++) {
-								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size() << std::endl;
+								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size()
+									<< std::endl;
 							}
 					}
 				}
@@ -1215,41 +1260,69 @@ namespace grb {
 				}
 			}
 #endif
-			// use iteration_overlaps > 1 to allow multiple iterations to overlap: for example,
-			// thread 0 might be running the "single" region with pid = 1 (second iteration)
-			// while thread 1 might still be running with pid = 0 (first iteration);
-			// with iteration_overlaps > 1 thread 0 writes the new values for "first_nnz_per_thread_ptr"
-			// inside different memory locations than those thread 1 is reading, thus enabling overlap
-			// between consecutive iterations; the synchronization occurrs thanks to the implicit barrier
-			// at the end of the single region
+
+			// At this point, there exists in memory a P times T matrix of std::vectors
+			// that contain nonzeroes when in PARALLEL I/O mode. If the mode is
+			// SEQUENTIAL, then this matrix still exists but all std::vectors are in fact
+			// empty. We must now reduce this P times T matrix into P std::vectors. One
+			// of those vectors is the final local cache, while the others correspond to
+			// the outgoing caches.
+			//
+			// Strategy:
+			//   1. loop over P
+			//   2. reduce each of the P std::vectors into one using T threads
+			//
+			// Let "iterations" refer to the loop at step 1.
+			//
+			// When iteration_overlaps > 1 to allow multiple iterations to overlap. For
+			// example, thread 0 might be running the "single" region with pid = 1
+			// (i.e., the second iteration), while thread 1 might still be running with
+			// pid = 0 (first iteration); with iteration_overlaps > 1 thread 0 writes new
+			// values for "first_nnz_per_thread_ptr" inside different memory locations
+			// than those that thread 1 is reading, thus enabling overlap.
+			// Synchronization occurs thanks to the implicit barrier at the end of the
+			// single region. The net effect is to not incur any significant latency due
+			// to the prefix sum computation that must occur -- for this intended effect,
+			// a pipeline depth of 2 is sufficient.
 			constexpr size_t iteration_overlaps = 2;
+
 			const std::unique_ptr< size_t > first_nnz_per_thread(
-				new size_t[ num_threads * iteration_overlaps ]() );
+				new size_t[ num_threads * iteration_overlaps ]()
+			);
 			size_t * const first_nnz_per_thread_ptr = first_nnz_per_thread.get();
 			outgoing.resize( data.P );
 
-			// using pointers to prevent OMP from invoking copy constructors to pass output containers to threads
-			std::vector< std::vector< internal::NonzeroStorage< IType, JType, VType > > > *outgoing_ptr = &outgoing;
-			std::vector< internal::NonzeroStorage< IType, JType, VType > > *cache_ptr = &cache;
+			// do not take pointers earlier as there is a resize preceding it
+			std::vector<
+				std::vector< internal::NonzeroStorage< IType, JType, VType > >
+			> * const outgoing_ptr = &outgoing;
+			std::vector<
+				internal::NonzeroStorage< IType, JType, VType >
+			> * const cache_ptr = &cache;
 			size_t pid_nnz = 0;
 
-			// merge data: each thread merges the data for each process into the destination arrays
-			#pragma omp parallel firstprivate(num_threads,parallel_non_zeroes_ptr,data,outgoing_ptr,cache_ptr)
+			// merge data: each thread merges the data for each process into the
+			//             destination arrays
+			#pragma omp parallel
 			for( lpf_pid_t pid = 0; pid < data.P; ++pid ) {
-				std::vector< StorageType > &out = pid != data.s ? (*outgoing_ptr)[ pid ] : *cache_ptr;
-				// alternate between different parts of the array to avoid concurrent read-write
-				// due to overlap between iterations
-				size_t * const first_nnz_ptr = first_nnz_per_thread_ptr + num_threads * ( pid % iteration_overlaps );
+				// where to write out the merged data
+				std::vector< StorageType > &out = pid != data.s
+					? (*outgoing_ptr)[ pid ]
+					: *cache_ptr;
+				// alternate between different parts of the array to avoid concurrent
+				// read-write due to overlap between iterations
+				size_t * const first_nnz_ptr = first_nnz_per_thread_ptr +
+					num_threads * (pid % iteration_overlaps);
 
-				static_assert( iteration_overlaps > 1, "enable OMP barrier" );
-				// enable if iteration_overlaps == 1
-				//#pragma omp barrier
+				if( iteration_overlaps == 1 ) {
+					#pragma omp barrier
+				}
 
+				// this is a prefix sum over num_threads values, hence with limited parallelism:
+				// leaving it sequential at current
 				#pragma omp single
 				{
 					first_nnz_ptr[ 0 ] = 0;
-					// this is a prefix sum over num_threads values, hence with limited parallelism:
-					// leaving it sequential ATM
 					for( size_t tid = 1; tid < num_threads; ++tid ) {
 						first_nnz_ptr[ tid ] = first_nnz_ptr[ tid - 1 ]
 							+ parallel_non_zeroes_ptr[ tid - 1 ][ pid ].size();
@@ -1266,10 +1339,11 @@ namespace grb {
 						+ parallel_non_zeroes_ptr[ num_threads - 1 ][ pid ].size();
 					// enlarge to make room to copy data
 					out.resize( pid_nnz );
-				}
-				// barrier here, implicit at the end of single construct
+				} // barrier here, implicit at the end of single construct
+
 				const size_t thread_id = static_cast< size_t >( omp_get_thread_num() );
-				std::vector< StorageType > &local_out = parallel_non_zeroes_ptr[ thread_id ][ pid ];
+				std::vector< StorageType > &local_out =
+					parallel_non_zeroes_ptr[ thread_id ][ pid ];
 				const size_t first_nnz_local = first_nnz_ptr[ thread_id ];
 				const size_t num_nnz_local = local_out.size();
 #ifdef _DEBUG
@@ -1308,22 +1382,37 @@ namespace grb {
 				}
 #endif
 				// each thread writes to a different interval of the destination array
-				// give pointers to "hint" memmove (StorageType should be trivially copyable)
-				std::copy_n( local_out.data(), num_nnz_local, out.data() + first_nnz_local );
+				// give pointers to hint at memmove whenever possible
+				// (StorageType should be trivially copyable)
+				std::copy_n(
+					local_out.data(), num_nnz_local,
+					out.data() + first_nnz_local
+				);
 				// release memory
-				local_out.clear();
-				local_out.shrink_to_fit();
+				std::vector< StorageType >().swap( local_out );
 			}
 			return SUCCESS;
 		}
 
 		/**
-		 * @brief dispatcher to call the sequential or parallel cache population
-		 * 	based on the tag of the input iterator. It populates \p cache with
-		 * 	the local nonzeroes and \p outoing with the nonzeroes going to the
-		 * 	other processes, stored according to the destination process.
+		 * Dispatcher that calls the sequential or parallel cache population
+		 * algorithm.
 		 *
-		 * Within each destination no order of nonzeroes is enforced.
+		 * Dispatching occurs based on the tag of the input iterator.
+		 *
+		 * @param[in]  data     The parallel context.
+		 * @param[in]  start    Iterator that points to the first element in the
+		 *                      container to be ingested.
+		 * @param[in]  end      The matching iterator to \a start pointing to the
+		 *                      container end.
+		 * @param[in]  mode     The mode under which to perform I/O.
+		 * @param[in]  rows     The number of rows in the input matrix.
+		 * @param[in]  cols     The number of columns in the input matrix.
+		 * @param[out] cache    The cache of local nonzeroes.
+		 * @param[out] outgoing The cache of nonzeroes that must be sent to remote
+		 *                      processes.
+		 *
+		 * Within each output cache, no order of nonzeroes is enforced.
 		 */
 		template<
 			typename fwd_iterator,
@@ -1331,8 +1420,9 @@ namespace grb {
 			typename JType,
 			typename VType
 		>
-		inline RC populateMatrixBuildCaches(
-				fwd_iterator &start, const fwd_iterator &end,
+		RC populateMatrixBuildCaches(
+				const BSP1D_Data &data,
+				const fwd_iterator &start, const fwd_iterator &end,
 				const IOMode mode,
 				const size_t &rows, const size_t &cols,
 				std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
@@ -1340,16 +1430,21 @@ namespace grb {
 					std::vector<
 						internal::NonzeroStorage< IType, JType, VType >
 					>
-				> &outgoing,
-				const BSP1D_Data &data
+				> &outgoing
 		) {
 			// dispatch based only on the iterator type
 			typename std::iterator_traits< fwd_iterator >::iterator_category category;
-			return populateMatrixBuildCachesImpl( start, end, mode, rows, cols, cache,
-				outgoing, data, category );
+			return populateMatrixBuildCachesImpl(
+				data,
+				start, end,
+				mode,
+				rows, cols,
+				cache, outgoing,
+				category
+			);
 		}
 
-	} // namespace internal
+	} // end namespace grb::internal
 
 	/**
 	 * \internal No implementation details.
@@ -1364,7 +1459,7 @@ namespace grb {
 	>
 	RC buildMatrixUnique(
 		Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
-		fwd_iterator start, const fwd_iterator end,
+		const fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
 		static_assert(
@@ -1448,7 +1543,13 @@ namespace grb {
 		std::cout << "Local column-wise offset at PID " << data.s << " is "
 			<< my_offset << "\n";
 #endif
-		ret = internal::populateMatrixBuildCaches( start, end, mode, A._m, A._n, cache, outgoing, data );
+		ret = internal::populateMatrixBuildCaches(
+			data,
+			start, end,
+			mode,
+			A._m, A._n,
+			cache, outgoing
+		);
 		if( ret != SUCCESS ) {
 #ifndef NDEBUG
 			std::cout << "Process " << data.s << " failure while reading input iterator" << std::endl;
@@ -1457,7 +1558,7 @@ namespace grb {
 		}
 
 #ifdef _DEBUG
-		for( lpf_pid_t i = 0; i < data.P; i++) {
+		for( lpf_pid_t i = 0; i < data.P; i++ ) {
 			if( data.s == i ) {
 				std::cout << "Process " << data.s << std::endl;
 				for( lpf_pid_t k = 0; k < data.P; k++) {
