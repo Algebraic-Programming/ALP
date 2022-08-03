@@ -1263,10 +1263,10 @@ namespace grb {
 
 			// At this point, there exists in memory a P times T matrix of std::vectors
 			// that contain nonzeroes when in PARALLEL I/O mode. If the mode is
-			// SEQUENTIAL, then this matrix still exists but all std::vectors are in fact
-			// empty. We must now reduce this P times T matrix into P std::vectors. One
-			// of those vectors is the final local cache, while the others correspond to
-			// the outgoing caches.
+			// SEQUENTIAL, then this matrix still exists though all but P std::vectors
+			// are in fact empty. We must now reduce this P times T matrix into P
+			// std::vectors. One of those vectors is the final local cache, while the
+			// others correspond to P-1 outgoing caches.
 			//
 			// Strategy:
 			//   1. loop over P
