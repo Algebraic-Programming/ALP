@@ -1302,12 +1302,12 @@ namespace grb {
 			 */
 			void initialize(
 				const uintptr_t * const id_in,
-				const size_t rows, const size_t columns,
+				const size_t rows, const size_t cols,
 				const size_t cap_in
 			) {
 #ifdef _DEBUG
 				std::cerr << "\t in Matrix< reference >::initialize...\n"
-					<< "\t\t matrix size " << rows << " by " << columns << "\n"
+					<< "\t\t matrix size " << rows << " by " << cols << "\n"
 					<< "\t\t requested capacity " << cap_in << "\n";
 #endif
 
@@ -1321,24 +1321,13 @@ namespace grb {
 					throw std::overflow_error( "Number of rows larger than configured "
 						"RowIndexType maximum!" );
 				}
-				if( columns >= static_cast< size_t >(
+				if( cols >= static_cast< size_t >(
 						std::numeric_limits< ColIndexType >::max()
 					)
 				) {
 					throw std::overflow_error( "Number of columns larger than configured "
 						"ColIndexType maximum!" );
 				}
-
-				// initial setters
-				if( id_in != nullptr ) {
-					id = *id_in;
-#ifdef _DEBUG
-					std::cerr << "\t\t inherited ID " << id << "\n";
-#endif
-				}
-				m = rows;
-				n = columns;
-				cap = nz = 0;
 
 				// memory allocations
 				RC alloc_ok = SUCCESS;
@@ -1347,16 +1336,16 @@ namespace grb {
 					nullptr, nullptr, nullptr, nullptr
 				};
 				if( !internal::template ensureReferenceBufsize< char >(
-					reqBufSize( m, n ) )
+					reqBufSize( rows, cols ) )
 				) {
 					throw std::runtime_error( "Could not resize global buffer" );
 				}
-				if( m > 0 && n > 0 ) {
+				if( rows > 0 && cols > 0 ) {
 					// check whether requested capacity is sensible
-					if( cap_in / m > n ||
-						cap_in / n > m ||
-						(cap_in / m == n && (cap_in % m > 0)) ||
-						(cap_in / n == m && (cap_in % n > 0))
+					if( cap_in / rows > cols ||
+						cap_in / cols > rows ||
+						(cap_in / rows == cols && (cap_in % rows > 0)) ||
+						(cap_in / cols == rows && (cap_in % cols > 0))
 					) {
 #ifdef _DEBUG
 						std::cerr << "\t\t Illegal capacity requested\n";
@@ -1365,15 +1354,15 @@ namespace grb {
 					}
 					// get sizes of arrays that we need to allocate
 					size_t sizes[ 12 ];
-					sizes[ 0 ] = internal::Coordinates< reference >::arraySize( m );
-					sizes[ 1 ] = internal::Coordinates< reference >::arraySize( n );
-					sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( m );
-					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( n );
-					sizes[ 4 ] = m * internal::SizeOf< D >::value;
-					sizes[ 5 ] = n * internal::SizeOf< D >::value;
+					sizes[ 0 ] = internal::Coordinates< reference >::arraySize( rows );
+					sizes[ 1 ] = internal::Coordinates< reference >::arraySize( cols );
+					sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( rows );
+					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
+					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
+					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
 					if( cap_in > 0 ) {
-						CRS.getStartAllocSize( &( sizes[ 6 ] ), m );
-						CCS.getStartAllocSize( &( sizes[ 7 ] ), n );
+						CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
+						CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 						CRS.getAllocSize( &(sizes[ 8 ]), cap_in );
 						CCS.getAllocSize( &(sizes[ 10 ]), cap_in );
 					} else {
@@ -1398,8 +1387,8 @@ namespace grb {
 					);
 				} else {
 					const size_t sizes[ 2 ] = {
-						m * internal::SizeOf< D >::value,
-						n * internal::SizeOf< D >::value
+						rows * internal::SizeOf< D >::value,
+						cols * internal::SizeOf< D >::value
 					};
 					coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
 					coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
@@ -1411,38 +1400,54 @@ namespace grb {
 					);
 				}
 
+				// check allocation status
 				if( alloc_ok == OUTOFMEM ) {
 					throw std::runtime_error( "Could not allocate memory during grb::Matrix construction" );
 				} else if( alloc_ok != SUCCESS ) {
 					throw std::runtime_error( toString( alloc_ok ) );
 				}
-
-				if( m > 0 && n > 0 ) {
-					cap = cap_in;
-				}
-				valbuf[ 0 ] = reinterpret_cast< D * >( alloc[ 6 ] );
-				valbuf[ 1 ] = reinterpret_cast< D * >( alloc[ 7 ] );
-
-				if( m > 0 && n > 0 ) {
 #ifdef _DEBUG
+				if( rows > 0 && cols > 0 ) {
 					std::cerr << "\t\t allocations for an " << m << " by " << n << " matrix "
-						<< "have successfully completed\n";
+						<< "have successfully completed.\n";
+				} else {
+					std::cerr << "\t\t allocations for an empty matrix have successfully "
+						<< "completed.\n";
+				}
 #endif
-					CRS.replaceStart( alloc[ 0 ] );
-					CCS.replaceStart( alloc[ 1 ] );
-					CRS.replace( alloc[ 2 ], alloc[ 3 ] );
-					CCS.replace( alloc[ 4 ], alloc[ 5 ] );
-					if( id_in == nullptr ) {
+				// either set ID or retrieve one
+				if( id_in != nullptr ) {
+					assert( !remove_id );
+					id = *id_in;
+#ifdef _DEBUG
+					std::cerr << "\t\t inherited ID " << id << "\n";
+#endif
+				} else {
+					if( rows > 0 && cols > 0 && id_in == nullptr ) {
 						id = internal::reference_mapper.insert(
-							reinterpret_cast< uintptr_t >(CRS.getOffsets())
+							reinterpret_cast< uintptr_t >(alloc[ 0 ])
 						);
 						remove_id = true;
 #ifdef _DEBUG
 						std::cerr << "\t\t assigned new ID " << id << "\n";
 #endif
-					} else {
-						assert( !remove_id );
 					}
+				}
+
+				// all OK, so set and exit
+				m = rows;
+				n = cols;
+				nz = 0;
+				if( m > 0 && n > 0 ) {
+					cap = cap_in;
+				}
+				valbuf[ 0 ] = reinterpret_cast< D * >( alloc[ 6 ] );
+				valbuf[ 1 ] = reinterpret_cast< D * >( alloc[ 7 ] );
+				if( m > 0 && n > 0 ) {
+					CRS.replaceStart( alloc[ 0 ] );
+					CCS.replaceStart( alloc[ 1 ] );
+					CRS.replace( alloc[ 2 ], alloc[ 3 ] );
+					CCS.replace( alloc[ 4 ], alloc[ 5 ] );
 				}
 			}
 
