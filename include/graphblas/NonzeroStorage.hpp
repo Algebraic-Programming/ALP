@@ -269,7 +269,7 @@ namespace grb {
 			typename V
 		>
 		void nonzeroStorage_printer(
-			std::ostream& s,
+			std::ostream &s,
 			const NonzeroStorage< R, T, V > &nz,
 			typename std::enable_if< std::is_same< V, void >::value >::type * = nullptr
 		) {
@@ -287,8 +287,8 @@ namespace grb {
 			typename T,
 			typename V
 		>
-		std::ostream& operator<<(
-			std::ostream& s,
+		std::ostream & operator<<(
+			std::ostream &s,
 			const NonzeroStorage< R, T, V > &nz
 		) {
 			s << "( " << nz.i() << ", " << nz.j() << " )";
