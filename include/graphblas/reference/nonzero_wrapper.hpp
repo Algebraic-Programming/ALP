@@ -252,6 +252,15 @@ namespace grb {
 					return result;
 				}
 
+#ifdef _DEBUG
+				/** Overload print function. */
+				static void print( std::ostream &s, const SelfType &nz ) {
+					s << nz.off() << ": [ " << nz.col() << ", "
+						<< nz.row() << "]: "
+						<< nz.val();
+				}
+#endif
+
 
 			private:
 
@@ -337,15 +346,6 @@ namespace grb {
 				) const {
 					return this->_CXX->values[ this->_off ];
 				}
-
-#ifdef _DEBUG
-				/** Overload print function. */
-				static void print( std::ostream &s, const SelfType &nz ) {
-					s << nz.off() << ": [ " << nz.col() << ", "
-						<< nz.row() << "]: "
-						<< nz.val();
-				}
-#endif
 
 		};
 
