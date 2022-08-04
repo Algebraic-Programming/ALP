@@ -47,9 +47,10 @@
 
 #include <type_traits> //for std::enable_if
 
-#include <graphblas/utils/MatrixVectorIterator.hpp>
+#include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
 
 #include "matrix.hpp"
+
 
 namespace grb {
 
@@ -596,13 +597,13 @@ namespace grb {
 		grb::Matrix< InputType1 > u_matrix( nrows, 1 );
 		grb::Matrix< InputType2 > v_matrix( 1, ncols );
 
-		auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
+		auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t &ind, const InputType1 &val ) {
 			return std::make_pair( std::make_pair( ind, 0 ), val );
 		} );
 
 		buildMatrixUnique( u_matrix, u_converter.begin(), u_converter.end(), PARALLEL );
 
-		auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t & ind, const InputType2 & val ) {
+		auto v_converter = grb::utils::makeVectorToMatrixConverter< InputType2 >( v, []( const size_t &ind, const InputType2 &val ) {
 			return std::make_pair( std::make_pair( 0, ind ), val );
 		} );
 		buildMatrixUnique( v_matrix, v_converter.begin(), v_converter.end(), PARALLEL );

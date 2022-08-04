@@ -19,6 +19,7 @@
 
 #include <limits>
 #include <vector>
+#include <iterator>
 #include <iostream>
 #include <stdexcept>
 
@@ -70,7 +71,126 @@ namespace sparseblas {
 
 	/** \internal A sparse matrix under construction. */
 	template< typename T >
+	class MatrixUC;
+
+	namespace internal {
+
+		/**
+		 * \internal An iterator over the triplets contained herein. The iterator
+		 *           adheres both to STL as well as ALP.
+		 */
+		template< typename T >
+		class MatrixUCIterator {
+
+			friend class sparseblas::MatrixUC< T >;
+
+			private:
+
+				const std::vector< FullTripletBatch< T > > &batches;
+				const PartialTripletBatch< T > &last;
+				size_t batch;
+				size_t loc;
+
+
+			protected:
+
+				MatrixUCIterator( const MatrixUC< T > &x ) :
+					batches( x.batches ), last( x.last ),
+					batch( 0 ), loc( 0 )
+				{}
+
+				void setToEndPosition() {
+					batch = batches.size();
+					loc = last.ntriplets;
+				}
+
+
+			public:
+
+				typedef Triplet< T > value_type;
+				typedef const value_type & reference_type;
+				typedef const value_type * pointer_type;
+				typedef std::forward_iterator_tag iterator_category;
+				typedef size_t difference_type;
+				typedef int RowIndexType;
+				typedef int ColumnIndexType;
+				typedef T ValueType;
+
+				MatrixUCIterator( const MatrixUCIterator &other ) :
+					batches( other.batches ), last( other.last ),
+					batch( other.batch ), loc( other.loc )
+				{}
+
+				MatrixUCIterator( MatrixUCIterator &&other ) :
+					batches( other.batches ), last( other.last ),
+					batch( other.batch ), loc( other.loc )
+				{
+					other.batch = other.loc = 0;
+				}
+
+				bool operator==( const MatrixUCIterator &other ) const {
+					return batch == other.batch && loc == other.loc;
+				}
+
+				bool operator!=( const MatrixUCIterator &other ) const {
+					return !( operator==( other ) );
+				}
+
+				MatrixUCIterator operator++() {
+					assert( batch <= batches.size() );
+					if( batch == batches.size() ) {
+						assert( loc < last.ntriplets );
+						(void) ++loc;
+					} else {
+						(void) ++loc;
+						assert( loc <= BATCH_SIZE );
+						if( loc == BATCH_SIZE ) {
+							(void) ++batch;
+							assert( batch <= batches.size() );
+							loc = 0;
+						}
+					}
+					return *this;
+				}
+
+				const Triplet< T > & operator*() const {
+					assert( batch <= batches.size() );
+					if( batch == batches.size () ) {
+						assert( loc < last.ntriplets );
+						return last.triplets[ loc ];
+					} else {
+						assert( loc < BATCH_SIZE );
+						return batches[ batch ].triplets[ loc ];
+					}
+				}
+
+				const Triplet< T > * operator->() const {
+					return &( operator*() );
+				}
+
+				int i() const {
+					const Triplet< T > &triplet = this->operator*();
+					return triplet.row;
+				}
+
+				int j() const {
+					const Triplet< T > &triplet = this->operator*();
+					return triplet.col;
+				}
+
+				double v() const {
+					const Triplet< T > &triplet = this->operator*();
+					return triplet.val;
+				}
+
+		};
+
+	} // end namespace sparseblas::internal
+
+	template< typename T >
 	class MatrixUC {
+
+		friend class internal::MatrixUCIterator< T >;
 
 		private:
 
@@ -83,113 +203,8 @@ namespace sparseblas {
 
 		public:
 
-			/**
-			 * \internal An iterator over the triplets contained herein. The iterator
-			 *           adheres both to STL as well as ALP.
-			 */
-			class const_iterator {
-
-				friend class MatrixUC< T >;
-
-				private:
-
-					const std::vector< FullTripletBatch< T > > &batches;
-					const PartialTripletBatch< T > &last;
-					size_t batch;
-					size_t loc;
-
-
-				protected:
-
-					const_iterator( const MatrixUC< T > &x ) :
-						batches( x.batches ), last( x.last ),
-						batch( 0 ), loc( 0 )
-					{}
-
-					void setToEndPosition() {
-						batch = batches.size();
-						loc = last.ntriplets;
-					}
-
-
-				public:
-
-					typedef Triplet< T > value_type;
-					typedef value_type & reference;
-					typedef value_type * pointer;
-					typedef std::forward_iterator_tag iterator_category;
-					typedef int row_coordinate_type;
-					typedef int column_coordinate_type;
-					typedef T nonzero_value_type;
-
-					const_iterator( const const_iterator &other ) :
-						batches( other.batches ), last( other.last ),
-						batch( other.batch ), loc( other.loc )
-					{}
-
-					const_iterator( const_iterator &&other ) :
-						batches( other.batches ), last( other.last ),
-						batch( other.batch ), loc( other.loc )
-					{
-						other.batch = other.loc = 0;
-					}
-
-					bool operator==( const const_iterator &other ) const {
-						return batch == other.batch && loc == other.loc;
-					}
-
-					bool operator!=( const const_iterator &other ) const {
-						return !( operator==( other ) );
-					}
-
-					const_iterator operator++() {
-						assert( batch <= batches.size() );
-						if( batch == batches.size() ) {
-							assert( loc < last.ntriplets );
-							(void) ++loc;
-						} else {
-							(void) ++loc;
-							assert( loc <= BATCH_SIZE );
-							if( loc == BATCH_SIZE ) {
-								(void) ++batch;
-								assert( batch <= batches.size() );
-								loc = 0;
-							}
-						}
-						return *this;
-					}
-
-					const Triplet< T > & operator*() const {
-						assert( batch <= batches.size() );
-						if( batch == batches.size () ) {
-							assert( loc < last.ntriplets );
-							return last.triplets[ loc ];
-						} else {
-							assert( loc < BATCH_SIZE );
-							return batches[ batch ].triplets[ loc ];
-						}
-					}
-
-					const Triplet< T > * operator->() const {
-						return &( operator*() );
-					}
-
-					int i() const {
-						const Triplet< T > &triplet = this->operator*();
-						return triplet.row;
-					}
-
-					int j() const {
-						const Triplet< T > &triplet = this->operator*();
-						return triplet.col;
-					}
-
-					double v() const {
-						const Triplet< T > &triplet = this->operator*();
-						return triplet.val;
-					}
-
-			};
+			/** Typedef our iterator */
+			typedef typename internal::MatrixUCIterator< T > const_iterator;
 
 			/** \internal Adds a triplet. */
 			void add( const T& val, const int &row, const int &col ) {
@@ -465,7 +480,32 @@ namespace sparseblas {
 		return true;
 	}
 
-}
+} // end namespace sparseblas
+
+namespace std {
+
+	/**
+	 * Specialisation for the STL std::iterator_traits for the MatrixUC iterator.
+	 */
+	template< typename T >
+	class iterator_traits< typename sparseblas::internal::MatrixUCIterator< T > > {
+
+		private:
+
+			typedef typename sparseblas::MatrixUC< T >::const_iterator SelfType;
+
+
+		public:
+
+			typedef typename SelfType::value_type value_type;
+			typedef typename SelfType::pointer_type pointer_type;
+			typedef typename SelfType::reference_type reference_type;
+			typedef typename SelfType::iterator_category iterator_category;
+			typedef typename SelfType::difference_type difference_type;
+
+	};
+
+} // end namespace std
 
 // implementation of the SparseBLAS API follows
 

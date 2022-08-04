@@ -115,6 +115,7 @@ add_grb_executables( masked_vxm masked_vxm.cpp
 
 add_grb_executables( matrixIterator matrixIterator.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( matrixSet matrixSet.cpp
@@ -237,6 +238,11 @@ add_grb_executables( capacity capacity.cpp
 
 add_grb_executables( wait wait.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
+)
+
+add_grb_executables( buildMatrixUnique buildMatrixUnique.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 # targets to list and build the test for this category

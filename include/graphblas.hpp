@@ -166,12 +166,8 @@
 #ifndef _H_GRAPHBLAS
 #define _H_GRAPHBLAS
 
-// do NOT remove this #if, in order to protect this header from
-// clang-format re-ordering
-#if 1
 // load active configuration
- #include <graphblas/config.hpp> //defines _GRB_BACKEND and _WITH_BSP
-#endif
+#include <graphblas/config.hpp> //defines _GRB_BACKEND and _WITH_BSP
 
 // collects the user-level includes
 // the order of these includes matter--
@@ -183,7 +179,7 @@
 #include <graphblas/monoid.hpp>
 #include <graphblas/semiring.hpp>
 
-// Then include containers. If containers rely on ALP/GraphBLAS primtives that
+// Then include containers. If containers rely on ALP/GraphBLAS primitives that
 // are defined as free functions, then container implementations must forward-
 // declare those.
 #include <graphblas/vector.hpp>

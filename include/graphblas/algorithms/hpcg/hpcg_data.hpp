@@ -32,6 +32,7 @@
 
 
 namespace grb {
+
 	namespace algorithms {
 
 		/**
@@ -94,7 +95,7 @@ namespace grb {
 		 * thus having size #system_size; this also holds for the system matrix #A,
 		 * while #coarsening_matrix has size #system_size \f$ \times \f$ #finer_size.
 		 * Hence, the typical usage of this data structure is to coarsen \b external vectors, e.g. vectors
-		 * coming from another \code multi_grid_data<IOType, NonZeroType> \endcode object whose #system_size equals
+		 * coming from another \code multi_grid_data<IOType, NonzeroType> \endcode object whose #system_size equals
 		 * \code this-> \endcode #fines_size, via \code this-> \endcode #coarsening_matrix and store the coarsened
 		 * vectors internally. Mimicing the recursive behavior of standard multi-grid simulations,
 		 * the information for a further coarsening is stored inside #coarser_level, so that the
@@ -187,6 +188,8 @@ namespace grb {
 		};
 
 	} // namespace algorithms
+
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_HPCG_DATA
+
