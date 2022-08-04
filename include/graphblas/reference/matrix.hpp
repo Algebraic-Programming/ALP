@@ -455,7 +455,7 @@ namespace grb {
 					{
 						std::cout << "after third step:" << std::endl;
 						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+							std::cout << s << ": " << prefix_sum_buffer[ s ] << std::endl;
 						}
 					}
 #endif
