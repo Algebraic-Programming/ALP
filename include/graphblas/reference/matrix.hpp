@@ -50,7 +50,7 @@
 #include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
 
-#include "nonzero_wrapper.hpp"
+#include "NonzeroWrapper.hpp"
 #include "forward.hpp"
 
 
@@ -455,7 +455,7 @@ namespace grb {
 					{
 						std::cout << "after third step:" << std::endl;
 						for( size_t s = 0; s < prefix_sum_buffer_size; s++ ) {
-							std::cout << s << ": " << prefix_sum_buffer[s] << std::endl;
+							std::cout << s << ": " << prefix_sum_buffer[ s ] << std::endl;
 						}
 					}
 #endif
@@ -1749,7 +1749,7 @@ namespace grb {
 #ifdef _DEBUG
 					std::cout << "Nonzero " << k << ", ( " << it.i() << ", " << it.j() << " ) "
 						<< "is stored at CRS position "
-						<< static_cast< size_t >( crs_pos ) << ".\n"
+						<< static_cast< size_t >( crs_pos ) << ".\n";
 #endif
 					const size_t ccs_pos = --( CCS.col_start[ it.j() ] );
 					CCS.recordValue( ccs_pos, true, it );

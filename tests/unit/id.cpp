@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <graphblas.hpp>
+
 
 struct input {
 	bool check;
