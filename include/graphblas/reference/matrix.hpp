@@ -1749,7 +1749,7 @@ namespace grb {
 #ifdef _DEBUG
 					std::cout << "Nonzero " << k << ", ( " << it.i() << ", " << it.j() << " ) "
 						<< "is stored at CRS position "
-						<< static_cast< size_t >( crs_pos ) << ".\n"
+						<< static_cast< size_t >( crs_pos ) << ".\n";
 #endif
 					const size_t ccs_pos = --( CCS.col_start[ it.j() ] );
 					CCS.recordValue( ccs_pos, true, it );
