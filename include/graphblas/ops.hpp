@@ -26,6 +26,7 @@
 #include "internalops.hpp"
 #include "type_traits.hpp"
 
+
 namespace grb {
 
 	/**
@@ -540,9 +541,9 @@ namespace grb {
 			static const constexpr bool value = true;
 		};
 
-	} // namespace grb::internal
+	} // end namespace grb::internal
 
-} // namespace grb
+} // end namespace grb
 
 #ifdef __DOXYGEN__
  /**
@@ -552,13 +553,16 @@ namespace grb {
   */
  #define _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
 #endif
+
 #ifdef _DEBUG
  #ifndef _DEBUG_NO_IOSTREAM_PAIR_CONVERTER
+namespace std {
 	template< typename U, typename V >
-	std::ostream & operator<<( std::ostream & out, const std::pair< U, V > & pair ) {
+	std::ostream & operator<<( std::ostream &out, const std::pair< U, V > &pair ) {
 		out << "( " << pair.first << ", " << pair.second << " )";
 		return out;
 	}
+} // end namespace std
  #endif
 #endif
 

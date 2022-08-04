@@ -252,6 +252,31 @@ namespace grb {
 					return result;
 				}
 
+#ifdef _DEBUG
+				/** Overload print function. */
+				template< typename T = ValType >
+				static void print( std::ostream &s, const SelfType &nz,
+					typename std::enable_if<
+						!(std::is_same< T, void >::value)
+					>::type * = nullptr
+				) {
+					s << nz.off() << ": [ " << nz.col() << ", "
+						<< nz.row() << "]: "
+						<< nz.val();
+				}
+
+				/** Overload print function for pattern nonzeroes. */
+				template< typename T = ValType >
+				static void print( std::ostream &s, const SelfType &nz,
+					typename std::enable_if<
+						std::is_same< T, void >::value
+					>::type * = nullptr
+				) {
+					s << nz.off() << ": [ " << nz.col() << ", "
+						<< nz.row() << "]";
+				}
+#endif
+
 
 			private:
 
@@ -337,15 +362,6 @@ namespace grb {
 				) const {
 					return this->_CXX->values[ this->_off ];
 				}
-
-#ifdef _DEBUG
-				/** Overload print function. */
-				static void print( std::ostream &s, const SelfType &nz ) {
-					s << nz.off() << ": [ " << nz.col() << ", "
-						<< nz.row() << "]: "
-						<< nz.val();
-				}
-#endif
 
 		};
 
