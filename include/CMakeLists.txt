@@ -51,7 +51,8 @@ set( root_files
 	"graphblas/phase.hpp" "graphblas/pinnedvector.hpp" "graphblas/properties.hpp"
 	"graphblas/rc.hpp" "graphblas/semiring.hpp" "graphblas/spmd.hpp"
 	"graphblas/tags.hpp" "graphblas/type_traits.hpp" "graphblas/utils.hpp"
-	"graphblas/vector.hpp"
+	"graphblas/vector.hpp" "graphblas/SynchronizedNonzeroIterator.hpp"
+	"graphblas/NonzeroStorage.hpp"
 )
 set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")
 install( FILES ${root_files} DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" )
