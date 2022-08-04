@@ -254,9 +254,10 @@ namespace grb {
 
 #ifdef _DEBUG
 				/** Overload print function. */
+				template< typename T = ValType >
 				static void print( std::ostream &s, const SelfType &nz,
 					typename std::enable_if<
-						!(std::is_same< ValType, void >::value)
+						!(std::is_same< T, void >::value)
 					>::type * = nullptr
 				) {
 					s << nz.off() << ": [ " << nz.col() << ", "
@@ -265,9 +266,10 @@ namespace grb {
 				}
 
 				/** Overload print function for pattern nonzeroes. */
+				template< typename T = ValType >
 				static void print( std::ostream &s, const SelfType &nz,
 					typename std::enable_if<
-						std::is_same< ValType, void >::value
+						std::is_same< T, void >::value
 					>::type * = nullptr
 				) {
 					s << nz.off() << ": [ " << nz.col() << ", "
