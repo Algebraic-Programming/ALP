@@ -254,10 +254,24 @@ namespace grb {
 
 #ifdef _DEBUG
 				/** Overload print function. */
-				static void print( std::ostream &s, const SelfType &nz ) {
+				static void print( std::ostream &s, const SelfType &nz,
+					typename std::enable_if<
+						!(std::is_same< ValType, void >::value)
+					>::type * = nullptr
+				) {
 					s << nz.off() << ": [ " << nz.col() << ", "
 						<< nz.row() << "]: "
 						<< nz.val();
+				}
+
+				/** Overload print function for pattern nonzeroes. */
+				static void print( std::ostream &s, const SelfType &nz,
+					typename std::enable_if<
+						std::is_same< ValType, void >::value
+					>::type * = nullptr
+				) {
+					s << nz.off() << ": [ " << nz.col() << ", "
+						<< nz.row() << "]";
 				}
 #endif
 
