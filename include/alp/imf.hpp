@@ -231,18 +231,18 @@ namespace alp {
 		};
 
 		template<>
-		Strided ComposedFactory::create< Id, Strided >( const Id &f1, const Strided &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		Strided ComposedFactory::create( const Id &f1, const Strided &f2 ) {
+			return Strided( f1.n, f2.N, f1.s * f2.b + f1.b, f1.s * f2.s );
 		}
 
 		template<>
 		Strided ComposedFactory::create( const Strided &f1, const Strided &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+			return Strided( f1.n, f2.N, f1.s * f2.b + f1.b, f1.s * f2.s );
 		}
 
 		template<>
 		Strided ComposedFactory::create( const Strided &f1, const Id &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+			return Strided( f1.n, f2.N, f1.s * f2.b + f1.b, f1.s * f2.s );
 		}
 
 		/** Composition of two Id IMFs is an Id Imf */
