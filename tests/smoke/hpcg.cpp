@@ -96,17 +96,17 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
  * @brief Container for system parameters to create the HPCG problem.
  */
 struct system_input {
-	std::size_t nx, ny, nz;
-	std::size_t max_coarsening_levels;
+	size_t nx, ny, nz;
+	size_t max_coarsening_levels;
 };
 
 /**
  * @brief Container for the parameters for the HPCG simulation.
  */
 struct simulation_input : public system_input {
-	std::size_t test_repetitions;
-	std::size_t max_iterations;
-	std::size_t smoother_steps;
+	size_t test_repetitions;
+	size_t max_iterations;
+	size_t smoother_steps;
 	bool evaluation_run;
 	bool no_preconditioning;
 };
@@ -151,7 +151,7 @@ T static next_pow_2( T n ) {
  * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
  */
 static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
-	const std::array< std::size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
+	const std::array< size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
 		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
@@ -390,7 +390,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	parser.parse( argc, argv );
 
 	// check for valid values
-	std::size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
+	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
 	if( ssize != sim_in.nx ) {
 		std::cout << "Setting system size x to " << ssize << " instead of " << sim_in.nx << std::endl;
 		sim_in.nx = ssize;
