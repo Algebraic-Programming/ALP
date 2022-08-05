@@ -2043,15 +2043,39 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, imf::Id, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const size_t &sel_r, const utils::range &rng_c ) {
-
-		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
-
-		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, sel_r, imf_c );
-		return Vector< T, structures::General, density, View, imf::Id, imf::Id, backend >();
+		typename T, typename Structure, enum Density density, typename View,
+		typename ImfR, typename ImfC, enum Backend backend
+	>
+	Vector<
+		T,
+		structures::General,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided, imf::Strided,
+		backend
+	>
+	get_view(
+		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
+		const size_t &sel_r, const utils::range &rng_c
+	) {
+		return Vector<
+			T,
+			structures::General,
+			density,
+			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			imf::Strided, imf::Strided,
+			backend
+		>(
+			source,
+			storage::AMFFactory::View<
+				imf::Strided, imf::Strided,
+				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
+			>::Create(
+				imf::Strided( 1, nrows( source ), sel_r, 0 ),
+				imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride ),
+				internal::getAmf( source )
+			)
+		);
 	}
 
 	/**
@@ -2082,15 +2106,39 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, imf::Id, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const utils::range &rng_r, const size_t &sel_c ) {
-
-		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
-
-		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, sel_c );
-		return Vector< T, structures::General, density, View, imf::Id, imf::Id, backend >();
+		typename T, typename Structure, enum Density density, typename View,
+		typename ImfR, typename ImfC, enum Backend backend
+	>
+	Vector<
+		T,
+		structures::General,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided, imf::Strided,
+		backend
+	>
+	get_view(
+		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
+		const utils::range &rng_r, const size_t &sel_c
+	) {
+		return Vector<
+			T,
+			structures::General,
+			density,
+			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			imf::Strided, imf::Strided,
+			backend
+		>(
+			source,
+			storage::AMFFactory::View<
+				imf::Strided, imf::Strided,
+				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
+			>::Create(
+				imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
+				imf::Strided( 1, ncols( source ), sel_c, 0 ),
+				internal::getAmf( source )
+			)
+		);
 	}
 
 	/**
