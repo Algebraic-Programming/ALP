@@ -672,16 +672,25 @@ namespace grb {
 #endif
 			// otherwise, the regular copy variant:
 #ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel for schedule( static, ( 4096 + sizeof( OutputType ) - 1 ) / sizeof( OutputType ) )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
 #endif
-			for( size_t i = 0; i < nz; ++i ) {
-				const auto index = internal::getCoordinates( x ).asyncCopy(
-					internal::getCoordinates( y ), i );
-				if( !out_is_void && !in_is_void ) {
-					dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
-						index, src[ index ] );
+				for( size_t i = start; i < end; ++i ) {
+					const auto index = internal::getCoordinates( x ).asyncCopy(
+						internal::getCoordinates( y ), i );
+					if( !out_is_void && !in_is_void ) {
+						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
+							index, src[ index ] );
+					}
 				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			}
+#endif
 		}
 
 		// set number of nonzeroes

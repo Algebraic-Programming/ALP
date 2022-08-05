@@ -378,11 +378,20 @@ namespace grb {
 					// and initialise _assigned (but only if necessary)
 					if( dim > 0 && !arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() * 8 )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, dim );
+#else
+							const size_t start = 0;
+							const size_t end = dim;
 #endif
-						for( size_t i = 0; i < dim; ++i ) {
-							_assigned[ i ] = false;
+							for( size_t i = start; i < end; ++i ) {
+								_assigned[ i ] = false;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					}
 				}
 
