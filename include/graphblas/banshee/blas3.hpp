@@ -326,11 +326,18 @@ namespace grb {
 
 	namespace internal {
 
-		template< Descriptor descr = descriptors::no_operation, bool matrix_is_void, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
-		RC matrix_zip_generic( Matrix< OutputType, banshee > & A,
-			const Vector< InputType1, banshee, Coords > & x,
-			const Vector< InputType2, banshee, Coords > & y,
-			const Vector< InputType3, banshee, Coords > & z ) {
+		template<
+			Descriptor descr = descriptors::no_operation,
+			bool matrix_is_void,
+			typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+			typename Coords
+		>
+		RC matrix_zip_generic(
+			Matrix< OutputType, banshee > &A,
+			const Vector< InputType1, banshee, Coords > &x,
+			const Vector< InputType2, banshee, Coords > &y,
+			const Vector< InputType3, banshee, Coords > &z
+		) {
 			auto x_it = x.cbegin();
 			auto y_it = y.cbegin();
 			auto z_it = z.cbegin();
@@ -366,12 +373,12 @@ namespace grb {
 			// TODO issue #64
 			for( ; x_it != x_end; ++x_it ) {
 				assert( *x_it < nrows );
-				(void)++( crs_offsets[ x_it->second ] );
+				(void) ++( crs_offsets[ x_it->second ] );
 			}
 			// TODO issue #64
 			for( ; y_it != y_end; ++y_it ) {
 				assert( *y_it < ncols );
-				(void)++( ccs_offsets[ y_it->second ] );
+				(void) ++( ccs_offsets[ y_it->second ] );
 			}
 			const size_t T = 1;
 			const size_t t = 0;
@@ -388,7 +395,7 @@ namespace grb {
 			if( end > loopsz ) {
 				end = loopsz;
 			}
-			(void)++start;
+			(void) ++start;
 			for( size_t i = start; i < end; ++i ) {
 				crs_offsets[ i ] += crs_offsets[ i - 1 ];
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
@@ -421,7 +428,6 @@ namespace grb {
 			for( size_t i = nmins + start; i < nmins + end; ++i ) {
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
 			}
-			#pragma omp barrier
 			assert( T > 0 );
 			for( size_t k = T - 1; k > 0; --k ) {
 				loopsz = nrows;
@@ -433,7 +439,6 @@ namespace grb {
 				}
 				end = loopsz;
 				assert( start > 0 );
-				#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
 				for( size_t i = start; i < end; ++i ) {
 					crs_offsets[ i ] += crs_offsets[ start - 1 ];
 				}
@@ -446,7 +451,6 @@ namespace grb {
 				}
 				end = loopsz;
 				assert( start > 0 );
-				#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
 				for( size_t i = start; i < end; ++i ) {
 					ccs_offsets[ i ] += ccs_offsets[ start - 1 ];
 				}
@@ -498,17 +502,27 @@ namespace grb {
 			// done
 			return ret;
 		}
+
 	} // namespace internal
 
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, typename Coords >
-	RC zip( Matrix< OutputType, banshee > & A, const Vector< InputType1, banshee, Coords > & x, const Vector< InputType2, banshee, Coords > & y, const Vector< InputType3, banshee, Coords > & z ) {
-		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+		typename Coords
+	>
+	RC zip(
+		Matrix< OutputType, banshee > &A,
+		const Vector< InputType1, banshee, Coords > &x,
+		const Vector< InputType2, banshee, Coords > &y,
+		const Vector< InputType3, banshee, Coords > &z
+	) {
+		static_assert( !(descr & descriptors::no_casting) || std::is_integral< InputType1 >::value,
 			"grb::zip (two vectors to matrix) called using non-integral left-hand "
 			"vector elements" );
-		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType2 >::value,
+		static_assert( !(descr & descriptors::no_casting) || std::is_integral< InputType2 >::value,
 			"grb::zip (two vectors to matrix) called using non-integral right-hand "
 			"vector elements" );
-		static_assert( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType3 >::value,
+		static_assert( !(descr & descriptors::no_casting) || std::is_same< OutputType, InputType3 >::value,
 			"grb::zip (two vectors to matrix) called with differing vector nonzero "
 			"and output matrix domains" );
 
@@ -534,12 +548,19 @@ namespace grb {
 		return internal::matrix_zip_generic< descr, false >( A, x, y, z );
 	}
 
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords >
-	RC zip( Matrix< void, banshee > & A, const Vector< InputType1, banshee, Coords > & x, const Vector< InputType2, banshee, Coords > & y ) {
-		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputType2, typename Coords
+	>
+	RC zip(
+		Matrix< void, banshee > &A,
+		const Vector< InputType1, banshee, Coords > &x,
+		const Vector< InputType2, banshee, Coords > &y
+	) {
+		static_assert( !(descr & descriptors::no_casting) || std::is_integral< InputType1 >::value,
 			"grb::zip (two vectors to void matrix) called using non-integral "
 			"left-hand vector elements" );
-		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType2 >::value,
+		static_assert( !(descr & descriptors::no_casting) || std::is_integral< InputType2 >::value,
 			"grb::zip (two vectors to void matrix) called using non-integral "
 			"right-hand vector elements" );
 
