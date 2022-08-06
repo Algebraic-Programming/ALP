@@ -516,13 +516,15 @@ namespace grb {
 			auto * __restrict__ ccs_values = ccs.getValues();
 
 			RC ret = SUCCESS;
-			size_t start, end;
 
 			// step 1: reset matrix storage
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel
+#endif
 			{
+				size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( start, end, 0, nmins );
 #else
 				start = 0;
@@ -531,42 +533,39 @@ namespace grb {
 				for( size_t i = start; i < end; ++i ) {
 					crs_offsets[ i ] = ccs_offsets[ i ] = 0;
 				}
-				if( nrows - nmins > 0 ) {
+				assert( nrows >= nmins );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					config::OMP::localRange( start, end, nmins, nrows );
+				config::OMP::localRange( start, end, 0, nrows - nmins );
 #else
-					start = nmins;
-					end = nrows;
+				start = 0;
+				end = nrows - nmins;
 #endif
-					for( size_t i = start; i < end; ++i ) {
-						crs_offsets[ i ] = 0;
-					}
-				} else if( ncols - nmins > 0 ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					config::OMP::localRange( start, end, nmins, ncols );
-#else
-					start = nmins;
-					end = ncols;
-#endif
-					for( size_t i = start; i < end; ++i ) {
-						ccs_offsets[ i ] = 0;
-					}
+				for( size_t i = nmins + start; i < nmins + end; ++i ) {
+					crs_offsets[ i ] = 0;
 				}
+				assert( ncols >= nmins );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			}
+				config::OMP::localRange( start, end, 0, ncols - nmins );
+#else
+				start = 0;
+				end = ncols - nmins;
 #endif
+				for( size_t i = nmins + start; i < nmins + end; ++i ) {
+					ccs_offsets[ i ] = 0;
+				}
+			}
 
 			// step 2: counting sort, phase one
 
 			// TODO internal issue #64
 			for( ; x_it != x_end; ++x_it ) {
 				assert( x_it->second < nrows );
-				(void)++( crs_offsets[ x_it->second ] );
+				(void) ++( crs_offsets[ x_it->second ] );
 			}
 			// TODO internal issue #64
 			for( ; y_it != y_end; ++y_it ) {
 				assert( y_it->second < ncols );
-				(void)++( ccs_offsets[ y_it->second ] );
+				(void) ++( ccs_offsets[ y_it->second ] );
 			}
 
 			// step 3: perform prefix-sum on row- and column-counts
@@ -579,16 +578,19 @@ namespace grb {
 			const size_t T = 1;
 #endif
 			assert( nmins > 0 );
+			size_t start, end;
 			config::OMP::localRange( start, end, 0, nmins );
 			(void) ++start;
 			for( size_t i = start; i < end; ++i ) {
 				crs_offsets[ i ] += crs_offsets[ i - 1 ];
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
 			}
+			assert( nrows >= nmins );
 			config::OMP::localRange( start, end, 0, nrows - nmins );
 			for( size_t i = nmins + start; i < nmins + end; ++i ) {
 				crs_offsets[ i ] += crs_offsets[ i - 1 ];
 			}
+			assert( ncols >= nmins );
 			config::OMP::localRange( start, end, 0, ncols - nmins );
 			for( size_t i = nmins + start; i < nmins + end; ++i ) {
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
