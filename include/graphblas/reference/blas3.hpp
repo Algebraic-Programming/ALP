@@ -149,11 +149,20 @@ namespace grb {
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value() )
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n + 1 );
+#else
+					const size_t start = 0;
+					const size_t end = n + 1;
 #endif
-				for( size_t j = 0; j <= n; ++j ) {
-					CCS_raw.col_start[ j ] = 0;
+					for( size_t j = start; j < end; ++j ) {
+						CCS_raw.col_start[ j ] = 0;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				}
+#endif
 			}
 			// end initialisations
 
@@ -507,27 +516,45 @@ namespace grb {
 			auto * __restrict__ ccs_values = ccs.getValues();
 
 			RC ret = SUCCESS;
+			size_t start, end;
 
 			// step 1: reset matrix storage
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				config::OMP::localRange( start, end, 0, nmins );
+#else
+				start = 0;
+				end = nmins;
 #endif
-			for( size_t i = 0; i < nmins; ++i ) {
-				crs_offsets[ i ] = ccs_offsets[ i ] = 0;
-			}
+				for( size_t i = start; i < end; ++i ) {
+					crs_offsets[ i ] = ccs_offsets[ i ] = 0;
+				}
+				if( nrows - nmins > 0 ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+					config::OMP::localRange( start, end, nmins, nrows );
+#else
+					start = nmins;
+					end = nrows;
 #endif
-			for( size_t i = nmins; i < nrows; ++i ) {
-				crs_offsets[ i ] = 0;
-			}
+					for( size_t i = start; i < end; ++i ) {
+						crs_offsets[ i ] = 0;
+					}
+				} else if( ncols - nmins > 0 ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+					config::OMP::localRange( start, end, nmins, ncols );
+#else
+					start = nmins;
+					end = ncols;
 #endif
-			for( size_t i = nmins; i < ncols; ++i ) {
-				ccs_offsets[ i ] = 0;
+					for( size_t i = start; i < end; ++i ) {
+						ccs_offsets[ i ] = 0;
+					}
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			}
+#endif
 
 			// step 2: counting sort, phase one
 
@@ -552,9 +579,8 @@ namespace grb {
 			const size_t T = 1;
 #endif
 			assert( nmins > 0 );
-			size_t start, end;
 			config::OMP::localRange( start, end, 0, nmins );
-			(void)++start;
+			(void) ++start;
 			for( size_t i = start; i < end; ++i ) {
 				crs_offsets[ i ] += crs_offsets[ i - 1 ];
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
@@ -576,20 +602,29 @@ namespace grb {
 					config::CACHE_LINE_SIZE::value(), k, T
 				);
 				assert( start > 0 );
+				// note: in the below, the end of the subloop is indeed nrows, not end(!)
+				size_t subloop_start, subloop_end;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
+				config::OMP::localRange( subloop_start, subloop_end, start, nrows );
+#else
+				subloop_start = start;
+				subloop_end = nrows;
 #endif
-				for( size_t i = start; i < nrows; ++i ) { // note: nrows, not end(!)
+				for( size_t i = subloop_start; i < subloop_end; ++i ) {
 					crs_offsets[ i ] += crs_offsets[ start - 1 ];
 				}
 				config::OMP::localRange( start, end, 0, ncols,
 					config::CACHE_LINE_SIZE::value(), k, T
 				);
 				assert( start > 0 );
+				// note: in the below, the end of the subloop is indeed ncols, not end(!)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
+				config::OMP::localRange( subloop_start, subloop_end, start, ncols );
+#else
+				subloop_start = start;
+				subloop_end = ncols;
 #endif
-				for( size_t i = start; i < ncols; ++i ) { // note: ncols, not end
+				for( size_t i = subloop_start; i < subloop_end; ++i ) {
 					ccs_offsets[ i ] += ccs_offsets[ start - 1 ];
 				}
 			}
@@ -959,11 +994,20 @@ namespace grb {
 			coors1.set( arr1, false, buf1, n );
 			coors2.set( arr2, false, buf2, n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, n + 1 );
+#else
+				const size_t start = 0;
+				const size_t end = n + 1;
 #endif
-			for( size_t j = 0; j <= n; ++j ) {
-				CCS_raw.col_start[ j ] = 0;
+				for( size_t j = start; j < end; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			}
+#endif
 			// end initialisations
 
 			// nonzero count
@@ -1036,11 +1080,20 @@ namespace grb {
 
 				// set C_col_index to all zero
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n );
+#else
+					const size_t start = 0;
+					const size_t end = n;
 #endif
-				for( size_t j = 0; j < n; ++j ) {
-					C_col_index[ j ] = 0;
+					for( size_t j = start; j < end; ++j ) {
+						C_col_index[ j ] = 0;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				}
+#endif
 
 				// do computations
 				size_t nzc = 0;

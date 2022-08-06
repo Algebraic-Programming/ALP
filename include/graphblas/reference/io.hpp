@@ -395,12 +395,21 @@ namespace grb {
 		const size_t n = internal::getCoordinates( x ).size();
 
 #ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+		#pragma omp parallel
+		{
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, n );
+#else
+			const size_t start = 0;
+			const size_t end = n;
 #endif
-		for( size_t i = 0; i < n; ++ i ) {
-			raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
-				getFromScalar( toCopy, i );
+			for( size_t i = start; i < end; ++ i ) {
+				raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
+					getFromScalar( toCopy, i );
+			}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		}
+#endif
 		// sanity check
 		assert( internal::getCoordinates( x ).nonzeroes() ==
 			internal::getCoordinates( x ).size() );
