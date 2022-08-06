@@ -585,6 +585,9 @@ namespace grb {
 				crs_offsets[ i ] += crs_offsets[ i - 1 ];
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
 			}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp barrier
+#endif
 			assert( nrows >= nmins );
 			config::OMP::localRange( start, end, 0, nrows - nmins );
 			for( size_t i = nmins + start; i < nmins + end; ++i ) {
@@ -595,9 +598,6 @@ namespace grb {
 			for( size_t i = nmins + start; i < nmins + end; ++i ) {
 				ccs_offsets[ i ] += ccs_offsets[ i - 1 ];
 			}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp barrier
-#endif
 			assert( T > 0 );
 			for( size_t k = T - 1; k > 0; --k ) {
 				config::OMP::localRange( start, end, 0, nrows,
@@ -608,6 +608,7 @@ namespace grb {
 				size_t subloop_start, subloop_end;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( subloop_start, subloop_end, start, nrows );
+				#pragma omp barrier
 #else
 				subloop_start = start;
 				subloop_end = nrows;
@@ -651,16 +652,20 @@ namespace grb {
 				if( ret == SUCCESS && x_it->first != y_it->first ) {
 					ret = ILLEGAL;
 				}
-				if( ! matrix_is_void && ret == SUCCESS && ( x_it->first != z_it->first ) ) {
+				if( !matrix_is_void && ret == SUCCESS && ( x_it->first != z_it->first ) ) {
 					ret = ILLEGAL;
 				}
+				assert( x_it->second < nrows );
+				assert( y_it->second < ncols );
 				const size_t crs_pos = --( crs_offsets[ x_it->second ] );
 				const size_t ccs_pos = --( ccs_offsets[ y_it->second ] );
+				assert( crs_pos < crs_offsets[ nrows ] );
+				assert( ccs_pos < ccs_offsets[ ncols ] );
 				crs_indices[ crs_pos ] = y_it->second;
 				ccs_indices[ ccs_pos ] = x_it->second;
-				if( ! matrix_is_void ) {
+				if( !matrix_is_void ) {
 					crs_values[ crs_pos ] = ccs_values[ ccs_pos ] = z_it->second;
-					(void)++z_it;
+					(void) ++z_it;
 				}
 			}
 
@@ -668,15 +673,31 @@ namespace grb {
 				internal::setCurrentNonzeroes( A, crs_offsets[ nrows ] );
 			}
 
+			// check all inputs are handled
 			assert( x_it == x_end );
 			assert( y_it == y_end );
 			if( !matrix_is_void ) {
 				assert( z_it == z_end );
+			} else {
+				(void) z_end;
 			}
 
-			if( matrix_is_void ) {
-				(void)z_end;
+			// finally, some (expensive) debug checks on the output matrix
+			assert( crs_offsets[ nrows ] == ccs_offsets[ ncols ] );
+#ifndef NDEBUG
+			for( size_t j = 0; j < ncols; ++j ) {
+				for( size_t k = ccs_offsets[ j ]; k < ccs_offsets[ j + 1 ]; ++k ) {
+					assert( k < ccs_offsets[ ncols ] );
+					assert( ccs_indices[ k ] < nrows );
+				}
 			}
+			for( size_t i = 0; i < nrows; ++i ) {
+				for( size_t k = crs_offsets[ i ]; k < crs_offsets[ i + 1 ]; ++k ) {
+					assert( k < crs_offsets[ nrows ] );
+					assert( crs_indices[ k ] < ncols );
+				}
+			}
+#endif
 
 			// done
 			return ret;
@@ -690,7 +711,8 @@ namespace grb {
 		typename InputType2, typename InputType3,
 		typename Coords
 	>
-	RC zip( Matrix< OutputType, reference > &A,
+	RC zip(
+		Matrix< OutputType, reference > &A,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
 		const Vector< InputType3, reference, Coords > &z,
