@@ -548,19 +548,28 @@ namespace grb {
 			if( sparse && monoid && !masked ) {
 				// output will become dense, use Theta(n) loop
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n );
+#else
+					const size_t start = 0;
+					const size_t end = n;
 #endif
-				for( size_t i = 0; i < n; ++i ) {
-					if( coor.assigned( i ) ) {
-						if( left ) {
-							(void)foldl< descr >( x[ i ], scalar, op );
+					for( size_t i = start; i < end; ++i ) {
+						if( coor.assigned( i ) ) {
+							if( left ) {
+								(void) foldl< descr >( x[ i ], scalar, op );
+							} else {
+								(void) foldr< descr >( scalar, x[ i ], op );
+							}
 						} else {
-							(void)foldr< descr >( scalar, x[ i ], op );
+							x[ i ] = static_cast< IOType >( scalar );
 						}
-					} else {
-						x[ i ] = static_cast< IOType >( scalar );
 					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				}
+#endif
 				coor.assignAll();
 				return SUCCESS;
 			} else if( sparse && monoid && masked ) {

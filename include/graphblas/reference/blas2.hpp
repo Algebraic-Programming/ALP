@@ -1189,9 +1189,13 @@ namespace grb {
 							std::cout << s << ": in full CRS variant (gather)\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, nrows( A ) );
+#else
+							const size_t start = 0;
+							const size_t end = nrows( A );
 #endif
-							for( size_t i = 0; i < nrows( A ); ++i ) {
+							for( size_t i = start; i < end; ++i ) {
 								vxm_inner_kernel_gather<
 									descr, masked, input_masked, left_handed, One
 								>(
@@ -1207,7 +1211,7 @@ namespace grb {
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
 									//         may not be the best thing to do
-									(void)internal::getCoordinates( u ).joinUpdate( local_update );
+									(void) internal::getCoordinates( u ).joinUpdate( local_update );
 									asyncAssigns = 0;
 								}
 #endif
@@ -1391,9 +1395,13 @@ namespace grb {
 							std::cout << s << ": loop over all input matrix columns\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, ncols( A ) );
+#else
+							const size_t start = 0;
+							const size_t end = ncols( A );
 #endif
-							for( size_t j = 0; j < ncols( A ); ++j ) {
+							for( size_t j = start; j < end; ++j ) {
 								vxm_inner_kernel_gather<
 									descr, masked, input_masked, left_handed, One
 								>(
@@ -1412,7 +1420,7 @@ namespace grb {
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
 									//         may not be the best thing to do
-									(void)internal::getCoordinates( u ).joinUpdate( local_update );
+									(void) internal::getCoordinates( u ).joinUpdate( local_update );
 									asyncAssigns = 0;
 								}
 #endif
