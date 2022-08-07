@@ -613,18 +613,32 @@ namespace grb {
 					}
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, _n );
+#else
+						const size_t start = 0;
+						const size_t end = _n;
 #endif
-					for( size_t k = 0; k < _n; ++k ) {
-						const size_t i = _stack[ k ];
+						for( size_t k = start; k < end; ++k ) {
+							const size_t i = _stack[ k ];
 #ifdef _DEBUG
-						std::cout << "\tProcessing global stack element " << k << " which has index " << i << "."
-							<< " _assigned[ index ] = " << _assigned[ i ] << " and value[ index ] will be set to " << packed_in[ k ] << ".\n";
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+							#pragma omp critical
+ #endif
+							{
+								std::cout << "\tProcessing global stack element " << k << " which has index " << i << "."
+									<< " _assigned[ index ] = " << _assigned[ i ] << " and value[ index ] will be set to " << packed_in[ k ] << ".\n";
+							}
 #endif
-						assert( i < _cap );
-						_assigned[ i ] = true;
-						array_out[ i ] = packed_in[ k ];
+							assert( i < _cap );
+							_assigned[ i ] = true;
+							array_out[ i ] = packed_in[ k ];
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					}
+#endif
 					return SUCCESS;
 				}
 
@@ -671,13 +685,22 @@ namespace grb {
 #endif
 					_n = new_nz;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, _n );
+#else
+						const size_t start = 0;
+						const size_t end = _n;
 #endif
-					for( size_t k = 0; k < _n; ++k ) {
-						const size_t i = _stack[ k ];
-						assert( i < _cap );
-						_assigned[ i ] = true;
+						for( size_t k = start; k < end; ++k ) {
+							const size_t i = _stack[ k ];
+							assert( i < _cap );
+							_assigned[ i ] = true;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					}
+#endif
 					return SUCCESS;
 				}
 
@@ -711,15 +734,30 @@ namespace grb {
 					assert( array_in != nullptr );
 					if( _n == _cap ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, _cap );
+#else
+							const size_t start = 0;
+							const size_t end = _cap;
 #endif
-						for( size_t i = 0; i < _cap; ++i ) {
-							stack_out[ i ] = i + offset;
-							packed_out[ i ] = array_in[ i ];
+							for( size_t i = start; i < end; ++i ) {
+								stack_out[ i ] = i + offset;
+								packed_out[ i ] = array_in[ i ];
 #ifdef _DEBUG
-							std::cout << "\t packing local index " << i << " into global index " << stack_out[ i ] << " with nonzero " << packed_out[ i ] << "\n";
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+								#pragma omp critical
+ #endif
+								{
+									std::cout << "\t packing local index " << i << " into global index "
+										<< stack_out[ i ] << " with nonzero " << packed_out[ i ] << "\n";
+								}
 #endif
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					} else {
 #ifndef NDEBUG
 						if( _assigned == nullptr ) {
@@ -730,17 +768,32 @@ namespace grb {
 						assert( _stack != nullptr );
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, _n );
+#else
+							const size_t start = 0;
+							const size_t end = _n;
 #endif
-						for( size_t k = 0; k < _n; ++ k ) {
-							const size_t i = _stack[ k ];
-							assert( i < _cap );
-							stack_out[ k ] = i + offset;
-							packed_out[ k ] = array_in[ i ];
+							for( size_t k = start; k < end; ++ k ) {
+								const size_t i = _stack[ k ];
+								assert( i < _cap );
+								stack_out[ k ] = i + offset;
+								packed_out[ k ] = array_in[ i ];
 #ifdef _DEBUG
-							std::cout << "\t packing local index " << i << " into global index " << stack_out[ k ] << " with nonzero " << packed_out[ k ] << "\n";
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+								#pragma omp critical
+ #endif
+								{
+									std::cout << "\t packing local index " << i << " into global index "
+										<< stack_out[ k ] << " with nonzero " << packed_out[ k ] << "\n";
+								}
 #endif
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					}
 					return SUCCESS;
 				}
@@ -763,11 +816,20 @@ namespace grb {
 					assert( stack_out != nullptr );
 					if( _n == _cap ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, _cap );
+#else
+							const size_t start = 0;
+							const size_t end = _cap;
 #endif
-						for( size_t i = 0; i < _cap; ++i ) {
-							stack_out[ i ] = i + offset;
+							for( size_t i = start; i < end; ++i ) {
+								stack_out[ i ] = i + offset;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					} else {
 #ifndef NDEBUG
 						if( _assigned == nullptr ) {
@@ -778,13 +840,22 @@ namespace grb {
 						assert( _stack != nullptr );
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, _n );
+#else
+							const size_t start = 0;
+							const size_t end = _n;
 #endif
-						for( size_t k = 0; k < _n; ++ k ) {
-							const size_t i = _stack[ k ];
-							assert( i < _cap );
-							stack_out[ k ] = i + offset;
+							for( size_t k = start; k < end; ++ k ) {
+								const size_t i = _stack[ k ];
+								assert( i < _cap );
+								stack_out[ k ] = i + offset;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					}
 					return SUCCESS;
 				}
@@ -845,24 +916,47 @@ namespace grb {
 							// is this not totally unnecessary if assuming our structure was cleared first,
 							// and isn't that always the case making this branch therefore dead code?
 							// internal issue #262
-							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+							#pragma omp parallel
+							{
 #endif
-							for( size_t i = 0; i < offset; ++i ) {
-								_assigned[ i ] = 0;
-							}
+								size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+								config::OMP::localRange( start, end, 0, offset );
+#else
+								start = 0;
+								end = offset;
 #endif
-							for( size_t i = offset + localSparsity.size(); i < _cap; ++i ) {
-								_assigned[ i ] = 0;
-							}
+								for( size_t i = start; i < end; ++i ) {
+									_assigned[ i ] = 0;
+								}
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+								config::OMP::localRange(
+									start, end,
+									offset + localSparsity.size(), _cap
+								);
+#else
+								start = offset + localSparsity.size();
+								end = _cap;
 #endif
-							for( size_t i = 0; i < localSparsity._cap; ++i ) {
-								assert( _assigned[ i + offset ] );
-								_stack[ i ] = i + offset;
+								for( size_t i = start; i < end; ++i ) {
+									_assigned[ i ] = 0;
+								}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+								config::OMP::localRange( start, end, 0, localSparsity._cap );
+ #ifndef NDEBUG
+								#pragma omp barrier
+ #endif
+#else
+								start = 0;
+								end = localSparsity._cap;
+#endif
+								for( size_t i = start; i < end; ++i ) {
+									assert( _assigned[ i + offset ] );
+									_stack[ i ] = i + offset;
+								}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 							}
+#endif
 							_n = localSparsity._cap;
 							// done
 							return;
@@ -886,17 +980,34 @@ namespace grb {
 						// first, and isn't that always the case making this branch therefore dead
 						// code?
 						// internal issue #262
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
 #endif
-						for( size_t i = 0; i < offset; ++i ) {
-							_assigned[ i ] = 0;
-						}
+							size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+							config::OMP::localRange( start, end, 0, offset );
+#else
+							start = 0;
+							end = offset;
 #endif
-						for( size_t i = offset + localSparsity.size(); i < _cap; ++i ) {
-							_assigned[ i ] = 0;
+							for( size_t i = start; i < end; ++i ) {
+								_assigned[ i ] = 0;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+							config::OMP::localRange(
+								start, end,
+								offset + localSparsity.size(), _cap
+							);
+#else
+							start = offset + localSparsity.size();
+							end = _cap;
+#endif
+							for( size_t i = start; i < end; ++i ) {
+								_assigned[ i ] = 0;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					} else {
 #ifdef _DEBUG
 						std::cout << "\t our own sparsity structure was sparse\n";
@@ -1384,11 +1495,20 @@ namespace grb {
 						}
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, _cap );
+#else
+							const size_t start = 0;
+							const size_t end = _cap;
 #endif
-						for( size_t i = 0; i < _cap; ++i ) {
-							_assigned[ i ] = false;
+							for( size_t i = start; i < end; ++i ) {
+								_assigned[ i ] = false;
+							}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
+#endif
 					} else {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						if( _n < config::OMP::minLoopSize() ) {
