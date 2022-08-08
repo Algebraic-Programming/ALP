@@ -1898,10 +1898,12 @@ namespace grb {
 			 * course, undefined).
 			 * \endparblock
 			 */
-			Matrix( const size_t rows, const size_t columns, const size_t nz ) : Matrix()
+			Matrix( const size_t rows, const size_t columns, const size_t nz ) :
+				Matrix()
 			{
 #ifdef _DEBUG
-				std::cout << "In grb::Matrix constructor (reference, with requested capacity)\n";
+				std::cout << "In grb::Matrix constructor (reference, with requested "
+					<< "capacity)\n";
 #endif
 				initialize( nullptr, rows, columns, nz );
 			}
@@ -1929,7 +1931,7 @@ namespace grb {
 				Matrix( rows, columns, std::max( rows, columns ) )
 			{
 #ifdef _DEBUG
-				std::cerr << "In grb::Matrix constructor (reference, default capacity)\n";
+				std::cout << "In grb::Matrix constructor (reference, default capacity)\n";
 #endif
 			}
 
