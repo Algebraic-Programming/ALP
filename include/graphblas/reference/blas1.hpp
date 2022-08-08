@@ -5150,26 +5150,15 @@ namespace grb {
 
 		/**
 		 * \internal
-		 * Generic implementation of eWiseMulAdd. Also used to implement eWiseMul,
-		 * though in that case the implementation could still be optimised by e.g.
-		 * a bool that indicates whether y is zero (internal issue #488).
-		 *
-		 * @tparam a_scalar Whether \a a is a scalar or a vector.
-		 *
-		 * (and so on for \a x and \a y).
-		 *
-		 * @tparam assign_y Whether to simply assign to \a y or whether to
-		 *                  (potentially) fold into \a y (in case there are
-		 *                  pre-existing elements)
-		 *
-		 * The other arguments pertain to the output, the mask, and the input vectors
-		 * as well as their sizes-- and finally the semiring under which to perform
-		 * the requested computation.
-		 * \endinternal
+		 * This variant fuses the multiplication, addition, and folding into the
+		 * output vector while looping over the elements where the mask evaluates
+		 * true. Since the reference implementation does not support Theta(n-nz)
+		 * loops in cases where the mask is structural and inverted, it (statically)
+		 * asserts that the mask is not inverted.
 		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
+			bool a_scalar, bool x_scalar, bool y_scalar,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5434,48 +5423,48 @@ namespace grb {
 					) {
 						const InputType1 * const a_p = a + ( a_scalar ? 0 : index );
 						const InputType2 * const x_p = x + ( x_scalar ? 0 : index );
-						(void)apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
 						if( y_scalar || y_coors->assigned( index ) ) {
 							const InputType3 * const y_p = y + ( y_scalar ? 0 : index );
 							typename Ring::D4 b;
-							(void)apply( b, t, *y_p, ring.getAdditiveOperator() );
+							(void) apply( b, t, *y_p, ring.getAdditiveOperator() );
 							if( z_coors.assigned( index ) ) {
 								typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-								(void)foldr( b, out, ring.getAdditiveOperator() );
+								(void) foldr( b, out, ring.getAdditiveOperator() );
 								z[ index ] = static_cast< OutputType >( out );
 							} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)z_coors.asyncAssign( index, localUpdate );
-								(void)++asyncAssigns;
+								(void) z_coors.asyncAssign( index, localUpdate );
+								(void) ++asyncAssigns;
 #else
-								(void)z_coors.assign( index );
+								(void) z_coors.assign( index );
 #endif
 								z[ index ] = static_cast< OutputType >( b );
 							}
 						} else if( z_coors.assigned( index ) ) {
 							typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-							(void)foldr( t, out, ring.getAdditiveOperator() );
+							(void) foldr( t, out, ring.getAdditiveOperator() );
 							z[ index ] = static_cast< OutputType >( out );
 						} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.asyncAssign( index, localUpdate );
-							(void)++asyncAssigns;
+							(void) z_coors.asyncAssign( index, localUpdate );
+							(void) ++asyncAssigns;
 #else
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #endif
 							z[ index ] = static_cast< OutputType >( t );
 						}
 					} else if( y_coors->assigned( index ) ) {
 						if( z_coors.assigned( index ) ) {
 							typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-							(void)foldr( y[ index ], out, ring.getAdditiveOperator() );
+							(void) foldr( y[ index ], out, ring.getAdditiveOperator() );
 							z[ index ] = static_cast< OutputType >( out );
 						} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.asyncAssign( index, localUpdate );
-							(void)++asyncAssigns;
+							(void) z_coors.asyncAssign( index, localUpdate );
+							(void) ++asyncAssigns;
 #else
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #endif
 							z[ index ] = static_cast< OutputType >( t );
 						}
@@ -5484,7 +5473,7 @@ namespace grb {
 					if( asyncAssigns == maxAsyncAssigns ) {
 						const bool was_empty = z_coors.joinUpdate( localUpdate );
 #ifdef NDEBUG
-						(void)was_empty;
+						(void) was_empty;
 #else
 						assert( !was_empty );
 #endif
@@ -5500,12 +5489,14 @@ namespace grb {
 		}
 
 		/**
+		 * \internal
 		 * Call this version if consuming the multiplication first and performing the
-		 * addition separately is cheaper than fusing the computations.
+		 * addition separately is cheaper than fusing the computations as done in the
+		 * mask-driven variant.
 		 */
 		template<
 			Descriptor descr,
-			bool masked, bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
+			bool masked, bool a_scalar, bool x_scalar, bool y_scalar,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5559,7 +5550,7 @@ namespace grb {
 						typename Ring::D3 t;
 						const InputType1 * const a_p = a_scalar ? a : a + index;
 						const InputType2 * const x_p = x_scalar ? x : x + index;
-						(void)apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( z_coors.asyncAssign( index, localUpdate ) ) {
 #else
@@ -5575,7 +5566,7 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 								(void) ++asyncAssigns;
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( localUpdate );
+									(void) z_coors.joinUpdate( localUpdate );
 									asyncAssigns = 0;
 								}
 #endif
@@ -5604,7 +5595,19 @@ namespace grb {
 			}
 		}
 
-		/** In this variant, all vector inputs (and output) is dense. */
+		/**
+		 * \internal
+		 * In this variant, all vector input vectors, except potentially the
+		 * input/output vector \a z, are dense.
+		 *
+		 * If \a z was not dense, it is assumed to be empty.
+		 *
+		 * @tparam assign_z True if \a z was empty, false otherwise.
+		 *
+		 * This implement the eWiseMulAdd using a direct Theta(n) loop. This variant
+		 * is cheaper than any of the sparse variants when the output is dense.
+		 * \endinternal
+		 */
 		template<
 			Descriptor descr,
 			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
@@ -5783,7 +5786,22 @@ namespace grb {
 		/**
 		 * \internal
 		 * Depending on sparsity patterns, there are many variants of eWiseMulAdd.
-		 * This function identifies and calls the most opportune variants.
+		 * This function identifies and calls the most opportune variant. Also used
+		 * to implement eWiseMul, though in that case the implementation could still
+		 * be optimised by e.g. a bool that indicates whether y is zero (internal
+		 * issue #488).
+		 *
+		 * @tparam a_scalar Whether \a a is a scalar or a vector.
+		 *
+		 * (and so on for \a x and \a y).
+		 *
+		 * @tparam assign_y Whether to simply assign to \a y or whether to
+		 *                  (potentially) fold into \a y (in case there are
+		 *                  pre-existing elements)
+		 *
+		 * The other arguments pertain to the output, the mask, and the input vectors
+		 * as well as their sizes-- and finally the semiring under which to perform
+		 * the requested computation.
 		 * \endinternal
 		 */
 		template<
@@ -5849,8 +5867,9 @@ namespace grb {
 			const bool assign_z = z_nns == 0 && !sparse;
 			if( assign_z ) {
 #ifdef _DEBUG
-				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense, "
-					<< "pre-assigning all output coordinates\n";
+				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense while "
+					<< "the output vector presently is completely empty. We therefore "
+					<< "pre-assign all output coordinates\n";
 #endif
 				internal::getCoordinates( z_vector ).assignAll();
 			}
@@ -5891,15 +5910,9 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "\teWiseMulAdd_dispatch: will be driven by output mask\n";
 #endif
-						if( assign_z ) {
-							return sparse_eWiseMulAdd_maskDriven<
-								descr, a_scalar, x_scalar, y_scalar, true
-							>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
-						} else {
-							return sparse_eWiseMulAdd_maskDriven<
-								descr, a_scalar, x_scalar, y_scalar, false
-							>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
-						}
+						return sparse_eWiseMulAdd_maskDriven<
+							descr, a_scalar, x_scalar, y_scalar
+						>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
 					}
 				}
 				// internal issue #42 (closed), see also above:
@@ -5907,15 +5920,9 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\teWiseMulAdd_dispatch: will be driven by the multiplication a*x\n";
 #endif
-				if( assign_z ) {
-					return twoPhase_sparse_eWiseMulAdd_mulDriven<
-						descr, masked, a_scalar, x_scalar, y_scalar, true
-					>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
-				} else {
-					return twoPhase_sparse_eWiseMulAdd_mulDriven<
-						descr, masked, a_scalar, x_scalar, y_scalar, false
-					>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
-				}
+				return twoPhase_sparse_eWiseMulAdd_mulDriven<
+					descr, masked, a_scalar, x_scalar, y_scalar
+				>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
 				/* internal issue #42 (closed), see also above:
 				} else {
 #ifdef _DEBUG
