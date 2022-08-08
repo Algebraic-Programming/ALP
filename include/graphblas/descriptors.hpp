@@ -34,10 +34,10 @@ namespace grb {
 
 	/**
 	 * Descriptors indicate pre- or post-processing for some or all of the
-	 * arguments to an ALP/GraphBLAS call. Examples are to transpose the input
-	 * matrix during, e.g., a sparse matrix--vector multiplication:
+	 * arguments to an ALP/GraphBLAS call. An example is to transpose the input
+	 * matrix during a sparse matrix--vector multiplication:
 	 *    <tt>grb::mxv< grb::descriptors::transpose_matrix >( y, A, x, ring );</tt>
-	 * The above thus computes \f$ y \to y + A^Tx \f$ and not \f$ y \to y + Ax \f$.
+	 * the above thus computes \f$ y \to y + A^Tx \f$ and not \f$ y \to y + Ax \f$.
 	 *
 	 * Such pre-processing often happens on-the-fly, without significant overhead
 	 * to the primitive costings in any of its cost dimensions -- work, intra- and
@@ -137,7 +137,7 @@ namespace grb {
 		 * \warning Vectors with explicit zeroes (under the semiring passed to the
 		 *          related primitive) will be computed with explicitly.
 		 *
-		 * The benefits of using this descriptor whenever  possible are two-fold:
+		 * The benefits of using this descriptor whenever possible are two-fold:
 		 *   1) less run-time overhead as code handling sparsity is disabled;
 		 *   2) smaller binary sizes as code handling structurally sparse vectors is
 		 *      not emitted (unless required elsewhere).
