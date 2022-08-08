@@ -80,12 +80,20 @@ namespace grb {
 		 * their magnitude.
 		 *
 		 * Intuitively, one may take \a epsilons as the sum of the number of
-		 * operations that produced \a a and \a b, if the above assumption holds. The
-		 * resulting bound could be tightened if the magnitudes encountered during
-		 * their computation differ strongly, but note that:
+		 * operations that produced \a a and \a b, if the above assumption holds.
 		 *
-		 * \warning when comparing versus a known absolute error bound, <b>do not
-		 *          this function</b>.
+		 * The resulting bound can be tightened if the magnitudes encountered during
+		 * their computation are much smaller, and are (likely) too tight if those
+		 * magnitudes were much larger instead. In such cases, one should obtain or
+		 * compute a more appropriate error bound, however:
+		 *
+		 * \warning when comparing for equality within a known absolute error bound,
+		 *          <b>do not this function</b>.
+		 *
+		 * \note If such a function is desired, please submit an issue on GitHub or
+		 *       Gitee. The absolute error bound can be provided again via a
+		 *       parameter \a epsilons, but then of a floating-point type instead of
+		 *       the current integer variant.
 		 *
 		 * @tparam T The numerical type.
 		 * @tparam U The integer type used for \a epsilons.
@@ -174,14 +182,16 @@ namespace grb {
 			if( absA > absB ) {
 				if( absB > max - absA ) {
 #ifdef _DEBUG
-					std::cout << "\t Normalising absolute difference by smallest magnitude (I)\n";
+					std::cout << "\t Normalising absolute difference by smallest magnitude "
+						<< "(I)\n";
 #endif
 					return absDiff / absB < eps;
 				}
 			} else {
 				if( absA > max - absB ) {
 #ifdef _DEBUG
-					std::cout << "\t Normalising absolute difference by smallest magnitude (II)\n";
+					std::cout << "\t Normalising absolute difference by smallest magnitude "
+						<< "(II)\n";
 #endif
 					return absDiff / absA < eps;
 				}
