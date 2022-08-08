@@ -181,7 +181,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo " "
 
 			echo ">>>      [x]           [ ]       Testing the conjugate gradient algorithm for the input"
-			echo "                                 matrix (17361x17361) taken from gyrom_m.mtx. This test"
+			echo "                                 matrix (17361x17361) taken from gyro_m.mtx. This test"
 			echo "                                 verifies against a ground-truth solution vector. The test"
 			echo "                                 employs the grb::Launcher in automatic mode. It uses"
 			echo "                                 direct-mode file IO."
@@ -212,7 +212,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo " "
 			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
-			echo "                                 matrix gyrom_m.mtx. This test verifies against a ground-"
+			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"
 			echo "                                 conjugate gradient test. Likewise to that one, this test"
 			echo "                                 employs the grb::Launcher in automatic mode. It uses"
