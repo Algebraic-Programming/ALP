@@ -431,7 +431,7 @@ namespace alp {
 			 *
 			 */
 			template< typename PolyType >
-			struct New {
+			struct FromPolynomial {
 
 				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
@@ -439,7 +439,11 @@ namespace alp {
 					return amf_type( nrows, ncols, poly, storage_dimensions );
 				}
 
-			}; // class New
+				private:
+
+					FromPolynomial();
+
+			}; // class FromPolynomial
 
 			/**
 			 * @brief Transforms the provided AMF by applying the gather view
@@ -470,9 +474,11 @@ namespace alp {
 			 *
 			 */
 			template< typename ViewImfR, typename ViewImfC, typename SourceAMF >
-			struct View {
+			struct Compose {
 
 				private:
+
+					Compose();
 
 					/** Extract target IMF and polynomial types */
 					typedef typename SourceAMF::imf_r_type SourceImfR;
@@ -519,7 +525,7 @@ namespace alp {
 						);
 					}
 
-			}; // class View
+			}; // class Compose
 
 			/**
 			 * @brief Transforms the provided AMF by applying the provided View type.
@@ -532,7 +538,7 @@ namespace alp {
 			 *
 			 */
 			template< enum view::Views view, typename SourceAMF >
-			struct Transform {
+			struct Reshape {
 
 				typedef SourceAMF amf_type;
 
@@ -543,10 +549,14 @@ namespace alp {
 					return amf;
 				}
 
-			}; // class Transform
+				private:
+
+					Reshape();
+
+			}; // class Reshape
 
 			template< typename SourceAMF >
-			struct Transform< view::Views::original, SourceAMF > {
+			struct Reshape< view::Views::original, SourceAMF > {
 
 				typedef SourceAMF amf_type;
 
@@ -556,10 +566,14 @@ namespace alp {
 					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
-			}; // class Transform< original, ... >
+				private:
+
+					Reshape();
+
+			}; // class Reshape< original, ... >
 
 			template< typename SourceAMF >
-			struct Transform< view::Views::transpose, SourceAMF > {
+			struct Reshape< view::Views::transpose, SourceAMF > {
 
 				typedef AMF<
 					typename SourceAMF::imf_c_type,
@@ -590,11 +604,15 @@ namespace alp {
 					);
 				}
 
-			}; // class Transform< transpose, ... >
+				private:
+
+					Reshape();
+
+			}; // class Reshape< transpose, ... >
 
 			/** \internal \todo This is currently incomplete, will be implemented in future. */
 			template< typename SourceAMF >
-			struct Transform< view::Views::diagonal, SourceAMF > {
+			struct Reshape< view::Views::diagonal, SourceAMF > {
 
 				typedef SourceAMF amf_type;
 
@@ -604,7 +622,11 @@ namespace alp {
 					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
-			}; // class Transform< diagonal, ... >
+				private:
+
+					Reshape();
+
+			}; // class Reshape< diagonal, ... >
 
 		}; // class AMFFactory
 

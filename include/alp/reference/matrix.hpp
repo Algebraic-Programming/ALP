@@ -796,10 +796,10 @@ namespace alp {
 
 			typedef typename std::conditional<
 				View::type_id == view::Views::original,
-				typename storage::AMFFactory::View<
+				typename storage::AMFFactory::Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
-				typename storage::AMFFactory::Transform<
+				typename storage::AMFFactory::Reshape<
 					View::type_id,
 					typename View::applied_to::amf_type
 				>::amf_type	
@@ -815,7 +815,7 @@ namespace alp {
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
-			typedef typename storage::AMFFactory::New< storage::polynomials::Full_type >::amf_type type;
+			typedef typename storage::AMFFactory::FromPolynomial< storage::polynomials::Full_type >::amf_type type;
 		};
 
 	} // namespace internal
@@ -968,7 +968,7 @@ namespace alp {
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::New< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						rows,
 						cols,
 						storage::polynomials::Create< mapping_polynomial_type >( cols ),
@@ -995,7 +995,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::View<
+					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
@@ -1186,7 +1186,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::New< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						dim,
 						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
@@ -1209,7 +1209,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::View<
+					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
@@ -1384,7 +1384,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::New< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						dim,
 						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
@@ -1407,7 +1407,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::View<
+					storage::AMFFactory::Compose<
 						ImfR, ImfC, decltype( internal::getAmf( target_matrix ) )
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
@@ -1566,7 +1566,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::New< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						dim,
 						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
@@ -1593,7 +1593,7 @@ namespace alp {
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::View<
+					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
@@ -1803,7 +1803,7 @@ namespace alp {
 
 		target_strmat_t target(
 			source,
-			storage::AMFFactory::Transform< target_view, typename SourceMatrixType::amf_type >::Create( internal::getAmf( source ) )
+			storage::AMFFactory::Reshape< target_view, typename SourceMatrixType::amf_type >::Create( internal::getAmf( source ) )
 		);
 
 		return target;
@@ -1856,7 +1856,7 @@ namespace alp {
 
 		target_strmat_t target(
 			source,
-			storage::AMFFactory::Transform< view::Views::original, typename source_strmat_t::amf_type >::Create( internal::getAmf( source ) )
+			storage::AMFFactory::Reshape< view::Views::original, typename source_strmat_t::amf_type >::Create( internal::getAmf( source ) )
 		);
 
 		return target;
