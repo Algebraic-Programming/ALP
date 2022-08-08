@@ -418,6 +418,9 @@ namespace grb {
 
 			public:
 
+				/** ALP value typedef */
+				typedef void ValueType;
+
 				/** The type of this class for a short-hand. */
 				using SelfType = SynchronizedNonzeroIterator<
 					RowIndexT, ColIndexT, void,
