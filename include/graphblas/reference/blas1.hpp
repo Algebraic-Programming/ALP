@@ -5827,6 +5827,12 @@ namespace grb {
 				m_coors->nonzeroes() == n
 			);
 			const size_t z_nns = nnz( z_vector );
+
+			// the below Boolean shall be true only if the inputs a, x, and y generate
+			// a dense output vector. It furthermore shall be set to false only if the
+			// output vector was either empty or fully dense. This is done to determine
+			// the exact case the dense variant of the eWiseMulAdd implementations can
+			// be used.
 			const bool sparse = ( a_scalar ? false : ( a_coors->nonzeroes() < n ) ) ||
 				( x_scalar ? false : ( x_coors->nonzeroes() < n ) ) ||
 				( y_scalar ? false : ( y_coors->nonzeroes() < n ) ) ||
