@@ -888,6 +888,10 @@ namespace grb {
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
+#ifdef _DEBUG
+							std::cout << "Iterator move constructor (pattern specialisation) "
+								<< "called\n";
+#endif
 							row_index = std::move( other.row_index );
 							col_start = std::move( other.col_start );
 							k = std::move( other.k );
@@ -951,12 +955,13 @@ namespace grb {
 							s = other.s;
 							P = other.P;
 							nonzero = other.nonzero;
+							return *this;
 						}
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
 #ifdef _DEBUG
-							std::cout << "Iterator move-assign operator (pattern specialisation "
+							std::cout << "Iterator move-assign operator (pattern specialisation) "
 								<< "called\n";
 #endif
 							row_index = std::move( other.row_index );
@@ -968,6 +973,7 @@ namespace grb {
 							s = std::move( other.s );
 							P = std::move( other.P );
 							nonzero = std::move( other.nonzero );
+							return *this;
 						}
 
 						/** Whether two iterators compare equal. */
