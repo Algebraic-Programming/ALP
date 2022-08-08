@@ -5144,12 +5144,32 @@ namespace grb {
 		return foldl< descr >( z, m, add, ring.getAdditiveMonoid(), phase );
 	}
 
-	// declare an internal version of eWiseMulAdd containing the full sparse & dense implementations
+	// declare an internal version of eWiseMulAdd containing the full
+	// sparse & dense implementations
 	namespace internal {
 
+		/**
+		 * \internal
+		 * Generic implementation of eWiseMulAdd. Also used to implement eWiseMul,
+		 * though in that case the implementation could still be optimised by e.g.
+		 * a bool that indicates whether y is zero (internal issue #488).
+		 *
+		 * @tparam a_scalar Whether \a a is a scalar or a vector.
+		 *
+		 * (and so on for \a x and \a y).
+		 *
+		 * @tparam assign_y Whether to simply assign to \a y or whether to
+		 *                  (potentially) fold into \a y (in case there are
+		 *                  pre-existing elements
+		 *
+		 * The other arguments pertain to the output, the mask, and the input vectors
+		 * as well as their sizes-- and finally the semiring under which to perform
+		 * the requested computation.
+		 * \endinternal
+		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5183,7 +5203,7 @@ namespace grb {
 			assert( x != y );
 			assert( m_coors != nullptr );
 #ifdef NDEBUG
-			(void)n;
+			(void) n;
 #endif
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -5397,7 +5417,8 @@ namespace grb {
 #endif
 				// scalar coda and parallel main body
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				internal::Coordinates< reference >::Update localUpdate = z_coors.EMPTY_UPDATE();
+				internal::Coordinates< reference >::Update localUpdate =
+					z_coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
 #endif
@@ -5484,7 +5505,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr,
-			bool masked, bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool masked, bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5552,7 +5573,7 @@ namespace grb {
 									static_cast< typename Ring::D4 >( t )
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)++asyncAssigns;
+								(void) ++asyncAssigns;
 								if( asyncAssigns == maxAsyncAssigns ) {
 									(void)z_coors.joinUpdate( localUpdate );
 									asyncAssigns = 0;
@@ -5571,7 +5592,8 @@ namespace grb {
 				if( y_scalar ) {
 					return foldl< descr >( z_vector, *m_vector, *y, ring.getAdditiveMonoid() );
 				} else {
-					return foldl< descr >( z_vector, *m_vector, *y_vector, ring.getAdditiveMonoid() );
+					return foldl< descr >( z_vector, *m_vector, *y_vector,
+						ring.getAdditiveMonoid() );
 				}
 			} else {
 				if( y_scalar ) {
@@ -5585,7 +5607,7 @@ namespace grb {
 		/** In this variant, all vector inputs (and output) is dense. */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
 			typename OutputType, typename InputType1,
 			typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5651,10 +5673,12 @@ namespace grb {
 				// do vectorised out-of-place operations. Allows for aligned overlap.
 				// Non-aligned ovelap is not possible due to GraphBLAS semantics.
 				size_t i = start;
-				// note: read the tail code (under this while loop) comments first for greater understanding
+				// note: read the tail code (under this while loop) comments first for
+				//       greater understanding
 				while( i + Ring::blocksize <= end ) {
 #ifdef _DEBUG
-					std::cout << "\tdense_eWiseMulAdd: handling block of size " << Ring::blocksize << " starting at index " << i << "\n";
+					std::cout << "\tdense_eWiseMulAdd: handling block of size " <<
+						Ring::blocksize << " starting at index " << i << "\n";
 #endif
 					// read-in
 					if( !a_scalar ) {
@@ -5672,7 +5696,7 @@ namespace grb {
 							yy[ b ] = static_cast< typename Ring::D4 >( y[ i + b ] );
 						}
 					}
-					if( !z_assigned ) {
+					if( !assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b ) {
 							zz[ b ] = static_cast< typename Ring::D4 >( z[ i + b ] );
 						}
@@ -5683,14 +5707,14 @@ namespace grb {
 						apply( tt[ b ], aa[ b ], xx[ b ], ring.getMultiplicativeOperator() );
 						apply( bb[ b ], tt[ b ], yy[ b ], ring.getAdditiveOperator() );
 					}
-					if( !z_assigned ) {
+					if( !assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b ) {
 							foldr( bb[ b ], zz[ b ], ring.getAdditiveOperator() );
 						}
 					}
 
 					// write-out
-					if( z_assigned ) {
+					if( assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b, ++i ) {
 							z[ i ] = static_cast< OutputType >( bb[ b ] );
 						}
@@ -5730,7 +5754,7 @@ namespace grb {
 					foldr( ts, ys, ring.getAdditiveOperator() );
 
 					// write out
-					if( z_assigned ) {
+					if( assign_z ) {
 						*z = static_cast< OutputType >( ys );
 					} else {
 						foldr( ys, *z, ring.getAdditiveOperator() );
@@ -5738,15 +5762,15 @@ namespace grb {
 
 					// move pointers
 					if( !a_scalar ) {
-						(void)a++;
+						(void) a++;
 					}
 					if( !x_scalar ) {
-						(void)x++;
+						(void) x++;
 					}
 					if( !y_scalar ) {
-						(void)y++;
+						(void) y++;
 					}
-					(void)z++;
+					(void) z++;
 				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			} // end OpenMP parallel section
@@ -5815,13 +5839,12 @@ namespace grb {
 				return ILLEGAL;
 			}
 
-			// pre-assign coors if output is dense but previously empty
-			const bool z_assigned = z_nns == 0 &&
-				( y_scalar || y_coors->nonzeroes() == n ) &&
-				( !masked || mask_is_dense );
-			if( z_assigned ) {
+			// pre-assign coors if output is dense but was previously totally empty
+			const bool assign_z = z_nns == 0 && !sparse;
+			if( assign_z ) {
 #ifdef _DEBUG
-				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense, pre-assigning all output coordinates\n";
+				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense, "
+					<< "pre-assigning all output coordinates\n";
 #endif
 				internal::getCoordinates( z_vector ).assignAll();
 			}
@@ -5843,10 +5866,12 @@ namespace grb {
 				        (x_scalar ? n : x_coors->nonzeroes())
 				    ) // min is worst-case, best case is 0, realistic is some a priori unknown
 				      // problem-dependent overlap
-				std::cout << "\t\teWiseMulAdd_dispatch: add_loop_size = " << add_loop_size << "\n";
+				std::cout << "\t\teWiseMulAdd_dispatch: add_loop_size = " << add_loop_size
+					<< "\n";
 				;*/
 #ifdef _DEBUG
-				std::cout << "\t\teWiseMulAdd_dispatch: mul_loop_size = " << mul_loop_size << "\n";
+				std::cout << "\t\teWiseMulAdd_dispatch: mul_loop_size = " << mul_loop_size
+					<< "\n";
 #endif
 				if( masked ) {
 					const size_t mask_loop_size = 5 * m_coors->nonzeroes();
@@ -5860,7 +5885,7 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "\teWiseMulAdd_dispatch: will be driven by output mask\n";
 #endif
-						if( z_assigned ) {
+						if( assign_z ) {
 							return sparse_eWiseMulAdd_maskDriven<
 								descr, a_scalar, x_scalar, y_scalar, true
 							>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
@@ -5876,7 +5901,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\teWiseMulAdd_dispatch: will be driven by the multiplication a*x\n";
 #endif
-				if( z_assigned ) {
+				if( assign_z ) {
 					return twoPhase_sparse_eWiseMulAdd_mulDriven<
 						descr, masked, a_scalar, x_scalar, y_scalar, true
 					>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
@@ -5890,8 +5915,10 @@ namespace grb {
 #ifdef _DEBUG
 				    std::cout << "\teWiseMulAdd_dispatch: will be driven by the addition with y\n";
 #endif
-				    if( z_assigned ) {
-				        return twoPhase_sparse_eWiseMulAdd_addPhase1< descr, masked, a_scalar, x_scalar, y_scalar, true >(
+				    if( assign_z ) {
+				        return twoPhase_sparse_eWiseMulAdd_addPhase1<
+						descr, masked, a_scalar, x_scalar, y_scalar, true
+					>(
 				            z_vector,
 				            m, m_coors,
 				            a, a_coors,
@@ -5900,7 +5927,9 @@ namespace grb {
 				            n, ring
 				        );
 				    } else {
-				        return twoPhase_sparse_eWiseMulAdd_addPhase1< descr, masked, a_scalar, x_scalar, y_scalar, false >(
+				        return twoPhase_sparse_eWiseMulAdd_addPhase1<
+						descr, masked, a_scalar, x_scalar, y_scalar, false
+					>(
 				            z_vector,
 				            m, m_coors,
 				            a, a_coors,
@@ -5921,7 +5950,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "\teWiseMulAdd_dispatch: will perform a dense eWiseMulAdd\n";
 #endif
-			if( z_assigned ) {
+			if( assign_z ) {
 				return dense_eWiseMulAdd<
 					descr, a_scalar, x_scalar, y_scalar, true
 				>( z_vector, a, x, y, n, ring );
