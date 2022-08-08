@@ -87,11 +87,22 @@ RC checkCopy(
 		!std::is_same< typename IteratorType::ValueType, void >::value,
 	void >::type * = nullptr
 ) {
-	auto copy = it;
+	IteratorType copy;
+	copy = it;
 	grb::RC ret = checkCoordinates( copy, it );
 	if( it.v() != copy.v() ) {
 		std::cerr << "Iterator copy yields values different from original:\n"
 			<< "\t" << it.v() << " != " << copy.v() << ".\n";
+		ret = FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if copy-assignment was OK, let us try copy construction
+	IteratorType copied( it );
+	ret = checkCoordinates( copied, it );
+	if( it.v() != copied.v() ) {
+		std::cerr << "Iterator copy yields values different from original:\n"
+			<< "\t" << it.v() << " != " << copied.v() << ".\n";
 		ret = FAILED;
 	}
 	return ret;
@@ -104,8 +115,15 @@ RC checkCopy(
 		std::is_same< typename IteratorType::ValueType, void >::value,
 	void >::type * = nullptr
 ) {
-	auto copy = it;
-	return checkCoordinates( copy, it );
+	IteratorType copy;
+	copy = it;
+	grb::RC ret = checkCoordinates( copy, it );
+	if( ret != SUCCESS ) { return ret; }
+
+	// if copy-assignment was OK, let us try copy construction
+	IteratorType copied( it );
+	ret = checkCoordinates( copied, it );
+	return ret;
 }
 
 template< typename IteratorType >
@@ -122,8 +140,18 @@ RC checkMove(
 	grb::RC ret = checkCoordinates( dummy, it, true );
 	if( ret != SUCCESS ) {
 		std::cerr << "Moved iterator yields coordinates different from original:\n"
-			<< "\t" << it.i() << " != " << copy.i() << " AND/OR\n"
-			<< "\t" << it.j() << " != " << copy.j() << ".\n";
+			<< "\t" << it.i() << " != " << dummy.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << dummy.j() << ".\n";
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if move-assignment was OK, let us now try the move constructor
+	IteratorType moved( std::move( dummy ) );
+	ret = checkCoordinates( moved, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << moved.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << moved.j() << ".\n";
 	}
 	return ret;
 }
@@ -142,13 +170,28 @@ RC checkMove(
 	grb::RC ret = checkCoordinates( dummy, it, true );
 	if( ret != SUCCESS ) {
 		std::cerr << "Moved iterator yields coordinates different from original:\n"
-			<< "\t" << it.i() << " != " << copy.i() << " AND/OR\n"
-			<< "\t" << it.j() << " != " << copy.j() << ".\n";
+			<< "\t" << it.i() << " != " << dummy.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << dummy.j() << ".\n";
 	}
 	if( it.v() != dummy.v() ) {
 		std::cerr << "Moved iterator yields values different from original:\n"
 			<< "\t" << it.v() << " != " << dummy.v() << ".\n";
-		ret = FAILED;
+		ret = ret ? ret : FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if move-assignment was OK, let us now try the move constructor
+	IteratorType moved( std::move( dummy ) );
+	ret = checkCoordinates( moved, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << moved.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << moved.j() << ".\n";
+	}
+	if( it.v() != moved.v() ) {
+		std::cerr << "Moved iterator yields values different from original:\n"
+			<< "\t" << it.v() << " != " << moved.v() << ".\n";
+		ret = ret ? ret : FAILED;
 	}
 	return ret;
 }
