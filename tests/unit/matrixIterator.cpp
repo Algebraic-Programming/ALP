@@ -63,6 +63,45 @@ static bool test_vector_of_zeroes(
 	return result;
 }
 
+template< typename IteratorType >
+RC checkCoordinates(
+		const IteratorType &it,
+		const IteratorType &copy
+) {
+	if( it.i() != copy.i() || it.j() != copy.j() ) {
+		std::cerr << "Iterator copy yields coordinates different from original\n";
+		return FAILED;
+	}
+	return SUCCESS;
+}
+
+template< typename IteratorType >
+RC checkCopy(
+	const IteratorType &it,
+	const typename std::enable_if<
+		!std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	auto copy = it;
+	grb::RC ret = checkCoordinates( copy, it );
+	if( it.v() != copy.v() ) {
+		std::cerr << "Iterator copy yields values different from original\n";
+		ret = FAILED;
+	}
+	return ret;
+}
+
+template< typename IteratorType >
+RC checkCopy(
+	const IteratorType &it,
+	const typename std::enable_if<
+		std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	auto copy = it;
+	return checkCoordinates( copy, it );
+}
+
 template< typename ValT, typename OrigIterT >
 RC test_matrix_iter(
 	OrigIterT orig_begin, OrigIterT orig_end,
@@ -92,6 +131,9 @@ RC test_matrix_iter(
 			) != spmd<>::pid()
 		) {
 			continue;
+		}
+		if( checkCopy( it ) != SUCCESS ) {
+			return FAILED;
 		}
 		(void) row_count[ it.i() - row_col_offset ]++;
 		(void) col_count[ it.j() - row_col_offset ]++;
