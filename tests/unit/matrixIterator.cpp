@@ -63,11 +63,160 @@ static bool test_vector_of_zeroes(
 	return result;
 }
 
+template< typename IteratorType >
+RC checkCoordinates(
+		const IteratorType &it,
+		const IteratorType &copy,
+		const bool silent = false
+) {
+	if( it.i() != copy.i() || it.j() != copy.j() ) {
+		if( !silent ) {
+			std::cerr << "Iterator copy yields coordinates different from original:\n"
+				<< "\t" << it.i() << " != " << copy.i() << " AND/OR\n"
+				<< "\t" << it.j() << " != " << copy.j() << ".\n";
+		}
+		return FAILED;
+	}
+	return SUCCESS;
+}
+
+template< typename IteratorType >
+RC checkCopy(
+	const IteratorType &it,
+	const typename std::enable_if<
+		!std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	IteratorType copy;
+	copy = it;
+	grb::RC ret = checkCoordinates( copy, it );
+	if( it.v() != copy.v() ) {
+		std::cerr << "Iterator copy yields values different from original:\n"
+			<< "\t" << it.v() << " != " << copy.v() << ".\n";
+		ret = FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if copy-assignment was OK, let us try copy construction
+	IteratorType copied( it );
+	ret = checkCoordinates( copied, it );
+	if( it.v() != copied.v() ) {
+		std::cerr << "Iterator copy yields values different from original:\n"
+			<< "\t" << it.v() << " != " << copied.v() << ".\n";
+		ret = FAILED;
+	}
+	return ret;
+}
+
+template< typename IteratorType >
+RC checkCopy(
+	const IteratorType &it,
+	const typename std::enable_if<
+		std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	IteratorType copy;
+	copy = it;
+	grb::RC ret = checkCoordinates( copy, it );
+	if( ret != SUCCESS ) { return ret; }
+
+	// if copy-assignment was OK, let us try copy construction
+	IteratorType copied( it );
+	ret = checkCoordinates( copied, it );
+	return ret;
+}
+
+template< typename IteratorType >
+RC checkMove(
+	const IteratorType &it,
+	const typename std::enable_if<
+		std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	grb::Matrix< typename IteratorType::ValueType > empty( 0, 0 );
+	IteratorType dummy = empty.cbegin();
+	IteratorType copy = it;
+	dummy = std::move( copy );
+	grb::RC ret = checkCoordinates( dummy, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << dummy.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << dummy.j() << ".\n";
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if move-assignment was OK, let us now try the move constructor
+	IteratorType moved( std::move( dummy ) );
+	ret = checkCoordinates( moved, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << moved.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << moved.j() << ".\n";
+	}
+	return ret;
+}
+
+template< typename IteratorType >
+RC checkMove(
+	const IteratorType &it,
+	const typename std::enable_if<
+		!std::is_same< typename IteratorType::ValueType, void >::value,
+	void >::type * = nullptr
+) {
+	grb::Matrix< typename IteratorType::ValueType > empty( 0, 0 );
+	IteratorType dummy = empty.cbegin();
+	IteratorType copy = it;
+	dummy = std::move( copy );
+	grb::RC ret = checkCoordinates( dummy, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << dummy.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << dummy.j() << ".\n";
+	}
+	if( it.v() != dummy.v() ) {
+		std::cerr << "Moved iterator yields values different from original:\n"
+			<< "\t" << it.v() << " != " << dummy.v() << ".\n";
+		ret = ret ? ret : FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	// if move-assignment was OK, let us now try the move constructor
+	IteratorType moved( std::move( dummy ) );
+	ret = checkCoordinates( moved, it, true );
+	if( ret != SUCCESS ) {
+		std::cerr << "Moved iterator yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << moved.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << moved.j() << ".\n";
+	}
+	if( it.v() != moved.v() ) {
+		std::cerr << "Moved iterator yields values different from original:\n"
+			<< "\t" << it.v() << " != " << moved.v() << ".\n";
+		ret = ret ? ret : FAILED;
+	}
+	return ret;
+}
+
+template< typename ValT >
+RC checkMoveAndCopy(
+	const Matrix< ValT > &mat
+) {
+	grb::RC ret = SUCCESS;
+	for( auto it = mat.cbegin(); it != mat.cend(); ++it ) {
+		ret = ret ? ret : checkMove( it );
+		ret = ret ? ret : checkCopy( it );
+	}
+	return ret;
+}
+
 template< typename ValT, typename OrigIterT >
 RC test_matrix_iter(
 	OrigIterT orig_begin, OrigIterT orig_end,
 	size_t row_col_offset, const Matrix< ValT > &mat
 ) {
+	if( checkMoveAndCopy( mat ) != SUCCESS ) {
+		return FAILED;
+	}
+
 	using NZC = internal::NonzeroStorage< size_t, size_t, ValT >;
 	std::vector< NZC > mat_values;
 	utils::get_matrix_nnz( mat, mat_values );
