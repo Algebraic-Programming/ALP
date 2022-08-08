@@ -29,8 +29,8 @@ for MODE in debug ndebug; do
 
 	echo ">>>      [x]           [ ]       Testing grb::utils::equals over floats and doubles"
 	${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
-	head -1 {TEST_OUT_DIR}/equals_${MODE}.log
-	grep 'Test OK' {TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
+	head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
 
 	echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
 	${TEST_BIN_DIR}/add15d_${MODE}
