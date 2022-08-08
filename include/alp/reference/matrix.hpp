@@ -794,6 +794,20 @@ namespace alp {
 				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
+			/** Ensure that if the view is transposed, the IMFs are ID */
+			static_assert(
+				View::type_id != view::Views::transpose ||
+				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Transposed view with non-ID Index Mapping Functions is not supported."
+			);
+
+			/** Ensure that if the view is diagonal, the IMFs are ID */
+			static_assert(
+				View::type_id != view::Views::diagonal ||
+				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Diagonal view with non-ID Index Mapping Functions is not supported."
+			);
+
 			typedef typename std::conditional<
 				View::type_id == view::Views::original,
 				typename storage::AMFFactory::Compose<
