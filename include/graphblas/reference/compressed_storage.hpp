@@ -131,6 +131,11 @@ namespace grb {
 
 					public:
 
+						// ALP typedefs
+						typedef size_t RowIndexType;
+						typedef size_t ColumnIndexType;
+						typedef D ValueType;
+
 						/** Base constructor. */
 						ConstIterator() noexcept : values( nullptr ),
 							row_index( nullptr ), col_start( nullptr ),
@@ -145,11 +150,21 @@ namespace grb {
 							values( other.values ),
 							row_index( other.row_index ), col_start( other.col_start ),
 							k( other.k ), m( other.m ), n( other.n ),
-							row( other.row ), s( other.s ), P( other.P )
-						{}
+							row( other.row ), s( other.s ), P( other.P ),
+							nonzero( other.nonzero )
+						{
+#ifdef _DEBUG
+							std::cout << "Matrix< reference >::const_iterator copy-constructor "
+								<< "called\n";
+#endif
+						}
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
+#ifdef _DEBUG
+							std::cout << "Matrix< reference >::const_iterator move-constructor "
+								<< "called\n";
+#endif
 							values = std::move( other.values );
 							row_index = std::move( other.row_index );
 							col_start = std::move( other.col_start );
@@ -159,6 +174,7 @@ namespace grb {
 							row = std::move( other.row );
 							s = std::move( other.s );
 							P = std::move( other.P );
+							nonzero = std::move( other.nonzero );
 						}
 
 						/** Non-trivial constructor. */
@@ -214,6 +230,10 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
+#ifdef _DEBUG
+							std::cout << "Matrix (reference) const-iterator copy-assign operator "
+								<< "called\n";
+#endif
 							values = other.values;
 							row_index = other.row_index;
 							col_start = other.col_start;
@@ -223,11 +243,16 @@ namespace grb {
 							row = other.row;
 							s = other.s;
 							P = other.P;
+							nonzero = other.nonzero;
 							return *this;
 						}
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
+#ifdef _DEBUG
+							std::cout << "Matrix (reference) const-iterator move-assign operator "
+								<< "called\n";
+#endif
 							values = std::move( other.values );
 							row_index = std::move( other.row_index );
 							col_start = std::move( other.col_start );
@@ -237,6 +262,7 @@ namespace grb {
 							row = std::move( other.row );
 							s = std::move( other.s );
 							P = std::move( other.P );
+							nonzero = other.nonzero;
 							return *this;
 						}
 
@@ -344,6 +370,21 @@ namespace grb {
 						operator->() const noexcept {
 							assert( row < m );
 							return &nonzero;
+						}
+
+						/** ALP-specific extension that returns the row coordinate. */
+						const size_t & i() const noexcept {
+							return nonzero.first.first;
+						}
+
+						/** ALP-specific extension that returns the column coordinate. */
+						const size_t & j() const noexcept {
+							return nonzero.first.second;
+						}
+
+						/** ALP-specific extension that returns the nonzero value. */
+						const D & v() const noexcept {
+							return nonzero.second;
 						}
 
 				};
@@ -813,7 +854,13 @@ namespace grb {
 						/** Current nonzero. */
 						std::pair< size_t, size_t > nonzero;
 
+
 					public:
+
+						// ALP typedefs
+						typedef size_t RowIndexType;
+						typedef size_t ColumnIndexType;
+						typedef void ValueType;
 
 						/** Base constructor. */
 						ConstIterator() noexcept :
@@ -831,7 +878,7 @@ namespace grb {
 						ConstIterator( const ConstIterator &other ) noexcept :
 							row_index( other.row_index ), col_start( other.col_start ),
 							k( other.k ), m( other.m ), n( other.n ), row( other.row ),
-							s( 0 ), P( 1 )
+							s( 0 ), P( 1 ), nonzero( other.nonzero )
 						{
 #ifdef _DEBUG
 							std::cout << "Iterator copy constructor (pattern specialisation) "
@@ -849,6 +896,7 @@ namespace grb {
 							row = std::move( other.row );
 							s = std::move( other.s );
 							P = std::move( other.P );
+							nonzero = std::move( other.nonzero );
 						}
 
 						/** Non-trivial constructor. */
@@ -890,6 +938,10 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
+#ifdef _DEBUG
+							std::cout << "Iterator copy-assign operator (pattern specialisation) "
+								<< "called\n";
+#endif
 							row_index = other.row_index;
 							col_start = other.col_start;
 							k = other.k;
@@ -898,10 +950,15 @@ namespace grb {
 							row = other.row;
 							s = other.s;
 							P = other.P;
+							nonzero = other.nonzero;
 						}
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
+#ifdef _DEBUG
+							std::cout << "Iterator move-assign operator (pattern specialisation "
+								<< "called\n";
+#endif
 							row_index = std::move( other.row_index );
 							col_start = std::move( other.col_start );
 							k = std::move( other.k );
@@ -910,6 +967,7 @@ namespace grb {
 							row = std::move( other.row );
 							s = std::move( other.s );
 							P = std::move( other.P );
+							nonzero = std::move( other.nonzero );
 						}
 
 						/** Whether two iterators compare equal. */
@@ -987,6 +1045,16 @@ namespace grb {
 						const std::pair< size_t, size_t > * operator->() const noexcept {
 							assert( row < m );
 							return &nonzero;
+						}
+
+						/** ALP-specific extension that returns the row coordinate. */
+						const size_t & i() const noexcept {
+							return nonzero.first;
+						}
+
+						/** ALP-specific extension that returns the column coordinate. */
+						const size_t & j() const noexcept {
+							return nonzero.second;
 						}
 
 				};
