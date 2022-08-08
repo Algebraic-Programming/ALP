@@ -71,32 +71,44 @@ namespace grb {
 		}
 
 		/**
-		 * Checks whether two floating point values are equal using a relative error
-		 * bound, here expressed as the number of accumulated errors assuming all
-		 * arithmetic that produced the two floating point numbers had operands of
-		 * similar magnitude.
+		 * Checks whether two floating point values, \a a and \a b, are equal.
+		 *
+		 * It is mandatory to supply an integer, \a epsilons, that indicates a
+		 * relative error. Here, \a epsilon represents the number of errors
+		 * accumulated during their computation, assuming that all arithmetic that
+		 * produced the two floating point arguments to this function are bounded by
+		 * their magnitude.
+		 *
+		 * Intuitively, one may take \a epsilons as the sum of the number of
+		 * operations that produced \a a and \a b, if the above assumption holds. The
+		 * resulting bound could be tightened if the magnitudes encountered during
+		 * their computation differ strongly, but note that:
+		 *
+		 * \warning when comparing versus a known absolute error bound, <b>do not
+		 *          this function</b>.
 		 *
 		 * @tparam T The numerical type.
-		 * @tparam U The type used for \a epsilons.
+		 * @tparam U The integer type used for \a epsilons.
 		 *
-		 * @param[in] a        One of the two values to comare against.
-		 * @param[in] b        One of the two values to comare against.
+		 * @param[in] a        One of the two values to compare.
+		 * @param[in] b        One of the two values to compare.
 		 * @param[in] epsilons How many floating point errors may have accumulated;
 		 *                     must be chosen larger or equal to one.
 		 *
-		 * The error indicated by the number of epsilons is interpreted as an
-		 * \em relative error(!).
+		 * If one of \a a or \a b is zero, then an absolute acceptable error bound is
+		 * computed as \a epsilons times \f$ \epsilon \f$, where the latter is the
+		 * machine precision.
+		 *
+		 * \note This behaviour is consistent with the intuitive usage of this
+		 *       function as described above.
 		 *
 		 * This function automatically adapts to the floating-point type used, and
 		 * takes into account the border cases where one or more of \a a and \a b may
 		 * be zero or subnormal. It also guards against overflow of the normalisation
 		 * strategy employed in its implementation.
 		 *
-		 * If one of \a a or \a b is zero, then \a epsilons shall lead to an absolute
-		 * acceptable error bound rather than a relative one.
-		 *
 		 * @returns Whether a == b, taking into account numerical drift within the
-		 *          relative range indicated by \a epsilons.
+		 *          effective range indicated by \a epsilons.
 		 */
 		template< typename T, typename U >
 		static bool equals(
@@ -107,6 +119,10 @@ namespace grb {
 			>::type * = nullptr
 		) {
 			assert( epsilons >= 1 );
+#ifdef _DEBUG
+			std::cout << "Comparing " << a << " to " << b << " with relative tolerance "
+				<< "of " << epsilons << "\n";
+#endif
 
 			// if they are bit-wise equal, it's easy
 			if( a == b ) {
@@ -116,29 +132,10 @@ namespace grb {
 				return true;
 			}
 
-			// if not, we need to look at the absolute values
-			const T absA = fabs( a );
-			const T absB = fabs( b );
-			const T absDiff = fabs( a - b );
-			const T absPlus = absA + absB;
-
-			// find the effective epsilon
+			// find the effective epsilon and absolute difference
 			const T eps = static_cast< T >( epsilons ) *
 				std::numeric_limits< T >::epsilon();
-
-			// find the minimum and maximum *normal* values.
-			const T min = std::numeric_limits< T >::min();
-			const T max = std::numeric_limits< T >::max();
-
-			// If the combined magnitudes of a or b are subnormal, then scale by the
-			// smallest subnormal rather than the combined magnitude
-			if( absPlus < min ) {
-#ifdef _DEBUG
-				std::cout << "\t Subnormal comparison requested, making it relative to the"
-					<< "smallest normal number\n";
-#endif
-				return absDiff < eps * min;
-			}
+			const T absDiff = fabs( a - b );
 
 			// If either a or b is zero, then we use the relative epsilons as an absolute
 			// error on the nonzero argument
@@ -150,21 +147,43 @@ namespace grb {
 				return absDiff < eps;
 			}
 
+
+			// if not, we need to look at the absolute values
+			const T absA = fabs( a );
+			const T absB = fabs( b );
+			const T absPlus = absA + absB;
+
+			// find the minimum and maximum *normal* values.
+			const T min = std::numeric_limits< T >::min();
+
+			// If the combined magnitudes of a or b are subnormal, then scale by the
+			// smallest normal rather than the combined magnitude
+			if( absPlus < min ) {
+#ifdef _DEBUG
+				std::cout << "\t Subnormal comparison requested. Scaling the tolerance by "
+					<< "the smallest normal number rather than to the subnormal absolute "
+					<< "difference\n";
+#endif
+				return absDiff / min < eps;
+			}
+
 			// we wish to normalise absDiff by (absA + absB), however, absA + absB might
-			// overflow. If it does, we normalise by the largest normal number instead
+			// overflow. If it does, we normalise by the smallest of absA and absB
+			// instead of attempting to average.
+			const T max = std::numeric_limits< T >::max();
 			if( absA > absB ) {
 				if( absB > max - absA ) {
 #ifdef _DEBUG
-					std::cout << "\t Normalising absolute difference by max (I)\n";
+					std::cout << "\t Normalising absolute difference by smallest magnitude (I)\n";
 #endif
-					return absDiff < eps * max;
+					return absDiff / absB < eps;
 				}
 			} else {
 				if( absA > max - absB ) {
 #ifdef _DEBUG
-					std::cout << "\t Normalising absolute difference by max (II)\n";
+					std::cout << "\t Normalising absolute difference by smallest magnitude (II)\n";
 #endif
-					return absDiff < eps * max;
+					return absDiff / absA < eps;
 				}
 			}
 
