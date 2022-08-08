@@ -232,7 +232,7 @@ namespace alp {
 
 		template<>
 		Strided ComposedFactory::create( const Id &f1, const Strided &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.b + f1.b, f1.s * f2.s );
+			return Strided( f1.n, f2.N, f2.b, f2.s );
 		}
 
 		template<>
@@ -242,7 +242,7 @@ namespace alp {
 
 		template<>
 		Strided ComposedFactory::create( const Strided &f1, const Id &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.b + f1.b, f1.s * f2.s );
+			return Strided( f1.n, f2.N, f1.b, f1.s );
 		}
 
 		/** Composition of two Id IMFs is an Id Imf */
