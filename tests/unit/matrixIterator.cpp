@@ -69,7 +69,9 @@ RC checkCoordinates(
 		const IteratorType &copy
 ) {
 	if( it.i() != copy.i() || it.j() != copy.j() ) {
-		std::cerr << "Iterator copy yields coordinates different from original\n";
+		std::cerr << "Iterator copy yields coordinates different from original:\n"
+			<< "\t" << it.i() << " != " << copy.i() << " AND/OR\n"
+			<< "\t" << it.j() << " != " << copy.j() << ".\n";
 		return FAILED;
 	}
 	return SUCCESS;
@@ -85,7 +87,8 @@ RC checkCopy(
 	auto copy = it;
 	grb::RC ret = checkCoordinates( copy, it );
 	if( it.v() != copy.v() ) {
-		std::cerr << "Iterator copy yields values different from original\n";
+		std::cerr << "Iterator copy yields values different from original:\n"
+			<< "\t" << it.v() << " != " << copy.v() << ".\n";
 		ret = FAILED;
 	}
 	return ret;
@@ -102,11 +105,26 @@ RC checkCopy(
 	return checkCoordinates( copy, it );
 }
 
+template< typename ValT >
+RC checkCopy(
+	const Matrix< ValT > &mat
+) {
+	grb::RC ret = SUCCESS;
+	for( auto it = mat.cbegin(); it != mat.cend(); ++it ) {
+		ret = ret ? ret : checkCopy( it );
+	}
+	return ret;
+}
+
 template< typename ValT, typename OrigIterT >
 RC test_matrix_iter(
 	OrigIterT orig_begin, OrigIterT orig_end,
 	size_t row_col_offset, const Matrix< ValT > &mat
 ) {
+	if( checkCopy( mat ) != SUCCESS ) {
+		return FAILED;
+	}
+
 	using NZC = internal::NonzeroStorage< size_t, size_t, ValT >;
 	std::vector< NZC > mat_values;
 	utils::get_matrix_nnz( mat, mat_values );
@@ -131,9 +149,6 @@ RC test_matrix_iter(
 			) != spmd<>::pid()
 		) {
 			continue;
-		}
-		if( checkCopy( it ) != SUCCESS ) {
-			return FAILED;
 		}
 		(void) row_count[ it.i() - row_col_offset ]++;
 		(void) col_count[ it.j() - row_col_offset ]++;
