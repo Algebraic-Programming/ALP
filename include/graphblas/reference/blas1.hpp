@@ -5160,7 +5160,7 @@ namespace grb {
 		 *
 		 * @tparam assign_y Whether to simply assign to \a y or whether to
 		 *                  (potentially) fold into \a y (in case there are
-		 *                  pre-existing elements
+		 *                  pre-existing elements)
 		 *
 		 * The other arguments pertain to the output, the mask, and the input vectors
 		 * as well as their sizes-- and finally the semiring under which to perform
