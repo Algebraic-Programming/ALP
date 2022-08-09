@@ -50,10 +50,10 @@ namespace grb {
 			utils::AutoDeleter< IOType > _raw_deleter;
 
 			/**
-			 * Tell the system to delete \a _buffered_mask only when we had its last
-			 * reference.
+			 * Tell the system to delete the stack of the \a _buffered_coordinates only
+			 * when we had its last reference.
 			 */
-			utils::AutoDeleter< char > _assigned_deleter;
+			utils::AutoDeleter< char > _coordinate_stack;
 
 			/** A buffer of the local vector. */
 			IOType * _buffered_values;
@@ -76,7 +76,7 @@ namespace grb {
 				> > &x,
 				const IOMode mode
 			) :
-				_raw_deleter( x._raw_deleter ), _assigned_deleter( x._assigned_deleter ),
+				_raw_deleter( x._raw_deleter ), _coordinate_stack( x._buffer_deleter ),
 				_buffered_values( x._raw ), _buffered_coordinates( x._coordinates )
 			{
 				(void)mode; // sequential and parallel IO mode are equivalent for this
@@ -131,6 +131,7 @@ namespace grb {
 				assert( _buffered_coordinates.size() > 0 );
 				assert( _buffered_values != nullptr );
 				const size_t index = getNonzeroIndex( k );
+				assert( index < _buffered_coordinates.size() );
 				return _buffered_values[ index ];
 			}
 

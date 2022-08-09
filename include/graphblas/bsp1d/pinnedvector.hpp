@@ -55,10 +55,10 @@ namespace grb {
 			utils::AutoDeleter< IOType > _raw_deleter;
 
 			/**
-			 * Tell the system to delete \a _buffered_coordinates only when we had its
-			 * last reference.
+			 * Tell the system to delete the stack of \a _buffered_coordinates only when
+			 * we had its last reference.
 			 */
-			utils::AutoDeleter< char > _assigned_deleter;
+			utils::AutoDeleter< char > _stack_deleter;
 
 			/** A buffer of the local vector. */
 			IOType * _buffered_values;
@@ -138,7 +138,7 @@ namespace grb {
 			/** \internal No implementation notes. */
 			template< typename Coords >
 			PinnedVector( const Vector< IOType, BSP1D, Coords > &x, const IOMode mode ) :
-				_raw_deleter( x._raw_deleter ), _assigned_deleter( x._assigned_deleter ),
+				_raw_deleter( x._raw_deleter ), _stack_deleter( x._buffer_deleter ),
 				_buffered_values( mode == PARALLEL ? x._raw + x._offset : x._raw ),
 				_mode( mode ), _length( x._global._coordinates.size() )
 			{
@@ -157,7 +157,7 @@ namespace grb {
 			/** \internal No implementation notes. */
 			PinnedVector( const PinnedVector< IOType, BSP1D > &other ) :
 				_raw_deleter( other._raw_deleter ),
-				_assigned_deleter( other._assigned_deleter ),
+				_stack_deleter( other._stack_deleter ),
 				_buffered_values( other._buffered_values ),
 				_buffered_coordinates( other._buffered_coordinates ),
 				_mode( other._mode ), _length( other._length ),
@@ -167,7 +167,7 @@ namespace grb {
 			/** \internal No implementation notes. */
 			PinnedVector( PinnedVector< IOType, BSP1D > &&other ) :
 				_raw_deleter( other._raw_deleter ),
-				_assigned_deleter( other._assigned_deleter ),
+				_stack_deleter( other._stack_deleter ),
 				_buffered_values( other._buffered_values ),
 				//_buffered_coordinates uses std::move, below
 				_mode( other._mode ), _length( other._length ),
@@ -181,7 +181,7 @@ namespace grb {
 				const PinnedVector< IOType, BSP1D > &other
 			) {
 				_raw_deleter = other._raw_deleter;
-				_assigned_deleter = other._assigned_deleter;
+				_stack_deleter = other._stack_deleter;
 				_buffered_values = other._buffered_values;
 				_buffered_coordinates = other._buffered_coordinates;
 				_mode = other._mode;
@@ -196,7 +196,7 @@ namespace grb {
 				PinnedVector< IOType, BSP1D > &&other
 			) {
 				_raw_deleter = other._raw_deleter;
-				_assigned_deleter = other._assigned_deleter;
+				_stack_deleter = other._stack_deleter;
 				_buffered_values = other._buffered_values;
 				_buffered_coordinates = std::move( other._buffered_coordinates );
 				_mode = other._mode;
