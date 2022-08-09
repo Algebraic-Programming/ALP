@@ -20,7 +20,7 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_BLAS1 || defined _H_GRB_REFERENCE_OMP_BLAS1
+#if !defined _H_GRB_REFERENCE_BLAS1 || defined _H_GRB_REFERENCE_OMP_BLAS1
 #define _H_GRB_REFERENCE_BLAS1
 
 #include <graphblas/utils/suppressions.h>
@@ -395,21 +395,47 @@ namespace grb {
 			IOType * __restrict__ x = internal::getRaw( vector );
 			Coords &coors = internal::getCoordinates( vector );
 			assert( coors.nonzeroes() < coors.size() );
+
+			if( masked ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule(dynamic, config::CACHE_LINE_SIZE::value())
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
+				#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
-			for( size_t i = 0; i < n; ++i ) {
-				const size_t index = coors.index( i );
-				if( masked ) {
-					if( ! ( m_coors->template mask< descr >( index, m ) ) ) {
+				for( size_t i = 0; i < n; ++i ) {
+					const size_t index = coors.index( i );
+					if( !( m_coors->template mask< descr >( index, m ) ) ) {
 						continue;
 					}
+					if( left ) {
+						(void) foldl< descr >( x[ index ], scalar, op );
+					} else {
+						(void) foldr< descr >( scalar, x[ index ], op );
+					}
 				}
-				if( left ) {
-					(void)foldl< descr >( x[ index ], scalar, op );
-				} else {
-					(void)foldr< descr >( scalar, x[ index ], op );
+			}
+
+			} else {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n );
+#else
+					const size_t start = 0;
+					const size_t end = n;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						const size_t index = coors.index( i );
+						if( left ) {
+							(void) foldl< descr >( x[ index ], scalar, op );
+						} else {
+							(void) foldr< descr >( scalar, x[ index ], op );
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				}
+#endif
 			}
 			return SUCCESS;
 		}
@@ -458,6 +484,8 @@ namespace grb {
 				auto localUpdate = coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
 				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 				for( size_t i = 0; i < m_coors.nonzeroes(); ++i ) {
 					const size_t index = m_coors.index( i );
@@ -2877,6 +2905,8 @@ namespace grb {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 					k = 0;
 #else
+					// use dynamic schedule as the timings of gathers and scatters may vary
+					// significantly
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 					for( size_t b = start; b < end; ++b ) {
@@ -3177,6 +3207,8 @@ namespace grb {
 					size_t asyncAssigns = 0;
 					const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 					assert( maxAsyncAssigns >= block_size );
+					// choose dynamic schedule since the mask otherwise likely leads to
+					// significant imbalance
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
 #endif
 					// vectorised code
@@ -3331,6 +3363,8 @@ namespace grb {
 					size_t asyncAssigns = 0;
 					const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 					assert( maxAsyncAssigns >= block_size );
+					// choose dynamic schedule since the mask otherwise likely leads to
+					// significant imbalance
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
 #endif
 					// vectorised code
@@ -5534,6 +5568,8 @@ namespace grb {
 				auto localUpdate = z_coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
 				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 				for( size_t i = 0; i < it_coors.nonzeroes(); ++i ) {
@@ -8440,21 +8476,39 @@ namespace grb {
 		if( coors.isDense() ) {
 			// vector is distributed sequentially, so just loop over it
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.size() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.size();
 #endif
-			for( size_t i = 0; i < coors.size(); ++i ) {
-				// apply the lambda
-				DataType &xval = internal::getRaw( x )[ i ];
-				xval = f( xval );
+				for( size_t i = start; i < end; ++i ) {
+					// apply the lambda
+					DataType &xval = internal::getRaw( x )[ i ];
+					xval = f( xval );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.nonzeroes() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.nonzeroes();
 #endif
-			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-				DataType &xval = internal::getRaw( x )[ coors.index( k ) ];
-				xval = f( xval );
+				for( size_t k = start; k < end; ++k ) {
+					DataType &xval = internal::getRaw( x )[ coors.index( k ) ];
+					xval = f( xval );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		}
 		// and done!
 		return SUCCESS;
@@ -8506,37 +8560,42 @@ namespace grb {
 		if( coors.isDense() ) {
 			// vector is distributed sequentially, so just loop over it
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.size() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.size();
 #endif
-			for( size_t i = 0; i < coors.size(); ++i ) {
-				// apply the lambda
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-#endif
-				f( i );
+				for( size_t i = start; i < end; ++i ) {
+					// apply the lambda
+					f( i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.nonzeroes() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.nonzeroes();
 #endif
-			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-				const size_t i = coors.index( k );
+				for( size_t k = start; k < end; ++k ) {
+					const size_t i = coors.index( k );
 #ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-				std::cout << "\tprocessing coordinate " << k << " which has index "
-					<< i << "\n";
+					std::cout << "\tprocessing coordinate " << k << " "
+						<< "which has index " << i << "\n";
 #endif
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-#endif
-				f( i );
+					f( i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		}
 		// and done!
 		return SUCCESS;
