@@ -19,7 +19,7 @@
  * @date 10th of August, 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_MATRIX || defined _H_GRB_REFERENCE_OMP_MATRIX
+#if !defined _H_GRB_REFERENCE_MATRIX || defined _H_GRB_REFERENCE_OMP_MATRIX
 #define _H_GRB_REFERENCE_MATRIX
 
 #include <numeric> //std::accumulate
@@ -560,7 +560,9 @@ namespace grb {
 #endif
 			// within each bucket, sort all nonzeroes in-place into the final storage,
 			// using also the col_values_buffer to store column values, and update
-			// the prefix sum in the col_start buffer accordingly;
+			// the prefix sum in the col_start buffer accordingly.
+			// The number of nonzeroes in each bucket is irregular, therefore use a
+			// dynamic schedule.
 			#pragma omp parallel for schedule( dynamic ), num_threads( num_threads )
 			for( size_t i = 0; i < per_thread_buffer_size; i++ ) {
 				// ith bucket borders
