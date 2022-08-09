@@ -38,6 +38,7 @@
 
 #define MAX_FN_LENGTH 512
 
+
 using namespace grb;
 
 struct input {
@@ -472,20 +473,22 @@ int main( int argc, char ** argv ) {
 
 	// start benchmarks
 	grb::Benchmarker< AUTOMATIC > benchmarker;
-	const enum grb::RC rc = benchmarker.exec( &grbProgram, in, out, 1, outer,
-		true );
+	const enum grb::RC rc = benchmarker.exec(
+		&grbProgram, in, out, 1, outer, true
+	);
 	if( rc != SUCCESS ) {
-		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc
-			<< std::endl;
+		std::cerr << "launcher.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
 		return 50;
 	}
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED\n\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 		return out.error_code;
 	}
-	std::cout << "Test OK\n\n";
+	std::cout << "Test OK\n" << std::endl;
 	return 0;
 }
 
