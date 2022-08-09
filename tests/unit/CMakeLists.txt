@@ -21,6 +21,10 @@ set( TEST_CATEGORY "unit" )
 
 
 # list tests, without the CATEROR[IES,Y] keyword (it's now passed via TEST_CATEGORY)
+add_grb_executables( equals equals.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( add15d add15d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
