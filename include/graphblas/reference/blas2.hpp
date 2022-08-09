@@ -24,7 +24,7 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_BLAS2 || defined _H_GRB_REFERENCE_OMP_BLAS2
+#if !defined _H_GRB_REFERENCE_BLAS2 || defined _H_GRB_REFERENCE_OMP_BLAS2
 #define _H_GRB_REFERENCE_BLAS2
 
 #include <limits>
@@ -64,6 +64,7 @@
 		"****************************************************************" \
 		"****************************************************************" \
 		"**************************************\n" );
+
 
 namespace grb {
 
@@ -1232,6 +1233,7 @@ namespace grb {
 							std::cout << "\n";
 #endif
 							// loop only over the nonzero masks (can still be done in parallel!)
+							// since mask structures are typically irregular, use dynamic schedule
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
@@ -1431,6 +1433,7 @@ namespace grb {
 							std::cout << s << ": loop over mask indices\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
+							// since mask structures are typically irregular, use dynamic schedule
 							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 							for(
