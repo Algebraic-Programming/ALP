@@ -363,7 +363,7 @@ namespace alp {
 
 	namespace internal {
 		/** Forward declaration */
-		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
+		template< typename T, typename AmfType, bool requires_allocation >
 		class StorageBasedMatrix;
 
 		/** Forward declaration */
@@ -371,25 +371,33 @@ namespace alp {
 		class FunctorBasedMatrix;
 
 		/** Container reference getters used by friend functions of specialized Matrix */
-		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
-		const Vector< T, reference > & getContainer( const StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > & A );
+		template< typename T, typename AmfType, bool requires_allocation >
+		const Vector< T, reference > & getContainer( const StorageBasedMatrix< T, AmfType, requires_allocation > & A );
 
-		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
-		Vector< T, reference > & getContainer( StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > & A );
+		template< typename T, typename AmfType, bool requires_allocation >
+		Vector< T, reference > & getContainer( StorageBasedMatrix< T, AmfType, requires_allocation > & A );
 
 		/** Container reference getters. Defer the call to base class friend function */
 		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 		const Vector< T, reference > & getContainer( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
-			return getContainer( static_cast< const StorageBasedMatrix< T, ImfR, ImfC,
-				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::mapping_polynomial_type,
-				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::requires_allocation > & >( A ) );
+			return getContainer( static_cast<
+				const StorageBasedMatrix<
+					T,
+					typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::amf_type,
+					alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::requires_allocation
+				> &
+			>( A ) );
 		}
 
 		template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC >
 		Vector< T, reference > & getContainer( alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference > & A ) {
-			return getContainer( static_cast< StorageBasedMatrix< T, ImfR, ImfC,
-				typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::mapping_polynomial_type,
-				alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::requires_allocation > & >( A ) );
+			return getContainer( static_cast<
+				StorageBasedMatrix<
+					T,
+					typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::amf_type,
+					alp::Matrix< T, Structure, density, View, ImfR, ImfC, reference >::requires_allocation
+				> &
+			>( A ) );
 		}
 
 		/** Functor reference getter used by friend functions of specialized Matrix */
@@ -456,6 +464,13 @@ namespace alp {
 		template< typename MatrixType >
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
+		/** Get the reference to the AMF of a storage-based matrix */
+		template<
+			typename MatrixType,
+			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
+
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
@@ -521,22 +536,30 @@ namespace alp {
 		 * @tparam requires_allocation True if the class is an original container
 		 *                             False if the class is a view of another matrix
 		 */
-		template< typename T, typename ImfR, typename ImfC, typename MappingPolynomial, bool requires_allocation >
-		class StorageBasedMatrix : public MatrixBase< StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > > {
+		template< typename T, typename AmfType, bool requires_allocation >
+		class StorageBasedMatrix : public MatrixBase< StorageBasedMatrix< T, AmfType, requires_allocation > > {
+
+			/** Get the reference to the AMF of a storage-based matrix */
+			template<
+				typename MatrixType,
+				std::enable_if< internal::is_storage_based< MatrixType >::value > *
+			>
+			friend const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
+
 			public:
 
 				/** Expose static properties */
 
 				typedef T value_type;
-				typedef ImfR imf_r_type;
-				typedef ImfC imf_c_type;
+				typedef typename AmfType::imf_r_type imf_r_type;
+				typedef typename AmfType::imf_c_type imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
 
 			protected:
-				typedef StorageBasedMatrix< T, ImfR, ImfC, MappingPolynomial, requires_allocation > self_type;
+				typedef StorageBasedMatrix< T, AmfType, requires_allocation > self_type;
 				friend MatrixBase< self_type >;
 
 				typedef typename std::conditional<
@@ -576,10 +599,7 @@ namespace alp {
 				 * into the concrete coordinate inside the actual container.
 				 * \see AMF
 				 */
-			public: // TODO: Temporarily expose AMF publicly until proper getters are implemented
-				storage::AMF< ImfR, ImfC, MappingPolynomial > amf;
-			protected:
-
+				AmfType amf;
 				/**
 				 * @brief determines the size of the matrix via the domain of
 				 * the index mapping functions.
@@ -604,6 +624,10 @@ namespace alp {
 
 				void setInitialized( const bool initialized ) noexcept {
 					internal::setInitialized( container , initialized );
+				}
+
+				const AmfType &getAmf() const noexcept {
+					return amf;
 				}
 
 				/**
@@ -646,15 +670,15 @@ namespace alp {
 				 * TODO: Add the storage scheme a parameter to the constructor
 				 * so that allocation can be made accordingly, generalizing the full case.
 				 */
-				StorageBasedMatrix( storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
+				StorageBasedMatrix( AmfType &&amf ) :
 					// enable only if ImfR and ImfC are imf::Id
 					container( internal::Vector< T, reference >( amf.getStorageDimensions() ) ),
-					amf( amf ) {}
+					amf( std::move( amf ) ) {}
 
 				/** View on another container */
-				StorageBasedMatrix( Vector< T, reference > &container, storage::AMF< ImfR, ImfC, MappingPolynomial > amf ) :
+				StorageBasedMatrix( Vector< T, reference > &container, AmfType &&amf ) :
 					container( container ),
-					amf( amf ) {}
+					amf( std::move( amf ) ) {}
 
 		}; // class StorageBasedMatrix
 
@@ -735,6 +759,79 @@ namespace alp {
 					data_lambda( data_lambda ) {}
 
 		}; // class FunctorBasedMatrix
+
+		/**
+		 * @brief Determines the AMF type for a matrix
+		 *        with the provided view and the IMF types.
+		 *
+		 * For a matrix that requires allocation, the new AMF consists of two Id IMFs
+		 * and the pre-defined mapping polynomial.
+		 * For a view over another matrix, the new AMF is created from the AMF of the
+		 * target matrix in one of the following ways:
+		 *  - When applying gather view using IMFs, the IMFs are applied to the AMF of
+		 *    the target matrix.
+		 *  - When applying a different view type (e.g. transpose or diagonal), the AMF
+		 *    of the target matrix is transformed according to the provided view type.
+		 *
+		 * @tparam View  View type.
+		 * @tparam ImfR  Row IMF type.
+		 * @tparam ImfC  Column IMF type.
+		 *
+		 * The valid combinations of the input parameters are as follows:
+		 *  - original view on void with Id IMFs.
+		 *  - original view on ALP matrix with any type of IMFs
+		 *  - other type of views (e.g. transposed, diagonal) with only Id IMFs.
+		 * Invocation using incompatible parameters may result in an undefined behavior.
+		 * The first parameter combination is handled by a specialization of this trait.
+		 *
+		 */
+		template< typename View, typename ImfR, typename ImfC >
+		struct determine_amf_type {
+
+			/** Ensure that the view is not on a void type */
+			static_assert(
+				!std::is_same< typename View::applied_to, void >::value,
+				"Cannot handle views over void type by this determine_amf_type specialization."
+			);
+
+			/** Ensure that if the view is transposed, the IMFs are ID */
+			static_assert(
+				View::type_id != view::Views::transpose ||
+				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Transposed view with non-ID Index Mapping Functions is not supported."
+			);
+
+			/** Ensure that if the view is diagonal, the IMFs are ID */
+			static_assert(
+				View::type_id != view::Views::diagonal ||
+				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Diagonal view with non-ID Index Mapping Functions is not supported."
+			);
+
+			typedef typename std::conditional<
+				View::type_id == view::Views::original,
+				typename storage::AMFFactory::Compose<
+					ImfR, ImfC, typename View::applied_to::amf_type
+				>::amf_type,
+				typename storage::AMFFactory::Reshape<
+					View::type_id,
+					typename View::applied_to::amf_type
+				>::amf_type	
+			>::type type;
+
+		};
+
+		template< typename ImfR, typename ImfC >
+		struct determine_amf_type< view::Original< void >, ImfR, ImfC > {
+
+			static_assert(
+				std::is_same< ImfR, imf::Id >::value && std::is_same< ImfC, imf::Id >::value,
+				"Incompatible combination of parameters provided to determine_amf_type."
+			);
+
+			typedef typename storage::AMFFactory::FromPolynomial< storage::polynomials::Full_type >::amf_type type;
+		};
+
 	} // namespace internal
 
 	/**
@@ -801,9 +898,10 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC,
-				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
-				internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T,
+				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				internal::requires_allocation< View >::value
+			>
 		>::type {
 
 		protected:
@@ -835,6 +933,9 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
+			/** The type of the AMF */
+			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
@@ -842,7 +943,7 @@ namespace alp {
 			typedef typename std::conditional<
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
 			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
@@ -880,10 +981,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
-					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
-						imf::Id( rows ),
-						imf::Id( cols ),
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+						rows,
+						cols,
 						storage::polynomials::Create< mapping_polynomial_type >( cols ),
 						rows * cols
 					)
@@ -906,9 +1007,11 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Compose<
+						ImfR, ImfC, typename ViewType::applied_to::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
 			/**
@@ -945,10 +1048,10 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+			Matrix( typename ViewType::applied_to &target_matrix, amf_type &&amf ) :
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					amf
+					std::forward< amf_type >( amf )
 				) {}
 
 			/**
@@ -1017,9 +1120,10 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC,
-				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
-				internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T,
+				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				internal::requires_allocation< View >::value
+			>
 		>::type {
 
 		protected:
@@ -1051,6 +1155,9 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
+			/** The type of the AMF */
+			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
@@ -1058,7 +1165,7 @@ namespace alp {
 			typedef typename std::conditional<
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
 			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
@@ -1092,10 +1199,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
-					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
-						imf::Id( dim ),
-						imf::Id( dim ),
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+						dim,
+						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
 						dim * dim
 					)
@@ -1114,9 +1221,11 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Compose<
+						ImfR, ImfC, typename ViewType::applied_to::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
 			/**
@@ -1149,10 +1258,10 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( typename ViewType::applied_to &target_matrix, storage::AMF< ImfR, ImfC, mapping_polynomial_type > amf ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+			Matrix( typename ViewType::applied_to &target_matrix, amf_type &&amf ) :
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					amf
+					std::forward< amf_type >( amf )
 				) {}
 
 			/**
@@ -1209,9 +1318,10 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC,
-				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
-				internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T,
+				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				internal::requires_allocation< View >::value
+			>
 		>::type {
 
 		protected:
@@ -1243,6 +1353,9 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
+			/** The type of the AMF */
+			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
@@ -1250,7 +1363,7 @@ namespace alp {
 			typedef typename std::conditional<
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
 			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
@@ -1284,10 +1397,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
-					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
-						imf::Id( dim ),
-						imf::Id( dim ),
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+						dim,
+						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
 						dim * dim
 					)
@@ -1306,9 +1419,11 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Compose<
+						ImfR, ImfC, decltype( internal::getAmf( target_matrix ) )
+					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
 			/**
@@ -1381,9 +1496,10 @@ namespace alp {
 		public std::conditional<
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T, ImfR, ImfC,
-				typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type,
-				internal::requires_allocation< View >::value >
+			internal::StorageBasedMatrix< T,
+				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				internal::requires_allocation< View >::value
+			>
 		>::type {
 
 		protected:
@@ -1415,6 +1531,9 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
+			/** The type of the AMF */
+			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
@@ -1422,7 +1541,7 @@ namespace alp {
 			typedef typename std::conditional<
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
 			>::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
@@ -1460,10 +1579,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
-					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
-						imf::Id( dim ),
-						imf::Id( dim ),
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
+					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+						dim,
+						dim,
 						storage::polynomials::Create< mapping_polynomial_type >( dim ),
 						dim * dim
 					)
@@ -1486,9 +1605,11 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					getContainer( target_matrix ),
-					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+					storage::AMFFactory::Compose<
+						ImfR, ImfC, typename ViewType::applied_to::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
 			/**
@@ -1696,7 +1817,7 @@ namespace alp {
 
 		target_strmat_t target(
 			source,
-			storage::AMFFactory::Transform<	target_view, decltype( source.amf ) >::Create( source.amf )
+			storage::AMFFactory::Reshape< target_view, typename SourceMatrixType::amf_type >::Create( internal::getAmf( source ) )
 		);
 
 		return target;
@@ -1747,7 +1868,10 @@ namespace alp {
 		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
 		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, ImfR, ImfC, backend >;
 
-		target_strmat_t target( source );
+		target_strmat_t target(
+			source,
+			storage::AMFFactory::Reshape< view::Views::original, typename source_strmat_t::amf_type >::Create( internal::getAmf( source ) )
+		);
 
 		return target;
 	}
@@ -1766,8 +1890,8 @@ namespace alp {
 			TargetStructure,
 			density,
 			view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-			typename imf::composed_type< TargetImfR, ImfR >::type,
-			typename imf::composed_type< TargetImfC, ImfC >::type,
+			TargetImfR,
+			TargetImfC,
 			backend
 		>
 		get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
@@ -2150,6 +2274,15 @@ namespace alp {
 		 */
 		template< typename MatrixType >
 		std::pair< size_t, size_t > getCoords( const MatrixType &A, const size_t storageIndex, const size_t s, const size_t P );
+
+		/** Get the reference to the AMF of a storage-based matrix */
+		template<
+			typename MatrixType,
+			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept {
+			return A.getAmf();
+		}
 
 	} // namespace internal
 
