@@ -25,6 +25,7 @@
 
 #include <type_traits>
 #include <alp/views.hpp>
+#include <alp/storage.hpp>
 
 namespace alp {
 
@@ -344,6 +345,7 @@ namespace alp {
 			std::is_same< view::Original< void >, View >::value ||
 			std::is_same< view::Functor< typename View::applied_to >, View >::value
 		> {};
+
 	} // namespace internal
 
 } // namespace alp
