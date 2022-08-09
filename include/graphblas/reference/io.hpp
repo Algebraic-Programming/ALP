@@ -20,7 +20,7 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_IO || defined _H_GRB_REFERENCE_OMP_IO
+#if !defined _H_GRB_REFERENCE_IO || defined _H_GRB_REFERENCE_OMP_IO
 #define _H_GRB_REFERENCE_IO
 
 #include <graphblas/base/io.hpp>
@@ -504,7 +504,9 @@ namespace grb {
 				coors.size() :
 				m_coors.nonzeroes();
 #ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value()) nowait
+			// since masks are irregularly structured, use dynamic schedule to ensure
+			// load balance
+			#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 			for( size_t k = 0; k < n; ++k ) {
 				const size_t index = loop_over_vector_length ? k : m_coors.index( k );
@@ -667,12 +669,21 @@ namespace grb {
 		if( src == nullptr && dst == nullptr ) {
 			// then source is a pattern vector, just copy its pattern
 #ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
 #endif
-			for( size_t i = 0; i < nz; ++i ) {
-				(void)internal::getCoordinates( x ).asyncCopy(
-					internal::getCoordinates( y ), i );
+				for( size_t i = start; i < end; ++i ) {
+					(void) internal::getCoordinates( x ).asyncCopy(
+						internal::getCoordinates( y ), i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			}
+#endif
 		} else {
 #ifndef NDEBUG
 			if( src == nullptr ) {
@@ -817,6 +828,8 @@ namespace grb {
 			const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
 			size_t asyncAssigns = 0;
 			RC local_rc = SUCCESS;
+			// since masks are irregularly structured, use dynamic schedule to ensure
+			// load balance
 			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 			for( size_t k = 0; k < n; ++k ) {
 				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
@@ -835,13 +848,13 @@ namespace grb {
 					}
 					// check if destination has nonzero
 					if( !x_coors.asyncAssign( i, local_update ) ) {
-						(void)++asyncAssigns;
+						(void) ++asyncAssigns;
 					}
 				}
 				if( asyncAssigns == maxAsyncAssigns ) {
 					const bool was_empty = x_coors.joinUpdate( local_update );
 #ifdef NDEBUG
-					(void)was_empty;
+					(void) was_empty;
 #else
 					assert( !was_empty );
 #endif

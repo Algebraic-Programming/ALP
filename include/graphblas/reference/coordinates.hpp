@@ -1131,12 +1131,21 @@ namespace grb {
 							assert( !maybe_invalid || _n <= _cap );
 							_n = _cap;
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+							#pragma omp parallel
+							{
+								size_t start, end;
+								config::OMP::localRange( start, end, 0, _n );
+#else
+								const size_t start = 0;
+								const size_t end = _n;
 #endif
-							for( size_t i = 0; i < _n; ++i ) {
-								_assigned[ i ] = true;
-								_stack[ i ] = i;
+								for( size_t i = start; i < end; ++i ) {
+									_assigned[ i ] = true;
+									_stack[ i ] = i;
+								}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 							}
+#endif
 						}
 					}
 				}
@@ -1518,6 +1527,8 @@ namespace grb {
 							}
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						} else {
+							// dynamic schedule since performance may differ significantly depending
+							// on the un-orderedness of the _stack
 							#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 							for( size_t k = 0; k < _n; ++k ) {
 								_assigned[ _stack[ k ] ] = false;
@@ -1556,9 +1567,18 @@ namespace grb {
 					#pragma omp parallel
 					{
 						size_t local_removed = 0;
-						#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+						// chose a static schedule, even though there may be imbalance in the
+						// number of writes to #_assigned. Assuming they are roughly balanced
+						// is in-line with a similar assumption when (sometimes) choosing a
+						// static schedule during sparse matrix--vector multiplication in
+						// reference/blas2.hpp
+						size_t loop_start, loop_end;
+						config::OMP::localRange( loop_start, loop_end, start, end );
+#else
+						const size_t loop_start = start;
+						const size_t loop_end = end;
 #endif
-						for( size_t i = start; i < end; ++i ) {
+						for( size_t i = loop_start; i < loop_end; ++i ) {
 							if( _assigned[ i ] ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 								(void) ++local_removed;
