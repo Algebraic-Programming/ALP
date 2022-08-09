@@ -431,7 +431,62 @@ namespace grb {
 		return ret;
 	}
 
-	/** \internal Requires no inter-process communication. */
+	namespace internal {
+
+		/** This is the variant that can handle use_index. */
+		template<
+			Descriptor descr,
+			typename DataType, typename Coords, typename T
+		>
+		RC set_handle_use_index(
+			Vector< DataType, BSP1D, Coords > &x,
+			const size_t old_nnz, const T &val,
+			const typename std::enable_if<
+				std::is_convertible< size_t, DataType >::value,
+			void >::type * const = nullptr
+		) {
+			if( descr & descriptors::use_index ) {
+				const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+				const auto p = data.P;
+				const auto s = data.s;
+				const auto n = grb::size( x );
+				if( old_nnz < size( x ) ) {
+					internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+				}
+				return eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
+					x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
+							i, n, s, p
+						);
+					}, x );
+			} else {
+				return set< descr >( internal::getLocal( x ), val );
+			}
+		}
+
+		/** This is the variant that cannot handle use_index. */
+		template<
+			Descriptor descr,
+			typename DataType, typename Coords, typename T
+		>
+		RC set_handle_use_index(
+			Vector< DataType, BSP1D, Coords > &x,
+			const size_t, const T &val,
+			const typename std::enable_if<
+				!std::is_convertible< size_t, DataType >::value,
+			void >::type * const = nullptr
+		) {
+			static_assert( !(descr & descriptors::use_index ),
+				"use_index requires casting from size_t to the vector value type" );
+			return set< descr >( internal::getLocal( x ), val );
+		}
+
+	} // end namespace internal
+
+	/**
+	 * \internal
+	 * Requires no inter-process communication.
+	 * \endinternal
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename Coords,
@@ -442,8 +497,9 @@ namespace grb {
 		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< T >::value, void
-		>::type * const = nullptr
+			!grb::is_object< T >::value &&
+			std::is_convertible< T, DataType >::value,
+		void >::type * const = nullptr
 	) noexcept {
 		const size_t n = size( x );
 		const size_t old_nnz = nnz( x );
@@ -466,23 +522,7 @@ namespace grb {
 		}
 
 		assert( phase == EXECUTE );
-		RC ret = SUCCESS;
-		if( descr & descriptors::use_index ) {
-			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
-			const auto p = data.P;
-			const auto s = data.s;
-			const auto n = grb::size( x );
-			if( old_nnz < size( x ) ) {
-				internal::getCoordinates( internal::getLocal( x ) ).assignAll();
-			}
-			ret = eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
-				x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
-						i, n, s, p
-					);
-				}, x );
-		} else {
-			ret = set< descr >( internal::getLocal( x ), val );
-		}
+		RC ret = internal::set_handle_use_index< descr >( x, old_nnz, val );
 		if( ret == SUCCESS ) {
 			internal::setDense( x );
 		}
