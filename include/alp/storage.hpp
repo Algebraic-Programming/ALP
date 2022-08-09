@@ -439,9 +439,7 @@ namespace alp {
 					return amf_type( nrows, ncols, poly, storage_dimensions );
 				}
 
-				private:
-
-					FromPolynomial();
+				FromPolynomial() = delete;
 
 			}; // class FromPolynomial
 
@@ -477,8 +475,6 @@ namespace alp {
 			struct Compose {
 
 				private:
-
-					Compose();
 
 					/** Extract target IMF and polynomial types */
 					typedef typename SourceAMF::imf_r_type SourceImfR;
@@ -525,6 +521,8 @@ namespace alp {
 						);
 					}
 
+					Compose() = delete;
+
 			}; // class Compose
 
 			/**
@@ -549,9 +547,7 @@ namespace alp {
 					return amf;
 				}
 
-				private:
-
-					Reshape();
+				Reshape() = delete;
 
 			}; // class Reshape
 
@@ -566,9 +562,7 @@ namespace alp {
 					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
-				private:
-
-					Reshape();
+				Reshape() = delete;
 
 			}; // class Reshape< original, ... >
 
@@ -604,9 +598,7 @@ namespace alp {
 					);
 				}
 
-				private:
-
-					Reshape();
+				Reshape() = delete;
 
 			}; // class Reshape< transpose, ... >
 
@@ -622,9 +614,7 @@ namespace alp {
 					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
-				private:
-
-					Reshape();
+				Reshape() = delete;
 
 			}; // class Reshape< diagonal, ... >
 
