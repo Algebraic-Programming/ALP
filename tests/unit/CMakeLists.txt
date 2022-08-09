@@ -249,6 +249,10 @@ add_grb_executables( buildMatrixUnique buildMatrixUnique.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
+add_grb_executables( pinnedVector pinnedVector.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"

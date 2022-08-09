@@ -31,6 +31,7 @@ for MODE in debug ndebug; do
 	${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
 	head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
+	echo " "
 
 	echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
 	${TEST_BIN_DIR}/add15d_${MODE}
@@ -184,6 +185,13 @@ for MODE in debug ndebug; do
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the grb::pinnedVector on fundamental and"
+				echo "                                 non-fundamental value types."
+				$runner ${TEST_BIN_DIR}/pinnedVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
