@@ -413,8 +413,6 @@ namespace grb {
 						(void) foldr< descr >( scalar, x[ index ], op );
 					}
 				}
-			}
-
 			} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				#pragma omp parallel
