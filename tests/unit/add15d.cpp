@@ -30,28 +30,41 @@ const static double inval[ 15 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 
 
 // for comments, see tests/add15m.cpp
 static bool err( const double a, const double b ) {
-	return ! grb::utils::equals( a, b, static_cast< double >( 1 ) );
+	return !grb::utils::equals( a, b, 1 );
+}
+
+static inline void reportSanityCheckErrorPlus(
+		const size_t i, const double x, const double y, const double z
+) {
+	std::cerr << "Sanity check error at position " << i << ": "
+		<< x << " + " << y << " does not equal " << z << ".\n";
+}
+
+static inline void reportSanityCheckErrorEquals(
+		const std::string str,
+		const size_t i, const double x, const double y
+) {
+	std::cerr << str << " check error at position " << i << ": "
+		<< x << " does not equal " << y << ".\n";
 }
 
 int main( int argc, char ** argv ) {
 	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
+	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	double out[ 15 ];
 	int error = 0;
 
 	for( size_t i = 0; i < 15; ++i ) {
 		if( err( data1[ i ] + data2[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Sanity check error at position %zd: %lf + %lf does not equal "
-				"%lf.\n",
-				i, data1[ i ], data2[ i ], chk[ i ] );
+			reportSanityCheckErrorPlus( i, data1[ i ], data2[ i ], chk[ i ] );
 			error = 1;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
 	typedef grb::operators::internal::add< double, double, double > internal_op;
 
@@ -60,140 +73,129 @@ int main( int argc, char ** argv ) {
 		out[ i ] = data2[ i ];
 		internal_op::foldl( &( out[ i ] ), &( data1[ i ] ) );
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Internal foldl check error at position %zd: %lf does not equal "
-				"%lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "::foldl", i, chk[ i ], out[ i ] );
 			error = 2;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
-	(void)memcpy( out, inval, 15 * sizeof( float ) );
+	(void) memcpy( out, inval, 15 * sizeof( float ) );
 	for( size_t i = 0; i < 15; ++i ) {
 		out[ i ] = data2[ i ];
 		internal_op::foldr( &( data1[ i ] ), &( out[ i ] ) );
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Internal foldr check error at position %zd: %lf does not equal "
-				"%lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "::foldr", i, chk[ i ], out[ i ] );
 			error = 3;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
-	(void)memcpy( out, inval, 15 * sizeof( float ) );
+	(void) memcpy( out, inval, 15 * sizeof( float ) );
 	for( size_t i = 0; i < 15; ++i ) {
 		internal_op::apply( &( data1[ i ] ), &( data2[ i ] ), &( out[ i ] ) );
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Internal apply check error at position %zd: %lf does not equal "
-				"%lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "::apply", i, chk[ i ], out[ i ] );
 			error = 4;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
 	typedef grb::operators::add< double, double, double > PublicOp;
 	PublicOp public_op;
 
-	(void)memcpy( out, inval, 15 * sizeof( float ) );
+	(void) memcpy( out, inval, 15 * sizeof( float ) );
 	PublicOp::eWiseApply( data1, data2, out, 15 );
 
 	for( size_t i = 0; i < 15; ++i ) {
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Public operator (map) check error at position %zd: %lf does not "
-				"equal %lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "::eWiseApply", i, chk[ i ], out[ i ] );
 			error = 5;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
-	(void)memcpy( out, data2, 15 * sizeof( double ) );
+	(void) memcpy( out, data2, 15 * sizeof( double ) );
 	PublicOp::eWiseFoldrAA( data1, out, 15 );
 
 	for( size_t i = 0; i < 15; ++i ) {
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Public operator (mapInto) check error at position %zd: %lf does "
-				"not equal %lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "::eWiseFoldrAA", i, chk[ i ], out[ i ] );
 			error = 6;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
-	(void)memcpy( out, inval, 15 * sizeof( float ) );
+	(void) memcpy( out, inval, 15 * sizeof( float ) );
 	for( size_t i = 0; i < 15; ++i ) {
-		const enum grb::RC rc = grb::apply( out[ i ], data1[ i ], data2[ i ], public_op );
+		const enum grb::RC rc = grb::apply( out[ i ], data1[ i ], data2[ i ],
+			public_op );
 		if( rc != SUCCESS ) {
-			(void)fprintf( stderr,
-				"Public operator (out-of-place apply by argument) does not return "
-				"SUCCESS (%d)\n",
-				(int)rc );
+			std::cerr << "Public operator (out-of-place apply by argument) does not return "
+				"SUCCESS, but rather " << grb::toString( rc ) << "\n";
 		}
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Public operator (out-of-place apply by argument) check error at "
-				"position %zd: %lf does not equal %lf.\n",
+			reportSanityCheckErrorEquals( "out-of-place apply by argument",
 				i, chk[ i ], out[ i ] );
 			error = 7;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
-	(void)memcpy( out, data2, 15 * sizeof( double ) );
+	(void) memcpy( out, data2, 15 * sizeof( double ) );
 	for( size_t i = 0; i < 15; ++i ) {
 		const enum grb::RC rc = grb::foldr( data1[ i ], out[ i ], public_op );
 		if( rc != SUCCESS ) {
-			(void)fprintf( stderr, "Public operator (in-place foldr) does not return SUCCESS (%d)\n", (int)rc );
+			std::cerr << "Public operator (in-place foldr) does not return SUCCESS, "
+			       << "but rather " << grb::toString( rc ) << "\n";
 		}
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Public operator (in-place foldr) check error at position %zd: %lf "
-				"does not equal %lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "in-place foldr", i, chk[ i ], out[ i ] );
 			error = 8;
 		}
 	}
 
-	if( error )
+	if( error ) {
 		return error;
+	}
 
 	(void)memcpy( out, data2, 15 * sizeof( double ) );
 	for( size_t i = 0; i < 15; ++i ) {
 		const enum grb::RC rc = grb::foldl( out[ i ], data1[ i ], public_op );
 		if( rc != SUCCESS ) {
-			(void)fprintf( stderr, "Public operator (in-place foldl) does not return SUCCESS (%d)\n", (int)rc );
+			std::cerr << "Public operator (in-place foldl) does not return SUCCESS, "
+			       << "but rather " << grb::toString( rc ) << "\n";
 		}
 		if( err( out[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr,
-				"Public operator (in-place foldl) check error at position %zd: %lf "
-				"does not equal %lf.\n",
-				i, chk[ i ], out[ i ] );
+			reportSanityCheckErrorEquals( "in-place foldl", i, chk[ i ], out[ i ] );
 			error = 9;
 		}
 	}
 
-	if( ! error ) {
-		(void)printf( "Test OK.\n\n" );
+	if( !error ) {
+		std::cout << "Test OK\n" << std::endl;
+	} else {
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 
 	return error;
 }
+

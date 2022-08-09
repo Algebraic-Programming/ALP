@@ -20,106 +20,119 @@
 #include "graphblas.hpp"
 
 
-using namespace grb;
-
 static const double data1[ 15 ] = { 4.32, 7.43, 4.32, 6.54, 4.21, 7.65, 7.43, 7.54, 5.32, 6.43, 7.43, 5.42, 1.84, 5.32, 7.43 };
 static const double data2[ 15 ] = { 8.49, 7.84, 8.49, 6.58, 8.91, 7.65, 7.84, 7.58, 5.49, 6.84, 7.84, 5.89, 1.88, 5.49, 7.84 };
 static const double chk[ 15 ] = { 12.81, 15.27, 12.81, 13.12, 13.12, 15.30, 15.27, 15.12, 10.81, 13.27, 15.27, 11.31, 3.72, 10.81, 15.27 };
 static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 
-int main( int argc, char ** argv ) {
-	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
-
-	// sanity check
-	int error = 0;
-	for( size_t i = 0; i < 15; ++i ) {
-		if( ! grb::utils::equals( data1[ i ] + data2[ i ], chk[ i ], static_cast< double >( 1 ) ) ) {
-			(void)fprintf( stderr,
-				"Sanity check error at position %zd: %lf + %lf does not equal "
-				"%lf.\n",
-				i, data1[ i ], data2[ i ], chk[ i ] );
-			error = 1;
-		}
-	}
-
-	if( error )
-		return error;
-
-	// initialise
-	enum grb::RC rc = grb::init();
-	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Could not initialise default GraphBLAS backend.\n" );
-		return 2;
-	}
+void alpProgram( const grb::RC &rc_in, int &error ) {
+	assert( rc_in == grb::SUCCESS );
+#ifdef NDEBUG
+	(void) rc_in;
+#endif
 
 	// allocate
 	grb::Vector< double > x( 15 );
 	grb::Matrix< double > A( 15, 15 );
 
-	rc = resize( A, 15 );
+	grb::RC rc = resize( A, 15 );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix resize: %d.\n", (int)rc );
-		return 3;
+		std::cerr << "Unexpected return code from Matrix resize: "
+			<< grb::toString( rc ) << ".\n";
+		error = 3;
+		return;
 	}
 
 	grb::Vector< double > y( 15 );
 
 	// initialise
-	const double * iterator = &( data1[ 0 ] );
-	rc = grb::buildVector( x, iterator, iterator + 15, SEQUENTIAL );
+	const double * const iterator = &( data1[ 0 ] );
+	rc = grb::buildVector( x, iterator, iterator + 15, grb::SEQUENTIAL );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Vector build (x): %d.\n", (int)rc );
-		return 4;
+		std::cerr << "Unexpected return code from Vector build (x): "
+			<< grb::toString( rc ) << ".\n";
+		error = 4;
+		return;
 	}
 	rc = grb::set( y, 1 );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Vector assign (y): %d.\n", (int)rc );
-		return 5;
+		std::cerr << "Unexpected return code from Vector assign (y): "
+			<< grb::toString( rc ) << ".\n";
+		error = 5;
+		return;
 	}
-	rc = grb::buildMatrixUnique( A, I, J, data2, 15, SEQUENTIAL );
+	rc = grb::buildMatrixUnique( A, I, J, data2, 15, grb::SEQUENTIAL );
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix build (A): %d.\n", (int)rc );
-		return 6;
+		std::cerr << "Unexpected return code from Matrix build (A): "
+			<< grb::toString( rc ) << ".\n";
+		error = 6;
+		return;
 	}
 
-	// get a semiring where multiplication is addition, and addition is multiplication
+	// get a semiring where multiplication is addition, and addition is
+	// multiplication
 	// this also tests if the proper identity is used
-	typename grb::Semiring< grb::operators::mul< double >, grb::operators::add< double >, grb::identities::one, grb::identities::zero > switched;
+	typename grb::Semiring<
+		grb::operators::mul< double >, grb::operators::add< double >,
+		grb::identities::one, grb::identities::zero
+	> switched;
 
 	// execute what amounts to elementwise vector addition
 	rc = grb::vxm( y, x, A, switched );
-	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from grb::vmx (y=xA): %d.\n", (int)rc );
-		return 7;
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Unexpected return code from grb::vmx (y=xA): "
+			<< grb::toString( rc ) << ".\n";
+		error = 7;
+		return;
 	}
 
 	// check
 	const double * __restrict__ const against = y.raw();
 	for( size_t i = 0; i < 15; ++i ) {
-		if( ! grb::utils::equals( chk[ i ], against[ i ], static_cast< double >( 1 ) ) ) {
-			(void)fprintf( stderr,
-				"Output vector element mismatch at position %zd: %lf does not "
-				"equal %lf.\n",
-				i, chk[ i ], against[ i ] );
+		if( !grb::utils::equals( chk[ i ], against[ i ], 1 ) ) {
+			std::cerr << "Output vector element mismatch at position " << i << ": "
+				<< chk[ i ] << " does not equal " << against[ i ] << ".\n";
 			error = 8;
 		}
 	}
 
-	// finalize
-	rc = grb::finalize();
-	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Could not finalize default GraphBLAS backend.\n" );
-		error = 9;
+	// done
+}
+
+int main( int argc, char ** argv ) {
+	(void) argc;
+	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
+
+	// sanity check
+	int error = 0;
+	for( size_t i = 0; i < 15; ++i ) {
+		if( !grb::utils::equals( data1[ i ] + data2[ i ], chk[ i ], 1 ) ) {
+			std::cerr << "Sanity check error at position " << i << ": " << data1[ i ]
+				<< " + " << data2[ i ] << " does not equal " << chk[ i ] << ".\n";
+			error = 1;
+		}
 	}
 
-	if( ! error ) {
-		(void)printf( "Test OK.\n\n" );
-	} else {
-		(void)printf( "Test FAILED.\n\n" );
+	// initialise
+	if( error == 0 ) {
+		grb::RC rc = grb::SUCCESS;
+		grb::Launcher< grb::AUTOMATIC > launcher;
+		rc = launcher.exec( alpProgram, rc, error );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Could not launch the ALP program.\n";
+			error = 10;
+		}
+
+		if( !error ) {
+			std::cout << "Test OK\n" << std::endl;
+		} else {
+			std::cerr << std::flush;
+			std::cout << "Test FAILED\n" << std::endl;
+		}
 	}
 
 	// done
 	return error;
 }
+
