@@ -161,19 +161,21 @@ namespace alp {
 		 * \f$I_{f,n} =[0, n), I_{f,N} =[0, N)\f$
 		 * \f$Composed_{f, g} = I_{g,n} \rightarrow I_{f,N}; i \mapsto f( g( i ) )\f$
 		 *
-		 * \tparam FirstIMF  The function that is applied first (i.e., \f$g\f$ )
-		 * \tparam SecondIMF The function that is applied second (i.e., \f$f\f$ )
+		 * \tparam LeftIMF  The left function of the composition operator
+		 *                  (applied second, i.e., \f$g\f$ )
+		 * \tparam RightIMF The right function of the composition operator
+		 *                  (applied first, i.e., \f$f\f$ )
 		 *
 		 * For specific combinations of the IMF types, there are specializations
 		 * that avoid nested function calls by fusing two functions into one.
 		 */
 
-		template< typename FirstIMF, typename SecondIMF >
+		template< typename LeftImf, typename RightImf >
 		class Composed: public IMF {
 
 			public:
-				const FirstIMF &g;
-				const SecondIMF &f;
+				const LeftImf &f;
+				const RightImf &g;
 
 				size_t map( const size_t i ) const {
 #ifdef _DEBUG
@@ -182,8 +184,8 @@ namespace alp {
 						return f.map( g.map( i ) );
 				}
 
-				Composed( const FirstIMF &g, const SecondIMF &f ):
-					IMF( g.n, f.N ), g( g ), f( f ) {
+				Composed( const LeftImf &f, const RightImf &g ):
+					IMF( g.n, f.N ), f( f ), g( g ) {
 #ifdef _DEBUG
 						std::cout << "Creating composition of IMFs that cannot be composed into a"
 						             "single mapping function. Consider the effect on performance.\n";
@@ -192,9 +194,9 @@ namespace alp {
 
 		};
 
-		template< typename IMF1, typename IMF2 >
+		template< typename LeftImf, typename RightImf >
 		struct composed_type {
-			typedef Composed< IMF1, IMF2 > type;
+			typedef Composed< LeftImf, RightImf > type;
 		};
 
 		template<>
@@ -225,35 +227,35 @@ namespace alp {
 
 		struct ComposedFactory {
 
-			template< typename IMF1, typename IMF2 >
-			static typename composed_type< IMF1, IMF2 >::type create( const IMF1 &f1, const IMF2 &f2 );
+			template< typename LeftImf, typename RightImf >
+			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &, const RightImf & );
 
 		};
 
 		template<>
-		Strided ComposedFactory::create< Id, Strided >( const Id &f1, const Strided &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		Strided ComposedFactory::create( const Id &f, const Strided &g ) {
+			return Strided( g.n, f.N, g.b, g.s );
 		}
 
 		template<>
-		Strided ComposedFactory::create( const Strided &f1, const Strided &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		Strided ComposedFactory::create( const Strided &f, const Strided &g ) {
+			return Strided( g.n, f.N, f.s * g.b + f.b, f.s * g.s );
 		}
 
 		template<>
-		Strided ComposedFactory::create( const Strided &f1, const Id &f2 ) {
-			return Strided( f1.n, f2.N, f1.s * f2.s, f1.s * f2.b + f1.b );
+		Strided ComposedFactory::create( const Strided &f, const Id &g ) {
+			return Strided( g.n, f.N, f.b, f.s );
 		}
 
 		/** Composition of two Id IMFs is an Id Imf */
 		template<>
-		Id ComposedFactory::create( const Id &f1, const Id &f2 ) {
+		Id ComposedFactory::create( const Id &f, const Id &g ) {
 #ifdef NDEBUG
-			(void)f2;
+			(void)f;
 #endif
 			// The first function's co-domain must be equal to the second function's domain.
-			assert( f1.N == f2.n );
-			return Id( f1.n );
+			assert( g.N == f.n );
+			return Id( g.n );
 		}
 
 		template<>

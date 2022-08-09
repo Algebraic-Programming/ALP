@@ -378,6 +378,8 @@ namespace alp {
 			typedef Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > base_type;
 			typedef typename base_type::target_type target_type;
 
+			typedef typename base_type::amf_type amf_type;
+
 		private:
 
 			/*********************
@@ -482,13 +484,9 @@ namespace alp {
 			>
 			Vector(
 				typename ViewType::applied_to &vec_view,
-				storage::AMF<
-					typename base_type::imf_r_type,
-					typename base_type::imf_c_type,
-					typename base_type::mapping_polynomial_type
-				> amf
+				amf_type &&amf
 			) :
-				base_type( vec_view, amf ) {}
+				base_type( vec_view, std::forward< amf_type >( amf ) ) {}
 
 			/**
 			 * Constructor for a functor-based vector that allocates memory.
