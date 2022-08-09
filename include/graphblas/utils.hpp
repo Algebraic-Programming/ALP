@@ -73,11 +73,13 @@ namespace grb {
 		/**
 		 * Checks whether two floating point values, \a a and \a b, are equal.
 		 *
+		 * The comparison is relative in the following sense.
+		 *
 		 * It is mandatory to supply an integer, \a epsilons, that indicates a
 		 * relative error. Here, \a epsilon represents the number of errors
 		 * accumulated during their computation, assuming that all arithmetic that
 		 * produced the two floating point arguments to this function are bounded by
-		 * their magnitude.
+		 * the magnitudes of \a a and \a b.
 		 *
 		 * Intuitively, one may take \a epsilons as the sum of the number of
 		 * operations that produced \a a and \a b, if the above assumption holds.
@@ -85,9 +87,10 @@ namespace grb {
 		 * The resulting bound can be tightened if the magnitudes encountered during
 		 * their computation are much smaller, and are (likely) too tight if those
 		 * magnitudes were much larger instead. In such cases, one should obtain or
-		 * compute a more appropriate error bound, however:
+		 * compute a more appropriate error bound, and check whether the difference
+		 * is within such a more appropriate, absolute, error bound.
 		 *
-		 * \warning when comparing for equality within a known absolute error bound,
+		 * \warning When comparing for equality within a known absolute error bound,
 		 *          <b>do not this function</b>.
 		 *
 		 * \note If such a function is desired, please submit an issue on GitHub or
@@ -103,27 +106,41 @@ namespace grb {
 		 * @param[in] epsilons How many floating point errors may have accumulated;
 		 *                     must be chosen larger or equal to one.
 		 *
-		 * If one of \a a or \a b is zero, then an absolute acceptable error bound is
-		 * computed as \a epsilons times \f$ \epsilon \f$, where the latter is the
-		 * machine precision.
-		 *
-		 * \note This behaviour is consistent with the intuitive usage of this
-		 *       function as described above.
-		 *
 		 * This function automatically adapts to the floating-point type used, and
 		 * takes into account the border cases where one or more of \a a and \a b may
 		 * be zero or subnormal. It also guards against overflow of the normalisation
 		 * strategy employed in its implementation.
 		 *
-		 * @returns Whether a == b, taking into account numerical drift within the
-		 *          effective range indicated by \a epsilons.
+		 * If one of \a a or \a b is zero, then an absolute acceptable error bound is
+		 * computed as \a epsilons times \f$ \epsilon \f$, where the latter is the
+		 * machine precision.
+		 *
+		 * \note This behaviour is consistent with the intuitive usage of this
+		 *       function as described above, assuming that the computations that led
+		 *       to zero involved numbers of zero orders of magnitude.
+		 *
+		 * \warning Typically it is hence \em not correct to rely on this function to
+		 *          compare some value \a a to zero by passing a zero \a b explicitly,
+		 *          and vice versa-- the magnitude of the values used while computing
+		 *          the nonzero matter.
+		 *
+		 * \note If a version of this function with an explicit relative error bound
+		 *       is desired, please submit an issue on GitHub or Gitee.
+		 *
+		 * @returns Whether \a a equals \a b, taking into account numerical drift
+		 *          within the effective range derived from \a epsilons and the
+		 *          magnitudes of \a a and \a b.
+		 *
+		 * This utility function is chiefly used by the ALP/GraphBLAS unit, smoke, and
+		 * performance tests.
 		 */
 		template< typename T, typename U >
 		static bool equals(
 			const T &a, const T &b,
 			const U epsilons,
 			typename std::enable_if<
-				std::is_floating_point< T >::value
+				std::is_floating_point< T >::value &&
+				std::is_integral< U >::value
 			>::type * = nullptr
 		) {
 			assert( epsilons >= 1 );
