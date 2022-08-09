@@ -494,15 +494,15 @@ namespace grb {
 					}
 					if( !sparse || coors.asyncAssign( index, localUpdate ) ) {
 						if( left ) {
-							(void)foldl< descr >( x[ index ], scalar, op );
+							(void) foldl< descr >( x[ index ], scalar, op );
 						} else {
-							(void)foldr< descr >( scalar, x[ index ], op );
+							(void) foldr< descr >( scalar, x[ index ], op );
 						}
 					} else if( sparse && monoid ) {
 						x[ index ] = static_cast< IOType >( scalar );
-						(void)asyncAssigns++;
+						(void) asyncAssigns++;
 						if( asyncAssigns == maxAsyncAssigns ) {
-							(void)coors.joinUpdate( localUpdate );
+							(void) coors.joinUpdate( localUpdate );
 							asyncAssigns = 0;
 						}
 					}
@@ -517,9 +517,9 @@ namespace grb {
 				}
 				if( !sparse || coors.assign( index ) ) {
 					if( left ) {
-						(void)foldl< descr >( x[ index ], scalar, op );
+						(void) foldl< descr >( x[ index ], scalar, op );
 					} else {
-						(void)foldr< descr >( scalar, x[ index ], op );
+						(void) foldr< descr >( scalar, x[ index ], op );
 					}
 				} else if( sparse && monoid ) {
 					x[ index ] = static_cast< IOType >( scalar );
@@ -782,7 +782,7 @@ namespace grb {
 #ifdef _DEBUG
 								std::cout << "Left-folding " << to_fold[ i ] << " into " << fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -798,7 +798,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -817,7 +817,7 @@ namespace grb {
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -833,7 +833,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -852,7 +852,7 @@ namespace grb {
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -869,7 +869,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -950,7 +950,7 @@ namespace grb {
 											<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 									}
 #endif
-									(void)foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
+									(void) foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
 #ifdef _DEBUG
 									#pragma omp critical
 									std::cout << " which results in " << fi_raw[ i ] << "\n";
@@ -963,7 +963,7 @@ namespace grb {
 											<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 									}
 #endif
-									(void)foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
+									(void) foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
 #ifdef _DEBUG
 									#pragma omp critical
 									std::cout << " which results in " << fi_raw[ i ] << "\n";
@@ -979,13 +979,13 @@ namespace grb {
 #endif
 								fi_raw[ i ] = tf_raw[ i ];
 								if( !fi.asyncAssign( i, local_update ) ) {
-									(void)++asyncAssigns;
+									(void) ++asyncAssigns;
 								}
 							}
 							if( asyncAssigns == maxAsyncAssigns ) {
 								const bool was_empty = fi.joinUpdate( local_update );
 #ifdef NDEBUG
-								(void)was_empty;
+								(void) was_empty;
 #else
 								assert( !was_empty );
 #endif
@@ -1014,7 +1014,7 @@ namespace grb {
 								std::cout << "\tfoldl< descr >( fi_raw[ i ], tf_raw[ i ], op ), i = "
 									<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 #endif
-								(void)foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
+								(void) foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
 #ifdef _DEBUG
 								std::cout << " which results in " << fi_raw[ i ] << "\n";
 #endif
@@ -1023,7 +1023,7 @@ namespace grb {
 								std::cout << "\tfoldr< descr >( tf_raw[ i ], fi_raw[ i ], op ), i = "
 									<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 #endif
-								(void)foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
+								(void) foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
 #ifdef _DEBUG
 								std::cout << " which results in " << fi_raw[ i ] << "\n";
 #endif
@@ -1034,7 +1034,7 @@ namespace grb {
 								<< " will be overwritten with " << tf_raw[ i ] << "\n";
 #endif
 							fi_raw[ i ] = tf_raw[ i ];
-							(void)fi.assign( i );
+							(void) fi.assign( i );
 						}
 					}
 #endif
@@ -2583,7 +2583,7 @@ namespace grb {
 						if( right_sparse ) {
 							y_m[ k ] = y_coors->assigned( local_i );
 						}
-						(void)++local_i;
+						(void) ++local_i;
 					}
 					for( size_t k = 0; k < block_size; ++k ) {
 						RC rc = SUCCESS;
@@ -2596,7 +2596,7 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 					for( size_t k = 0; k < block_size; ++k, ++i ) {
@@ -2644,7 +2644,7 @@ namespace grb {
 					}
 					assert( rc == SUCCESS );
 #ifdef NDEBUG
-					(void)rc;
+					(void) rc;
 #endif
 				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -2676,7 +2676,7 @@ namespace grb {
 			const size_t n
 		) {
 #ifdef NDEBUG
-			(void)n;
+			(void) n;
 #endif
 #ifndef GRB_NO_NOOP_CHECKS
 			static_assert( !internal::maybe_noop< OP >::value, "Warning: you may be "
@@ -2797,14 +2797,14 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 					// part that may or may not be vectorised (can we do something about this??)
 					for( size_t i = 0; i < block_size; ++i ) {
 						if( !masked || mask[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.assign( offsets[ i ] );
+							(void) z_coors.assign( offsets[ i ] );
 #else
 							if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
 								(void) ++asyncAssigns;
@@ -2859,10 +2859,10 @@ namespace grb {
 						}
 						RC rc = SUCCESS;
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-						(void)z_coors.assign( index );
+						(void) z_coors.assign( index );
 #else
 						if( !z_coors.asyncAssign( index, update ) ) {
-							(void)++asyncAssigns;
+							(void) ++asyncAssigns;
 						}
 						if( asyncAssigns == maxAsyncAssigns ) {
 #ifndef NDEBUG
@@ -2890,7 +2890,7 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -2996,20 +2996,20 @@ namespace grb {
 							if( masked ) {
 								if( mask[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( offsets[ i ] );
+									(void) z_coors.assign( offsets[ i ] );
 #else
 									if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #endif
 								}
 							} else {
 								if( x_m[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( offsets[ i ] );
+									(void) z_coors.assign( offsets[ i ] );
 #else
 									if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #endif
 								}
@@ -3068,10 +3068,10 @@ namespace grb {
 								continue;
 							}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #else
 							if( !z_coors.asyncAssign( index, update ) ) {
-								(void)++asyncAssigns;
+								(void) ++asyncAssigns;
 							}
 							if( asyncAssigns == maxAsyncAssigns ) {
 #ifndef NDEBUG
@@ -3153,7 +3153,7 @@ namespace grb {
 			size_t unset = 0;
 			for( size_t i = 0; i < mask_coors.size(); ++i ) {
 				if( !mask_coors.assigned( i ) ) {
-					(void)++unset;
+					(void) ++unset;
 				}
 			}
 			assert( unset == mask_coors.size() - mask_coors.nonzeroes() );
@@ -3267,10 +3267,10 @@ namespace grb {
 								if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 									if( !z_coors.asyncAssign( index, update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #else
-									(void)z_coors.assign( index );
+									(void) z_coors.assign( index );
 #endif
 								}
 								*( z_p + index ) = z_b[ k ];
@@ -3278,7 +3278,7 @@ namespace grb {
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( asyncAssigns > maxAsyncAssigns - block_size ) {
-							(void)z_coors.joinUpdate( update );
+							(void) z_coors.joinUpdate( update );
 							asyncAssigns = 0;
 						}
 #endif
@@ -3293,14 +3293,14 @@ namespace grb {
 							if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 								if( !z_coors.asyncAssign( i, update ) ) {
-									(void)++asyncAssigns;
+									(void) ++asyncAssigns;
 								}
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( update );
+									(void) z_coors.joinUpdate( update );
 									asyncAssigns = 0;
 								}
 #else
-								(void)z_coors.assign( i );
+								(void) z_coors.assign( i );
 #endif
 							}
 							const InputType1 * const x_e = left_scalar ?
@@ -3422,7 +3422,7 @@ namespace grb {
 							if( mask_b[ t ] ) {
 								if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( indices[ t ] );
+									(void) z_coors.assign( indices[ t ] );
 #else
 									if( !z_coors.asyncAssign( indices[ t ], update ) ) {
 										(void) ++asyncAssigns;
@@ -3440,7 +3440,7 @@ namespace grb {
 						k += block_size;
 #else
 						if( asyncAssigns > maxAsyncAssigns - block_size ) {
-							(void)z_coors.joinUpdate( update );
+							(void) z_coors.joinUpdate( update );
 							asyncAssigns = 0;
 						}
 #endif
@@ -3459,13 +3459,13 @@ namespace grb {
 							}
 							if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)z_coors.assign( i );
+								(void) z_coors.assign( i );
 #else
 								if( !z_coors.asyncAssign( i, update ) ) {
 									(void) ++asyncAssigns;
 								}
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( update );
+									(void) z_coors.joinUpdate( update );
 									asyncAssigns = 0;
 								}
 #endif
@@ -4949,7 +4949,7 @@ namespace grb {
 			<< "foldl with precomputed scalar and additive monoid\n";
 #endif
 		const typename Ring::D4 add;
-		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
+		(void) apply( add, alpha, beta, ring.getAdditiveOperator() );
 		return foldl< descr >( z, add, ring.getAdditiveMonoid(), phase );
 	}
 
@@ -5174,7 +5174,7 @@ namespace grb {
 			<< "dispatches to foldl with precomputed scalar and additive monoid\n";
 #endif
 		const typename Ring::D4 add;
-		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
+		(void) apply( add, alpha, beta, ring.getAdditiveOperator() );
 		return foldl< descr >( z, m, add, ring.getAdditiveMonoid(), phase );
 	}
 
@@ -6560,7 +6560,7 @@ namespace grb {
 		typename Ring::D3 mul_result;
 		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #else
 		assert( rc == SUCCESS );
 #endif
@@ -6622,14 +6622,14 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
 		rc = grb::apply( add_result, mul_result, gamma,
 			ring.getAdditiveOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		return grb::set( z, add_result, phase );
@@ -6738,7 +6738,7 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		(void)ring;
+		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
@@ -7428,7 +7428,7 @@ namespace grb {
 			!grb::is_object< MaskType >::value, void
 		>::type * const = nullptr
 	) {
-		(void)ring;
+		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
@@ -7577,7 +7577,7 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #else
 		assert( rc == SUCCESS );
 #endif
@@ -7644,13 +7644,13 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
 		rc = grb::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		return grb::set( z, m, add_result, phase );
