@@ -37,8 +37,9 @@
 #include "init.hpp"
 
 #ifndef _GRB_NO_STDIO
-#include <iostream> //for std::cerr
+ #include <iostream> //for std::cerr
 #endif
+
 
 /** Global internal singleton to track whether MPI was initialized. */
 extern bool _grb_mpi_initialized;
@@ -51,8 +52,8 @@ void _grb_exec_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 
 #ifdef _DEBUG
 	if( s == 0 ) {
-		std::cout << "Info: launcher spawned or hooked " << P
-			<< " ALP/GraphBLAS user processes.\n";
+		std::cout << "Info: launcher spawned or hooked " << P << " ALP/GraphBLAS "
+			<< "user processes.\n";
 	}
 #endif
 
