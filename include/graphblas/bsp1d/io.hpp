@@ -189,6 +189,7 @@ namespace grb {
 	RC clear( Vector< DataType, BSP1D, Coords > &x ) noexcept {
 		const RC ret = clear( internal::getLocal( x ) );
 		if( ret == SUCCESS ) {
+			x._became_dense = false;
 			x._cleared = true;
 			internal::signalLocalChange( x );
 		}
