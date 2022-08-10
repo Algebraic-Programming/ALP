@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,13 @@
  */
 
 /**
+ * Test for AMG solver, levels provided by AMGCL.
  * @file amg.cpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Test for AMG solver, levels provided by AMGCL.
+ * @author Denis Jelovina (denis.jelovina@huawei.com)
  *
  *
- * @date 2021-04-30
+ * @date 2022-10-08
  */
 #include <array>
 #include <cassert>
@@ -31,13 +32,22 @@
 #include <memory>
 #include <type_traits>
 #include <string>
-
 #include <graphblas.hpp>
-
+#include <graphblas/algorithms/amg/amg.hpp>
+#include <graphblas/algorithms/amg/system_building_utils.hpp>
+#include <graphblas/utils/Timer.hpp>
+#include <utils/argument_parser.hpp>
+#include <utils/assertions.hpp>
+#include <utils/print_vec_mat.hpp>
 
 // forward declaration for the tracing facility
 template< typename T,
-	class Ring = grb::Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+	class Ring = grb::Semiring<
+		grb::operators::add< T >,
+		grb::operators::mul< T >,
+		grb::identities::zero,
+		grb::identities::one
+	>
 >
 void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
 
@@ -46,36 +56,22 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
 // AMG_PRINT_STEPS requires defining the following symbols
 
 /**
- * @brief simply prints \p args on a dedicated line.
+ * simply prints \p args on a dedicated line.
  */
 #define DBG_println( args ) std::cout << args << std::endl;
 
-
 /**
- * @brief prints \p head and the norm of \p r.
+ * prints \p head and the norm of \p r.
  */
 #define DBG_print_norm( vec, head ) print_norm( vec, head )
 #endif
 
-
-#include <graphblas/algorithms/amg/amg.hpp>
-#include <graphblas/algorithms/amg/system_building_utils.hpp>
-
-// here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
-
-
-#include <graphblas/utils/Timer.hpp>
-
-#include <utils/argument_parser.hpp>
-#include <utils/assertions.hpp>
-#include <utils/print_vec_mat.hpp>
-
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference AMG
-constexpr std::size_t DEF_COARSENING_LEVELS{ 1U };
-constexpr std::size_t MAX_COARSENING_LEVELS{ 4U };
-constexpr std::size_t MAX_ITERATIONS_DEF{ 56UL };
-constexpr std::size_t SMOOTHER_STEPS_DEF{ 1 };
+constexpr size_t DEF_COARSENING_LEVELS{ 1U };
+constexpr size_t MAX_COARSENING_LEVELS{ 4U };
+constexpr size_t MAX_ITERATIONS_DEF{ 56UL };
+constexpr size_t SMOOTHER_STEPS_DEF{ 1 };
 //============================================
 
 constexpr double MAX_NORM { 4.0e-14 };
@@ -87,43 +83,42 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
 
-
 /**
- * @brief Container to store matrices loaded from a file.
+ * Container to store matrices loaded from a file.
  */
 template< typename T = double >
 struct mat_data {
-	std::size_t *i_data;
-	std::size_t *j_data;
+	size_t *i_data;
+	size_t *j_data;
 	T *v_data;
-	std::size_t nz, n, m;
+	size_t nz, n, m;
 
-	void resize( std::size_t innz, std::size_t inn, std::size_t inm ){
+	void resize( size_t innz, size_t inn, size_t inm ){
 		nz=innz;
 		n=inn;
 		m=inm;
-		i_data = new std::size_t [ nz ];
-		j_data = new std::size_t [ nz ];
+		i_data = new size_t [ nz ];
+		j_data = new size_t [ nz ];
 		v_data = new T [ nz ];
 	};
 
 	mat_data( ){
 		nz = 0;
 	};
-	
-	mat_data( std::size_t in ){
+
+	mat_data( size_t in ){
 		resize( in );
 	};
 
-	std::size_t size(){
+	size_t size(){
 		return nz;
 	};
 
-	std::size_t get_n(){
+	size_t get_n(){
 		return n;
 	};
 
-	std::size_t get_m(){
+	size_t get_m(){
 		return m;
 	};
 
@@ -135,14 +130,14 @@ struct mat_data {
 };
 
 /**
- * @brief Container to store vectors loaded from a file.
+ * Container to store vectors loaded from a file.
  */
 template< typename T = double >
 struct vec_data {
 	T *v_data;
-	std::size_t n;
+	size_t n;
 
-	void resize( std::size_t in ){
+	void resize( size_t in ){
 		n=in;
 		v_data = new T [ n ];
 	};
@@ -150,12 +145,12 @@ struct vec_data {
 	vec_data( ){
 		n = 0;
 	};
-	
-	vec_data( std::size_t in ){
+
+	vec_data( size_t in ){
 		resize( in );
 	};
 
-	std::size_t size(){
+	size_t size(){
 		return n;
 	};
 
@@ -164,32 +159,31 @@ struct vec_data {
 	};
 };
 
-
 static bool matloaded = false;
 
 /**
- * @brief Container for the parameters for the AMG simulation.
+ * Container for the parameters for the AMG simulation.
  */
 struct simulation_input {
-	std::size_t max_coarsening_levels;
-	std::size_t test_repetitions;
-	std::size_t max_iterations;
-	std::size_t smoother_steps;
+	size_t max_coarsening_levels;
+	size_t test_repetitions;
+	size_t max_iterations;
+	size_t smoother_steps;
 	const char * matAfile_c_str;
+	// vectors of input matrix filenames
 	std::vector< std::string > matAfiles;
 	std::vector< std::string > matMfiles;
 	std::vector< std::string > matPfiles;
 	std::vector< std::string > matRfiles;
-	
 	bool evaluation_run;
 	bool no_preconditioning;
 };
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT, typename TraitsT = std::char_traits< CharT > >
 class vectorwrapbuf :
 	public std::basic_streambuf<CharT, TraitsT> {
 public:
-    vectorwrapbuf(std::vector<CharT> &vec) {
+	vectorwrapbuf(  std::vector<CharT> &vec) {
 		this->setg( vec.data(), vec.data(), vec.data() + vec.size() );
     }
 };
@@ -198,28 +192,30 @@ std::istream& operator>>(std::istream& is, std::string& s){
 	return is;
 }
 
-
 /**
  * @brief Container to store all data for AMG hierarchy.
  */
 class preloaded_matrices : public simulation_input {
 
 public :
-	std::size_t nzAmt, nzMmt, nzPmt, nzRmt;
-	mat_data< double > * matAbuffer;
-	vec_data< double > * matMbuffer;
-	mat_data< double > * matPbuffer;
-	mat_data< double > * matRbuffer;
+	size_t nzAmt, nzMmt, nzPmt, nzRmt;
+	mat_data< double > *matAbuffer;
+	vec_data< double > *matMbuffer;
+	mat_data< double > *matPbuffer;
+	mat_data< double > *matRbuffer;
 
-	grb::RC read_matrix( std::vector< std::string > & fname,
-						  mat_data<double> * data ) {
+	grb::RC read_matrix(
+		std::vector< std::string > &fname,
+		mat_data<double> *data
+	) {
 		grb::RC rc = SUCCESS;
 		for ( size_t i = 0; i < fname.size(); i++ ) {
-			grb::utils::MatrixFileReader< double, std::conditional<
-				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
-													  grb::config::RowIndexType,
-													  grb::config::ColIndexType >::type
-										  > parser_mat( fname[ i ].c_str(), true );
+			grb::utils::MatrixFileReader<
+				double, std::conditional<
+					( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+							grb::config::RowIndexType,
+							grb::config::ColIndexType >::type
+				> parser_mat( fname[ i ].c_str(), true );
 #ifdef DEBUG
 			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
 			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
@@ -227,22 +223,23 @@ public :
 			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
 #endif
+			// very poor choice and temp solution size = 2 x nz
 			data[i].resize( parser_mat.entries()*2, parser_mat.n(), parser_mat.m() );
-			std::ifstream inFile(fname[ i ], std::ios::binary | std::ios::ate);
+			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
 			if( ! inFile.is_open() ) {
 				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
 			}
 			std::streamsize size = inFile.tellg();
-			inFile.seekg(0, std::ios::beg);
-			std::vector<char> buffer(size);
-			if ( inFile.read(buffer.data(), size) )	{
-				/* all fine! */
+			inFile.seekg( 0, std::ios::beg );
+			std::vector< char > buffer( size );
+			if ( inFile.read( buffer.data(), size ) ) {
+				// all fine
 			}
 			else {
 				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
-			} 
+			}
 			inFile.close();
 			vectorwrapbuf< char > databuf( buffer );
 			std::istream isdata( &databuf );
@@ -267,30 +264,30 @@ public :
 			data[ i ].nz = k;
 		}
 		return ( rc );
-	}	
+	}
 
-	grb::RC read_vector( std::vector< std::string > & fname,
-						 vec_data< double > * data ) {
+	grb::RC read_vector( std::vector< std::string > &fname,
+						 vec_data< double > *data ) {
 		grb::RC rc = SUCCESS;
 		for ( size_t i = 0; i < fname.size(); i++ ){
 #ifdef DEBUG
 			std::cout << " Reading " << fname[ i ].c_str() << ".\n";
 #endif
-			std::ifstream inFile(fname[ i ], std::ios::binary | std::ios::ate);
+			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
 			if( ! inFile.is_open() ) {
 				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
 			}
 			std::streamsize size = inFile.tellg();
-			inFile.seekg(0, std::ios::beg);
-			std::vector<char> buffer(size);
-			if (inFile.read(buffer.data(), size))	{
-				/* alles gut! */
+			inFile.seekg( 0, std::ios::beg );
+			std::vector< char > buffer( size );
+			if ( inFile.read( buffer.data(), size ) ) {
+				// all fine
 			}
 			else {
 				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
 				return( PANIC );
-			} 
+			}
 			inFile.close();
 			vectorwrapbuf< char > databuf( buffer );
 			std::istream isdata( &databuf );
@@ -303,7 +300,7 @@ public :
 			std::stringstream ss( headder );
 			ss >> n >> m;
 			std::cout << " Reading from" << fname[ i ] << " dense matrix with dimensions: "
-					  << " n x m = " << n << " x " << m << "\n";
+			          << " n x m = " << n << " x " << m << "\n";
 			data[ i ].resize( n );
 			for ( size_t j = 0; j < n; j++ ) {
 				isdata >> data[ i ].v_data[ j ];
@@ -311,7 +308,7 @@ public :
 		}
 		return( rc );
 	}
-	
+
 	grb::RC read_vec_matrics(){
 		grb::RC rc = SUCCESS;
 
@@ -324,7 +321,7 @@ public :
 		matMbuffer = new vec_data< double > [ nzMmt ];
 		matPbuffer = new mat_data< double > [ nzPmt ];
 		matRbuffer = new mat_data< double > [ nzRmt ];
-		
+
 		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
 		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
 		// rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
@@ -339,7 +336,7 @@ public :
 preloaded_matrices inputData;
 
 /**
- * @brief Containers for test outputs.
+ * Containers for test outputs.
  */
 struct output {
 	RC error_code;
@@ -358,22 +355,6 @@ struct output {
 	}
 };
 
-/**
- * @brief Returns the closets power of 2 bigger or equal to \p n .
- */
-template< typename T = std::size_t >
-T static next_pow_2( T n ) {
-	static_assert( std::is_integral< T >::value, "Integral required." );
-	--n;
-	n |= ( n >> 1 );
-	for( unsigned i = 1; i <= sizeof( T ) * 4; i *= 2 ) {
-		const unsigned shift = static_cast< T >( 1U ) << i;
-		n |= ( n >> shift );
-	}
-	return n + 1;
-}
-
-
 #ifdef AMG_PRINT_SYSTEM
 static void print_system( const amg_data< double, double, double > & data ) {
 	print_matrix( data.A, 70, "A" );
@@ -387,11 +368,16 @@ static void print_system( const amg_data< double, double, double > & data ) {
 #endif
 
 #ifdef AMG_PRINT_STEPS
-template< typename T,
-		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+template<
+	typename T,
+	class Ring = Semiring<
+		grb::operators::add< T >,
+		grb::operators::mul< T >,
+		grb::identities::zero,
+		grb::identities::one >
 	>
-void print_norm( const grb::Vector< T > & r, const char * head, const Ring & ring ) {
-	T norm=0;
+void print_norm( const grb::Vector< T > &r, const char *head, const Ring &ring ) {
+	T norm = 0;
 	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
 	(void)ret;
 	assert( ret == SUCCESS );
@@ -404,16 +390,15 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
 #endif
 
 /**
- * @brief Main test, building an AMG problem and running the simulation closely following the
- * parameters in the reference AMG test.
+ * Main test, building an AMG problem and running the simulation closely
+ *  following the parameters in the reference AMG test.
  */
-void grbProgram( const simulation_input & in, struct output & out ) {
+void grbProgram( const simulation_input &in, struct output &out ) {
 	grb::utils::Timer timer;
 	timer.reset();
 
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
-
 
 	// assume successful run
 	out.error_code = SUCCESS;
@@ -451,22 +436,28 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	Matrix< double > & A { amg_state->A };
-	Vector< double > & x { amg_state->x };
-	Vector< double > & b { amg_state->b };
+	Matrix< double > &A = amg_state->A;
+	Vector< double > &x = amg_state->x;
+	Vector< double > &b = amg_state->b;
 
 	// set vectors as from standard AMG benchmark
 	set( x, 1.0 );
 	set( b, 0.0 );
-	rc = grb::mxv( b, A, x, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
+	rc = grb::mxv( b, A, x,
+		grb::Semiring< grb::operators::add< double >,
+			grb::operators::mul< double >,
+			grb::identities::zero,
+			grb::identities::one >() );
 	set( x, 0.0 );
 
-	double norm_b=0;
-	rc = grb::dot( norm_b, b, b, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
+	double norm_b = 0;
+	rc = grb::dot( norm_b, b, b,
+		grb::Semiring< grb::operators::add< double >,
+			grb::operators::mul< double >,
+			grb::identities::zero,
+			grb::identities::one >() );
 	(void)rc;
 	assert( rc == SUCCESS );
-
-	
 
 #ifdef AMG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -475,8 +466,6 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	std::cout  << " ---> before solver \n";
-
 	out.times.preamble = timer.time();
 	timer.reset();
 
@@ -484,7 +473,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.test_repetitions = 0;
 	if( in.evaluation_run ) {
 		double single_time_start = timer.time();
-		rc = amg( *amg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
+		rc = amg( *amg_state, with_preconditioning, in.smoother_steps,
+			in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
 		double single_time = timer.time() - single_time_start;
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -497,8 +487,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
 			rc = set( x, 0.0 );
 			assert( rc == SUCCESS );
-			rc = amg( *amg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-			
+			rc = amg( *amg_state, with_preconditioning, in.smoother_steps,
+				in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
+
 			out.test_repetitions++;
 			if( rc != SUCCESS ) {
 				break;
@@ -511,7 +502,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 #ifdef AMG_PRINT_SYSTEM
 		rc = rc ? rc : grb::eWiseLambda( [ &x ]( const size_t i ) { x[ i ] -= 1;}, x );
-		print_norm (x, " ---> norm(x)");
+		print_norm (x, " norm(x)");
 #endif
 		// sleep( 1 );
 	}
@@ -519,19 +510,24 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 #ifdef AMG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
-		print_vector( x, 50, " ---> X(check out)" );
-		print_vector( b, 50, " ---> B(check out)" );
+		print_vector( x, 50, " x(first 50 elements)" );
+		print_vector( b, 50, " b(first 50 elements)" );
 	}
 #endif
 
 	if( spmd<>::pid() == 0 ) {
 		if( rc == SUCCESS ) {
 			if( in.evaluation_run ) {
-				std::cout << "Info: cold AMG completed within " << out.performed_iterations << " iterations. Last computed residual is " << out.residual << ". Time taken was " << out.times.useful
-						  << " ms. Deduced inner repetitions parameter of " << out.test_repetitions << " to take 1 second or more per inner benchmark." << std::endl;
+				std::cout << "Info: cold AMG completed within " << out.performed_iterations
+				          << " iterations. Last computed residual is " << out.residual
+				          << ". Time taken was " << out.times.useful
+				          << " ms. Deduced inner repetitions parameter of " << out.test_repetitions
+				          << " to take 1 second or more per inner benchmark." << std::endl;
 			} else {
-				std::cout << "Final residual= "<< out.residual << " relative error= " <<  out.residual/sqrt(norm_b) << "\n";
-				std::cout << "Average time taken for each of " << out.test_repetitions << " AMG calls (hot start): " << out.times.useful << std::endl;
+				std::cout << "Final residual= "<< out.residual << " relative error= "
+				          <<  out.residual/sqrt(norm_b) << "\n";
+				std::cout << "Average time taken for each of " << out.test_repetitions
+				          << " AMG calls (hot start): " << out.times.useful << std::endl;
 			}
 		} else {
 			std::cerr << "Failure: call to AMG did not succeed (" << toString( rc ) << ")." << std::endl;
@@ -543,7 +539,10 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// set error code
 	out.error_code = rc;
 
-	Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	Semiring< grb::operators::add< double >,
+		grb::operators::mul< double >,
+		grb::identities::zero,
+		grb::identities::one > ring;
 	grb::set( b, 1.0 );
 	out.square_norm_diff = 0.0;
 	grb::eWiseMul( b, -1.0, x, ring );
@@ -557,9 +556,10 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 }
 
 /**
- * @brief Parser the command-line arguments to extract the simulation information and checks they are valid.
+ * Parser the command-line arguments to extract the simulation information
+ * and checks they are valid.
  */
-static void parse_arguments( simulation_input &, std::size_t &, double &, int, char ** );
+static void parse_arguments( simulation_input &, size_t &, double &, int, char ** );
 
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
@@ -580,7 +580,7 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc { SUCCESS };
+	grb::RC rc = SUCCESS;
 
 	// launch estimator (if requested)
 	if( sim_in.evaluation_run ) {
@@ -598,12 +598,13 @@ int main( int argc, char ** argv ) {
 	grb::Benchmarker< AUTOMATIC > benchmarker;
 	rc = benchmarker.exec( &grbProgram, sim_in, out, 1, test_outer_iterations, true );
 	ASSERT_RC_SUCCESS( rc );
-	thcout << "Benchmark completed successfully and took " << out.performed_iterations << " iterations to converge with residual " << out.residual << std::endl;
+	thcout << "Benchmark completed successfully and took " << out.performed_iterations
+	       << " iterations to converge with residual " << out.residual << std::endl;
 
 	if( ! out.pinnedVector ) {
 		thcerr << "no output vector to inspect" << std::endl;
 	} else {
-		const PinnedVector< double > &solution { *out.pinnedVector };
+		const PinnedVector< double > &solution = *out.pinnedVector;
 		thcout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
@@ -614,7 +615,7 @@ int main( int argc, char ** argv ) {
 
 	ASSERT_RC_SUCCESS( out.error_code );
 
-	double residual_norm { sqrt( out.square_norm_diff ) };
+	double residual_norm = sqrt( out.square_norm_diff );
 	thcout << "Residual norm: " << residual_norm << std::endl;
 
 	ASSERT_LT( residual_norm, max_residual_norm );
@@ -623,69 +624,70 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
+static void parse_arguments( simulation_input &sim_in, size_t &outer_iterations,
+	double &max_residual_norm, int argc, char **argv ) {
 
 	argument_parser parser;
-	parser
-		.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
-								"maximum level for coarsening; 0 means no coarsening; note: actual "
-								"level may be limited by the minimum system dimension" )
-		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str, "","file pattern for files contining matrices A, M_diag, P, R "
-		 						"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read /path/to/dir/level_0_A.mtx,  /path/to/dir/level_1_A.mtx, /path/to/dir/level_2_A.mtx ... " )
-		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(), "consecutive test repetitions before benchmarking" )
-		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(), "test repetitions with complete initialization" )
-		.add_optional_argument( "--max_iter", sim_in.max_iterations, MAX_ITERATIONS_DEF, "maximum number of AMG iterations" )
+	parser.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
+			"maximum level for coarsening; 0 means no coarsening; note: actual "
+			"level may be limited by the minimum system dimension" )
+		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str,
+			"file pattern for files contining matrices A, M_diag, P, R "
+			"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read "
+			"/path/to/dir/level_0_A.mtx,  /path/to/dir/level_1_A.mtx, /path/to/dir/level_2_A.mtx ... " )
+		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(),
+			"consecutive test repetitions before benchmarking" )
+		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(),
+			"test repetitions with complete initialization" )
+		.add_optional_argument( "--max_iter", sim_in.max_iterations, MAX_ITERATIONS_DEF,
+			"maximum number of AMG iterations" )
 		.add_optional_argument( "--max-residual-norm", max_residual_norm, MAX_NORM,
 			"maximum norm for the residual to be acceptable (does NOT limit "
 			"the execution of the algorithm)" )
-		.add_optional_argument( "--smoother-steps", sim_in.smoother_steps, SMOOTHER_STEPS_DEF, "number of pre/post-smoother steps; 0 disables smoothing" )
+		.add_optional_argument( "--smoother-steps", sim_in.smoother_steps,
+			SMOOTHER_STEPS_DEF, "number of pre/post-smoother steps; 0 disables smoothing" )
 		.add_option( "--evaluation-run", sim_in.evaluation_run, false,
-			"launch single run directly, without benchmarker (ignore "
-			"repetitions)" )
-		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false, "do not apply pre-conditioning via multi-grid V cycle" );
-	
+			"launch single run directly, without benchmarker (ignore repetitions)" )
+		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false,
+			"do not apply pre-conditioning via multi-grid V cycle" );
 
 	parser.parse( argc, argv );
-	
-	std::string matAfile=sim_in.matAfile_c_str;
-	if ( !matAfile.empty() ) {
+
+	std::string matAfile = sim_in.matAfile_c_str;
+	if ( ! matAfile.empty() ) {
 		std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
-		for ( size_t i=0 ; i < sim_in.max_coarsening_levels ; i++ ){
+		for ( size_t i = 0 ; i < sim_in.max_coarsening_levels ; i++ ){
 			std::string fnamebase = matAfile + std::to_string(  i );
 			std::string fnameA = fnamebase + "_A.mtx";
 			std::string fnameM = fnamebase + "_M_diag.mtx";
 			std::string fnameP = fnamebase + "_P.mtx";
 			std::string fnameR = fnamebase + "_R.mtx";
-			sim_in.matAfiles.push_back (fnameA);
-			sim_in.matMfiles.push_back (fnameM);
-			sim_in.matPfiles.push_back (fnameP);
-			sim_in.matRfiles.push_back (fnameR);
-			
+			sim_in.matAfiles.push_back( fnameA );
+			sim_in.matMfiles.push_back( fnameM );
+			sim_in.matPfiles.push_back( fnameP );
+			sim_in.matRfiles.push_back( fnameR );
 		}
 		{
 			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
-
 			std::string fnameA = fnamebase + "_A.mtx";
 			sim_in.matAfiles.push_back (fnameA);
-
 			std::string fnameM = fnamebase + "_M_diag.mtx";
 			sim_in.matMfiles.push_back (fnameM);
-		}		
-
+		}
 		std::cout << "files to read matrices: " << std::endl;
-		for (std::string fname: sim_in.matAfiles) {
+		for ( std::string fname: sim_in.matAfiles ) {
 			std::cout << fname << " \n";
 		}
 
-		for (std::string fname: sim_in.matMfiles) {
+		for ( std::string fname: sim_in.matMfiles ) {
 			std::cout << fname << " \n";
 		}
 
-		for (std::string fname: sim_in.matPfiles) {
+		for ( std::string fname: sim_in.matPfiles ) {
 			std::cout << fname << " \n";
 		}
 
-		for (std::string fname: sim_in.matRfiles) {
+		for ( std::string fname: sim_in.matRfiles ) {
 			std::cout << fname << " \n";
 		}
 
@@ -696,7 +698,8 @@ static void parse_arguments( simulation_input & sim_in, std::size_t & outer_iter
 
 	// check for valid values
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
-		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS << " instead of " << sim_in.max_coarsening_levels << std::endl;
+		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS
+		          << " instead of " << sim_in.max_coarsening_levels << std::endl;
 		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
 	}
 	if( sim_in.test_repetitions == 0 ) {
