@@ -147,9 +147,20 @@ namespace grb {
 				_P = data.P;
 				if( mode != PARALLEL ) {
 					assert( mode == SEQUENTIAL );
-					x.synchronize();
+					const RC rc = x.synchronize();
+					if( rc != SUCCESS ) {
+						throw std::runtime_error(
+							"Could not synchronise vector during pinning: " + toString( rc )
+						);
+					}
 					_buffered_coordinates = x._global._coordinates;
 				} else {
+					const RC rc = x.updateNnz();
+					if( rc != SUCCESS ) {
+						throw std::runtime_error(
+							"Could not update vector nonzero count during pinning: " + toString( rc )
+						);
+					}
 					_buffered_coordinates = x._local._coordinates;
 				}
 			}
