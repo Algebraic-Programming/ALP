@@ -41,25 +41,31 @@ namespace grb {
 		/**
 		 * Algebraic Multi-grid algorithm relying on level_ matrices from AMGCL.
 		 *
-		 * Finds the solution x of an \f$ A x = b \f$ algebraic system by running the AMG algorithm.
-		 * AMG implementation (as the standard one) couples a standard CG algorithm with a V-cycle
-		 * multi-grid solver to initially refine the tentative solution. This refinement step depends on the
-		 * availability of coarsening information, which should be stored inside \p data; otherwise,
-		 * the refinement is not performed and only the CG algorithm is run.
+		 * Finds the solution x of an \f$ A x = b \f$ algebraic system by running
+		 * the AMG algorithm.  AMG implementation (as the standard one) couples a
+		 * standard CG algorithm with a V-cycle  multi-grid solver to initially
+		 * refine the tentative solution. This refinement step depends on the
+		 * availability of coarsening information, which should be stored inside
+		 * \p data; otherwise, the refinement is not performed and only the CG
+		 * algorithm is run.
 		 *
-		 * This implementation assumes that the vectors and matrices inside \p data are all correctly initialized
-		 * and populated with the proper values; in particular
-		 * - amg_data#x with the initial tentative solution (iterative solutions are also stored here)
+		 * This implementation assumes that the vectors and matrices inside \p data
+		 * are all correctly initialized and populated with the proper values;
+		 * in particular
+		 * - amg_data#x with the initial tentative solution
+		 *              (iterative solutions are also stored here)
 		 * - amg_data#A with the system matrix
 		 * - amg_data#b with the right-hand side vector \f$ b \f$
 		 * - amg_data#A_diagonal with the diagonal values of the matrix
-		 * - amg_data#coarser_level with the information for the coarser multi-grid run (if any)
-		 * The other vectors are assumed to be inizialized (via the usual grb::Vector#Vector(size_t) constructor)
-		 * but not necessarily populated with values, as they are internally populated when needed; hence,
-		 * any previous values are overwritten.
+		 * - amg_data#coarser_level with the information for
+		 *                the coarser multi-grid run (if any)
+		 * The other vectors are assumed to be inizialized
+		 * (via the usual grb::Vector#Vector(size_t) constructor)
+		 * but not necessarily populated with values, as they are internally populated
+		 * when needed; hence, any previous values are overwritten.
 		 *
-		 * Failuers of GraphBLAS operations are handled by immediately stopping the execution and by returning
-		 * the failure code.
+		 * Failuers of GraphBLAS operations are handled by immediately stopping the
+		 * execution and by returning the failure code.
 		 *
 		 * @tparam IOType type of result and intermediate vectors used during computation
 		 * @tparam ResidualType type of the residual norm
@@ -68,27 +74,36 @@ namespace grb {
 		 * @tparam Ring the ring of algebraic operators zero-values
 		 * @tparam Minus the minus operator for subtractions
 		 *
-		 * @param[in,out] data \ref amg_data object storing inputs, outputs and temporary vectors used for the computation,
-		 *                     as long as the information for the recursive multi-grid runs
-		 * @param[in] with_preconditioning whether to use pre-conditioning, i.e. to perform multi-grid runs
+		 * @param[in,out] data \ref amg_data object storing inputs, outputs and temporary
+		 *                   vectors used for the computation, as long as the information
+		 *                   for the recursive multi-grid runs
+		 * @param[in] with_preconditioning whether to use pre-conditioning,
+		 *                     i.e. to perform multi-grid runs
 		 * @param[in] presmoother_steps number of pre-smoother steps, for multi-grid runs
-		 * @param[in] postsmoother_steps nomber of post-smoother steps, for multi-grid runs
-		 * @param[in] max_iterations maximum number if iterations the simulation may run for; once reached,
-		 *                           the simulation stops even if the residual norm is above \p tolerance
-		 * @param[in] tolerance the tolerance over the residual norm, i.e. the value of the residual norm to stop
-		 *                      the simulation at
+		 * @param[in] postsmoother_steps nomber of post-smoother steps,
+		 *                          for multi-grid runs
+		 * @param[in] max_iterations maximum number if iterations the simulation may run
+		 *                       for; once reached, the simulation stops even if the
+		 *                       residual norm is above \p tolerance
+		 * @param[in] tolerance the tolerance over the residual norm, i.e. the value of
+		 *                      the residual norm to stop  the simulation at
 		 * @param[out] iterations numbers of iterations performed
 		 * @param[out] norm_residual norm of the final residual
 		 * @param[in] ring the ring to perform the operations on
 		 * @param[in] minus the \f$ - \f$ operator for vector subtractions
-		 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-		 *                          unsuccessful operation otherwise
+		 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error
+		 *                          code of the first unsuccessful operation otherwise
 		 */
 		template< typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
 			typename InputType,
-			class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one >,
+			class Ring = Semiring<
+				grb::operators::add< IOType >,
+				grb::operators::mul< IOType >,
+				grb::identities::zero,
+				grb::identities::one
+			>,
 			class Minus = operators::subtract< IOType > >
 		grb::RC amg(
 			amg_data< IOType, NonzeroType, InputType > &data,
@@ -103,7 +118,6 @@ namespace grb {
 			const Minus &minus = Minus()
 		) {
 			ResidualType alpha;
-
 			const grb::Matrix< NonzeroType > &A = data.A;
 			grb::Vector< IOType > &x = data.x;
 			const grb::Vector< InputType > &b = data.b;
