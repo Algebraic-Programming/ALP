@@ -82,3 +82,12 @@ if( root == s ) {
 	}
 ```
 
+6. `include/graphblas/reference/blas1.hpp`, masked_apply_generic:
+```
+if( mask_b[ t ] ) {
+	// ...
+	GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
+	*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
+	GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
+```
+

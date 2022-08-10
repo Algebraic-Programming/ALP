@@ -3433,7 +3433,9 @@ namespace grb {
 									}
 #endif
 								}
-								*( z_p + indices[ t ] ) = z_b[ t ];
+								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
+								*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
+								GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
 							}
 						}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
