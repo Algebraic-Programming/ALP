@@ -48,7 +48,7 @@ namespace alp {
 		enum Density density = Density::Dense,
 		typename View = view::Original< void >,
 		typename ImfR = imf::Id,
-		typename ImfC = imf::Id,
+		typename ImfC = imf::Zero,
 		enum Backend backend = config::default_backend
 	>
 	class Vector;

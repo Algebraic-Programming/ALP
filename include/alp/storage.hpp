@@ -200,6 +200,40 @@ namespace alp {
 				}
 			};
 
+			/**
+			 * Specialization for zero IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_i< imf::Zero, Poly> {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef BivariateQuadratic<
+					0, Poly::Ay2, 0,
+					0, Poly::Ay,
+					Poly::A0,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Zero imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Zero imf, Poly p ) {
+					(void)imf;
+					return resulting_polynomial_type(
+						0,     // ax2
+						p.ay2, // ay2
+						0,     // axy
+						0,     // ax
+						p.ay,  // ay
+						p.a0   // A0
+					);
+				}
+			};
+
 			template< typename Imf, typename Poly >
 			struct fuse_on_j {
 
@@ -248,6 +282,41 @@ namespace alp {
 					);
 				}
 			};
+
+			/**
+			 * Specialization for zero IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Zero, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef BivariateQuadratic<
+					Poly::Ax2, 0, 0,
+					Poly::Ax, 0,
+					Poly::A0,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Zero imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Zero imf, Poly p ) {
+					(void)imf;
+					return resulting_polynomial_type(
+						p.ax2, // ax2
+						0,     // ay2
+						0,     // axy
+						p.ax,  // ax
+						0,     // ay
+						p.a0   // A0
+					);
+				}
+			};
+
 		}; // namespace polynomials
 
 		/**

@@ -121,6 +121,19 @@ namespace alp {
 				Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
 		};
 
+		/**
+		 * The zero IMF.
+		 * \f$I_n = [0, n)\f$
+		 * \f$Zero = I_n \rightarrow I_1; i \mapsto 0\f$
+		 */
+
+		class Zero: public Strided {
+
+			public:
+
+				Zero( const size_t n ) : Strided( n, 1, 0, 0 ) {}
+		};
+
 		class Select: public IMF {
 
 			public:
@@ -219,6 +232,16 @@ namespace alp {
 			typedef Id type;
 		};
 
+		template<>
+		struct composed_type< Zero, Id > {
+			typedef Zero type;
+		};
+
+		template<>
+		struct composed_type< Id, Zero > {
+			typedef Zero type;
+		};
+
 		/**
 		 * Creates the composed IMF from two provided input IMFs.
 		 * Depending on the input IMF types, the factory may
@@ -256,6 +279,12 @@ namespace alp {
 			// The first function's co-domain must be equal to the second function's domain.
 			assert( g.N == f.n );
 			return Id( g.n );
+		}
+
+		template<>
+		Zero ComposedFactory::create( const Id &f, const Zero &g ) {
+			(void)f;
+			return Zero( g.n );
 		}
 
 		template<>

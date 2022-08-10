@@ -825,7 +825,8 @@ namespace alp {
 		struct determine_amf_type< view::Original< void >, ImfR, ImfC > {
 
 			static_assert(
-				std::is_same< ImfR, imf::Id >::value && std::is_same< ImfC, imf::Id >::value,
+				std::is_same< ImfR, imf::Id >::value &&
+				( std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value ),
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
