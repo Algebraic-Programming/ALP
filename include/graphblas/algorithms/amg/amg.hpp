@@ -16,37 +16,36 @@
  */
 
 /**
+ * Algebraic Multi-grid algorithm relying on level_ matrices from AMGCL.
  * @file amg.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief File with the main routine to run a full AMG simulation, comprising multi-grid runs
- *        with Red-Black Gauss-Seidel smoothing.
- * @date 2021-04-30
+ * @author Denis Jelovina (denis.jelovina@huawei.com)
+ * @date 2022-08-10
  */
 
 #ifndef _H_GRB_ALGORITHMS_AMG
 #define _H_GRB_ALGORITHMS_AMG
+#ifdef _DEBUG
+ #define AMG_PRINT_STEPS
+#endif
 
 #include <graphblas.hpp>
-
 #include "amg_data.hpp"
 #include "multigrid_v_cycle.hpp"
-
 #include <utils/print_vec_mat.hpp>
 
 namespace grb {
+
 	namespace algorithms {
 
-
-
-		
 		/**
-		 * @brief High-Performance Conjugate Gradient algorithm implementation running entirely on GraphBLAS.
+		 * Algebraic Multi-grid algorithm relying on level_ matrices from AMGCL.
 		 *
 		 * Finds the solution x of an \f$ A x = b \f$ algebraic system by running the AMG algorithm.
 		 * AMG implementation (as the standard one) couples a standard CG algorithm with a V-cycle
 		 * multi-grid solver to initially refine the tentative solution. This refinement step depends on the
 		 * availability of coarsening information, which should be stored inside \p data; otherwise,
-		 * the refinement is not performed and only the CG algorithm is run. 
+		 * the refinement is not performed and only the CG algorithm is run.
 		 *
 		 * This implementation assumes that the vectors and matrices inside \p data are all correctly initialized
 		 * and populated with the proper values; in particular
@@ -54,7 +53,6 @@ namespace grb {
 		 * - amg_data#A with the system matrix
 		 * - amg_data#b with the right-hand side vector \f$ b \f$
 		 * - amg_data#A_diagonal with the diagonal values of the matrix
-		 * - amg_data#color_masks with the color masks for this level
 		 * - amg_data#coarser_level with the information for the coarser multi-grid run (if any)
 		 * The other vectors are assumed to be inizialized (via the usual grb::Vector#Vector(size_t) constructor)
 		 * but not necessarily populated with values, as they are internally populated when needed; hence,
@@ -92,7 +90,8 @@ namespace grb {
 			typename InputType,
 			class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one >,
 			class Minus = operators::subtract< IOType > >
-		grb::RC amg( amg_data< IOType, NonzeroType, InputType > &data,
+		grb::RC amg(
+			amg_data< IOType, NonzeroType, InputType > &data,
 			bool with_preconditioning,
 			const size_t presmoother_steps,
 			const size_t postsmoother_steps,
@@ -105,14 +104,14 @@ namespace grb {
 		) {
 			ResidualType alpha;
 
-			const grb::Matrix< NonzeroType > &A { data.A };
-			grb::Vector< IOType > &x { data.x };
-			const grb::Vector< InputType > &b { data.b };
-			grb::Vector< IOType > &r { data.r };  // residual vector
-			grb::Vector< IOType > &p { data.p };  // direction vector
-			grb::Vector< IOType > &Ap { data.u }; // temp vector
-			grb::Vector< IOType > &z { data.z };  // pre-conditioned residual vector
-			grb::RC ret { SUCCESS };
+			const grb::Matrix< NonzeroType > &A = data.A;
+			grb::Vector< IOType > &x = data.x;
+			const grb::Vector< InputType > &b = data.b;
+			grb::Vector< IOType > &r = data.r;  // residual vector
+			grb::Vector< IOType > &p = data.p;  // direction vector
+			grb::Vector< IOType > &Ap = data.u; // temp vector
+			grb::Vector< IOType > &z = data.z;  // pre-conditioned residual vector
+			grb::RC ret = SUCCESS;
 
 			ret = ret ? ret : grb::set( Ap, 0 );
 			ret = ret ? ret : grb::set( r, 0 );
@@ -133,9 +132,11 @@ namespace grb {
 			norm_residual = std::sqrt( norm_residual );
 
 			// initial norm of residual
-			const ResidualType norm_residual_initial { norm_residual };
-			ResidualType old_r_dot_z { 0.0 }, r_dot_z { 0.0 }, beta { 0.0 };
-			size_t iter { 0 };
+			const ResidualType norm_residual_initial = norm_residual;
+			ResidualType old_r_dot_z = 0.0,
+			ResidualType r_dot_z = 0.0,
+			ResidualType beta = 0.0;
+			size_t iter = 0;
 
 #ifdef AMG_PRINT_STEPS
 			print_norm( p, "start p" );
@@ -149,7 +150,9 @@ namespace grb {
 #endif
 				if( with_preconditioning ) {
 					//ret = ret ? ret : grb::set( z, r ); // z = r;
-					ret = ret ? ret : internal::multi_grid( data, data.coarser_level, presmoother_steps, postsmoother_steps, ring, minus );
+					ret = ret ? ret : internal::multi_grid(
+						data, data.coarser_level, presmoother_steps, postsmoother_steps, ring, minus
+					);
 					//ret = ret ? ret : grb::set( x, z );
 					assert( ret == SUCCESS );
 				} else {
@@ -214,17 +217,21 @@ namespace grb {
 
 				norm_residual = std::sqrt( norm_residual );
 
-#ifdef AMG_PRINT_STEPS				
+#ifdef AMG_PRINT_STEPS
 				std::cout << " ---> norm_residual=" << norm_residual << "\n";
 #endif
 				++iter;
-			} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );
-
+			} while(
+				iter < max_iterations &&
+				norm_residual / norm_residual_initial > tolerance &&
+				ret == SUCCESS
+				);
 			iterations = iter;
 			return ret;
 		}
 
 	} // namespace algorithms
+
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_AMG
