@@ -64,6 +64,7 @@ template< typename T >
 struct input {
 	enum Test test;
 	T element;
+	IOMode mode;
 };
 
 template< typename T >
@@ -71,6 +72,17 @@ struct output {
 	RC error_code;
 	PinnedVector< T > vector;
 };
+
+struct reducer_output {
+	RC error_code;
+	size_t reduced;
+};
+
+void reducer( const size_t &in, struct reducer_output &out ) {
+	operators::add< size_t > addOp;
+	out.reduced = in;
+	out.error_code = collectives<>::allreduce( out.reduced, addOp );
+}
 
 template< typename T >
 static inline bool checkDense( const size_t &i, const T &val, const T &chk ) {
@@ -134,35 +146,35 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 	// print progress
 	switch( in.test ) {
 		case EMPTY:
-			std::cout << "\t Testing empty vectors...\n";
+			std::cout << "\t\t testing empty vectors...\n";
 			break;
 		case UNPOPULATED:
-			std::cout << "\t Testing unpopulated vectors...\n";
+			std::cout << "\t\t testing unpopulated vectors...\n";
 			break;
 		case ZERO_CAP:
-			std::cout << "\t Testing zero-capacity vectors...\n";
+			std::cout << "\t\t testing zero-capacity vectors...\n";
 			break;
 		case DENSE:
-			std::cout << "\t Testing dense vectors...\n";
+			std::cout << "\t\t testing dense vectors...\n";
 			break;
 		case DENSE_CLEARED:
-			std::cout << "\t Testing cleared vectors...\n";
+			std::cout << "\t\t testing cleared vectors...\n";
 			break;
 		case MOST_SPARSE:
-			std::cout << "\t Testing sparse vector with one entry...\n";
+			std::cout << "\t\t testing sparse vector with one entry...\n";
 			break;
 		case MOST_SPARSE_CLEARED:
-			std::cout << "\t Testing cleared vectors (from sparse)...\n";
+			std::cout << "\t\t testing cleared vectors (from sparse)...\n";
 			break;
 		case SPARSE_RANDOM:
-			std::cout << "\t Testing sparse vector with "
+			std::cout << "\t\t testing sparse vector with "
 				<< "randomly positioned entries...\n";
 			break;
 		case LEAST_SPARSE:
-			std::cout << "\t Testing sparse vector with only one unset entry...\n";
+			std::cout << "\t\t testing sparse vector with only one unset entry...\n";
 			break;
 		case LEAST_SPARSE_CLEARED:
-			std::cout << "\t Testing cleared vector (from almost-dense)...\n";
+			std::cout << "\t\t testing cleared vector (from almost-dense)...\n";
 			break;
 		default:
 			assert( false );
@@ -224,7 +236,7 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 	if( rc == SUCCESS ) {
 		switch( in.test ) {
 			case EMPTY:
-				out.vector = PinnedVector< T >( empty, SEQUENTIAL );
+				out.vector = PinnedVector< T >( empty, in.mode );
 				break;
 			case UNPOPULATED:
 			case DENSE:
@@ -234,10 +246,10 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 			case SPARSE_RANDOM:
 			case LEAST_SPARSE:
 			case LEAST_SPARSE_CLEARED:
-				out.vector = PinnedVector< T >( nonempty, SEQUENTIAL );
+				out.vector = PinnedVector< T >( nonempty, in.mode );
 				break;
 			case ZERO_CAP:
-				out.vector = PinnedVector< T >( zero_cap, SEQUENTIAL );
+				out.vector = PinnedVector< T >( zero_cap, in.mode );
 			break;
 			default:
 				assert( false );
@@ -294,6 +306,19 @@ int runTests( struct input< T > &in ) {
 			return offset + 20;
 		}
 
+		// get number of nonzeroes
+		size_t nzs = out.vector.nonzeroes();
+		if( in.mode == PARALLEL ) {
+			struct reducer_output redout;
+			const RC reducer_error =
+				launcher.exec( &reducer, nzs, redout, false );
+			if( reducer_error != SUCCESS || redout.error_code != SUCCESS ) {
+				std::cerr << "Error recovering the global number of returned nonzeroes\n";
+				return offset + 25;
+			}
+			nzs = redout.reduced;
+		}
+
 		// check number of nonzeroes
 		switch( test ) {
 			case EMPTY:
@@ -302,36 +327,36 @@ int runTests( struct input< T > &in ) {
 			case DENSE_CLEARED:
 			case MOST_SPARSE_CLEARED:
 			case LEAST_SPARSE_CLEARED:
-				if( out.vector.nonzeroes() != 0 ) {
-					std::cerr << "Pinned vector has nonzeroes ( " << out.vector.nonzeroes()
+				if( nzs != 0 ) {
+					std::cerr << "Pinned vector has nonzeroes ( " << nzs
 						<< " ), but none were expected\n";
 					rc = FAILED;
 				}
 				break;
 			case DENSE:
-				if( out.vector.nonzeroes() != n ) {
-					std::cerr << "Pinned vector has less than the expected number of "
-						<< "nonzeroes ( " << out.vector.nonzeroes() << ", expected " << n
+				if( nzs != n ) {
+					std::cerr << "Pinned vector does not hold the expected number of "
+						<< "nonzeroes ( " << nzs << ", expected " << n
 						<< " ).\n";
 					rc = FAILED;
 				}
 				break;
 			case MOST_SPARSE:
-				if( out.vector.nonzeroes() != 1 ) {
-					std::cerr << "Pinned vector has " << out.vector.nonzeroes()
+				if( nzs != 1 ) {
+					std::cerr << "Pinned vector has " << nzs
 						<< " nonzeroes, expected 1\n";
 					rc = FAILED;
 				}
 				break;
 			case SPARSE_RANDOM:
-				if( out.vector.nonzeroes() > n ) {
+				if( nzs > n ) {
 					std::cerr << "Pinned vector has too many nonzeroes\n";
 					rc = FAILED;
 				}
 				break;
 			case LEAST_SPARSE:
-				if( out.vector.nonzeroes() != n - 1 ) {
-					std::cerr << "Pinned vector has " << out.vector.nonzeroes()
+				if( nzs != n - 1 ) {
+					std::cerr << "Pinned vector has " << nzs
 						<< ", but should have " << (n-1) << "\n";
 					rc = FAILED;
 				}
@@ -427,18 +452,35 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Test executable: " << argv[ 0 ] << "\n";
 
-	// run some tests using a standard elementary type
-	std::cout << "Running test with double vector entries...\n";
-	struct input< double > in_double;
-	in_double.element = 3.1415926535;
-	int error = runTests( in_double );
+	int error = 0;
+	const IOMode modes[] = { SEQUENTIAL, PARALLEL };
+	for( const auto &mode : modes ) {
+		std::cout << "Testing pinnedVector in ";
+		if( mode == SEQUENTIAL ) {
+			std::cout << "SEQUENTIAL ";
+		} else if( mode == PARALLEL ) {
+			std::cout << "PARALLEL ";
+		} else {
+			assert( false );
+		}
+		std::cout << "I/O mode\n";
 
-	// run tests using a non-fundamental type
-	if( error == 0 ) {
-		std::cout << "Running test with std::pair vector entries...\n";
-		struct input< std::pair< size_t, float > > in_pair;
-		in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
-		error = runTests( in_pair );
+		// run some tests using a standard elementary type
+		std::cout << "\t running tests with double vector entries...\n";
+		struct input< double > in_double;
+		in_double.element = 3.1415926535;
+		in_double.mode = mode;
+		error = runTests( in_double );
+
+		// run tests using a non-fundamental type
+		if( error == 0 ) {
+			std::cout << "\t running tests with std::pair vector entries...\n";
+			struct input< std::pair< size_t, float > > in_pair;
+			in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
+			in_pair.mode = mode;
+			error = runTests( in_pair );
+		}
+		if( error ) { break; }
 	}
 
 	// done
