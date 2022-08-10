@@ -55,3 +55,28 @@ These are indirectly caused by the following calls:
   and sparse_apply_generic.
 These are all OK to suppress since the reads are masked.
 
+5. `include/graphblas/reference/blas1.hpp`, fold_from_vector_to_scalar_generic:
+```
+GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
+IOType local;                       // whenever our local block is
+GRB_UTIL_RESTORE_WARNINGS           // non-empty
+if( end > 0 ) {
+	if( i < end ) {
+		local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
+	} else {
+		local = static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
+	}
+}
+```
+and
+```
+if( root == s ) {
+	// then I should be non-empty
+	assert( !empty );
+	// set global value to locally computed value
+	GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
+	global = local;                     // chunk is non-empty, in which case
+	GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
+	}
+```
+

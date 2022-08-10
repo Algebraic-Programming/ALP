@@ -244,9 +244,9 @@ namespace grb {
 					}
 #endif
 
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
-					IOType local;
-					GRB_UTIL_RESTORE_WARNINGS
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
+					IOType local;                       // whenever our local block is
+					GRB_UTIL_RESTORE_WARNINGS           // non-empty
 					if( end > 0 ) {
 						if( i < end ) {
 							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
@@ -316,9 +316,9 @@ namespace grb {
 							// then I should be non-empty
 							assert( !empty );
 							// set global value to locally computed value
-							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
-							global = local;
-							GRB_UTIL_RESTORE_WARNINGS
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
+							global = local;                     // chunk is non-empty, in which case
+							GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
 						}
 					}
 					#pragma omp barrier
