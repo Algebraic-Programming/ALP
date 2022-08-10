@@ -459,8 +459,8 @@ namespace alp {
 					typedef typename SourceAMF::mapping_polynomial_type SourcePoly;
 
 					/** Compose row and column IMFs */
-					typedef typename imf::composed_type< ViewImfR, SourceImfR >::type composed_imf_r_type;
-					typedef typename imf::composed_type< ViewImfC, SourceImfC >::type composed_imf_c_type;
+					typedef typename imf::composed_type< SourceImfR, ViewImfR >::type composed_imf_r_type;
+					typedef typename imf::composed_type< SourceImfC, ViewImfC >::type composed_imf_c_type;
 
 					/** Fuse composed row IMF into the target polynomial */
 					typedef typename polynomials::fuse_on_i<
@@ -485,8 +485,8 @@ namespace alp {
 					static
 					amf_type
 					Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
-						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( imf_r, amf.imf_r ) };
-						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( imf_c, amf.imf_c ) };
+						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( amf.imf_r, imf_r ) };
+						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( amf.imf_c, imf_c ) };
 						return amf_type(
 							fused_row::CreateImf( composed_imf_r ),
 							fused_row_col::CreateImf( composed_imf_c ),
