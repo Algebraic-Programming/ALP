@@ -49,10 +49,12 @@ if( masked ) {
 
 4. `include/graphblas/base/internalops.hpp`, multiple sources:
 - mul::apply, add::apply, add::foldl, equal::apply, not_equal::apply.
+
 These are indirectly caused by the following calls:
 - `include/graphblas/blas0.hpp`, apply;
 - `include/graphblas/reference/blas1.hpp`, dot_generic, masked_apply_generic,
   and sparse_apply_generic.
+
 These are all OK to suppress since the reads are masked.
 
 5. `include/graphblas/reference/blas1.hpp`, fold_from_vector_to_scalar_generic:
