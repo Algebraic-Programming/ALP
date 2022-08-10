@@ -445,7 +445,10 @@ namespace grb {
 				 *                 valid state.
 				 */
 				void rebuild( const bool dense ) noexcept {
-					// catch most trivial case: a vector of dimension 0, and the dense case
+#ifdef _DEBUG
+					std::cout << "Coordinates::rebuild called with dense = " << dense << "\n";
+#endif
+					// catch most trivial case: a vector of dimension 0 (empty vector)
 					if( _cap == 0 ) {
 						return;
 					}
@@ -456,7 +459,8 @@ namespace grb {
 					}
 					assert( _assigned != nullptr );
 #endif
-					if( dense ) {
+					// catch the other trivial-ish case (since can delegate)
+					if( dense && _n != _cap ) {
 #ifdef _DEBUG
 						std::cout << "rebuildSparsity: dense case\n";
 #endif
@@ -1369,13 +1373,15 @@ namespace grb {
 						assert( t_start < t_end );
 						assert( local_cur < pfBuf[ t_start + 1 ] );
 						for( size_t t_cur = t_start; t_cur < t_end; ++t_cur ) {
+							// The below is a _DEBUG statement that is extremely noisy, yet sometimes
+							// useful. Hence kept disabled by default.
 /*#ifdef _DEBUG
 							#pragma omp critical
 							{
 								std::cout << "\t Thread " << t << " processing nonzero " << global_count
 									<< " / " << global_length << " using the local stack of thread "
 									<< t_cur << " starting from local index " << local_cur << ".\n";
-#endif*///DBG
+#endif*/
 							assert( local_cur <= pfBuf[ t_cur + 1 ] - pfBuf[ t_cur ] );
 							StackType * __restrict__ const cur_stack =
 								_buffer + t_cur * stack_offset + 1;
