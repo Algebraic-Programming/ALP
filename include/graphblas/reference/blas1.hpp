@@ -3017,7 +3017,9 @@ namespace grb {
 						for( size_t i = 0; i < block_size; i++ ) {
 							if( masked ) {
 								if( mask[ i ] ) {
-									z_p[ offsets[ i ] ] = z_b[ i ];
+									GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // if masked && mask[ i ], then
+									z_p[ offsets[ i ] ] = z_b[ i ];     // z_b[ i ] was set from x or y in
+									GRB_UTIL_RESTORE_WARNINGS           // the above
 								}
 							} else {
 								if( x_m[ i ] ) {
@@ -8176,7 +8178,7 @@ namespace grb {
 									if( mask[ k ] ) {
 										GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED        // yy and xx cannot be used
 										                                           // uninitialised or mask
-										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false. also, zz
+										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false while zz
 										GRB_UTIL_RESTORE_WARNINGS                  // init is just above
 									}
 								}
