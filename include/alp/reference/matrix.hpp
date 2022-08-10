@@ -2067,7 +2067,7 @@ namespace alp {
 			backend
 		>(
 			source,
-			storage::AMFFactory::View<
+			storage::AMFFactory::Compose<
 				imf::Strided, imf::Strided,
 				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
 			>::Create(
@@ -2130,7 +2130,7 @@ namespace alp {
 			backend
 		>(
 			source,
-			storage::AMFFactory::View<
+			storage::AMFFactory::Compose<
 				imf::Strided, imf::Strided,
 				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
 			>::Create(

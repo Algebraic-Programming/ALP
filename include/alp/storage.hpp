@@ -606,7 +606,7 @@ namespace alp {
 			template< typename SourceAMF >
 			struct Reshape< view::Views::diagonal, SourceAMF > {
 
-				typedef typename AMFFactory::View< imf::Strided, imf::Strided, SourceAMF>::amf_type amf_type;
+				typedef typename AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF >::amf_type amf_type;
 
 				static
 				amf_type
@@ -614,7 +614,7 @@ namespace alp {
 					const size_t nrows = amf.getLogicalDimensions().first;
 					const size_t ncols = amf.getLogicalDimensions().second;
 					const size_t smaller_dimension = std::min( nrows, ncols );
-					return AMFFactory::View< imf::Strided, imf::Strided, SourceAMF>::Create(
+					return AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF>::Create(
 						imf::Strided( smaller_dimension, nrows, 0, 1 ),
 						imf::Strided( smaller_dimension, ncols, 0, 1 ),
 						amf
