@@ -41,7 +41,8 @@ enum Test {
 	MOST_SPARSE_CLEARED,
 	SPARSE_RANDOM,
 	/** \internal Least sparse, but not dense */
-	LEAST_SPARSE
+	LEAST_SPARSE,
+	LEAST_SPARSE_CLEARED
 };
 
 static const enum Test AllTests[] = {
@@ -53,7 +54,8 @@ static const enum Test AllTests[] = {
 	MOST_SPARSE,
 	MOST_SPARSE_CLEARED,
 	SPARSE_RANDOM,
-	LEAST_SPARSE
+	LEAST_SPARSE,
+	LEAST_SPARSE_CLEARED
 };
 
 constexpr const size_t n = 100009;
@@ -159,6 +161,9 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		case LEAST_SPARSE:
 			std::cout << "\t Testing sparse vector with only one unset entry...\n";
 			break;
+		case LEAST_SPARSE_CLEARED:
+			std::cout << "\t Testing cleared vector (from almost-dense)...\n";
+			break;
 		default:
 			assert( false );
 	}
@@ -187,6 +192,7 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 				break;
 			}
 		case LEAST_SPARSE:
+		case LEAST_SPARSE_CLEARED:
 			{
 				Vector< bool > mask( n );
 				rc = grb::setElement( mask, true, n/2 );
@@ -207,7 +213,8 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 	if(
 		rc == SUCCESS && (
 			in.test == DENSE_CLEARED ||
-			in.test == MOST_SPARSE_CLEARED
+			in.test == MOST_SPARSE_CLEARED ||
+			in.test == LEAST_SPARSE_CLEARED
 		)
 	) {
 		rc = grb::clear( nonempty );
@@ -226,6 +233,7 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 			case MOST_SPARSE_CLEARED:
 			case SPARSE_RANDOM:
 			case LEAST_SPARSE:
+			case LEAST_SPARSE_CLEARED:
 				out.vector = PinnedVector< T >( nonempty, SEQUENTIAL );
 				break;
 			case ZERO_CAP:
@@ -273,6 +281,7 @@ int runTests( struct input< T > &in ) {
 			case MOST_SPARSE_CLEARED:
 			case SPARSE_RANDOM:
 			case LEAST_SPARSE:
+			case LEAST_SPARSE_CLEARED:
 				if( out.vector.size() != n ) {
 					std::cerr << "Vector does not have expected capacity\n";
 					rc = FAILED;
@@ -292,6 +301,7 @@ int runTests( struct input< T > &in ) {
 			case ZERO_CAP:
 			case DENSE_CLEARED:
 			case MOST_SPARSE_CLEARED:
+			case LEAST_SPARSE_CLEARED:
 				if( out.vector.nonzeroes() != 0 ) {
 					std::cerr << "Pinned vector has nonzeroes ( " << out.vector.nonzeroes()
 						<< " ), but none were expected\n";
@@ -342,6 +352,8 @@ int runTests( struct input< T > &in ) {
 				case UNPOPULATED:
 				case ZERO_CAP:
 				case DENSE_CLEARED:
+				case MOST_SPARSE_CLEARED:
+				case LEAST_SPARSE_CLEARED:
 					std::cerr << "Iterating over nonzeroes, while none should exist (I)\n";
 					rc = FAILED;
 					break;
@@ -374,6 +386,8 @@ int runTests( struct input< T > &in ) {
 				case UNPOPULATED:
 				case ZERO_CAP:
 				case DENSE_CLEARED:
+				case MOST_SPARSE_CLEARED:
+				case LEAST_SPARSE_CLEARED:
 					std::cerr << "Iterating over nonzeroes, while none should exist (II)\n";
 					rc = FAILED;
 					break;
