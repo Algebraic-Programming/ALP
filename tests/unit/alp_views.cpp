@@ -168,6 +168,22 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	auto Mdiag = alp::get_view< alp::view::Views::diagonal >( M );
 	print_vector( "Mdiag", Mdiag );
 
+	// view over a vector
+	auto Mdiagpart = alp::get_view( Mdiag, alp::utils::range( 1, 3 ) );
+	print_vector( "Mdiagpart", Mdiagpart );
+
+	// Vector views
+	// allocate vector
+	std::vector< T > v_data( m, zero );
+	init_matrix( v_data, m, 1 );
+	alp::Vector< T, alp::structures::General > v( m );
+	alp::buildMatrix( static_cast< decltype( v )::base_type & >( v ), v_data.begin(), v_data.end() );
+	print_vector( "v", v );
+
+	// gather view over a vector
+	auto v_view = alp::get_view( v, alp::utils::range( 1, 3 ) );
+	print_vector( "v_view", v_view );
+
 	rc = alp::SUCCESS;
 
 }
