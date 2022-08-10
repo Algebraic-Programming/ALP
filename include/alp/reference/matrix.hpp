@@ -760,6 +760,33 @@ namespace alp {
 
 		}; // class FunctorBasedMatrix
 
+
+		template< typename Structure, typename ImfR, typename ImfC >
+		struct determine_mapping_polynomial_type {};
+
+		template< typename Structure >
+		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Id > {
+
+			typedef storage::polynomials::Full_type type;
+
+			static type Create( const size_t nrows, const size_t ncols ) {
+				(void)nrows;
+				return type( 0, 0, 0, ncols, 1, 0 );
+			}
+		};
+
+		template< typename Structure, typename ImfR >
+		struct determine_mapping_polynomial_type< Structure, ImfR, imf::Zero > {
+
+			typedef storage::polynomials::Vector_type type;
+
+			static type Create( const size_t nrows, const size_t ncols ) {
+				(void)nrows;
+				(void)ncols;
+				return type( 0, 0, 0, 1, 0, 0 );
+			}
+		};
+
 		/**
 		 * @brief Determines the AMF type for a matrix
 		 *        with the provided view and the IMF types.
