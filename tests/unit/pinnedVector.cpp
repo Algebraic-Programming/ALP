@@ -244,6 +244,9 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		switch( in.test ) {
 			case EMPTY:
 				out.vector = PinnedVector< T >( empty, in.mode );
+				if( out.vector.size() != 0 ) {
+					rc = FAILED;
+				}
 				break;
 			case UNPOPULATED:
 			case DENSE:
@@ -255,12 +258,71 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 			case LEAST_SPARSE:
 			case LEAST_SPARSE_CLEARED:
 				out.vector = PinnedVector< T >( nonempty, in.mode );
+				if( out.vector.size() != n ) {
+					rc = FAILED;
+				}
 				break;
 			case ZERO_CAP:
 				out.vector = PinnedVector< T >( zero_cap, in.mode );
-			break;
+				if( out.vector.size() != n ) {
+					rc = FAILED;
+				}
+				break;
 			default:
 				assert( false );
+		}
+		if( rc == FAILED ) {
+			std::cerr << "To-be returned PinnedVector has invalid size "
+				<< out.vector.size() << "\n";
+			return;
+		}
+	}
+
+	// check total number of nozeroes when in PARALLEL mode
+	if( rc == SUCCESS && in.mode == PARALLEL ) {
+		operators::add< size_t > addOp;
+		size_t nzs = out.vector.nonzeroes();
+		if( collectives<>::allreduce( nzs, addOp ) != SUCCESS ) {
+			std::cerr << "Could not reduce the number of nonzeroes of all pinned "
+				<< "vectors.\n";
+			rc = FAILED;
+			return;
+		}
+		size_t expect = 0;
+		switch( in.test ) {
+			case EMPTY:
+			case UNPOPULATED:
+			case ZERO_CAP:
+			case DENSE_CLEARED:
+			case MOST_SPARSE_CLEARED:
+			case LEAST_SPARSE_CLEARED:
+				expect = 0;
+				break;
+			case DENSE:
+				expect = n;
+				break;
+			case MOST_SPARSE:
+				expect = 1;
+				break;
+			case TWO_ENTRIES:
+				expect = 2;
+				break;
+			case SPARSE_RANDOM:
+				break;
+			case LEAST_SPARSE:
+				expect = n-1;
+				break;
+			default:
+				assert( false );
+		}
+		if( in.test != SPARSE_RANDOM && nzs != expect ) {
+			std::cerr << "Expected " << expect << " nonzeroes, but "
+				<< nzs << " nonzeroes found\n";
+			rc = FAILED;
+		}
+		if( in.test == SPARSE_RANDOM && nzs > n ) {
+			std::cerr << "Illegal number of nonzeroes " << nzs << "\n";
+			rc = FAILED;
 		}
 	}
 
