@@ -439,6 +439,40 @@ namespace alp {
 					return amf_type( nrows, ncols, poly, storage_dimensions );
 				}
 
+				/**
+				 * Factory method taking two custom Strided IMFs. Exploits the
+				 * fact that fusion of strided IMFs into the polynomial always
+				 * succeeds and results in Id IMFs. As a result, the constructed
+				 * AMF is of the type \a amf_type.
+				 *
+				 * This is designed to be used by a dedicated Matrix constructor
+				 * for creating a Matrix representing a Vector, i.e., a Matrix
+				 * of size \a Mx1 or \a 1xN.
+				 *
+				 * \note \internal To exploit existing mechanism for IMF fusion
+				 *                 into the polynomial, this method creates a
+				 *                 dummy AMF out of two Id IMFs and the provided
+				 *                 polynomial and composes the provided Strided
+				 *                 IMFs with the dummy AMF.
+				 */
+				static amf_type Create( imf::Strided imf_r, imf::Strided imf_c, PolyType poly, size_t storage_dimensions ) {
+
+					/**
+					 * Ensure that the assumptions do not break upon potential
+					 * future changes to AMFFactory::Compose.
+					 */
+					static_assert(
+						std::is_same<
+							amf_type,
+							typename Compose< imf::Strided, imf::Strided, AMF< imf::Id, imf::Id, PolyType > >::amf_type
+						>::value,
+						"The factory method returns the object of different type than declared. This is a bug."
+					);
+					return Compose< imf::Strided, imf::Strided, AMF< imf::Id, imf::Id, PolyType > >::Create(
+						imf_r, imf_c, FromPolynomial< PolyType >::Create( nrows, ncols, poly, storage_dimensions )
+					);
+				}
+
 				FromPolynomial() = delete;
 
 			}; // class FromPolynomial
