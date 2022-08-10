@@ -204,14 +204,14 @@ namespace alp {
 			typedef Strided type;
 		};
 
-		template<>
-		struct composed_type< Id, Strided > {
-			typedef Strided type;
+		template< typename RightImf >
+		struct composed_type< Id, RightImf > {
+			typedef RightImf type;
 		};
 
-		template<>
-		struct composed_type< Strided, Id > {
-			typedef Strided type;
+		template< typename LeftImf >
+		struct composed_type< LeftImf, Id > {
+			typedef LeftImf type;
 		};
 
 		template<>
