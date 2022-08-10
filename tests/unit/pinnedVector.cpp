@@ -73,17 +73,6 @@ struct output {
 	PinnedVector< T > vector;
 };
 
-struct reducer_output {
-	RC error_code;
-	size_t reduced;
-};
-
-void reducer( const size_t &in, struct reducer_output &out ) {
-	operators::add< size_t > addOp;
-	out.reduced = in;
-	out.error_code = collectives<>::allreduce( out.reduced, addOp );
-}
-
 template< typename T >
 static inline bool checkDense( const size_t &i, const T &val, const T &chk ) {
 	if( i >= n ) {
@@ -308,16 +297,6 @@ int runTests( struct input< T > &in ) {
 
 		// get number of nonzeroes
 		size_t nzs = out.vector.nonzeroes();
-		if( in.mode == PARALLEL ) {
-			struct reducer_output redout;
-			const RC reducer_error =
-				launcher.exec( &reducer, nzs, redout, false );
-			if( reducer_error != SUCCESS || redout.error_code != SUCCESS ) {
-				std::cerr << "Error recovering the global number of returned nonzeroes\n";
-				return offset + 25;
-			}
-			nzs = redout.reduced;
-		}
 
 		// check number of nonzeroes
 		switch( test ) {
@@ -334,17 +313,27 @@ int runTests( struct input< T > &in ) {
 				}
 				break;
 			case DENSE:
-				if( nzs != n ) {
+				if( in.mode == SEQUENTIAL && nzs != n ) {
 					std::cerr << "Pinned vector does not hold the expected number of "
 						<< "nonzeroes ( " << nzs << ", expected " << n
 						<< " ).\n";
 					rc = FAILED;
 				}
+				if( in.mode == PARALLEL && nzs > n ) {
+					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+						<< "maximum is " << n << " ).\n";
+					rc = FAILED;
+				}
 				break;
 			case MOST_SPARSE:
-				if( nzs != 1 ) {
+				if( in.mode == SEQUENTIAL && nzs != 1 ) {
 					std::cerr << "Pinned vector has " << nzs
 						<< " nonzeroes, expected 1\n";
+					rc = FAILED;
+				}
+				if( in.mode == PARALLEL && nzs > 1 ) {
+					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+						<< "maximum is 1 ).\n";
 					rc = FAILED;
 				}
 				break;
@@ -355,9 +344,14 @@ int runTests( struct input< T > &in ) {
 				}
 				break;
 			case LEAST_SPARSE:
-				if( nzs != n - 1 ) {
+				if( in.mode == SEQUENTIAL && nzs != n - 1 ) {
 					std::cerr << "Pinned vector has " << nzs
 						<< ", but should have " << (n-1) << "\n";
+					rc = FAILED;
+				}
+				if( in.mode == PARALLEL && nzs > n - 1 ) {
+					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+						<< "maximum is " << (n-1) << " ).\n";
 					rc = FAILED;
 				}
 				break;
