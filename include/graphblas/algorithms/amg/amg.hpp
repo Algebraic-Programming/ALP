@@ -133,8 +133,8 @@ namespace grb {
 
 			// initial norm of residual
 			const ResidualType norm_residual_initial = norm_residual;
-			ResidualType old_r_dot_z = 0.0,
-			ResidualType r_dot_z = 0.0,
+			ResidualType old_r_dot_z = 0.0;
+			ResidualType r_dot_z = 0.0;
 			ResidualType beta = 0.0;
 			size_t iter = 0;
 
