@@ -39,6 +39,7 @@ enum Test {
 	/** \internal Most sparse, but not totally devoid of entries */
 	MOST_SPARSE,
 	MOST_SPARSE_CLEARED,
+	TWO_ENTRIES,
 	SPARSE_RANDOM,
 	/** \internal Least sparse, but not dense */
 	LEAST_SPARSE,
@@ -53,6 +54,7 @@ static const enum Test AllTests[] = {
 	DENSE_CLEARED,
 	MOST_SPARSE,
 	MOST_SPARSE_CLEARED,
+	TWO_ENTRIES,
 	SPARSE_RANDOM,
 	LEAST_SPARSE,
 	LEAST_SPARSE_CLEARED
@@ -101,6 +103,13 @@ static inline bool checkSparse(
 			if( i != n/2 ) {
 				std::cerr << "Nonzero at position " << i << ", expected " << n/2 << "\n";
 				return false;		
+			}
+			break;
+		case TWO_ENTRIES:
+			if( i != 0 && i != n-1 ) {
+				std::cerr << "Unexpected nonzero at position " << i << ", expected 0 or "
+					<< (n-1) << " only.\n";
+				return false;
 			}
 			break;
 		case SPARSE_RANDOM:
@@ -152,6 +161,9 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		case MOST_SPARSE:
 			std::cout << "\t\t testing sparse vector with one entry...\n";
 			break;
+		case TWO_ENTRIES:
+			std::cout << "\t\t testing sparse vector with two entries...\n";
+			break;
 		case MOST_SPARSE_CLEARED:
 			std::cout << "\t\t testing cleared vectors (from sparse)...\n";
 			break;
@@ -181,6 +193,12 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		case MOST_SPARSE_CLEARED:
 			{
 				rc = grb::setElement( nonempty, in.element, n/2 );
+				break;
+			}
+		case TWO_ENTRIES:
+			{
+				rc = grb::setElement( nonempty, in.element, 0 );
+				rc = rc ? rc : grb::setElement( nonempty, in.element, n-1 );
 				break;
 			}
 		case SPARSE_RANDOM:
@@ -232,6 +250,7 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 			case DENSE_CLEARED:
 			case MOST_SPARSE:
 			case MOST_SPARSE_CLEARED:
+			case TWO_ENTRIES:
 			case SPARSE_RANDOM:
 			case LEAST_SPARSE:
 			case LEAST_SPARSE_CLEARED:
@@ -280,6 +299,7 @@ int runTests( struct input< T > &in ) {
 			case DENSE_CLEARED:
 			case MOST_SPARSE:
 			case MOST_SPARSE_CLEARED:
+			case TWO_ENTRIES:
 			case SPARSE_RANDOM:
 			case LEAST_SPARSE:
 			case LEAST_SPARSE_CLEARED:
@@ -327,11 +347,21 @@ int runTests( struct input< T > &in ) {
 				break;
 			case MOST_SPARSE:
 				if( in.mode == SEQUENTIAL && nzs != 1 ) {
-					std::cerr << "Pinned vector has " << nzs
-						<< " nonzeroes, expected 1\n";
+					std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 1\n";
 					rc = FAILED;
 				}
 				if( in.mode == PARALLEL && nzs > 1 ) {
+					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+						<< "maximum is 1 ).\n";
+					rc = FAILED;
+				}
+				break;
+			case TWO_ENTRIES:
+				if( in.mode == SEQUENTIAL && nzs != 2 ) {
+					std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 2\n";
+					rc = FAILED;
+				}
+				if( in.mode == PARALLEL && nzs > 2 ) {
 					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
 						<< "maximum is 1 ).\n";
 					rc = FAILED;
@@ -382,6 +412,7 @@ int runTests( struct input< T > &in ) {
 					}
 					break;
 				case MOST_SPARSE:
+				case TWO_ENTRIES:
 				case SPARSE_RANDOM:
 				case LEAST_SPARSE:
 					if( !checkSparse( index, value, in.element, test ) ) {
@@ -416,6 +447,7 @@ int runTests( struct input< T > &in ) {
 					}
 					break;
 				case MOST_SPARSE:
+				case TWO_ENTRIES:
 				case SPARSE_RANDOM:
 				case LEAST_SPARSE:
 					if( !checkSparse( nonzero.first, nonzero.second, in.element, test ) ) {
