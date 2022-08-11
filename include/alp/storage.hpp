@@ -587,7 +587,7 @@ namespace alp {
 				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
 				static amf_type Create( size_t nrows, size_t ncols, PolyType poly, size_t storage_dimensions ) {
-					return amf_type( nrows, ncols, poly, storage_dimensions );
+					return amf_type( imf::Id( nrows ), imf::Id( ncols ), poly, storage_dimensions );
 				}
 
 				/**

@@ -118,7 +118,7 @@ namespace alp {
 
 			public:
 
-				Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
+				explicit Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
 		};
 
 		/**
@@ -131,7 +131,7 @@ namespace alp {
 
 			public:
 
-				Zero( const size_t n ) : Strided( n, 1, 0, 0 ) {}
+				explicit Zero( const size_t n ) : Strided( n, 1, 0, 0 ) {}
 		};
 
 		class Select: public IMF {
