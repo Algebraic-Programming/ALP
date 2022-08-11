@@ -1013,8 +1013,8 @@ namespace alp {
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						rows,
-						cols,
+						ImfR( rows ),
+						ImfC( cols ),
 						internal::determine_mapping_polynomial_type< structures::General, ImfR, ImfC >::Create( rows, cols ),
 						rows * cols
 					)
@@ -1231,8 +1231,8 @@ namespace alp {
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
+						ImfR( dim ),
+						ImfC( dim ),
 						internal::determine_mapping_polynomial_type< structures::Square, ImfR, ImfC >::Create( dim, dim ),
 						dim * dim
 					)
@@ -1429,8 +1429,8 @@ namespace alp {
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
+						ImfR( dim ),
+						ImfC( dim ),
 						internal::determine_mapping_polynomial_type< structures::Symmetric, ImfR, ImfC >::Create( dim, dim ),
 						dim * dim
 					)
@@ -1611,8 +1611,8 @@ namespace alp {
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
+						ImfR( dim ),
+						ImfC( dim ),
 						internal::determine_mapping_polynomial_type< structures::UpperTriangular, ImfR, ImfC >::Create( dim, dim ),
 						dim * dim
 					)

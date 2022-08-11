@@ -586,8 +586,8 @@ namespace alp {
 
 				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
-				static amf_type Create( size_t nrows, size_t ncols, PolyType poly, size_t storage_dimensions ) {
-					return amf_type( imf::Id( nrows ), imf::Id( ncols ), poly, storage_dimensions );
+				static amf_type Create( imf::Id imf_r, imf::Id imf_c, PolyType poly, size_t storage_dimensions ) {
+					return amf_type( imf_r, imf_c, poly, storage_dimensions );
 				}
 
 				/**
@@ -606,7 +606,7 @@ namespace alp {
 				 *                 polynomial and composes the provided Strided
 				 *                 IMFs with the dummy AMF.
 				 */
-				static amf_type Create( imf::Strided imf_r, imf::Strided imf_c, PolyType poly, size_t storage_dimensions ) {
+				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, PolyType poly, size_t storage_dimensions ) {
 
 					/**
 					 * Ensure that the assumptions do not break upon potential
@@ -615,12 +615,12 @@ namespace alp {
 					static_assert(
 						std::is_same<
 							amf_type,
-							typename Compose< imf::Strided, imf::Strided, AMF< imf::Id, imf::Id, PolyType > >::amf_type
+							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::amf_type
 						>::value,
 						"The factory method returns the object of different type than declared. This is a bug."
 					);
-					return Compose< imf::Strided, imf::Strided, AMF< imf::Id, imf::Id, PolyType > >::Create(
-						imf_r, imf_c, FromPolynomial< PolyType >::Create( imf_r.N, imf_c.N, poly, storage_dimensions )
+					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::Create(
+						imf_r, imf_c, FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
 					);
 				}
 
