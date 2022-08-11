@@ -106,6 +106,7 @@ namespace alp {
 			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_type; // TODO
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type; // TODO
+			typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > Vector_type;
 
 			/**
 			 * Polynomial factory method
@@ -119,6 +120,12 @@ namespace alp {
 			template<>
 			Full_type Create< Full_type >( size_t dim ) {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
+			}
+
+			/** Specialization for Vector storage */
+			template<>
+			Vector_type Create< Vector_type >() {
+				return Vector_type( 0, 0, 0, 1, 0, 0 );
 			}
 
 			template< enum view::Views view, typename Polynomial >
