@@ -605,11 +605,11 @@ namespace alp {
 	}
 
 	namespace internal {
+
 		/**
 		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
-
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
 			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >

@@ -760,13 +760,27 @@ namespace alp {
 
 		}; // class FunctorBasedMatrix
 
-
+		/**
+		 * Determines the mapping polynomial type and exposes a factory method
+		 * to create instances of that polynomial.
+		 *
+		 * All specializations of this type trait should define the factory
+		 * method following the same signature. The factory method shall
+		 * return an object of the type exposed as \a type.
+		 *
+		 * @tparam Structure  Matrix structure
+		 * @tparam ImfR       Row IMF type
+		 * @tparam ImfC       Column IMF type
+		 *
+		 */
 		template< typename Structure, typename ImfR, typename ImfC >
 		struct determine_mapping_polynomial_type {};
 
+		/** Specialization for matrices */
 		template< typename Structure >
 		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Id > {
 
+			/** \internal Currently the type is hard-coded. \todo Implement proper logic */
 			typedef storage::polynomials::Full_type type;
 
 			static type Create( const size_t nrows, const size_t ncols ) {
@@ -775,8 +789,9 @@ namespace alp {
 			}
 		};
 
-		template< typename Structure, typename ImfR >
-		struct determine_mapping_polynomial_type< Structure, ImfR, imf::Zero > {
+		/** Specialization for vectors */
+		template< typename Structure >
+		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Zero > {
 
 			typedef storage::polynomials::Vector_type type;
 
@@ -788,8 +803,7 @@ namespace alp {
 		};
 
 		/**
-		 * @brief Determines the AMF type for a matrix
-		 *        with the provided view and the IMF types.
+		 * Determines the AMF type for a matrix having the provided static properties.
 		 *
 		 * For a matrix that requires allocation, the new AMF consists of two Id IMFs
 		 * and the pre-defined mapping polynomial.
@@ -821,14 +835,14 @@ namespace alp {
 				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
-			/** Ensure that if the view is transposed, the IMFs are ID */
+			/** Ensure that if the view is transposed, the IMFs are Id */
 			static_assert(
 				View::type_id != view::Views::transpose ||
 				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
-			/** Ensure that if the view is diagonal, the IMFs are ID */
+			/** Ensure that if the view is diagonal, the IMFs are Id */
 			static_assert(
 				View::type_id != view::Views::diagonal ||
 				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
@@ -848,17 +862,17 @@ namespace alp {
 
 		};
 
-		template< typename Structure, typename ImfR, typename ImfC >
-		struct determine_amf_type< Structure, view::Original< void >, ImfR, ImfC > {
+		/** Specialization for containers that allocate storage */
+		template< typename Structure, typename ImfC >
+		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC > {
 
 			static_assert(
-				std::is_same< ImfR, imf::Id >::value &&
-				( std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value ),
+				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				typename determine_mapping_polynomial_type< Structure, ImfR, ImfC >::type
+				typename determine_mapping_polynomial_type< Structure, imf::Id, ImfC >::type
 			>::amf_type type;
 		};
 

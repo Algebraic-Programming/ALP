@@ -593,19 +593,35 @@ namespace alp {
 
 				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
+				/**
+				 * Factory method used for matrices.
+				 *
+				 * @param[in] imf_r               Row IMF
+				 * @param[in] imf_c               Column IMF
+				 * @param[in] poly                Mapping polynomial
+				 * @param[in] storage_dimensions  Size of the allocated storage
+				 *
+				 * @return  An AMF object of the type \a amf_type
+				 *
+				 */
 				static amf_type Create( imf::Id imf_r, imf::Id imf_c, PolyType poly, size_t storage_dimensions ) {
 					return amf_type( imf_r, imf_c, poly, storage_dimensions );
 				}
 
 				/**
-				 * Factory method taking two custom Strided IMFs. Exploits the
-				 * fact that fusion of strided IMFs into the polynomial always
-				 * succeeds and results in Id IMFs. As a result, the constructed
-				 * AMF is of the type \a amf_type.
+				 * Factory method used for AMF associated with a matrix representing
+				 * a vector
 				 *
-				 * This is designed to be used by a dedicated Matrix constructor
-				 * for creating a Matrix representing a Vector, i.e., a Matrix
-				 * of size \a Mx1 or \a 1xN.
+				 * Exploits the fact that fusion of strided IMFs into the polynomial
+				 * always succeeds and results in Id IMFs. As a result, the
+				 * constructed AMF is of the type \a amf_type.
+				 *
+				 * @param[in] imf_r               Row IMF
+				 * @param[in] imf_c               Column IMF
+				 * @param[in] poly                Mapping polynomial
+				 * @param[in] storage_dimensions  Size of the allocated storage
+				 *
+				 * @return  An AMF object of the type \a amf_type
 				 *
 				 * \note \internal To exploit existing mechanism for IMF fusion
 				 *                 into the polynomial, this method creates a
@@ -627,7 +643,8 @@ namespace alp {
 						"The factory method returns the object of different type than declared. This is a bug."
 					);
 					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::Create(
-						imf_r, imf_c, FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
+						imf_r, imf_c,
+						FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
 					);
 				}
 
@@ -712,7 +729,12 @@ namespace alp {
 
 			}; // class Reshape< transpose, ... >
 
-			/** \internal \todo This is currently incomplete, will be implemented in future. */
+			/**
+			 * Specialization for diagonal views
+			 *
+			 * Diagonal view is implemented by taking a square view over the matrix.
+			 *
+			 */
 			template< typename SourceAMF >
 			struct Reshape< view::Views::diagonal, SourceAMF > {
 
