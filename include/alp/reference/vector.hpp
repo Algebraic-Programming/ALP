@@ -443,10 +443,10 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &vec_view, ImfR imf ) :
-				base_type( vec_view, imf, imf::Id( 1 ) ) {
+			Vector( typename ViewType::applied_to &vec_view, ImfR imf_r, ImfC imf_c ) :
+				base_type( vec_view, imf_r, imf_c ) {
 
-				if( getLength( vec_view ) != imf.N ) {
+				if( getLength( vec_view ) != imf_r.N ) {
 					throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
 				}
 			}
@@ -519,8 +519,8 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &target_vector, ImfR imf_r ) :
-				base_type( getFunctor( target_vector ), imf_r, imf::Id( 1 ) ) {}
+			Vector( typename ViewType::applied_to &target_vector, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
@@ -604,6 +604,45 @@ namespace alp {
 		return vec_view;
 	}
 
+	namespace internal {
+		/**
+		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
+		 */
+
+		template<
+			typename TargetStructure, typename TargetImfR, typename TargetImfC,
+			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+		alp::Vector<
+			T,
+			TargetStructure,
+			density,
+			view::Original< alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
+			TargetImfR,
+			TargetImfC,
+			backend
+		>
+		get_view( alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &source,
+				TargetImfR imf_r, TargetImfC imf_c ) {
+
+			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
+			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
+			//}
+			// No static check as the compatibility depends on IMF, which is a runtime level parameter
+			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			}
+
+			using source_vec_t = alp::Vector< T, Structure, density, View, ImfR, ImfC, backend >;
+			using target_vec_t = alp::Vector< T, TargetStructure, density, view::Original< source_vec_t >, TargetImfR, TargetImfC, backend >;
+
+			target_vec_t target( source, imf_r, imf_c );
+
+			return target;
+		}
+	} // namespace internal
+
 	/**
 	 * @brief Version of get_view over vectors where a range of elements are selected to form a new view. 
 	 * 		  The function guarantees the created view is non-overlapping with other existing views only when the
@@ -629,13 +668,22 @@ namespace alp {
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
 		enum Backend backend
 	>
-	typename Vector< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
+	Vector<
+		T,
+		Structure,
+		density,
+		view::Original< Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided,
+		imf::Strided,
+		backend
+	>
 	get_view( Vector< T, Structure, density, View, ImfR, ImfC, backend > &source, const utils::range& rng ) {
 
-		imf::Strided imf_v( rng.count(), getLength( source ), rng.start, rng.stride );
-		typename Vector< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type vec_view( source, imf_v );
-
-		return vec_view;
+		return internal::get_view< Structure >(
+			source,
+			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
+			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
+		);
 	}
 
 } // end namespace ``alp''
