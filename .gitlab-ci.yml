@@ -23,6 +23,7 @@ stages:
 #  only:
 #    - master
 #    - develop
+#    - /^v.*-rc.*$/
 #  artifacts:
 #    paths:
 #      - build/
@@ -44,6 +45,7 @@ stages:
 #  only:
 #    - master
 #    - develop
+#    - /^v.*-rc.*$/
 
 
 #test_centos_8_unit:
@@ -59,6 +61,7 @@ stages:
 #  only:
 #    - master
 #    - develop
+#    - /^v.*-rc.*$/
 
 
 #test_centos_8_smoke:
@@ -74,6 +77,7 @@ stages:
 #  only:
 #    - master
 #    - develop
+#    - /^v.*-rc.*$/
 
 
 #test_centos_8_performance:
@@ -89,6 +93,7 @@ stages:
 #   only:
 #     - master
 #     - develop
+#     - /^v.*-rc.*$/
 
 
 #test_centos_8_installation:
@@ -103,6 +108,7 @@ stages:
 #  only:
 #    - master
 #    - develop
+#    - /^v.*-rc.*$/
 
 
 # Main testing on Ubuntu, all branches
@@ -148,6 +154,7 @@ build_debugrelease_tests:
   only:
     - master
     - develop
+    - /^v.*-rc.*$/
 
 
 # linting is currently disabled since clang-format is not mature enough
@@ -266,6 +273,7 @@ tests_performance:
    only:
      - master
      - develop
+     - /^v.*-rc.*$/
 
 
 tests_unit_debug:
@@ -281,4 +289,5 @@ tests_unit_debug:
    only:
      - master
      - develop
+     - /^v.*-rc.*$/
 

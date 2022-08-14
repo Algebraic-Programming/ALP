@@ -50,5 +50,5 @@
  #define GRB_UTIL_RESTORE_WARNINGS
 #endif
 
-#endif // end ``_H_GRB_REFERENCE_BLAS2''
+#endif // end ``_H_GRB_UTILS_SUPRESSIONS''
 

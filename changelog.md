@@ -1,4 +1,98 @@
 
+Version 0.6.0
+=============
+
+This is a summary of changes. For full details, see the publicly available Git
+history prior to the v0.6 tag.
+
+Highlights and changes to the specification:
+ - Deprecated `grb::init` and `grb::finalize` in favour of grb::Launcher.
+   Existing code should migrate to using the Launcher as any later release may
+   remove the now-deprecated primtives.
+ - If you wish to rely on ALP/GraphBLAS for more standard sparse linear
+   algebra but if you cannot, or do not wish to, adapt your existing sources
+   to the C++ ALP/GraphBLAS API, then v0.6 onwards generates libraries that
+   implement a subset of the standard C/C++ SparseBLAS and SpBLAS interfaces.
+   After installation, these libraries are found in
+     - `<install path>/lib/sequential/libsparseblas.a` (sequential) and
+     - `<install path>/lib/sequential/libsparseblas_omp.a` (shared-memory
+       parallel).
+   The headers are found in
+     - `<install path>/include/transition/sparseblas.h` and
+     - `<install path>/include/transition/spblas.h`.
+ - Input iterators passed to `grb::buildMatrixUnique` that happen to be random
+   access will now lead to shared-memory parallel ingestion when using the
+   reference_omp or hybrid backends.
+ - `grb::Phase` is now only accepted for primitives with non-scalar
+   ALP/GraphBLAS output containers.
+
+Algorithms:
+ - Feature: the CG algorithm has been adapted to work with complex-valued
+   matrices making use of the standard `std::complex` type. A corresponding
+   smoke test is added.
+ - Bugfix: BiCGstab erroneously relied on `grb::utils::equals`, and could
+   (rarely) lead to false orthogonality detection and an unnecessary abort.
+
+Utilities:
+ - The parser that reads MatrixMarket files, `grb::utils::MatrixFileReader`, now
+   can parse complex values and load Hermitian matrices.
+ - What constitutes an ALP/GraphBLAS sparse matrix iterator has been formalised
+   with a novel type trait, `grb::utils::is_alp_matrix_iterator`. ALP/GraphBLAS
+   matrix output iterators now also adhere to these requirements.
+ - A `grb::utils::is_complex` type trait has been added, and is used by the CG
+   algorithm so as to not materialise unnecessary buffers and code paths.
+ - Bugfixes to the `grb::utils::equals` routine, as well as better
+   documentation. A unit test has been added for it.
+
+Testing, development, and documentation:
+ - Documentation has been adapted to include GitHub for reporting issues.
+ - Documentation of various ALP/GraphBLAS primitives and concepts have been
+   improved.
+ - Documentation detailing the compiler warning suppressions and their rationale
+   have been moved to the code repository at `docs/Suppressions.md`.
+ - Add basic CI tests (build, install, and smoke tests) for GitHub.
+ - More thorough testing of output matrix iterators, input iterators, and of
+   `grb::buildMatrixUnique`.
+ - The `dense_spmv.cpp` smoke test did not correctly verify output, and could
+   fail for SpMV multiplications that yield very small nonzero values.
+ - Improvements to various tests and scripts.
+
+Reference and reference_omp backends:
+ - Bugfix: matrix output iterators failed if all nonzeroes were on the last row
+   and no nonzeroes existed anywhere else.
+ - Bugfix: copying and immediately dereferencing a matrix output iterator led to
+   use of uninitialised values.
+ - Bugfix: `grb::foldl` with a dense descriptor would accept sparse inputs while
+   it should return `ILLEGAL`. This behaviour, as well as for other error codes,
+   are now also (unit) tested for, including with masks and inverted masks.
+ - Bugfix: `grb::set` was moved from `reference/blas1.hpp` to
+   `reference/io.hpp`, but the macros that guard parallelisation were not
+   properly updated.
+ - Bugfix: the OpenMP `schedule( static, chunk_size )` has a dynamic (run-time)
+   component that was not intended.
+ - Bugifx: some OpenMP `schedule( dynamic, chunk_size )` operate on regular
+   loops and should employ a static schedule instead.
+
+BSP1D backend:
+ - Bugfix: too thorough sanity checking disallowed building dense matrices.
+ - Bugfix: `grb::set` on vectors with non-fundamental value types would not
+   compile (due to code handling the use_index descriptor).
+ - Bugfix: `grb::clear` could leave the vector in an undefined state if it
+   immediately followed an operation that left said vector dense.
+ - Code improvement: PinnedVector constructors now throws exceptions on errors.
+
+All backends:
+ - Bugfix: an input-masked variant of `grb::foldr` was missing. These are now
+   also added to the unit test suite.
+ - Bugfix: matrix constructors that throw an exception could segfault on
+   destruction.
+ - Bugfix: use of PinnedVectors that pin sparse or empty vectors could segfault.
+ - Code improvements: noexcept additions, const-correctness, code style fixes,
+   removal of compiler warnings (on some compiler versions), dead code removal,
+   improved `_DEBUG` tracing, additional debug-mode sanity checks, and reduced
+   code duplication.
+
+
 Version 0.5.0
 =============
 
@@ -122,6 +216,7 @@ All backends:
 Various other bugfixes, performance bug fixes, documentation improvements,
 default configuration updates, and code structure improvements -- see Gitee MRs
 !21, !22, !38, !39, !40, and !42 for details.
+
 
 Version 0.4.1
 =============

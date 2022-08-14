@@ -244,9 +244,9 @@ namespace grb {
 					}
 #endif
 
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
-					IOType local;
-					GRB_UTIL_RESTORE_WARNINGS
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
+					IOType local;                       // whenever our local block is
+					GRB_UTIL_RESTORE_WARNINGS           // non-empty
 					if( end > 0 ) {
 						if( i < end ) {
 							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
@@ -316,9 +316,9 @@ namespace grb {
 							// then I should be non-empty
 							assert( !empty );
 							// set global value to locally computed value
-							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
-							global = local;
-							GRB_UTIL_RESTORE_WARNINGS
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
+							global = local;                     // chunk is non-empty, in which case
+							GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
 						}
 					}
 					#pragma omp barrier
@@ -3017,7 +3017,9 @@ namespace grb {
 						for( size_t i = 0; i < block_size; i++ ) {
 							if( masked ) {
 								if( mask[ i ] ) {
-									z_p[ offsets[ i ] ] = z_b[ i ];
+									GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // if masked && mask[ i ], then
+									z_p[ offsets[ i ] ] = z_b[ i ];     // z_b[ i ] was set from x or y in
+									GRB_UTIL_RESTORE_WARNINGS           // the above
 								}
 							} else {
 								if( x_m[ i ] ) {
@@ -3431,7 +3433,9 @@ namespace grb {
 									}
 #endif
 								}
-								*( z_p + indices[ t ] ) = z_b[ t ];
+								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
+								*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
+								GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
 							}
 						}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
@@ -8176,7 +8180,7 @@ namespace grb {
 									if( mask[ k ] ) {
 										GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED        // yy and xx cannot be used
 										                                           // uninitialised or mask
-										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false. also, zz
+										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false while zz
 										GRB_UTIL_RESTORE_WARNINGS                  // init is just above
 									}
 								}
