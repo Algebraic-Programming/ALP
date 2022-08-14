@@ -274,18 +274,27 @@ namespace grb {
 		public:
 
 			/** The return type of i(). */
-			typedef SR row_coordinate_type;
+			typedef SR RowIndexType;
 
 			/** The return type of j(). */
-			typedef SC column_coordinate_type;
+			typedef SC ColumnIndexType;
 
 			/** The return type of v() or <tt>void</tt>. */
-			typedef T nonzero_value_type;
+			typedef T ValueType;
 
 			/** The STL iterator output type. */
 			typedef OutputType value_type;
 
-			/** main constructor */
+			/** The STL pointer type. */
+			typedef const value_type * pointer;
+
+			/** The STL reference type. */
+			typedef const value_type & reference;
+
+			/** The STL tag type. */
+			typedef std::forward_iterator_tag iterator_category;
+
+			/** Base constructor */
 			MatrixVectorIterator(
 				const typename Vector< V, backend >::const_iterator vec_iter,
 				const std::function< OutputType( const size_t &, const V & ) > conv
@@ -363,6 +372,7 @@ namespace grb {
 
 		};
 
+
 		namespace internal {
 
 			// vector to matrix converter base
@@ -414,7 +424,6 @@ namespace grb {
 			// vector to matrix converter base -- pattern matrix specialisation
 			template< typename V, Backend backend >
 			class VectorToMatrixConverterBase< void, V, backend > {
-
 
 				protected:
 
@@ -551,9 +560,39 @@ namespace grb {
 			);
 		}
 
-	} // namespace utils
+	} // end namespace utils
 
-} // namespace grb
+} // end namespace grb
+
+namespace std {
+
+		/**
+		 * Make the grb::utils::MatrixVectorIterator work with the STL
+		 * std::iterator_traits class
+		 */
+		template<
+			typename T, typename V, typename SR, typename SC,
+			grb::Backend backend
+		>
+		class iterator_traits<
+			grb::utils::MatrixVectorIterator< T, V, SR, SC, backend >
+		> {
+
+			private:
+
+				typedef grb::utils::MatrixVectorIterator< T, V, SR, SC, backend > SelfType;
+
+			public:
+
+				typedef typename SelfType::value_type value_type;
+				typedef typename SelfType::pointer pointer;
+				typedef typename SelfType::reference reference;
+				typedef typename SelfType::iterator_category iterator_category;
+				typedef size_t difference_type;
+
+		};
+
+} // end namespace std
 
 #endif // end ``_H_MATRIXVECTORITERATOR''
 

@@ -24,21 +24,31 @@
  * @date 15 March, 2016
  */
 
-#include <sstream>
-#include <string>
-
 #ifndef _H_GRB_DESCRIPTOR
 #define _H_GRB_DESCRIPTOR
+
+#include <string>
+
 
 namespace grb {
 
 	/**
 	 * Descriptors indicate pre- or post-processing for some or all of the
-	 * arguments to a GraphBLAS call.
+	 * arguments to an ALP/GraphBLAS call. An example is to transpose the input
+	 * matrix during a sparse matrix--vector multiplication:
+	 *    <tt>grb::mxv< grb::descriptors::transpose_matrix >( y, A, x, ring );</tt>
+	 * the above thus computes \f$ y \to y + A^Tx \f$ and not \f$ y \to y + Ax \f$.
 	 *
-	 * They can be combined using bit-wise operators. For instance, to both
-	 * indicate the matrix needs be transposed and the mask needs be
-	 * inverted, the following descriptor can be passed:
+	 * Such pre-processing often happens on-the-fly, without significant overhead
+	 * to the primitive costings in any of its cost dimensions -- work, intra- and
+	 * inter-process data movement, synchronisations, and memory usage.
+	 *
+	 * \note If the application of a descriptor is \em not without significant
+	 *       overhead, a backend \em must clearly indicate so.
+	 *
+	 * Descriptors may be combined using bit-wise operators. For instance, to both
+	 * indicate the matrix needs be transposed and the mask needs be inverted, the
+	 * following descriptor can be passed:
 	 *    <tt> transpose_matrix | invert_mask </tt>
 	 */
 	typedef unsigned int Descriptor;
@@ -107,9 +117,31 @@ namespace grb {
 		static constexpr Descriptor structural_complement = structural | invert_mask;
 
 		/**
-		 * Indicates all vectors used in a computation are dense. This is a hint that
-		 * might affect performance but will never affect the semantics of the
-		 * computation.
+		 * Indicates that all input vectors to an ALP/GraphBLAS primitive are
+		 * structurally dense.
+		 *
+		 * If a user passes this descriptor but one or more vectors input to the call
+		 * are \em not structurally dense, then #ILLEGAL shall be returned.
+		 *
+		 * \warning <em>All vectors</em> includes any vectors that operate as masks.
+		 *          Thus if the primitive is to operate with structurally sparse masks
+		 *          but with otherwise dense vectors, then the dense descriptor may
+		 *          \em not be defined.
+		 *
+		 * \warning For in-place operations with vector outputs --which are all
+		 *          ALP/GraphBLAS primitives with vector outputs except grb::set and
+		 *          grb::eWiseApply-- the output vector is also an input vector. Thus
+		 *          passing this descriptor to such primitive indicates that also the
+		 *          output vector is structurally dense.
+		 *
+		 * \warning Vectors with explicit zeroes (under the semiring passed to the
+		 *          related primitive) will be computed with explicitly.
+		 *
+		 * The benefits of using this descriptor whenever possible are two-fold:
+		 *   1) less run-time overhead as code handling sparsity is disabled;
+		 *   2) smaller binary sizes as code handling structurally sparse vectors is
+		 *      not emitted (unless required elsewhere).
+		 * The consistent use of this descriptor is hence strongly encouraged.
 		 */
 		static constexpr Descriptor dense = 16;
 
@@ -176,16 +208,30 @@ namespace grb {
 		static constexpr Descriptor safe_overlap = 1024;
 
 		/**
-		 * For operations involving 2 matrices, transposes the left-hand side input
+		 * For operations involving two matrices, transposes the left-hand side input
 		 * matrix prior to applying it.
 		 */
 		static constexpr Descriptor transpose_left = 2048;
 
 		/**
-		 * For operations involving 2 matrices, transposes the right-hand side input
+		 * For operations involving two matrices, transposes the right-hand side input
 		 * matrix prior to applying it.
 		 */
 		static constexpr Descriptor transpose_right = 4096;
+
+		// Put internal, backend-specific descriptors last
+
+
+		/**
+		 * \internal For the reference backend specifically, indicates for that the
+		 * row-major storage must be used; the column-major storage shall be ignored
+		 * completely. Additionally, the row-major storage is considered of static
+		 * size and managed outside of ALP.
+		 * This descriptor is for internal use only, and presently only supported for
+		 * the grb::mxv and the grb::mxm. For the latter, only the non-transposed
+		 * cases are supported.
+		 */
+		static constexpr Descriptor force_row_major = 8192;
 
 		/**
 		 * Translates a descriptor into a string.
@@ -199,10 +245,13 @@ namespace grb {
 	} // namespace descriptors
 
 	namespace internal {
+
 		/** A descriptor cannot have a higher value than the below. */
-		static constexpr Descriptor MAX_DESCRIPTOR_VALUE = 8191;
+		static constexpr Descriptor MAX_DESCRIPTOR_VALUE = 16383;
+
 	} // namespace internal
 
 } // namespace grb
 
 #endif
+

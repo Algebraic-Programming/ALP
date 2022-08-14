@@ -21,6 +21,10 @@ set( TEST_CATEGORY "unit" )
 
 
 # list tests, without the CATEROR[IES,Y] keyword (it's now passed via TEST_CATEGORY)
+add_grb_executables( equals equals.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( add15d add15d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
@@ -115,6 +119,7 @@ add_grb_executables( masked_vxm masked_vxm.cpp
 
 add_grb_executables( matrixIterator matrixIterator.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( matrixSet matrixSet.cpp
@@ -239,6 +244,15 @@ add_grb_executables( wait wait.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+add_grb_executables( buildMatrixUnique buildMatrixUnique.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
+add_grb_executables( pinnedVector pinnedVector.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
@@ -257,10 +271,11 @@ add_custom_target( tests_unit
 		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
 		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
 		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
+		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
 
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	DEPENDS build_tests_category_unit # add dependency on this target
-									  # to automatically build before running
+	                                  # to automatically build before running
 	COMMAND_EXPAND_LISTS
 	USES_TERMINAL
 )

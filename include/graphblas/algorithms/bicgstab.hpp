@@ -314,7 +314,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t\t rho = " << rho << "\n";
 #endif
-				if( ret == SUCCESS && utils::equals( rho, zero, 2*n-1 ) ) {
+				if( ret == SUCCESS && rho == zero ) {
 					std::cerr << "Error: BiCGstab detects r at iteration " << iterations <<
 						" is orthogonal to r-hat\n";
 					return FAILED;
@@ -346,7 +346,7 @@ namespace grb {
 				// alpha = rho / (rhat, v)
 				alpha = zero;
 				ret = ret ? ret : dot< dense_descr >( alpha, rhat, v, semiring );
-				if( utils::equals( alpha, zero, 2*n-1 ) ) {
+				if( alpha == zero ) {
 					std::cerr << "Error: BiCGstab detects rhat is orthogonal to v=Ap "
 						<< "at iteration " << iterations << ".\n";
 					return FAILED;
@@ -391,7 +391,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t\t (t, s) = " << temp << "\n";
 #endif
-				if( ret == SUCCESS && utils::equals( rho, zero, 2*n-1 ) ) {
+				if( ret == SUCCESS && temp == zero ) {
 					std::cerr << "Error: BiCGstab detects As at iteration " << iterations <<
 						" is orthogonal to s\n";
 					return FAILED;

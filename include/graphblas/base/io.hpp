@@ -20,13 +20,17 @@
  * @date 21st of February, 2017
  */
 
+#include <type_traits>
+#include <typeinfo>
+
 #ifndef _H_GRB_IO_BASE
 #define _H_GRB_IO_BASE
 
 #include <graphblas/rc.hpp>
 #include <graphblas/phase.hpp>
 #include <graphblas/iomode.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/utils/iterators/type_traits.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
@@ -148,6 +152,7 @@ namespace grb {
 	uintptr_t getID(
 		const Vector< ElementType, implementation, Coords > &x
 	) {
+		(void) x;
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
 #endif
@@ -162,10 +167,13 @@ namespace grb {
 	 * @see getID
 	 */
 	template<
-		typename ElementType,
+		typename ElementType, typename RIT, typename CIT, typename NIT,
 		Backend implementation = config::default_backend
 	>
-	uintptr_t getID( const Matrix< ElementType, implementation > &x ) {
+	uintptr_t getID(
+		const Matrix< ElementType, implementation, RIT, CIT, NIT > &x
+	) {
+		(void) x;
 #ifndef NDEBUG
 		const bool this_is_an_invalid_default_implementation = false;
 #endif
@@ -266,8 +274,13 @@ namespace grb {
 	 *       passed by reference, indeed must have a size that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t nrows( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t nrows(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_nrows = false;
 #endif
@@ -314,8 +327,13 @@ namespace grb {
 	 *       and passed by reference, indeed must have a size that can be
 	 *       immediately returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t ncols( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t ncols(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool may_not_call_base_ncols = false;
 #endif
@@ -359,7 +377,9 @@ namespace grb {
 	 *       being instantiated, must have a capacity that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend, typename Coords >
+	template<
+		typename InputType, Backend backend, typename Coords
+	>
 	size_t capacity( const Vector< InputType, backend, Coords > &x ) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_vector_capacity = false;
@@ -399,8 +419,13 @@ namespace grb {
 	 *       being instantiated, must have a capacity that can be immediately
 	 *       returned.
 	 */
-	template< typename InputType, Backend backend >
-	size_t capacity( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t capacity(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_capacity = false;
 #endif
@@ -485,8 +510,13 @@ namespace grb {
 	 * \note Backends thus are forced to cache the current number of nonzeroes and
 	 *       immediately return that cached value.
 	 */
-	template< typename InputType, Backend backend >
-	size_t nnz( const Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	size_t nnz(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_nnz = false;
 #endif
@@ -590,8 +620,13 @@ namespace grb {
 	 * \note Only the destruction of \a A would ensure all corresponding memory is
 	 *       freed, for all backends.
 	 */
-	template< typename InputType, Backend backend >
-	RC clear( Matrix< InputType, backend > &A ) noexcept {
+	template<
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC clear(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_clear = false;
 #endif
@@ -756,10 +791,12 @@ namespace grb {
 	 *          should be used sparingly and only when absolutely necessary.
 	 */
 	template<
-		typename InputType,
-		Backend backend
+		typename InputType, Backend backend,
+		typename RIT, typename CIT, typename NIT
 	>
-	RC resize( Matrix< InputType, backend > &A, const size_t new_nz ) noexcept {
+	RC resize(
+		Matrix< InputType, backend, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_resize = false;
 #endif
@@ -1330,25 +1367,30 @@ namespace grb {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
-		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique(
 		Matrix< InputType, implementation > &A,
-		fwd_iterator1 I, fwd_iterator1 I_end,
-		fwd_iterator2 J, fwd_iterator2 J_end,
-		fwd_iterator3 V, fwd_iterator3 V_end,
+		fwd_iterator1 I, const fwd_iterator1 I_end,
+		fwd_iterator2 J, const fwd_iterator2 J_end,
+		fwd_iterator3 V, const fwd_iterator3 V_end,
 		const IOMode mode
 	) {
 		// derive synchronized iterator
-		auto start = utils::makeSynchronized( I, J, V, I_end, J_end, V_end );
-		const auto end = utils::makeSynchronized( I_end, J_end, V_end, I_end, J_end,
-			V_end );
-
+		auto start = internal::makeSynchronized(
+			I, J, V,
+			I_end, J_end, V_end
+		);
+		const auto end = internal::makeSynchronized(
+			I_end, J_end, V_end,
+			I_end, J_end, V_end
+		);
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1357,18 +1399,21 @@ namespace grb {
 	 * Alias that transforms a set of pointers and an array length to the
 	 * buildMatrixUnique variant based on iterators.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
-		typename length_type = size_t,
-		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( Matrix< InputType, implementation > &A,
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {
-		return buildMatrixUnique< descr >( A,
+		return buildMatrixUnique< descr >(
+			A,
 			I, I + nz,
 			J, J + nz,
 			V, V + nz,
@@ -1376,24 +1421,27 @@ namespace grb {
 		);
 	}
 
-	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
+	/**
+	 * Version of the above #buildMatrixUnique that handles \a nullptr
+	 * value pointers.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType,
+		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator1 I, fwd_iterator2 J,
 		const length_type nz, const IOMode mode
 	) {
 		// derive synchronized iterator
-		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
-		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
-
+		auto start = internal::makeSynchronized( I, J, I + nz, J + nz );
+		const auto end = internal::makeSynchronized(
+			I + nz, J + nz, I + nz, J + nz );
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
@@ -1425,9 +1473,9 @@ namespace grb {
 	 *     current nonzero.
 	 *
 	 * It also must provide the following public typedefs:
-	 *  -# <tt>fwd_iterator::row_coordinate_type</tt>
-	 *  -# <tt>fwd_iterator::column_coordinate_type</tt>
-	 *  -# <tt>fwd_iterator::nonzero_value_type</tt>
+	 *  -# <tt>fwd_iterator::RowIndexType</tt>
+	 *  -# <tt>fwd_iterator::ColumnIndexType</tt>
+	 *  -# <tt>fwd_iterator::ValueType</tt>
 	 *
 	 * This means a specialised iterator is required for use with this function.
 	 * See, for example, grb::utils::internal::MatrixFileIterator.
@@ -1439,18 +1487,24 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
-		(void)A;
-		(void)start;
-		(void)end;
-		(void)mode;
+		(void) A;
+		(void) start;
+		(void) end;
+		(void) mode;
+#ifndef NDEBUG
+		std::cerr << "Should not call base grb::buildMatrixUnique" << std::endl;
+		const bool should_not_call_base_buildMatrixUnique = false;
+		assert( should_not_call_base_buildMatrixUnique );
+#endif
 		return PANIC;
 	}
 
@@ -1575,9 +1629,13 @@ namespace grb {
 	 *                        prescribed by the non-blocking primitives whose
 	 *                        execution was attempted may be returned instead.
 	 */
-	template< Backend backend, typename InputType, typename... Args >
+	template<
+		Backend backend,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, backend > &A,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 #ifndef NDEBUG

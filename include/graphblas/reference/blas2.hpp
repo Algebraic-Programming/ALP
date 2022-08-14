@@ -24,7 +24,7 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_BLAS2 || defined _H_GRB_REFERENCE_OMP_BLAS2
+#if !defined _H_GRB_REFERENCE_BLAS2 || defined _H_GRB_REFERENCE_OMP_BLAS2
 #define _H_GRB_REFERENCE_BLAS2
 
 #include <limits>
@@ -64,6 +64,7 @@
 		"****************************************************************" \
 		"****************************************************************" \
 		"**************************************\n" );
+
 
 namespace grb {
 
@@ -820,13 +821,15 @@ namespace grb {
 		 * \note This implementation has those restrictions since otherwise the
 		 *       above performance semantics cannot be met.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool masked, bool input_masked,
 			bool left_handed, bool using_semiring,
 			template< typename > class One,
 			class AdditiveMonoid, class Multiplication,
 			typename IOType, typename InputType1, typename InputType2,
 			typename InputType3, typename InputType4,
+			typename RIT, typename CIT, typename NIT,
 			typename Coords
 		>
 		RC vxm_generic(
@@ -834,7 +837,7 @@ namespace grb {
 			const Vector< InputType3, reference, Coords > &mask,
 			const Vector< InputType1, reference, Coords > &v,
 			const Vector< InputType4, reference, Coords > &v_mask,
-			const Matrix< InputType2, reference > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 			const AdditiveMonoid &add,
 			const Multiplication &mul,
 			const Phase &phase,
@@ -892,6 +895,9 @@ namespace grb {
 
 			// get whether we may simply assume the vectors are dense
 			constexpr bool dense_hint = descr & descriptors::dense;
+
+			// get whether we are forced to use a row-major storage
+			constexpr const bool crs_only = descr & descriptors::force_row_major;
 
 			// check for dimension mismatch
 			if( ( transposed && ( n != ncols( A ) || m != nrows( A ) ) ) ||
@@ -1081,12 +1087,15 @@ namespace grb {
 					// const size_t CCS_loop_size = CRS_loop_size + 1;
 					// This variant modifies the sequential loop size to be P times more
 					// expensive
-					const size_t CCS_loop_size = omp_get_num_threads() * CCS_seq_loop_size;
+					const size_t CCS_loop_size = crs_only ? CRS_loop_size + 1 :
+						omp_get_num_threads() * CCS_seq_loop_size;
 #else
-					const size_t CCS_loop_size = CCS_seq_loop_size;
+					const size_t CCS_loop_size = crs_only ? CRS_loop_size + 1 :
+						CCS_seq_loop_size;
 #endif
 					// choose best-performing variant.
 					if( CCS_loop_size < CRS_loop_size ) {
+						assert( !crs_only );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 						#pragma omp single
 						{
@@ -1181,9 +1190,13 @@ namespace grb {
 							std::cout << s << ": in full CRS variant (gather)\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, nrows( A ) );
+#else
+							const size_t start = 0;
+							const size_t end = nrows( A );
 #endif
-							for( size_t i = 0; i < nrows( A ); ++i ) {
+							for( size_t i = start; i < end; ++i ) {
 								vxm_inner_kernel_gather<
 									descr, masked, input_masked, left_handed, One
 								>(
@@ -1199,7 +1212,7 @@ namespace grb {
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
 									//         may not be the best thing to do
-									(void)internal::getCoordinates( u ).joinUpdate( local_update );
+									(void) internal::getCoordinates( u ).joinUpdate( local_update );
 									asyncAssigns = 0;
 								}
 #endif
@@ -1220,6 +1233,7 @@ namespace grb {
 							std::cout << "\n";
 #endif
 							// loop only over the nonzero masks (can still be done in parallel!)
+							// since mask structures are typically irregular, use dynamic schedule
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
@@ -1273,9 +1287,11 @@ namespace grb {
 					// const size_t CRS_loop_size = CCS_loop_size + 1;
 					// This variant estimates this non-parallel variant's cost at a factor P
 					// more
-					const size_t CRS_loop_size = omp_get_num_threads() * CRS_seq_loop_size;
+					const size_t CRS_loop_size = crs_only ? CRS_seq_loop_size + 1 :
+						omp_get_num_threads() * CRS_seq_loop_size;
 #else
-					const size_t CRS_loop_size = CRS_seq_loop_size;
+					const size_t CRS_loop_size = crs_only ? CRS_seq_loop_size + 1:
+						CRS_seq_loop_size;
 #endif
 
 					if( CRS_loop_size < CCS_loop_size ) {
@@ -1368,6 +1384,7 @@ namespace grb {
 						// end u=vA using CRS
 					} else {
 						// start u=vA using CCS
+						assert( !crs_only );
 #ifdef _DEBUG
 						std::cout << s << ": in column-major vector times matrix variant (u=vA)\n"
 							<< "\t(this variant relies on the gathering inner kernel)\n";
@@ -1380,9 +1397,13 @@ namespace grb {
 							std::cout << s << ": loop over all input matrix columns\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() ) nowait
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, ncols( A ) );
+#else
+							const size_t start = 0;
+							const size_t end = ncols( A );
 #endif
-							for( size_t j = 0; j < ncols( A ); ++j ) {
+							for( size_t j = start; j < end; ++j ) {
 								vxm_inner_kernel_gather<
 									descr, masked, input_masked, left_handed, One
 								>(
@@ -1401,7 +1422,7 @@ namespace grb {
 								if( asyncAssigns == maxAsyncAssigns ) {
 									// warning: return code ignored for brevity;
 									//         may not be the best thing to do
-									(void)internal::getCoordinates( u ).joinUpdate( local_update );
+									(void) internal::getCoordinates( u ).joinUpdate( local_update );
 									asyncAssigns = 0;
 								}
 #endif
@@ -1412,6 +1433,7 @@ namespace grb {
 							std::cout << s << ": loop over mask indices\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
+							// since mask structures are typically irregular, use dynamic schedule
 							#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 							for(
@@ -1474,13 +1496,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType, typename InputType1,
 		typename InputType2, typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1497,13 +1520,14 @@ namespace grb {
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1,
 		typename InputType2, typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1530,6 +1554,7 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
@@ -1537,7 +1562,7 @@ namespace grb {
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1634,14 +1659,15 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords
+		typename InputType2 = typename Ring::D2
 	>
-	RC vxm( Vector< IOType, reference, Coords > &u,
+	RC vxm(
+		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1658,12 +1684,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator, typename IOType,
 		typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType1, reference, Coords > &v,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1684,15 +1711,16 @@ namespace grb {
 	/** \internal Delegates to fully masked version */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename InputType3 = bool,
-		typename Coords
+		typename InputType3 = bool
 	>
-	RC mxv( Vector< IOType, reference, Coords > &u,
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
@@ -1713,12 +1741,13 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
 		const Ring &ring,
@@ -1820,14 +1849,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
+		typename Coords, typename RIT, typename CIT, typename NIT,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
-		typename InputType2 = typename Ring::D2,
-		typename Coords
+		typename InputType2 = typename Ring::D2
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
@@ -1845,10 +1874,12 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
-	RC mxv( Vector< IOType, reference, Coords > &u,
-		const Matrix< InputType2, reference > &A,
+	RC mxv(
+		Vector< IOType, reference, Coords > &u,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
@@ -1878,6 +1909,7 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC vxm(
@@ -1885,7 +1917,7 @@ namespace grb {
 		const Vector< InputType3, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
@@ -1990,12 +2022,13 @@ namespace grb {
 		typename IOType,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, reference, Coords > &u,
 		const Vector< InputType3, reference, Coords > &mask,
-		const Matrix< InputType2, reference > &A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &v,
 		const Vector< InputType4, reference, Coords > &v_mask,
 		const AdditiveMonoid &add = AdditiveMonoid(),
@@ -2243,9 +2276,12 @@ namespace grb {
 		 * @param[in] start The start iterator to the collection of nonzeroes.
 		 * @param[in]  end  The end iterator to the collection of nonzeroes.
 		 */
-		template< typename DataType, typename fwd_iterator >
+		template<
+			typename DataType, typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
 		void addToCRS(
-			const Matrix< DataType, reference > &A,
+			const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 			const fwd_iterator start, const fwd_iterator end
 		) {
 			auto &CRS = internal::getCRS( A );
@@ -2330,10 +2366,13 @@ namespace grb {
 	 *
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
-	template< class ActiveDistribution, typename Func, typename DataType >
+	template<
+		class ActiveDistribution, typename Func,
+		typename DataType, typename RIT, typename CIT, typename NIT
+	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, reference > &A,
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
 		const size_t s, const size_t P
 	) {
 #ifdef _DEBUG
@@ -2697,12 +2736,13 @@ namespace grb {
 	 */
 	template<
 		typename Func,
-		typename DataType1, typename DataType2,
+		typename DataType1, typename RIT, typename CIT, typename NIT,
+		typename DataType2,
 		typename Coords, typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType1, reference > &A,
+		const Matrix< DataType1, reference, RIT, CIT, NIT > &A,
 		const Vector< DataType2, reference, Coords > &x,
 		Args... args
 	) {

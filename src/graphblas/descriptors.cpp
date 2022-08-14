@@ -17,6 +17,9 @@
 
 #include <graphblas/descriptors.hpp>
 
+#include <sstream>
+
+
 std::string grb::descriptors::toString( const grb::Descriptor descr ) {
 	std::ostringstream os;
 	if( descr == 0 ) {
@@ -36,23 +39,22 @@ std::string grb::descriptors::toString( const grb::Descriptor descr ) {
 			os << " mask must be interpreted structurally, and not by value\n";
 		}
 		if( descr & dense ) {
-			os << " user guarantees all vectors in this call are dense\n";
+			os << " user guarantees that all input vectors to this call are dense\n";
 		}
 		if( descr & add_identity ) {
 			os << " an identity matrix is added to the input matrix\n";
 		}
 		if( descr & use_index ) {
-			os << " instead of using input vector elements, use their index "
-				  "instead\n";
+			os << " instead of using input vector elements, use their index instead\n";
 		}
 		if( descr & explicit_zero ) {
 			os << " the operation should take zeroes into account explicitly "
 				  "when computing output\n";
 		}
 		if( descr & no_casting ) {
-			os << " disallow casting between types during the requested "
-				  "computation\n";
+			os << " disallow casting between types during the requested computation\n";
 		}
 	}
 	return os.str();
 }
+

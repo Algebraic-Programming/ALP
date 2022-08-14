@@ -29,9 +29,59 @@
 
 #include <limits>
 #include <cmath>
+#include <complex>
 
 #include <assert.h>
 
+
+
+/**
+ * Attempts to read in a double value from a given file into a given memory
+ * location.
+ *
+ * @param[in]  in  The input file
+ * @param[out] out Where to store the read value.
+ *
+ * @returns 0 on success and 1 on failure.
+ *
+ * If the function fails, \a out shall not be assigned.
+ *
+ * \internal This is the overload for reading double data.
+ */
+template< typename fileType >
+int data_fscanf( const fileType in, double * const out ) {
+	const int rc = fscanf( in, "%lf", out );
+	if( rc == 1 ) {
+		return 0;
+	} else {
+		return 1;
+	}
+};
+
+/**
+ * Attempts to read in a complex value from a given file into a given memory
+ * location.
+ *
+ * @param[in]  in  The input file
+ * @param[out] out Where to store the read value.
+ *
+ * @returns 0 on success and 1 on failure.
+ *
+ * If the function fails, \a out shall not be assigned.
+ *
+ * \internal This is the overload for reading complex data.
+ */
+template< typename fileType, typename T >
+int data_fscanf( const fileType in, std::complex< T > * const out ) {
+	double x, y;
+	const int rc = fscanf( in, "%lf%lf", &x, &y );
+	if( rc == 2 ) {
+		*out = std::complex< T >( x, y );
+		return 0;
+	} else {
+		return 1;
+	}
+};
 
 /**
  * Verifies a dense vector against a ground-truth output vector.
@@ -88,10 +138,10 @@ int vector_verification(
 	assert( truth_filename != nullptr );
 	assert( c1 > 0 ); assert( c1 < 1 );
 	assert( c2 > 0 ); assert( c2 < 1 );
-	const constexpr double one = static_cast< double >( 1 );
+	const constexpr T one = static_cast< T >( 1 );
 
 	// open verification file
-	FILE *in = fopen( truth_filename, "r" );
+	FILE * const in = fopen( truth_filename, "r" );
 
 	if( in == nullptr ) {
 		std::cerr << "Could not open the file \"" << truth_filename << "\"."
@@ -101,15 +151,17 @@ int vector_verification(
 
 	// read the truth output vector from the input verification file
 	const size_t n = output_vector.size();
-	double * const truth = new double[ n ];
+	T * const truth = new T[ n ];
 	if( truth == nullptr ) {
 		std::cerr << "Could not allocate necessary buffer" << std::endl;
 		return 20;
 	}
+
 	for( size_t i = 0; i < n; i++ ) {
-		if( fscanf( in, "%lf", &(truth[ i ]) ) != 1 ) {
-			std::cerr << "The verification file looks incomplete."
-				<< std::endl;
+		const int rc = data_fscanf( in, truth + i );
+		if( rc != 0 ) {
+			std::cerr << "The verification file looks incomplete. " << "Line i = " << i
+				<< ", data = " << truth[ i ] << ", rc = " << rc << std::endl;
 			delete [] truth;
 			return 30;
 		}
@@ -117,17 +169,16 @@ int vector_verification(
 
 	// close verification file
 	if( fclose( in ) != 0 ) {
-		std::cerr << "I/O warning: closing verification file failed."
-			<< std::endl;
+		std::cerr << "I/O warning: closing verification file failed." << std::endl;
 	}
 
 	// compute magnitudes
 	double magnitude2 = 0;
 	double magnitudeInf = 0;
 	for( size_t i = 0; i < n; ++i ) {
-		magnitude2 += truth[ i ] * truth[ i ];
-		magnitudeInf = fabs( truth[ i ] ) > magnitudeInf ?
-			fabs( truth[ i ] ) :
+		magnitude2 +=  std::norm( truth[ i ] );
+		magnitudeInf = std::abs( truth[ i ] ) > magnitudeInf ?
+			std::abs( truth[ i ] ) :
 			magnitudeInf;
 	}
 	// we assume the ground truth should have a properly computable 2-norm
@@ -135,7 +186,7 @@ int vector_verification(
 	magnitude2 = sqrt( magnitude2 );
 
 	// convert the Pinned Vector into raw data
-	double * const raw_output_vector = new double[ n ];
+	T * const raw_output_vector = new T[ n ];
 	bool * const written_to = new bool[ n ];
 	if( raw_output_vector == nullptr || written_to == nullptr ) {
 		std::cerr << "Could not allocate necessary buffers" << std::endl;
@@ -147,7 +198,7 @@ int vector_verification(
 	}
 
 	for( size_t k = 0; k < output_vector.nonzeroes(); k++ ) {
-		const double value = output_vector.getNonzeroValue( k, one );
+		const T &value = output_vector.getNonzeroValue( k, one );
 		const size_t index = output_vector.getNonzeroIndex( k );
 		assert( index < n );
 		assert( !written_to[ index ] );
@@ -216,8 +267,7 @@ int vector_verification(
 	// compute the norm-2
 	double norm2 = 0;
 	for( size_t i = 0; i < n; i++ ) {
-		norm2 += ( raw_output_vector[ i ] - truth[ i ] ) *
-			( raw_output_vector[ i ] - truth[ i ] );
+		norm2 += std::norm( raw_output_vector[ i ] - truth[ i ] );
 	}
 
 	// isgreaterequal is used to ensure that the condition norm2 >= 0

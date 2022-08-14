@@ -27,6 +27,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 struct Output {
@@ -43,9 +44,12 @@ struct Input {
 enum BenchMode { TEMPLATED, LAMBDA, RAW };
 
 template< BenchMode mode >
-void test( const struct Input & in, struct Output & out ) {
+void test( const struct Input &in, struct Output &out ) {
 	grb::utils::Timer timer;
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > reals;
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> reals;
 
 	// set io time to 0
 	out.times.io = 0;
@@ -56,28 +60,27 @@ void test( const struct Input & in, struct Output & out ) {
 
 	double *x = xv.raw(), *y = yv.raw(), *z = zv.raw();
 
-#ifdef __clang__
-	// otherwise the reference implementation hits this bug: https://llvm.org/bugs/show_bug.cgi?id=10856)
-	out.error = grb::set< grb::descriptors::no_operation >( yv, 1 );
-#else
 	out.error = grb::set( yv, 1 );
-#endif
 	if( out.error != grb::SUCCESS ) {
+		std::cerr << "Error during initialisation of yv "
+			<< grb::toString( out.error ) << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return;
 	}
 
-#ifdef __clang__
-	// otherwise the reference implementation hits this bug: https://llvm.org/bugs/show_bug.cgi?id=10856)
-	out.error = grb::set< grb::descriptors::no_operation >( zv, 0 );
-#else
 	out.error = grb::set( zv, 0 );
-#endif
 	if( out.error != grb::SUCCESS ) {
+		std::cerr << "Error during initialisation of zv "
+			<< grb::toString( out.error ) << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return;
 	}
 
 	out.error = grb::set< grb::descriptors::use_index >( xv, zv );
 	if( out.error != grb::SUCCESS ) {
+		std::cerr << "Error during initialisation of xv "
+			<< grb::toString( out.error ) << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return;
 	}
 
@@ -87,18 +90,21 @@ void test( const struct Input & in, struct Output & out ) {
 	if( mode == TEMPLATED ) {
 		double ttime = timer.time();
 		// get cache `hot'
-		out.error = grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv, reals );
+		out.error = grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
+			reals );
 		if( out.error != SUCCESS ) {
-			std::cerr << "grb::eWiseMulAdd returns non-SUCCESS exit code " << grb::toString( out.error ) << ".\n";
+			std::cerr << "grb::eWiseMulAdd returns non-SUCCESS exit code "
+				<< grb::toString( out.error ) << "." << std::endl;
+			std::cout << "Test FAILED\n" << std::endl;
 			return;
 		}
 		// use this to infer number of inner iterations, if requested to be computed
 		ttime = timer.time() - ttime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 1000.0 / ttime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions of approx. " << ttime
-					  << " ms. each (to achieve around 1 second if inner loop "
-						 "wall-clock time).\n";
+			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
+				<< "of approx. " << ttime << " ms. each (to achieve around 1 second of "
+				<< "inner loop wall-clock time).\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -106,12 +112,8 @@ void test( const struct Input & in, struct Output & out ) {
 		timer.reset();
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
-#ifdef __clang__
-			// otherwise the reference implementation hits this bug: https://llvm.org/bugs/show_bug.cgi?id=10856)
-			(void)grb::eWiseMulAdd< grb::descriptors::no_operation >( zv, alpha, xv, yv, reals );
-#else
-			(void)grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv, reals );
-#endif
+			(void) grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
+				reals );
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
@@ -121,8 +123,9 @@ void test( const struct Input & in, struct Output & out ) {
 		for( size_t i = 0; i < in.n; ++i ) {
 			checksum += z[ i ];
 			const double expected = alpha * x[ i ] + y[ i ];
-			if( ! grb::utils::equals( expected, z[ i ], 2.0 ) ) {
-				std::cout << expected << " (expected) does not equal " << z[ i ] << " (template optimised) at position " << i << ".\n";
+			if( !grb::utils::equals( expected, z[ i ], 2 ) ) {
+				std::cout << expected << " (expected) does not equal " << z[ i ]
+					<< " (template optimised) at position " << i << ".\n";
 				out.error = FAILED;
 				return;
 			}
@@ -136,21 +139,23 @@ void test( const struct Input & in, struct Output & out ) {
 		// get cache `hot'
 		out.error = grb::eWiseLambda(
 			[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
-				(void)grb::apply( zv[ i ], alpha, xv[ i ], reals.getMultiplicativeOperator() );
-				(void)grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
+				(void) grb::apply( zv[ i ], alpha, xv[ i ],
+					reals.getMultiplicativeOperator() );
+				(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
 			},
 			zv, xv, yv );
 		if( out.error != SUCCESS ) {
-			std::cerr << "grb::eWiseLambda returns non-SUCCESS exit code " << grb::toString( out.error ) << ".\n";
+			std::cerr << "grb::eWiseLambda returns non-SUCCESS exit code "
+				<< grb::toString( out.error ) << ".\n";
 			return;
 		}
 		// use this to infer number of inner iterations, if requested to be computed
 		ltime = timer.time() - ltime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 1000.0 / ltime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions of approx. " << ltime
-					  << " ms. each (to achieve around 1 second if inner loop "
-						 "wall-clock time).\n";
+			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
+				<< "of approx. " << ltime << " ms. each (to achieve around 1 second of "
+				<< "inner loop wall-clock time).\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -158,12 +163,13 @@ void test( const struct Input & in, struct Output & out ) {
 		timer.reset();
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
-			(void)grb::eWiseLambda(
+			(void) grb::eWiseLambda(
 				[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
-					(void)grb::apply( zv[ i ], alpha, xv[ i ], reals.getMultiplicativeOperator() );
-					(void)grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
-				},
-				zv, xv, yv );
+					(void) grb::apply( zv[ i ], alpha, xv[ i ],
+						reals.getMultiplicativeOperator() );
+					(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
+				}, zv, xv, yv
+			);
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
@@ -173,8 +179,9 @@ void test( const struct Input & in, struct Output & out ) {
 		for( size_t i = 0; i < in.n; ++i ) {
 			checksum += z[ i ];
 			const double expected = alpha * x[ i ] + y[ i ];
-			if( ! grb::utils::equals( expected, z[ i ], 2.0 ) ) {
-				std::cout << expected << " (expected) does not equal " << z[ i ] << " (eWiseLambda) at position " << i << ".\n";
+			if( !grb::utils::equals( expected, z[ i ], 2 ) ) {
+				std::cout << expected << " (expected) does not equal " << z[ i ]
+					<< " (eWiseLambda) at position " << i << ".\n";
 				out.error = FAILED;
 				return;
 			}
@@ -185,7 +192,11 @@ void test( const struct Input & in, struct Output & out ) {
 
 	if( mode == RAW ) {
 		double * a = NULL;
-		int prc = posix_memalign( (void **)&a, grb::config::CACHE_LINE_SIZE::value(), in.n * sizeof( double ) );
+		int prc = posix_memalign(
+			(void **)&a,
+			grb::config::CACHE_LINE_SIZE::value(),
+			in.n * sizeof( double )
+		);
 		assert( prc == 0 );
 		if( prc == ENOMEM ) {
 			out.error = OUTOFMEM;
@@ -206,9 +217,9 @@ void test( const struct Input & in, struct Output & out ) {
 		ctime = timer.time() - ctime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 1000.0 / ctime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions of approx. " << ctime
-					  << " ms. each (to achieve around 1 second if inner loop "
-						 "wall-clock time).\n";
+			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
+				<< "of approx. " << ctime << " ms. each (to achieve around 1 second of "
+				<< "inner loop wall-clock time).\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -226,8 +237,9 @@ void test( const struct Input & in, struct Output & out ) {
 		for( size_t i = 0; i < in.n; ++i ) {
 			const double expected = alpha * x[ i ] + y[ i ];
 			checksum += a[ i ];
-			if( ! grb::utils::equals( a[ i ], expected, 2.0 ) ) {
-				std::cout << a[ i ] << " (compiler optimised) does not equal " << expected << " (expected) at position " << i << ".\n";
+			if( !grb::utils::equals( a[ i ], expected, 2 ) ) {
+				std::cout << a[ i ] << " (compiler optimised) does not equal " << expected
+					<< " (expected) at position " << i << ".\n";
 				out.error = FAILED;
 				return;
 			}
@@ -244,7 +256,8 @@ void test( const struct Input & in, struct Output & out ) {
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " <vector length> (inner iterations) (outer iterations)" << std::endl;
+		std::cout << "Usage: " << argv[ 0 ] << " <vector length> (inner iterations) "
+			<< "(outer iterations)" << std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -257,7 +270,9 @@ int main( int argc, char ** argv ) {
 	char * end = NULL;
 	in.n = strtoumax( argv[ 1 ], &end, 10 );
 	if( argv[ 1 ] == end ) {
-		std::cerr << "Could not parse argument " << argv[ 1 ] << " for vector length.\n Test FAILED." << std::endl;
+		std::cerr << "Could not parse argument " << argv[ 1 ] << " "
+			<< "for vector length." << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return 10;
 	}
 
@@ -266,10 +281,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 3 ) {
 		in.rep = strtoumax( argv[ 2 ], &end, 10 );
 		if( argv[ 2 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ]
-					  << " for number of inner experiment repititions.\n Test "
-						 "FAILED."
-					  << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
+				<< "for number of inner experiment repititions." << std::endl;
+			std::cout << "Test FAILED\n" << std::endl;
 			return 20;
 		}
 	}
@@ -279,10 +293,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		outer = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ]
-					  << " for number of outer experiment repititions.\n Test "
-						 "FAILED."
-					  << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
+				<< "for number of outer experiment repititions." << std::endl;
+			std::cout << "Test FAILED\n" << std::endl;
 			return 30;
 		}
 	}
@@ -291,30 +304,37 @@ int main( int argc, char ** argv ) {
 	grb::Benchmarker< AUTOMATIC > bench;
 
 	// start functional test
-	std::cout << "\nBenchmark label: grb::eWiseApply (axpy) of size " << in.n << std::endl;
+	std::cout << "\nBenchmark label: grb::eWiseApply (axpy) of size " << in.n
+		<< std::endl;
 	grb::RC rc = bench.exec( &(test< TEMPLATED >), in, out, 1, outer, true );
 	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n << std::endl;
+		std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n
+			<< std::endl;
 		rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
 	}
 	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n << std::endl;
+		std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n
+			<< std::endl;
 		rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "Error launching test; exec returns " << grb::toString( rc ) << ".\n Test FAILED." << std::endl;
+		std::cerr << "Error launching test; exec returns " << grb::toString( rc )
+			<< "." << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return EXIT_FAILURE;
 	}
 	if( out.error != SUCCESS ) {
-		std::cerr << "Functional test exits with nonzero exit code. Reason: " << grb::toString( out.error ) << "." << std::endl;
-		std::cout << "Test FAILED.\n" << std::endl;
+		std::cerr << "Functional test exits with nonzero exit code. "
+			<< "Reason: " << grb::toString( out.error ) << "." << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 		return EXIT_FAILURE;
 	}
 
 	std::cout << "NOTE: please check the above performance figures manually-- "
-				 "the timings should approximately match.\n";
+		<< "the timings should approximately match.\n";
 
 	// done
-	std::cout << "Test OK.\n" << std::endl;
+	std::cout << "Test OK\n" << std::endl;
 	return EXIT_SUCCESS;
 }
+

@@ -20,7 +20,7 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_BLAS1 || defined _H_GRB_REFERENCE_OMP_BLAS1
+#if !defined _H_GRB_REFERENCE_BLAS1 || defined _H_GRB_REFERENCE_OMP_BLAS1
 #define _H_GRB_REFERENCE_BLAS1
 
 #include <graphblas/utils/suppressions.h>
@@ -94,7 +94,8 @@ namespace grb {
 
 	namespace internal {
 
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
 			class OP,
 			typename IOType, typename InputType, typename MaskType,
@@ -104,8 +105,7 @@ namespace grb {
 			IOType &fold_into,
 			const Vector< InputType, reference, Coords > &to_fold,
 			const Vector< MaskType, reference, Coords > &mask,
-			const OP &op,
-			const Phase phase
+			const OP &op
 		) {
 			// static sanity checks
 			static_assert( grb::is_associative< OP >::value,
@@ -113,30 +113,34 @@ namespace grb {
 				"function should not have been called-- please submit a "
 				"bugreport." );
 
-			if( phase == RESIZE ) {
-				return SUCCESS;
-			}
-			assert( phase == EXECUTE );
-
-			// fold is only defined on dense vectors
-			if( nnz( to_fold ) < size( to_fold ) ) {
-				return ILLEGAL;
-			}
 
 			// mask must be of equal size as input vector
 			if( masked && size( to_fold ) != size( mask ) ) {
 				return MISMATCH;
 			}
 
-			// handle trivial case
-			if( masked && nnz( mask ) == 0 ) {
+			// fold is only defined on dense vectors
+			if( nnz( to_fold ) < size( to_fold ) ) {
+				return ILLEGAL;
+			}
+
+			// if dense descriptor is given, then additionally the mask must be dense
+			if( masked && (descr & descriptors::dense) && nnz( mask ) < size( mask ) ) {
+				return ILLEGAL;
+			}
+
+			// handle trivial cases
+			if( size( to_fold ) == 0 ) {
+				return SUCCESS;
+			}
+			if( masked && nnz( mask ) == 0 && !(descr & descriptors::invert_mask) ) {
 				return SUCCESS;
 			}
 
 			// some globals used during the folding
 			RC ret = SUCCESS;         // final return code
 			IOType global = IOType(); // global variable in which to fold
-			size_t root = 0;          // which process is the root of the fold (in
+			size_t root = 1;          // which process is the root of the fold (in
 			                          // case we have multiple processes)
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 			// handle trivial sequential cases
@@ -163,7 +167,7 @@ namespace grb {
 				constexpr size_t s = 0;
 				constexpr size_t P = 1;
 				size_t i = 0;
-				const size_t end = internal::getCoordinates( to_fold ).size();
+				const size_t end = n;
 #else
 			{
 				#pragma omp parallel
@@ -185,7 +189,7 @@ namespace grb {
 					assert( i <= end );
 					assert( end <= n );
 #ifdef NDEBUG
-					(void)n;
+					(void) n;
 #endif
 					// assume current i needs to be processed
 					bool process_current_i = true;
@@ -202,7 +206,7 @@ namespace grb {
 						// if not
 						while( !process_current_i ) {
 							// forward to next element
-							++i;
+							(void) ++i;
 							// check that we are within bounds
 							if( i == end ) {
 								break;
@@ -228,42 +232,74 @@ namespace grb {
 #endif
 					{
 						// check if we have a root already
-						if( ! empty && root == P ) {
+						if( !empty && root == P ) {
 							// no, so take it
 							root = s;
 						}
 					}
 					// declare thread-local variable and set our variable to the first value in our block
-					IOType local = i < end ?
-						static_cast< IOType >( internal::getRaw( to_fold )[ i ] ) :
-						static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
+#ifndef NDEBUG
+					if( i < end ) {
+						assert( i < n );
+					}
+#endif
+
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
+					IOType local;                       // whenever our local block is
+					GRB_UTIL_RESTORE_WARNINGS           // non-empty
+					if( end > 0 ) {
+						if( i < end ) {
+							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
+						} else {
+							local = static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
+						}
+					}
+
 					// if we have a value to fold
-					if( !empty ) {
+					if( i + 1 < end ) {
+
 						while( true ) {
+
 							// forward to next variable
-							++i;
+							(void) ++i;
+
 							// forward more (possibly) if in the masked case
-							if( masked ) {
-								process_current_i = utils::interpretMask< descr >( internal::getCoordinates( mask ).assigned( i ), internal::getRaw( mask ), i );
-								while( ! process_current_i && i + 1 < end ) {
-									++i;
-									process_current_i = utils::interpretMask< descr >( internal::getCoordinates( mask ).assigned( i ), internal::getRaw( mask ), i );
+							if( masked && i < end ) {
+								assert( i < n );
+								process_current_i = utils::interpretMask< descr >(
+									internal::getCoordinates( mask ).assigned( i ),
+									internal::getRaw( mask ),
+									i
+								);
+
+								while( !process_current_i && i + 1 < end ) {
+									(void) ++i;
+									if( i < end ) {
+										assert( i < n );
+										process_current_i = utils::interpretMask< descr >(
+											internal::getCoordinates( mask ).assigned( i ),
+											internal::getRaw( mask ),
+											i
+										);
+									}
 								}
 							}
+
 							// stop if past end
-							if( i >= end || ! process_current_i ) {
+							if( i >= end || !process_current_i ) {
 								break;
 							}
 							// store result of fold in local variable
 							RC rc;
 
+							assert( i < n );
 							if( left ) {
 								rc = foldl< descr >( local, internal::getRaw( to_fold )[ i ], op );
 							} else {
 								rc = foldr< descr >( internal::getRaw( to_fold )[ i ], local, op );
 							}
-							// sanity check
 							assert( rc == SUCCESS );
+
 							// error propagation
 							if( rc != SUCCESS ) {
 								ret = rc;
@@ -278,9 +314,11 @@ namespace grb {
 						// if I am root
 						if( root == s ) {
 							// then I should be non-empty
-							assert( ! empty );
+							assert( !empty );
 							// set global value to locally computed value
-							global = local;
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
+							global = local;                     // chunk is non-empty, in which case
+							GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
 						}
 					}
 					#pragma omp barrier
@@ -301,6 +339,8 @@ namespace grb {
 						}
 					}
 				} // end pragma omp parallel for
+#else
+				global = local;
 #endif
 			}
 #ifdef _DEBUG
@@ -332,7 +372,17 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
+#ifndef NDEBUG
+			constexpr const bool dense_descr = descr & descriptors::dense;
+#endif
 			const size_t n = size( vector );
+
+			// input checking is done by fold_from_scalar_to_vector_generic
+			// we hence here only assert
+			assert( !masked || m_coors->size() == n );
+			assert( !dense_descr || nnz( vector ) == n );
+			assert( !dense_descr || !masked || m_coors->nonzeroes() == n );
+
 			if( n == 0 ) {
 				return SUCCESS;
 			}
@@ -345,21 +395,45 @@ namespace grb {
 			IOType * __restrict__ x = internal::getRaw( vector );
 			Coords &coors = internal::getCoordinates( vector );
 			assert( coors.nonzeroes() < coors.size() );
+
+			if( masked ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
+				#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
-			for( size_t i = 0; i < n; ++i ) {
-				const size_t index = coors.index( i );
-				if( masked ) {
-					if( ! ( m_coors->template mask< descr >( index, m ) ) ) {
+				for( size_t i = 0; i < n; ++i ) {
+					const size_t index = coors.index( i );
+					if( !( m_coors->template mask< descr >( index, m ) ) ) {
 						continue;
 					}
+					if( left ) {
+						(void) foldl< descr >( x[ index ], scalar, op );
+					} else {
+						(void) foldr< descr >( scalar, x[ index ], op );
+					}
 				}
-				if( left ) {
-					(void)foldl< descr >( x[ index ], scalar, op );
-				} else {
-					(void)foldr< descr >( scalar, x[ index ], op );
+			} else {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n );
+#else
+					const size_t start = 0;
+					const size_t end = n;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						const size_t index = coors.index( i );
+						if( left ) {
+							(void) foldl< descr >( x[ index ], scalar, op );
+						} else {
+							(void) foldr< descr >( scalar, x[ index ], op );
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				}
+#endif
 			}
 			return SUCCESS;
 		}
@@ -381,8 +455,18 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
-			assert( grb::size( vector ) == m_coors.size() );
-			if( grb::size( vector ) == 0 ) {
+#ifndef NDEBUG
+			constexpr const bool dense_descr = descr & descriptors::dense;
+#endif
+			const size_t n = size( vector );
+
+			// input checking is done by fold_from_scalar_to_vector_generic
+			// we hence here only assert
+			assert( m_coors.size() != n );
+			assert( !dense_descr || nnz( vector ) == n );
+			assert( !dense_descr || m_coors.nonzeroes() == n );
+
+			if( n == 0 ) {
 				return SUCCESS;
 			}
 			if( phase == RESIZE ) {
@@ -398,6 +482,8 @@ namespace grb {
 				auto localUpdate = coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
 				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 				for( size_t i = 0; i < m_coors.nonzeroes(); ++i ) {
 					const size_t index = m_coors.index( i );
@@ -406,15 +492,15 @@ namespace grb {
 					}
 					if( !sparse || coors.asyncAssign( index, localUpdate ) ) {
 						if( left ) {
-							(void)foldl< descr >( x[ index ], scalar, op );
+							(void) foldl< descr >( x[ index ], scalar, op );
 						} else {
-							(void)foldr< descr >( scalar, x[ index ], op );
+							(void) foldr< descr >( scalar, x[ index ], op );
 						}
 					} else if( sparse && monoid ) {
 						x[ index ] = static_cast< IOType >( scalar );
-						(void)asyncAssigns++;
+						(void) asyncAssigns++;
 						if( asyncAssigns == maxAsyncAssigns ) {
-							(void)coors.joinUpdate( localUpdate );
+							(void) coors.joinUpdate( localUpdate );
 							asyncAssigns = 0;
 						}
 					}
@@ -429,9 +515,9 @@ namespace grb {
 				}
 				if( !sparse || coors.assign( index ) ) {
 					if( left ) {
-						(void)foldl< descr >( x[ index ], scalar, op );
+						(void) foldl< descr >( x[ index ], scalar, op );
 					} else {
-						(void)foldr< descr >( scalar, x[ index ], op );
+						(void) foldr< descr >( scalar, x[ index ], op );
 					}
 				} else if( sparse && monoid ) {
 					x[ index ] = static_cast< IOType >( scalar );
@@ -457,11 +543,24 @@ namespace grb {
 			const OP &op,
 			const Phase &phase
 		) {
+			constexpr const bool dense_descr = descr & descriptors::dense;
 			assert( !masked || m != nullptr );
 			assert( !masked || m_coors != nullptr );
 			auto &coor = internal::getCoordinates( vector );
 			const size_t n = coor.size();
 
+			if( masked && m_coors->size() != n ) {
+				return MISMATCH;
+			}
+			if( dense_descr && sparse ) {
+				return ILLEGAL;
+			}
+			if( dense_descr && nnz( vector ) < n ) {
+				return ILLEGAL;
+			}
+			if( dense_descr && masked && m_coors->nonzeroes() < n ) {
+				return ILLEGAL;
+			}
 			if( n == 0 ) {
 				return SUCCESS;
 			}
@@ -475,19 +574,28 @@ namespace grb {
 			if( sparse && monoid && !masked ) {
 				// output will become dense, use Theta(n) loop
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n );
+#else
+					const size_t start = 0;
+					const size_t end = n;
 #endif
-				for( size_t i = 0; i < n; ++i ) {
-					if( coor.assigned( i ) ) {
-						if( left ) {
-							(void)foldl< descr >( x[ i ], scalar, op );
+					for( size_t i = start; i < end; ++i ) {
+						if( coor.assigned( i ) ) {
+							if( left ) {
+								(void) foldl< descr >( x[ i ], scalar, op );
+							} else {
+								(void) foldr< descr >( scalar, x[ i ], op );
+							}
 						} else {
-							(void)foldr< descr >( scalar, x[ i ], op );
+							x[ i ] = static_cast< IOType >( scalar );
 						}
-					} else {
-						x[ i ] = static_cast< IOType >( scalar );
 					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				}
+#endif
 				coor.assignAll();
 				return SUCCESS;
 			} else if( sparse && monoid && masked ) {
@@ -566,7 +674,8 @@ namespace grb {
 		 *                    match.
 		 * @returns #SUCCESS  On successful completion of this function call.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool left, // if this is false, the right-looking fold is assumed
 			bool sparse, bool masked, bool monoid,
 			typename MaskType, typename IOType, typename IType,
@@ -580,19 +689,17 @@ namespace grb {
 			const OP &op,
 			const Phase phase
 		) {
+			constexpr const bool dense_descr = descr & descriptors::dense;
 			assert( !masked || (m != nullptr) );
-			// take at least a number of elements so that no two threads operate on the same cache line
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			const constexpr size_t blocksize =
-				config::SIMD_BLOCKSIZE< IOType >::value() >
-					config::SIMD_BLOCKSIZE< IType >::value() ?
-				config::SIMD_BLOCKSIZE< IOType >::value() :
-				config::SIMD_BLOCKSIZE< IType >::value();
-			static_assert( blocksize > 0, "Config error: zero blocksize in call to fold_from_vector_to_vector_generic!" );
-#endif
 			const size_t n = size( fold_into );
 			if( n != size( to_fold ) ) {
 				return MISMATCH;
+			}
+			if( masked && size( *m ) != n ) {
+				return MISMATCH;
+			}
+			if( dense_descr && sparse ) {
+				return ILLEGAL;
 			}
 			if( !sparse && nnz( fold_into ) < n ) {
 				return ILLEGAL;
@@ -600,11 +707,26 @@ namespace grb {
 			if( !sparse && nnz( to_fold ) < n ) {
 				return ILLEGAL;
 			}
+			if( masked && !sparse && nnz( *m ) < n ) {
+				return ILLEGAL;
+			}
 			if( phase == RESIZE ) {
 				return SUCCESS;
 			}
 
 			assert( phase == EXECUTE );
+
+			// take at least a number of elements so that no two threads operate on the
+			// same cache line
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			const constexpr size_t blocksize =
+				config::SIMD_BLOCKSIZE< IOType >::value() >
+					config::SIMD_BLOCKSIZE< IType >::value() ?
+				config::SIMD_BLOCKSIZE< IOType >::value() :
+				config::SIMD_BLOCKSIZE< IType >::value();
+			static_assert( blocksize > 0, "Config error: zero blocksize in call to"
+				"fold_from_vector_to_vector_generic!" );
+#endif
 			if( !sparse && !masked ) {
 #ifdef _DEBUG
 				std::cout << "fold_from_vector_to_vector_generic: in dense variant\n";
@@ -618,6 +740,8 @@ namespace grb {
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, n, blocksize );
 					const size_t range = end - start;
+					assert( end <= n );
+					assert( range + start <= n );
 					if( left ) {
 						op.eWiseFoldlAA( internal::getRaw( fold_into ) + start,
 							internal::getRaw( to_fold ) + start, range );
@@ -656,7 +780,7 @@ namespace grb {
 #ifdef _DEBUG
 								std::cout << "Left-folding " << to_fold[ i ] << " into " << fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -672,7 +796,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -691,7 +815,7 @@ namespace grb {
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -707,7 +831,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -726,7 +850,7 @@ namespace grb {
 								std::cout << "Left-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldl< descr >( fold_into[ i ], to_fold[ i ], op );
+								(void) foldl< descr >( fold_into[ i ], to_fold[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -743,7 +867,7 @@ namespace grb {
 								std::cout << "Right-folding " << to_fold[ i ] << " into "
 									<< fold_into[ i ];
 #endif
-								(void)foldr< descr >( to_fold[ i ], fold_into[ i ], op );
+								(void) foldr< descr >( to_fold[ i ], fold_into[ i ], op );
 #ifdef _DEBUG
 								std::cout << " resulting into " << fold_into[ i ] << "\n";
 #endif
@@ -824,7 +948,7 @@ namespace grb {
 											<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 									}
 #endif
-									(void)foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
+									(void) foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
 #ifdef _DEBUG
 									#pragma omp critical
 									std::cout << " which results in " << fi_raw[ i ] << "\n";
@@ -837,7 +961,7 @@ namespace grb {
 											<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 									}
 #endif
-									(void)foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
+									(void) foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
 #ifdef _DEBUG
 									#pragma omp critical
 									std::cout << " which results in " << fi_raw[ i ] << "\n";
@@ -853,13 +977,13 @@ namespace grb {
 #endif
 								fi_raw[ i ] = tf_raw[ i ];
 								if( !fi.asyncAssign( i, local_update ) ) {
-									(void)++asyncAssigns;
+									(void) ++asyncAssigns;
 								}
 							}
 							if( asyncAssigns == maxAsyncAssigns ) {
 								const bool was_empty = fi.joinUpdate( local_update );
 #ifdef NDEBUG
-								(void)was_empty;
+								(void) was_empty;
 #else
 								assert( !was_empty );
 #endif
@@ -888,7 +1012,7 @@ namespace grb {
 								std::cout << "\tfoldl< descr >( fi_raw[ i ], tf_raw[ i ], op ), i = "
 									<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 #endif
-								(void)foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
+								(void) foldl< descr >( fi_raw[ i ], tf_raw[ i ], op );
 #ifdef _DEBUG
 								std::cout << " which results in " << fi_raw[ i ] << "\n";
 #endif
@@ -897,7 +1021,7 @@ namespace grb {
 								std::cout << "\tfoldr< descr >( tf_raw[ i ], fi_raw[ i ], op ), i = "
 									<< i << ": " << tf_raw[ i ] << " goes into " << fi_raw[ i ];
 #endif
-								(void)foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
+								(void) foldr< descr >( tf_raw[ i ], fi_raw[ i ], op );
 #ifdef _DEBUG
 								std::cout << " which results in " << fi_raw[ i ] << "\n";
 #endif
@@ -908,7 +1032,7 @@ namespace grb {
 								<< " will be overwritten with " << tf_raw[ i ] << "\n";
 #endif
 							fi_raw[ i ] = tf_raw[ i ];
-							(void)fi.assign( i );
+							(void) fi.assign( i );
 						}
 					}
 #endif
@@ -920,6 +1044,7 @@ namespace grb {
 				<< "Output now contains " << nnz( fold_into ) << " / "
 				<< size( fold_into ) << " nonzeroes.\n";
 #endif
+
 			// done
 			return SUCCESS;
 		}
@@ -1010,6 +1135,54 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, reference, Coords > &x,
+		const Vector< MaskType, reference, Coords > &mask,
+		IOType &beta,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::foldr",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::foldr",
+			"called with a vector mask type that is not boolean" );
+
+		if( size( mask ) > 0 ) {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, true, false
+			>( beta, x, mask, monoid.getOperator() );
+		} else {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, false, false
+			>( beta, x, mask, monoid.getOperator() );
+		}
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename IOType,
 		typename Coords
 	>
@@ -1017,17 +1190,33 @@ namespace grb {
 		const Vector< InputType, reference, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
-		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		grb::Vector< bool, reference, Coords > mask( 0 );
-		return internal::fold_from_vector_to_scalar_generic< descr, false, false >(
-			beta, x, mask, monoid.getOperator(), phase
-		);
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::foldr",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+
+		grb::Vector< bool, reference, Coords > empty_mask( 0 );
+		return internal::template fold_from_vector_to_scalar_generic<
+			descr, false, false
+		>( beta, x, empty_mask, monoid.getOperator() );
 	}
 
 	/**
@@ -1278,7 +1467,8 @@ namespace grb {
 		typename IOType, typename InputType,
 		typename Coords
 	>
-	RC foldr( const Vector< InputType, reference, Coords > &x,
+	RC foldr(
+		const Vector< InputType, reference, Coords > &x,
 		Vector< IOType, reference, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
@@ -2005,7 +2195,8 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP,
 		typename IOType, typename InputType, typename Coords
 	>
-	RC foldl( Vector< IOType, reference, Coords > &x,
+	RC foldl(
+		Vector< IOType, reference, Coords > &x,
 		const Vector< InputType, reference, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
@@ -2390,7 +2581,7 @@ namespace grb {
 						if( right_sparse ) {
 							y_m[ k ] = y_coors->assigned( local_i );
 						}
-						(void)++local_i;
+						(void) ++local_i;
 					}
 					for( size_t k = 0; k < block_size; ++k ) {
 						RC rc = SUCCESS;
@@ -2403,7 +2594,7 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 					for( size_t k = 0; k < block_size; ++k, ++i ) {
@@ -2451,7 +2642,7 @@ namespace grb {
 					}
 					assert( rc == SUCCESS );
 #ifdef NDEBUG
-					(void)rc;
+					(void) rc;
 #endif
 				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -2483,7 +2674,7 @@ namespace grb {
 			const size_t n
 		) {
 #ifdef NDEBUG
-			(void)n;
+			(void) n;
 #endif
 #ifndef GRB_NO_NOOP_CHECKS
 			static_assert( !internal::maybe_noop< OP >::value, "Warning: you may be "
@@ -2604,14 +2795,14 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 					// part that may or may not be vectorised (can we do something about this??)
 					for( size_t i = 0; i < block_size; ++i ) {
 						if( !masked || mask[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.assign( offsets[ i ] );
+							(void) z_coors.assign( offsets[ i ] );
 #else
 							if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
 								(void) ++asyncAssigns;
@@ -2666,10 +2857,10 @@ namespace grb {
 						}
 						RC rc = SUCCESS;
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-						(void)z_coors.assign( index );
+						(void) z_coors.assign( index );
 #else
 						if( !z_coors.asyncAssign( index, update ) ) {
-							(void)++asyncAssigns;
+							(void) ++asyncAssigns;
 						}
 						if( asyncAssigns == maxAsyncAssigns ) {
 #ifndef NDEBUG
@@ -2697,7 +2888,7 @@ namespace grb {
 						}
 						assert( rc == SUCCESS );
 #ifdef NDEBUG
-						(void)rc;
+						(void) rc;
 #endif
 					}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -2712,6 +2903,8 @@ namespace grb {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 					k = 0;
 #else
+					// use dynamic schedule as the timings of gathers and scatters may vary
+					// significantly
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 					for( size_t b = start; b < end; ++b ) {
@@ -2801,20 +2994,20 @@ namespace grb {
 							if( masked ) {
 								if( mask[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( offsets[ i ] );
+									(void) z_coors.assign( offsets[ i ] );
 #else
 									if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #endif
 								}
 							} else {
 								if( x_m[ i ] ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( offsets[ i ] );
+									(void) z_coors.assign( offsets[ i ] );
 #else
 									if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #endif
 								}
@@ -2824,7 +3017,9 @@ namespace grb {
 						for( size_t i = 0; i < block_size; i++ ) {
 							if( masked ) {
 								if( mask[ i ] ) {
-									z_p[ offsets[ i ] ] = z_b[ i ];
+									GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // if masked && mask[ i ], then
+									z_p[ offsets[ i ] ] = z_b[ i ];     // z_b[ i ] was set from x or y in
+									GRB_UTIL_RESTORE_WARNINGS           // the above
 								}
 							} else {
 								if( x_m[ i ] ) {
@@ -2873,10 +3068,10 @@ namespace grb {
 								continue;
 							}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #else
 							if( !z_coors.asyncAssign( index, update ) ) {
-								(void)++asyncAssigns;
+								(void) ++asyncAssigns;
 							}
 							if( asyncAssigns == maxAsyncAssigns ) {
 #ifndef NDEBUG
@@ -2958,7 +3153,7 @@ namespace grb {
 			size_t unset = 0;
 			for( size_t i = 0; i < mask_coors.size(); ++i ) {
 				if( !mask_coors.assigned( i ) ) {
-					(void)++unset;
+					(void) ++unset;
 				}
 			}
 			assert( unset == mask_coors.size() - mask_coors.nonzeroes() );
@@ -3012,6 +3207,8 @@ namespace grb {
 					size_t asyncAssigns = 0;
 					const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 					assert( maxAsyncAssigns >= block_size );
+					// choose dynamic schedule since the mask otherwise likely leads to
+					// significant imbalance
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
 #endif
 					// vectorised code
@@ -3070,10 +3267,10 @@ namespace grb {
 								if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 									if( !z_coors.asyncAssign( index, update ) ) {
-										(void)++asyncAssigns;
+										(void) ++asyncAssigns;
 									}
 #else
-									(void)z_coors.assign( index );
+									(void) z_coors.assign( index );
 #endif
 								}
 								*( z_p + index ) = z_b[ k ];
@@ -3081,7 +3278,7 @@ namespace grb {
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( asyncAssigns > maxAsyncAssigns - block_size ) {
-							(void)z_coors.joinUpdate( update );
+							(void) z_coors.joinUpdate( update );
 							asyncAssigns = 0;
 						}
 #endif
@@ -3096,14 +3293,14 @@ namespace grb {
 							if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 								if( !z_coors.asyncAssign( i, update ) ) {
-									(void)++asyncAssigns;
+									(void) ++asyncAssigns;
 								}
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( update );
+									(void) z_coors.joinUpdate( update );
 									asyncAssigns = 0;
 								}
 #else
-								(void)z_coors.assign( i );
+								(void) z_coors.assign( i );
 #endif
 							}
 							const InputType1 * const x_e = left_scalar ?
@@ -3166,6 +3363,8 @@ namespace grb {
 					size_t asyncAssigns = 0;
 					const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 					assert( maxAsyncAssigns >= block_size );
+					// choose dynamic schedule since the mask otherwise likely leads to
+					// significant imbalance
 					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() / block_size ) nowait
 #endif
 					// vectorised code
@@ -3223,7 +3422,7 @@ namespace grb {
 							if( mask_b[ t ] ) {
 								if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void)z_coors.assign( indices[ t ] );
+									(void) z_coors.assign( indices[ t ] );
 #else
 									if( !z_coors.asyncAssign( indices[ t ], update ) ) {
 										(void) ++asyncAssigns;
@@ -3234,14 +3433,16 @@ namespace grb {
 									}
 #endif
 								}
-								*( z_p + indices[ t ] ) = z_b[ t ];
+								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
+								*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
+								GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
 							}
 						}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 						k += block_size;
 #else
 						if( asyncAssigns > maxAsyncAssigns - block_size ) {
-							(void)z_coors.joinUpdate( update );
+							(void) z_coors.joinUpdate( update );
 							asyncAssigns = 0;
 						}
 #endif
@@ -3260,13 +3461,13 @@ namespace grb {
 							}
 							if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)z_coors.assign( i );
+								(void) z_coors.assign( i );
 #else
 								if( !z_coors.asyncAssign( i, update ) ) {
 									(void) ++asyncAssigns;
 								}
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( update );
+									(void) z_coors.joinUpdate( update );
 									asyncAssigns = 0;
 								}
 #endif
@@ -3491,7 +3692,7 @@ namespace grb {
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), monoid variant\n";
 #endif
 		// simply delegate to operator variant
-		return eWiseApply< descr >( z, alpha, beta, monoid.getOperator() );
+		return eWiseApply< descr >( z, alpha, beta, monoid.getOperator(), phase );
 	}
 
 	/**
@@ -4750,7 +4951,7 @@ namespace grb {
 			<< "foldl with precomputed scalar and additive monoid\n";
 #endif
 		const typename Ring::D4 add;
-		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
+		(void) apply( add, alpha, beta, ring.getAdditiveOperator() );
 		return foldl< descr >( z, add, ring.getAdditiveMonoid(), phase );
 	}
 
@@ -4975,16 +5176,25 @@ namespace grb {
 			<< "dispatches to foldl with precomputed scalar and additive monoid\n";
 #endif
 		const typename Ring::D4 add;
-		(void)apply( add, alpha, beta, ring.getAdditiveOperator() );
+		(void) apply( add, alpha, beta, ring.getAdditiveOperator() );
 		return foldl< descr >( z, m, add, ring.getAdditiveMonoid(), phase );
 	}
 
-	// declare an internal version of eWiseMulAdd containing the full sparse & dense implementations
+	// declare an internal version of eWiseMulAdd containing the full
+	// sparse & dense implementations
 	namespace internal {
 
+		/**
+		 * \internal
+		 * This variant fuses the multiplication, addition, and folding into the
+		 * output vector while looping over the elements where the mask evaluates
+		 * true. Since the reference implementation does not support Theta(n-nz)
+		 * loops in cases where the mask is structural and inverted, it (statically)
+		 * asserts that the mask is not inverted.
+		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool a_scalar, bool x_scalar, bool y_scalar,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5018,7 +5228,7 @@ namespace grb {
 			assert( x != y );
 			assert( m_coors != nullptr );
 #ifdef NDEBUG
-			(void)n;
+			(void) n;
 #endif
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -5232,7 +5442,8 @@ namespace grb {
 #endif
 				// scalar coda and parallel main body
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				internal::Coordinates< reference >::Update localUpdate = z_coors.EMPTY_UPDATE();
+				internal::Coordinates< reference >::Update localUpdate =
+					z_coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
 #endif
@@ -5248,48 +5459,48 @@ namespace grb {
 					) {
 						const InputType1 * const a_p = a + ( a_scalar ? 0 : index );
 						const InputType2 * const x_p = x + ( x_scalar ? 0 : index );
-						(void)apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
 						if( y_scalar || y_coors->assigned( index ) ) {
 							const InputType3 * const y_p = y + ( y_scalar ? 0 : index );
 							typename Ring::D4 b;
-							(void)apply( b, t, *y_p, ring.getAdditiveOperator() );
+							(void) apply( b, t, *y_p, ring.getAdditiveOperator() );
 							if( z_coors.assigned( index ) ) {
 								typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-								(void)foldr( b, out, ring.getAdditiveOperator() );
+								(void) foldr( b, out, ring.getAdditiveOperator() );
 								z[ index ] = static_cast< OutputType >( out );
 							} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)z_coors.asyncAssign( index, localUpdate );
-								(void)++asyncAssigns;
+								(void) z_coors.asyncAssign( index, localUpdate );
+								(void) ++asyncAssigns;
 #else
-								(void)z_coors.assign( index );
+								(void) z_coors.assign( index );
 #endif
 								z[ index ] = static_cast< OutputType >( b );
 							}
 						} else if( z_coors.assigned( index ) ) {
 							typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-							(void)foldr( t, out, ring.getAdditiveOperator() );
+							(void) foldr( t, out, ring.getAdditiveOperator() );
 							z[ index ] = static_cast< OutputType >( out );
 						} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.asyncAssign( index, localUpdate );
-							(void)++asyncAssigns;
+							(void) z_coors.asyncAssign( index, localUpdate );
+							(void) ++asyncAssigns;
 #else
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #endif
 							z[ index ] = static_cast< OutputType >( t );
 						}
 					} else if( y_coors->assigned( index ) ) {
 						if( z_coors.assigned( index ) ) {
 							typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
-							(void)foldr( y[ index ], out, ring.getAdditiveOperator() );
+							(void) foldr( y[ index ], out, ring.getAdditiveOperator() );
 							z[ index ] = static_cast< OutputType >( out );
 						} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-							(void)z_coors.asyncAssign( index, localUpdate );
-							(void)++asyncAssigns;
+							(void) z_coors.asyncAssign( index, localUpdate );
+							(void) ++asyncAssigns;
 #else
-							(void)z_coors.assign( index );
+							(void) z_coors.assign( index );
 #endif
 							z[ index ] = static_cast< OutputType >( t );
 						}
@@ -5298,7 +5509,7 @@ namespace grb {
 					if( asyncAssigns == maxAsyncAssigns ) {
 						const bool was_empty = z_coors.joinUpdate( localUpdate );
 #ifdef NDEBUG
-						(void)was_empty;
+						(void) was_empty;
 #else
 						assert( !was_empty );
 #endif
@@ -5314,12 +5525,14 @@ namespace grb {
 		}
 
 		/**
+		 * \internal
 		 * Call this version if consuming the multiplication first and performing the
-		 * addition separately is cheaper than fusing the computations.
+		 * addition separately is cheaper than fusing the computations as done in the
+		 * mask-driven variant.
 		 */
 		template<
 			Descriptor descr,
-			bool masked, bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool masked, bool a_scalar, bool x_scalar, bool y_scalar,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5357,6 +5570,8 @@ namespace grb {
 				auto localUpdate = z_coors.EMPTY_UPDATE();
 				const size_t maxAsyncAssigns = z_coors.maxAsyncAssigns();
 				size_t asyncAssigns = 0;
+				// choose dynamic schedule since the mask otherwise likely leads to
+				// significant imbalance
 				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 				for( size_t i = 0; i < it_coors.nonzeroes(); ++i ) {
@@ -5373,7 +5588,7 @@ namespace grb {
 						typename Ring::D3 t;
 						const InputType1 * const a_p = a_scalar ? a : a + index;
 						const InputType2 * const x_p = x_scalar ? x : x + index;
-						(void)apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( z_coors.asyncAssign( index, localUpdate ) ) {
 #else
@@ -5387,9 +5602,9 @@ namespace grb {
 									static_cast< typename Ring::D4 >( t )
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								(void)++asyncAssigns;
+								(void) ++asyncAssigns;
 								if( asyncAssigns == maxAsyncAssigns ) {
-									(void)z_coors.joinUpdate( localUpdate );
+									(void) z_coors.joinUpdate( localUpdate );
 									asyncAssigns = 0;
 								}
 #endif
@@ -5406,7 +5621,8 @@ namespace grb {
 				if( y_scalar ) {
 					return foldl< descr >( z_vector, *m_vector, *y, ring.getAdditiveMonoid() );
 				} else {
-					return foldl< descr >( z_vector, *m_vector, *y_vector, ring.getAdditiveMonoid() );
+					return foldl< descr >( z_vector, *m_vector, *y_vector,
+						ring.getAdditiveMonoid() );
 				}
 			} else {
 				if( y_scalar ) {
@@ -5417,10 +5633,22 @@ namespace grb {
 			}
 		}
 
-		/** In this variant, all vector inputs (and output) is dense. */
+		/**
+		 * \internal
+		 * In this variant, all vector input vectors, except potentially the
+		 * input/output vector \a z, are dense.
+		 *
+		 * If \a z was not dense, it is assumed to be empty.
+		 *
+		 * @tparam assign_z True if \a z was empty, false otherwise.
+		 *
+		 * This implement the eWiseMulAdd using a direct Theta(n) loop. This variant
+		 * is cheaper than any of the sparse variants when the output is dense.
+		 * \endinternal
+		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool z_assigned,
+			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
 			typename OutputType, typename InputType1,
 			typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5486,10 +5714,12 @@ namespace grb {
 				// do vectorised out-of-place operations. Allows for aligned overlap.
 				// Non-aligned ovelap is not possible due to GraphBLAS semantics.
 				size_t i = start;
-				// note: read the tail code (under this while loop) comments first for greater understanding
+				// note: read the tail code (under this while loop) comments first for
+				//       greater understanding
 				while( i + Ring::blocksize <= end ) {
 #ifdef _DEBUG
-					std::cout << "\tdense_eWiseMulAdd: handling block of size " << Ring::blocksize << " starting at index " << i << "\n";
+					std::cout << "\tdense_eWiseMulAdd: handling block of size " <<
+						Ring::blocksize << " starting at index " << i << "\n";
 #endif
 					// read-in
 					if( !a_scalar ) {
@@ -5507,7 +5737,7 @@ namespace grb {
 							yy[ b ] = static_cast< typename Ring::D4 >( y[ i + b ] );
 						}
 					}
-					if( !z_assigned ) {
+					if( !assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b ) {
 							zz[ b ] = static_cast< typename Ring::D4 >( z[ i + b ] );
 						}
@@ -5518,14 +5748,14 @@ namespace grb {
 						apply( tt[ b ], aa[ b ], xx[ b ], ring.getMultiplicativeOperator() );
 						apply( bb[ b ], tt[ b ], yy[ b ], ring.getAdditiveOperator() );
 					}
-					if( !z_assigned ) {
+					if( !assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b ) {
 							foldr( bb[ b ], zz[ b ], ring.getAdditiveOperator() );
 						}
 					}
 
 					// write-out
-					if( z_assigned ) {
+					if( assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b, ++i ) {
 							z[ i ] = static_cast< OutputType >( bb[ b ] );
 						}
@@ -5565,7 +5795,7 @@ namespace grb {
 					foldr( ts, ys, ring.getAdditiveOperator() );
 
 					// write out
-					if( z_assigned ) {
+					if( assign_z ) {
 						*z = static_cast< OutputType >( ys );
 					} else {
 						foldr( ys, *z, ring.getAdditiveOperator() );
@@ -5573,15 +5803,15 @@ namespace grb {
 
 					// move pointers
 					if( !a_scalar ) {
-						(void)a++;
+						(void) a++;
 					}
 					if( !x_scalar ) {
-						(void)x++;
+						(void) x++;
 					}
 					if( !y_scalar ) {
-						(void)y++;
+						(void) y++;
 					}
-					(void)z++;
+					(void) z++;
 				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			} // end OpenMP parallel section
@@ -5594,7 +5824,22 @@ namespace grb {
 		/**
 		 * \internal
 		 * Depending on sparsity patterns, there are many variants of eWiseMulAdd.
-		 * This function identifies and calls the most opportune variants.
+		 * This function identifies and calls the most opportune variant. Also used
+		 * to implement eWiseMul, though in that case the implementation could still
+		 * be optimised by e.g. a bool that indicates whether y is zero (internal
+		 * issue #488).
+		 *
+		 * @tparam a_scalar Whether \a a is a scalar or a vector.
+		 *
+		 * (and so on for \a x and \a y).
+		 *
+		 * @tparam assign_y Whether to simply assign to \a y or whether to
+		 *                  (potentially) fold into \a y (in case there are
+		 *                  pre-existing elements)
+		 *
+		 * The other arguments pertain to the output, the mask, and the input vectors
+		 * as well as their sizes-- and finally the semiring under which to perform
+		 * the requested computation.
 		 * \endinternal
 		 */
 		template<
@@ -5638,6 +5883,12 @@ namespace grb {
 				m_coors->nonzeroes() == n
 			);
 			const size_t z_nns = nnz( z_vector );
+
+			// the below Boolean shall be true only if the inputs a, x, and y generate
+			// a dense output vector. It furthermore shall be set to false only if the
+			// output vector was either empty or fully dense. This is done to determine
+			// the exact case the dense variant of the eWiseMulAdd implementations can
+			// be used.
 			const bool sparse = ( a_scalar ? false : ( a_coors->nonzeroes() < n ) ) ||
 				( x_scalar ? false : ( x_coors->nonzeroes() < n ) ) ||
 				( y_scalar ? false : ( y_coors->nonzeroes() < n ) ) ||
@@ -5650,13 +5901,13 @@ namespace grb {
 				return ILLEGAL;
 			}
 
-			// pre-assign coors if output is dense but previously empty
-			const bool z_assigned = z_nns == 0 &&
-				( y_scalar || y_coors->nonzeroes() == n ) &&
-				( !masked || mask_is_dense );
-			if( z_assigned ) {
+			// pre-assign coors if output is dense but was previously totally empty
+			const bool assign_z = z_nns == 0 && !sparse;
+			if( assign_z ) {
 #ifdef _DEBUG
-				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense, pre-assigning all output coordinates\n";
+				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense while "
+					<< "the output vector presently is completely empty. We therefore "
+					<< "pre-assign all output coordinates\n";
 #endif
 				internal::getCoordinates( z_vector ).assignAll();
 			}
@@ -5678,10 +5929,12 @@ namespace grb {
 				        (x_scalar ? n : x_coors->nonzeroes())
 				    ) // min is worst-case, best case is 0, realistic is some a priori unknown
 				      // problem-dependent overlap
-				std::cout << "\t\teWiseMulAdd_dispatch: add_loop_size = " << add_loop_size << "\n";
+				std::cout << "\t\teWiseMulAdd_dispatch: add_loop_size = " << add_loop_size
+					<< "\n";
 				;*/
 #ifdef _DEBUG
-				std::cout << "\t\teWiseMulAdd_dispatch: mul_loop_size = " << mul_loop_size << "\n";
+				std::cout << "\t\teWiseMulAdd_dispatch: mul_loop_size = " << mul_loop_size
+					<< "\n";
 #endif
 				if( masked ) {
 					const size_t mask_loop_size = 5 * m_coors->nonzeroes();
@@ -5695,15 +5948,9 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "\teWiseMulAdd_dispatch: will be driven by output mask\n";
 #endif
-						if( z_assigned ) {
-							return sparse_eWiseMulAdd_maskDriven<
-								descr, a_scalar, x_scalar, y_scalar, true
-							>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
-						} else {
-							return sparse_eWiseMulAdd_maskDriven<
-								descr, a_scalar, x_scalar, y_scalar, false
-							>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
-						}
+						return sparse_eWiseMulAdd_maskDriven<
+							descr, a_scalar, x_scalar, y_scalar
+						>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
 					}
 				}
 				// internal issue #42 (closed), see also above:
@@ -5711,22 +5958,18 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\teWiseMulAdd_dispatch: will be driven by the multiplication a*x\n";
 #endif
-				if( z_assigned ) {
-					return twoPhase_sparse_eWiseMulAdd_mulDriven<
-						descr, masked, a_scalar, x_scalar, y_scalar, true
-					>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
-				} else {
-					return twoPhase_sparse_eWiseMulAdd_mulDriven<
-						descr, masked, a_scalar, x_scalar, y_scalar, false
-					>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
-				}
+				return twoPhase_sparse_eWiseMulAdd_mulDriven<
+					descr, masked, a_scalar, x_scalar, y_scalar
+				>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
 				/* internal issue #42 (closed), see also above:
 				} else {
 #ifdef _DEBUG
 				    std::cout << "\teWiseMulAdd_dispatch: will be driven by the addition with y\n";
 #endif
-				    if( z_assigned ) {
-				        return twoPhase_sparse_eWiseMulAdd_addPhase1< descr, masked, a_scalar, x_scalar, y_scalar, true >(
+				    if( assign_z ) {
+				        return twoPhase_sparse_eWiseMulAdd_addPhase1<
+						descr, masked, a_scalar, x_scalar, y_scalar, true
+					>(
 				            z_vector,
 				            m, m_coors,
 				            a, a_coors,
@@ -5735,7 +5978,9 @@ namespace grb {
 				            n, ring
 				        );
 				    } else {
-				        return twoPhase_sparse_eWiseMulAdd_addPhase1< descr, masked, a_scalar, x_scalar, y_scalar, false >(
+				        return twoPhase_sparse_eWiseMulAdd_addPhase1<
+						descr, masked, a_scalar, x_scalar, y_scalar, false
+					>(
 				            z_vector,
 				            m, m_coors,
 				            a, a_coors,
@@ -5756,7 +6001,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "\teWiseMulAdd_dispatch: will perform a dense eWiseMulAdd\n";
 #endif
-			if( z_assigned ) {
+			if( assign_z ) {
 				return dense_eWiseMulAdd<
 					descr, a_scalar, x_scalar, y_scalar, true
 				>( z_vector, a, x, y, n, ring );
@@ -6317,7 +6562,7 @@ namespace grb {
 		typename Ring::D3 mul_result;
 		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #else
 		assert( rc == SUCCESS );
 #endif
@@ -6379,14 +6624,14 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
 		rc = grb::apply( add_result, mul_result, gamma,
 			ring.getAdditiveOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		return grb::set( z, add_result, phase );
@@ -6495,7 +6740,7 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		(void)ring;
+		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
@@ -7185,7 +7430,7 @@ namespace grb {
 			!grb::is_object< MaskType >::value, void
 		>::type * const = nullptr
 	) {
-		(void)ring;
+		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
@@ -7334,7 +7579,7 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #else
 		assert( rc == SUCCESS );
 #endif
@@ -7401,13 +7646,13 @@ namespace grb {
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		typename Ring::D4 add_result;
 		rc = grb::apply( add_result, mul_result, gamma, ring.getAdditiveOperator() );
 #ifdef NDEBUG
-		(void)rc;
+		(void) rc;
 #endif
 		assert( rc == SUCCESS );
 		return grb::set( z, m, add_result, phase );
@@ -7935,7 +8180,7 @@ namespace grb {
 									if( mask[ k ] ) {
 										GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED        // yy and xx cannot be used
 										                                           // uninitialised or mask
-										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false. also, zz
+										apply( zz[ k ], xx[ k ], yy[ k ], anyOp ); // would be false while zz
 										GRB_UTIL_RESTORE_WARNINGS                  // init is just above
 									}
 								}
@@ -8233,21 +8478,39 @@ namespace grb {
 		if( coors.isDense() ) {
 			// vector is distributed sequentially, so just loop over it
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.size() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.size();
 #endif
-			for( size_t i = 0; i < coors.size(); ++i ) {
-				// apply the lambda
-				DataType &xval = internal::getRaw( x )[ i ];
-				xval = f( xval );
+				for( size_t i = start; i < end; ++i ) {
+					// apply the lambda
+					DataType &xval = internal::getRaw( x )[ i ];
+					xval = f( xval );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.nonzeroes() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.nonzeroes();
 #endif
-			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-				DataType &xval = internal::getRaw( x )[ coors.index( k ) ];
-				xval = f( xval );
+				for( size_t k = start; k < end; ++k ) {
+					DataType &xval = internal::getRaw( x )[ coors.index( k ) ];
+					xval = f( xval );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		}
 		// and done!
 		return SUCCESS;
@@ -8299,107 +8562,60 @@ namespace grb {
 		if( coors.isDense() ) {
 			// vector is distributed sequentially, so just loop over it
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.size() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.size();
 #endif
-			for( size_t i = 0; i < coors.size(); ++i ) {
-				// apply the lambda
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-#endif
-				f( i );
+				for( size_t i = start; i < end; ++i ) {
+					// apply the lambda
+					f( i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, coors.nonzeroes() );
+#else
+				const size_t start = 0;
+				const size_t end = coors.nonzeroes();
 #endif
-			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-				const size_t i = coors.index( k );
+				for( size_t k = start; k < end; ++k ) {
+					const size_t i = coors.index( k );
 #ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-				std::cout << "\tprocessing coordinate " << k << " which has index "
-					<< i << "\n";
+					std::cout << "\tprocessing coordinate " << k << " "
+						<< "which has index " << i << "\n";
 #endif
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-				#pragma omp critical
- #endif
-#endif
-				f( i );
+					f( i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			}
+#endif
 		}
 		// and done!
 		return SUCCESS;
 	}
 
 	/**
-	 * Reduces a vector into a scalar. Reduction takes place according a monoid
-	 * \f$ (\oplus,1) \f$, where \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with an
-	 * associated identity \f$ 1 \in \{D_1,D_2,D_3\} \f$. Elements from the given
-	 * vector \f$ y \in \{D_1,D_2\} \f$ will be applied at the left-hand or right-
-	 * hand side of \f$ \oplus \f$; which, exactly, is implementation-dependent
-	 * but should not matter since \f$ \oplus \f$ should be associative.
+	 * Reduces a vector into a scalar.
 	 *
-	 * Let \f$ x_0 = 1 \f$ and let
-	 * \f$ x_{i+1} = \begin{cases}
-	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero}
-	 *   x_i\text{ otherwise}
-	 * \end{cases},\f$
-	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$. On function exit \a x will be
-	 * set to \f$ x_n \f$.
-	 *
-	 * This function assumes that \f$ \odot \f$ under the given domains consitutes
-	 * a valid monoid, which for standard associative operators it usually means
-	 * that \f$ D_3 \subseteq D_2 \subseteq D_1 \f$. If not, or if the operator is
-	 * non-standard, the monoid axioms are to be enforced in some other way-- the
-	 * user is responsible for checking this is indeed the case or undefined
-	 * behaviour will occur.
-	 *
-	 * \note While the monoid identity may be used to easily provide parallel
-	 *       implementations of this function, having a notion of an identity is
-	 *       mandatory to be able to interpret sparse vectors; this is why we do
-	 *       not allow a plain operator to be passed to this function.
-	 *
-	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
-	 *                   left unspecified).
-	 * @tparam Monoid    The monoid to use for reduction. A monoid is required
-	 *                   because the output value \a y needs to be initialised
-	 *                   with an identity first.
-	 * @tparam InputType The type of the elements in the supplied GraphBLAS
-	 *                   vector \a y.
-	 * @tparam IOType    The type of the output value \a x.
-	 *
-	 * @param[out]   x   The result of reduction.
-	 * @param[in]    y   A valid GraphBLAS vector. This vector may be sparse.
-	 * @param[in] monoid The monoid under which to perform this reduction.
-	 *
-	 * @return grb::SUCCESS When the call completed successfully.
-	 * @return grb::ILLEGAL If the provided input vector \a y was not dense.
-	 * @return grb::ILLEGAL If the provided input vector \a y was empty.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
-	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
-	 * \a IOType, and 3) the third domain must match \a IOType. If one of
-	 * these is not true, the code shall not compile.
-	 * \endparblock
+	 * See the base documentation for the full specification.
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 *      -# This call comprises \f$ \Theta(n) \f$ work, where \f$ n \f$ equals
-	 *         the size of the vector \a x. The constant factor depends on the
-	 *         cost of evaluating the underlying binary operator. A good
-	 *         implementation uses vectorised instructions whenever the input
-	 *         domains, the output domain, and the operator used allow for this.
+	 *      -# This call comprises \f$ \Theta(n) \f$ work. The quantity \f$ n \f$
+	 *         is specified below.
+	 *
+	 *      -# This call comprises \f$ \Theta(n) + \mathcal{O}(p) \f$ operator
+	 *         applications. The quantity \f$ n \f$ is specified below. The value
+	 *         \f$ p \f$ is is the number of user processes.
 	 *
 	 *      -# This call will not result in additional dynamic memory allocations.
 	 *         No system calls will be made.
@@ -8409,12 +8625,22 @@ namespace grb {
 	 *
 	 *      -# This call incurs at most
 	 *         \f$ n \mathit{sizeof}(\mathit{InputType}) + \mathcal{O}(1) \f$
-	 *         bytes of data movement. If \a y is sparse, a call to this function
-	 *         incurs at most \f$ n \mathit{sizeof}( \mathit{bool} ) \f$ extra
-	 *         bytes of data movement.
-	 * \endparblock
+	 *         bytes of intra-process data movement. The quantity \f$ n \f$ is
+	 *         specified below.
 	 *
-	 * @see grb::foldl provides similar functionality.
+	 *      -# This call incurs at most \f$ \mathcal{O}(p) \f$ inter-process data
+	 *         movement, where \f$ p \f$ is the number of user processes. It incurs
+	 *         at least \f$ \Omega(\log p) \f$ inter-process data movement.
+	 *
+	 *      -# This call incurs at most \f$ \mathcal{O}(\log p) \f$
+	 *         synchronisations, and at least one.
+	 *
+	 * If \a y is dense, then \f$ n \f$ is the size of \a y. If \a y is sparse,
+	 * then \f$ n \f$ is the number of nonzeroes in \a y. If \a mask is non-empty
+	 * and #grb::descriptors::invert_mask is given, then \f$ n \f$ equals the size
+	 * of \a y. If \a mask is non-empty (and the mask is not inverted), then
+	 * \f$ n \f$ is the minimum of the number of nonzeroes in \a y and \a mask.
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -8422,7 +8648,8 @@ namespace grb {
 		typename InputType, typename IOType, typename MaskType,
 		typename Coords
 	>
-	RC foldl( IOType &x,
+	RC foldl(
+		IOType &x,
 		const Vector< InputType, reference, Coords > &y,
 		const Vector< MaskType, reference, Coords > &mask,
 		const Monoid &monoid = Monoid(),
@@ -8441,113 +8668,33 @@ namespace grb {
 
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< IOType, InputType >::value ), "grb::reduce",
+			std::is_same< IOType, InputType >::value ), "grb::foldl",
 			"called with a scalar IO type that does not match the input vector type" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the first "
 			"domain of the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
 			"called with an input vector type that does not match the second domain of "
 			"the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::foldl",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::reduce",
+			std::is_same< bool, MaskType >::value ), "grb::foldl",
 			"called with a vector mask type that is not boolean" );
 
-		// dynamic sanity checks
-		if( size( mask ) > 0 && size( mask ) != size( y ) ) {
-			return MISMATCH;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( y ) != size( y ) ) {
-				return ILLEGAL;
-			}
-		}
-
-		// do minimal work
-		RC ret = SUCCESS;
-		IOType global_reduced = monoid.template getIdentity< IOType >();
-
-		// check if we have a mask
-		const bool masked = internal::getCoordinates( mask ).size() > 0;
-
-		// TODO internal issue #194
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		#pragma omp parallel
-		{
-			IOType local_x = monoid.template getIdentity< IOType >();
-			//#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value())
-			#pragma omp for //note: using the above dynamic schedule wreaks havoc on performance on this kernel (tested 25/08/2017)
-			for( size_t i = 0; i < internal::getCoordinates( y ).size(); ++i ) {
-				// if mask OK and there is a nonzero
-				if( ( !masked || internal::getCoordinates( mask ).template
-						mask< descr >( i, internal::getRaw( mask ) )
-					) &&
-					internal::getCoordinates( y ).assigned( i )
-				) {
-					const RC rc = foldl( local_x, internal::getRaw( y )[ i ],
-						monoid.getOperator() );
-					assert( rc == SUCCESS );
-					if( rc != SUCCESS ) {
-						ret = rc;
-					}
-				}
-			}
-			#pragma omp critical
-			{
-				const RC rc = foldl< descr >( global_reduced, local_x,
-					monoid.getOperator() );
-				assert( rc == SUCCESS );
-				if( rc != SUCCESS ) {
-					ret = rc;
-				}
-			}
-		}
-#else
-		// if masked or sparse
-		if( masked ||
-			internal::getCoordinates( y ).nonzeroes() <
-				internal::getCoordinates( y ).size()
-		) {
-			// sparse case
-			for( size_t i = 0; i < internal::getCoordinates( y ).size(); ++i ) {
-				// if mask OK and there is a nonzero
-				if( ( !masked || internal::getCoordinates( mask ).template
-						mask< descr >( i, internal::getRaw( mask ) )
-					) &&
-					internal::getCoordinates( y ).assigned( i )
-				) {
-					// fold it into y
-					RC rc = foldl( global_reduced, internal::getRaw( y )[ i ], monoid.getOperator() );
-					assert( rc == SUCCESS );
-					if( rc != SUCCESS ) {
-						ret = rc;
-					}
-				}
-			}
+		if( size( mask ) > 0 ) {
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, true, true
+			>( x, y, mask, monoid.getOperator() );
 		} else {
-			// dense case relies on foldlArray
-			monoid.getOperator().foldlArray( global_reduced, internal::getRaw( y ),
-				internal::getCoordinates( y ).nonzeroes() );
+			return internal::template fold_from_vector_to_scalar_generic<
+				descr, false, true
+			>( x, y, mask, monoid.getOperator() );
 		}
-#endif
-
-		// do accumulation
-		if( ret == SUCCESS ) {
-#ifdef _DEBUG
-			std::cout << "Accumulating " << global_reduced << " into " << x
-				<< " using foldl\n";
-#endif
-			ret = foldl( x, global_reduced, monoid.getOperator() );
-		}
-
-		// done
-		return ret;
 	}
 
 	/**
@@ -8575,8 +8722,34 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+#ifdef _DEBUG
+		std::cout << "foldl: IOType <- [InputType] with a monoid called. "
+			<< "Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. "
+			<< "It has no mask.\n";
+#endif
+
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, InputType >::value ), "grb::reduce",
+			"called with a scalar IO type that does not match the input vector type" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::reduce",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::reduce",
+			"called with an input vector type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D3 >::value ), "grb::reduce",
+			"called with an input vector type that does not match the third domain of "
+			"the given monoid" );
+
+		// do reduction
 		Vector< bool, reference, Coords > empty_mask( 0 );
-		return foldl< descr >( x, y, empty_mask, monoid );
+		return internal::template fold_from_vector_to_scalar_generic<
+			descr, false, true
+		>( x, y, empty_mask, monoid.getOperator() );
 	}
 
 	/**

@@ -33,6 +33,9 @@ namespace grb {
 	/**
 	 * Initialises the calling user process.
 	 *
+	 * \deprecated Please use grb::Launcher instead. This primitive will be
+	 *             removed from verson 1.0 onwards.
+	 *
 	 * If the backend supports multiple user processes, the user can invoke this
 	 * function with \a P equal to one or higher; if the backend supports only a
 	 * single user process, then \a P must equal one.
@@ -97,21 +100,20 @@ namespace grb {
 	 *      their implementation of this function in terms of \a P.
 	 *
 	 * \note Compared to the GraphBLAS C specification, this function lacks a
-	 *       choice whether to execute in `blocking' or `non-blocking' mode.
-	 *       All functions in the Huawei GraphBLAS are blocking. A choice
-	 *       between blocking and non-blocking execution may be added later.
-	 * \note Note that a blocking mode is a valid implementation of a non-
-	 *       blocking mode, as specified in the GraphBLAS C API. Therefore
-	 *       this specification will still yield a valid implementation of
-	 *       the C API when properly wrapped.
-	 * \note Non-blocking mode with clear performance semantics are possible via
-	 *       carefully designed algorithmic skeletons. This is future work.
+	 *       choice whether to execute in `blocking' or `non-blocking' mode. With
+	 *       ALP/GraphBLAS, the backend controls whether execution proceeds in a
+	 *       non-blocking manner or not. Thus selecting a blocking backend for
+	 *       compilation results in the application of blocking semantics, while
+	 *       selecting a non-blocking backend results in the application of non-
+	 *       blocking semantics.
+	 * \note Note that in the GraphBLAS C specification, a blocking mode is a
+	 *       valid implementation of a non-blocking mode. Therefore, this
+	 *       specification will still yield a valid C API implementation when
+	 *       properly wrapping around a blocking ALP/GraphBLAS backend.
 	 * \note This specification allows for grb::init() to be called multiple
-	 *       times from the same process and the same thread, as long as all the
-	 *       above requirements are met at each call. The parameters \a s and
-	 *       \a P (and \a implementation_data) may differ each time.
-	 * \note This is an extension of the GraphBLAS C API, whom only allow a
-	 *       single initialisation and a single matching finalisation.
+	 *       times from the same process and the same thread. The parameters \a s
+	 *       and \a P (and \a implementation_data) may differ each time. Each
+	 *       (repeated) call must of course meet all the above requirements.
 	 * \note The GraphBLAS C API does not have the notion of user processes. We
 	 *       believe this notion is necessary to properly integrate into parallel
 	 *       frameworks, and also to affect proper and efficient parallel I/O.
@@ -121,29 +123,30 @@ namespace grb {
 	 */
 	template< enum Backend backend = config::default_backend >
 	RC init( const size_t s, const size_t P, void * const implementation_data ) {
-		(void)s;
-		(void)P;
-		(void)implementation_data;
+		(void) s;
+		(void) P;
+		(void) implementation_data;
 		return PANIC;
 	}
 
 	/**
-	 * Implementations must ensure that initialisation without explicitly given
-	 * values regarding user processes etc. should still result in a successful
-	 * initialisation in all cases except where it cannot initialise due to
-	 * external factors.
-	 * A call to this function could, for instance, reduce to a full grb::init()
-	 * while using the default parameters 0 for \a s, 1 for \a P, and \a NULL for
-	 * \a implementation_data:
-	 * \code
-	 * return init< backend >( 0, 1, NULL );
-	 * \endcode
+	 * Initialises the calling user process.
+	 *
+	 * \deprecated Please use grb::Launcher instead. This primitive will be
+	 *             removed from verson 1.0 onwards.
+	 *
+	 * This variant takes no input arguments. It will assume a single user process
+	 * exists; i.e., the call is equivalent to one to #grb::init with \a s zero
+	 * and \a P one.
 	 *
 	 * @tparam backend The backend implementation to initialise.
 	 *
 	 * @return SUCCESS     If the initialisation was successful.
 	 * @return PANIC       If this function fails, the state of this GraphBLAS
 	 *                     implementation becomes undefined.
+	 *
+	 * \warning This primitive has been deprecated since version 0.5. Please update
+	 *          your code to use the grb::Launcher instead.
 	 */
 	template< enum Backend backend = config::default_backend >
 	RC init() {
@@ -151,22 +154,25 @@ namespace grb {
 	}
 
 	/**
-	 * Finalises a graphBLAS context opened by the last call to grb::init().
+	 * Finalises an ALP/GraphBLAS context opened by the last call to grb::init().
+	 *
+	 * \deprecated Please use grb::Launcher instead. This primitive will be
+	 *             removed from verson 1.0 onwards.
 	 *
 	 * This function must be called collectively and must follow a call to
 	 * grb::init(). After successful execution of this function, a new call
 	 * to grb::init() may be made.
-	 * After a call to this function, any graphBLAS objects that remain in scope
-	 * are invalid. The only graphBLAS functions on invalid containers which
-	 * shall \em not incur undefined behaviour are their destructors.
 	 *
-	 * \warning Invalid GraphBLAS containers will remain invalid no matter if a
+	 * After a call to this function, any ALP/GraphBLAS objects that remain in
+	 * scope become invalid.
+	 *
+	 * \warning Invalid ALP/GraphBLAS containers will remain invalid no matter if a
 	 *          next call to grb::init() is made.
 	 *
-	 * @tparam backend Which GraphBLAS backend this call to init initialises.
+	 * @tparam backend Which ALP/GraphBLAS backend to finalise.
 	 *
-	 * @return SUCCESS If the initialisation was successful.
-	 * @return PANIC   If this function fails, the state of the GraphBLAS
+	 * @return SUCCESS If finalisation was successful.
+	 * @return PANIC   If this function fails, the state of the ALP/GraphBLAS
 	 *                 implementation becomes undefined. This means none of its
 	 *                 functions should be called during the remainder program
 	 *                 execution; in particular this means a new call to

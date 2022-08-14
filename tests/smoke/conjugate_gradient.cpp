@@ -19,6 +19,10 @@
 #include <iostream>
 #include <vector>
 
+#ifdef _CG_COMPLEX
+ #include <complex>
+#endif
+
 #include <inttypes.h>
 
 #include <graphblas/algorithms/conjugate_gradient.hpp>
@@ -28,12 +32,19 @@
 #include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
-#define TOL 0.000001
-#define MAX_ITERS 10000
+using BaseScalarType = double;
+#ifdef _CG_COMPLEX
+ using ScalarType = std::complex< BaseScalarType >;
+#else
+ using ScalarType = BaseScalarType;
+#endif
 
-#define C1 0.0001
-#define C2 0.0001
 
+constexpr BaseScalarType TOL=0.000001;
+constexpr size_t MAX_ITERS=10000;
+
+constexpr double C1=0.0001;
+constexpr double C2=0.0001;
 
 using namespace grb;
 using namespace algorithms;
@@ -50,7 +61,7 @@ struct output {
 	size_t iterations;
 	double residual;
 	grb::utils::TimerResults times;
-	PinnedVector< double > pinnedVector;
+	PinnedVector< ScalarType > pinnedVector;
 };
 
 void grbProgram( const struct input &data_in, struct output &out ) {
@@ -74,7 +85,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.error_code = 0;
 
 	// create local parser
-	grb::utils::MatrixFileReader< double,
+	grb::utils::MatrixFileReader< ScalarType,
 		std::conditional<
 			(
 				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
@@ -88,7 +99,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 	// load into GraphBLAS
-	Matrix< double > L( n, n );
+	Matrix< ScalarType > L( n, n );
 	{
 		const RC rc = buildMatrixUnique( L,
 			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL),
@@ -122,10 +133,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// test default pagerank run
-	Vector< double > x( n ), b( n ), r( n ), u( n ), temp( n );
+	Vector< ScalarType > x( n ), b( n ), r( n ), u( n ), temp( n );
 
-	set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
-	set( b, static_cast< double >( 1 ) );
+	set( x, static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
+	set( b, static_cast< ScalarType >( 1 ) );
 
 	out.times.preamble = timer.time();
 
@@ -166,11 +177,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	} else {
 		// do benchmark
-		double time_taken;
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 
-			rc = set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
+			rc = set( x, static_cast< ScalarType >( 1 )
+					  / static_cast< ScalarType >( n ) );
 
 			if( rc == SUCCESS ) {
 				rc = conjugate_gradient(
@@ -181,7 +192,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
-		time_taken = timer.time();
+		const double time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
@@ -212,7 +223,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< double >( x, SEQUENTIAL );
+	out.pinnedVector = PinnedVector< ScalarType >( x, SEQUENTIAL );
 
 	// finish timing
 	const double time_taken = timer.time();
@@ -342,7 +353,7 @@ int main( int argc, char ** argv ) {
 	if( out.error_code == 0 && out.pinnedVector.size() > 0 ) {
 		std::cout << "First 10 nonzeroes of x are: ( ";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
-			const auto &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
+			const ScalarType &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
 			std::cout << nonzeroValue << " ";
 		}
 		std::cout << ")" << std::endl;

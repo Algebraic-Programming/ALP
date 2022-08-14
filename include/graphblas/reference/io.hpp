@@ -20,14 +20,13 @@
  * @date 5th of December 2016
  */
 
-#if ! defined _H_GRB_REFERENCE_IO || defined _H_GRB_REFERENCE_OMP_IO
+#if !defined _H_GRB_REFERENCE_IO || defined _H_GRB_REFERENCE_OMP_IO
 #define _H_GRB_REFERENCE_IO
 
 #include <graphblas/base/io.hpp>
-#include <graphblas/utils/SynchronizedNonzeroIterator.hpp>
 
-#include "graphblas/base/vector.hpp"
-#include "graphblas/base/matrix.hpp"
+#include <graphblas/vector.hpp>
+#include <graphblas/matrix.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -66,8 +65,8 @@ namespace grb {
 	 *
 	 * \endinternal
 	 */
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, reference > &A ) {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	uintptr_t getID( const Matrix< InputType, reference, RIT, CIT, NIT > &A ) {
 		assert( nrows(A) > 0 );
 		assert( ncols(A) > 0 );
 		return A.id;
@@ -80,14 +79,18 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nrows( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nrows(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.m;
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t ncols( const Matrix< InputType, reference > & A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t ncols(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.n;
 	}
 
@@ -98,8 +101,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename InputType >
-	size_t nnz( const Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nnz(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return A.nz;
 	}
 
@@ -110,8 +115,10 @@ namespace grb {
 	}
 
 	/** \internal No implementation notes. */
-	template< typename DataType >
-	size_t capacity( const Matrix< DataType, reference > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t capacity(
+		const Matrix< DataType, reference, RIT, CIT, NIT > &A
+	) noexcept {
 		return internal::getNonzeroCapacity( A );
 	}
 
@@ -165,8 +172,8 @@ namespace grb {
 	 * OpenMP threads.
 	 * \endparblock
 	 */
-	template< typename InputType >
-	RC clear( Matrix< InputType, reference > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC clear( Matrix< InputType, reference, RIT, CIT, NIT > &A ) noexcept {
 		// delegate
 		return A.clear();
 	}
@@ -253,8 +260,10 @@ namespace grb {
 	 *
 	 * \internal No implementation notes.
 	 */
-	template< typename InputType >
-	RC resize( Matrix< InputType, reference > &A, const size_t new_nz ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	RC resize(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A, const size_t new_nz
+	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
@@ -385,13 +394,22 @@ namespace grb {
 		DataType * const raw = internal::getRaw( x );
 		const size_t n = internal::getCoordinates( x ).size();
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-		#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#ifdef _H_GRB_REFERENCE_OMP_IO
+		#pragma omp parallel
+		{
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, n );
+#else
+			const size_t start = 0;
+			const size_t end = n;
 #endif
-		for( size_t i = 0; i < n; ++ i ) {
-			raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
-				getFromScalar( toCopy, i );
+			for( size_t i = start; i < end; ++ i ) {
+				raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
+					getFromScalar( toCopy, i );
+			}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		}
+#endif
 		// sanity check
 		assert( internal::getCoordinates( x ).nonzeroes() ==
 			internal::getCoordinates( x ).size() );
@@ -466,7 +484,7 @@ namespace grb {
 		const auto & m_coors = internal::getCoordinates( m );
 		auto m_p = internal::getRaw( m );
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel
 		{
 			auto localUpdate = coors.EMPTY_UPDATE();
@@ -485,15 +503,17 @@ namespace grb {
 			const size_t n = loop_over_vector_length ?
 				coors.size() :
 				m_coors.nonzeroes();
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp for schedule(dynamic,config::CACHE_LINE_SIZE::value()) nowait
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// since masks are irregularly structured, use dynamic schedule to ensure
+			// load balance
+			#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
 #endif
 			for( size_t k = 0; k < n; ++k ) {
 				const size_t index = loop_over_vector_length ? k : m_coors.index( k );
 				if( !m_coors.template mask< descr >( index, m_p ) ) {
 					continue;
 				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				if( !coors.asyncAssign( index, localUpdate ) ) {
 					(void)++asyncAssigns;
 				}
@@ -508,7 +528,7 @@ namespace grb {
 					internal::ValueOrIndex< descr, DataType, DataType >::getFromScalar(
 						toCopy, index );
 			}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			while( !coors.joinUpdate( localUpdate ) ) {}
 		} // end pragma omp parallel
 #endif
@@ -535,7 +555,8 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename T, typename Coords
 	>
-	RC setElement( Vector< DataType, reference, Coords > &x,
+	RC setElement(
+		Vector< DataType, reference, Coords > &x,
 		const T val,
 		const size_t i,
 		const Phase &phase = EXECUTE,
@@ -647,13 +668,22 @@ namespace grb {
 		// first copy contents
 		if( src == nullptr && dst == nullptr ) {
 			// then source is a pattern vector, just copy its pattern
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
 #endif
-			for( size_t i = 0; i < nz; ++i ) {
-				(void)internal::getCoordinates( x ).asyncCopy(
-					internal::getCoordinates( y ), i );
+				for( size_t i = start; i < end; ++i ) {
+					(void) internal::getCoordinates( x ).asyncCopy(
+						internal::getCoordinates( y ), i );
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			}
+#endif
 		} else {
 #ifndef NDEBUG
 			if( src == nullptr ) {
@@ -661,17 +691,26 @@ namespace grb {
 			}
 #endif
 			// otherwise, the regular copy variant:
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
 #endif
-			for( size_t i = 0; i < nz; ++i ) {
-				const auto index = internal::getCoordinates( x ).asyncCopy(
-					internal::getCoordinates( y ), i );
-				if( !out_is_void && !in_is_void ) {
-					dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
-						index, src[ index ] );
+				for( size_t i = start; i < end; ++i ) {
+					const auto index = internal::getCoordinates( x ).asyncCopy(
+						internal::getCoordinates( y ), i );
+					if( !out_is_void && !in_is_void ) {
+						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
+							index, src[ index ] );
+					}
 				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			}
+#endif
 		}
 
 		// set number of nonzeroes
@@ -779,7 +818,7 @@ namespace grb {
 			( y_coors.nonzeroes() < m_coors.nonzeroes() );
 		const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		// keeps track of updates of the sparsity pattern
 		#pragma omp parallel
 		{
@@ -789,6 +828,8 @@ namespace grb {
 			const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
 			size_t asyncAssigns = 0;
 			RC local_rc = SUCCESS;
+			// since masks are irregularly structured, use dynamic schedule to ensure
+			// load balance
 			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 			for( size_t k = 0; k < n; ++k ) {
 				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
@@ -807,13 +848,13 @@ namespace grb {
 					}
 					// check if destination has nonzero
 					if( !x_coors.asyncAssign( i, local_update ) ) {
-						(void)++asyncAssigns;
+						(void) ++asyncAssigns;
 					}
 				}
 				if( asyncAssigns == maxAsyncAssigns ) {
 					const bool was_empty = x_coors.joinUpdate( local_update );
 #ifdef NDEBUG
-					(void)was_empty;
+					(void) was_empty;
 #else
 					assert( !was_empty );
 #endif
@@ -913,12 +954,12 @@ namespace grb {
 				}
 			}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel
 #endif
 			{
 				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				size_t start, end;
 				config::OMP::localRange( start, end, 0, range );
 #else
@@ -935,7 +976,7 @@ namespace grb {
 					);
 				}
 				range = internal::getCCS( C ).copyFromRange( nz, n );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 				config::OMP::localRange( start, end, 0, range );
 #else
 				end = range;
@@ -1399,9 +1440,11 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
 	>
-	RC buildMatrixUnique( Matrix< InputType, reference > &A,
+	RC buildMatrixUnique(
+		Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -1413,7 +1456,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
 #endif
-		return A.template buildMatrixUnique< descr >( start, end );
+		return A.template buildMatrixUnique< descr >( start, end, mode );
 	}
 
 	/**

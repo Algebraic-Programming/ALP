@@ -23,25 +23,28 @@
 #ifndef _H_GRB_TYPE_TRAITS
 #define _H_GRB_TYPE_TRAITS
 
+#include <type_traits>
+
+
 namespace grb {
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS container.
+	 * Used to inspect whether a given type is an ALP/GraphBLAS container.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * There are only two GraphBLAS containers:
+	 * There are only two ALP/GraphBLAS containers:
 	 *  -# grb::Vector, and
 	 *  -# grb::Matrix.
 	 */
 	template< typename T >
 	struct is_container {
-		/** Base case: an arbitrary type is not a GraphBLAS object. */
+		/** Base case: an arbitrary type is not an ALP/GraphBLAS object. */
 		static const constexpr bool value = false;
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS semiring.
+	 * Used to inspect whether a given type is an ALP semiring.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -52,7 +55,7 @@ namespace grb {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS monoid.
+	 * Used to inspect whether a given type is an ALP monoid.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -63,7 +66,7 @@ namespace grb {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS operator.
+	 * Used to inspect whether a given type is an ALP operator.
 	 *
 	 * @tparam T The type to inspect.
 	 */
@@ -74,12 +77,12 @@ namespace grb {
 	};
 
 	/**
-	 * Used to inspect whether a given type is a GraphBLAS object.
+	 * Used to inspect whether a given type is an ALP/GraphBLAS object.
 	 *
 	 * @tparam T The type to inspect.
 	 *
-	 * A GraphBLAS object is either a container, a semiring, a monoid, or an
-	 * operator.
+	 * An ALP/GraphBLAS object is either an ALP/GraphBLAS container or an ALP
+	 * semiring, monoid, or operator.
 	 *
 	 * @see #is_monoid
 	 * @see #is_semiring
@@ -88,7 +91,10 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_object {
-		/** A GraphBLAS object is either a container, a semiring, a monoid, or an operator. */
+
+		/**
+		 * Whether the given time is an ALP/GraphBLAS object.
+		 */
 		static const constexpr bool value = is_container< T >::value ||
 			is_semiring< T >::value ||
 			is_monoid< T >::value ||
@@ -105,7 +111,8 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_idempotent {
-		static_assert( is_operator< T >::value, "Template argument to grb::is_idempotent must be an operator!" );
+		static_assert( is_operator< T >::value,
+			"Template argument to grb::is_idempotent must be an operator!" );
 		static const constexpr bool value = false;
 	};
 
@@ -150,4 +157,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif
+#endif // end _H_GRB_TYPE_TRAITS
+

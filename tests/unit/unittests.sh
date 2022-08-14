@@ -27,6 +27,12 @@ for MODE in debug ndebug; do
 	echo "----------------------------------------------------------------------------------------"
 	echo " "
 
+	echo ">>>      [x]           [ ]       Testing grb::utils::equals over floats and doubles"
+	${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
+	head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
+	echo " "
+
 	echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
 	${TEST_BIN_DIR}/add15d_${MODE}
 
@@ -181,6 +187,13 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing the grb::pinnedVector on fundamental and"
+				echo "                                 non-fundamental value types."
+				$runner ${TEST_BIN_DIR}/pinnedVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
 				echo "                                 of doubles of size 100."
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
@@ -282,12 +295,7 @@ for MODE in debug ndebug; do
 				echo "                                 square matrices of size 15 and 1 000 000."
 				$runner ${TEST_BIN_DIR}/matrixIterator_${MODE}_${BACKEND} 1000000 2> ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log
-				tail -n +2 ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log | grep -v 'Test OK' | sort -n > ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.out
-				if ! diff ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.out ${OUTPUT_VERIFICATION_DIR}/matrixIterator.chk; then
-					echo "Test FAILED verification"
-				else
-					grep 'Test OK' ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				fi
+				grep 'Test OK' ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing copy and move constructors and assignment"
@@ -495,6 +503,13 @@ for MODE in debug ndebug; do
 				$runner ${TEST_BIN_DIR}/wait_${MODE}_${BACKEND} 11733 &> ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
+				echo "                                 both sequentially and in parallel"
+				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then

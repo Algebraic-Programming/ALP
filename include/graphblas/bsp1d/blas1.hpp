@@ -62,6 +62,72 @@ namespace grb {
 	/** \internal No implementation notes. */
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, BSP1D, Coords > &x,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		IOType &beta,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::foldr",
+			"called with a mask element type that is not Boolean" );
+
+		// dynamic checks
+		if( size( mask ) > 0 && size( mask ) != size( x ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) ) {
+				return ILLEGAL;
+			}
+			if( size( mask ) > 0 && nnz( mask ) < size( mask ) ) {
+				return ILLEGAL;
+			}
+		}
+
+		// cache local result
+		IOType local = monoid.template getIdentity< IOType >();
+
+		// do local foldr
+		RC rc = foldr< descr >( internal::getLocal( x ), internal::getLocal( mask ),
+			local, monoid );
+
+		// do allreduce using \a op
+		if( rc == SUCCESS ) {
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+		}
+
+		// accumulate end result
+		if( rc == SUCCESS ) {
+			rc = foldr( local, beta, monoid.getOperator() );
+		}
+
+		// done
+		return rc;
+	}
+
+	/** \internal No implementation notes. */
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename InputType, typename IOType,
 		typename Coords
 	>
@@ -98,7 +164,7 @@ namespace grb {
 		IOType local = monoid.template getIdentity< IOType >();
 
 		// do local foldr
-		RC rc = foldl< descr >( local, internal::getLocal( x ), monoid );
+		RC rc = foldr< descr >( internal::getLocal( x ), local, monoid );
 
 		// do allreduce using \a op
 		if( rc == SUCCESS ) {
@@ -3217,7 +3283,7 @@ namespace grb {
 
 	/** @} */
 
-}; // namespace grb
+} // namespace grb
 
 #undef NO_CAST_ASSERT
 

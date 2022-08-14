@@ -66,9 +66,10 @@
 
 #include "internal_argument_parser_defs.hpp"
 
+
 // ================ parsed types ===================
 typedef bool bool_parse_t;
-typedef std::size_t size_parse_t;
+typedef size_t size_parse_t;
 typedef const char * str_parse_t;
 typedef double double_parse_t;
 
@@ -263,8 +264,8 @@ private:
 	static parser_t const option_parser; ///< parser for option, storing into the target the negated default
 
 	// with C++17, we may use std::basic_string_view not no create a full string (and avoid data copies)
-	using arg_map = std::unordered_map< std::string, std::size_t >;
-	using mandatory_set = std::set< std::size_t >;
+	using arg_map = std::unordered_map< std::string, size_t >;
+	using mandatory_set = std::set< size_t >;
 	std::vector< argument_parse_info > parsers; ///< vector of parsing information, in insertion order;
 	                                            ///< the order \b cannot be changed
 
@@ -333,7 +334,7 @@ private:
 			throw std::invalid_argument( arg_string + " is already present" );
 		}
 		parsers.emplace_back( target, parser, option, def, default_setter, default_printer, desc );
-		std::size_t position { parsers.size() - 1 };
+		size_t position { parsers.size() - 1 };
 		args_info.emplace( std::move( arg_string ), position );
 		args.push_back( arg );
 		if( mandatory ) {
@@ -344,3 +345,4 @@ private:
 };
 
 #endif // _H_INTERNAL_UTILS_ARG_PARSER
+
