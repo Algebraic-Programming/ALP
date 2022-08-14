@@ -29,7 +29,8 @@
 #include "base/internalops.hpp"
 
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/internalops.hpp>
+ #include <graphblas/banshee/internalops.hpp>
 #endif
 
 #endif
+
