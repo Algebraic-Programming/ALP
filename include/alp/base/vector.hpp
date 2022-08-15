@@ -875,7 +875,15 @@ namespace alp {
 		}; // class Vector
 	} // namespace internal
 
-	template< typename T, typename Structure, enum Density density, typename View, typename Imf, enum Backend backend >
+	template<
+		typename T,
+		typename Structure,
+		enum Density density,
+		typename View,
+		typename ImfR,
+		typename ImfC,
+		enum Backend backend
+	>
 	class Vector { };
 
 }

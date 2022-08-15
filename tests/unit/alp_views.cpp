@@ -49,11 +49,11 @@ void print_vector( std::string name, const VectorType &v ) {
 		return;
 	}
 
-	std::cout << "Vector " << name << " of size " << alp::dims( v ).first << " contains the following elements:\n";
+	std::cout << "Vector " << name << " of size " << alp::getLength( v ) << " contains the following elements:\n";
 
-	std::cout << "[";
-	for( size_t row = 0; row < alp::nrows( v ); ++row ) {
-		std::cout << v[ row ] << "\t";
+	std::cout << "[\t";
+	for( size_t i = 0; i < alp::getLength( v ); ++i ) {
+		std::cout << v[ i ] << "\t";
 	}
 	std::cout << "]\n";
 }
@@ -142,13 +142,47 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	alp::Matrix< T, alp::structures::General > M( m, n );
 	alp::buildMatrix( M, M_data.begin(), M_data.end() );
 	print_matrix( "M", M );
+	std::cout << "------------" << std::endl;
 
+	// gather view
+	auto Mv = alp::get_view( M, alp::utils::range( 1, 3 ), alp::utils::range( 1, 3 ) );
+	print_matrix( "Mv", Mv );
+	std::cout << "------------" << std::endl;
+
+	// transposed view
 	auto MT = alp::get_view< alp::view::Views::transpose >( M );
 	print_matrix( "M^T", MT );
+	std::cout << "------------" << std::endl;
 
-	// diable diagonal view test as diagonal views are not operational yet
-	//auto Mdiag = alp::get_view< alp::view::Views::diagonal >( M );
-	//print_vector( "Mdiag", Mdiag );
+	// row-view
+	auto Mrow = alp::get_view( M, m - 2, alp::utils::range( 1, n - 1 ) );
+	print_vector( "Mrow", Mrow );
+	std::cout << "------------" << std::endl;
+
+	// column-view
+	auto Mcol = alp::get_view( M, alp::utils::range( 1, m - 1 ), n - 2 );
+	print_vector( "Mcol", Mcol );
+	std::cout << "------------" << std::endl;
+
+	// diagonal view
+	auto Mdiag = alp::get_view< alp::view::Views::diagonal >( M );
+	print_vector( "Mdiag", Mdiag );
+
+	// view over a vector
+	auto Mdiagpart = alp::get_view( Mdiag, alp::utils::range( 1, 3 ) );
+	print_vector( "Mdiagpart", Mdiagpart );
+
+	// Vector views
+	// allocate vector
+	std::vector< T > v_data( m, zero );
+	init_matrix( v_data, m, 1 );
+	alp::Vector< T, alp::structures::General > v( m );
+	alp::buildMatrix( static_cast< decltype( v )::base_type & >( v ), v_data.begin(), v_data.end() );
+	print_vector( "v", v );
+
+	// gather view over a vector
+	auto v_view = alp::get_view( v, alp::utils::range( 1, 3 ) );
+	print_vector( "v_view", v_view );
 
 	rc = alp::SUCCESS;
 

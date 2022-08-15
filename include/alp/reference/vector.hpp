@@ -311,20 +311,20 @@ namespace alp {
 	 * Here starts spec draft for vectorView
 	 */
 
-	template< typename T, typename Structure, typename View, typename Imf >
-	size_t getLength( const Vector< T, Structure, Density::Dense, View, Imf, reference > &v ) noexcept {
+	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC >
+	size_t getLength( const Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference > &v ) noexcept {
 		return v._length();
 	}
 
 	namespace internal {
-		template< typename T, typename Structure, typename View, typename Imf >
-		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, Imf, reference > &v ) noexcept {
-			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ) );
+		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC >
+		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference > &v ) noexcept {
+			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type &>( v ) );
 		}
 
-		template< typename T, typename Structure, typename View, typename Imf >
-		void setInitialized( alp::Vector< T, Structure, Density::Dense, View, Imf, reference > & v, bool initialized ) noexcept {
-			setInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, Imf, reference >::base_type &>( v ), initialized );
+		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC >
+		void setInitialized( alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference > & v, bool initialized ) noexcept {
+			setInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type &>( v ), initialized );
 		}
 	} // end namespace ``alp::internal''
 
@@ -362,20 +362,20 @@ namespace alp {
 	 *                   accessible via functions.
 	 *
 	 */
-	template< typename T, typename Structure, typename View, typename Imf >
-	class Vector< T, Structure, Density::Dense, View, Imf, reference > { };
+	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC >
+	class Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference > { };
 
 	/**
 	 * Original View over a vector container.
 	 */
-	template< typename T, typename View, typename Imf >
-	class Vector< T, structures::General, Density::Dense, View, Imf, reference > :
-		public Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > {
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
+		public Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > {
 
 		public:
 
-			typedef Vector< T, structures::General, Density::Dense, View, Imf, reference > self_type;
-			typedef Matrix< T, structures::General, Density::Dense, View, Imf, imf::Id, reference > base_type;
+			typedef Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > base_type;
 			typedef typename base_type::target_type target_type;
 
 			typedef typename base_type::amf_type amf_type;
@@ -390,7 +390,7 @@ namespace alp {
 
 			/** Returns the length of the vector */
 			size_t _length() const {
-				return this->amf.getLogicalDimensions().first;
+				return std::max( this->amf.getLogicalDimensions().first, this->amf.getLogicalDimensions().second );
 			}
 
 
@@ -404,12 +404,12 @@ namespace alp {
 			/** @see Vector::lambda_reference */
 			typedef T& lambda_reference;
 
-			template < view::Views view_tag, typename TargetImf, bool d=false >
+			template < view::Views view_tag, bool d=false >
 			struct view_type;
 
-			template < typename TargetImf, bool d >
-			struct view_type< view::original, TargetImf, d > {
-				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, TargetImf, reference > type;
+			template < bool d >
+			struct view_type< view::original, d > {
+				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference > type;
 			};
 
 			/**
@@ -443,10 +443,10 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &vec_view, Imf imf ) :
-				base_type( vec_view, imf, imf::Id( 1 ) ) {
+			Vector( typename ViewType::applied_to &vec_view, ImfR imf_r, ImfC imf_c ) :
+				base_type( vec_view, imf_r, imf_c ) {
 
-				if( getLength( vec_view ) != imf.N ) {
+				if( getLength( vec_view ) != imf_r.N ) {
 					throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
 				}
 			}
@@ -519,8 +519,8 @@ namespace alp {
 					!internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &target_vector, Imf imf_r ) :
-				base_type( getFunctor( target_vector ), imf_r, imf::Id( 1 ) ) {}
+			Vector( typename ViewType::applied_to &target_vector, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
@@ -547,7 +547,7 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
@@ -555,14 +555,14 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container
 
 	/** Identifies any reference ALP vector as an ALP vector. */
-	template< typename T, typename Structure, typename View, typename Imf >
-	struct is_vector< Vector< T, Structure, Density::Dense, View, Imf, reference > > : std::true_type {};
+	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC >
+	struct is_vector< Vector< T, Structure, Density::Dense, View, ImfR, ImfC, reference > > : std::true_type {};
 
 	/**
 	 * @brief  Generate an original view of the input Vector. The function guarantees 
@@ -590,19 +590,58 @@ namespace alp {
 	 *
 	 */
 	template< 
-		typename T, typename Structure, enum Density density, typename View, typename Imf,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
 		enum Backend backend
 	>
-	typename Vector< T, Structure, density, View, Imf, backend >::template view_type< view::original, imf::Id >::type
-	get_view( Vector< T, Structure, density, View, Imf, backend > & source ) {
+	typename Vector< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
+	get_view( Vector< T, Structure, density, View, ImfR, ImfC, backend > & source ) {
 
-		using source_vec_t = Vector< T, Structure, density, View, Imf, backend >;
-		using target_vec_t = typename source_vec_t::template view_type< view::original, imf::Id >::type;
+		using source_vec_t = Vector< T, Structure, density, View, ImfR, ImfC, backend >;
+		using target_vec_t = typename source_vec_t::template view_type< view::original >::type;
 
 		target_vec_t vec_view( source );
 
 		return vec_view;
 	}
+
+	namespace internal {
+
+		/**
+		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
+		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
+		 */
+		template<
+			typename TargetStructure, typename TargetImfR, typename TargetImfC,
+			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+		alp::Vector<
+			T,
+			TargetStructure,
+			density,
+			view::Original< alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
+			TargetImfR,
+			TargetImfC,
+			backend
+		>
+		get_view( alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &source,
+				TargetImfR imf_r, TargetImfC imf_c ) {
+
+			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
+			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
+			//}
+			// No static check as the compatibility depends on IMF, which is a runtime level parameter
+			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			}
+
+			using source_vec_t = alp::Vector< T, Structure, density, View, ImfR, ImfC, backend >;
+			using target_vec_t = alp::Vector< T, TargetStructure, density, view::Original< source_vec_t >, TargetImfR, TargetImfC, backend >;
+
+			target_vec_t target( source, imf_r, imf_c );
+
+			return target;
+		}
+	} // namespace internal
 
 	/**
 	 * @brief Version of get_view over vectors where a range of elements are selected to form a new view. 
@@ -626,16 +665,25 @@ namespace alp {
 	 * 
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename Imf,
+		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
 		enum Backend backend
 	>
-	typename Vector< T, Structure, density, View, Imf, backend >::template view_type< view::original, imf::Strided >::type
-	get_view( Vector< T, Structure, density, View, Imf, backend > &source, const utils::range& rng ) {
+	Vector<
+		T,
+		Structure,
+		density,
+		view::Original< Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided,
+		imf::Strided,
+		backend
+	>
+	get_view( Vector< T, Structure, density, View, ImfR, ImfC, backend > &source, const utils::range& rng ) {
 
-		auto imf_v = imf::Strided( rng.count(), getLength( source ), rng.start, rng.stride );
-		typename Vector< T, Structure, density, View, Imf, backend >::template view_type< view::original, imf::Strided >::type vec_view( source, imf_v );
-
-		return vec_view;
+		return internal::get_view< Structure >(
+			source,
+			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
+			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
+		);
 	}
 
 } // end namespace ``alp''
