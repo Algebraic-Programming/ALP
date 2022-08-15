@@ -594,7 +594,7 @@ namespace alp {
 				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
 
 				/**
-				 * Factory method used for matrices.
+				 * Factory method used by 2D containers.
 				 *
 				 * @param[in] imf_r               Row IMF
 				 * @param[in] imf_c               Column IMF
@@ -609,8 +609,7 @@ namespace alp {
 				}
 
 				/**
-				 * Factory method used for AMF associated with a matrix representing
-				 * a vector
+				 * Factory method used by 1D containers.
 				 *
 				 * Exploits the fact that fusion of strided IMFs into the polynomial
 				 * always succeeds and results in Id IMFs. As a result, the
