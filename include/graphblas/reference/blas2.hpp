@@ -1010,11 +1010,11 @@ namespace grb {
 					"overlapping input and output vectors.\n";
 				return OVERLAP;
 			}
-			/*if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
+			if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
 				std::cerr << "Warning: grb::internal::vxm_generic called with "
 					"overlapping mask and output vectors.\n";
 				return OVERLAP;
-			}*/
+			}
 
 #ifdef _DEBUG
 			std::cout << s << ": performing SpMV / SpMSpV using an " << nrows( A )
