@@ -106,6 +106,7 @@ namespace alp {
 			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_type; // TODO
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type; // TODO
+			typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > Vector_type;
 
 			/**
 			 * Polynomial factory method
@@ -119,6 +120,12 @@ namespace alp {
 			template<>
 			Full_type Create< Full_type >( size_t dim ) {
 				return Full_type( 0, 0, 0, dim, 1, 0 );
+			}
+
+			/** Specialization for Vector storage */
+			template<>
+			Vector_type Create< Vector_type >() {
+				return Vector_type( 0, 0, 0, 1, 0, 0 );
 			}
 
 			template< enum view::Views view, typename Polynomial >
@@ -200,6 +207,40 @@ namespace alp {
 				}
 			};
 
+			/**
+			 * Specialization for zero IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_i< imf::Zero, Poly> {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef BivariateQuadratic<
+					0, Poly::Ay2, 0,
+					0, Poly::Ay,
+					Poly::A0,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Zero imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Zero imf, Poly p ) {
+					(void)imf;
+					return resulting_polynomial_type(
+						0,     // ax2
+						p.ay2, // ay2
+						0,     // axy
+						0,     // ax
+						p.ay,  // ay
+						p.a0   // A0
+					);
+				}
+			};
+
 			template< typename Imf, typename Poly >
 			struct fuse_on_j {
 
@@ -248,6 +289,41 @@ namespace alp {
 					);
 				}
 			};
+
+			/**
+			 * Specialization for zero IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Zero, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef BivariateQuadratic<
+					Poly::Ax2, 0, 0,
+					Poly::Ax, 0,
+					Poly::A0,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Zero imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Zero imf, Poly p ) {
+					(void)imf;
+					return resulting_polynomial_type(
+						p.ax2, // ax2
+						0,     // ay2
+						0,     // axy
+						p.ax,  // ax
+						0,     // ay
+						p.a0   // A0
+					);
+				}
+			};
+
 		}; // namespace polynomials
 
 		/**
@@ -421,29 +497,6 @@ namespace alp {
 		struct AMFFactory {
 
 			/**
-			 * @brief Describes an AMF for a container that requires allocation
-			 *        and exposes the AMFs type and a factory method to create it.
-			 *
-			 * A container that requires allocation is accompanied by Id IMFs for
-			 * both row and column dimensions and the provided mapping polynomial.
-			 *
-			 * @tparam PolyType  Type of the mapping polynomial.
-			 *
-			 */
-			template< typename PolyType >
-			struct FromPolynomial {
-
-				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
-
-				static amf_type Create( size_t nrows, size_t ncols, PolyType poly, size_t storage_dimensions ) {
-					return amf_type( nrows, ncols, poly, storage_dimensions );
-				}
-
-				FromPolynomial() = delete;
-
-			}; // class FromPolynomial
-
-			/**
 			 * @brief Transforms the provided AMF by applying the gather view
 			 *        represented by the given row and column IMFs
 			 *
@@ -482,8 +535,8 @@ namespace alp {
 					typedef typename SourceAMF::mapping_polynomial_type SourcePoly;
 
 					/** Compose row and column IMFs */
-					typedef typename imf::composed_type< ViewImfR, SourceImfR >::type composed_imf_r_type;
-					typedef typename imf::composed_type< ViewImfC, SourceImfC >::type composed_imf_c_type;
+					typedef typename imf::composed_type< SourceImfR, ViewImfR >::type composed_imf_r_type;
+					typedef typename imf::composed_type< SourceImfC, ViewImfC >::type composed_imf_c_type;
 
 					/** Fuse composed row IMF into the target polynomial */
 					typedef typename polynomials::fuse_on_i<
@@ -508,8 +561,8 @@ namespace alp {
 					static
 					amf_type
 					Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
-						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( imf_r, amf.imf_r ) };
-						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( imf_c, amf.imf_c ) };
+						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( amf.imf_r, imf_r ) };
+						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( amf.imf_c, imf_c ) };
 						return amf_type(
 							fused_row::CreateImf( composed_imf_r ),
 							fused_row_col::CreateImf( composed_imf_c ),
@@ -524,6 +577,79 @@ namespace alp {
 					Compose() = delete;
 
 			}; // class Compose
+
+			/**
+			 * @brief Describes an AMF for a container that requires allocation
+			 *        and exposes the AMFs type and a factory method to create it.
+			 *
+			 * A container that requires allocation is accompanied by Id IMFs for
+			 * both row and column dimensions and the provided mapping polynomial.
+			 *
+			 * @tparam PolyType  Type of the mapping polynomial.
+			 *
+			 */
+			template< typename PolyType >
+			struct FromPolynomial {
+
+				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
+
+				/**
+				 * Factory method used by 2D containers.
+				 *
+				 * @param[in] imf_r               Row IMF
+				 * @param[in] imf_c               Column IMF
+				 * @param[in] poly                Mapping polynomial
+				 * @param[in] storage_dimensions  Size of the allocated storage
+				 *
+				 * @return  An AMF object of the type \a amf_type
+				 *
+				 */
+				static amf_type Create( imf::Id imf_r, imf::Id imf_c, PolyType poly, size_t storage_dimensions ) {
+					return amf_type( imf_r, imf_c, poly, storage_dimensions );
+				}
+
+				/**
+				 * Factory method used by 1D containers.
+				 *
+				 * Exploits the fact that fusion of strided IMFs into the polynomial
+				 * always succeeds and results in Id IMFs. As a result, the
+				 * constructed AMF is of the type \a amf_type.
+				 *
+				 * @param[in] imf_r               Row IMF
+				 * @param[in] imf_c               Column IMF
+				 * @param[in] poly                Mapping polynomial
+				 * @param[in] storage_dimensions  Size of the allocated storage
+				 *
+				 * @return  An AMF object of the type \a amf_type
+				 *
+				 * \note \internal To exploit existing mechanism for IMF fusion
+				 *                 into the polynomial, this method creates a
+				 *                 dummy AMF out of two Id IMFs and the provided
+				 *                 polynomial and composes the provided Strided
+				 *                 IMFs with the dummy AMF.
+				 */
+				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, PolyType poly, size_t storage_dimensions ) {
+
+					/**
+					 * Ensure that the assumptions do not break upon potential
+					 * future changes to AMFFactory::Compose.
+					 */
+					static_assert(
+						std::is_same<
+							amf_type,
+							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::amf_type
+						>::value,
+						"The factory method returns the object of different type than declared. This is a bug."
+					);
+					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::Create(
+						imf_r, imf_c,
+						FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
+					);
+				}
+
+				FromPolynomial() = delete;
+
+			}; // class FromPolynomial
 
 			/**
 			 * @brief Transforms the provided AMF by applying the provided View type.
@@ -602,16 +728,28 @@ namespace alp {
 
 			}; // class Reshape< transpose, ... >
 
-			/** \internal \todo This is currently incomplete, will be implemented in future. */
+			/**
+			 * Specialization for diagonal views
+			 *
+			 * Diagonal view is implemented by taking a square view over the matrix.
+			 *
+			 */
 			template< typename SourceAMF >
 			struct Reshape< view::Views::diagonal, SourceAMF > {
 
-				typedef SourceAMF amf_type;
+				typedef typename AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF >::amf_type amf_type;
 
 				static
 				amf_type
 				Create( const SourceAMF &amf ) {
-					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
+					const size_t nrows = amf.getLogicalDimensions().first;
+					const size_t ncols = amf.getLogicalDimensions().second;
+					const size_t smaller_dimension = std::min( nrows, ncols );
+					return AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF>::Create(
+						imf::Strided( smaller_dimension, nrows, 0, 1 ),
+						imf::Strided( smaller_dimension, ncols, 0, 1 ),
+						amf
+					);
 				}
 
 				Reshape() = delete;

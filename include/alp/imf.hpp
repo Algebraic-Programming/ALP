@@ -118,7 +118,20 @@ namespace alp {
 
 			public:
 
-				Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
+				explicit Id( const size_t n ) : Strided( n, n, 0, 1 ) {}
+		};
+
+		/**
+		 * The zero IMF.
+		 * \f$I_n = [0, n)\f$
+		 * \f$Zero = I_n \rightarrow I_1; i \mapsto 0\f$
+		 */
+
+		class Zero: public Strided {
+
+			public:
+
+				explicit Zero( const size_t n ) : Strided( n, 1, 0, 0 ) {}
 		};
 
 		class Select: public IMF {
@@ -204,19 +217,29 @@ namespace alp {
 			typedef Strided type;
 		};
 
-		template<>
-		struct composed_type< Id, Strided > {
-			typedef Strided type;
+		template< typename RightImf >
+		struct composed_type< Id, RightImf > {
+			typedef RightImf type;
 		};
 
-		template<>
-		struct composed_type< Strided, Id > {
-			typedef Strided type;
+		template< typename LeftImf >
+		struct composed_type< LeftImf, Id > {
+			typedef LeftImf type;
 		};
 
 		template<>
 		struct composed_type< Id, Id > {
 			typedef Id type;
+		};
+
+		template<>
+		struct composed_type< Zero, Id > {
+			typedef Zero type;
+		};
+
+		template<>
+		struct composed_type< Id, Zero > {
+			typedef Zero type;
 		};
 
 		/**
@@ -256,6 +279,12 @@ namespace alp {
 			// The first function's co-domain must be equal to the second function's domain.
 			assert( g.N == f.n );
 			return Id( g.n );
+		}
+
+		template<>
+		Zero ComposedFactory::create( const Id &f, const Zero &g ) {
+			(void)f;
+			return Zero( g.n );
 		}
 
 		template<>

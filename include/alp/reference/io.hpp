@@ -183,9 +183,9 @@ namespace alp {
 	 * @brief \a buildVector version.
 	 *
 	 */
-	template< typename InputType, typename Structure, typename View, typename Imf, typename fwd_iterator >
+	template< typename InputType, typename Structure, typename View, typename ImfR, typename ImfC, typename fwd_iterator >
 	RC buildVector(
-		Vector< InputType, Structure, Density::Dense, View, Imf, reference > &v,
+		Vector< InputType, Structure, Density::Dense, View, ImfR, ImfC, reference > &v,
 		const fwd_iterator &start,
 		const fwd_iterator &end
 	) noexcept {

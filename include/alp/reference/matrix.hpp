@@ -761,8 +761,50 @@ namespace alp {
 		}; // class FunctorBasedMatrix
 
 		/**
-		 * @brief Determines the AMF type for a matrix
-		 *        with the provided view and the IMF types.
+		 * Determines the mapping polynomial type and exposes a factory method
+		 * to create instances of that polynomial.
+		 *
+		 * All specializations of this type trait should define the factory
+		 * method following the same signature. The factory method shall
+		 * return an object of the type exposed as \a type.
+		 *
+		 * @tparam Structure  Matrix structure
+		 * @tparam ImfR       Row IMF type
+		 * @tparam ImfC       Column IMF type
+		 * @tparam backend    The backend
+		 *
+		 */
+		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
+		struct PolyFactory {};
+
+		/** Specialization for matrices */
+		template< typename Structure, enum Backend backend >
+		struct PolyFactory< Structure, imf::Id, imf::Id, backend > {
+
+			/** \internal Currently the type is hard-coded. \todo Implement proper logic */
+			typedef storage::polynomials::Full_type type;
+
+			static type Create( const size_t nrows, const size_t ncols ) {
+				(void)nrows;
+				return type( 0, 0, 0, ncols, 1, 0 );
+			}
+		};
+
+		/** Specialization for vectors */
+		template< typename Structure, enum Backend backend >
+		struct PolyFactory< Structure, imf::Id, imf::Zero, backend > {
+
+			typedef storage::polynomials::Vector_type type;
+
+			static type Create( const size_t nrows, const size_t ncols ) {
+				(void)nrows;
+				(void)ncols;
+				return type( 0, 0, 0, 1, 0, 0 );
+			}
+		};
+
+		/**
+		 * Determines the AMF type for a matrix having the provided static properties.
 		 *
 		 * For a matrix that requires allocation, the new AMF consists of two Id IMFs
 		 * and the pre-defined mapping polynomial.
@@ -773,9 +815,10 @@ namespace alp {
 		 *  - When applying a different view type (e.g. transpose or diagonal), the AMF
 		 *    of the target matrix is transformed according to the provided view type.
 		 *
-		 * @tparam View  View type.
-		 * @tparam ImfR  Row IMF type.
-		 * @tparam ImfC  Column IMF type.
+		 * @tparam View     View type
+		 * @tparam ImfR     Row IMF type
+		 * @tparam ImfC     Column IMF type
+		 * @tparam backend  The backend
 		 *
 		 * The valid combinations of the input parameters are as follows:
 		 *  - original view on void with Id IMFs.
@@ -785,7 +828,10 @@ namespace alp {
 		 * The first parameter combination is handled by a specialization of this trait.
 		 *
 		 */
-		template< typename View, typename ImfR, typename ImfC >
+		template<
+			typename Structure, typename View, typename ImfR, typename ImfC,
+			enum Backend backend
+		>
 		struct determine_amf_type {
 
 			/** Ensure that the view is not on a void type */
@@ -794,14 +840,14 @@ namespace alp {
 				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
-			/** Ensure that if the view is transposed, the IMFs are ID */
+			/** Ensure that if the view is transposed, the IMFs are Id */
 			static_assert(
 				View::type_id != view::Views::transpose ||
 				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
-			/** Ensure that if the view is diagonal, the IMFs are ID */
+			/** Ensure that if the view is diagonal, the IMFs are Id */
 			static_assert(
 				View::type_id != view::Views::diagonal ||
 				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
@@ -821,15 +867,18 @@ namespace alp {
 
 		};
 
-		template< typename ImfR, typename ImfC >
-		struct determine_amf_type< view::Original< void >, ImfR, ImfC > {
+		/** Specialization for containers that allocate storage */
+		template< typename Structure, typename ImfC, enum Backend backend >
+		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC, backend > {
 
 			static_assert(
-				std::is_same< ImfR, imf::Id >::value && std::is_same< ImfC, imf::Id >::value,
+				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
-			typedef typename storage::AMFFactory::FromPolynomial< storage::polynomials::Full_type >::amf_type type;
+			typedef typename storage::AMFFactory::FromPolynomial<
+				typename PolyFactory< Structure, imf::Id, ImfC, reference >::type
+			>::amf_type type;
 		};
 
 	} // namespace internal
@@ -899,7 +948,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -925,7 +974,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::General structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -933,8 +981,8 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+			/** Types related to logical-to-physical mapping */
+			typedef typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -963,7 +1011,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -982,10 +1030,10 @@ namespace alp {
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						rows,
-						cols,
-						storage::polynomials::Create< mapping_polynomial_type >( cols ),
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
+						ImfR( rows ),
+						ImfC( cols ),
+						internal::PolyFactory< structures::General, ImfR, ImfC, reference >::Create( rows, cols ),
 						rows * cols
 					)
 				) {
@@ -1121,7 +1169,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1147,7 +1195,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Square structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1156,7 +1203,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1185,7 +1232,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1200,10 +1247,10 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
-						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
+						ImfR( dim ),
+						ImfC( dim ),
+						internal::PolyFactory< structures::Square, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -1319,7 +1366,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1345,7 +1392,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Symmetric structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1354,7 +1400,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1383,7 +1429,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1398,10 +1444,10 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
-						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
+						ImfR( dim ),
+						ImfC( dim ),
+						internal::PolyFactory< structures::Symmetric, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -1497,7 +1543,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference>::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1523,7 +1569,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::UpperTriangular structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1532,7 +1577,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1561,7 +1606,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			/**
@@ -1580,10 +1625,10 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
-						dim,
-						dim,
-						storage::polynomials::Create< mapping_polynomial_type >( dim ),
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
+						ImfR( dim ),
+						ImfC( dim ),
+						internal::PolyFactory< structures::UpperTriangular, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -2043,15 +2088,39 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const size_t &sel_r, const utils::range &rng_c ) {
-
-		// auto imf_c = std::make_shared< imf::Strided >( rng_c.count(), ncols(source), rng_c.start, rng_c.stride );
-
-		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, sel_r, imf_c );
-		return Vector< T, structures::General, density, View, imf::Id, backend >();
+		typename T, typename Structure, enum Density density, typename View,
+		typename ImfR, typename ImfC, enum Backend backend
+	>
+	Vector<
+		T,
+		structures::General,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided, imf::Strided,
+		backend
+	>
+	get_view(
+		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
+		const size_t &sel_r, const utils::range &rng_c
+	) {
+		return Vector<
+			T,
+			structures::General,
+			density,
+			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			imf::Strided, imf::Strided,
+			backend
+		>(
+			source,
+			storage::AMFFactory::Compose<
+				imf::Strided, imf::Strided,
+				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
+			>::Create(
+				imf::Strided( 1, nrows( source ), sel_r, 0 ),
+				imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride ),
+				internal::getAmf( source )
+			)
+		);
 	}
 
 	/**
@@ -2082,15 +2151,39 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Vector< T, structures::General, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Id, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const utils::range &rng_r, const size_t &sel_c ) {
-
-		// auto imf_r = std::make_shared< imf::Strided >( rng_r.count(), nrows(source), rng_r.start, rng_r.stride );
-
-		// return internal::get_view<Structure, T, Structure, density, View, backend >( source, imf_r, sel_c );
-		return Vector< T, structures::General, density, View, imf::Id, backend >();
+		typename T, typename Structure, enum Density density, typename View,
+		typename ImfR, typename ImfC, enum Backend backend
+	>
+	Vector<
+		T,
+		structures::General,
+		density,
+		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+		imf::Strided, imf::Strided,
+		backend
+	>
+	get_view(
+		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
+		const utils::range &rng_r, const size_t &sel_c
+	) {
+		return Vector<
+			T,
+			structures::General,
+			density,
+			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
+			imf::Strided, imf::Strided,
+			backend
+		>(
+			source,
+			storage::AMFFactory::Compose<
+				imf::Strided, imf::Strided,
+				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
+			>::Create(
+				imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
+				imf::Strided( 1, ncols( source ), sel_c, 0 ),
+				internal::getAmf( source )
+			)
+		);
 	}
 
 	/**
@@ -2116,7 +2209,7 @@ namespace alp {
 		*/
 	template<
 		typename TargetStructure,
-		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImf,
+		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
 		enum Backend backend
 	>
@@ -2130,8 +2223,8 @@ namespace alp {
 		backend
 	>
 	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_r,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImf, backend > & sel_c ) {
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_r,
+			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_c ) {
 
 		imf::Select imf_r( nrows(source), sel_r );
 		imf::Select imf_c( ncols(source), sel_c );
