@@ -983,7 +983,6 @@ namespace alp {
 
 			/** Types related to logical-to-physical mapping */
 			typedef typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type amf_type;
-			typedef typename amf_type::mapping_polynomial_type mapping_polynomial_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1031,7 +1030,7 @@ namespace alp {
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
 						ImfR( rows ),
 						ImfC( cols ),
 						internal::PolyFactory< structures::General, ImfR, ImfC, reference >::Create( rows, cols ),
@@ -1205,7 +1204,6 @@ namespace alp {
 
 			/** The type of the AMF */
 			typedef typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type amf_type;
-			typedef typename amf_type::mapping_polynomial_type mapping_polynomial_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1249,7 +1247,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
 						internal::PolyFactory< structures::Square, ImfR, ImfC, reference >::Create( dim, dim ),
@@ -1394,7 +1392,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::Symmetric structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1447,7 +1444,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
 						internal::PolyFactory< structures::Symmetric, ImfR, ImfC, reference >::Create( dim, dim ),
@@ -1572,7 +1569,6 @@ namespace alp {
 		public:
 			/** Exposes the types and the static properties. */
 			typedef structures::UpperTriangular structure;
-			typedef typename storage::polynomials::apply_view< View::type_id, storage::polynomials::Full_type >::type mapping_polynomial_type;
 			/**
 			 * Indicates if a matrix needs to allocate data-related memory
 			 * (for the internal container or functor object).
@@ -1629,7 +1625,7 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				internal::StorageBasedMatrix< T, amf_type, requires_allocation >(
-					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial< typename amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
 						internal::PolyFactory< structures::UpperTriangular, ImfR, ImfC, reference >::Create( dim, dim ),
