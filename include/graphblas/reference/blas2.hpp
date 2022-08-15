@@ -1732,7 +1732,58 @@ namespace grb {
 		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring, phase );
 	}
 
-	/** \internal Delegates to vxm_generic */
+	/**
+	 * \parblock
+	 * Performance semantics vary depending on whether a mask was provided, and on
+	 * whether the input vector is sparse or dense. If the input vector \f$ v \f$
+	 * is sparse, let \f$ J \f$ be its set of assigned indices. If a non-trivial
+	 * mask \f$ \mathit{mask} \f$ is given, let \f$ I \f$ be the set of indices for
+	 * which the corresponding \f$ \mathit{mask}_i \f$ evaluate <tt>true</tt>. Then:
+	 *   -# For the performance guarantee on the amount of work this function
+	 *      entails the following table applies:<br>
+	 *      \f$ \begin{tabular}{cccc}
+	 *           Masked & Dense input  & Sparse input \\
+	 *           \noalign{\smallskip}
+	 *           no  & $\Theta(2\mathit{nnz}(A))$      & $\Theta(2\mathit{nnz}(A_{:,J}))$ \\
+	 *           yes & $\Theta(2\mathit{nnz}(A_{I,:})$ & $\Theta(\min\{2\mathit{nnz}(A_{I,:}),2\mathit{nnz}(A_{:,J})\})$
+	 *          \end{tabular}. \f$
+	 *   -# For the amount of data movements, the following table applies:<br>
+	 *      \f$ \begin{tabular}{cccc}
+	 *           Masked & Dense input  & Sparse input \\
+	 *           \noalign{\smallskip}
+	 *           no  & $\Theta(\mathit{nnz}(A)+\min\{m,n\}+m+n)$                         & $\Theta(\mathit{nnz}(A_{:,J}+\min\{m,2|J|\}+|J|)+\mathcal{O}(2m)$ \\
+	 *           yes & $\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n)$ &
+	 * $\Theta(\min\{\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n),\mathit{nnz}(A_{:,J}+\min\{m,|J|\}+2|J|)+\mathcal{O}(2m))$ \end{tabular}. \f$
+	 *   -# A call to this function under no circumstance will allocate nor free
+	 *      dynamic memory.
+	 *   -# A call to this function under no circumstance will make system calls.
+	 * The above performance bounds may be changed by the following desciptors:
+	 *   * #descriptors::invert_mask: replaces \f$ \Theta(|I|) \f$ data movement
+	 *     costs with a \f$ \mathcal{O}(2m) \f$ cost instead, or a
+	 *     \f$ \mathcal{O}(m) \f$ cost if #descriptors::structural was defined as
+	 *     well (see below). In other words, implementations are not required to
+	 *     implement inverted operations efficiently (\f$ 2\Theta(m-|I|) \f$ data
+	 *     movements would be optimal but costs another \f$ \Theta(m) \f$ memory
+	 *     to maintain).
+	 *   * #descriptors::structural: removes \f$ \Theta(|I|) \f$ data movement
+	 *     costs as the mask values need no longer be touched.
+	 *   * #descriptors::add_identity: adds, at most, the costs of grb::foldl
+	 *     (on vectors) to all performance metrics.
+	 *   * #descriptors::use_index: removes \f$ \Theta(n) \f$ or
+	 *     \f$ \Theta(|J|) \f$ data movement costs as the input vector values need
+	 *     no longer be touched.
+	 *   * #descriptors::in_place (see also above): turns \f$ \mathcal{O}(2m) \f$
+	 *     data movements into \f$ \mathcal{O}(m) \f$ instead; i.e., it halves the
+	 *     amount of data movements for writing the output.
+	 *   * #descriptors::dense: the input, output, and mask vectors are assumed to
+	 *     be dense. This allows the implementation to skip checks or other code
+	 *     blocks related to handling of sparse vectors. This may result in use of
+	 *     unitialised memory if any of the provided vectors were, in fact,
+	 *     sparse.
+	 * \endparblock
+	 *
+	 * \internal Delegates to vxm_generic
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
