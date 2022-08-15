@@ -44,7 +44,7 @@
 #include "vector.hpp"
 
 #ifdef _DEBUG
-#include "spmd.hpp"
+ #include "spmd.hpp"
 #endif
 
 #define NO_CAST_ASSERT( x, y, z )                                          \
@@ -257,6 +257,7 @@ namespace grb {
 		 * @param[in]     source_range  The number of elements in \a source.
 		 * @param[in]     matrix        A view of the sparsity pattern and nonzeroes
 		 *                              (if applicable) of the input matrix.
+		 * @param[in]     nz            The number of nonzeroes in the matrix.
 		 * @param[in]     mask_vector   A view of the mask vector. If \a masked is
 		 *                              \a true, the dimensions must match that of
 		 *                              \a destination_vector.
@@ -305,6 +306,7 @@ namespace grb {
 			const size_t &source_range,
 			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType >
 				&matrix,
+			const size_t &nz,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, reference, Coords > &source_mask_vector,
@@ -322,6 +324,8 @@ namespace grb {
 			constexpr bool use_index = descr & descriptors::use_index;
 #endif
 			assert( rc == SUCCESS );
+			assert( matrix.col_start[ destination_index ] <= nz );
+			assert( matrix.col_start[ destination_index + 1 ] <= nz );
 
 			// check whether we should compute output here
 			if( masked ) {
@@ -345,6 +349,7 @@ namespace grb {
 			}
 
 			// start output
+			const auto &src_coordinates = internal::getCoordinates( source_vector );
 			typename AdditiveMonoid::D3 output =
 				add.template getIdentity< typename AdditiveMonoid::D3 >();
 			bool set = false;
@@ -359,9 +364,7 @@ namespace grb {
 							mask< descr >( id_location, source_mask )
 					) && id_location < source_range
 				) {
-					if( dense_hint ||
-						internal::getCoordinates( source_vector ).assigned( id_location )
-					) {
+					if( dense_hint || src_coordinates.assigned( id_location ) ) {
 						typename AdditiveMonoid::D1 temp;
 						internal::CopyOrApplyWithIdentity<
 							!left_handed, typename AdditiveMonoid::D1, InputType1, One
@@ -409,12 +412,33 @@ namespace grb {
 				}
 				// check for sparsity at source
 				if( !dense_hint ) {
-					if( !internal::getCoordinates( source_vector ).assigned( source_index ) ) {
+					if( config::PREFETCHING< reference >::enabled() ) {
+						size_t dist = k + 2 * config::PREFETCHING< reference >::distance();
+						if( dist < nz ) {
+							const size_t prefetch_target_assigned = matrix.row_index[ dist ];
+							src_coordinates.prefetch_assigned( prefetch_target_assigned );
+						}
+						dist -= config::PREFETCHING< reference >::distance();
+						if( dist < nz ) {
+							const size_t prefetch_target_value = matrix.row_index[ dist ];
+							if( src_coordinates.assigned( prefetch_target_value ) ) {
+								src_coordinates.prefetch_value( prefetch_target_value, source );
+							}
+						}
+					}
+					if( !src_coordinates.assigned( source_index ) ) {
 #ifdef _DEBUG
 						std::cout << "\t vxm_gather: Skipping out of computation with source "
 							<< "index " << source_index << " since it does not contain a nonzero\n";
 #endif
 						continue;
+					}
+				} else if( config::PREFETCHING< reference >::enabled() ) {
+					// prefetch nonzero
+					const size_t dist = k + config::PREFETCHING< reference >::distance();
+					if( dist < nz ) {
+						const size_t prefetch_target = matrix.row_index[ dist ];
+						src_coordinates.prefetch_value( prefetch_target, source );
 					}
 				}
 				// get nonzero
@@ -1205,7 +1229,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ i ], i, v, x,
-									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCRS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, col_l2g, col_g2l
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
@@ -1250,7 +1275,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ i ], i, v, x,
-									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCRS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, col_l2g, col_g2l
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
@@ -1412,8 +1438,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ j ], j,
-									v, x, nrows( A ),
-									internal::getCCS( A ),
+									v, x,
+									nrows( A ), internal::getCCS( A ), nnz( A ),
 									mask, z, v_mask, vm,
 									add, mul,
 									row_l2g, row_g2l, col_l2g
@@ -1450,7 +1476,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ j ], j, v, x,
-									nrows( A ), internal::getCCS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCCS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, row_g2l, col_l2g
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2

@@ -60,6 +60,41 @@ namespace grb {
 		std::string toString( const ALLOC_MODE mode );
 
 		/**
+		 * Default prefetching settings for reference and reference_omp backends.
+		 *
+		 * The defaults may be overridden by specialisation.
+		 *
+		 * \warning This class should only be used by the reference or reference_omp
+		 *          backends.
+		 */
+		template< Backend backend >
+		class PREFETCHING {
+
+			static_assert( backend == reference || backend == reference_omp,
+				"Instantiating for non-reference backend" );
+
+			public:
+
+				/**
+				 * Whether prefetching is enabled.
+				 */
+				static constexpr bool enabled() {
+					return true;
+				}
+
+				/**
+				 * The prefetch distance used during level-2 and level-3 operations.
+				 *
+				 * This value will be ignored if #prefetchingEnables() returns
+				 * <tt>false</tt>.
+				 */
+				static constexpr size_t distance() {
+					return 1;
+				}
+
+		};
+
+		/**
 		 * Configuration parameters that may depend on the implementation.
 		 *
 		 * \todo Internal issue #98.
@@ -93,7 +128,7 @@ namespace grb {
 				 * such a buffer is not required, hence this function will always return
 				 * 0.
 				 */
-				static inline size_t vectorBufferSize( const size_t, const size_t ) {
+				static constexpr size_t vectorBufferSize( const size_t, const size_t ) {
 					return 0;
 				}
 
