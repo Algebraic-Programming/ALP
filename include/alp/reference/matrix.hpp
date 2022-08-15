@@ -771,14 +771,15 @@ namespace alp {
 		 * @tparam Structure  Matrix structure
 		 * @tparam ImfR       Row IMF type
 		 * @tparam ImfC       Column IMF type
+		 * @tparam backend    The backend
 		 *
 		 */
-		template< typename Structure, typename ImfR, typename ImfC >
+		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
 		struct determine_mapping_polynomial_type {};
 
 		/** Specialization for matrices */
-		template< typename Structure >
-		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Id > {
+		template< typename Structure, enum Backend backend >
+		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Id, backend > {
 
 			/** \internal Currently the type is hard-coded. \todo Implement proper logic */
 			typedef storage::polynomials::Full_type type;
@@ -790,8 +791,8 @@ namespace alp {
 		};
 
 		/** Specialization for vectors */
-		template< typename Structure >
-		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Zero > {
+		template< typename Structure, enum Backend backend >
+		struct determine_mapping_polynomial_type< Structure, imf::Id, imf::Zero, backend > {
 
 			typedef storage::polynomials::Vector_type type;
 
@@ -814,9 +815,10 @@ namespace alp {
 		 *  - When applying a different view type (e.g. transpose or diagonal), the AMF
 		 *    of the target matrix is transformed according to the provided view type.
 		 *
-		 * @tparam View  View type.
-		 * @tparam ImfR  Row IMF type.
-		 * @tparam ImfC  Column IMF type.
+		 * @tparam View     View type
+		 * @tparam ImfR     Row IMF type
+		 * @tparam ImfC     Column IMF type
+		 * @tparam backend  The backend
 		 *
 		 * The valid combinations of the input parameters are as follows:
 		 *  - original view on void with Id IMFs.
@@ -826,7 +828,10 @@ namespace alp {
 		 * The first parameter combination is handled by a specialization of this trait.
 		 *
 		 */
-		template< typename Structure, typename View, typename ImfR, typename ImfC >
+		template<
+			typename Structure, typename View, typename ImfR, typename ImfC,
+			enum Backend backend
+		>
 		struct determine_amf_type {
 
 			/** Ensure that the view is not on a void type */
@@ -863,8 +868,8 @@ namespace alp {
 		};
 
 		/** Specialization for containers that allocate storage */
-		template< typename Structure, typename ImfC >
-		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC > {
+		template< typename Structure, typename ImfC, enum Backend backend >
+		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC, backend > {
 
 			static_assert(
 				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
@@ -872,7 +877,7 @@ namespace alp {
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				typename determine_mapping_polynomial_type< Structure, imf::Id, ImfC >::type
+				typename determine_mapping_polynomial_type< Structure, imf::Id, ImfC, reference >::type
 			>::amf_type type;
 		};
 
@@ -943,7 +948,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::General, View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -977,7 +982,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** Types related to logical-to-physical mapping */
-			typedef typename internal::determine_amf_type< structures::General, View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type amf_type;
 			typedef typename amf_type::mapping_polynomial_type mapping_polynomial_type;
 
 			/**
@@ -1029,7 +1034,7 @@ namespace alp {
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						ImfR( rows ),
 						ImfC( cols ),
-						internal::determine_mapping_polynomial_type< structures::General, ImfR, ImfC >::Create( rows, cols ),
+						internal::determine_mapping_polynomial_type< structures::General, ImfR, ImfC, reference >::Create( rows, cols ),
 						rows * cols
 					)
 				) {
@@ -1165,7 +1170,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1199,7 +1204,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type amf_type;
 			typedef typename amf_type::mapping_polynomial_type mapping_polynomial_type;
 
 			/**
@@ -1247,7 +1252,7 @@ namespace alp {
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_mapping_polynomial_type< structures::Square, ImfR, ImfC >::Create( dim, dim ),
+						internal::determine_mapping_polynomial_type< structures::Square, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -1363,7 +1368,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1398,7 +1403,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1445,7 +1450,7 @@ namespace alp {
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_mapping_polynomial_type< structures::Symmetric, ImfR, ImfC >::Create( dim, dim ),
+						internal::determine_mapping_polynomial_type< structures::Symmetric, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -1541,7 +1546,7 @@ namespace alp {
 			internal::is_view_over_functor< View >::value,
 			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC >::type,
+				typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference>::type,
 				internal::requires_allocation< View >::value
 			>
 		>::type {
@@ -1576,7 +1581,7 @@ namespace alp {
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
 			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC >::type amf_type;
+			typedef typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference >::type amf_type;
 
 			/**
 			 * Expose the base type class to enable internal functions to cast
@@ -1627,7 +1632,7 @@ namespace alp {
 					storage::AMFFactory::FromPolynomial< mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_mapping_polynomial_type< structures::UpperTriangular, ImfR, ImfC >::Create( dim, dim ),
+						internal::determine_mapping_polynomial_type< structures::UpperTriangular, ImfR, ImfC, reference >::Create( dim, dim ),
 						dim * dim
 					)
 				) {
