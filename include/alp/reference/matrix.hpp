@@ -551,6 +551,7 @@ namespace alp {
 				/** Expose static properties */
 
 				typedef T value_type;
+				typedef AmfType amf_type;
 				typedef typename AmfType::imf_r_type imf_r_type;
 				typedef typename AmfType::imf_c_type imf_c_type;
 				/** Type returned by access function */
@@ -703,6 +704,8 @@ namespace alp {
 				typedef T access_type;
 				/** Type of the index used to access the physical storage */
 				typedef std::pair< size_t, size_t > storage_index_type;
+				/** Define AMF type for compatibility */
+				typedef void* amf_type;
 
 			protected:
 
@@ -895,6 +898,26 @@ namespace alp {
 			>::amf_type type;
 		};
 
+		template<
+			typename T,
+			typename Structure,
+			enum Density density,
+			typename View,
+			typename ImfR,
+			typename ImfC,
+			enum Backend backend
+		>
+		struct base_class {
+			typedef typename std::conditional<
+				internal::is_view_over_functor< View >::value,
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+				internal::StorageBasedMatrix< T,
+					typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
+					internal::requires_allocation< View >::value
+				>
+			>::type type;
+		};
+
 	} // namespace internal
 
 	/**
@@ -958,14 +981,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
-		public std::conditional<
-			internal::is_view_over_functor< View >::value,
-			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
-				internal::requires_allocation< View >::value
-			>
-		>::type {
+		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -995,18 +1011,14 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** Types related to logical-to-physical mapping */
-			typedef typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type amf_type;
-
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename std::conditional<
-				internal::is_view_over_functor< View >::value,
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
-			>::type base_type;
+			typedef typename internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+
+			/** Expose AMF type of the underlying container */
+			typedef typename base_type::amf_type amf_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1179,14 +1191,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
-		public std::conditional<
-			internal::is_view_over_functor< View >::value,
-			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type,
-				internal::requires_allocation< View >::value
-			>
-		>::type {
+		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1216,18 +1221,14 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::Square, View, ImfR, ImfC, reference >::type amf_type;
-
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename std::conditional<
-				internal::is_view_over_functor< View >::value,
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
-			>::type base_type;
+			typedef typename internal::base_class< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+
+			/** Expose AMF type of the underlying container */
+			typedef typename base_type::amf_type amf_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1376,14 +1377,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > :
-		public std::conditional<
-			internal::is_view_over_functor< View >::value,
-			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type,
-				internal::requires_allocation< View >::value
-			>
-		>::type {
+		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1413,18 +1407,14 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::Symmetric, View, ImfR, ImfC, reference >::type amf_type;
-
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename std::conditional<
-				internal::is_view_over_functor< View >::value,
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
-			>::type base_type;
+			typedef typename internal::base_class< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+
+			/** Expose AMF type of the underlying container */
+			typedef typename base_type::amf_type amf_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1553,14 +1543,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
-		public std::conditional<
-			internal::is_view_over_functor< View >::value,
-			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
-			internal::StorageBasedMatrix< T,
-				typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference>::type,
-				internal::requires_allocation< View >::value
-			>
-		>::type {
+		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1590,18 +1573,14 @@ namespace alp {
 			 */
 			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
 
-			/** The type of the AMF */
-			typedef typename internal::determine_amf_type< structures::UpperTriangular, View, ImfR, ImfC, reference >::type amf_type;
-
 			/**
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename std::conditional<
-				internal::is_view_over_functor< View >::value,
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
-				internal::StorageBasedMatrix< T, amf_type, requires_allocation >
-			>::type base_type;
+			typedef typename internal::base_class< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+
+			/** Expose AMF type of the underlying container */
+			typedef typename base_type::amf_type amf_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
