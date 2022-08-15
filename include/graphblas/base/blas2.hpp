@@ -146,6 +146,8 @@ namespace grb {
 	 *                     \a u, \a A, and \a v will be cast to the domains of the
 	 *                     additive and multiplicative operators of \a semiring.
 	 *
+	 * The vector \a v may not be the same as \a u.
+	 *
 	 * Instead of passing a \a semiring, users may opt to provide an additive
 	 * commutative monoid and a binary multiplicative operator instead. In this
 	 * case, \a A may not be a pattern matrix (that is, it must not be of type
@@ -167,38 +169,45 @@ namespace grb {
 	 * @param[in] phase  The requested phase for this primitive-- see
 	 *                   #grb::Phase for details.
 	 *
+	 * The vectors \a u_mask and \a v_mask may never be the same as \a u.
+	 *
 	 * An empty \a u_mask will behave semantically the same as providing no mask;
 	 * i.e., as a mask that evaluates <tt>true</tt> at every position.
 	 *
 	 * If \a phase is not given, it will be set to the default #grb::EXECUTE.
-	 * 
+	 *
 	 * If \a phase is #grb::EXECUTE, then the capacity of \a u must be greater than
 	 * or equal to the capacity required to hold all output elements of the
 	 * requested computation.
 	 *
 	 * The above semantics may be changed by the following descriptors:
-	 *   * #descriptors::transpose_matrix: \f$ A \f$ is interpreted as \f$ A^T \f$
+	 *   - #descriptors::transpose_matrix: \f$ A \f$ is interpreted as \f$ A^T \f$
 	 *     instead.
-	 *   * #descriptors::add_identity: the matrix \f$ A \f$ is instead interpreted
+	 *   - #descriptors::add_identity: the matrix \f$ A \f$ is instead interpreted
 	 *     as \f$ A + \mathbf{1} \f$, where \f$ \mathbf{1} \f$ is the one identity
 	 *     (i.e., multiplicative identity) of the given \a semiring.
-	 *   * #descriptors::invert_mask: \f$ u_i \f$ will be written to if and only if
+	 *   - #descriptors::invert_mask: \f$ u_i \f$ will be written to if and only if
 	 *     \f$ \mathit{u\_mask}_i \f$ evaluates <tt>false</tt>, and \f$ v_j \f$
 	 *     will be read from if and only if \f$ \mathit{v\_mask}_j \f$ evaluates
 	 *     <tt>false</tt>.
-	 *   * #descriptors::structural: when evaluating \f$ \mathit{mask}_i \f$, only
+	 *   - #descriptors::structural: when evaluating \f$ \mathit{mask}_i \f$, only
 	 *     the structure of \f$ \mathit{u\_mask}, \mathit{v\_mask} \f$ is
 	 *     considered, as opposed to considering their values.
-	 *   * #descriptors::structural_complement: a combination of two descriptors:
+	 *   - #descriptors::structural_complement: a combination of two descriptors:
 	 *     #descriptors::structural and #descriptors::invert_mask.
-	 *   * #descriptors::use_index: when reading \f$ v_i \f$, then, if there is
+	 *   - #descriptors::use_index: when reading \f$ v_i \f$, then, if there is
 	 *     indeed a nonzero \f$ v_i \f$, use the value \f$ i \f$ instead. This
 	 *     casts the index from <tt>size_t</tt> to the \a InputType1 of \a v.
-	 *   * #descriptors::explicit_zero: if \f$ u_i \f$ was unassigned on entry and
+	 *   - #descriptors::explicit_zero: if \f$ u_i \f$ was unassigned on entry and
 	 *     if \f$ (Av)_i \f$ is \f$ \mathbf{0} \f$, then instead of leaving
 	 *     \f$ u_i \f$ unassigned, it is set to \f$ \mathbf{0} \f$ explicitly.
 	 *     Here, \f$ \mathbf{0} \f$ is the additive identity of the provided
 	 *     \a semiring.
+	 *   - #descriptors::safe_overlap: the vectors \a u and \a v may now be the
+	 *     same container. The user guarantees that no race conditions exist during
+	 *     the requested computation, however. The user may guarantee this due to a
+	 *     a very specific structure of \a A and \a v, or via an intelligently
+	 *     constructed \a u_mask, for example.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -214,7 +223,7 @@ namespace grb {
 	 * @returns grb::MISMATCH If there is at least one mismatch between vector
 	 *                        dimensions or between vectors and the given matrix.
 	 * @returns grb::OVERLAP  If two or more provided vectors refer to the same
-	 *                        vector.
+	 *                        container while this was not allowed.
 	 *
 	 * When any of the above non-SUCCESS error code is returned, it shall be as
 	 * though the call was never made-- the state of all container arguments and
