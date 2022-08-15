@@ -38,8 +38,14 @@ echo "Info: script called with the following arguments: ${DATASETTORUN} ${EXPTYP
 #number of sockets of machine
 if [[ -z ${NUM_SOCKETS} ]]; then
 	NUM_SOCKETS=`grep -i "physical id" /proc/cpuinfo | sort -u | wc -l`
+	echo "Info: number of sockets detected is ${NUM_SOCKETS}"
 fi
-echo "Info: number of sockets detected is ${NUM_SOCKETS}"
+if [ "${NUM_SOCKETS}" -eq "0" ]; then
+	echo "Warning: failed to auto-detect the number of sockets, assuming 1;"
+	echo "         if incorrect, please set NUM_SOCKETS manually."
+	NUM_SOCKETS=1
+fi
+echo "Info: selected number of sockets is ${NUM_SOCKETS}"
 
 if [[ -z ${MAX_PROCESSES} ]]; then
 	echo "Info: MAX_PROCESSES was not set. Will set it equal to the number of sockets."
