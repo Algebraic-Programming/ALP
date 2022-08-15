@@ -1335,8 +1335,8 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1705,8 +1705,8 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, lambda ) {}
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
