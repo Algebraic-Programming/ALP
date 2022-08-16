@@ -26,7 +26,6 @@
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
-#include <utils/output_verification.hpp>
 
 
 using namespace grb;
@@ -307,10 +306,8 @@ int main( int argc, char ** argv ) {
 		std::cout << "Test FAILED\n";
 	} else {
 		if( verification ) {
-			out.error_code = vector_verification(
-				out.pinnedVector, truth_filename,
-				1e-5, 1e-6
-			);
+			std::cerr << "Verification is not yet implemented\n";
+			out.error_code = 255;
 			if( out.error_code == 0 ) {
 				std::cout << "Verification OK\n";
 				std::cout << "Test OK\n";

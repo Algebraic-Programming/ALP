@@ -120,7 +120,6 @@ add_grb_executables( pregel_pagerank pregel_pagerank.cpp
 
 add_grb_executables( pregel_strongly_connected_components pregel_strongly_connected_components.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( conjugate_gradient conjugate_gradient.cpp
