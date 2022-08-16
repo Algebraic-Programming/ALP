@@ -126,6 +126,9 @@ namespace grb {
 				/** \internal Which vertices voted to halt. */
 				grb::Vector< bool > haltVotes;
 
+				/** \internal A buffer used to sparsify #activeVertices. */
+				grb::Vector< bool > buffer;
+
 				/** \internal Pre-computed outdegrees. */
 				grb::Vector< size_t > outdegrees;
 
@@ -201,6 +204,7 @@ namespace grb {
 					graph( _n, _n ),
 					activeVertices( _n ),
 					haltVotes( _n ),
+					buffer( _n ),
 					outdegrees( _n ),
 					indegrees( _n ),
 					IDs( _n )
@@ -354,12 +358,27 @@ namespace grb {
 				 *                behaviour.
 				 *
 				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
-				 * ID.
+				 * ID. For vectors \a in and \out that are non-empty \em not dense, the
+				 * initial contents will be overwritten by the identity of the reduction
+				 * monoid.
 				 *
-				 * Some statistics are retained after a run:
+				 * \note Thus if the program requires some initial incoming and/or intial
+				 *       outgoing messages to be present during the first round of
+				 *       computation, those must be passed as dense vectors \a in and
+				 *       \a out during a call to this function.
+				 *
+				 * The contents of \a in and \a out after termination of a vertex-centric
+				 * function are undefined, including when this function returns
+				 * #grb::SUCCESS. Output of the program should be part of the vertex-centric
+				 * state recorded in \a vertex_state.
+				 *
+				 * Some statistics are returned after a vertex-centric program terminates:
 				 *
 				 * @param[out] rounds The number of rounds the Pregel program has executed.
 				 *                    The initial value to \a rounds will be ignored.
+				 *
+				 * The contents of this field shall be undefined when this function does not
+				 * return #grb::SUCCESS.
 				 *
 				 * Vertex-programs execute in rounds and could, if the given program does
 				 * not infer proper termination conditions, run forever. To curb the number
@@ -470,19 +489,23 @@ namespace grb {
 					if( ret == SUCCESS && grb::nnz(in) < n ) {
 #ifdef _DEBUG
 						if( grb::nnz(in) > 0 ) {
-							std::cerr << "Warning: overwriting initial incoming messages because it was not a dense vector\n";
+							std::cerr << "Overwriting initial incoming messages since it was not a "
+								<< "dense vector\n";
 						}
 #endif
 						ret = grb::set( in, Id< IncomingMessageType >::value() );
 					}
 
 					// set default outgoing message
-					if( ret == SUCCESS ) {
+					if( ret == SUCCESS && grb::nnz(out) < n ) {
+#ifdef _DEBUG
+						if( grb::nnz(out) > 0 ) {
+							std::cerr << "Overwriting initial outgoing messages since it was not a "
+								<< "dense vector\n";
+						}
+#endif
 						ret = grb::set( out, Id< OutgoingMessageType >::value() );
 					}
-
-					// by construction, we start out with all vertices active
-					bool thereAreActiveVertices = true;
 
 					// return if initialisation failed
 					if( ret != SUCCESS ) {
@@ -494,7 +517,8 @@ namespace grb {
 					}
 
 					// while there are active vertices, execute
-					while( thereAreActiveVertices && ret == SUCCESS && (max_rounds == 0 || step < max_rounds) ) {
+					while( ret == SUCCESS ) {
+						assert( max_rounds == 0 || step < max_rounds );
 						// run one step of the program
 						ret = grb::eWiseLambda(
 							[
@@ -518,67 +542,117 @@ namespace grb {
 									IDs[ i ]
 								};
 								// only execute program on active vertices
-								if( activeVertices[ i ] ) {
+								assert( activeVertices[ i ] );
 #ifdef _DEBUG
-									std::cout << "Vertex " << i << " remains active in step " << step << "\n";
+								std::cout << "Vertex " << i << " remains active in step " << step
+									<< "\n";
 #endif
-									program(
-										vertex_state[ i ],
-										in[ i ],
-										out[ i ],
-										data,
-										pregel
-									);
+								program(
+									vertex_state[ i ],
+									in[ i ],
+									out[ i ],
+									data,
+									pregel
+								);
 #ifdef _DEBUG
-									std::cout << "Vertex " << i << " sends out message " << out[ i ] << "\n";
+								std::cout << "Vertex " << i << " sends out message " << out[ i ]
+									<< "\n";
 #endif
-								}
-							}, vertex_state, activeVertices, in, out, outdegrees, haltVotes
+							}, activeVertices, vertex_state, in, out, outdegrees, haltVotes
 						);
 
 						// increment counter
 						(void) ++step;
 
 						// check if everyone voted to halt
-						bool halt = true;
 						if( ret == SUCCESS ) {
-							ret = grb::foldl( halt, haltVotes, andMonoid );
-							if( halt ) { break; }
+							bool halt = true;
+							ret = grb::foldl< grb::descriptors::structural >(
+								halt, haltVotes, activeVertices, andMonoid
+							);
+							assert( ret == SUCCESS );
+							if( ret == SUCCESS && halt ) {
+#ifdef _DEBUG
+								std::cout << "\t All active vertices voted to halt; "
+									<< "terminating Pregel program.\n";
+#endif
+								break;
+							}
 						}
+
+						// update active vertices
+						if( ret == SUCCESS ) {
+#ifdef _DEBUG
+							std::cout << "\t Number of active vertices was "
+								<< grb::nnz( activeVertices ) << ", and ";
+#endif
+							ret = grb::clear( buffer );
+							ret = ret ? ret : grb::set( buffer, activeVertices, true );
+							std::swap( buffer, activeVertices );
+#ifdef _DEBUG
+							std::cout << " has now become " << grb::nnz( activeVertices ) << "\n";
+#endif
+						}
+
+						// check if there is a next round
+						if( ret == SUCCESS && grb::nnz( activeVertices ) == 0 ) {
+#ifdef _DEBUG
+							std::cout << "\t All vertices are inactive; "
+								<< "terminating Pregel program.\n";
+#endif
+							break;
+						}
+
+						// check if we exceed the maximum number of rounds
+						if( max_rounds > 0 && step > max_rounds ) {
+#ifdef _DEBUG
+							std::cout << "\t Maximum number of Pregel rounds met "
+								<< "without the program returning a valid termination condition. "
+								<< "Exiting prematurely with a FAILED error code.\n";
+#endif
+							ret = FAILED;
+							break;
+						}
+
+#ifdef _DEBUG
+						std::cout << "\t Starting message exchange\n";
+#endif
 
 						// reset halt votes
 						if( ret == SUCCESS ) {
-							ret = grb::set(
-								haltVotes,
-								false
+							ret = grb::clear( haltVotes );
+							ret = ret ? ret : grb::set< grb::descriptors::structural >(
+								haltVotes, activeVertices, false
 							);
 						}
 
 						// reset incoming buffer
 						if( ret == SUCCESS ) {
-							ret = grb::set(
-								in,
-								Id< IncomingMessageType >::value()
+							ret = grb::clear( in );
+							ret = ret ? ret : grb::set< grb::descriptors::structural >(
+								in, activeVertices, Id< IncomingMessageType >::value()
 							);
 						}
+
 						// execute communication
 						if( ret == SUCCESS ) {
-							ret = grb::vxm( in, out, graph, ring );
-						}
-						// reset outgoing buffer
-						if( ret == SUCCESS ) {
-							ret = grb::set( out,
-								Id< OutgoingMessageType >::value() );
-						}
-						// check if there is a next round
-						if( ret == SUCCESS ) {
-							thereAreActiveVertices = false;
-							ret = grb::foldl(
-								thereAreActiveVertices,
-								activeVertices,
-								orMonoid
+							ret = grb::vxm< grb::descriptors::structural >(
+								in, activeVertices, out, graph, ring
 							);
 						}
+
+#ifdef _DEBUG
+						std::cout << "\t Resetting outgoing message fields and "
+							<< "starting next compute round\n";
+#endif
+
+						// reset outgoing buffer
+						if( ret == SUCCESS ) {
+							ret = grb::set< grb::descriptors::structural >(
+								out, activeVertices, Id< OutgoingMessageType >::value()
+							);
+						}
+
 					}
 
 #ifdef _DEBUG
