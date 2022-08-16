@@ -1494,6 +1494,34 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) ) ) {}
 
 			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 * @tparam AmfType  The type of the amf used to construct the matrix.
+			 *
+			 */
+			template<
+				typename ViewType = View,
+				typename AmfType,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, AmfType &&amf ) :
+				base_type(
+					getContainer( target_matrix ),
+					std::forward< typename base_type::amf_type >( amf )
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, AmfType >::value,
+					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
+				);
+			}
+
+			/**
 			 * Constructor for a functor-based matrix that allocates memory.
 			 */
 			template<
@@ -1663,6 +1691,34 @@ namespace alp {
 				Matrix( target_matrix,
 					imf::Id( nrows ( target_matrix ) ),
 					imf::Id( ncols ( target_matrix ) ) ) {}
+
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 * @tparam AmfType  The type of the amf used to construct the matrix.
+			 *
+			 */
+			template<
+				typename ViewType = View,
+				typename AmfType,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, AmfType &&amf ) :
+				base_type(
+					getContainer( target_matrix ),
+					std::forward< typename base_type::amf_type >( amf )
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, AmfType >::value,
+					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
+				);
+			}
 
 			/**
 			 * Constructor for a functor-based matrix that allocates memory.
