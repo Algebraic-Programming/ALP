@@ -107,12 +107,6 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 
 #define DEBUG
 
-template< typename T = double >
-struct vec_data {
-	std::vector<T> v_data;
-	size_t n;
-};
-
 /**
  * Container to store matrices loaded from a AMGCL.
  */
@@ -182,22 +176,22 @@ public :
 		);
 		//TODO: extract amgcl data
 		std::vector<mat_data<>>  Amat_data;
-		// std::vector<mat_data<>>  Pmat_data;
-		// std::vector<mat_data<>>  Rmat_data;
-		// std::vector<vec_data<>>  Dvec_data;
+		std::vector<mat_data<>>  Pmat_data;
+		std::vector<mat_data<>>  Rmat_data;
+		std::vector<std::vector<double>>  Dvec_data;
 
 		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
 
 
 		save_levels(static_cast<Solver*>(solver)->precond(),
-					Amat_data
+					Amat_data, Pmat_data, Rmat_data, Dvec_data
 					);
 
 		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
 #ifdef DEBUG
 		for( size_t i = 0; i < Amat_data.size(); i++ ) {
 			std::cout << " amgcl check data: level =" << i << "\n";
-			std::cout << "    * *Amat_data ** \n";
+			std::cout << "    **Amat_data ** \n";
 			std::cout << "    nz =" << Amat_data[ i ].nz << "\n";
 			std::cout << "     n =" << Amat_data[ i ].n << "\n";
 			std::cout << "     m =" << Amat_data[ i ].m << "\n";
@@ -206,6 +200,50 @@ public :
 					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Amat_data[ i ].i_data[ k ] << " "
 							  << std::setw(5) << Amat_data[ i ].j_data[ k ] << "] "
 							  << std::scientific << std::setw(5) << Amat_data[ i ].v_data[ k ] << "\n";
+				}
+			}
+			std::cout << "\n\n";
+		}
+
+		for( size_t i = 0; i < Pmat_data.size(); i++ ) {
+			std::cout << " amgcl check data: level =" << i << "\n";
+			std::cout << "    **Pmat_data ** \n";
+			std::cout << "    nz =" << Pmat_data[ i ].nz << "\n";
+			std::cout << "     n =" << Pmat_data[ i ].n << "\n";
+			std::cout << "     m =" << Pmat_data[ i ].m << "\n";
+			for( size_t k = 0; k < Pmat_data[ i ].nz; k++ ) {
+				if( k < 3 || k + 3 >= Pmat_data[ i ].nz ){
+					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Pmat_data[ i ].i_data[ k ] << " "
+							  << std::setw(5) << Pmat_data[ i ].j_data[ k ] << "] "
+							  << std::scientific << std::setw(5) << Pmat_data[ i ].v_data[ k ] << "\n";
+				}
+			}
+			std::cout << "\n\n";
+		}
+
+		for( size_t i = 0; i < Rmat_data.size(); i++ ) {
+			std::cout << " amgcl check data: level =" << i << "\n";
+			std::cout << "    **Rmat_data ** \n";
+			std::cout << "    nz =" << Rmat_data[ i ].nz << "\n";
+			std::cout << "     n =" << Rmat_data[ i ].n << "\n";
+			std::cout << "     m =" << Rmat_data[ i ].m << "\n";
+			for( size_t k = 0; k < Rmat_data[ i ].nz; k++ ) {
+				if( k < 3 || k + 3 >= Rmat_data[ i ].nz ){
+					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Rmat_data[ i ].i_data[ k ] << " "
+							  << std::setw(5) << Rmat_data[ i ].j_data[ k ] << "] "
+							  << std::scientific << std::setw(5) << Rmat_data[ i ].v_data[ k ] << "\n";
+				}
+			}
+			std::cout << "\n\n";
+		}
+
+		for( size_t i = 0; i < Dvec_data.size(); i++ ) {
+			std::cout << " amgcl check data: level =" << i << "\n";
+			std::cout << "    **Dvec_data ** \n";
+			std::cout << "     n =" << Dvec_data[ i ].size() << "\n";
+			for( size_t k = 0; k < Dvec_data[ i ].size(); k++ ) {
+				if( k < 3 || k + 3 >= Dvec_data[ i ].size() ){
+					std::cout << "     "  << std::scientific << std::setw(5) << Dvec_data[ i ][ k ] << "\n";
 				}
 			}
 			std::cout << "\n\n";
