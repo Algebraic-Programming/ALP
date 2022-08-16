@@ -39,6 +39,7 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
+
 namespace grb {
 
 	/**
@@ -57,379 +58,187 @@ namespace grb {
 	 */
 
 	/**
-	 * Right-handed sparse matrix times vector multiplication, \f$ u = Av \f$.
+	 * Right-handed in-place doubly-masked sparse matrix times vector
+	 * multiplication, \f$ u = u + Av \f$.
 	 *
-	 * Let \f$ u \f$ and \f$ \mathit{mask} \f$ each be a #grb::Vector of #grb::size
-	 * \f$ m \f$, \f$ v \f$ be a #grb::Vector of #grb::size \f$ n \f$, and let
-	 * \f$ A \f$ be a #Matrix with #grb::nrows \f$ m \f$ and #grb::ncols \f$ n \f$.
-	 * Let furthermore \f$ z \f$ be an interal vector of size \f$ m \f$.
-	 * A call to this function first computes \f$ z = Av \f$ over the provided
-	 * \a ring. It then left-folds \f$ z \f$ into \f$ u \f$ using the provided
-	 * \a accumulator.
+	 * Aliases to this function exist that do not include masks:
+	 *  - #grb::mxv( u, u_mask, A, v, semiring );
+	 *  - #grb::mxv( u, A, v, semiring );
+	 * When masks are omitted, the semantics shall be the same as though a dense
+	 * Boolean vector of the appropriate size with all elements set to
+	 * <tt>true</tt> was given as a mask. We thus describe the semantics of the
+	 * fully masked variant only.
 	 *
-	 * @see Vector for an in-depth description of a GraphBLAS vector.
-	 * @see size   for retrieving the length of a given GraphBLAS vector.
-	 * @see Matrix for an in-depth description of a GraphBLAS matrix.
-	 * @see nrows  for retrieving the number of rows of a given GraphBLAS matrix.
-	 * @see ncols  for retrieving the number of columns of a given GraphBLAS
-	 *             vector.
+	 * \note If only an input mask \a v_mask is intended to be given (and no output
+	 *       mask \a u_mask), then \a u_mask must nonetheless be explicitly given.
+	 *       Passing an empty Boolean vector for \a u_mask is sufficient.
 	 *
-	 * Formally, the exact operation executed is
-	 *  \f$ u_i^\mathit{out} = u_i^\mathit{in} \bigodot z_i, \f$
-	 * for all \f$ i \in \{ 0, 1, \ldots, m-1 \} \f$ for which
-	 * \f$ \mathit{mask}_i \f$ evaluates <tt>true</tt>. If there is a nonzero at
-	 * \f$ z_i \f$ but no nonzero at \f$ u_i^\mathit{in} \f$ then the latter is interpreted as the additive
-	 * identity \f$ \mathbf{0} \f$ of the given \a ring.
-	 * For \f$ z \f$, we formally have:
-	 *  \f$ z_i = \bigoplus{i=0}^{m-1} \left( A_{ij} \bigotimes v_j \right), \f$
-	 * where \f$ \bigodot \f$ represents the \a accumulator, \f$ \bigoplus \f$
-	 * represents the additive operator of the provided \a ring, and
-	 * \f$ \bigotimes \f$ represents the multiplicative operator of \a ring. If here
-	 * \f$ v_j \f$ does not exist, it is considered to be equal to the additive
-	 * identity of the given \a ring.
+	 * Let \f$ u, \mathit{u\_mask} \f$ be vectors of size \f$ m \f$, let
+	 * \f$ v, \mathit{v\_mask} \f$ be vectors of size \f$ n \f$, and let
+	 * \f$ A \f$ be an \f$ m \times n \f$ matrix. Then, a call to this function
+	 * computes \f$ u = u + Av \f$ but:
+	 *   1. only for the elements \f$ u_i \f$ for which \f$ \mathit{u\_mask}_i \f$
+	 *      evaluates <tt>true</tt>; and
+	 *   2. only considering the elements \f$ v_j \f$ for which
+	 *      \f$ \mathit{v\_mask}_v \f$ evaluates <tt>true</tt>, and otherwise
+	 *      substituting the zero element under the given semiring.
 	 *
-	 * \note The additive identity of a given \a ring is an annihilator of
-	 *       nonzeroes from \f$ A \f$ under the multiplicative operator of \a ring;
-	 *       that is, \f$ z_i \f$ will be \f$ \mathbf{0} \f$ always. This can, of
-	 *       course, be exploited during sparse matrix--sparse vector (SpMSpV)
-	 *       multiplication.
+	 * When multiplying a matrix nonzero element \f$ a_{ij} \in A \f$, it shall
+	 * be multiplied with an element \f$ x_j \f$ using the multiplicative operator
+	 * of the given \a semiring.
 	 *
-	 * \note A good implementation is very careful about forming \f$ z \f$
-	 *       explicitly and, even if it is formed already, is very careful about
-	 *       making use of \f$ z \f$. Making use of an explicit buffer will result
-	 *       in \f$ \Theta(m) \f$ data movement and may only be warrented when
-	 *       \f$ A \f$ has many nonzeroes per row and \f$ v \f$ is dense.
+	 * When accumulating multiple contributions of multiplications of nonzeroes on
+	 * some row \f$ i \f$, the additive operator of the given \a semiring shall be
+	 * used.
 	 *
-	 * @tparam descr    Any combination of one or more #grb::descriptors. When
-	 *                  ommitted, the default #grb::descriptors:no_operation will
-	 *                  be assumed.
-	 * @tparam Ring     The generalised semi-ring the matrix--vector multiplication
-	 *                  is to be executed under.
-	 * @tparam IOType   The type of the elements of the output vector \a u.
+	 * Nonzero resulting from computing \f$ Av \f$ are accumulated into any pre-
+	 * existing values in \f$ u \f$ by the additive operator of the given
+	 * \a semiring.
+	 *
+	 * If elements from \f$ v \f$, \f$ A \f$, or \f$ u \f$ were missing, the zero
+	 * identity of the given \a semiring is substituted.
+	 *
+	 * If nonzero values from \f$ A \f$ were missing, the one identity of the given
+	 * semiring is substituted.
+	 *
+	 * \note A nonzero in \f$ A \f$ may not have a nonzero value in case it is
+	 *       declared as <tt>grb::Matrix< void ></tt>.
+	 *
+	 * The following template arguments \em may be explicitly given:
+	 *
+	 * @tparam descr      Any combination of one or more #grb::descriptors. When
+	 *                    ommitted, the default #grb::descriptors:no_operation will
+	 *                    be assumed.
+	 * @tparam Semiring   The generalised semiring the matrix--vector
+	 *                    multiplication is to be executed under.
+	 *
+	 * The following template arguments will be inferred from the input arguments:
+	 *
+	 * @tparam IOType     The type of the elements of the output vector \a u.
 	 * @tparam InputType1 The type of the elements of the input vector \a v.
 	 * @tparam InputType2 The type of the elements of the input matrix \a A.
-	 * @tparam Operator The type of the \a accumulator. Must be a GraphBLAS
-	 *                  operator; see also #grb::operators.
-	 * @tparam InputType3 The type of the elements of the mask vector \a mask.
-	 * @tparam implementation Which back-end the given vectors and matrices belong
-	 *                        to. These must all belong to the same back-end.
+	 * @tparam InputType3 The type of the output mask (\a u_mask) elements.
+	 * @tparam InputType4 The type of the input mask (\a v_mask) elements.
 	 *
-	 * @param[in,out] u The output vector. Depending on the provided
-	 *                  \a accumulator, old vector values may affect new values.
-	 * @param[in]  mask The mask vector. The vector #grb::size must be equal to
-	 *                  that of \a u, \em or it must be equal to zero. A \a mask
-	 *                  of grb::size zero will be ignored (assumed <tt>true</tt>
-	 *                  always.
-	 * @param[in] accumulator The operator \f$ \bigodot \f$ in the above
-	 *                        description.
-	 * @param[in] A     The input matrix. Its #grb::nrows must equal the
-	 *                  #grb::size of \a u.
-	 * @param[in] v     The input vector. Its #grb::size must equal the
-	 *                  #grb::ncols of \a A.
-	 * @param[in] ring  The semiring to perform the matrix--vector multiplication
-	 *                  under. Unless #grb::descriptors::no_casting is defined,
-	 *                  elements from \a u, \a A, and \a v will be cast to the
-	 *                  domains of the additive and multiplicative operators of
-	 *                  \a ring as they are applied during the multiplication.
+	 * \internal
+	 * The following template arguments will be inferred from the input arguments
+	 * and generally do not concern end-users:
 	 *
-	 * \warning Even if #grb::operators::right_assign is provided as accumulator,
-	 *          old values of \a u may \em not be overwritten if the computation
-	 *          ends up not writing any new values to those values. To throw away
-	 *          old vector values use grb::descriptors::explicit_zero (for dense
-	 *          vectors only if you wish to retain sparsity of the output vector),
-	 *          or first simply use grb::clear on \a u.
+	 * @tparam Coords  Which coordinate class is used to maintain sparsity
+	 *                 structures.
+	 * @tparam RIT     The integer type used for row indices.
+	 * @tparam CIT     The integer type used for column indices.
+	 * @tparam NIT     The integer type used for nonzero indices.
+	 * @tparam backend The backend implementing the SpMV multiplication. The input
+	 *                 containers must all refer to the same backend.
+	 * \endinternal
+	 *
+	 * The following arguments are mandatory:
+	 *
+	 * @param[in,out] u    The output vector.
+	 * @param[in]     A    The input matrix. Its #grb::nrows must equal the
+	 *                     #grb::size of \a u.
+	 * @param[in]     v    The input vector. Its #grb::size must equal the
+	 *                     #grb::ncols of \a A.
+	 * @param[in] semiring The semiring to perform the matrix--vector
+	 *                     multiplication under. Unless
+	 *                     #grb::descriptors::no_casting is defined, elements from
+	 *                     \a u, \a A, and \a v will be cast to the domains of the
+	 *                     additive and multiplicative operators of \a semiring.
+	 *
+	 * The vector \a v may not be the same as \a u.
+	 *
+	 * Instead of passing a \a semiring, users may opt to provide an additive
+	 * commutative monoid and a binary multiplicative operator instead. In this
+	 * case, \a A may not be a pattern matrix (that is, it must not be of type
+	 * <tt>grb::Matrix< void ></tt>).
+	 *
+	 * The \a semiring (or the commutative monoid - binary operator pair) is
+	 * optional if they are passed as a template argument instead.
+	 *
+	 * \note When providing a commutative monoid - binary operator pair, ALP
+	 *       backends are precluded from employing distributative laws in
+	 *       generating optimised codes.
+	 *
+	 * Non-mandatory arguments are:
+	 *
+	 * @param[in] u_mask The output mask. The vector must be of equal size as \a u,
+	 *                   \em or it must be empty (have size zero).
+	 * @param[in] v_mask The input mask. The vector must be of equal size as \a v,
+	 *                   \em or it must be empty (have size zero).
+	 * @param[in] phase  The requested phase for this primitive-- see
+	 *                   #grb::Phase for details.
+	 *
+	 * The vectors \a u_mask and \a v_mask may never be the same as \a u.
+	 *
+	 * An empty \a u_mask will behave semantically the same as providing no mask;
+	 * i.e., as a mask that evaluates <tt>true</tt> at every position.
+	 *
+	 * If \a phase is not given, it will be set to the default #grb::EXECUTE.
+	 *
+	 * If \a phase is #grb::EXECUTE, then the capacity of \a u must be greater than
+	 * or equal to the capacity required to hold all output elements of the
+	 * requested computation.
 	 *
 	 * The above semantics may be changed by the following descriptors:
-	 *   * #descriptors::invert_mask: \f$ u_i^\mathit{out} \f$ will be written to
-	 *     if and only if \f$ \mathit{mask}_i \f$ evaluates <tt>false</tt>.
-	 *   * #descriptors::transpose_matrix: \f$ A \f$ is interpreted as \f$ A^T \f$
+	 *   - #descriptors::transpose_matrix: \f$ A \f$ is interpreted as \f$ A^T \f$
 	 *     instead.
-	 *   * #descriptors::structural: when evaluating \f$ \mathit{mask}_i \f$, only
-	 *     the structure of \f$ \mathit{mask} \f$ is considered (as opposed to its
-	 *     elements); if \f$ \mathit{mask} \f$ has a nonzero at its \f$ i \f$th
-	 *     index, it is considered to evaluate <tt>true</tt> no matter what the
-	 *     actual value of \f$ \mathit{mask}_i \f$ was.
-	 *   * #descriptors::structural_complement: a combination of two descriptors:
-	 *     #descriptors::structural and #descriptors::invert_mask (and thus
-	 *     equivalent to <tt>structural | invert_mask</tt>). Its net effect is if
-	 *     \f$ \mathit{mask} \f$ does \em not have a nonzero at the \f$ i \f$th
-	 *     index, the mask is considered to evaluate <tt>true</tt>.
-	 *   * #descriptors::add_identity: the matrix \f$ A \f$ is instead interpreted
-	 *     as \f$ A + \mathbf{1} \f$, where \f$ \mathbf{1} \f$ is the
-	 *     multiplicative identity of the given ring.
-	 *   * #descriptors::use_index: when referencing \f$ v_i \f$, if assigned, then
-	 *     instead of using the value itself, its index \f$ i \f$ is used instead.
-	 *   * #descriptors::in_place: the \a accumulator is ignored; the additive
-	 *     operator of the given \a ring is used in its place. Under certain
-	 *     conditions, an implementation can exploit this semantic to active
-	 *     faster computations.
-	 *   * #descriptors::explicit_zero: if \f$ \mathbf{0} \f$ would be assigned to
-	 *     a previously unassigned index, assign \f$ \mathbf{0} \f$ explicitly to
-	 *     that index. Here, \f$ \mathbf{0} \f$ is the additive identity of the
-	 *     provided \a ring.
+	 *   - #descriptors::add_identity: the matrix \f$ A \f$ is instead interpreted
+	 *     as \f$ A + \mathbf{1} \f$, where \f$ \mathbf{1} \f$ is the one identity
+	 *     (i.e., multiplicative identity) of the given \a semiring.
+	 *   - #descriptors::invert_mask: \f$ u_i \f$ will be written to if and only if
+	 *     \f$ \mathit{u\_mask}_i \f$ evaluates <tt>false</tt>, and \f$ v_j \f$
+	 *     will be read from if and only if \f$ \mathit{v\_mask}_j \f$ evaluates
+	 *     <tt>false</tt>.
+	 *   - #descriptors::structural: when evaluating \f$ \mathit{mask}_i \f$, only
+	 *     the structure of \f$ \mathit{u\_mask}, \mathit{v\_mask} \f$ is
+	 *     considered, as opposed to considering their values.
+	 *   - #descriptors::structural_complement: a combination of two descriptors:
+	 *     #descriptors::structural and #descriptors::invert_mask.
+	 *   - #descriptors::use_index: when reading \f$ v_i \f$, then, if there is
+	 *     indeed a nonzero \f$ v_i \f$, use the value \f$ i \f$ instead. This
+	 *     casts the index from <tt>size_t</tt> to the \a InputType1 of \a v.
+	 *   - #descriptors::explicit_zero: if \f$ u_i \f$ was unassigned on entry and
+	 *     if \f$ (Av)_i \f$ is \f$ \mathbf{0} \f$, then instead of leaving
+	 *     \f$ u_i \f$ unassigned, it is set to \f$ \mathbf{0} \f$ explicitly.
+	 *     Here, \f$ \mathbf{0} \f$ is the additive identity of the provided
+	 *     \a semiring.
+	 *   - #descriptors::safe_overlap: the vectors \a u and \a v may now be the
+	 *     same container. The user guarantees that no race conditions exist during
+	 *     the requested computation, however. The user may guarantee this due to a
+	 *     a very specific structure of \a A and \a v, or via an intelligently
+	 *     constructed \a u_mask, for example.
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * Performance semantics vary depending on whether a mask was provided, and on
-	 * whether the input vector is sparse or dense. If the input vector \f$ v \f$
-	 * is sparse, let \f$ J \f$ be its set of assigned indices. If a non-trivial
-	 * mask \f$ \mathit{mask} \f$ is given, let \f$ I \f$ be the set of indices for
-	 * which the corresponding \f$ \mathit{mask}_i \f$ evaluate <tt>true</tt>. Then:
-	 *   -# For the performance guarantee on the amount of work this function
-	 *      entails the following table applies:<br>
-	 *      \f$ \begin{tabular}{cccc}
-	 *           Masked & Dense input  & Sparse input \\
-	 *           \noalign{\smallskip}
-	 *           no  & $\Theta(2\mathit{nnz}(A))$      & $\Theta(2\mathit{nnz}(A_{:,J}))$ \\
-	 *           yes & $\Theta(2\mathit{nnz}(A_{I,:})$ & $\Theta(\min\{2\mathit{nnz}(A_{I,:}),2\mathit{nnz}(A_{:,J})\})$
-	 *          \end{tabular}. \f$
-	 *   -# For the amount of data movements, the following table applies:<br>
-	 *      \f$ \begin{tabular}{cccc}
-	 *           Masked & Dense input  & Sparse input \\
-	 *           \noalign{\smallskip}
-	 *           no  & $\Theta(\mathit{nnz}(A)+\min\{m,n\}+m+n)$                         & $\Theta(\mathit{nnz}(A_{:,J}+\min\{m,2|J|\}+|J|)+\mathcal{O}(2m)$ \\
-	 *           yes & $\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n)$ &
-	 * $\Theta(\min\{\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n),\mathit{nnz}(A_{:,J}+\min\{m,|J|\}+2|J|)+\mathcal{O}(2m))$ \end{tabular}. \f$
-	 *   -# A call to this function under no circumstance will allocate nor free
-	 *      dynamic memory.
-	 *   -# A call to this function under no circumstance will make system calls.
-	 * The above performance bounds may be changed by the following desciptors:
-	 *   * #descriptors::invert_mask: replaces \f$ \Theta(|I|) \f$ data movement
-	 *     costs with a \f$ \mathcal{O}(2m) \f$ cost instead, or a
-	 *     \f$ \mathcal{O}(m) \f$ cost if #descriptors::structural was defined as
-	 *     well (see below). In other words, implementations are not required to
-	 *     implement inverted operations efficiently (\f$ 2\Theta(m-|I|) \f$ data
-	 *     movements would be optimal but costs another \f$ \Theta(m) \f$ memory
-	 *     to maintain).
-	 *   * #descriptors::structural: removes \f$ \Theta(|I|) \f$ data movement
-	 *     costs as the mask values need no longer be touched.
-	 *   * #descriptors::add_identity: adds, at most, the costs of grb::foldl
-	 *     (on vectors) to all performance metrics.
-	 *   * #descriptors::use_index: removes \f$ \Theta(n) \f$ or
-	 *     \f$ \Theta(|J|) \f$ data movement costs as the input vector values need
-	 *     no longer be touched.
-	 *   * #descriptors::in_place (see also above): turns \f$ \mathcal{O}(2m) \f$
-	 *     data movements into \f$ \mathcal{O}(m) \f$ instead; i.e., it halves the
-	 *     amount of data movements for writing the output.
-	 *   * #descriptors::dense: the input, output, and mask vectors are assumed to
-	 *     be dense. This allows the implementation to skip checks or other code
-	 *     blocks related to handling of sparse vectors. This may result in use of
-	 *     unitialised memory if any of the provided vectors were, in fact,
-	 *     sparse.
-	 * Implementations that support multiple user processes must characterise data
-	 * movement between then.
+	 * Backends must specify performance semantics in the amount of work, intra-
+	 * process data movement, inter-process data movement, and the number of
+	 * user process synchronisations required. They should also specify whether
+	 * any system calls may be made, in particularly those related to dynamic
+	 * memory management. If new memory may be allocated, they must specify how
+	 * much.
 	 * \endparblock
 	 *
 	 * @returns grb::SUCCESS  If the computation completed successfully.
 	 * @returns grb::MISMATCH If there is at least one mismatch between vector
 	 *                        dimensions or between vectors and the given matrix.
 	 * @returns grb::OVERLAP  If two or more provided vectors refer to the same
-	 *                        vector.
+	 *                        container while this was not allowed.
 	 *
-	 * When a non-SUCCESS error code is returned, it shall be as though the call
-	 * was never made. Note that all GraphBLAS functions may additionally return
-	 * #grb::PANIC, which indicates the library has entered an undefined state; if
-	 * this error code is returned, the only sensible thing a user can do is exit,
-	 * or at least refrain from using any GraphBLAS functions for the remainder of
-	 * the application.
+	 * When any of the above non-SUCCESS error code is returned, it shall be as
+	 * though the call was never made-- the state of all container arguments and
+	 * of the application remain unchanged, save for the returned error code.
+	 *
+	 * @returns grb::PANIC Indicates that the application has entered an undefined
+	 *                     state.
+	 *
+	 * \note Should this error code be returned, the only sensible thing to do is
+	 *       exit the application as soon as possible, while refraining from using
+	 *       any other ALP pritimives.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3,
-		typename RIT, typename CIT, typename NIT,
-		typename Coords,
-		enum Backend implementation = config::default_backend
-	>
-	RC mxv(
-		Vector< IOType, implementation, Coords > &u,
-		const Vector< InputType3, implementation, Coords > &mask,
-		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
-		const Vector< InputType1, implementation, Coords > &v,
-		const Ring &ring,
-		typename std::enable_if<
-			grb::is_semiring< Ring >::value,
-		void >::type * = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::mxv (output-masked)\n";
-#endif
-#ifndef NDEBUG
-		const bool backend_does_not_support_output_masked_mxv = false;
-		assert( backend_does_not_support_output_masked_mxv );
-#endif
-		(void)u;
-		(void)mask;
-		(void)A;
-		(void)v;
-		(void)ring;
-		return UNSUPPORTED;
-	}
-
-	/**
-	 * A short-hand for an unmasked #grb::mxv.
-	 *
-	 * @see grb::mxv for the full documentation.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend implementation = config::default_backend
-	>
-	RC mxv(
-		Vector< IOType, implementation, Coords > &u,
-		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
-		const Vector< InputType1, implementation, Coords > &v,
-		const Ring &ring,
-		typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::mxv\n";
-#endif
-#ifndef NDEBUG
-		const bool backend_does_not_support_mxv = false;
-		assert( backend_does_not_support_mxv );
-#endif
-		(void)u;
-		(void)A;
-		(void)v;
-		(void)ring;
-		return UNSUPPORTED;
-	}
-
-	/**
-	 * Left-handed sparse matrix times vector multiplication, \f$ u = vA \f$.
-	 *
-	 * If \a descr does not have #grb::descriptors::transpose_matrix defined, the
-	 * semantics and performance semantics of this function are exactly that of
-	 * grb::mxv with the #grb::descriptors::transpose_matrix set.
-	 * In the other case, the functional and performance semantics of this function
-	 * are exactly that of grb::mxv without the #grb::descriptors::transpose_matrix
-	 * set.
-	 *
-	 * @see grb::mxv for the full documentation.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		enum Backend implementation = config::default_backend
-	>
-	RC vxm(
-		Vector< IOType, implementation, Coords > &u,
-		const Vector< InputType3, implementation, Coords > &mask,
-		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
-		const Ring &ring,
-		typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backend_does_not_support_output_masked_vxm = false;
-		assert( selected_backend_does_not_support_output_masked_vxm );
-#endif
-		(void)u;
-		(void)mask;
-		(void)v;
-		(void)A;
-		(void)ring;
-		return UNSUPPORTED;
-	}
-
-	/**
-	 * A short-hand for an unmasked grb::vxm.
-	 *
-	 * @see grb::vxm for the full documentation.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Ring,
-		typename IOType, typename InputType1, typename InputType2,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		enum Backend implementation = config::default_backend
-	>
-	RC vxm(
-		Vector< IOType, implementation, Coords > &u,
-		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
-		const Ring &ring,
-		typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::vxm\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backend_does_not_support_vxm = false;
-		assert( selected_backend_does_not_support_vxm );
-#endif
-		(void)u;
-		(void)v;
-		(void)A;
-		(void)ring;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename InputType4,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend backend
-	>
-	RC vxm(
-		Vector< IOType, backend, Coords > &u,
-		const Vector< InputType3, backend, Coords > &mask,
-		const Vector< InputType1, backend, Coords > &v,
-		const Vector< InputType4, backend, Coords > &v_mask,
-		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
-		const AdditiveMonoid &add = AdditiveMonoid(),
-		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		const typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< InputType3 >::value &&
-			!grb::is_object< InputType4 >::value &&
-			!std::is_same< InputType2, void >::value,
-		void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement vxm (doubly-masked)\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backed_does_not_support_doubly_masked_vxm = false;
-		assert( selected_backed_does_not_support_doubly_masked_vxm );
-#endif
-		(void)u;
-		(void)mask;
-		(void)v;
-		(void)v_mask;
-		(void)A;
-		(void)add;
-		(void)mul;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
+		class Semiring,
 		typename IOType, typename InputType1, typename InputType2,
 		typename InputType3, typename InputType4,
 		typename Coords, typename RIT, typename CIT, typename NIT,
@@ -437,198 +246,92 @@ namespace grb {
 	>
 	RC mxv(
 		Vector< IOType, backend, Coords > &u,
-		const Vector< InputType3, backend, Coords > &mask,
+		const Vector< InputType3, backend, Coords > &u_mask,
 		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
 		const Vector< InputType1, backend, Coords > &v,
 		const Vector< InputType4, backend, Coords > &v_mask,
-		const AdditiveMonoid &add = AdditiveMonoid(),
-		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Semiring &semiring = Semiring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
+			grb::is_semiring< Semiring >::value &&
 			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement mxv "
+			<< "(doubly-masked, semiring)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_doubly_masked_mxv_sr = false;
+		assert( selected_backed_does_not_support_doubly_masked_mxv_sr );
+#endif
+		(void) u;
+		(void) u_mask;
+		(void) A;
+		(void) v;
+		(void) v_mask;
+		(void) semiring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Left-handed in-place doubly-masked sparse matrix times vector
+	 * multiplication, \f$ u = u + vA \f$.
+	 *
+	 * A call to this function is exactly equivalent to calling
+	 *   - #grb::vxm( u, u_mask, A, v, v_mask, semiring, phase )
+	 * with the #descriptors::transpose_matrix flipped.
+	 *
+	 * See the documentation of #grb::mxv for the full semantics of this function.
+	 * Like with #grb::mxv, aliases to this function exist that do not include
+	 * masks:
+	 *  - #grb::vxm( u, u_mask, v, A, semiring, phase );
+	 *  - #grb::vxm( u, v, A, semiring, phase );
+	 * Similarly, aliases to this function exist that take an additive commutative
+	 * monoid and a multiplicative binary operator instead of a semiring.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		enum Backend backend
+	>
+	RC vxm(
+		Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &u_mask,
+		const Vector< InputType1, backend, Coords > &v,
+		const Vector< InputType4, backend, Coords > &v_mask,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
+		const Semiring &semiring = Semiring(),
+		const Phase &phase = EXECUTE,
+		typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			!grb::is_object< InputType4 >::value &&
-			!std::is_same< InputType2,
-		void >::value, void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement mxv (doubly-masked)\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backed_does_not_support_doubly_masked_mxv = false;
-		assert( selected_backed_does_not_support_doubly_masked_mxv );
-#endif
-		(void)u;
-		(void)mask;
-		(void)A;
-		(void)v;
-		(void)v_mask;
-		(void)add;
-		(void)mul;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend backend
-	>
-	RC mxv(
-		Vector< IOType, backend, Coords > &u,
-		const Vector< InputType3, backend, Coords > &mask,
-		const Matrix< InputType2, backend, RIT, NIT, CIT > &A,
-		const Vector< InputType1, backend, Coords > &v,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< InputType3 >::value &&
-			!std::is_same< InputType2, void >::value,
-		void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement "
-			<< "singly-masked monoid-op mxv\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backed_does_not_support_masked_monop_mxv = false;
-		assert( selected_backed_does_not_support_masked_monop_mxv );
-#endif
-		(void)u;
-		(void)mask;
-		(void)A;
-		(void)v;
-		(void)add;
-		(void)mul;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename InputType1, typename InputType2,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend backend
-	>
-	RC vxm(
-		Vector< IOType, backend, Coords > &u,
-		const Vector< InputType1, backend, Coords > &v,
-		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
-		const AdditiveMonoid &add = AdditiveMonoid(),
-		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		const typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!std::is_same< InputType2, void >::value,
-		void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement vxm "
-			<< "(unmasked, monoid-op version )\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backed_does_not_support_monop_vxm = false;
-		assert( selected_backed_does_not_support_monop_vxm );
-#endif
-		(void)u;
-		(void)v;
-		(void)A;
-		(void)add;
-		(void)mul;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend implementation
-	>
-	RC vxm(
-		Vector< IOType, implementation, Coords > &u,
-		const Vector< InputType3, implementation, Coords > &mask,
-		const Vector< InputType1, implementation, Coords > &v,
-		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
-		const AdditiveMonoid &add = AdditiveMonoid(),
-		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!std::is_same< InputType2, void >::value,
+			!grb::is_object< IOType >::value,
 		void >::type * = nullptr
 	) {
 #ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+		std::cerr << "Selected backend does not implement doubly-masked grb::vxm\n";
 #endif
 #ifndef NDEBUG
-		const bool selected_backed_does_not_support_masked_monop_vxm = false;
-		assert( selected_backed_does_not_support_masked_monop_vxm );
+		const bool selected_backend_does_not_support_doubly_masked_vxm_sr = false;
+		assert( selected_backend_does_not_support_doubly_masked_vxm_sr );
 #endif
-		(void)u;
-		(void)mask;
-		(void)v;
-		(void)A;
-		(void)add;
-		(void)mul;
-		return UNSUPPORTED;
-	}
-
-	/** TODO documentation */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class AdditiveMonoid, class MultiplicativeOperator,
-		typename IOType, typename InputType1, typename InputType2,
-		typename Coords, typename RIT, typename CIT, typename NIT,
-		Backend backend
-	>
-	RC mxv(
-		Vector< IOType, backend, Coords > &u,
-		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
-		const Vector< InputType1, backend, Coords > &v,
-		const AdditiveMonoid &add = AdditiveMonoid(),
-		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		const typename std::enable_if<
-			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value &&
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!std::is_same< InputType2, void >::value,
-		void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::mxv (unmasked)\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backed_does_not_support_monop_mxv = false;
-		assert( selected_backed_does_not_support_monop_mxv );
-#endif
-		(void)u;
-		(void)A;
-		(void)v;
-		(void)add;
-		(void)mul;
+		(void) u;
+		(void) u_mask;
+		(void) v;
+		(void) v_mask;
+		(void) A;
+		(void) semiring;
 		return UNSUPPORTED;
 	}
 
@@ -741,8 +444,390 @@ namespace grb {
 		const bool selected_backend_does_not_support_matrix_eWiseLamba = false;
 		assert( selected_backend_does_not_support_matrix_eWiseLamba );
 #endif
-		(void)f;
-		(void)A;
+		(void) f;
+		(void) A;
+		return UNSUPPORTED;
+	}
+
+	 // default (non-)implementations follow:
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3,
+		typename RIT, typename CIT, typename NIT,
+		typename Coords,
+		enum Backend implementation = config::default_backend
+	>
+	RC mxv(
+		Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value,
+		void >::type * = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::mxv (output-masked)\n";
+#endif
+#ifndef NDEBUG
+		const bool backend_does_not_support_output_masked_mxv = false;
+		assert( backend_does_not_support_output_masked_mxv );
+#endif
+		(void) u;
+		(void) mask;
+		(void) A;
+		(void) v;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	template< Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend implementation = config::default_backend
+	>
+	RC mxv(
+		Vector< IOType, implementation, Coords > &u,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Ring &ring,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::mxv\n";
+#endif
+#ifndef NDEBUG
+		const bool backend_does_not_support_mxv = false;
+		assert( backend_does_not_support_mxv );
+#endif
+		(void) u;
+		(void) A;
+		(void) v;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		enum Backend implementation = config::default_backend
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_output_masked_vxm = false;
+		assert( selected_backend_does_not_support_output_masked_vxm );
+#endif
+		(void) u;
+		(void) mask;
+		(void) v;
+		(void) A;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		enum Backend implementation = config::default_backend
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::vxm\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_vxm = false;
+		assert( selected_backend_does_not_support_vxm );
+#endif
+		(void) u;
+		(void) v;
+		(void) A;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC vxm(
+		Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &v,
+		const Vector< InputType4, backend, Coords > &v_mask,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement vxm (doubly-masked)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_doubly_masked_vxm = false;
+		assert( selected_backed_does_not_support_doubly_masked_vxm );
+#endif
+		(void) u;
+		(void) mask;
+		(void) v;
+		(void) v_mask;
+		(void) A;
+		(void) add;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
+		const Vector< InputType1, backend, Coords > &v,
+		const Vector< InputType4, backend, Coords > &v_mask,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value &&
+			!std::is_same< InputType2,
+		void >::value, void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement mxv (doubly-masked)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_doubly_masked_mxv = false;
+		assert( selected_backed_does_not_support_doubly_masked_mxv );
+#endif
+		(void) u;
+		(void) mask;
+		(void) A;
+		(void) v;
+		(void) v_mask;
+		(void) add;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
+		const Vector< InputType3, backend, Coords > &mask,
+		const Matrix< InputType2, backend, RIT, NIT, CIT > &A,
+		const Vector< InputType1, backend, Coords > &v,
+		const AdditiveMonoid & add = AdditiveMonoid(),
+		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement "
+			<< "singly-masked monoid-op mxv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_masked_monop_mxv = false;
+		assert( selected_backed_does_not_support_masked_monop_mxv );
+#endif
+		(void) u;
+		(void) mask;
+		(void) A;
+		(void) v;
+		(void) add;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC vxm(
+		Vector< IOType, backend, Coords > &u,
+		const Vector< InputType1, backend, Coords > &v,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement vxm "
+			<< "(unmasked, monoid-op version )\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_monop_vxm = false;
+		assert( selected_backed_does_not_support_monop_vxm );
+#endif
+		(void) u;
+		(void) v;
+		(void) A;
+		(void) add;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend implementation
+	>
+	RC vxm(
+		Vector< IOType, implementation, Coords > &u,
+		const Vector< InputType3, implementation, Coords > &mask,
+		const Vector< InputType1, implementation, Coords > &v,
+		const Matrix< InputType2, implementation, RIT, CIT, NIT > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::vxm (output-masked)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_masked_monop_vxm = false;
+		assert( selected_backed_does_not_support_masked_monop_vxm );
+#endif
+		(void) u;
+		(void) mask;
+		(void) v;
+		(void) A;
+		(void) add;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC mxv(
+		Vector< IOType, backend, Coords > &u,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &A,
+		const Vector< InputType1, backend, Coords > &v,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
+			grb::is_operator< MultiplicativeOperator >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::mxv (unmasked)\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backed_does_not_support_monop_mxv = false;
+		assert( selected_backed_does_not_support_monop_mxv );
+#endif
+		(void) u;
+		(void) A;
+		(void) v;
+		(void) add;
+		(void) mul;
 		return UNSUPPORTED;
 	}
 
