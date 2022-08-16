@@ -40,6 +40,28 @@
 #include <utils/assertions.hpp>
 #include <utils/print_vec_mat.hpp>
 
+#include <vector>
+
+#include <amgcl/relaxation/runtime.hpp>
+#include <amgcl/coarsening/runtime.hpp>
+#include <amgcl/solver/runtime.hpp>
+#include <amgcl/make_solver.hpp>
+#include <graphblas/algorithms/amg/plugin/amgcl/amg.hpp>
+#include <amgcl/backend/builtin.hpp>
+#include <amgcl/io/mm.hpp>
+
+
+#include <lib/amgcl.h>
+
+typedef amgcl::backend::builtin<double>           Backend;
+typedef amgcl::amg<Backend,
+				   amgcl::runtime::coarsening::wrapper,
+				   amgcl::runtime::relaxation::wrapper> AMG;
+typedef amgcl::runtime::solver::wrapper<Backend>  ISolver;
+typedef amgcl::make_solver<AMG, ISolver>          Solver;
+
+
+
 // forward declaration for the tracing facility
 template< typename T,
 	class Ring = grb::Semiring<
@@ -83,81 +105,83 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
 
-/**
- * Container to store matrices loaded from a file.
- */
-template< typename T = double >
-struct mat_data {
-	size_t *i_data;
-	size_t *j_data;
-	T *v_data;
-	size_t nz, n, m;
+#define DEBUG
 
-	void resize( size_t innz, size_t inn, size_t inm ){
-		nz=innz;
-		n=inn;
-		m=inm;
-		i_data = new size_t [ nz ];
-		j_data = new size_t [ nz ];
-		v_data = new T [ nz ];
-	};
+// /**
+//  * Container to store matrices loaded from a file.
+//  */
+// template< typename T = double >
+// struct mat_data {
+// 	size_t *i_data;
+// 	size_t *j_data;
+// 	T *v_data;
+// 	size_t nz, n, m;
 
-	mat_data( ){
-		nz = 0;
-	};
+// 	void resize( size_t innz, size_t inn, size_t inm ){
+// 		nz=innz;
+// 		n=inn;
+// 		m=inm;
+// 		i_data = new size_t [ nz ];
+// 		j_data = new size_t [ nz ];
+// 		v_data = new T [ nz ];
+// 	};
 
-	mat_data( size_t in ){
-		resize( in );
-	};
+// 	mat_data( ){
+// 		nz = 0;
+// 	};
 
-	size_t size(){
-		return nz;
-	};
+// 	mat_data( size_t in ){
+// 		resize( in );
+// 	};
 
-	size_t get_n(){
-		return n;
-	};
+// 	size_t size(){
+// 		return nz;
+// 	};
 
-	size_t get_m(){
-		return m;
-	};
+// 	size_t get_n(){
+// 		return n;
+// 	};
 
-	~mat_data(){
-		delete [] i_data;
-		delete [] i_data;
-		delete [] v_data;
-	};
-};
+// 	size_t get_m(){
+// 		return m;
+// 	};
 
-/**
- * Container to store vectors loaded from a file.
- */
-template< typename T = double >
-struct vec_data {
-	T *v_data;
-	size_t n;
+// 	~mat_data(){
+// 		delete [] i_data;
+// 		delete [] i_data;
+// 		delete [] v_data;
+// 	};
+// };
 
-	void resize( size_t in ){
-		n=in;
-		v_data = new T [ n ];
-	};
+// /**
+//  * Container to store vectors loaded from a file.
+//  */
+// template< typename T = double >
+// struct vec_data {
+// 	T *v_data;
+// 	size_t n;
 
-	vec_data( ){
-		n = 0;
-	};
+// 	void resize( size_t in ){
+// 		n=in;
+// 		v_data = new T [ n ];
+// 	};
 
-	vec_data( size_t in ){
-		resize( in );
-	};
+// 	vec_data( ){
+// 		n = 0;
+// 	};
 
-	size_t size(){
-		return n;
-	};
+// 	vec_data( size_t in ){
+// 		resize( in );
+// 	};
 
-	~vec_data(){
-		delete [] v_data;
-	};
-};
+// 	size_t size(){
+// 		return n;
+// 	};
+
+// 	~vec_data(){
+// 		delete [] v_data;
+// 	};
+// };
 
 static bool matloaded = false;
 
@@ -170,164 +194,199 @@ struct simulation_input {
 	size_t max_iterations;
 	size_t smoother_steps;
 	const char * matAfile_c_str;
-	// vectors of input matrix filenames
-	std::vector< std::string > matAfiles;
-	std::vector< std::string > matMfiles;
-	std::vector< std::string > matPfiles;
-	std::vector< std::string > matRfiles;
+	// // vectors of input matrix filenames
+	// std::vector< std::string > matAfiles;
+	// std::vector< std::string > matMfiles;
+	// std::vector< std::string > matPfiles;
+	// std::vector< std::string > matRfiles;
 	bool evaluation_run;
 	bool no_preconditioning;
 };
 
-template<typename CharT, typename TraitsT = std::char_traits< CharT > >
-class vectorwrapbuf :
-	public std::basic_streambuf<CharT, TraitsT> {
-public:
-	vectorwrapbuf(  std::vector<CharT> &vec) {
-		this->setg( vec.data(), vec.data(), vec.data() + vec.size() );
-    }
-};
-std::istream& operator>>(std::istream& is, std::string& s){
-	std::getline(is, s);
-	return is;
-}
-
+// template<typename CharT, typename TraitsT = std::char_traits< CharT > >
+// class vectorwrapbuf :
+// 	public std::basic_streambuf<CharT, TraitsT> {
+// public:
+// 	vectorwrapbuf(  std::vector<CharT> &vec) {
+// 		this->setg( vec.data(), vec.data(), vec.data() + vec.size() );
+//     }
+// };
+// std::istream& operator>>(std::istream& is, std::string& s){
+// 	std::getline(is, s);
+// 	return is;
+// }
+ 
 /**
  * @brief Container to store all data for AMG hierarchy.
  */
 class preloaded_matrices : public simulation_input {
 
 public :
-	size_t nzAmt, nzMmt, nzPmt, nzRmt;
-	mat_data< double > *matAbuffer;
-	vec_data< double > *matMbuffer;
-	mat_data< double > *matPbuffer;
-	mat_data< double > *matRbuffer;
 
-	grb::RC read_matrix(
-		std::vector< std::string > &fname,
-		mat_data<double> *data
-	) {
-		grb::RC rc = SUCCESS;
-		for ( size_t i = 0; i < fname.size(); i++ ) {
-			grb::utils::MatrixFileReader<
-				double, std::conditional<
-					( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
-							grb::config::RowIndexType,
-							grb::config::ColIndexType >::type
-				> parser_mat( fname[ i ].c_str(), true );
-#ifdef DEBUG
-			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
-			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
-			std::cout << " ---> parser_mat.n()=" << parser_mat.n() << "\n";
-			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
-			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
-#endif
-			// very poor choice and temp solution size = 2 x nz
-			data[i].resize( parser_mat.entries()*2, parser_mat.n(), parser_mat.m() );
-			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
-			if( ! inFile.is_open() ) {
-				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
-				return( PANIC );
-			}
-			std::streamsize size = inFile.tellg();
-			inFile.seekg( 0, std::ios::beg );
-			std::vector< char > buffer( size );
-			if ( inFile.read( buffer.data(), size ) ) {
-				// all fine
-			}
-			else {
-				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
-				return( PANIC );
-			}
-			inFile.close();
-			vectorwrapbuf< char > databuf( buffer );
-			std::istream isdata( &databuf );
-			std::string headder;
-			isdata >> headder;
-			while( headder.at( 0 ) == '%' ) {
-				isdata >> headder;
-			}
-			std::stringstream ss( headder );
-			size_t n, m, nz;
-			ss >> n >> m >> nz ;
-			size_t k = 0;
-			for ( size_t j = 0; j < nz; j++ ) {
-				size_t itmp, jtmp;
-				double vtmp;
-				isdata >> itmp >> jtmp >> vtmp;
-				data[ i ].i_data[ k ] = itmp - 1;
-				data[ i ].j_data[ k ] = jtmp - 1;
-				data[ i ].v_data[ k ] = vtmp;
-				k += 1;
-			}
-			data[ i ].nz = k;
-		}
-		return ( rc );
-	}
+	amgclHandle solver;
 
-	grb::RC read_vector( std::vector< std::string > &fname,
-						 vec_data< double > *data ) {
-		grb::RC rc = SUCCESS;
-		for ( size_t i = 0; i < fname.size(); i++ ){
-#ifdef DEBUG
-			std::cout << " Reading " << fname[ i ].c_str() << ".\n";
-#endif
-			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
-			if( ! inFile.is_open() ) {
-				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
-				return( PANIC );
-			}
-			std::streamsize size = inFile.tellg();
-			inFile.seekg( 0, std::ios::beg );
-			std::vector< char > buffer( size );
-			if ( inFile.read( buffer.data(), size ) ) {
-				// all fine
-			}
-			else {
-				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
-				return( PANIC );
-			}
-			inFile.close();
-			vectorwrapbuf< char > databuf( buffer );
-			std::istream isdata( &databuf );
-			std::string headder;
-			size_t n, m;
-			std::getline( isdata, headder ); // skip the first line
-			while( headder.at( 0 ) == '%' ) {
-				std::getline( isdata, headder );
-			}
-			std::stringstream ss( headder );
-			ss >> n >> m;
-			std::cout << " Reading from" << fname[ i ] << " dense matrix with dimensions: "
-			          << " n x m = " << n << " x " << m << "\n";
-			data[ i ].resize( n );
-			for ( size_t j = 0; j < n; j++ ) {
-				isdata >> data[ i ].v_data[ j ];
-			}
-		}
-		return( rc );
-	}
+// 	size_t nzAmt, nzMmt, nzPmt, nzRmt;
+// 	mat_data< double > *matAbuffer;
+// 	vec_data< double > *matMbuffer;
+// 	mat_data< double > *matPbuffer;
+// 	mat_data< double > *matRbuffer;
+
+// 	grb::RC read_matrix(
+// 		std::vector< std::string > &fname,
+// 		mat_data<double> *data
+// 	) {
+// 		grb::RC rc = SUCCESS;
+// 		for ( size_t i = 0; i < fname.size(); i++ ) {
+// 			grb::utils::MatrixFileReader<
+// 				double, std::conditional<
+// 					( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+// 							grb::config::RowIndexType,
+// 							grb::config::ColIndexType >::type
+// 				> parser_mat( fname[ i ].c_str(), true );
+// #ifdef DEBUG
+// 			std::cout << " ---> parser_mat.filename()=" << parser_mat.filename() << "\n";
+// 			std::cout << " ---> parser_mat.nz()=" << parser_mat.nz() << "\n";
+// 			std::cout << " ---> parser_mat.n()=" << parser_mat.n() << "\n";
+// 			std::cout << " ---> parser_mat.m()=" << parser_mat.m() << "\n";
+// 			std::cout << " ---> parser_mat.entries()=" << parser_mat.entries() << "\n";
+// #endif
+// 			// very poor choice and temp solution size = 2 x nz
+// 			data[i].resize( parser_mat.entries()*2, parser_mat.n(), parser_mat.m() );
+// 			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
+// 			if( ! inFile.is_open() ) {
+// 				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
+// 				return( PANIC );
+// 			}
+// 			std::streamsize size = inFile.tellg();
+// 			inFile.seekg( 0, std::ios::beg );
+// 			std::vector< char > buffer( size );
+// 			if ( inFile.read( buffer.data(), size ) ) {
+// 				// all fine
+// 			}
+// 			else {
+// 				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
+// 				return( PANIC );
+// 			}
+// 			inFile.close();
+// 			vectorwrapbuf< char > databuf( buffer );
+// 			std::istream isdata( &databuf );
+// 			std::string headder;
+// 			isdata >> headder;
+// 			while( headder.at( 0 ) == '%' ) {
+// 				isdata >> headder;
+// 			}
+// 			std::stringstream ss( headder );
+// 			size_t n, m, nz;
+// 			ss >> n >> m >> nz ;
+// 			size_t k = 0;
+// 			for ( size_t j = 0; j < nz; j++ ) {
+// 				size_t itmp, jtmp;
+// 				double vtmp;
+// 				isdata >> itmp >> jtmp >> vtmp;
+// 				data[ i ].i_data[ k ] = itmp - 1;
+// 				data[ i ].j_data[ k ] = jtmp - 1;
+// 				data[ i ].v_data[ k ] = vtmp;
+// 				k += 1;
+// 			}
+// 			data[ i ].nz = k;
+// 		}
+// 		return ( rc );
+// 	}
+
+// 	grb::RC read_vector( std::vector< std::string > &fname,
+// 						 vec_data< double > *data ) {
+// 		grb::RC rc = SUCCESS;
+// 		for ( size_t i = 0; i < fname.size(); i++ ){
+// #ifdef DEBUG
+// 			std::cout << " Reading " << fname[ i ].c_str() << ".\n";
+// #endif
+// 			std::ifstream inFile( fname[ i ], std::ios::binary | std::ios::ate );
+// 			if( ! inFile.is_open() ) {
+// 				std::cout << " Cannot open "<< fname[ i ].c_str() <<  "\n";
+// 				return( PANIC );
+// 			}
+// 			std::streamsize size = inFile.tellg();
+// 			inFile.seekg( 0, std::ios::beg );
+// 			std::vector< char > buffer( size );
+// 			if ( inFile.read( buffer.data(), size ) ) {
+// 				// all fine
+// 			}
+// 			else {
+// 				std::cout << " Cannot read "<< fname[ i ].c_str() <<  "\n";
+// 				return( PANIC );
+// 			}
+// 			inFile.close();
+// 			vectorwrapbuf< char > databuf( buffer );
+// 			std::istream isdata( &databuf );
+// 			std::string headder;
+// 			size_t n, m;
+// 			std::getline( isdata, headder ); // skip the first line
+// 			while( headder.at( 0 ) == '%' ) {
+// 				std::getline( isdata, headder );
+// 			}
+// 			std::stringstream ss( headder );
+// 			ss >> n >> m;
+// 			std::cout << " Reading from" << fname[ i ] << " dense matrix with dimensions: "
+// 			          << " n x m = " << n << " x " << m << "\n";
+// 			data[ i ].resize( n );
+// 			for ( size_t j = 0; j < n; j++ ) {
+// 				isdata >> data[ i ].v_data[ j ];
+// 			}
+// 		}
+// 		return( rc );
+// 	}
 
 	grb::RC read_vec_matrics(){
 		grb::RC rc = SUCCESS;
 
-		nzAmt = matAfiles.size() ;
-		nzMmt = matMfiles.size() ;
-		nzPmt = matPfiles.size() ;
-		nzRmt = matRfiles.size() ;
+		std::vector<int>    ptr;
+		std::vector<int>    col;
+		std::vector<double> val;
+		std::vector<double> rhs;
 
-		matAbuffer = new mat_data< double > [ nzAmt ];
-		matMbuffer = new vec_data< double > [ nzMmt ];
-		matPbuffer = new mat_data< double > [ nzPmt ];
-		matRbuffer = new mat_data< double > [ nzRmt ];
+		amgclHandle prm = amgcl_params_create();
+		size_t rows, cols;
+		std::tie(rows, cols) = amgcl::io::mm_reader("/home/d/Repos/edapp2/EDApp2/saved_amg_levels/level_0_A.mtx")(ptr, col, val);
+#ifdef DEBUG
+		std::cout << " ptr.size() = " << ptr.size() << "\n";
+		std::cout << " col.size() = " << col.size() << "\n";
+		std::cout << " val.size() = " << val.size() << "\n";
+		std::cout << " rows, cols =  " << rows << ", " << cols << "\n";
+#endif
 
-		rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
-		rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
-		// rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
-		rc = rc ? rc : read_vector( matMfiles, matMbuffer );
+		amgcl_params_sets(prm, "precond.relax.type", "spai0");
+		amgcl_params_sets(prm, "precond.coarsening.type","ruge_stuben");
+		amgcl_params_seti(prm, "precond.max_levels",5);
+		amgcl_params_seti(prm, "precond.coarse_enough",100);
+
+		solver = amgcl_solver_create(
+			rows, ptr.data(), col.data(), val.data(), prm
+		);
+		//TODO: extract amgcl data
+
+
+
+		// nzAmt = matAfiles.size() ;
+		// nzMmt = matMfiles.size() ;
+		// nzPmt = matPfiles.size() ;
+		// nzRmt = matRfiles.size() ;
+
+		// matAbuffer = new mat_data< double > [ nzAmt ];
+		// matMbuffer = new vec_data< double > [ nzMmt ];
+		// matPbuffer = new mat_data< double > [ nzPmt ];
+		// matRbuffer = new mat_data< double > [ nzRmt ];
+
+		// rc = rc ? rc : read_matrix( matAfiles, matAbuffer );
+		// rc = rc ? rc : read_matrix( matRfiles, matRbuffer );
+		// // rc = rc ? rc : read_matrix( matPfiles, matPbuffer );
+		// rc = rc ? rc : read_vector( matMfiles, matMbuffer );
 
 		return rc;
+	}
+
+
+	~preloaded_matrices(){
+		amgcl_solver_destroy(solver);
 	}
 };
 
@@ -405,11 +464,11 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	RC rc { SUCCESS };
 
 	if( ! matloaded ) {
-		//preloaded_matrices inputData;
-		inputData.matAfiles = in.matAfiles;
-		inputData.matMfiles = in.matMfiles;
-		inputData.matPfiles = in.matPfiles;
-		inputData.matRfiles = in.matRfiles;
+		// //preloaded_matrices inputData;
+		// inputData.matAfiles = in.matAfiles;
+		// inputData.matMfiles = in.matMfiles;
+		// inputData.matPfiles = in.matPfiles;
+		// inputData.matRfiles = in.matRfiles;
 
 		rc = inputData.read_vec_matrics();
 		if( rc != SUCCESS ) {
@@ -417,6 +476,9 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		}
 		matloaded = true ;
 	}
+
+	std::cout << " ----> testing: return !\n";
+	return ;
 
 	out.times.io = timer.time();
 	timer.reset();
@@ -653,48 +715,48 @@ static void parse_arguments( simulation_input &sim_in, size_t &outer_iterations,
 
 	parser.parse( argc, argv );
 
-	std::string matAfile = sim_in.matAfile_c_str;
-	if ( ! matAfile.empty() ) {
-		std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
-		for ( size_t i = 0 ; i < sim_in.max_coarsening_levels ; i++ ){
-			std::string fnamebase = matAfile + std::to_string(  i );
-			std::string fnameA = fnamebase + "_A.mtx";
-			std::string fnameM = fnamebase + "_M_diag.mtx";
-			std::string fnameP = fnamebase + "_P.mtx";
-			std::string fnameR = fnamebase + "_R.mtx";
-			sim_in.matAfiles.push_back( fnameA );
-			sim_in.matMfiles.push_back( fnameM );
-			sim_in.matPfiles.push_back( fnameP );
-			sim_in.matRfiles.push_back( fnameR );
-		}
-		{
-			std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
-			std::string fnameA = fnamebase + "_A.mtx";
-			sim_in.matAfiles.push_back (fnameA);
-			std::string fnameM = fnamebase + "_M_diag.mtx";
-			sim_in.matMfiles.push_back (fnameM);
-		}
-		std::cout << "files to read matrices: " << std::endl;
-		for ( std::string fname: sim_in.matAfiles ) {
-			std::cout << fname << " \n";
-		}
+	// std::string matAfile = sim_in.matAfile_c_str;
+	// if ( ! matAfile.empty() ) {
+	// 	std::cout << "Using  <<" << matAfile << ">> pattern to read matrices " << std::endl;
+	// 	for ( size_t i = 0 ; i < sim_in.max_coarsening_levels ; i++ ){
+	// 		std::string fnamebase = matAfile + std::to_string(  i );
+	// 		std::string fnameA = fnamebase + "_A.mtx";
+	// 		std::string fnameM = fnamebase + "_M_diag.mtx";
+	// 		std::string fnameP = fnamebase + "_P.mtx";
+	// 		std::string fnameR = fnamebase + "_R.mtx";
+	// 		sim_in.matAfiles.push_back( fnameA );
+	// 		sim_in.matMfiles.push_back( fnameM );
+	// 		sim_in.matPfiles.push_back( fnameP );
+	// 		sim_in.matRfiles.push_back( fnameR );
+	// 	}
+	// 	{
+	// 		std::string fnamebase = matAfile + std::to_string( sim_in.max_coarsening_levels );
+	// 		std::string fnameA = fnamebase + "_A.mtx";
+	// 		sim_in.matAfiles.push_back (fnameA);
+	// 		std::string fnameM = fnamebase + "_M_diag.mtx";
+	// 		sim_in.matMfiles.push_back (fnameM);
+	// 	}
+	// 	std::cout << "files to read matrices: " << std::endl;
+	// 	for ( std::string fname: sim_in.matAfiles ) {
+	// 		std::cout << fname << " \n";
+	// 	}
 
-		for ( std::string fname: sim_in.matMfiles ) {
-			std::cout << fname << " \n";
-		}
+	// 	for ( std::string fname: sim_in.matMfiles ) {
+	// 		std::cout << fname << " \n";
+	// 	}
 
-		for ( std::string fname: sim_in.matPfiles ) {
-			std::cout << fname << " \n";
-		}
+	// 	for ( std::string fname: sim_in.matPfiles ) {
+	// 		std::cout << fname << " \n";
+	// 	}
 
-		for ( std::string fname: sim_in.matRfiles ) {
-			std::cout << fname << " \n";
-		}
+	// 	for ( std::string fname: sim_in.matRfiles ) {
+	// 		std::cout << fname << " \n";
+	// 	}
 
-	}
-	else {
-		std::cout << "No pattern to read matrices provided" << std::endl;
-	}
+	// }
+	// else {
+	// 	std::cout << "No pattern to read matrices provided" << std::endl;
+	// }
 
 	// check for valid values
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
