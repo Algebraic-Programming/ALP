@@ -905,7 +905,7 @@ namespace alp {
 			typename ImfC,
 			enum Backend backend
 		>
-		struct base_class {
+		struct matrix_base_class {
 			typedef typename std::conditional<
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
@@ -979,7 +979,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
+		public internal::matrix_base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1013,7 +1013,7 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+			typedef typename internal::matrix_base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1073,7 +1073,7 @@ namespace alp {
 				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename View::applied_to::base_type::amf_type
+						ImfR, ImfC, typename TargetType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
@@ -1188,7 +1188,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
+		public internal::matrix_base_class< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1222,7 +1222,7 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename internal::base_class< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+			typedef typename internal::matrix_base_class< T, structures::Square, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1274,7 +1274,7 @@ namespace alp {
 				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename View::applied_to::base_type::amf_type
+						ImfR, ImfC, typename TargetType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
@@ -1373,7 +1373,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
+		public internal::matrix_base_class< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1407,7 +1407,7 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename internal::base_class< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+			typedef typename internal::matrix_base_class< T, structures::Symmetric, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
 
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
@@ -1459,7 +1459,7 @@ namespace alp {
 				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, decltype( internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename TargetType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
@@ -1560,7 +1560,7 @@ namespace alp {
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > :
-		public internal::base_class< T, structures::General, Density::Dense, View, ImfR, ImfC, reference >::type {
+		public internal::matrix_base_class< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference >::type {
 
 		protected:
 			typedef Matrix< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference > self_type;
@@ -1594,7 +1594,7 @@ namespace alp {
 			 * Expose the base type class to enable internal functions to cast
 			 * the type of objects of this class to the base class type.
 			 */
-			typedef typename internal::base_class< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+			typedef typename internal::matrix_base_class< T, structures::UpperTriangular, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
 			// A general Structure knows how to define a reference to itself (which is an original reference view)
 			// as well as other static views.
 			template < view::Views view_tag, bool d=false >
@@ -1648,7 +1648,7 @@ namespace alp {
 				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename View::applied_to::base_type::amf_type
+						ImfR, ImfC, typename TargetType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
 				) {}
 
