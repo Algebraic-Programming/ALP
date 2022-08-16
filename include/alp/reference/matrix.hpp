@@ -1050,7 +1050,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
 						ImfR( rows ),
 						ImfC( cols ),
@@ -1076,7 +1076,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::amf_type
@@ -1125,7 +1125,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, AmfType &&amf ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
@@ -1150,7 +1150,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( rows ), imf::Id( cols ), lambda ) {}
+				base_type( initialized, imf::Id( rows ), imf::Id( cols ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1167,10 +1167,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
-					getFunctor( target_matrix ),
-					imf_r, imf_c
-				) {}
+				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1265,7 +1262,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
@@ -1287,7 +1284,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::base_type::amf_type
@@ -1326,10 +1323,15 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, AmfType &&amf ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
-				) {}
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, AmfType >::value,
+					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
+				);
+			}
 
 			/**
 			 * Constructor for a functor-based matrix that allocates memory.
@@ -1342,7 +1344,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
+				base_type( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1355,10 +1357,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
-					getFunctor( target_matrix ),
-					imf_r, imf_c
-				) {}
+				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1449,7 +1448,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
@@ -1471,7 +1470,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
 						ImfR, ImfC, decltype( internal::getAmf( target_matrix ) )
@@ -1505,7 +1504,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
+				base_type( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1518,10 +1517,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
-					getFunctor( target_matrix ),
-					imf_r, imf_c
-				) {}
+				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1615,7 +1611,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
 						ImfR( dim ),
 						ImfC( dim ),
@@ -1641,7 +1637,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::StorageBasedMatrix< T, typename base_type::amf_type, requires_allocation >(
+				base_type(
 					getContainer( target_matrix ),
 					storage::AMFFactory::Compose<
 						ImfR, ImfC, typename ViewType::applied_to::base_type::amf_type
@@ -1683,7 +1679,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
+				base_type( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1700,10 +1696,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
-					getFunctor( target_matrix ),
-					imf_r, imf_c
-				) {}
+				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
