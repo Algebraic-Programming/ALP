@@ -46,9 +46,10 @@ namespace grb {
 						const double old_score = current_score;
 						current_score = (1-parameters.alpha) +
 							parameters.alpha * incoming_message;
-						if( fabs(current_score-old_score) <
-							parameters.tolerance
-						) {
+						if( fabs(current_score-old_score) < parameters.tolerance ) {
+#ifdef _DEBUG
+							std::cout << "\t\t vertex " << pregel.vertexID << " converged\n";
+#endif
 							pregel.active = false;
 						}
 					}
