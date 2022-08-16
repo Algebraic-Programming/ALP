@@ -62,7 +62,7 @@ void outer_stdvec_as_matrix(
 	const Operator oper
 ) {
 
-	print_stdvec_as_matrix("vA", vA, n, 1, 1);
+	print_stdvec_as_matrix("vA", vA, m, 1, 1);
 	print_stdvec_as_matrix("vB", vB, 1, n, n);
 	print_stdvec_as_matrix("vC - PRE", vC, m, n, n);
 
@@ -129,13 +129,18 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 
 	alp::Semiring< alp::operators::add< T >, alp::operators::mul< T >, alp::identities::zero, alp::identities::one > ring;
 
-	T one  = ring.getOne< T >();
 	T zero = ring.getZero< T >();
 
 	// allocate
 	const size_t m = 2 * n;
-	std::vector< T > u_data( m, one );
-	std::vector< T > v_data( n, one );
+	std::vector< T > u_data( m );
+	for( size_t i = 0; i < u_data.size(); ++i ) {
+		u_data[ i ] = i + 1;
+	}
+	std::vector< T > v_data( n );
+	for( size_t i = 0; i < v_data.size(); ++i ) {
+		v_data[ i ] = i + 1;
+	}
 	std::vector< T > M_data( n, zero );
 
 	alp::Vector< T > u( m );
@@ -153,6 +158,8 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 
 	std::cout << "Is uvT initialized after initializing source containers? " << alp::internal::getInitialized( uvT ) << "\n";
 
+	print_matrix( "uvT", uvT );
+
 	std::vector< T > uvT_test( m * n, zero );
 	outer_stdvec_as_matrix( uvT_test, n, u_data, v_data, m, n, ring.getMultiplicativeOperator() );
 	diff_stdvec_matrix( uvT_test, m, n, n, uvT );
@@ -160,7 +167,7 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	// Example when outer product takes the same vector as both inputs.
 	// This operation results in a symmetric positive definite matrix.
 	auto vvT = alp::outer( v, ring.getMultiplicativeOperator() );
-	print_matrix( "vvT", uvT );
+	print_matrix( "vvT", vvT );
 
 	std::vector< T > vvT_test( n * n, zero );
 	outer_stdvec_as_matrix( vvT_test, n, v_data, v_data, n, n, ring.getMultiplicativeOperator() );
