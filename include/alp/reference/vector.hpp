@@ -413,37 +413,32 @@ namespace alp {
 			};
 
 			/**
-			 * Constructor for an original vector.
-			 *
-			 * @tparam ViewType A dummy type.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                  a storage-based matrix that allocates memory.
+			 * Constructor for a storage-based vector that allocates storage.
 			 */
-			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_storage< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value
-				> * = nullptr
-			>
 			Vector( const size_t length, const size_t cap = 0 ) :
-				base_type( length, 1, cap ) {}
+				base_type( length, 1, cap ) {
+				static_assert(
+					internal::is_view_over_storage< View >::value &&
+					internal::requires_allocation< View >::value,
+					"This constructor can only be used in storage-based allocation-requiring Vector specializations."
+				);
+			}
 
 			/**
 			 * Constructor for a view over another storage-based vector.
 			 *
-			 * @tparam ViewType The dummy View type of the constructed vector.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                 	a view over a storage-based vector.
+			 * @tparam TargetType  The type of the target vector.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value
+				typename TargetType,
+				std::enable_if_t<
+					std::is_same< TargetType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &vec_view, ImfR imf_r, ImfC imf_c ) :
+			Vector( TargetType &vec_view, ImfR imf_r, ImfC imf_c ) :
 				base_type( vec_view, imf_r, imf_c ) {
 
 				if( getLength( vec_view ) != imf_r.N ) {
@@ -454,89 +449,87 @@ namespace alp {
 			/**
 			 * Constructor for a view over another vector using default IMFs (Identity).
 			 *
-			 * @tparam ViewType The dummy View type of the constructed matrix.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                 	a view over a storage-based matrix.
+			 * @tparam TargetType  The type of the target vector.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value
+				typename TargetType,
+				std::enable_if_t<
+					std::is_same< TargetType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &vec_view ) :
+			Vector( TargetType &vec_view ) :
 				base_type( vec_view ) {}
 
 			/**
 			 * Constructor for a view over another storage-based vector.
 			 *
-			 * @tparam ViewType The dummy View type of the constructed vector.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                 	a view over a storage-based vector.
+			 * @tparam TargetType  The type of the target vector.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_storage< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value
+				typename TargetType,
+				typename AmfType,
+				std::enable_if_t<
+					std::is_same< TargetType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector(
-				typename ViewType::applied_to &vec_view,
-				amf_type &&amf
-			) :
-				base_type( vec_view, std::forward< amf_type >( amf ) ) {}
+			Vector( TargetType &vec_view, AmfType &&amf ) :
+				base_type( vec_view, std::forward< AmfType >( amf ) ) {}
 
 			/**
 			 * Constructor for a functor-based vector that allocates memory.
 			 *
-			 * @tparam ViewType A dummy type.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                  a functor-based vector that allocates memory.
+			 * @tparam LambdaType  The type of the lambda function associated to the data.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_functor< ViewType >::value &&
-					internal::requires_allocation< ViewType >::value
+				typename LambdaType,
+				std::enable_if_t<
+					std::is_same< LambdaType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( bool initialized, const size_t length, typename ViewType::applied_to lambda ) :
+			Vector( bool initialized, const size_t length, LambdaType lambda ) :
 				base_type( initialized, length, 1, lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
 			 *
-			 * @tparam ViewType The dummy View type of the constructed vector.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                  a view over a functor-based vector.
+			 * @tparam TargetType  The type of the target vector.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value
+				typename TargetType,
+				std::enable_if_t<
+					std::is_same< TargetType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &target_vector, ImfR imf_r, ImfC imf_c ) :
+			Vector( TargetType &target_vector, ImfR imf_r, ImfC imf_c ) :
 				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
 			 *
-			 * @tparam ViewType The dummy View type of the constructed vector.
-			 *                  Uses SFINAE to enable this constructor only for
-			 *                  a view over a functor-based vector.
+			 * @tparam TargetType  The type of the target vector.
+			 *
 			 */
 			template<
-				typename ViewType = View,
-				typename std::enable_if_t<
-					internal::is_view_over_functor< ViewType >::value &&
-					!internal::requires_allocation< ViewType >::value
+				typename TargetType,
+				std::enable_if_t<
+					std::is_same< TargetType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( typename ViewType::applied_to &target_vector ) :
+			Vector( TargetType &target_vector ) :
 				base_type( getFunctor( target_vector ),
 					imf::Id( nrows ( target_vector ) ),
 					imf::Id( 1 )
