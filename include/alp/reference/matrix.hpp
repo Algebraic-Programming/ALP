@@ -1112,9 +1112,9 @@ namespace alp {
 			 * @tparam AmfType  The type of the amf used to construct the matrix.
 			 *                  Used as a template parameter to benefit from
 			 *                  SFINAE for the case of FunctorBasedMatrix, when
-			 *                  base_type::amf_type does not exist. Using the
-			 *                  expression base_type::amf_type would result in
-			 *                  a hard compilation error.
+			 *                  base_type::amf_type does not exist and, therefore,
+			 *                  using the expression base_type::amf_type would
+			 *                  result in a hard compilation error.
 			 */
 			template<
 				typename ViewType = View,
