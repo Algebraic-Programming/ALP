@@ -881,6 +881,20 @@ namespace alp {
 			>::amf_type type;
 		};
 
+		/** Specialization for containers that allocate storage */
+		template< typename Structure, typename ImfC, enum Backend backend, typename Lambda >
+		struct determine_amf_type< Structure, view::Functor< Lambda >, imf::Id, ImfC, backend > {
+
+			static_assert(
+				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
+				"Incompatible combination of parameters provided to determine_amf_type."
+			);
+
+			typedef typename storage::AMFFactory::FromPolynomial<
+				storage::polynomials::None_type
+			>::amf_type type;
+		};
+
 	} // namespace internal
 
 	/**
@@ -1117,7 +1131,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( rows ), imf::Id( cols ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1321,8 +1335,8 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1499,7 +1513,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, dim, lambda ) {}
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
@@ -1691,8 +1705,8 @@ namespace alp {
 					internal::requires_allocation< ViewType >::value
 				> * = nullptr
 			>
-			Matrix( bool initialized, const size_t dim, typename ViewType::applied_to lambda ) :
-				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, dim, lambda ) {}
+			Matrix( std::function< bool() > initialized, const size_t dim, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
