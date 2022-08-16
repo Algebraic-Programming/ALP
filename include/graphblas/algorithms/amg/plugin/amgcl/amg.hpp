@@ -556,13 +556,25 @@ class amg {
     template <class B, template <class> class C, template <class> class R>
     friend std::ostream& operator<<(std::ostream &os, const amg<B, C, R> &a);
 
-    template <class B, template <class> class C, template <class> class R>
-    friend void save_levels( const amg<B, C, R> &a);
+    template <class B,
+			  template <class> class C,
+			  template <class> class R,
+			  typename MD
+			  >
+    friend void save_levels( const amg<B, C, R> &a,
+							 std::vector<MD> &Amat_data);
 };
 
+    template <class B,
+			  template <class> class C,
+			  template <class> class R,
+			  typename MD
+			  >
+	void save_levels( const amg<B, C, R> &a,
+					  std::vector<MD> &Amat_data
+					  )
+	{
 
-	template <class B, template <class> class C, template <class> class R>
-	void save_levels( const amg<B, C, R> &a){
 		size_t n_levels = a.levels.size();
 		std::cout << " =======> n_levels = "<< n_levels << "\n";
 		// std::cout << a ;
@@ -575,37 +587,45 @@ class amg {
 		// 	const level lvl = a.levels[ ilvl ];
 		// for(level lvl =  a.levels.begin(); lvl != a.levels.end(); lvl++ ) {
 		for(const level &lvl : a.levels) {
-			std::cout << "------------------------\n ";
-			std::cout << "level: " << depth << std::endl;
-			std::cout << "\n";
-			std::cout << "saving A: \n";
+			size_t nz = backend::nonzeros(*lvl.A);
+			size_t n = backend::cols( *lvl.A );
+			size_t m = backend::rows( *lvl.A );
+			std::vector<size_t> i_data(nz);
+			std::vector<size_t> j_data(nz);
+			std::vector<double> v_data(nz);
+			// std::cout << "------------------------\n ";
+			// std::cout << "level: " << depth << std::endl;
+			// std::cout << "\n";
+			// std::cout << "saving A: \n";
 			// std::cout << " A->nz=" << backend::nonzeros(*lvl.A) << "\n" ;
-			// size_t irow = 0;
-			// for(size_t i = 0;  i < backend::nonzeros(*lvl.A)  ; ++i ) {
-			// 	if( i >= (*lvl.A).ptr[ irow ] ) irow++;
-			// 	if ( ( i < 15 ) ||  ( i + 15 >= backend::nonzeros(*lvl.A) ) ) {
-			// 		std::cout << "     " << std::fixed  << "[" << std::setw(5) << irow << " "
-			// 				  << std::setw(5) << (*lvl.A).col[i] + 1  << "] "
-			// 				  << std::scientific << std::setw(5) << (*lvl.A).val[i] << "\n";
+			size_t irow = 0;
+			for(size_t i = 0;  i < backend::nonzeros(*lvl.A)  ; ++i ) {
+				if( i >= static_cast< size_t > ((*lvl.A).ptr[ irow ]) ) irow++;
+				i_data[ i ] = irow;
+				j_data[ i ] = (*lvl.A).col[i] + 1;
+				v_data[ i ] = (*lvl.A).val[i];
+			}
+			// std::cout << "\n";
+			// std::cout << backend::rows(*lvl.A)
+			// 		  << " x " << backend::cols(*lvl.A)
+			// 		  << " : " << backend::nonzeros(*lvl.A) << "\n";
+
+			// for(size_t i = 0;  i < backend::rows( *lvl.A ) ; ++i ) {
+			// 	if ( ( i < 3 ) ||  ( i + 3 >= backend::rows( *lvl.A ) ) ) {
+			// 		size_t k = 0;
+			// 		for(auto a = backend::row_begin(*lvl.A, i); a; ++a) {
+			// 			std::cout << "     " << std::fixed  << "[" << std::setw(5) << i + 1 << " "
+			// 					  << std::setw(5) << a.col() + 1 << "] "
+			// 					  << std::scientific << std::setw(5) << a.value() << "    ";
+			// 			if( ++k > 3 ) break;
+			// 		}
+			// 		std::cout << "\n";
 			// 	}
 			// }
-			// std::cout << "\n";
-			std::cout << backend::rows(*lvl.A)
-					  << " x " << backend::cols(*lvl.A)
-					  << " : " << backend::nonzeros(*lvl.A) << "\n";
+			MD Amat_level_data(nz,n,m,i_data,j_data,v_data);
+			Amat_data.push_back(Amat_level_data);
 
-			for(size_t i = 0;  i < backend::rows( *lvl.A ) ; ++i ) {
-				if ( ( i < 3 ) ||  ( i + 3 >= backend::rows( *lvl.A ) ) ) {
-					size_t k = 0;
-					for(auto a = backend::row_begin(*lvl.A, i); a; ++a) {
-						std::cout << "     " << std::fixed  << "[" << std::setw(5) << i + 1 << " "
-								  << std::setw(5) << a.col() + 1 << "] "
-								  << std::scientific << std::setw(5) << a.value() << "    ";
-						if( ++k > 3 ) break;
-					}
-					std::cout << "\n";
-				}
-			}
+			
 
 			if( depth < n_levels -1 ) {
 				std::cout << "\n";

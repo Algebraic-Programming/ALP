@@ -107,81 +107,28 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 
 #define DEBUG
 
-// /**
-//  * Container to store matrices loaded from a file.
-//  */
-// template< typename T = double >
-// struct mat_data {
-// 	size_t *i_data;
-// 	size_t *j_data;
-// 	T *v_data;
-// 	size_t nz, n, m;
+template< typename T = double >
+struct vec_data {
+	std::vector<T> v_data;
+	size_t n;
+};
 
-// 	void resize( size_t innz, size_t inn, size_t inm ){
-// 		nz=innz;
-// 		n=inn;
-// 		m=inm;
-// 		i_data = new size_t [ nz ];
-// 		j_data = new size_t [ nz ];
-// 		v_data = new T [ nz ];
-// 	};
-
-// 	mat_data( ){
-// 		nz = 0;
-// 	};
-
-// 	mat_data( size_t in ){
-// 		resize( in );
-// 	};
-
-// 	size_t size(){
-// 		return nz;
-// 	};
-
-// 	size_t get_n(){
-// 		return n;
-// 	};
-
-// 	size_t get_m(){
-// 		return m;
-// 	};
-
-// 	~mat_data(){
-// 		delete [] i_data;
-// 		delete [] i_data;
-// 		delete [] v_data;
-// 	};
-// };
-
-// /**
-//  * Container to store vectors loaded from a file.
-//  */
-// template< typename T = double >
-// struct vec_data {
-// 	T *v_data;
-// 	size_t n;
-
-// 	void resize( size_t in ){
-// 		n=in;
-// 		v_data = new T [ n ];
-// 	};
-
-// 	vec_data( ){
-// 		n = 0;
-// 	};
-
-// 	vec_data( size_t in ){
-// 		resize( in );
-// 	};
-
-// 	size_t size(){
-// 		return n;
-// 	};
-
-// 	~vec_data(){
-// 		delete [] v_data;
-// 	};
-// };
+/**
+ * Container to store matrices loaded from a AMGCL.
+ */
+template< typename T = double >
+struct mat_data {
+	size_t nz, n, m;
+	std::vector<size_t> i_data;
+	std::vector<size_t> j_data;
+	std::vector<T> v_data;
+	mat_data(size_t nz, size_t n, size_t m,
+			 std::vector<size_t> i_data,
+			 std::vector<size_t> j_data,
+			 std::vector<T> v_data):
+		nz(nz), n(n), m(m), i_data(i_data), j_data(j_data), v_data(v_data)
+	{}
+};
 
 static bool matloaded = false;
 
@@ -206,12 +153,6 @@ class preloaded_matrices : public simulation_input {
 public :
 
 	amgclHandle solver;
-
-// 	size_t nzAmt, nzMmt, nzPmt, nzRmt;
-// 	mat_data< double > *matAbuffer;
-// 	vec_data< double > *matMbuffer;
-// 	mat_data< double > *matPbuffer;
-// 	mat_data< double > *matRbuffer;
 
 	grb::RC read_vec_matrics(){
 		grb::RC rc = SUCCESS;
@@ -240,7 +181,36 @@ public :
 			rows, ptr.data(), col.data(), val.data(), prm
 		);
 		//TODO: extract amgcl data
-		save_levels(static_cast<Solver*>(solver)->precond());
+		std::vector<mat_data<>>  Amat_data;
+		// std::vector<mat_data<>>  Pmat_data;
+		// std::vector<mat_data<>>  Rmat_data;
+		// std::vector<vec_data<>>  Dvec_data;
+
+		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
+
+
+		save_levels(static_cast<Solver*>(solver)->precond(),
+					Amat_data
+					);
+
+		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
+#ifdef DEBUG
+		for( size_t i = 0; i < Amat_data.size(); i++ ) {
+			std::cout << " amgcl check data: level =" << i << "\n";
+			std::cout << "    * *Amat_data ** \n";
+			std::cout << "    nz =" << Amat_data[ i ].nz << "\n";
+			std::cout << "     n =" << Amat_data[ i ].n << "\n";
+			std::cout << "     m =" << Amat_data[ i ].m << "\n";
+			for( size_t k = 0; k < Amat_data[ i ].nz; k++ ) {
+				if( k < 3 || k + 3 >= Amat_data[ i ].nz ){
+					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Amat_data[ i ].i_data[ k ] << " "
+							  << std::setw(5) << Amat_data[ i ].j_data[ k ] << "] "
+							  << std::scientific << std::setw(5) << Amat_data[ i ].v_data[ k ] << "\n";
+				}
+			}
+			std::cout << "\n\n";
+		}
+#endif
 
 		return rc;
 	}
