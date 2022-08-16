@@ -1580,11 +1580,14 @@ namespace grb {
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
 				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
+					                                    // see docs/Suppressions.md
 					if( *b && *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
 						*c = static_cast< result_type >( false );
 					}
+					GRB_UTIL_RESTORE_WARNINGS
 				}
 			};
 
