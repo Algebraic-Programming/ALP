@@ -11,6 +11,7 @@
 
 #include <graphblas/interfaces/pregel.hpp>
 
+
 namespace grb {
 
 	namespace algorithms {
@@ -30,7 +31,7 @@ namespace grb {
 					const IOType &incoming_message,
 					IOType &outgoing_message,
 					const Data &parameters,
-					grb::interfaces::PregelData &pregel
+					grb::interfaces::PregelState &pregel
 				) {
 					// initialise
 					if( pregel.round == 0 ) {
@@ -66,7 +67,7 @@ namespace grb {
 					grb::Vector< IOType > &scores,
 					size_t &steps_taken,
 					const Data &parameters = Data(),
-					const size_t max_steps = 1000
+					const size_t max_steps = 0
 				) {
 					const size_t n = pregel.num_vertices();
 					if( grb::size( scores ) != n ) {
@@ -80,10 +81,10 @@ namespace grb {
 							grb::operators::add< double >,
 							grb::identities::zero
 						> (
-							scores,
-							in, out,
 							program,
+							scores,
 							parameters,
+							in, out,
 							steps_taken,
 							max_steps
 						);

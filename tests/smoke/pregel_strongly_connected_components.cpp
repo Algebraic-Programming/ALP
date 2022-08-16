@@ -81,7 +81,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
         // prepare Pregel interface
         grb::interfaces::Pregel< void > pregel(
 		parser.n(), parser.m(),
-		parser.begin(), parser.end()
+		parser.begin(), parser.end(),
+		SEQUENTIAL
 	);
 
 	// 1. initalise connected components IDs and message buffers

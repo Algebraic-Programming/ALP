@@ -82,7 +82,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
         // prepare Pregel interface
         grb::interfaces::Pregel< void > pregel(
 		parser.n(), parser.m(),
-		parser.begin(), parser.end()
+		parser.begin(), parser.end(),
+		SEQUENTIAL
 	);
 
         // prepare for launching pagerank algorithm
@@ -106,9 +107,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				grb::operators::add< double >,
 				grb::identities::zero
 			> (
-        		        pr, in_msgs, out_msgs, // inputs
-                		pr_prog ,              // program
-				pr_data,               // PR params
+				pr_prog, pr, pr_data,
+				in_msgs, out_msgs,
 				out.iterations
 		        );
 		double single_time = timer.time();
@@ -142,13 +142,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			rc = grb::set( pr, 0 );
 			if( rc == SUCCESS ) {
-	        		rc = pregel.template execute<
+				rc = pregel.template execute<
 						grb::operators::add< double >,
 						grb::identities::zero
 					> (
-			        	        pr, in_msgs, out_msgs, // inputs
-			                	pr_prog,               // program
-						pr_data,               // PR params
+						pr_prog, pr, pr_data,
+						in_msgs, out_msgs,
 						out.iterations
 				        );
 			}

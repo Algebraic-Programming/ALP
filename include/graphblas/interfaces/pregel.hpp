@@ -14,20 +14,96 @@
 
 #include <stdexcept>   // std::runtime_error
 
+
 namespace grb {
 
 	namespace interfaces {
 
-		struct PregelData {
+		/**
+		 * The state of the vertex-center Pregel program that the user  may interface
+		 * with.
+		 *
+		 * The state includes global data as well as vertex-centric state. The global
+		 * state is umodifiable and includes:
+		 *  - #PregelState::num_vertices,
+		 *  - #PregelState::num_edges, and
+		 *  - #PregelState::round.
+		 *
+		 * Vertex-centric state can be either constant or modiable:
+		 *  - static vertex-centric state: #PregelState::indegree,
+		 *    #PregelState::outdegree, and #PregelState::vertexID.
+		 *  - modifiable vertex-centric state: #PregelState::voteToHalt, and
+		 *    #PregelState::active.
+		 */
+		struct PregelState {
+
+			/**
+			 * Represents whether the current vertex is active.
+			 *
+			 * Since this struct is only to-be used within the computational phase of a
+			 * vertex-centric program, this always reads <tt>true</tt> on the start of a
+			 * round.
+			 *
+			 * The program may set this field to <tt>false</tt> which will cause this
+			 * vertex to no longer trigger computational steps during subsequent rounds.
+			 *
+			 * An inactive vertex will no longer broadcast messages.
+			 *
+			 * If all vertices are inactive the program terminates.
+			 */
 			bool &active;
+
+			/**
+			 * Represents whether this (active) vertex votes to terminate the program.
+			 *
+			 * On start of a round, this entry is set to <tt>false</tt>. If all active
+			 * vertices set this to <tt>true</tt>, the program will terminate after the
+			 * current round.
+			 */
 			bool &voteToHalt;
+
+			/**
+			 * The number of vertices in the global graph.
+			 */
 			const size_t &num_vertices;
+
+			/**
+			 * The number of edges in the global graph.
+			 */
+			const size_t &num_edges;
+
+			/**
+			 * The out-degree of this vertex.
+			 */
 			const size_t &outdegree;
+
+			/**
+			 * The in-degree of this vertex.
+			 */
 			const size_t &indegree;
+
+			/**
+			 * The current round the vertex-centric program is currently executing.
+			 */
 			const size_t &round;
-			const size_t &vertex_ID;
+
+			/**
+			 * A unique ID of this vertex.
+			 *
+			 * This number is an unsigned integer between 0 (inclusive) and
+			 * the number of vertices the underlying graph holds (exclusive).
+			 */
+			const size_t &vertexID;
+
 		};
 
+		/**
+		 * A Pregel run-time instance.
+		 *
+		 * Pregel wraps around graph data and executes computations on said graph. A
+		 * runtime thus is constructed from graph, and enables running any Pregel
+		 * algorithm on said graph.
+		 */
 		template<
 			typename MatrixEntryType
 		>
@@ -35,30 +111,38 @@ namespace grb {
 
 			private:
 
-				/** The number of vertices. */
+				/** \internal The number of vertices of the underlying #graph. */
 				const size_t n;
 
-				/** The graph */
+				/** \internal The number of edges of the underlying #graph. */
+				size_t nz;
+
+				/** \internal The graph to run vertex-centric programs over. */
 				grb::Matrix< MatrixEntryType > graph;
 
-				/** Which vertices are still active */
+				/** \internal Which vertices are still active. */
 				grb::Vector< bool > activeVertices;
 
-				/** Which vertices voted to halt */
+				/** \internal Which vertices voted to halt. */
 				grb::Vector< bool > haltVotes;
 
-				/** Pre-computed outdegrees. */
+				/** \internal Pre-computed outdegrees. */
 				grb::Vector< size_t > outdegrees;
 
-				/** Pre-cominputed indegrees. */
+				/** \internal Pre-cominputed indegrees. */
 				grb::Vector< size_t > indegrees;
 
-				/** Global vertex IDs. */
+				/** \internal Global vertex IDs. */
 				grb::Vector< size_t > IDs;
 
-				/** 
+				/**
+				 * \internal
 				 * Initialises the following fields:
 				 *   -# outdegrees
+				 *   -# indegrees
+				 *   -# IDs
+				 * Other fields are set on program start.
+				 * \endinternal
 				 */
 				void initialize() {
 					grb::Semiring<
@@ -74,15 +158,18 @@ namespace grb {
 					if( grb::set( outdegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise outdegrees" );
 					}
-					if( grb::mxv< grb::descriptors::transpose_matrix >(
-						outdegrees, graph, ones, ring
-					) != SUCCESS ) {
+					if( grb::mxv<
+							grb::descriptors::transpose_matrix | grb::descriptors::dense
+						>(
+							outdegrees, graph, ones, ring
+						) != SUCCESS
+					) {
 						throw std::runtime_error( "Could not compute outdegrees" );
 					}
 					if( grb::set( indegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise indegrees" );
 					}
-					if( grb::mxv(
+					if( grb::mxv< grb::descriptors::dense >(
 						indegrees, graph, ones, ring
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute indegrees" );
@@ -96,15 +183,22 @@ namespace grb {
 				}
 
 
-			public:
+			protected:
 
-				template< typename fwd_it >
+				/**
+				 * \internal
+				 * Internal constructor for the cases where the number of vertix IDs,
+				 * \a _n, is already known.
+				 * \endinternal
+				 */
+				template< typename IType >
 				Pregel(
-					const size_t _m, const size_t _n,
-					fwd_it _start, const fwd_it _end
+					const size_t _n,
+					IType _start, const IType _end,
+					const grb::IOMode _mode
 				) :
-					n( _m ),
-					graph( _m, _n ),
+					n( _n ),
+					graph( _n, _n ),
 					activeVertices( _n ),
 					haltVotes( _n ),
 					outdegrees( _n ),
@@ -115,53 +209,214 @@ namespace grb {
 						throw std::runtime_error( "Input graph is bipartite" );
 					}
 					if( grb::buildMatrixUnique(
-						graph, _start, _end, SEQUENTIAL
+						graph, _start, _end, _mode
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not build graph" );
 					}
+					nz = grb::nnz( graph );
 					initialize();
 				}
 
+
+			public:
+
 				/**
-				 * @param[in] in  Where incoming messages are stored. This can hold default
-				 *                messages on function entry valid for the first round. If
-				 *                \a in does not contain #num_vertices entries it will
-				 *                instead be reset to the given identity.
+				 * Constructs a Pregel instance from input iterators over some graph.
+				 *
+				 * @tparam IType The type of the input iterator.
+				 *
+				 * @param[in] _m The maximum vertex ID for excident edges.
+				 * @param[in] _n The maximum vertex ID for incident edges.
+				 *
+				 * \note This is equivalent to the row- and column- size of an input matrix
+				 *       which represents the input graph.
+				 *
+				 * \note If these values are not known, please scan the input iterators to
+				 *       derive these values prior to calling this constructor. On
+				 *       compelling reasons why such functionality would be useful to
+				 *       provide as a standard factory method, please feel welcome to submit
+				 *       an issue.
+				 *
+				 * \warning The graph is assumed to have contiguous IDs -- i.e., every
+				 *          vertex ID in the range of 0 (inclusive) to the maximum of \a m
+				 *          and \a n (exclusive) has at least one excident or at least one
+				 *          incident edge.
+				 *
+				 * @param[in] _start An iterator pointing to the start element of an
+				 *                   a collection of edges.
+				 * @param[in] _end   An iterator matching \a _start in end position.
+				 *
+				 * All edges to be ingested thus are contained within \a _start and \a end.
+				 *
+				 * @param[in] _mode Whether sequential or parallel I/O is to be used.
+				 *
+				 * The value of \a _mode only takes effect when there are multiple user
+				 * processes, such as for example when executing over a distributed-memory
+				 * cluster. The choice between sequential and parallel I/O should be thus:
+				 *  - If the edges pointed to by \a _start and \a _end correspond to the
+				 *    \em entire set of edges on \em each process, then the I/O mode should
+				 *    be #grb::SEQUENTIAL;
+				 *  - If the edges pointed to by \a _start and \a _end correspond to
+				 *    \em different sets of edges on each different process while their
+				 *    union represents the graph to be ingested, then the I/O mode should be
+				 *    #grb::PARALLEL.
+				 *
+				 * On errors during ingestion, this constructor throws exceptions.
+				 */
+				template< typename IType >
+				Pregel(
+					const size_t _m, const size_t _n,
+					IType _start, const IType _end,
+					const grb::IOMode _mode
+				) : Pregel( std::max( _m, _n ), _start, _end, _mode ) {}
+
+				/**
+				 * Executes a given vertex-centric \a program on this graph.
+				 *
+				 * The program must be a static function that returns void and takes five
+				 * input arguments:
+				 *  - a reference to a vertex-defined state. The type of this reference may
+				 *    be defined by the program, but has to match the element type of
+				 *    \a vertex_state passed to this function.
+				 *  - a const-reference to an incoming message. The type of this reference
+				 *    may be defined by the program, but has to match the element type of
+				 *    \a in passed to this function. It must furthermore be compatible with
+				 *    the domains of \a Op (see below).
+				 *  - a reference to an outgoing message. The type of this reference may be
+				 *    defined by the program, but has to match the element type of \a out
+				 *    passed to this function. It must furthermore be compatible with the
+				 *    domains of \a Op (see below).
+				 *  - a const-reference to a program-defined type. The function of this
+				 *    argument is to collect global read-only algorithm parameters.
+				 *  - a reference to an instance of #grb::interfaces::PregelState. The
+				 *    function of this argument is two-fold: 1) make available global read-
+				 *    only statistics of the graph the algorithm is executing on, and to 2)
+				 *    control algorithm termination conditions.
+				 *
+				 * The program will be called during each round of a Pregel computation. The
+				 * program is expected to compute something based on the incoming message
+				 * and vertex-local state, and (optionally) generate an outgoing message.
+				 * After each round, the outgoing message at all vertices are broadcast to
+				 * all its neighbours. The Pregel runtime, again for each vertex, reduces
+				 * all incoming messages into a single message, after which the next round
+				 * of computation starts, after which the procedure is repeated.
+				 *
+				 * The program terminates in one of two ways:
+				 *  1. there are no more active vertices; or
+				 *  2. all active vertices vote to halt.
+				 *
+				 * On program start, i.e., during the first round, all vertices are active.
+				 * During the computation phase, any vertex can set itself inactive for
+				 * subsequent rounds by setting #grb::interfaces::PregelState::active to
+				 * <tt>false</tt>. Similarly, any active vertex can vote to halt by setting
+				 * #grb::interfaces::PregelState::voteToHalt to <tt>true</tt>.
+				 *
+				 * Reduction of incoming messages to a vertex will occur through an user-
+				 * defined monoid given by:
+				 *
+				 * @tparam Op The binary operation of the monoid. This includes its domain.
+				 * @tparam Id The identity element of the monoid.
+				 *
+				 * The following template arguments will be automatically inferred:
+				 *
+				 * @tparam Program             The type of the program to-be executed.
+				 * @tparam IOType              The type of the state of a single vertex.
+				 * @tparam GlobalProgramData   The type of globally accessible read-only
+				 *                             program data.
+				 * @tparam IncomingMessageType The type of an incoming message.
+				 * @tparam OutgoingMessageType The type of an outgoing message.
+				 *
+				 * The arguments to this function are as follows:
+				 *
+				 * @param[in] program The vertex-centric program to execute.
+				 *
+				 * The same Pregel runtime instance hence can be re-used to execute multiple
+				 * algorithms on the same graph.
+				 *
+				 * Vertex-centric programs have both vertex-local and global state:
+				 *
+				 * @param[in] vertex_state A vector that contains the state of each vertex.
+				 * @param[in] global_data  Global read-only state for the given \a program.
+				 *
+				 * The capacity and size of \a vertex_state must equal the maximum vertex
+				 * ID.
+				 *
+				 * Finally, in the ALP spirit which aims to control all relevant performance
+				 * aspects, the workspace required by the Pregel runtime must be pre-
+				 * allocated and passed in:
+				 *
+				 * @param[in] in  Where incoming messages are stored. Any initial values may
+				 *                or may not be ignored, depending on the \a program
+				 *                behaviour during the first round of computation.
+				 *
+				 * @param[in] out Where outgoing messages are stored. Any initial values may
+				 *                or may not be ignored, depending on the \a program
+				 *                behaviour.
+				 *
+				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
+				 * ID.
+				 *
+				 * Some statistics are retained after a run:
+				 *
+				 * @param[out] rounds The number of rounds the Pregel program has executed.
+				 *                    The initial value to \a rounds will be ignored.
+				 *
+				 * Vertex-programs execute in rounds and could, if the given program does
+				 * not infer proper termination conditions, run forever. To curb the number
+				 * of rounds, the following \em optional parameter may be given:
+				 *
+				 * @param[in] max_rounds The maximum number of rounds the \a program may
+				 *                       execute. Once reached and not terminated, the
+				 *                       program will forcibly terminate.
+				 *
+				 * To turn off termination after a maximum number of rounds, \a max_rounds
+				 * may be set to zero. This is also the default.
+				 *
+				 * Executing a Pregel function returns one of the following error codes:
+				 *
+				 * @returns #grb::SUCCESS  The \a program executed (and terminated)
+				 *                         successfully.
+				 * @returns #grb::MISMATCH At least one of \a vertex_state, \a in, or \a out
+				 *                         is not of the required size.
+				 * @returns #grb::ILLEGAL  At least one of \a vertex_state, \a in, or \a out
+				 *                         does not have the required capacity.
+				 * @returns #grb::PANIC    In case an unrecoverable error was encountered
+				 *                         during execution.
 				 */
 				template<
-					class AddOp,
-					template< typename > class AddId,
+					class Op,
+					template< typename > class Id,
+					class Program,
 					typename IOType,
-					typename IncomingMessageType,
-					typename OutgoingMessageType,
 					typename GlobalProgramData,
-					class Program
+					typename IncomingMessageType,
+					typename OutgoingMessageType
 				>
 				grb::RC execute(
-					grb::Vector< IOType > &x,
+					const Program program,
+					grb::Vector< IOType > &vertex_state,
+					const GlobalProgramData &data,
 					grb::Vector< IncomingMessageType > &in,
 					grb::Vector< OutgoingMessageType > &out,
-					Program program,
-					const GlobalProgramData &data,
-					size_t &steps,
-					const size_t max_steps = 1000
+					size_t &rounds,
+					const size_t max_rounds = 0
 				) {
-					static_assert( grb::is_operator< AddOp >::value &&
-							grb::is_associative< AddOp >::value,
+					static_assert( grb::is_operator< Op >::value &&
+							grb::is_associative< Op >::value,
 						"The combiner must be an associate operator"
 					);
-					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
 						"The combiner left-hand input domain should match the incoming message type." );
-					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
 						"The combiner right-hand input domain should match the incoming message type." );
-					static_assert( std::is_same< typename AddOp::D1, IncomingMessageType >::value,
+					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
 						"The combiner output domain should match the incoming message type." );
 
 					// set default output
-					steps = 0;
+					rounds = 0;
 
 					// sanity checks
-					if( grb::size(x) != n ) {
+					if( grb::size(vertex_state) != n ) {
 						return MISMATCH;
 					}
 					if( grb::size(in) != n ) {
@@ -169,6 +424,15 @@ namespace grb {
 					}
 					if( grb::size(out) != n ) {
 						return MISMATCH;
+					}
+					if( grb::capacity(vertex_state) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::capacity(in) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::capacity(out) != n ) {
+						return ILLEGAL;
 					}
 
 					// define some monoids and semirings
@@ -183,11 +447,11 @@ namespace grb {
 					> andMonoid;
 
 					grb::Semiring<
-						AddOp,
+						Op,
 						grb::operators::left_assign_if<
 							IncomingMessageType, bool, IncomingMessageType
 						>,
-						AddId,
+						Id,
 						grb::identities::logical_true
 					> ring;
 
@@ -209,12 +473,12 @@ namespace grb {
 							std::cerr << "Warning: overwriting initial incoming messages because it was not a dense vector\n";
 						}
 #endif
-						ret = grb::set( in, AddId< IncomingMessageType >::value() );
+						ret = grb::set( in, Id< IncomingMessageType >::value() );
 					}
 
 					// set default outgoing message
 					if( ret == SUCCESS ) {
-						ret = grb::set( out, AddId< OutgoingMessageType >::value() );
+						ret = grb::set( out, Id< OutgoingMessageType >::value() );
 					}
 
 					// by construction, we start out with all vertices active
@@ -222,16 +486,20 @@ namespace grb {
 
 					// return if initialisation failed
 					if( ret != SUCCESS ) {
-						return ret;
+						assert( ret == FAILED );
+						std::cerr << "Error: initialisation failed, but if workspace holds full "
+							<< "capacity, initialisation should never fail. Please submit a bug "
+							<< "report.\n";
+						return PANIC;
 					}
 
 					// while there are active vertices, execute
-					while( thereAreActiveVertices && ret == SUCCESS && step < max_steps ) {
+					while( thereAreActiveVertices && ret == SUCCESS && (max_rounds == 0 || step < max_rounds) ) {
 						// run one step of the program
 						ret = grb::eWiseLambda(
 							[
 								this,
-								&x,
+								&vertex_state,
 								&in,
 								&out,
 								&program,
@@ -239,10 +507,11 @@ namespace grb {
 								&data
 							]( const size_t i ) {
 								// create Pregel struct
-								PregelData pregel = {
+								PregelState pregel = {
 									activeVertices[ i ],
 									haltVotes[ i ],
 									n,
+									nz,
 									outdegrees[ i ],
 									indegrees[ i ],
 									step,
@@ -254,7 +523,7 @@ namespace grb {
 									std::cout << "Vertex " << i << " remains active in step " << step << "\n";
 #endif
 									program(
-										x[ i ],
+										vertex_state[ i ],
 										in[ i ],
 										out[ i ],
 										data,
@@ -264,7 +533,7 @@ namespace grb {
 									std::cout << "Vertex " << i << " sends out message " << out[ i ] << "\n";
 #endif
 								}
-							}, x, activeVertices, in, out, outdegrees, haltVotes
+							}, vertex_state, activeVertices, in, out, outdegrees, haltVotes
 						);
 
 						// increment counter
@@ -289,7 +558,7 @@ namespace grb {
 						if( ret == SUCCESS ) {
 							ret = grb::set(
 								in,
-								AddId< IncomingMessageType >::value()
+								Id< IncomingMessageType >::value()
 							);
 						}
 						// execute communication
@@ -299,7 +568,7 @@ namespace grb {
 						// reset outgoing buffer
 						if( ret == SUCCESS ) {
 							ret = grb::set( out,
-								AddId< OutgoingMessageType >::value() );
+								Id< OutgoingMessageType >::value() );
 						}
 						// check if there is a next round
 						if( ret == SUCCESS ) {
@@ -315,20 +584,46 @@ namespace grb {
 #ifdef _DEBUG
 					if( grb::spmd<>::pid() == 0 ) {
 						std::cout << "Info: Pregel exits after " << step
-							<< " steps with error code " << ret
+							<< " rounds with error code " << ret
 							<< " ( " << grb::toString(ret) << " )\n";
 					}
 #endif
 
 					// done
-					steps = step;
+					rounds = step;
 					return ret;
 				}
 
+				/**
+				 * Queries the maximum vertex ID for programs running on this Pregel
+				 * instance.
+				 *
+				 * @returns The maximum vertex ID.
+				 */
 				size_t num_vertices() const noexcept { return n; }
 
-				const grb::Matrix< MatrixEntryType >&
-				get_matrix() const noexcept { return graph; }
+				/**
+				 * Queries the number of edges of the graph this Pregel instance has been
+				 * constructed over.
+				 *
+				 * @returns The number of edges within the underlying graph.
+				 */
+				size_t num_edges() const noexcept { return nz; }
+
+				/**
+				 * Returns the ALP/GraphBLAS matrix representation of the underlying
+				 * graph.
+				 *
+				 * This is useful when an application prefers to sometimes use vertex-
+				 * centric algorithms and other times prefers direct ALP/GraphBLAS
+				 * algorithms.
+				 *
+				 * @returns The underlying ALP/GraphBLAS matrix corresponding to the
+				 *          underlying graph.
+				 */
+				const grb::Matrix< MatrixEntryType > & get_matrix() const noexcept {
+					return graph;
+				}
 
 		};
 

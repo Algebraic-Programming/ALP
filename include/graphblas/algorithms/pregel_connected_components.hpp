@@ -11,6 +11,7 @@
 
 #include <graphblas/interfaces/pregel.hpp>
 
+
 namespace grb {
 
 	namespace algorithms {
@@ -27,7 +28,7 @@ namespace grb {
 					const VertexIDType &incoming_message,
 					VertexIDType &outgoing_message,
 					const Data &parameters,
-					grb::interfaces::PregelData &pregel
+					grb::interfaces::PregelState &pregel
 				) {
 					(void) parameters;
 					if( pregel.round > 0 ) {
@@ -50,7 +51,7 @@ namespace grb {
 				static grb::RC execute(
 					grb::interfaces::Pregel< PregelType > &pregel,
 					grb::Vector< VertexIDType > &group_ids,
-					const size_t max_steps = 1000,
+					const size_t max_steps = 0,
 					size_t * const steps_taken = nullptr
 				) {
 					const size_t n = pregel.num_vertices();
@@ -72,10 +73,10 @@ namespace grb {
 						grb::operators::max< VertexIDType >,
 						grb::identities::negative_infinity
 					> (
-						group_ids,
-						in, out,
 						program,
+						group_ids,
 						Data(),
+						in, out,
 						steps,
 						max_steps
 					);
