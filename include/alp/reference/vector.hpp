@@ -378,8 +378,6 @@ namespace alp {
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > base_type;
 			typedef typename base_type::target_type target_type;
 
-			typedef typename base_type::amf_type amf_type;
-
 		private:
 
 			/*********************
