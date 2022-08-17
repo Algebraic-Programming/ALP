@@ -94,6 +94,9 @@ namespace grb {
 
 	namespace internal {
 
+		/**
+		 * Folds a vector into a scalar assuming the vector is dense.
+		 */
 		template< bool left, class Monoid, typename InputType, class Coords >
 		RC fold_from_vector_to_scalar_dense(
 			typename Monoid::D3 &global,
@@ -164,6 +167,201 @@ namespace grb {
 			return ret;
 		}
 
+		/**
+		 * Folds a vector into a scalar.
+		 *
+		 * May be masked, and the vector is assumed sparse.
+		 *
+		 * This variant is driven by the sparsity pattern of the vector.
+		 */
+		template<
+			Descriptor descr,
+			bool masked, bool left, class Monoid,
+			typename InputType, typename MaskType,
+			class Coords
+		>
+		RC fold_from_vector_to_scalar_vectorDriven(
+			typename Monoid::D3 &global,
+			const Vector< InputType, reference, Coords > &to_fold,
+			const Vector< MaskType, reference, Coords > &mask,
+			const Monoid &monoid
+		) {
+			const size_t n = internal::getCoordinates( to_fold ).size();
+			const size_t nz = internal::getCoordinates( to_fold ).nonzeroes();
+#ifdef NDEBUG
+			(void) n;
+#endif
+
+			assert( n > 0 );
+			assert( nz > 0 );
+			assert( !masked || internal::getCoordinates( mask ).size() == n );
+
+			RC ret = SUCCESS;
+
+			// compute in parallel
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
+#endif
+				// compute thread-local partial reduction
+				typename Monoid::D3 local =
+					monoid.template getIdentity< typename Monoid::D3 >();
+				for( size_t k = start; k < end; ++k ) {
+					const size_t i = internal::getCoordinates( to_fold ).index( k );
+					if( masked && !utils::interpretMask< descr >(
+							internal::getCoordinates( mask ).assigned( i ),
+							internal::getRaw( mask ),
+							i
+						)
+					) {
+						continue;
+					}
+					RC local_rc;
+					if( left ) {
+						local_rc = foldl< descr >(
+								local, internal::getRaw( to_fold )[ i ],
+								monoid.getOperator()
+							);
+					} else {
+						local_rc = foldr< descr >(
+								internal::getRaw( to_fold )[ i ], local,
+								monoid.getOperator()
+							);
+					}
+					assert( local_rc == SUCCESS );
+					if( local_rc != SUCCESS ) {
+						ret = local_rc;
+					}
+				}
+
+				// fold into global
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp critical
+				{
+#endif
+					if( ret == SUCCESS && start < end ) {
+						if( left ) {
+							ret = foldl< descr >( global, local, monoid.getOperator() );
+						} else {
+							ret = foldr< descr >( local, global, monoid.getOperator() );
+						}
+						assert( ret == SUCCESS );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				}
+
+			} // end pragma omp parallel
+#endif
+
+			// done
+			return ret;
+		}
+
+		/**
+		 * Folds a vector into a scalar.
+		 *
+		 * Must be masked, and both mask and vector are assumed sparse.
+		 *
+		 * This variant is driven by the sparsity pattern of the mask.
+		 */
+		template<
+			Descriptor descr,
+			bool left, class Monoid,
+			typename InputType, typename MaskType,
+			class Coords
+		>
+		RC fold_from_vector_to_scalar_maskDriven(
+			typename Monoid::D3 &global,
+			const Vector< InputType, reference, Coords > &to_fold,
+			const Vector< MaskType, reference, Coords > &mask,
+			const Monoid &monoid
+		) {
+			const size_t n = internal::getCoordinates( to_fold ).size();
+			const size_t nz = internal::getCoordinates( mask ).nonzeroes();
+
+			assert( internal::getCoordinates( mask ).size() == n );
+			assert( n > 0 );
+			assert( nz > 0 );
+#ifdef NDEBUG
+			(void) n;
+#endif
+
+			RC ret = SUCCESS;
+
+			// compute in parallel
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				const size_t start = 0;
+				const size_t end = nz;
+#endif
+				// compute thread-local partial reduction
+				typename Monoid::D3 local =
+					monoid.template getIdentity< typename Monoid::D3 >();
+				for( size_t k = start; k < end; ++k ) {
+					const size_t i = internal::getCoordinates( mask ).index( k );
+					if( !internal::getCoordinates( to_fold ).assigned( i ) ) {
+						continue;
+					}
+					if( !utils::interpretMask< descr >( true, internal::getRaw( mask ), i ) ) {
+						continue;
+					}
+					RC local_rc;
+					if( left ) {
+						local_rc = foldl< descr >(
+								local, internal::getRaw( to_fold )[ i ],
+								monoid.getOperator()
+							);
+					} else {
+						local_rc = foldr< descr >(
+								internal::getRaw( to_fold )[ i ], local,
+								monoid.getOperator()
+							);
+					}
+					assert( local_rc == SUCCESS );
+					if( local_rc != SUCCESS ) {
+						ret = local_rc;
+					}
+				}
+
+				// fold into global
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp critical
+				{
+#endif
+					if( ret == SUCCESS && start < end ) {
+						if( left ) {
+							ret = foldl< descr >( global, local, monoid.getOperator() );
+						} else {
+							ret = foldr< descr >( local, global, monoid.getOperator() );
+						}
+						assert( ret == SUCCESS );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				}
+
+			} // end pragma omp parallel
+#endif
+
+			// done
+			return ret;
+		}
+
+		/**
+		 * Folds a vector into a scalar.
+		 *
+		 * May be masked, and the vector may be sparse.
+		 *
+		 * This variant uses an O(n) loop, where n is the size of the vector.
+		 */
 		template<
 			Descriptor descr,
 			bool masked, bool left, class Monoid,
@@ -342,6 +540,36 @@ namespace grb {
 			return ret;
 		}
 
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1
+		/**
+		 * A helper template class for selecting the right variant for
+		 * fold-from-vector-to-scalar.
+		 *
+		 * When the mask is structural, the returned value shall be zero, otherwise
+		 * it will be the byte size of \a MaskType.
+		 */
+		template< Descriptor descr, typename MaskType >
+		struct MaskWordSize {
+			static constexpr const size_t value = (descr & descriptors::structural)
+				? 0
+				: sizeof( MaskType );
+		};
+
+		/**
+		 * Specialisation for <tt>void</tt> mask types.
+		 *
+		 * Always returns zero.
+		 */
+		template< Descriptor descr >
+		struct MaskWordSize< descr, void > {
+			static constexpr const size_t value = 0;
+		};
+#endif
+
+		/**
+		 * Dispatches to any of the four above variants depending on asymptotic cost
+		 * analysis.
+		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
@@ -413,20 +641,55 @@ namespace grb {
 				std::cout << "\t dispatching to dense variant\n";
 #endif
 				ret = fold_from_vector_to_scalar_dense< left >(
-					global, to_fold,
-					monoid
-				);
-			} else { 
+					global, to_fold, monoid );
+			} else if( masked && (descr & descriptors::invert_mask ) ) {
+				// in this case we are forced to dispatch to O(n)
 #ifdef _DEBUG
-				std::cout << "\t dispatching to O(n) sparse variant\n";
+				std::cout << "\t forced dispatch to O(n) sparse variant\n";
 #endif
-				ret = fold_from_vector_to_scalar_fullLoopSparse< descr, masked, left >(
+				ret = fold_from_vector_to_scalar_fullLoopSparse< descr, true, left >(
 					global, to_fold, mask, monoid );
+			} else {
+				constexpr const size_t threeWs =
+					sizeof( typename Coords::StackType ) +
+					sizeof( typename Coords::ArrayType ) +
+					MaskWordSize< descr, MaskType >::value;
+				const size_t fullLoop = masked
+					? 2 * sizeof( typename Coords::ArrayType ) * n +
+						sizeof( MaskType ) * nnz( mask )
+					: sizeof( typename Coords::ArrayType ) * n;
+				const size_t vectorLoop = masked
+					? threeWs * nnz( to_fold )
+					: sizeof( typename Coords::StackType ) * nnz( to_fold );
+				const size_t maskLoop = masked
+					? threeWs * nnz( mask )
+					: std::numeric_limits< size_t >::max();
+				if( fullLoop >= vectorLoop && maskLoop >= vectorLoop ) {
+#ifdef _DEBUG
+					std::cout << "\t dispatching to vector-driven sparse variant\n";
+#endif
+					ret = fold_from_vector_to_scalar_vectorDriven< descr, masked, left >(
+						global, to_fold, mask, monoid );
+				} else if( fullLoop >= maskLoop && maskLoop >= vectorLoop ) {
+#ifdef _DEBUG
+					std::cout << "\t dispatching to O(n) sparse variant\n";
+#endif
+					ret = fold_from_vector_to_scalar_fullLoopSparse< descr, masked, left >(
+						global, to_fold, mask, monoid );
+				} else {
+					assert( maskLoop > fullLoop && vectorLoop > fullLoop );
+					assert( masked );
+#ifdef _DEBUG
+					std::cout << "\t dispatching to mask-driven sparse variant\n";
+#endif
+					ret = fold_from_vector_to_scalar_maskDriven< descr, left >(
+						global, to_fold, mask, monoid );
+				}
 			}
 
 			// accumulate
 #ifdef _DEBUG
-			std::cout << "Accumulating " << global << " into " << fold_into << "\n";
+			std::cout << "\t accumulating " << global << " into " << fold_into << "\n";
 #endif
 			if( ret == SUCCESS ) {
 				if( left ) {
