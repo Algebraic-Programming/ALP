@@ -133,6 +133,9 @@ endif()
 
 ### CHECK DEPENDENCIES
 
+# find amgcl
+find_package( AMGCL )
+
 # always look for math and rt libraries
 find_package( LibM REQUIRED )
 find_library( LIBRT rt REQUIRED )
