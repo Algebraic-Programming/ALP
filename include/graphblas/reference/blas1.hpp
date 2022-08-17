@@ -94,6 +94,76 @@ namespace grb {
 
 	namespace internal {
 
+		template< bool left, class Monoid, typename InputType, class Coords >
+		RC fold_from_vector_to_scalar_dense(
+			typename Monoid::D3 &global,
+			const Vector< InputType, reference, Coords > &to_fold,
+			const Monoid &monoid
+		) {
+			const InputType *__restrict__ const raw = internal::getRaw( to_fold );
+			const size_t n = internal::getCoordinates( to_fold ).nonzeroes();
+			assert( n == internal::getCoordinates( to_fold ).size() );
+			assert( n > 0 );
+			RC ret = SUCCESS;
+			size_t global_start, global_end;
+			if( left ) {
+				global = raw[ 0 ];
+				global_start = 1;
+				global_end = n;
+			} else {
+				global = raw[ n - 1 ];
+				global_start = 0;
+				global_end = n - 1;
+			}
+
+			// catch trivial case
+			if( global_start >= global_end ) {
+				return SUCCESS;
+			}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, global_start, global_end );
+#else
+				const size_t start = global_start;
+				const size_t end = global_end;
+#endif
+				if( start < end ) {
+					typename Monoid::D3 local =
+						monoid.template getIdentity< typename Monoid::D3 >();
+					if( left ) {
+						monoid.getOperator().foldlArray( local, raw + start, end - start );
+					} else {
+						monoid.getOperator().foldrArray( raw + start, local, end - start );
+					}
+					RC local_rc = SUCCESS;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+					#pragma omp critical
+					{
+#endif
+#ifdef _DEBUG
+						std::cout << "\t\t folding " << local << " into " << global << "\n";
+#endif
+						if( left ) {
+							local_rc = foldl( global, local, monoid.getOperator() );
+						} else {
+							local_rc = foldr( local, global, monoid.getOperator() );
+						}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+					}
+#endif
+					if( local_rc != SUCCESS ) {
+						ret = local_rc;
+					}
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			}
+#endif
+			return ret;
+		}
+
 		template<
 			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
@@ -113,15 +183,16 @@ namespace grb {
 				"function should not have been called-- please submit a "
 				"bugreport." );
 
+			const size_t n = internal::getCoordinates( to_fold ).size();
 
 			// mask must be of equal size as input vector
-			if( masked && size( to_fold ) != size( mask ) ) {
+			if( masked && n != size( mask ) ) {
 				return MISMATCH;
 			}
 
 			// density checks, if needed
 			if( (descr & descriptors::dense) ) {
-				if( nnz( to_fold ) < size( to_fold ) ) {
+				if( nnz( to_fold ) < n ) {
 					return ILLEGAL;
 				}
 				if( masked && nnz( mask ) < size( mask ) ) {
@@ -130,10 +201,19 @@ namespace grb {
 			}
 
 			// handle trivial cases
-			if( size( to_fold ) == 0 ) {
+			if( n == 0 ) {
 				return SUCCESS;
 			}
-			if( masked && nnz( mask ) == 0 && !(descr & descriptors::invert_mask) ) {
+			if( masked && !(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural) &&
+				nnz( mask ) == 0
+			) {
+				return SUCCESS;
+			}
+			if( masked && (descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural) &&
+				nnz( mask ) == n
+			) {
 				return SUCCESS;
 			}
 
@@ -142,32 +222,32 @@ namespace grb {
 			typename Monoid::D3 global =
 				monoid.template getIdentity< typename Monoid::D3 >();
 
+			// dispatch, dense variant
+			if( ((descr & descriptors::dense) || nnz( to_fold ) == n) && (
+					!masked || (
+						(descr & descriptors::structural) &&
+						!(descr & descriptors::invert_mask) &&
+						nnz( mask ) == n
+					)
+				)
+			) {
+#ifdef _DEBUG
+				std::cout << "\t dispatching to dense variant\n";
+#endif
+				ret = fold_from_vector_to_scalar_dense< left >(
+					global, to_fold,
+					monoid
+				);
+			} else { 
+#ifdef _DEBUG
+				std::cout << "\t dispatching to O(n) sparse variant\n";
+#endif
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-			// handle trivial sequential cases
-			if( !masked ) {
-				// this op is only defined on dense vectors, check this is the case
-				assert( internal::getCoordinates( to_fold ).nonzeroes() ==
-					internal::getCoordinates( to_fold ).size() );
-				// no mask, vectors are dense, sequential execution-- so rely on underlying
-				// operator
-				if( left ) {
-					global = internal::getRaw( to_fold )[ 0 ];
-					monoid.getOperator().foldlArray( global, internal::getRaw( to_fold ) + 1,
-						internal::getCoordinates( to_fold ).size() - 1 );
-				} else {
-					global = internal::getRaw( to_fold )[
-						internal::getCoordinates( to_fold ).size() - 1
-					];
-					monoid.getOperator().foldrArray( internal::getRaw( to_fold ), global,
-						internal::getCoordinates( to_fold ).size() - 1 );
-				}
-			} else {
 				// masked sequential case
 				const size_t n = internal::getCoordinates( to_fold ).size();
 				size_t i = 0;
 				const size_t end = n;
 #else
-			{
 				#pragma omp parallel
 				{
 					// parallel case (masked & unmasked)
@@ -319,11 +399,15 @@ namespace grb {
 #endif
 			}
 #ifdef _DEBUG
-			std::cout << "Accumulating " << global << " into " << fold_into << " using foldl\n";
+			std::cout << "Accumulating " << global << " into " << fold_into << "\n";
 #endif
 			// accumulate
 			if( ret == SUCCESS ) {
-				ret = foldl< descr >( fold_into, global, monoid.getOperator() );
+				if( left ) {
+					ret = foldl< descr >( fold_into, global, monoid.getOperator() );
+				} else {
+					ret = foldr< descr >( global, fold_into, monoid.getOperator() );
+				}
 			}
 
 			// done
