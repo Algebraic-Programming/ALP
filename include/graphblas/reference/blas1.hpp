@@ -589,7 +589,8 @@ namespace grb {
 				"function should not have been called-- please submit a "
 				"bugreport." );
 
-			const size_t n = internal::getCoordinates( to_fold ).size();
+			const size_t n  = internal::getCoordinates( to_fold ).size();
+			const size_t nz = internal::getCoordinates( to_fold ).nonzeroes();
 
 			// mask must be of equal size as input vector
 			if( masked && n != size( mask ) ) {
@@ -608,6 +609,9 @@ namespace grb {
 
 			// handle trivial cases
 			if( n == 0 ) {
+				return SUCCESS;
+			}
+			if( nz == 0 ) {
 				return SUCCESS;
 			}
 			if( masked && !(descr & descriptors::invert_mask) &&
@@ -670,14 +674,14 @@ namespace grb {
 #endif
 					ret = fold_from_vector_to_scalar_vectorDriven< descr, masked, left >(
 						global, to_fold, mask, monoid );
-				} else if( fullLoop >= maskLoop && maskLoop >= vectorLoop ) {
+				} else if( vectorLoop >= fullLoop && maskLoop >= fullLoop ) {
 #ifdef _DEBUG
 					std::cout << "\t dispatching to O(n) sparse variant\n";
 #endif
 					ret = fold_from_vector_to_scalar_fullLoopSparse< descr, masked, left >(
 						global, to_fold, mask, monoid );
 				} else {
-					assert( maskLoop > fullLoop && vectorLoop > fullLoop );
+					assert( maskLoop < fullLoop && maskLoop < vectorLoop );
 					assert( masked );
 #ifdef _DEBUG
 					std::cout << "\t dispatching to mask-driven sparse variant\n";
