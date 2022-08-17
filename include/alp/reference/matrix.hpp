@@ -431,6 +431,12 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
+		template<
+			typename MatrixType,
+			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		size_t getStorageDimensions( const MatrixType &A ) noexcept;
+
 		template< typename MatrixType,
 			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
@@ -539,6 +545,12 @@ namespace alp {
 		template< typename T, typename AmfType, bool requires_allocation >
 		class StorageBasedMatrix : public MatrixBase< StorageBasedMatrix< T, AmfType, requires_allocation > > {
 
+			template<
+				typename MatrixType,
+				std::enable_if< internal::is_storage_based< MatrixType >::value > *
+			>
+			friend size_t getStorageDimensions( const MatrixType &A ) noexcept;
+
 			/** Get the reference to the AMF of a storage-based matrix */
 			template<
 				typename MatrixType,
@@ -609,6 +621,10 @@ namespace alp {
 				 */
 				std::pair< size_t, size_t > dims() const noexcept {
 					return amf.getLogicalDimensions();
+				}
+
+				size_t getStorageDimensions() const noexcept {
+					return amf.getStorageDimensions();
 				}
 
 				friend const Vector< T, reference > & getContainer( const self_type &A ) {
@@ -2735,6 +2751,15 @@ namespace alp {
 	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference > & A ) noexcept {
 		return internal::dims( static_cast< const internal::MatrixBase<
 			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, reference >::base_type > & > ( A ) );
+	}
+
+	template<
+		typename MatrixType,
+		std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+	>
+	size_t internal::getStorageDimensions( const MatrixType &A ) noexcept {
+		static_assert( is_storage_based< MatrixType >::value, "getStorageDimensions supported only for storage-based containers.");
+		return static_cast< const typename MatrixType::base_type& >( A ).getStorageDimensions();
 	}
 
 } // namespace alp
