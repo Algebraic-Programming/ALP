@@ -90,10 +90,11 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
 
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference AMG
-constexpr size_t DEF_COARSENING_LEVELS{ 1U };
-constexpr size_t MAX_COARSENING_LEVELS{ 4U };
-constexpr size_t MAX_ITERATIONS_DEF{ 56UL };
-constexpr size_t SMOOTHER_STEPS_DEF{ 1 };
+constexpr size_t DEF_COARSENING_LEVELS = 1U;
+constexpr size_t MAX_COARSENING_LEVELS = 10U;
+constexpr size_t DEF_COARSE_ENOUGH = 100;
+constexpr size_t MAX_ITERATIONS_DEF = 56UL;
+constexpr size_t SMOOTHER_STEPS_DEF = 1;
 //============================================
 
 constexpr double MAX_NORM { 4.0e-14 };
@@ -105,7 +106,7 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
 
-#define DEBUG
+//#define DEBUG
 
 /**
  * Container to store matrices loaded from a AMGCL.
@@ -131,6 +132,7 @@ static bool matloaded = false;
  */
 struct simulation_input {
 	size_t max_coarsening_levels;
+	size_t coarse_enough;
 	size_t test_repetitions;
 	size_t max_iterations;
 	size_t smoother_steps;
@@ -142,13 +144,16 @@ struct simulation_input {
 /**
  * @brief Container to store all data for AMG hierarchy.
  */
-class preloaded_matrices : public simulation_input {
+class preloaded_matrices {
 
 public :
 
-	amgclHandle solver;
+	std::vector<mat_data<>>  Amat_data;
+	std::vector<mat_data<>>  Pmat_data;
+	std::vector<mat_data<>>  Rmat_data;
+	std::vector<std::vector<double>>  Dvec_data;
 
-	grb::RC read_vec_matrics(){
+	grb::RC get_vcyclehierarchy_AGMCL( const simulation_input &in ){
 		grb::RC rc = SUCCESS;
 
 		std::vector<int>    ptr;
@@ -158,37 +163,37 @@ public :
 
 		amgclHandle prm = amgcl_params_create();
 		size_t rows, cols;
-		std::tie(rows, cols) = amgcl::io::mm_reader("/home/d/Repos/edapp2/EDApp2/saved_amg_levels/level_0_A.mtx")(ptr, col, val);
+		std::tie(rows, cols) = amgcl::io::mm_reader( in.matAfile_c_str )( ptr, col, val );
 #ifdef DEBUG
 		std::cout << " ptr.size() = " << ptr.size() << "\n";
 		std::cout << " col.size() = " << col.size() << "\n";
 		std::cout << " val.size() = " << val.size() << "\n";
 		std::cout << " rows, cols =  " << rows << ", " << cols << "\n";
 #endif
+		std::cout << " in.max_coarsening_levels = " << in.max_coarsening_levels << "\n";
+		std::cout << " in.coarse_enough = " << in.coarse_enough << "\n";
 
 		amgcl_params_sets(prm, "precond.relax.type", "spai0");
 		amgcl_params_sets(prm, "precond.coarsening.type","ruge_stuben");
-		amgcl_params_seti(prm, "precond.max_levels",5);
-		amgcl_params_seti(prm, "precond.coarse_enough",100);
+		amgcl_params_seti(prm, "precond.max_levels",in.max_coarsening_levels);
+		amgcl_params_seti(prm, "precond.coarse_enough",in.coarse_enough);
 
+		amgclHandle solver;
 		solver = amgcl_solver_create(
 			rows, ptr.data(), col.data(), val.data(), prm
 		);
-		//TODO: extract amgcl data
-		std::vector<mat_data<>>  Amat_data;
-		std::vector<mat_data<>>  Pmat_data;
-		std::vector<mat_data<>>  Rmat_data;
-		std::vector<std::vector<double>>  Dvec_data;
 
+		save_levels( static_cast< Solver* > ( solver )->precond(),
+			Amat_data, Pmat_data, Rmat_data, Dvec_data
+		);
+
+		if ( Amat_data.size() != in.max_coarsening_levels ) {
+			std::cout << " max_coarsening_levels readjusted to : " << Amat_data.size() << "\n";
+		}
+
+
+		//#ifdef DEBUG
 		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
-
-
-		save_levels(static_cast<Solver*>(solver)->precond(),
-					Amat_data, Pmat_data, Rmat_data, Dvec_data
-					);
-
-		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
-#ifdef DEBUG
 		for( size_t i = 0; i < Amat_data.size(); i++ ) {
 			std::cout << " amgcl check data: level =" << i << "\n";
 			std::cout << "    **Amat_data ** \n";
@@ -248,14 +253,13 @@ public :
 			}
 			std::cout << "\n\n";
 		}
-#endif
+		//#endif
+
+		amgcl_solver_destroy( solver );
 
 		return rc;
 	}
 
-	// ~preloaded_matrices(){
-	// 	amgcl_solver_destroy(solver);
-	// }
 };
 
 
@@ -332,28 +336,28 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	RC rc { SUCCESS };
 
 	if( ! matloaded ) {
-		rc = inputData.read_vec_matrics();
+		rc = inputData.get_vcyclehierarchy_AGMCL( in );
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure to read data" << std::endl;
 		}
 		matloaded = true ;
 	}
 
-	std::cout << " ----> testing: return !\n";
-	return ;
-
 	out.times.io = timer.time();
 	timer.reset();
 
 	// wrap amg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< amg_data< double, double, double > > amg_state;
-	rc = build_amg_system< double >( amg_state, in.max_coarsening_levels, inputData );
+	rc = build_amg_system< double >( amg_state, inputData );
+
+	std::cout << " ----> build_amg_system end\n";
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
 		out.error_code = rc;
 		return;
 	}
+
 #ifdef AMG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
 		print_system( *amg_state );
@@ -555,6 +559,8 @@ static void parse_arguments( simulation_input &sim_in, size_t &outer_iterations,
 	parser.add_optional_argument( "--max_coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
 			"maximum level for coarsening; 0 means no coarsening; note: actual "
 			"level may be limited by the minimum system dimension" )
+		.add_optional_argument( "--coarse_enough", sim_in.coarse_enough, DEF_COARSE_ENOUGH,
+			"max size of the coarsest levels: stop coarsening after this matrix size" )
 		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str,
 			"file pattern for files contining matrices A, M_diag, P, R "
 			"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read "

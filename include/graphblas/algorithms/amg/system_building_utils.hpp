@@ -51,23 +51,26 @@ namespace grb {
 		template< typename T = double, typename SYSINP >
 		grb::RC build_amg_system(
 				std::unique_ptr< grb::algorithms::amg_data< T, T, T > > &holder,
-				const std::size_t max_levels,
 				SYSINP &in
 			) {
+			const size_t max_levels = in.Amat_data.size() - 1;
+#ifdef AMG_PRINT_STEPS
+			std::cout << " in.Amat_data.size() = " << in.Amat_data.size() << "\n";
+			std::cout << " in.Rmat_data.size() = " << in.Rmat_data.size() << "\n";
+			std::cout << " in.Dvec_data.size() = " << in.Dvec_data.size() << "\n";
+#endif
 			grb::RC rc = grb::SUCCESS;
 			std::size_t coarsening_level = 0UL;
-			size_t n_A;
-			// ** TODO:  build matrix from AMGCL data **
-			// n_A = in.matAbuffer[ coarsening_level ].get_n();
+			const size_t n_A = in.Amat_data[ coarsening_level ].n;
 			grb::algorithms::amg_data< T, T, T > *data = new grb::algorithms::amg_data< T, T, T >( n_A );
-			// rc = buildMatrixUnique(
-			// 	data->A,
-			// 	in.matAbuffer[ coarsening_level ].i_data,
-			// 	in.matAbuffer[ coarsening_level ].j_data,
-			// 	in.matAbuffer[ coarsening_level ].v_data,
-			// 	in.matAbuffer[ coarsening_level ].size(),
-			// 	SEQUENTIAL
-			// );
+			rc = buildMatrixUnique(
+				data->A,
+				in.Amat_data[ coarsening_level ].i_data.begin(),
+				in.Amat_data[ coarsening_level ].j_data.begin(),
+				in.Amat_data[ coarsening_level ].v_data.begin(),
+				in.Amat_data[ coarsening_level ].nz,
+				PARALLEL
+			);
 
 			if( rc != SUCCESS ) {
 				std::cerr << "Failure: call to buildMatrixUnique did not succeed "
@@ -83,20 +86,20 @@ namespace grb {
 
 			{
 				// ** TODO:  build vector from AMGCL data **
-// 				RC rc = grb::buildVector(
-// 					data->A_diagonal,
-// 					in.matMbuffer[ coarsening_level ].v_data,
-// 					in.matMbuffer[ coarsening_level ].v_data + in.matMbuffer[ coarsening_level ].size(),
-// 					SEQUENTIAL
-// 				);
-// 				if ( rc != SUCCESS ) {
-// 					std::cerr << " buildVector failed!\n ";
-// 					return rc;
-// 				}
-// #ifdef AMG_PRINT_STEPS
-// 				std::cout << " buildVector: data->A_diagonal "
-// 				          << size( data->A_diagonal ) << " vector \n";
-// #endif
+				RC rc = grb::buildVector(
+					data->A_diagonal,
+					in.Dvec_data[ coarsening_level ].begin(),
+					in.Dvec_data[ coarsening_level ].end(),
+					PARALLEL
+				);
+				if ( rc != SUCCESS ) {
+					std::cerr << " buildVector failed!\n ";
+					return rc;
+				}
+#ifdef AMG_PRINT_STEPS
+				std::cout << " buildVector: data->A_diagonal "
+				          << size( data->A_diagonal ) << " vector \n";
+#endif
 			}
 
 			std::size_t coarser_size;
@@ -111,8 +114,7 @@ namespace grb {
 			while( coarsening_level  < max_levels ) {
 				assert( *coarser == nullptr );
 
-				// ** TODO:  get size from  AMGCL data **
-				//coarser_size = in.matAbuffer[ coarsening_level + 1 ].get_n();
+				coarser_size = in.Amat_data[ coarsening_level + 1 ].n;
 
 				// build data structures for new level
 				grb::algorithms::multi_grid_data< double, double > *new_coarser =
@@ -124,65 +126,63 @@ namespace grb {
 				// initialize coarsener matrix, system matrix and
 				// diagonal vector for the coarser level
 				{
-					// ** TODO:  get size from  AMGCL data **
-// 					rc = buildMatrixUnique(
-// 						new_coarser->coarsening_matrix,
-// 						in.matRbuffer[ coarsening_level ].i_data,
-// 						in.matRbuffer[ coarsening_level ].j_data,
-// 						in.matRbuffer[ coarsening_level ].v_data,
-// 						in.matRbuffer[ coarsening_level ].size(),
-// 						SEQUENTIAL
-// 					);
+					rc = buildMatrixUnique(
+						new_coarser->coarsening_matrix,
+						in.Rmat_data[ coarsening_level ].i_data.begin(),
+						in.Rmat_data[ coarsening_level ].j_data.begin(),
+						in.Rmat_data[ coarsening_level ].v_data.begin(),
+						in.Rmat_data[ coarsening_level ].nz,
+						PARALLEL
+					);
 
-// 					if( rc != SUCCESS ) {
-// 						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
-// 								  << "(" << toString( rc ) << ")." << std::endl;
-// 						return rc;
-// 					}
-// #ifdef AMG_PRINT_STEPS
-// 					std::cout << " buildMatrixUnique: constructed new_coarser->coarsening_matrix "
-// 					          << nrows(new_coarser->coarsening_matrix) << " x "
-// 					          << ncols(new_coarser->coarsening_matrix) << " matrix \n";
-// #endif
+					if( rc != SUCCESS ) {
+						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+								  << "(" << toString( rc ) << ")." << std::endl;
+						return rc;
+					}
+#ifdef AMG_PRINT_STEPS
+					std::cout << " buildMatrixUnique: constructed new_coarser->coarsening_matrix "
+					          << nrows( new_coarser->coarsening_matrix ) << " x "
+					          << ncols( new_coarser->coarsening_matrix ) << " matrix \n";
+#endif
 				}
 				{
-					// ** TODO:  get size from  AMGCL data **					
-// 					rc = buildMatrixUnique(
-// 						new_coarser->A,
-// 						in.matAbuffer[ coarsening_level + 1 ].i_data,
-// 						in.matAbuffer[ coarsening_level + 1 ].j_data,
-// 						in.matAbuffer[ coarsening_level + 1 ].v_data,
-// 						in.matAbuffer[ coarsening_level + 1 ].size(),
-// 						SEQUENTIAL
-// 					);
+					rc = buildMatrixUnique(
+						new_coarser->A,
+						in.Amat_data[ coarsening_level + 1 ].i_data.begin(),
+						in.Amat_data[ coarsening_level + 1 ].j_data.begin(),
+						in.Amat_data[ coarsening_level + 1 ].v_data.begin(),
+						in.Amat_data[ coarsening_level + 1 ].nz,
+						PARALLEL
+					);
 
-// 					if( rc != SUCCESS ) {
-// 						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
-// 						          << "(" << toString( rc ) << ")." << std::endl;
-// 						return rc;
-// 					}
-// #ifdef AMG_PRINT_STEPS
-// 					std::cout << " buildMatrixUnique: constructed new_coarser->A "
-// 					          << nrows(new_coarser->A) << " x " << ncols(new_coarser->A) << " matrix \n";
-// #endif
+					if( rc != SUCCESS ) {
+						std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+						          << "(" << toString( rc ) << ")." << std::endl;
+						return rc;
+					}
+#ifdef AMG_PRINT_STEPS
+					std::cout << " buildMatrixUnique: constructed new_coarser->A "
+							  << nrows( new_coarser->A ) << " x "
+							  << ncols( new_coarser->A ) << " matrix \n";
+#endif
 				}
 
-				// ** TODO:  get size from  AMGCL data **
-// 				RC rc = grb::buildVector(
-// 					new_coarser->A_diagonal,
-// 					in.matMbuffer[ coarsening_level + 1 ].v_data,
-// 					in.matMbuffer[ coarsening_level + 1 ].v_data + in.matMbuffer[ coarsening_level + 1 ].size(),
-// 					SEQUENTIAL
-// 				);
+				RC rc = grb::buildVector(
+					new_coarser->A_diagonal,
+					in.Dvec_data[ coarsening_level + 1 ].begin(),
+					in.Dvec_data[ coarsening_level + 1 ].end(),
+					PARALLEL
+				);
 
-// 				if ( rc != SUCCESS ) {
-// 					std::cerr << " buildVector failed!\n ";
-// 					return rc;
-// 				}
-// #ifdef AMG_PRINT_STEPS
-// 				std::cout << " buildVector: new_coarser->A_diagonal "
-// 				          << size(new_coarser->A_diagonal) << " vector \n";
-// #endif
+				if ( rc != SUCCESS ) {
+					std::cerr << " buildVector failed!\n ";
+					return rc;
+				}
+#ifdef AMG_PRINT_STEPS
+				std::cout << " buildVector: new_coarser->A_diagonal "
+				          << size(new_coarser->A_diagonal) << " vector \n";
+#endif
 
 				// prepare for new iteration
 				coarser = &new_coarser->coarser_level;

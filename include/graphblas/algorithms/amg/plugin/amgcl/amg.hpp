@@ -582,8 +582,6 @@ class amg {
 					  )
 	{
 		size_t n_levels = a.levels.size();
-		std::cout << " =======> n_levels = "<< n_levels << "\n";
-
 		size_t depth = 0;
 		typedef typename amg<B, C, R>::level level;
 		for(const level &lvl : a.levels) {
@@ -597,8 +595,8 @@ class amg {
 				size_t irow = 0;
 				for(size_t i = 0;  i < backend::nonzeros(*lvl.A)  ; ++i ) {
 					if( i >= static_cast< size_t > ((*lvl.A).ptr[ irow ]) ) irow++;
-					i_data[ i ] = irow;
-					j_data[ i ] = (*lvl.A).col[i] + 1;
+					i_data[ i ] = irow - 1;
+					j_data[ i ] = (*lvl.A).col[i];
 					v_data[ i ] = (*lvl.A).val[i];
 				}
 				MD Amat_level_data(nz,n,m,i_data,j_data,v_data);
@@ -617,30 +615,13 @@ class amg {
 					size_t irow = 0;
 					for(size_t i = 0;  i < backend::nonzeros(*lvl.P)  ; ++i ) {
 						if( i >= static_cast< size_t > ((*lvl.P).ptr[ irow ]) ) irow++;
-						i_data[ i ] = irow;
-						j_data[ i ] = (*lvl.P).col[i] + 1;
+						i_data[ i ] = irow - 1;
+						j_data[ i ] = (*lvl.P).col[i];
 						v_data[ i ] = (*lvl.P).val[i];
 					}
 					MD Pmat_level_data(nz,n,m,i_data,j_data,v_data);
 					Pmat_data.push_back(Pmat_level_data);
 				}
-				// std::cout << "\n";
-				// std::cout << "saving P: \n";
-				// std::cout << "save P: " << backend::rows(*lvl.P)
-				// 		  << " x " << backend::cols(*lvl.P)
-				// 		  << " : " << backend::nonzeros(*lvl.P) << "\n";
-				// for(size_t i = 0;  i < backend::rows( *lvl.P ) ; ++i ) {
-				// 	if ( ( i < 3 ) ||  ( i + 3 >= backend::rows( *lvl.P ) ) ) {
-				// 		size_t k = 0;
-				// 		for(auto a = backend::row_begin(*lvl.P, i); a; ++a) {
-				// 			std::cout << "     " << std::fixed  << "[" << std::setw(5) << i + 1 << " "
-				// 					  << std::setw(5) << a.col() + 1 << "] "
-				// 					  << std::setw(5) << std::scientific << a.value() << "    ";
-				// 			if( ++k > 3 ) break;
-				// 		}
-				// 		std::cout << "\n";
-				// 	}
-				// }
 
 				{
 					size_t nz = backend::nonzeros(*lvl.R);
@@ -652,48 +633,23 @@ class amg {
 					size_t irow = 0;
 					for(size_t i = 0;  i < backend::nonzeros(*lvl.R)  ; ++i ) {
 						if( i >= static_cast< size_t > ((*lvl.R).ptr[ irow ]) ) irow++;
-						i_data[ i ] = irow;
-						j_data[ i ] = (*lvl.R).col[i] + 1;
+						i_data[ i ] = irow - 1;
+						j_data[ i ] = (*lvl.R).col[i];
 						v_data[ i ] = (*lvl.R).val[i];
 					}
 					MD Rmat_level_data(nz,n,m,i_data,j_data,v_data);
 					Rmat_data.push_back(Rmat_level_data);
 				}
-				// std::cout << "\n";
-				// std::cout << "saving R: \n";
-				// std::cout << "save R: " << backend::rows(*lvl.R)
-				// 		  << " x " << backend::cols(*lvl.R)
-				// 		  << " : " << backend::nonzeros(*lvl.R) << "\n";
-				// for(size_t i = 0;  i < backend::rows( *lvl.R ) ; ++i ) {
-				// 	if ( ( i < 3 ) ||  ( i + 3 >= backend::rows( *lvl.R ) ) ) {
-				// 		size_t k = 0;
-				// 		for(auto a = backend::row_begin(*lvl.R, i); a; ++a) {
-				// 			std::cout << "     " << std::fixed  << "[" << std::setw(5) << i + 1 << " "
-				// 					  << std::setw(5) << a.col() + 1 << "] "
-				// 					  << std::scientific << std::setw(5) << a.value() << "    ";
-				// 			if( ++k > 3 ) break;
-				// 		}
-				// 		std::cout << "\n";
-				// 	}
-				// }
-
 			}
 
 			// std::cout << "\n";
 			// // WARNING: Only works for SPAI0 that uses diagonal matrix as explicit smoother
 			// std::cout << "smoother type: " << lvl.relax->r << " \n";
-			// std::cout << "save M (diag): \n";
 			auto Mhandle = static_cast<amgcl::relaxation::spai0<B>*>(lvl.relax->handle);
 			auto data =  Mhandle->M->data();
 			size_t  mdim = Mhandle->M->size();
 			std::vector< double > Dvec_level_data( data, data + mdim );
 			Dvec_data.push_back( Dvec_level_data );
-			// std::cout << " size(M) =" << mdim << "\n";
-			// for(size_t i = 0;  i < mdim ; ++i ) {
-			// 	if ( i < 3 || i + 3 >= mdim ) {
-			// 		std:: cout << "  " << data[ i ] << "\n" ;
-			// 	}
-			// }
 
 			depth++;
 			if( depth >= n_levels ) {
