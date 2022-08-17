@@ -49,6 +49,7 @@
 #include <graphblas/algorithms/amg/plugin/amgcl/amg.hpp>
 #include <amgcl/backend/builtin.hpp>
 #include <amgcl/io/mm.hpp>
+#include <amgcl/io/binary.hpp>
 
 
 #include <lib/amgcl.h>
@@ -162,7 +163,21 @@ public :
 
 		amgclHandle prm = amgcl_params_create();
 		size_t rows, cols;
-		std::tie(rows, cols) = amgcl::io::mm_reader( in.matAfile_c_str )( ptr, col, val );
+
+		std::string fname( in.matAfile_c_str );
+        if ( fname.compare( fname.size() - 4, 4, ".mtx" ) != 0 ) {
+#ifdef DEBUG
+			std::cout << "reading non .mtx file\n";
+#endif
+            amgcl::io::read_crs( in.matAfile_c_str, rows, ptr, col, val );
+        } else {
+#ifdef DEBUG
+			std::cout << "reading .mtx file\n";
+#endif
+			std::tie(rows, cols) = amgcl::io::mm_reader( in.matAfile_c_str )( ptr, col, val );
+            assert( rows == cols );
+        }
+
 #ifdef DEBUG
 		std::cout << " ptr.size() = " << ptr.size() << "\n";
 		std::cout << " col.size() = " << col.size() << "\n";
