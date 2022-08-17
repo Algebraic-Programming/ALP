@@ -417,6 +417,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// done
+	std::cout << "\n";
 	assert( exit_status == 0 );
 }
 
