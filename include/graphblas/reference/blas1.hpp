@@ -97,7 +97,7 @@ namespace grb {
 		template<
 			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
-			class OP,
+			class Monoid,
 			typename IOType, typename InputType, typename MaskType,
 			typename Coords
 		>
@@ -105,11 +105,11 @@ namespace grb {
 			IOType &fold_into,
 			const Vector< InputType, reference, Coords > &to_fold,
 			const Vector< MaskType, reference, Coords > &mask,
-			const OP &op
+			const Monoid &monoid
 		) {
 			// static sanity checks
-			static_assert( grb::is_associative< OP >::value,
-				"grb::foldl can only be called on associate operators. This "
+			static_assert( grb::is_monoid< Monoid >::value,
+				"grb::foldl can only be called using monoids. This "
 				"function should not have been called-- please submit a "
 				"bugreport." );
 
@@ -119,14 +119,14 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			// fold is only defined on dense vectors
-			if( nnz( to_fold ) < size( to_fold ) ) {
-				return ILLEGAL;
-			}
-
-			// if dense descriptor is given, then additionally the mask must be dense
-			if( masked && (descr & descriptors::dense) && nnz( mask ) < size( mask ) ) {
-				return ILLEGAL;
+			// density checks, if needed
+			if( (descr & descriptors::dense) ) {
+				if( nnz( to_fold ) < size( to_fold ) ) {
+					return ILLEGAL;
+				}
+				if( masked && nnz( mask ) < size( mask ) ) {
+					return ILLEGAL;
+				}
 			}
 
 			// handle trivial cases
@@ -138,10 +138,16 @@ namespace grb {
 			}
 
 			// some globals used during the folding
-			RC ret = SUCCESS;         // final return code
-			IOType global = IOType(); // global variable in which to fold
-			size_t root = 1;          // which process is the root of the fold (in
-			                          // case we have multiple processes)
+			RC ret = SUCCESS;
+			IOType global = monoid.template getIdentity< IOType >();
+
+			// which thread acts as root
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1
+			size_t root = 1;
+#else
+			size_t root = config::OMP::threads();
+#endif
+
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 			// handle trivial sequential cases
 			if( !masked ) {
@@ -152,13 +158,13 @@ namespace grb {
 				// operator
 				if( left ) {
 					global = internal::getRaw( to_fold )[ 0 ];
-					op.foldlArray( global, internal::getRaw( to_fold ) + 1,
+					monoid.getOperator().foldlArray( global, internal::getRaw( to_fold ) + 1,
 						internal::getCoordinates( to_fold ).size() - 1 );
 				} else {
 					global = internal::getRaw( to_fold )[
 						internal::getCoordinates( to_fold ).size() - 1
 					];
-					op.foldrArray( internal::getRaw( to_fold ), global,
+					monoid.getOperator().foldrArray( internal::getRaw( to_fold ), global,
 						internal::getCoordinates( to_fold ).size() - 1 );
 				}
 			} else {
@@ -294,9 +300,15 @@ namespace grb {
 
 							assert( i < n );
 							if( left ) {
-								rc = foldl< descr >( local, internal::getRaw( to_fold )[ i ], op );
+								rc = foldl< descr >(
+										local, internal::getRaw( to_fold )[ i ],
+										monoid.getOperator()
+									);
 							} else {
-								rc = foldr< descr >( internal::getRaw( to_fold )[ i ], local, op );
+								rc = foldr< descr >(
+										internal::getRaw( to_fold )[ i ], local,
+										monoid.getOperator()
+									);
 							}
 							assert( rc == SUCCESS );
 
@@ -328,9 +340,9 @@ namespace grb {
 						if( !empty && root != s ) {
 							RC rc;
 							if( left ) {
-								rc = foldl< descr >( global, local, op );
+								rc = foldl< descr >( global, local, monoid.getOperator() );
 							} else {
-								rc = foldr< descr >( local, global, op );
+								rc = foldr< descr >( local, global, monoid.getOperator() );
 							}
 							assert( rc == SUCCESS );
 							if( rc != SUCCESS ) {
@@ -348,7 +360,7 @@ namespace grb {
 #endif
 			// accumulate
 			if( ret == SUCCESS ) {
-				ret = foldl< descr >( fold_into, global, op );
+				ret = foldl< descr >( fold_into, global, monoid.getOperator() );
 			}
 
 			// done
@@ -1173,11 +1185,11 @@ namespace grb {
 		if( size( mask ) > 0 ) {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, true, false
-			>( beta, x, mask, monoid.getOperator() );
+			>( beta, x, mask, monoid );
 		} else {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, false, false
-			>( beta, x, mask, monoid.getOperator() );
+			>( beta, x, mask, monoid );
 		}
 	}
 
@@ -1216,7 +1228,7 @@ namespace grb {
 		grb::Vector< bool, reference, Coords > empty_mask( 0 );
 		return internal::template fold_from_vector_to_scalar_generic<
 			descr, false, false
-		>( beta, x, empty_mask, monoid.getOperator() );
+		>( beta, x, empty_mask, monoid );
 	}
 
 	/**
@@ -8689,11 +8701,11 @@ namespace grb {
 		if( size( mask ) > 0 ) {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, true, true
-			>( x, y, mask, monoid.getOperator() );
+			>( x, y, mask, monoid );
 		} else {
 			return internal::template fold_from_vector_to_scalar_generic<
 				descr, false, true
-			>( x, y, mask, monoid.getOperator() );
+			>( x, y, mask, monoid );
 		}
 	}
 
@@ -8749,7 +8761,7 @@ namespace grb {
 		Vector< bool, reference, Coords > empty_mask( 0 );
 		return internal::template fold_from_vector_to_scalar_generic<
 			descr, false, true
-		>( x, y, empty_mask, monoid.getOperator() );
+		>( x, y, empty_mask, monoid );
 	}
 
 	/**
