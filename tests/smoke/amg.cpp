@@ -106,7 +106,6 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
 #define thcerr ( std::cerr << TEXT_HIGHLIGHT )
 
-//#define DEBUG
 
 /**
  * Container to store matrices loaded from a AMGCL.
@@ -169,9 +168,9 @@ public :
 		std::cout << " col.size() = " << col.size() << "\n";
 		std::cout << " val.size() = " << val.size() << "\n";
 		std::cout << " rows, cols =  " << rows << ", " << cols << "\n";
-#endif
 		std::cout << " in.max_coarsening_levels = " << in.max_coarsening_levels << "\n";
 		std::cout << " in.coarse_enough = " << in.coarse_enough << "\n";
+#endif
 
 		amgcl_params_sets(prm, "precond.relax.type", "spai0");
 		amgcl_params_sets(prm, "precond.coarsening.type","ruge_stuben");
@@ -192,7 +191,7 @@ public :
 		}
 
 
-		//#ifdef DEBUG
+#ifdef DEBUG
 		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
 		for( size_t i = 0; i < Amat_data.size(); i++ ) {
 			std::cout << " amgcl check data: level =" << i << "\n";
@@ -253,7 +252,7 @@ public :
 			}
 			std::cout << "\n\n";
 		}
-		//#endif
+#endif
 
 		amgcl_solver_destroy( solver );
 
@@ -350,7 +349,6 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	std::unique_ptr< amg_data< double, double, double > > amg_state;
 	rc = build_amg_system< double >( amg_state, inputData );
 
-	std::cout << " ----> build_amg_system end\n";
 
 	if( rc != SUCCESS ) {
 		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
