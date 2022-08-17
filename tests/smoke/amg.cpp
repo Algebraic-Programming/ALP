@@ -559,10 +559,9 @@ static void parse_arguments( simulation_input &sim_in, size_t &outer_iterations,
 			"level may be limited by the minimum system dimension" )
 		.add_optional_argument( "--coarse_enough", sim_in.coarse_enough, DEF_COARSE_ENOUGH,
 			"max size of the coarsest levels: stop coarsening after this matrix size" )
-		.add_optional_argument( "--mat_files_pattern", sim_in.matAfile_c_str,
-			"file pattern for files contining matrices A, M_diag, P, R "
-			"i.e. '--mat_a_file_names /path/to/dir/level_  --max_coarse-levels 2' will read "
-			"/path/to/dir/level_0_A.mtx,  /path/to/dir/level_1_A.mtx, /path/to/dir/level_2_A.mtx ... " )
+		.add_optional_argument( "--mat_file", sim_in.matAfile_c_str,
+			"file contining matrix in matrix market format "
+			"i.e. '--mat_file A.mtx'  ")
 		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(),
 			"consecutive test repetitions before benchmarking" )
 		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(),
