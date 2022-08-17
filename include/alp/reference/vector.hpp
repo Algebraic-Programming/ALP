@@ -376,7 +376,6 @@ namespace alp {
 
 			typedef Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > self_type;
 			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > base_type;
-			typedef typename base_type::target_type target_type;
 
 		private:
 
@@ -407,7 +406,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::original, d > {
-				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, ImfR, ImfC, reference > type;
+				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference > type;
 			};
 
 			/**
@@ -437,12 +436,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Vector( TargetType &vec_view, ImfR imf_r, ImfC imf_c ) :
-				base_type( vec_view, imf_r, imf_c ) {
-
-				if( getLength( vec_view ) != imf_r.N ) {
-					throw std::length_error( "Vector(vec_view, * imf): IMF range differs from target's vector length." );
-				}
-			}
+				base_type( vec_view, imf_r, imf_c ) { }
 
 			/**
 			 * Constructor for a view over another vector using default IMFs (Identity).
@@ -531,7 +525,15 @@ namespace alp {
 				base_type( getFunctor( target_vector ),
 					imf::Id( nrows ( target_vector ) ),
 					imf::Id( 1 )
-				) {}
+				) {
+
+				static_assert(
+					std::is_same< ImfR, imf::Id >::value &&
+					std::is_same< ImfC, imf::Id >::value,
+					"This constructor can only be used with Id IMFs."
+				);
+
+			}
 
 			/** \internal No implementation notes. */
 			lambda_reference operator[]( const size_t i ) noexcept {

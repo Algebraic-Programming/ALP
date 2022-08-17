@@ -495,7 +495,7 @@ namespace alp {
 		                               alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 		(void)phase;
-		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
+
 		return internal::mxm_generic< false >( C, A, B, mulOp, addM, Monoid() );
 	}
 
