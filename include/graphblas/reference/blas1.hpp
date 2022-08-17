@@ -165,6 +165,184 @@ namespace grb {
 		}
 
 		template<
+			Descriptor descr,
+			bool masked, bool left, class Monoid,
+			typename InputType, typename MaskType,
+			class Coords
+		>
+		RC fold_from_vector_to_scalar_fullLoopSparse(
+			typename Monoid::D3 &global,
+			const Vector< InputType, reference, Coords > &to_fold,
+			const Vector< MaskType, reference, Coords > &mask,
+			const Monoid &monoid
+		) {
+			const size_t n = internal::getCoordinates( to_fold ).size();
+			assert( n > 0 );
+			RC ret = SUCCESS;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+			#pragma omp parallel
+			{
+				// parallel case (masked & unmasked)
+				size_t i, end;
+				config::OMP::localRange( i, end, 0, n );
+#else
+				// masked sequential case
+				size_t i = 0;
+				const size_t end = n;
+#endif
+				// some sanity checks
+				assert( i <= end );
+				assert( end <= n );
+
+				// assume current i needs to be processed, forward until we find an index
+				// for which the mask evaluates true
+				bool process_current_i = true;
+				if( masked && i < end ) {
+					process_current_i = utils::interpretMask< descr >(
+						internal::getCoordinates( mask ).assigned( i ),
+						internal::getRaw( mask ),
+						i
+					);
+					// if not
+					while( !process_current_i ) {
+						// forward to next element
+						(void) ++i;
+						// check that we are within bounds
+						if( i == end ) {
+							break;
+						}
+						// evaluate whether we should process this i-th element
+						process_current_i = utils::interpretMask< descr >(
+							internal::getCoordinates( mask ).assigned( i ),
+							internal::getRaw( mask ),
+							i
+						);
+					}
+				}
+
+				// whether we have any nonzeroes assigned at all
+				const bool empty = i >= end;
+
+#ifndef _H_GRB_REFERENCE_OMP_BLAS1
+				// in the sequential case, the empty case should have been handled earlier
+				assert( !empty );
+ #ifdef NDEBUG
+				(void) empty;
+ #endif
+#endif
+#ifndef NDEBUG
+				if( i < end ) {
+					assert( i < n );
+				}
+#endif
+
+				// declare thread-local variable and set our variable to the first value in our block
+				typename Monoid::D3 local =
+					monoid.template getIdentity< typename Monoid::D3 >();
+				if( end > 0 ) {
+					if( i < end ) {
+						local = static_cast< typename Monoid::D3 >(
+								internal::getRaw( to_fold )[ i ]
+							);
+					} else {
+						local = static_cast< typename Monoid::D3 >(
+								internal::getRaw( to_fold )[ 0 ]
+							);
+					}
+				}
+
+				// if we have more values to fold
+				if( i + 1 < end ) {
+
+					// keep going until we run out of values to fold
+					while( true ) {
+
+						// forward to next variable
+						(void) ++i;
+
+						// forward more (possibly) if in the masked case
+						if( masked && i < end ) {
+							assert( i < n );
+							process_current_i = utils::interpretMask< descr >(
+								internal::getCoordinates( mask ).assigned( i ),
+								internal::getRaw( mask ),
+								i
+							);
+							while( !process_current_i && i + 1 < end ) {
+								(void) ++i;
+								if( i < end ) {
+									assert( i < n );
+									process_current_i = utils::interpretMask< descr >(
+										internal::getCoordinates( mask ).assigned( i ),
+										internal::getRaw( mask ),
+										i
+									);
+								}
+							}
+						}
+
+						// stop if past end
+						if( i >= end || !process_current_i ) {
+							break;
+						}
+
+						// store result of fold in local variable
+						RC local_rc;
+
+						// do fold
+						assert( i < n );
+						if( left ) {
+							local_rc = foldl< descr >(
+									local, internal::getRaw( to_fold )[ i ],
+									monoid.getOperator()
+								);
+						} else {
+							local_rc = foldr< descr >(
+									internal::getRaw( to_fold )[ i ], local,
+									monoid.getOperator()
+								);
+						}
+						assert( local_rc == SUCCESS );
+
+						// error propagation
+						if( local_rc != SUCCESS ) {
+							ret = local_rc;
+							break;
+						}
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				// reduce all local folds into the global one
+				#pragma omp critical
+				{
+					// if non-empty, fold local variable into global one
+					if( !empty ) {
+						// local return type to avoid racing writes
+						RC local_rc;
+						if( left ) {
+							local_rc = foldl< descr >( global, local, monoid.getOperator() );
+						} else {
+							local_rc = foldr< descr >( local, global, monoid.getOperator() );
+						}
+						assert( local_rc == SUCCESS );
+						if( local_rc != SUCCESS ) {
+							ret = local_rc;
+						}
+					}
+				}
+			} // end pragma omp parallel
+#else
+			// in the sequential case, simply copy the locally computed reduced scalar
+			// into the output field
+			global = local;
+#endif
+
+			// done
+			return ret;
+		}
+
+		template<
 			Descriptor descr = descriptors::no_operation,
 			bool masked, bool left, // if this is false, assumes right-looking fold
 			class Monoid,
@@ -242,166 +420,14 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t dispatching to O(n) sparse variant\n";
 #endif
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-				// masked sequential case
-				const size_t n = internal::getCoordinates( to_fold ).size();
-				size_t i = 0;
-				const size_t end = n;
-#else
-				#pragma omp parallel
-				{
-					// parallel case (masked & unmasked)
-					const size_t n = internal::getCoordinates( to_fold ).size();
-					size_t i, end;
-					config::OMP::localRange( i, end, 0, n );
-#endif
-					// some sanity checks
-					assert( i <= end );
-					assert( end <= n );
-#ifdef NDEBUG
-					(void) n;
-#endif
-					// assume current i needs to be processed
-					bool process_current_i = true;
-					// i is at relative position -1. We keep forwarding until we find an index
-					// we should process (or until we hit the end of our block)
-					if( masked && i < end ) {
-
-						// check if we need to process current i
-						process_current_i = utils::interpretMask< descr >(
-							internal::getCoordinates( mask ).assigned( i ),
-							internal::getRaw( mask ),
-							i
-						);
-						// if not
-						while( !process_current_i ) {
-							// forward to next element
-							(void) ++i;
-							// check that we are within bounds
-							if( i == end ) {
-								break;
-							}
-							// evaluate whether we should process this i-th element
-							process_current_i = utils::interpretMask< descr >(
-								internal::getCoordinates( mask ).assigned( i ),
-								internal::getRaw( mask ),
-								i
-							);
-						}
-					}
-
-					// whether we have any nonzeroes assigned at all
-					const bool empty = i >= end;
-
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-					// in the sequential case, the empty case should have been handled earlier
-					assert( !empty );
- #ifdef NDEBUG
-					(void) empty;
- #endif
-#endif
-					// declare thread-local variable and set our variable to the first value in our block
-#ifndef NDEBUG
-					if( i < end ) {
-						assert( i < n );
-					}
-#endif
-
-					typename Monoid::D3 local =
-						monoid.template getIdentity< typename Monoid::D3 >();
-					if( end > 0 ) {
-						if( i < end ) {
-							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
-						} else {
-							local = static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
-						}
-					}
-
-					// if we have a value to fold
-					if( i + 1 < end ) {
-
-						while( true ) {
-
-							// forward to next variable
-							(void) ++i;
-
-							// forward more (possibly) if in the masked case
-							if( masked && i < end ) {
-								assert( i < n );
-								process_current_i = utils::interpretMask< descr >(
-									internal::getCoordinates( mask ).assigned( i ),
-									internal::getRaw( mask ),
-									i
-								);
-
-								while( !process_current_i && i + 1 < end ) {
-									(void) ++i;
-									if( i < end ) {
-										assert( i < n );
-										process_current_i = utils::interpretMask< descr >(
-											internal::getCoordinates( mask ).assigned( i ),
-											internal::getRaw( mask ),
-											i
-										);
-									}
-								}
-							}
-
-							// stop if past end
-							if( i >= end || !process_current_i ) {
-								break;
-							}
-							// store result of fold in local variable
-							RC rc;
-
-							assert( i < n );
-							if( left ) {
-								rc = foldl< descr >(
-										local, internal::getRaw( to_fold )[ i ],
-										monoid.getOperator()
-									);
-							} else {
-								rc = foldr< descr >(
-										internal::getRaw( to_fold )[ i ], local,
-										monoid.getOperator()
-									);
-							}
-							assert( rc == SUCCESS );
-
-							// error propagation
-							if( rc != SUCCESS ) {
-								ret = rc;
-								break;
-							}
-						}
-					}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-					#pragma omp critical
-					{
-						// if non-empty, fold local variable into global one
-						if( !empty ) {
-							RC rc; // local return type to avoid racing writes
-							if( left ) {
-								rc = foldl< descr >( global, local, monoid.getOperator() );
-							} else {
-								rc = foldr< descr >( local, global, monoid.getOperator() );
-							}
-							assert( rc == SUCCESS );
-							if( rc != SUCCESS ) {
-								ret = rc;
-							}
-						}
-					}
-				} // end pragma omp parallel for
-#else
-				global = local;
-#endif
+				ret = fold_from_vector_to_scalar_fullLoopSparse< descr, masked, left >(
+					global, to_fold, mask, monoid );
 			}
+
+			// accumulate
 #ifdef _DEBUG
 			std::cout << "Accumulating " << global << " into " << fold_into << "\n";
 #endif
-			// accumulate
 			if( ret == SUCCESS ) {
 				if( left ) {
 					ret = foldl< descr >( fold_into, global, monoid.getOperator() );
