@@ -139,9 +139,9 @@ namespace alp {
 		template< typename IntervalT, typename... Intervals >
 		struct transpose_interval_tuple< std::tuple< IntervalT, Intervals... > > {
 			typedef tuple_cat< 
-						typename transpose_interval_tuple< std::tuple< Intervals... > >::type, 
-						std::tuple< typename transpose_interval< IntervalT >::type > 
-					> type;
+				typename transpose_interval_tuple< std::tuple< Intervals... > >::type, 
+				std::tuple< typename transpose_interval< IntervalT >::type > 
+			> type;
 		};
 
 		template< typename IntervalT >
