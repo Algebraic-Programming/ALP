@@ -139,7 +139,8 @@ namespace grb {
 
 			// some globals used during the folding
 			RC ret = SUCCESS;
-			IOType global = monoid.template getIdentity< IOType >();
+			typename Monoid::D3 global =
+				monoid.template getIdentity< typename Monoid::D3 >();
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 			// handle trivial sequential cases
@@ -226,7 +227,8 @@ namespace grb {
 					}
 #endif
 
-					IOType local = monoid.template getIdentity< IOType >();
+					typename Monoid::D3 local =
+						monoid.template getIdentity< typename Monoid::D3 >();
 					if( end > 0 ) {
 						if( i < end ) {
 							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
