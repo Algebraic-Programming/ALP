@@ -975,7 +975,7 @@ namespace alp {
 	class Matrix< T, Structure, density, View, ImfR, ImfC, reference > { };
 
 	/**
-	 * @brief General matrix with physical container.
+	 * @brief General matrix.
 	 */
 	template< typename T, typename View, typename ImfR, typename ImfC >
 	class Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, reference > :
@@ -1182,6 +1182,202 @@ namespace alp {
 					imf::Id( ncols ( target_matrix ) )
 				) {}
 	}; // General Matrix
+
+	/**
+	 * @brief Band matrix.
+	 */
+	template< typename T, typename View, typename ImfR, typename ImfC, typename... Intervals >
+	class Matrix< T, structures::Band< Intervals... >, Density::Dense, View, ImfR, ImfC, reference > :
+		public std::conditional<
+			internal::is_view_over_functor< View >::value,
+			internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
+			internal::StorageBasedMatrix< T, ImfR, ImfC, storage::polynomials::Full_type, internal::requires_allocation< View >::value >
+		>::type {
+
+		protected:
+			typedef Matrix< T, structures::Band< Intervals... >, Density::Dense, View, ImfR, ImfC, reference > self_type;
+			typedef typename View::applied_to target_type;
+
+			/*********************
+				Storage info friends
+			******************** */
+
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::Band< Intervals... >, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
+
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
+
+		public:
+			/** Exposes the types and the static properties. */
+			typedef structures::Band< Intervals... > structure;
+			typedef storage::polynomials::Full_type mapping_polynomial_type;
+			/**
+			 * Indicates if a matrix needs to allocate data-related memory
+			 * (for the internal container or functor object).
+			 * False if it is a view over another matrix or a functor.
+			 */
+			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
+
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
+			typedef typename std::conditional<
+				internal::is_view_over_functor< View >::value,
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, target_type >,
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >
+			>::type base_type;
+
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::Band< Intervals... >, Density::Dense, View, ImfR, ImfC, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				typedef structures::tuple_to_band< typename internal::transpose_interval_tuple< std::tuple< Intervals... > >::type > transposed_band;
+				using type = Matrix< T, transposed_band, Density::Dense, view::Transpose< self_type >, ImfR, ImfC, reference >;
+			};
+
+			// TODO: enable if diagonal is in band's intervals
+			// template < bool d >
+			// struct view_type< view::diagonal, d > {
+			// 	using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, reference >;
+			// };
+
+			/**
+			 * Constructor for an original matrix.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a storage-based matrix that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					storage::AMF< ImfR, ImfC, mapping_polynomial_type >(
+						imf::Id( rows ),
+						imf::Id( cols ),
+						storage::polynomials::Create< mapping_polynomial_type >( cols ),
+						rows * cols
+					)
+				) {
+				(void)cap;
+			}
+
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::StorageBasedMatrix< T, ImfR, ImfC, mapping_polynomial_type, requires_allocation >(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Create( target_matrix.amf, imf_r, imf_c )
+				) {}
+
+			/**
+			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Delegate to the general constructor.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_storage< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( target_matrix,
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) ) ) {}
+
+			/**
+			 * Constructor for a functor-based matrix that allocates memory.
+			 *
+			 * @tparam ViewType A dummy type.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a functor-based matrix that allocates memory.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( bool initialized, const size_t rows, const size_t cols, typename ViewType::applied_to lambda ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >( initialized, rows, cols, lambda ) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix, ImfR imf_r, ImfC imf_c ) :
+				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >(
+					getFunctor( target_matrix ),
+					imf_r, imf_c
+				) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                  a view over a functor-based matrix.
+			 */
+			template<
+				typename ViewType = View,
+				std::enable_if_t<
+					internal::is_view_over_functor< ViewType >::value &&
+					!internal::requires_allocation< ViewType >::value
+				> * = nullptr
+			>
+			Matrix( typename ViewType::applied_to &target_matrix ) :
+				Matrix( getFunctor( target_matrix ),
+					imf::Id( nrows ( target_matrix ) ),
+					imf::Id( ncols ( target_matrix ) )
+				) {}
+	}; // Band Matrix
 
 	/**
 	 * @brief Square matrix
