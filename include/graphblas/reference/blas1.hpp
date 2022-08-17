@@ -141,13 +141,6 @@ namespace grb {
 			RC ret = SUCCESS;
 			IOType global = monoid.template getIdentity< IOType >();
 
-			// which thread acts as root
-#ifndef _H_GRB_REFERENCE_OMP_BLAS1
-			size_t root = 1;
-#else
-			size_t root = config::OMP::threads();
-#endif
-
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 			// handle trivial sequential cases
 			if( !masked ) {
@@ -170,8 +163,6 @@ namespace grb {
 			} else {
 				// masked sequential case
 				const size_t n = internal::getCoordinates( to_fold ).size();
-				constexpr size_t s = 0;
-				constexpr size_t P = 1;
 				size_t i = 0;
 				const size_t end = n;
 #else
@@ -180,16 +171,8 @@ namespace grb {
 				{
 					// parallel case (masked & unmasked)
 					const size_t n = internal::getCoordinates( to_fold ).size();
-					const size_t s = omp_get_thread_num();
-					const size_t P = omp_get_num_threads();
-					assert( s < P );
-					const size_t blocksize = n / P + ( ( n % P ) > 0 ? 1 : 0 );
-					size_t i = s * blocksize > n ? n : s * blocksize;
-					const size_t end = ( s + 1 ) * blocksize > n ? n : ( s + 1 ) * blocksize;
-
-					#pragma omp single
-					{ root = P; }
-					#pragma omp barrier
+					size_t i, end;
+					config::OMP::localRange( i, end, 0, n );
 #endif
 					// some sanity checks
 					assert( i <= end );
@@ -232,17 +215,10 @@ namespace grb {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
 					// in the sequential case, the empty case should have been handled earlier
 					assert( !empty );
-#else
-					// select root
-					#pragma omp critical
+ #ifdef NDEBUG
+					(void) empty;
+ #endif
 #endif
-					{
-						// check if we have a root already
-						if( !empty && root == P ) {
-							// no, so take it
-							root = s;
-						}
-					}
 					// declare thread-local variable and set our variable to the first value in our block
 #ifndef NDEBUG
 					if( i < end ) {
@@ -250,9 +226,7 @@ namespace grb {
 					}
 #endif
 
-					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
-					IOType local;                       // whenever our local block is
-					GRB_UTIL_RESTORE_WARNINGS           // non-empty
+					IOType local = monoid.template getIdentity< IOType >();
 					if( end > 0 ) {
 						if( i < end ) {
 							local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
@@ -323,22 +297,9 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 					#pragma omp critical
 					{
-						// if I am root
-						if( root == s ) {
-							// then I should be non-empty
-							assert( !empty );
-							// set global value to locally computed value
-							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
-							global = local;                     // chunk is non-empty, in which case
-							GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
-						}
-					}
-					#pragma omp barrier
-					#pragma omp critical
-					{
-						// if non-root, fold local variable into global one
-						if( !empty && root != s ) {
-							RC rc;
+						// if non-empty, fold local variable into global one
+						if( !empty ) {
+							RC rc; // local return type to avoid racing writes
 							if( left ) {
 								rc = foldl< descr >( global, local, monoid.getOperator() );
 							} else {
