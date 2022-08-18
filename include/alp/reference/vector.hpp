@@ -439,7 +439,8 @@ namespace alp {
 				base_type( source_vector, imf_r, imf_c ) { }
 
 			/**
-			 * Constructor for a view over another vector using default IMFs (Identity).
+			 * Constructor for a view over another vector applying a view defined
+			 * by View template parameter of the constructed vector.
 			 *
 			 * @tparam SourceType  The type of the target vector.
 			 *
@@ -562,14 +563,11 @@ namespace alp {
 	 *         the created view is non-overlapping with other existing views only when the
 	 *         check can be performed in constant time. 
 	 *
-	 * @tparam T         The vector's elements type
-	 * @tparam Structure The structure of the source and target vector view
-	 * @tparam View      The source's View type
-	 * @tparam backend   The target backend
+	 * @tparam SourceVector  The type of the source ALP vector
 	 *
-	 * @param[in] source The Vector object over which the view is created.
+	 * @param[in] source     The ALP Vector object over which the view is created.
 	 *
-	 * @returns A new vector Vector object.
+	 * @returns A new ALP Vector object.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -640,10 +638,10 @@ namespace alp {
 	 * 		  The function guarantees the created view is non-overlapping with other existing views only when the
 	 * 		  check can be performed in constant time. 
 	 * 
-	 * @param[in] source The Vector object over which the view is created.
-	 * @param[in] rng 	 A valid range of elements
-	 * 
-	 * @returns          A Vector object.
+	 * @tparam SourceVector  The type of the source ALP vector
+	 *
+	 * @param[in] source     The ALP Vector object over which the view is created.
+	 * @param[in] rng        A valid range of elements
 	 * 
 	 * \parblock
 	 * \par Performance semantics.

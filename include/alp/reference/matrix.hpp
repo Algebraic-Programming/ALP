@@ -2152,23 +2152,19 @@ namespace alp {
 	} // namespace structures
 
 	/**
-     *
+	 *
 	 * @brief Generate a view specified by \a target_view where the type is compliant with the
 	 * 		  \a source matrix.
 	 * 		  The function guarantees the created view is non-overlapping with other
 	 *        existing views only when the check can be performed in constant time.
 	 *
 	 * @tparam target_view  One of the supported views listed in \a view::Views
-	 * @tparam T            The matrix' elements type
-	 * @tparam Structure    The structure of the source and target matrix view
-	 * @tparam density      The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View         The source's View type
-	 * @tparam backend      The target backend
+	 * @tparam SourceMatrix The type of the source matrix
 	 *
-	 * @param source        The source structured matrix
+	 * @param source        The source ALP matrix
 	 *
 	 * @return A new \a target_view view over the source matrix.
-
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -2182,21 +2178,21 @@ namespace alp {
 	 */
 	template<
 		enum view::Views target_view = view::Views::original,
-		typename SourceMatrixType,
-		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value, void > * = nullptr
 	>
-	typename SourceMatrixType::template view_type< target_view >::type
-	get_view( SourceMatrixType &source ) {
+	typename SourceMatrix::template view_type< target_view >::type
+	get_view( SourceMatrix&source ) {
 
-		using target_strmat_t = typename SourceMatrixType::template view_type< target_view >::type;
+		using target_strmat_t = typename SourceMatrix::template view_type< target_view >::type;
 
 		return target_strmat_t( source );
 	}
 
 	/**
-     *
+	 *
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
-	 * 		  Version where a target structure is specified. It can only generate a valide type if the target
+	 * 		  Version where a target structure is specified. It can only generate a valid type if the target
 	 * 		  structure is the same as the source's
 	 * 		  or a more specialized one that would preserve its static properties (e.g., symmetric reference
 	 * 		  to a square matrix -- any assumption based on symmetry would not break those based on square).
@@ -2205,15 +2201,11 @@ namespace alp {
 	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T                The matrix's elements type
-	 * @tparam Structure        The structure of the source and target matrix view
-	 * @tparam density          The type (i.e., \a alp::Density:Dense or \a alp::Density:Sparse) of storage scheme
-	 * @tparam View             The source's View type
-	 * @tparam backend          The target backend
+	 * @tparam SourceMatrix     The type of the source matrix
 	 *
-	 * @param source            The source structured matrix
+	 * @param source            The source ALP matrix
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
      * \parblock
      * \par Performance semantics.
@@ -2247,11 +2239,11 @@ namespace alp {
 	}
 
 	namespace internal {
+
 		/**
 		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
-
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
 			typename SourceMatrix,
@@ -2294,17 +2286,13 @@ namespace alp {
 	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T                The matrix' elements type
-	 * @tparam Structure        The structure of the source and target matrix view
-	 * @tparam density          The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View             The source's View type
-	 * @tparam backend          The target backend
+	 * @tparam SourceMatrix     The type of source ALP matrix
 	 *
-	 * @param source            The source structured matrix
+	 * @param source            The source ALP matrix
 	 * @param rng_r             A valid range of rows
 	 * @param rng_c             A valid range of columns
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
      * \parblock
      * \par Performance semantics.
@@ -2347,11 +2335,7 @@ namespace alp {
 	 * A structure preserving check as well as non-overlapping checks with existing views of \a source
 	 * are guaranteed only when each one of them incurs constant time work.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix     The type of source ALP matrix
 	 *
 	 * @param source      The source matrix
 	 * @param rng_r       A valid range of rows
@@ -2395,17 +2379,13 @@ namespace alp {
 	 *
 	 * @brief Generate a vector view on a row of the source matrix.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix The type of the source ALP matrix
 	 *
-	 * @param source      The source matrix
-	 * @param sel_r       A valid row index
-	 * @param rng_c       A valid range of columns
+	 * @param source        The source matrix
+	 * @param sel_r         A valid row index
+	 * @param rng_c         A valid range of columns
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2441,17 +2421,13 @@ namespace alp {
 	 *
 	 * @brief Generate a vector view on a column of the source matrix.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix The type of the source ALP matrix
 	 *
-	 * @param source      The source matrix
-	 * @param rng_r       A valid range of rows
-	 * @param sel_c       A valid column index
+	 * @param source        The source matrix
+	 * @param rng_r         A valid range of rows
+	 * @param sel_c         A valid column index
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2484,25 +2460,23 @@ namespace alp {
 
 	/**
 	 *
-		* @brief Generate an original view where the type is compliant with the source Matrix.
-		* Version where a selection of rows and columns expressed as vectors of positions
-		* form a new view with specified target structure.
-		*
-		* @tparam TargetStructure The target structure of the new view. It should verify
-		*                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-		* @tparam T               The matrix' elements type
-		* @tparam Structure       The structure of the source and target matrix view
-		* @tparam density         The type (i.e., sparse or dense) of storage scheme
-		* @tparam View            The source's View type
-		* @tparam backend         The target backend
-		*
-		* @param source           The source structured matrix
-		* @param sel_r            A valid permutation vector of row indeces
-		* @param sel_c            A valid permutation vector of column indeces
-		*
-		* @return A new original view over the source structured matrix.
-		*
-		*/
+	 * @brief Generate an original view where the type is compliant with the source Matrix.
+	 * Version where a selection of rows and columns expressed as vectors of positions
+	 * form a new view with specified target structure.
+	 *
+	 * @tparam TargetStructure The target structure of the new view. It should verify
+	 *                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
+	 * @tparam SourceMatrix    The type of the source ALP matrix
+	 * @tparam SelectVectorR   The type of the ALP vector defining permutation for rows
+	 * @tparam SelectVectorC   The type of the ALP vector defining permutation for columns
+	 *
+	 * @param source           The source ALP matrix
+	 * @param sel_r            A valid permutation vector of row indeces
+	 * @param sel_c            A valid permutation vector of column indeces
+	 *
+	 * @return A new original view over the source ALP matrix.
+	 *
+	 */
 	template<
 		typename TargetStructure,
 		typename SourceMatrix,
