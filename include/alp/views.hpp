@@ -51,6 +51,7 @@ namespace alp {
 			original,
 			transpose,
 			diagonal,
+			vector,
 			_internal
 		};
 
