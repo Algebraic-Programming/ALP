@@ -1288,8 +1288,7 @@ namespace alp {
 	>
 	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Scalar< InputType, InputStructure, reference > &val ) noexcept {
-		(void)C;
-		(void)val;
+
 		static_assert( ! std::is_same< OutputType, void >::value,
 			"alp::set (set to value): cannot have a pattern "
 			"matrix as output" );
@@ -1299,7 +1298,27 @@ namespace alp {
 		// static checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
 
-		assert( false ); // "Needs an implementation."
+		static_assert(
+			!internal::is_functor_based<
+				Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference >
+			>::value,
+			"alp::set cannot be called with a functor-based matrix as a destination."
+		);
+
+		if( !internal::getInitialized( val ) ) {
+			internal::setInitialized( C, false );
+			return SUCCESS;
+		}
+
+		const auto c_val = *val;
+		size_t storageDimensions = internal::getStorageDimensions( C );
+
+		for( size_t i = 0; i < storageDimensions; ++i ) {
+			internal::access( C, i ) = c_val;
+		}
+
+		internal::setInitialized( C, true );
+
 		return SUCCESS;
 	}
 
