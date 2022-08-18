@@ -44,24 +44,22 @@
 
 #include <amgcl/relaxation/runtime.hpp>
 #include <amgcl/coarsening/runtime.hpp>
-#include <amgcl/solver/runtime.hpp>
-#include <amgcl/make_solver.hpp>
+//#include <amgcl/solver/runtime.hpp>
+//#include <amgcl/make_solver.hpp>
 #include <graphblas/algorithms/amg/plugin/amgcl/amg.hpp>
 #include <amgcl/backend/builtin.hpp>
+#include <amgcl/util.hpp>
+#include <amgcl/adapter/crs_tuple.hpp>
 #include <amgcl/io/mm.hpp>
 #include <amgcl/io/binary.hpp>
 
 
-#include <lib/amgcl.h>
+//#include <lib/amgcl.h>
 
 typedef amgcl::backend::builtin<double>           Backend;
 typedef amgcl::amg<Backend,
-				   amgcl::runtime::coarsening::wrapper,
-				   amgcl::runtime::relaxation::wrapper> AMG;
-typedef amgcl::runtime::solver::wrapper<Backend>  ISolver;
-typedef amgcl::make_solver<AMG, ISolver>          Solver;
-
-
+				   amgcl::coarsening::ruge_stuben,
+				   amgcl::relaxation::spai0> AMG;
 
 // forward declaration for the tracing facility
 template< typename T,
@@ -156,20 +154,22 @@ public :
 	grb::RC get_vcyclehierarchy_AGMCL( const simulation_input &in ){
 		grb::RC rc = SUCCESS;
 
-		std::vector<int>    ptr;
-		std::vector<int>    col;
+		std::vector<size_t>    ptr;
+		std::vector<size_t>    col;
 		std::vector<double> val;
 		std::vector<double> rhs;
-
-		amgclHandle prm = amgcl_params_create();
 		size_t rows, cols;
 
 		std::string fname( in.matAfile_c_str );
         if ( fname.compare( fname.size() - 4, 4, ".mtx" ) != 0 ) {
 #ifdef DEBUG
-			std::cout << "reading non .mtx file\n";
+			std::cout << "reading " << fname << " file, as binary crs file.\n";
 #endif
-            amgcl::io::read_crs( in.matAfile_c_str, rows, ptr, col, val );
+            amgcl::io::read_crs( fname, rows, ptr, col, val );
+#ifdef DEBUG
+			cols = rows;
+			std::cout << "file " << fname << " contains " << rows << " x " << cols << " matrix\n";
+#endif
         } else {
 #ifdef DEBUG
 			std::cout << "reading .mtx file\n";
@@ -187,22 +187,18 @@ public :
 		std::cout << " in.coarse_enough = " << in.coarse_enough << "\n";
 #endif
 
-		amgcl_params_sets(prm, "precond.relax.type", "spai0");
-		amgcl_params_sets(prm, "precond.coarsening.type","ruge_stuben");
-		amgcl_params_seti(prm, "precond.max_levels",in.max_coarsening_levels);
-		amgcl_params_seti(prm, "precond.coarse_enough",in.coarse_enough);
+		auto A = std::tie(rows, ptr, col, val);
+		AMG::params prm;
+		prm.coarse_enough = in.coarse_enough;
+		prm.direct_coarse = false;
+		prm.max_levels = in.max_coarsening_levels;
 
-		amgclHandle solver;
-		solver = amgcl_solver_create(
-			rows, ptr.data(), col.data(), val.data(), prm
-		);
-
-		save_levels( static_cast< Solver* > ( solver )->precond(),
-			Amat_data, Pmat_data, Rmat_data, Dvec_data
-		);
+		AMG amg( A, prm );
+		save_levels( amg, Amat_data, Pmat_data, Rmat_data, Dvec_data );
 
 		if ( Amat_data.size() != in.max_coarsening_levels ) {
-			std::cout << " max_coarsening_levels readjusted to : " << Amat_data.size() << "\n";
+			std::cout << " max_coarsening_levels readjusted to : ";
+			std::cout << Amat_data.size() << "\n";
 		}
 
 
@@ -216,9 +212,11 @@ public :
 			std::cout << "     m =" << Amat_data[ i ].m << "\n";
 			for( size_t k = 0; k < Amat_data[ i ].nz; k++ ) {
 				if( k < 3 || k + 3 >= Amat_data[ i ].nz ){
-					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Amat_data[ i ].i_data[ k ] << " "
-							  << std::setw(5) << Amat_data[ i ].j_data[ k ] << "] "
-							  << std::scientific << std::setw(5) << Amat_data[ i ].v_data[ k ] << "\n";
+					std::cout << "     " << std::fixed  << "[" << std::setw(5);
+					std::cout << Amat_data[ i ].i_data[ k ] << " ";
+					std::cout << std::setw(5) << Amat_data[ i ].j_data[ k ] << "] ";
+					std::cout << std::scientific << std::setw(5);
+					std::cout << Amat_data[ i ].v_data[ k ] << "\n";
 				}
 			}
 			std::cout << "\n\n";
@@ -232,9 +230,11 @@ public :
 			std::cout << "     m =" << Pmat_data[ i ].m << "\n";
 			for( size_t k = 0; k < Pmat_data[ i ].nz; k++ ) {
 				if( k < 3 || k + 3 >= Pmat_data[ i ].nz ){
-					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Pmat_data[ i ].i_data[ k ] << " "
-							  << std::setw(5) << Pmat_data[ i ].j_data[ k ] << "] "
-							  << std::scientific << std::setw(5) << Pmat_data[ i ].v_data[ k ] << "\n";
+					std::cout << "     " << std::fixed  << "[" << std::setw(5);
+					std::cout << Pmat_data[ i ].i_data[ k ] << " ";
+					std::cout << std::setw(5) << Pmat_data[ i ].j_data[ k ] << "] ";
+					std::cout << std::scientific << std::setw(5);
+					std::cout << Pmat_data[ i ].v_data[ k ] << "\n";
 				}
 			}
 			std::cout << "\n\n";
@@ -248,9 +248,11 @@ public :
 			std::cout << "     m =" << Rmat_data[ i ].m << "\n";
 			for( size_t k = 0; k < Rmat_data[ i ].nz; k++ ) {
 				if( k < 3 || k + 3 >= Rmat_data[ i ].nz ){
-					std::cout << "     " << std::fixed  << "[" << std::setw(5) << Rmat_data[ i ].i_data[ k ] << " "
-							  << std::setw(5) << Rmat_data[ i ].j_data[ k ] << "] "
-							  << std::scientific << std::setw(5) << Rmat_data[ i ].v_data[ k ] << "\n";
+					std::cout << "     " << std::fixed  << "[" << std::setw(5);
+					std::cout << Rmat_data[ i ].i_data[ k ] << " ";
+					std::cout << std::setw(5) << Rmat_data[ i ].j_data[ k ] << "] ";
+					std::cout << std::scientific << std::setw(5);
+					std::cout << Rmat_data[ i ].v_data[ k ] << "\n";
 				}
 			}
 			std::cout << "\n\n";
@@ -262,14 +264,13 @@ public :
 			std::cout << "     n =" << Dvec_data[ i ].size() << "\n";
 			for( size_t k = 0; k < Dvec_data[ i ].size(); k++ ) {
 				if( k < 3 || k + 3 >= Dvec_data[ i ].size() ){
-					std::cout << "     "  << std::scientific << std::setw(5) << Dvec_data[ i ][ k ] << "\n";
+					std::cout << "     "  << std::scientific << std::setw(5);
+					std::cout << Dvec_data[ i ][ k ] << "\n";
 				}
 			}
 			std::cout << "\n\n";
 		}
 #endif
-
-		amgcl_solver_destroy( solver );
 
 		return rc;
 	}

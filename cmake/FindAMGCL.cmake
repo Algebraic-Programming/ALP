@@ -24,9 +24,6 @@ Read-only output variables:
   AMGCL_INCLUDE_DIR
 	Points to the libamgcl include directory.
 
-  AMGCL_LIBRARY
-	Points to the libamgcl that can be passed to target_link_libararies.
-
 creates a target amgcl::amgcl to link against libamgcl
 #]===================================================================]
 
@@ -39,27 +36,18 @@ find_path( AMGCL_ROOT_DIR
 	HINTS ${AMGCL_SOURCE} # start looking from AMGCL_SOURCE, the most likely place
 )
 
-# look for the binary library libamgcl
-# do not give thorough hints here, because various Linux distributions may have different
-# conventions on shared binarie directories (/lib, /usr/lib, /usr/lib64, ...)
-# and we don't want to "blind" CMake's search
-find_library( AMGCL_LIBRARY
-	NAMES lib/libamgcl.a # hence, CMake looks for libamgcl.a,
-	HINTS ${AMGCL_BUILD} # start looking from AMGCL_BUILD, the most likely place
-)
-
 # if the listed variables are set to existing paths, set the amgcl_FOUND variable
 # if not and the REQUIRED option was given when calling this find_module(),
 # raise an error (some components were not found and we need all of them)
 include( FindPackageHandleStandardArgs )
 find_package_handle_standard_args( AMGCL
-	REQUIRED_VARS AMGCL_ROOT_DIR AMGCL_LIBRARY
+	REQUIRED_VARS AMGCL_ROOT_DIR
 )
 
 # if we found the library, create a dedicated target with all needed information
 if( AMGCL_FOUND  )
 	# do not show these variables as cached ones
-	mark_as_advanced( AMGCL_ROOT_DIR AMGCL_LIBRARY )
+	mark_as_advanced( AMGCL_ROOT_DIR )
 
 	# create an imported target, i.e. a target NOT built internally, as from
 	# https://cmake.org/cmake/help/latest/command/add_library.html#imported-libraries
@@ -68,11 +56,12 @@ if( AMGCL_FOUND  )
 	# UNKNOWN tells CMake to inspect the library type (static or shared)
 	# e.g., if you compiled your own static libamgcl and injected it via AMGCL_ROOT
 	# it will work out without changes
-	add_library ( amgcl::amgcl UNKNOWN IMPORTED )
+	add_library ( amgcl INTERFACE )
 	# set its properties to the appropiate locations, for both headers and binaries
-	set_target_properties( amgcl::amgcl
-		PROPERTIES
-		IMPORTED_LOCATION "${AMGCL_LIBRARY}"
-		INTERFACE_INCLUDE_DIRECTORIES "${AMGCL_ROOT_DIR}"
+	# set_target_properties( amgcl::amgcl
+	# 	PROPERTIES
+	# 	INTERFACE_INCLUDE_DIRECTORIES "${AMGCL_ROOT_DIR}"
+	# )
+	target_include_directories ( amgcl INTERFACE ${AMGCL_ROOT_DIR} 
 	)
 endif()

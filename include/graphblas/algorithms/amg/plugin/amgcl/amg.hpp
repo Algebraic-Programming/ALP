@@ -645,9 +645,8 @@ class amg {
 			// std::cout << "\n";
 			// // WARNING: Only works for SPAI0 that uses diagonal matrix as explicit smoother
 			// std::cout << "smoother type: " << lvl.relax->r << " \n";
-			auto Mhandle = static_cast<amgcl::relaxation::spai0<B>*>(lvl.relax->handle);
-			auto data =  Mhandle->M->data();
-			size_t  mdim = Mhandle->M->size();
+			auto data =  lvl.relax->M->data();
+			size_t  mdim = lvl.relax->M->size();
 			std::vector< double > Dvec_level_data( data, data + mdim );
 			Dvec_data.push_back( Dvec_level_data );
 
