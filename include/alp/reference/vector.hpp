@@ -583,18 +583,15 @@ namespace alp {
 	 *
 	 */
 	template< 
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
-		enum Backend backend
+		typename SourceVector,
+		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 	>
-	typename Vector< T, Structure, density, View, ImfR, ImfC, backend >::template view_type< view::original >::type
-	get_view( Vector< T, Structure, density, View, ImfR, ImfC, backend > & source ) {
+	typename SourceVector::template view_type< view::original >::type
+	get_view( SourceVector &source ) {
 
-		using source_vec_t = Vector< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_vec_t = typename source_vec_t::template view_type< view::original >::type;
+		using target_t = typename SourceVector::template view_type< view::original >::type;
 
-		target_vec_t vec_view( source );
-
-		return vec_view;
+		return target_t( source );
 	}
 
 	namespace internal {
@@ -605,34 +602,36 @@ namespace alp {
 		 */
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
-			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-		alp::Vector<
-			T,
-			TargetStructure,
-			density,
-			view::Original< alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
-			TargetImfR,
-			TargetImfC,
-			backend
+			typename SourceVector,
+			std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 		>
-		get_view( alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &source,
-				TargetImfR imf_r, TargetImfC imf_c ) {
+		typename internal::new_container_type_from<
+			typename SourceVector::template view_type< view::original >::type
+		>::template change_structure< TargetStructure >::_and_::
+		template change_imfr< TargetImfR >::_and_::
+		template change_imfc< TargetImfC >::type
+		get_view(
+			SourceVector &source,
+			TargetImfR imf_r,
+			TargetImfC imf_c
+		) {
 
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
 			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using source_vec_t = alp::Vector< T, Structure, density, View, ImfR, ImfC, backend >;
-			using target_vec_t = alp::Vector< T, TargetStructure, density, view::Original< source_vec_t >, TargetImfR, TargetImfC, backend >;
+			using target_vec_t = typename internal::new_container_type_from<
+				typename SourceVector::template view_type< view::original >::type
+			>::template change_structure< TargetStructure >::_and_::
+			template change_imfr< TargetImfR >::_and_::
+			template change_imfc< TargetImfC >::type;
 
-			target_vec_t target( source, imf_r, imf_c );
-
-			return target;
+			return target_vec_t( source, imf_r, imf_c );
 		}
 	} // namespace internal
 
@@ -658,21 +657,16 @@ namespace alp {
 	 * 
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
-		enum Backend backend
+		typename SourceVector,
+		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 	>
-	Vector<
-		T,
-		Structure,
-		density,
-		view::Original< Vector< T, Structure, density, View, ImfR, ImfC, backend > >,
-		imf::Strided,
-		imf::Strided,
-		backend
-	>
-	get_view( Vector< T, Structure, density, View, ImfR, ImfC, backend > &source, const utils::range& rng ) {
+	typename internal::new_container_type_from<
+		typename SourceVector::template view_type< view::original >::type
+	>::template change_imfr< imf::Strided >::_and_::
+	template change_imfc< imf::Strided >::type
+	get_view( SourceVector &source, const utils::range& rng ) {
 
-		return internal::get_view< Structure >(
+		return internal::get_view< typename SourceVector::structure >(
 			source,
 			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
 			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
