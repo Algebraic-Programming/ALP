@@ -597,14 +597,34 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			return;
 		}
 
+		// warning: below set of two tests alter half_mask
 		{
-			const double expect = (n/2) % 2 == 0
+			double expect = (n/2) % 2 == 0
 				? 1.0
 				: 0.0;
 			exit_status = expect_sparse_success< grb::descriptors::structural >(
 				sparse, realm, expect, half_mask, grb::nnz(sparse) );
 			if( exit_status != 0 ) {
 				exit_status += 1000;
+				return;
+			}
+
+			static_assert( n > 1, "These tests require n=2 or larger" );
+			grb::RC rc = grb::setElement( half_mask, false, n/2 );
+			rc = rc ? rc : grb::setElement( half_mask, true, n/2 + 1 );
+			if( rc == grb::SUCCESS ) {
+				expect = (n/2+1) % 2 == 0
+					? 1.0
+					: 0.0;
+				exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+					sparse, realm, expect, half_mask, grb::nnz(sparse) );
+			} else {
+				exit_status = 1132;
+				return;
+			}
+
+			if( exit_status != 0 ) {
+				exit_status += 1100;
 				return;
 			}
 		}
