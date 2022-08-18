@@ -2151,52 +2151,6 @@ namespace alp {
 
 	} // namespace structures
 
-	namespace internal {
-		/**
-		 * Defines a new ALP container type form the provided original type
-		 * with the modification of the desired nested template parameter.
-		 */
-		template< typename ContainerType >
-		struct new_container_type_from {};
-
-		template<
-			template< typename, typename, enum Density, typename, typename, typename, enum Backend > typename Container,
-			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend
-		>
-		struct new_container_type_from< Container< T, Structure, density, View, ImfR, ImfC, backend > > {
-
-			typedef Container< T, Structure, density, View, ImfR, ImfC, backend > original_container;
-			static_assert( is_matrix< original_container >::value || is_vector< original_container >::value , "ModifyType supports only ALP Matrix and Vector types." );
-
-			template< typename NewStructure >
-			struct change_structure {
-				typedef Container< T, NewStructure, density, View, ImfR, ImfC, backend > type;
-				typedef new_container_type_from< type > _and_;
-			};
-
-			template< typename NewView >
-			struct change_view {
-				typedef Container< T, Structure, density, NewView, ImfR, ImfC, backend > type;
-				typedef new_container_type_from< type > _and_;
-			};
-
-			template< typename NewImfR >
-			struct change_imfr {
-				typedef Container< T, Structure, density, View, NewImfR, ImfC, backend > type;
-				typedef new_container_type_from< type > _and_;
-			};
-
-			template< typename NewImfC >
-			struct change_imfc {
-				typedef Container< T, Structure, density, View, ImfR, NewImfC, backend > type;
-				typedef new_container_type_from< type > _and_;
-			};
-
-			private:
-				new_container_type_from() = delete;
-		};
-	} // namespace internal
-
 	/**
      *
 	 * @brief Generate a view specified by \a target_view where the type is compliant with the
