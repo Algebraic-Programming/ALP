@@ -1327,8 +1327,8 @@ namespace alp {
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 *
 			 * @tparam TargetType  The type of the target matrix.
 			 *
@@ -1342,17 +1342,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+				base_type(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename TargetType::amf_type >::Create( internal::getAmf( target_matrix ) )
+				) {}
 
 			/**
 			 * Constructor for a view over another storage-based matrix.
@@ -1565,7 +1558,8 @@ namespace alp {
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
 				typename TargetType,
@@ -1778,8 +1772,8 @@ namespace alp {
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
 				typename TargetType,
@@ -1790,17 +1784,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+				base_type(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename TargetType::amf_type >::Create( internal::getAmf( target_matrix ) )
+				) {}
 
 			/**
 			 * Constructor for a view over another storage-based matrix.
@@ -2004,11 +1991,8 @@ namespace alp {
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
-			 *
-			 * @tparam TargetType  The type of the target matrix.
-			 *
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
 				typename TargetType,
@@ -2019,17 +2003,10 @@ namespace alp {
 				> * = nullptr
 			>
 			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+				base_type(
+					getContainer( target_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename TargetType::amf_type >::Create( internal::getAmf( target_matrix ) )
+				) {}
 
 			/**
 			 * Constructor for a view over another storage-based matrix.
