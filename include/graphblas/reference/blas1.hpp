@@ -615,7 +615,6 @@ namespace grb {
 				return SUCCESS;
 			}
 			if( masked && !(descr & descriptors::invert_mask) &&
-				(descr & descriptors::structural) &&
 				nnz( mask ) == 0
 			) {
 				return SUCCESS;
