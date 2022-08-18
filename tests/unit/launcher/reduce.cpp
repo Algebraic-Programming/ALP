@@ -500,7 +500,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// do similar happy path testing, but now for sparse inputs
 	{
 		grb::Vector< double > sparse( n ), empty( n ), single( n );
-		grb::Vector< bool > odd_mask( n ), half_mask( n ), full( n );
+		grb::Vector< bool > empty_mask( n ), odd_mask( n ), half_mask( n ), full( n );
 		grb::RC rc = grb::set( sparse, even_mask, 1.0 );
 		assert( rc == grb::SUCCESS );
 		rc = rc ? rc : grb::set( full, true );
@@ -540,16 +540,47 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
-			sparse, realm, grb::nnz(sparse), even_mask );
+			sparse, realm, 0.0, empty_mask, grb::nnz(sparse) );
 		if( exit_status != 0 ) {
 			exit_status += 300;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::structural >(
+			sparse, realm, 0.0, empty_mask, grb::nnz(sparse) );
+		if( exit_status != 0 ) {
+			exit_status += 400;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
+			sparse, realm, grb::nnz(sparse), empty_mask );
+		if( exit_status != 0 ) {
+			exit_status += 500;
+			return;
+		}
+
+		exit_status = expect_sparse_success<
+			grb::descriptors::invert_mask | grb::descriptors::structural
+		>(
+			sparse, realm, grb::nnz(sparse), empty_mask
+		);
+		if( exit_status != 0 ) {
+			exit_status += 600;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			sparse, realm, grb::nnz(sparse), even_mask );
+		if( exit_status != 0 ) {
+			exit_status += 700;
 			return;
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
 			sparse, realm, 0.0, odd_mask, grb::nnz(sparse) );
 		if( exit_status != 0 ) {
-			exit_status += 400;
+			exit_status += 800;
 			return;
 		}
 
@@ -559,7 +590,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			sparse, realm, grb::nnz(sparse), even_mask
 		);
 		if( exit_status != 0 ) {
-			exit_status += 500;
+			exit_status += 900;
 			return;
 		}
 
@@ -569,14 +600,14 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			sparse, realm, 0.0, odd_mask, grb::nnz(sparse)
 		);
 		if( exit_status != 0 ) {
-			exit_status += 600;
+			exit_status += 1000;
 			return;
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
 			sparse, realm, grb::nnz(sparse), odd_mask );
 		if( exit_status != 0 ) {
-			exit_status += 700;
+			exit_status += 1100;
 			return;
 		}
 
@@ -586,14 +617,14 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			sparse, realm, grb::nnz(sparse), odd_mask
 		);
 		if( exit_status != 0 ) {
-			exit_status += 800;
+			exit_status += 1200;
 			return;
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::structural >(
 			single, realm, 3.141, full );
 		if( exit_status != 0 ) {
-			exit_status += 900;
+			exit_status += 1300;
 			return;
 		}
 
@@ -605,7 +636,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			exit_status = expect_sparse_success< grb::descriptors::structural >(
 				sparse, realm, expect, half_mask, grb::nnz(sparse) );
 			if( exit_status != 0 ) {
-				exit_status += 1000;
+				exit_status += 1400;
 				return;
 			}
 
@@ -619,12 +650,12 @@ void grbProgram( const size_t &P, int &exit_status ) {
 				exit_status = expect_sparse_success< grb::descriptors::no_operation >(
 					sparse, realm, expect, half_mask, grb::nnz(sparse) );
 			} else {
-				exit_status = 1132;
+				exit_status = 1532;
 				return;
 			}
 
 			if( exit_status != 0 ) {
-				exit_status += 1100;
+				exit_status += 1500;
 				return;
 			}
 		}
