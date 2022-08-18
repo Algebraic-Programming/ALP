@@ -162,6 +162,131 @@ int expect_illegal(
 }
 
 template< Descriptor descr, typename MonT >
+int expect_sparse_success(
+	grb::Vector< double > &xv,
+	MonT &mon,
+	const double check,
+	const grb::Vector< bool > &mask,
+	const double check_unmasked
+) {
+	const size_t nz = grb::nnz( xv );
+	std::cout << "\nStarting functional tests for sparse inputs\n"
+		<< "\t descriptor: " << descr << "\n"
+		<< "\t nonzeroes:  " << nz << "\n"
+		<< "\t checksum 1: " << check << "\n"
+		<< "\t checksum 2: " << check_unmasked << "\n"
+		<< "\t mask:       ";
+	if( grb::size( mask ) > 0 ) {
+		std::cout << grb::nnz( mask ) << " elements.\n";
+	} else {
+		std::cout << "none.\n";
+	}
+
+	double alpha = 3.14;
+	if( grb::foldl< descr >( alpha, xv, mask, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool sparse_foldl_into_scalar_failed = false;
+		assert( sparse_foldl_into_scalar_failed );
+#endif
+		return 41;
+	}
+
+	double alpha_unmasked = 2.17;
+	if( grb::foldl< descr >( alpha_unmasked, xv, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool sparse_foldl_into_scalar_unmasked_failed = false;
+		assert( sparse_foldl_into_scalar_unmasked_failed );
+#endif
+		return 46;
+	}
+
+	double alpha_right = -2.22;
+	if( grb::foldr< descr >( xv, mask, alpha_right, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool sparse_foldr_into_scalar_failed = false;
+		assert( sparse_foldr_into_scalar_failed );
+#endif
+		return 51;
+	}
+
+	double alpha_right_unmasked = -check;
+	if( grb::foldr< descr >( xv, alpha_right_unmasked, mon ) != grb::SUCCESS ) {
+#ifndef NDEBUG
+		const bool sparse_foldr_into_scalar_unmasked_failed = false;
+		assert( sparse_foldr_into_scalar_unmasked_failed );
+#endif
+		return 61;
+	}
+
+	// verify computations
+	alpha -= 3.14;
+	alpha_unmasked -= 2.17;
+	alpha_right += 2.22;
+	alpha_right_unmasked += check;
+	bool error = false;
+	if( !grb::utils::equals( alpha, alpha_right, nz+1 ) ) {
+		std::cerr << "Error: " << alpha_right << " (sparse foldr, masked) "
+			<< " does not equal " << alpha << " (sparse foldl, masked).\n";
+		error = true;
+	}
+	if( !grb::utils::equals( alpha_unmasked, alpha_right_unmasked, nz+1 ) ) {
+		std::cerr << "Error: " << alpha_unmasked << " (sparse foldl, unmasked) "
+			<< "does not equal " << alpha_right_unmasked << " "
+			<< "(sparse foldr, unmasked).\n";
+		error = true;
+	}
+	if( size( mask ) == 0 ) {
+		if( !grb::utils::equals( alpha, alpha_right_unmasked, nz+1 ) ) {
+			std::cerr << "Error: " << alpha_right_unmasked << " "
+				<< "(sparse foldr, unmasked) does not equal " << alpha << " "
+				<< "(sparse foldl, masked).\n";
+			error = true;
+		}
+		if( !grb::utils::equals( alpha, alpha_unmasked, nz+1 ) ) {
+			std::cerr << "Error: " << alpha_unmasked << " (sparse foldl, unmasked) "
+				<< " does not equal " << alpha << " (sparse foldl, masked).\n";
+			error = true;
+		}
+	}
+	if( !grb::utils::equals( check, alpha, nz == 0 ? 1 : nz ) ) {
+		std::cerr << "Error: " << alpha << " does not equal given checksum " << check
+			<< ".\n";
+		error = true;
+	}
+	if( size( mask ) > 0 ) {
+		if( !grb::utils::equals( alpha_unmasked, check_unmasked, nz+1 ) ) {
+			std::cerr << "Error: " << alpha_unmasked << " does not equal given unmasked "
+				<< "checksum " << check_unmasked << ".\n";
+			error = true;
+		}
+		if( !grb::utils::equals( alpha_right_unmasked, check_unmasked, nz+1 ) ) {
+			std::cerr << "Error: " << alpha_right_unmasked << " does not equal given "
+				<< "unmasked checksum " << check_unmasked << ".\n";
+			error = true;
+		}
+	}
+	if( !error ) {
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "Sparse functional tests complete.\n";
+		}
+	} else {
+		std::cerr << std::flush;
+		return 71;
+	}
+	return 0;
+}
+
+template< Descriptor descr, typename MonT >
+int expect_sparse_success(
+	grb::Vector< double > &xv,
+	MonT &mon,
+	const double check,
+	const grb::Vector< bool > mask = NO_MASK
+) {
+	return expect_sparse_success< descr, MonT >( xv, mon, check, mask, check );
+}
+
+template< Descriptor descr, typename MonT >
 int expect_success(
 	grb::Vector< double > &xv,
 	MonT &mon,
@@ -372,6 +497,170 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		return;
 	}
 
+	// do similar happy path testing, but now for sparse inputs
+	{
+		grb::Vector< double > sparse( n ), empty( n ), single( n );
+		grb::Vector< bool > empty_mask( n ), odd_mask( n ), half_mask( n ), full( n );
+		grb::RC rc = grb::set( sparse, even_mask, 1.0 );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::set( full, true );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::setElement( single, 3.141, n/2 );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::setElement( half_mask, true, n/2 );
+		assert( rc == grb::SUCCESS );
+		for( size_t i = 1; rc == grb::SUCCESS && i < n; i += 2 ) {
+			rc = grb::setElement( odd_mask, true, i );
+		}
+		assert( rc == grb::SUCCESS );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Could not initialise for sparse tests\n";
+			exit_status = 31;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			empty, realm, 0.0 );
+		if( exit_status != 0 ) {
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			empty, realm, 0.0, even_mask );
+		if( exit_status != 0 ) {
+			exit_status += 100;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			sparse, realm, grb::nnz(sparse) );
+		if( exit_status != 0 ) {
+			exit_status += 200;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			sparse, realm, 0.0, empty_mask, grb::nnz(sparse) );
+		if( exit_status != 0 ) {
+			exit_status += 300;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::structural >(
+			sparse, realm, 0.0, empty_mask, grb::nnz(sparse) );
+		if( exit_status != 0 ) {
+			exit_status += 400;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
+			sparse, realm, grb::nnz(sparse), empty_mask );
+		if( exit_status != 0 ) {
+			exit_status += 500;
+			return;
+		}
+
+		exit_status = expect_sparse_success<
+			grb::descriptors::invert_mask | grb::descriptors::structural
+		>(
+			sparse, realm, grb::nnz(sparse), empty_mask
+		);
+		if( exit_status != 0 ) {
+			exit_status += 600;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			sparse, realm, grb::nnz(sparse), even_mask );
+		if( exit_status != 0 ) {
+			exit_status += 700;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+			sparse, realm, 0.0, odd_mask, grb::nnz(sparse) );
+		if( exit_status != 0 ) {
+			exit_status += 800;
+			return;
+		}
+
+		exit_status = expect_sparse_success<
+			grb::descriptors::no_operation | grb::descriptors::structural
+		>(
+			sparse, realm, grb::nnz(sparse), even_mask
+		);
+		if( exit_status != 0 ) {
+			exit_status += 900;
+			return;
+		}
+
+		exit_status = expect_sparse_success<
+			grb::descriptors::no_operation | grb::descriptors::structural
+		>(
+			sparse, realm, 0.0, odd_mask, grb::nnz(sparse)
+		);
+		if( exit_status != 0 ) {
+			exit_status += 1000;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
+			sparse, realm, grb::nnz(sparse), odd_mask );
+		if( exit_status != 0 ) {
+			exit_status += 1100;
+			return;
+		}
+
+		exit_status = expect_sparse_success<
+			grb::descriptors::invert_mask | grb::descriptors::structural
+		>(
+			sparse, realm, grb::nnz(sparse), odd_mask
+		);
+		if( exit_status != 0 ) {
+			exit_status += 1200;
+			return;
+		}
+
+		exit_status = expect_sparse_success< grb::descriptors::structural >(
+			single, realm, 3.141, full );
+		if( exit_status != 0 ) {
+			exit_status += 1300;
+			return;
+		}
+
+		// warning: below set of two tests alter half_mask
+		{
+			double expect = (n/2) % 2 == 0
+				? 1.0
+				: 0.0;
+			exit_status = expect_sparse_success< grb::descriptors::structural >(
+				sparse, realm, expect, half_mask, grb::nnz(sparse) );
+			if( exit_status != 0 ) {
+				exit_status += 1400;
+				return;
+			}
+
+			static_assert( n > 1, "These tests require n=2 or larger" );
+			grb::RC rc = grb::setElement( half_mask, false, n/2 );
+			rc = rc ? rc : grb::setElement( half_mask, true, n/2 + 1 );
+			if( rc == grb::SUCCESS ) {
+				expect = (n/2+1) % 2 == 0
+					? 1.0
+					: 0.0;
+				exit_status = expect_sparse_success< grb::descriptors::no_operation >(
+					sparse, realm, expect, half_mask, grb::nnz(sparse) );
+			} else {
+				exit_status = 1532;
+				return;
+			}
+
+			if( exit_status != 0 ) {
+				exit_status += 1500;
+				return;
+			}
+		}
+	}
+
 	// check whether ILLEGAL is returned when appropriate
 	{
 		grb::Vector< double > half_sparse( n );
@@ -417,6 +706,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// done
+	std::cout << "\n";
 	assert( exit_status == 0 );
 }
 
