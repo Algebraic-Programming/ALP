@@ -2151,49 +2151,51 @@ namespace alp {
 
 	} // namespace structures
 
-	/**
-	 * Defines a new ALP container type form the provided original type
-	 * with the modification of the desired nested template parameter.
-	 */
-	template< typename ContainerType >
-	struct new_container_type_from {};
+	namespace internal {
+		/**
+		 * Defines a new ALP container type form the provided original type
+		 * with the modification of the desired nested template parameter.
+		 */
+		template< typename ContainerType >
+		struct new_container_type_from {};
 
-	template<
-		template< typename, typename, enum Density, typename, typename, typename, enum Backend > typename Container,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend
-	>
-	struct new_container_type_from< Container< T, Structure, density, View, ImfR, ImfC, backend > > {
+		template<
+			template< typename, typename, enum Density, typename, typename, typename, enum Backend > typename Container,
+			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend
+		>
+		struct new_container_type_from< Container< T, Structure, density, View, ImfR, ImfC, backend > > {
 
-		typedef Container< T, Structure, density, View, ImfR, ImfC, backend > original_container;
-		static_assert( is_matrix< original_container >::value || is_vector< original_container >::value , "ModifyType supports only ALP Matrix and Vector types." );
+			typedef Container< T, Structure, density, View, ImfR, ImfC, backend > original_container;
+			static_assert( is_matrix< original_container >::value || is_vector< original_container >::value , "ModifyType supports only ALP Matrix and Vector types." );
 
-		template< typename NewStructure >
-		struct change_structure {
-			typedef Container< T, NewStructure, density, View, ImfR, ImfC, backend > type;
-			typedef new_container_type_from< type > _and_;
+			template< typename NewStructure >
+			struct change_structure {
+				typedef Container< T, NewStructure, density, View, ImfR, ImfC, backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
+			template< typename NewView >
+			struct change_view {
+				typedef Container< T, Structure, density, NewView, ImfR, ImfC, backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
+			template< typename NewImfR >
+			struct change_imfr {
+				typedef Container< T, Structure, density, View, NewImfR, ImfC, backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
+			template< typename NewImfC >
+			struct change_imfc {
+				typedef Container< T, Structure, density, View, ImfR, NewImfC, backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
+			private:
+				new_container_type_from() = delete;
 		};
-
-		template< typename NewView >
-		struct change_view {
-			typedef Container< T, Structure, density, NewView, ImfR, ImfC, backend > type;
-			typedef new_container_type_from< type > _and_;
-		};
-
-		template< typename NewImfR >
-		struct change_imfr {
-			typedef Container< T, Structure, density, View, NewImfR, ImfC, backend > type;
-			typedef new_container_type_from< type > _and_;
-		};
-
-		template< typename NewImfC >
-		struct change_imfc {
-			typedef Container< T, Structure, density, View, ImfR, NewImfC, backend > type;
-			typedef new_container_type_from< type > _and_;
-		};
-
-		private:
-			new_container_type_from() = delete;
-	};
+	} // namespace internal
 
 	/**
      *
@@ -2275,7 +2277,7 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename new_container_type_from<
+	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
 	>::template change_structure< TargetStructure >::type
 	get_view( SourceMatrix &source ) {
@@ -2283,7 +2285,7 @@ namespace alp {
 		static_assert( structures::is_in< typename SourceMatrix::structure, typename TargetStructure::inferred_structures >::value,
 			"Can only create a view when the target structure is compatible with the source." );
 
-		using target_strmat_t = typename new_container_type_from<
+		using target_strmat_t = typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::original >::type
 		>::template change_structure< TargetStructure >::type;
 
@@ -2301,7 +2303,7 @@ namespace alp {
 			typename SourceMatrix,
 			std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 		>
-		typename new_container_type_from<
+		typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::original >::type
 		>::template change_structure< TargetStructure >::_and_::
 		template change_imfr< TargetImfR >::_and_::
@@ -2317,7 +2319,7 @@ namespace alp {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using target_t = typename new_container_type_from<
+			using target_t = typename internal::new_container_type_from<
 				typename SourceMatrix::template view_type< view::original >::type
 			>::template change_structure< TargetStructure >::_and_::
 			template change_imfr< TargetImfR >::_and_::
@@ -2366,7 +2368,7 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename new_container_type_from<
+	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
 	>::template change_structure< TargetStructure >::_and_::
 	template change_imfr< imf::Strided >::_and_::
@@ -2419,7 +2421,7 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename new_container_type_from<
+	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
 	>::template change_imfr< imf::Strided >::_and_::
 	template change_imfc< imf::Strided >::type
@@ -2553,7 +2555,7 @@ namespace alp {
 		typename SelectVectorR, typename SelectVectorC,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename new_container_type_from<
+	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
 	>::template change_structure< TargetStructure >::_and_::
 	template change_imfr< imf::Select >::_and_::
