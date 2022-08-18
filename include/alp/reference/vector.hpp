@@ -424,54 +424,54 @@ namespace alp {
 			/**
 			 * Constructor for a view over another storage-based vector.
 			 *
-			 * @tparam TargetType  The type of the target vector.
+			 * @tparam SourceType  The type of the target vector.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( TargetType &vec_view, ImfR imf_r, ImfC imf_c ) :
-				base_type( vec_view, imf_r, imf_c ) { }
+			Vector( SourceType &source_vector, ImfR imf_r, ImfC imf_c ) :
+				base_type( source_vector, imf_r, imf_c ) { }
 
 			/**
 			 * Constructor for a view over another vector using default IMFs (Identity).
 			 *
-			 * @tparam TargetType  The type of the target vector.
+			 * @tparam SourceType  The type of the target vector.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( TargetType &vec_view ) :
-				base_type( vec_view ) {}
+			Vector( SourceType &source_vector ) :
+				base_type( source_vector ) {}
 
 			/**
 			 * Constructor for a view over another storage-based vector.
 			 *
-			 * @tparam TargetType  The type of the target vector.
+			 * @tparam SourceType  The type of the target vector.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( TargetType &vec_view, AmfType &&amf ) :
-				base_type( vec_view, std::forward< AmfType >( amf ) ) {}
+			Vector( SourceType &source_vector, AmfType &&amf ) :
+				base_type( source_vector, std::forward< AmfType >( amf ) ) {}
 
 			/**
 			 * Constructor for a functor-based vector that allocates memory.
@@ -493,35 +493,35 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based vector.
 			 *
-			 * @tparam TargetType  The type of the target vector.
+			 * @tparam SourceType  The type of the target vector.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( TargetType &target_vector, ImfR imf_r, ImfC imf_c ) :
+			Vector( SourceType &target_vector, ImfR imf_r, ImfC imf_c ) :
 				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
 			 *
-			 * @tparam TargetType  The type of the target vector.
+			 * @tparam SourceType  The type of the target vector.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( TargetType &target_vector ) :
+			Vector( SourceType &target_vector ) :
 				base_type( getFunctor( target_vector ),
 					imf::Id( nrows ( target_vector ) ),
 					imf::Id( 1 )
