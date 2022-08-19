@@ -1112,6 +1112,7 @@ namespace alp {
 				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.
@@ -1352,6 +1353,7 @@ namespace alp {
 				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.
@@ -1585,6 +1587,7 @@ namespace alp {
 				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam ViewType The dummy View type of the constructed matrix.
@@ -1804,6 +1807,7 @@ namespace alp {
 				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam ViewType The dummy View type of the constructed matrix.
@@ -2028,6 +2032,7 @@ namespace alp {
 				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.

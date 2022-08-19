@@ -457,6 +457,7 @@ namespace alp {
 				base_type( source_vector ) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based vector.
 			 *
 			 * @tparam SourceType  The type of the target vector.
