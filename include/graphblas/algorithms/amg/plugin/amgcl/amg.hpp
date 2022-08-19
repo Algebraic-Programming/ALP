@@ -41,6 +41,7 @@ THE SOFTWARE.
 #include <amgcl/util.hpp>
 #include <amgcl/io/mm.hpp>
 
+
 /// Primary namespace.
 namespace amgcl {
 
@@ -585,6 +586,9 @@ class amg {
 		size_t depth = 0;
 		typedef typename amg<B, C, R>::level level;
 		for(const level &lvl : a.levels) {
+#ifdef DEBUG
+			std::cout << "     level = " << depth << "\n";
+#endif
 			{
 				size_t nz = backend::nonzeros(*lvl.A);
 				size_t n = backend::cols( *lvl.A );
@@ -601,27 +605,33 @@ class amg {
 				}
 				MD Amat_level_data(nz,n,m,i_data,j_data,v_data);
 				Amat_data.push_back(Amat_level_data);
+#ifdef DEBUG
+			std::cout << "          Amat extracted\n";
+#endif
 			}
 
-
 			if( depth < n_levels -1 ) {
-				{
-					size_t nz = backend::nonzeros(*lvl.P);
-					size_t n = backend::cols( *lvl.P );
-					size_t m = backend::rows( *lvl.P );
-					std::vector<size_t> i_data(nz);
-					std::vector<size_t> j_data(nz);
-					std::vector<double> v_data(nz);
-					size_t irow = 0;
-					for(size_t i = 0;  i < backend::nonzeros(*lvl.P)  ; ++i ) {
-						if( i >= static_cast< size_t > ((*lvl.P).ptr[ irow ]) ) irow++;
-						i_data[ i ] = irow - 1;
-						j_data[ i ] = (*lvl.P).col[i];
-						v_data[ i ] = (*lvl.P).val[i];
-					}
-					MD Pmat_level_data(nz,n,m,i_data,j_data,v_data);
-					Pmat_data.push_back(Pmat_level_data);
-				}
+// 				{
+// 					// Pmat is currently not used as Pmax=transpose(Rmat)
+// 					size_t nz = backend::nonzeros(*lvl.P);
+// 					size_t n = backend::cols( *lvl.P );
+// 					size_t m = backend::rows( *lvl.P );
+// 					std::vector<size_t> i_data(nz);
+// 					std::vector<size_t> j_data(nz);
+// 					std::vector<double> v_data(nz);
+// 					size_t irow = 0;
+// 					for(size_t i = 0;  i < backend::nonzeros(*lvl.P)  ; ++i ) {
+// 						if( i >= static_cast< size_t > ((*lvl.P).ptr[ irow ]) ) irow++;
+// 						i_data[ i ] = irow - 1;
+// 						j_data[ i ] = (*lvl.P).col[i];
+// 						v_data[ i ] = (*lvl.P).val[i];
+// 					}
+// 					MD Pmat_level_data(nz,n,m,i_data,j_data,v_data);
+// 					Pmat_data.push_back(Pmat_level_data);
+// #ifdef DEBUG
+// 			std::cout << "          Pmat extracted\n";
+// #endif
+// 				}
 
 				{
 					size_t nz = backend::nonzeros(*lvl.R);
@@ -639,6 +649,9 @@ class amg {
 					}
 					MD Rmat_level_data(nz,n,m,i_data,j_data,v_data);
 					Rmat_data.push_back(Rmat_level_data);
+#ifdef DEBUG
+					std::cout << "          Rmat extracted\n";
+#endif
 				}
 			}
 
@@ -649,6 +662,9 @@ class amg {
 			size_t  mdim = lvl.relax->M->size();
 			std::vector< double > Dvec_level_data( data, data + mdim );
 			Dvec_data.push_back( Dvec_level_data );
+#ifdef DEBUG
+			std::cout << "          Dvec extracted\n";
+#endif
 
 			depth++;
 			if( depth >= n_levels ) {

@@ -44,17 +44,12 @@
 
 #include <amgcl/relaxation/runtime.hpp>
 #include <amgcl/coarsening/runtime.hpp>
-//#include <amgcl/solver/runtime.hpp>
-//#include <amgcl/make_solver.hpp>
 #include <graphblas/algorithms/amg/plugin/amgcl/amg.hpp>
 #include <amgcl/backend/builtin.hpp>
 #include <amgcl/util.hpp>
 #include <amgcl/adapter/crs_tuple.hpp>
 #include <amgcl/io/mm.hpp>
 #include <amgcl/io/binary.hpp>
-
-
-//#include <lib/amgcl.h>
 
 typedef amgcl::backend::builtin<double>           Backend;
 typedef amgcl::amg<Backend,
@@ -145,7 +140,12 @@ struct simulation_input {
 class preloaded_matrices {
 
 public :
-
+	//this class might become very large and it will be removed in the future
+	//the only purpose is to use ALP memory allocation and tehrefore
+	//make random access iterators for buildMatrixUnique
+	//alternatively we might use forward access iterators in save_levels
+	//and avoid temporary allocation here,
+	//or even control amgcl allocation and use that storage directly
 	std::vector<mat_data<>>  Amat_data;
 	std::vector<mat_data<>>  Pmat_data;
 	std::vector<mat_data<>>  Rmat_data;
@@ -194,15 +194,19 @@ public :
 		prm.max_levels = in.max_coarsening_levels;
 
 		AMG amg( A, prm );
+
+#ifdef DEBUG
+		std::cout << " AMG hierarchy constructed.\n";
+		std::cout << " converting AMGCL levels to vectors ...\n";
+#endif
 		save_levels( amg, Amat_data, Pmat_data, Rmat_data, Dvec_data );
 
 		if ( Amat_data.size() != in.max_coarsening_levels ) {
 			std::cout << " max_coarsening_levels readjusted to : ";
 			std::cout << Amat_data.size() << "\n";
 		}
-
-
 #ifdef DEBUG
+		std::cout << " converting AMGCL levels to vectors ... done.\n";
 		std::cout << " --> Amat_data.size() =" << Amat_data.size() << "\n";
 		for( size_t i = 0; i < Amat_data.size(); i++ ) {
 			std::cout << " amgcl check data: level =" << i << "\n";
