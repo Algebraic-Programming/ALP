@@ -52,7 +52,6 @@ namespace alp {
 			gather,
 			transpose,
 			diagonal,
-			vector,
 			_internal
 		};
 
