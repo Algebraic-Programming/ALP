@@ -113,9 +113,16 @@ add_grb_executables( simple_pagerank simple_pagerank.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
-add_grb_executables( pregel_pagerank pregel_pagerank.cpp
+add_grb_executables( pregel_pagerank_local pregel_pagerank.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=true
+)
+
+add_grb_executables( pregel_pagerank_global pregel_pagerank.cpp
+	BACKENDS reference reference_omp bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=false
 )
 
 add_grb_executables( pregel_strongly_connected_components pregel_strongly_connected_components.cpp

@@ -28,6 +28,10 @@
 #include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
+#ifndef PR_CONVERGENCE_MODE
+ #error "PR_CONVERGENCE_MODE must be defined and read either true or false"
+#endif
+
 
 using namespace grb;
 using namespace algorithms;
@@ -90,9 +94,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// 1. initalise pagerank scores and message buffers
         grb::Vector< double > pr( n ), in_msgs( n ), out_msgs( n );
 	// 2. initialise PageRank parameters
-	grb::algorithms::pregel::PageRank< double >::Data pr_data;
+	grb::algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::Data pr_data;
 	// 3. get handle to Pregel PageRank program
-	auto &pr_prog = grb::algorithms::pregel::PageRank< double >::program;
+	auto &pr_prog = grb::algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::program;
 
 	out.times.preamble = timer.time();
 

@@ -18,11 +18,11 @@ namespace grb {
 
 		namespace pregel {
 
-			template< typename IOType >
+			template< typename IOType, bool localConverge >
 			struct PageRank {
 
 				struct Data {
-					IOType alpha = 0.85;
+					IOType alpha = 0.15;
 					IOType tolerance = 0.00001;
 				};
 
@@ -35,22 +35,34 @@ namespace grb {
 				) {
 					// initialise
 					if( pregel.round == 0 ) {
-						current_score = 1 /
-							static_cast< double >(
-								pregel.num_vertices
-							);
+						current_score = static_cast< IOType >( 1 );
 					}
+
+#ifdef _DEBUG
+					const bool dbg = pregel.vertexID == 17;
+					if( dbg ) {
+						std::cout << "ID: " << pregel.vertexID << "\n"
+							<< "\t active: " << pregel.active << "\n"
+							<< "\t round: " << pregel.round << "\n"
+							<< "\t previous score: " << current_score << "\n"
+							<< "\t incoming message: " << incoming_message << "\n";
+					}
+#endif
 
 					// compute
 					if( pregel.round > 0 ) {
-						const double old_score = current_score;
-						current_score = (1-parameters.alpha) +
-							parameters.alpha * incoming_message;
+						const IOType old_score = current_score;
+						current_score = parameters.alpha +
+							(static_cast< IOType >(1) - parameters.alpha) * incoming_message;
 						if( fabs(current_score-old_score) < parameters.tolerance ) {
 #ifdef _DEBUG
 							std::cout << "\t\t vertex " << pregel.vertexID << " converged\n";
 #endif
-							pregel.active = false;
+							if( localConverge ) {
+								pregel.active = false;
+							} else {
+								pregel.voteToHalt = true;
+							}
 						}
 					}
 
@@ -58,8 +70,17 @@ namespace grb {
 					if( pregel.outdegree > 0 ) {
 						outgoing_message =
 							current_score /
-							static_cast< double >(pregel.outdegree);
+							static_cast< IOType >(pregel.outdegree);
 					}
+
+#ifdef _DEBUG
+					if( dbg ) {
+						std::cout << "\t current score: " << current_score << "\n"
+							<< "\t voteToHalt: " << pregel.voteToHalt << "\n"
+							<< "\t outgoing message: " << outgoing_message << "\n";
+					}
+#endif
+
 				}
 
 				template< typename PregelType >
@@ -79,7 +100,7 @@ namespace grb {
 					grb::Vector< IOType > out( n );
 
 					return pregel.template execute<
-							grb::operators::add< double >,
+							grb::operators::add< PregelType >,
 							grb::identities::zero
 						> (
 							program,
