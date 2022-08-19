@@ -161,9 +161,7 @@ namespace grb {
 					if( grb::set( outdegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise outdegrees" );
 					}
-					if( grb::mxv<
-							grb::descriptors::transpose_matrix | grb::descriptors::dense
-						>(
+					if( grb::mxv< grb::descriptors::dense >(
 							outdegrees, graph, ones, ring
 						) != SUCCESS
 					) {
@@ -172,7 +170,9 @@ namespace grb {
 					if( grb::set( indegrees, 0 ) != SUCCESS ) {
 						throw std::runtime_error( "Could not initialise indegrees" );
 					}
-					if( grb::mxv< grb::descriptors::dense >(
+					if( grb::mxv<
+						grb::descriptors::dense | grb::descriptors::transpose_matrix
+					>(
 						indegrees, graph, ones, ring
 					) != SUCCESS ) {
 						throw std::runtime_error( "Could not compute indegrees" );
@@ -358,14 +358,14 @@ namespace grb {
 				 *                behaviour.
 				 *
 				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
-				 * ID. For vectors \a in and \out that are non-empty \em not dense, the
-				 * initial contents will be overwritten by the identity of the reduction
-				 * monoid.
+				 * ID. For sparse vectors \a in with more than zero nonzeroes, the initial
+				 * contents will be overwritten by the identity of the reduction monoid. Any
+				 * initial contents for \a out will always be ignored as every round of
+				 * computation starts with the outgoing message set to the monoid identity.
 				 *
-				 * \note Thus if the program requires some initial incoming and/or intial
-				 *       outgoing messages to be present during the first round of
-				 *       computation, those must be passed as dense vectors \a in and
-				 *       \a out during a call to this function.
+				 * \note Thus if the program requires some initial incoming messages to be
+				 *       present during the first round of computation, those may be passed
+				 *       as part of a dense vectors \a in.
 				 *
 				 * The contents of \a in and \a out after termination of a vertex-centric
 				 * function are undefined, including when this function returns
@@ -496,17 +496,6 @@ namespace grb {
 						ret = grb::set( in, Id< IncomingMessageType >::value() );
 					}
 
-					// set default outgoing message
-					if( ret == SUCCESS && grb::nnz(out) < n ) {
-#ifdef _DEBUG
-						if( grb::nnz(out) > 0 ) {
-							std::cerr << "Overwriting initial outgoing messages since it was not a "
-								<< "dense vector\n";
-						}
-#endif
-						ret = grb::set( out, Id< OutgoingMessageType >::value() );
-					}
-
 					// return if initialisation failed
 					if( ret != SUCCESS ) {
 						assert( ret == FAILED );
@@ -518,6 +507,14 @@ namespace grb {
 
 					// while there are active vertices, execute
 					while( ret == SUCCESS ) {
+
+						// reset outgoing buffer
+						if( ret == SUCCESS ) {
+							ret = grb::set< grb::descriptors::structural >(
+								out, activeVertices, Id< OutgoingMessageType >::value()
+							);
+						}
+
 						assert( max_rounds == 0 || step < max_rounds );
 						// run one step of the program
 						ret = grb::eWiseLambda(
@@ -645,13 +642,6 @@ namespace grb {
 						std::cout << "\t Resetting outgoing message fields and "
 							<< "starting next compute round\n";
 #endif
-
-						// reset outgoing buffer
-						if( ret == SUCCESS ) {
-							ret = grb::set< grb::descriptors::structural >(
-								out, activeVertices, Id< OutgoingMessageType >::value()
-							);
-						}
 
 					}
 
