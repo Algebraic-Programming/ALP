@@ -2207,7 +2207,7 @@ namespace alp {
 		std::enable_if_t< is_matrix< SourceMatrix >::value, void > * = nullptr
 	>
 	typename SourceMatrix::template view_type< target_view >::type
-	get_view( SourceMatrix&source ) {
+	get_view( SourceMatrix &source ) {
 
 		using target_strmat_t = typename SourceMatrix::template view_type< target_view >::type;
 
@@ -2286,7 +2286,7 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
