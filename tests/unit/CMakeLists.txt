@@ -263,6 +263,7 @@ add_grb_executables( dense_mxm dense_mxm.cpp
 
 add_grb_executables( dense_mxv dense_mxv.cpp
 	BACKENDS alp_reference
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( dense_outer dense_outer.cpp
