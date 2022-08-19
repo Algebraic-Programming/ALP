@@ -25,8 +25,12 @@
 
 #include <cstddef>
 
+#include <alp/base/blas2.hpp>
 #include <alp/backends.hpp>
+#include <alp/blas3.hpp>
 #include <alp/config.hpp>
+#include <alp/matrix.hpp>
+#include <alp/vector.hpp>
 #include <alp/rc.hpp>
 #include <alp/matrix.hpp>
 #include <graphblas/utils/iscomplex.hpp>
@@ -68,7 +72,7 @@ namespace alp {
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
+	 *        -# This function performs \f$ \Theta(1) \f$ work.
 	 *        -# This function allocates no additional dynamic memory.
 	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
 	 *           beyond that which was already used at function entry.
@@ -178,8 +182,14 @@ namespace alp {
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		
+		(void)mask;
+		(void)v_mask;
+
+		return internal::mxm_generic< false >( 
+			static_cast< typename Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference >::base_type & > ( u ), 
+			static_cast< const typename Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference >::base_type & > ( v ), 
+			A, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
 	/** \internal Delegates to fully masked version */
@@ -254,8 +264,14 @@ namespace alp {
 		const Ring & ring,
 		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		(void)mask;
+		(void)v_mask;
+		
+		return internal::mxm_generic< false >( 
+			static_cast< typename Vector< IOType, IOStructure, Density::Dense, IOView, IOImf, reference >::base_type & > ( u ),
+			A, 
+			static_cast< const typename Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImf1, reference >::base_type & > ( v ), 
+			ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
 	/**
