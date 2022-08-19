@@ -1021,13 +1021,11 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::original, d > {
-				// View -> view::Original< self_type > ?
 				using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				// View -> view::Gather< self_type > ?
 				using type = Matrix< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
@@ -1268,7 +1266,6 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				// View -> view::Gather< self_type > ?
 				using type = Matrix< T, structures::Band< Intervals... >, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
@@ -1508,7 +1505,6 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				// View -> view::Gather< self_type > ?
 				using type = Matrix< T, structures::Square, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
@@ -1729,7 +1725,6 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				// View -> view::Gather< self_type > ?
 				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
@@ -1951,7 +1946,6 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				// View -> view::Gather< self_type > ?
 				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
