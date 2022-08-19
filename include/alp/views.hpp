@@ -49,6 +49,7 @@ namespace alp {
 		 */
 		enum Views {
 			original,
+			gather,
 			transpose,
 			diagonal,
 			_internal
@@ -61,9 +62,15 @@ namespace alp {
 
 			static constexpr Views type_id = Views::original;
 
-			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
-				return std::make_pair( dims_pair.first, dims_pair.second );
-			}
+		};
+
+		template< typename OriginalType >
+		struct Gather {
+
+			using applied_to = OriginalType;
+
+			static constexpr Views type_id = Views::gather;
+
 		};
 
 		template< typename OriginalType >
@@ -73,9 +80,6 @@ namespace alp {
 
 			static constexpr Views type_id = Views::transpose;
 
-			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
-				return std::make_pair( dims_pair.second, dims_pair.first );
-			}
 		};
 
 		template< typename OriginalType >
@@ -85,9 +89,6 @@ namespace alp {
 
 			static constexpr Views type_id = Views::diagonal;
 
-			static size_t getLength( std::pair< size_t, size_t > dims_pair ) {
-				return std::min( dims_pair.first, dims_pair.second );
-			}
 		};
 
 		template< typename LambdaFunctionType >
@@ -98,9 +99,6 @@ namespace alp {
 			/** Functor views are not exposed to the user */
 			static constexpr Views type_id = Views::_internal;
 
-			static std::pair< size_t, size_t > getLength( std::pair< size_t, size_t > dims_pair ) {
-				return std::make_pair( dims_pair.first, dims_pair.second );
-			}
 		};
 
 	}; // namespace view

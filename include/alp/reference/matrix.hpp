@@ -856,7 +856,7 @@ namespace alp {
 			);
 
 			typedef typename std::conditional<
-				View::type_id == view::Views::original,
+				( View::type_id == view::original ) || ( View::type_id == view::gather ),
 				typename storage::AMFFactory::Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
@@ -1021,8 +1021,12 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::original, d > {
-				// View -> view::Original< self_type > ?
 				using type = Matrix< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			template < bool d >
@@ -1067,58 +1071,51 @@ namespace alp {
 			/**
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename TargetType::base_type::amf_type
-					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * @deprecated Will go through amf constructor with original view.
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 * @tparam AmfType     The type of the amf used to construct the matrix.
 			 *                     Used as a template parameter to benefit from
 			 *                     SFINAE for the case of FunctorBasedMatrix, when
@@ -1127,17 +1124,17 @@ namespace alp {
 			 *                     result in a hard compilation error.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, AmfType &&amf ) :
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
@@ -1174,39 +1171,39 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * @deprecated
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( getFunctor( target_matrix ),
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) )
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
 				) {
 
 				static_assert(
@@ -1269,6 +1266,11 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::Band< Intervals... >, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				typedef structures::tuple_to_band< typename internal::transpose_interval_tuple< std::tuple< Intervals... > >::type > transposed_band;
 				using type = Matrix< T, transposed_band, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
@@ -1310,57 +1312,51 @@ namespace alp {
 			/**
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename TargetType::base_type::amf_type
-					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 * @tparam AmfType     The type of the amf used to construct the matrix.
 			 *                     Used as a template parameter to benefit from
 			 *                     SFINAE for the case of FunctorBasedMatrix, when
@@ -1369,17 +1365,17 @@ namespace alp {
 			 *                     result in a hard compilation error.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, AmfType &&amf ) :
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
@@ -1416,38 +1412,38 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( getFunctor( target_matrix ),
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) )
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
 				) {
 
 				static_assert(
@@ -1510,6 +1506,11 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::Square, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
@@ -1552,47 +1553,41 @@ namespace alp {
 			 * Constructor for a view over another storage-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename TargetType::base_type::amf_type
-					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam ViewType The dummy View type of the constructed matrix.
@@ -1600,17 +1595,17 @@ namespace alp {
 			 *                 	a view over a storage-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, AmfType &&amf ) :
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
@@ -1645,31 +1640,31 @@ namespace alp {
 			 * Constructor for a view over another functor-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( getFunctor( target_matrix ),
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) )
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
 				) {
 
 				static_assert(
@@ -1732,6 +1727,11 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
@@ -1773,47 +1773,41 @@ namespace alp {
 			 * Constructor for a view over another storage-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename TargetType::base_type::amf_type
-					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam ViewType The dummy View type of the constructed matrix.
@@ -1823,17 +1817,17 @@ namespace alp {
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, AmfType &&amf ) :
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
@@ -1868,31 +1862,31 @@ namespace alp {
 			 * Constructor for a view over another functor-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( getFunctor( target_matrix ),
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) )
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
 				) {
 
 				static_assert(
@@ -1955,6 +1949,11 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::LowerTriangular, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
@@ -1995,72 +1994,63 @@ namespace alp {
 			/**
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					storage::AMFFactory::Compose<
-						ImfR, ImfC, typename TargetType::base_type::amf_type
-					>::Create( imf_r, imf_c, internal::getAmf( target_matrix ) )
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * Constructor for a view over another matrix using default IMFs (Identity).
-			 * Delegate to the general constructor.
-			 *
-			 * @tparam TargetType  The type of the target matrix.
-			 *
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( target_matrix,
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) ) ) {
-
-				static_assert(
-					std::is_same< ImfR, imf::Id >::value &&
-					std::is_same< ImfC, imf::Id >::value,
-					"This constructor can only be used with Id IMFs."
-				);
-
-			}
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
 
 			/**
+			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 * @tparam AmfType     The type of the amf used to construct the matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, AmfType &&amf ) :
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
 				base_type(
-					getContainer( target_matrix ),
+					getContainer( source_matrix ),
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
@@ -2097,38 +2087,38 @@ namespace alp {
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_matrix ), imf_r, imf_c ) {}
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based matrix.
 			 *
-			 * @tparam TargetType  The type of the target matrix.
+			 * @tparam SourceType  The type of the target matrix.
 			 *
 			 */
 			template<
-				typename TargetType,
+				typename SourceType,
 				std::enable_if_t<
-					std::is_same< TargetType, typename View::applied_to >::value &&
+					std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_functor< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( TargetType &target_matrix ) :
-				Matrix( getFunctor( target_matrix ),
-					imf::Id( nrows ( target_matrix ) ),
-					imf::Id( ncols ( target_matrix ) )
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
 				) {
 
 				static_assert(
@@ -2186,64 +2176,19 @@ namespace alp {
 	} // namespace structures
 
 	/**
-     *
-	 * @brief Generate an original view of \a source maintaining the same \a Structure.
-	 * 		  The function guarantees the created view is non-overlapping with other
-	 *        existing views only when the check can be performed in constant time.
 	 *
-	 * @tparam T         The matrix' elements type
-	 * @tparam Structure The structure of the source and target matrix view
-	 * @tparam density   The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View      The source's View type
-	 * @tparam backend   The target backend
-	 *
-	 * @param source     The source matrix
-	 *
-	 * @return A new original view over the source structured matrix.
-	 *
-     * \parblock
-     * \par Performance semantics.
-     *        -# This function performs
-     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
-	 * 			 of available views of \a source.
-     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
-     *           of memory beyond the memory in use at the function call entry.
-     *        -# This function may make system calls.
-     * \endparblock
-	 *
-	 */
-	template<
-		typename SourceMatrixType,
-		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
-	>
-	typename SourceMatrixType::template view_type< view::original >::type
-	get_view( SourceMatrixType &source ) {
-
-		using target_strmat_t = typename SourceMatrixType::template view_type< view::original >::type;
-
-		target_strmat_t target( source );
-
-		return target;
-	}
-
-	/**
-     *
 	 * @brief Generate a view specified by \a target_view where the type is compliant with the
 	 * 		  \a source matrix.
 	 * 		  The function guarantees the created view is non-overlapping with other
 	 *        existing views only when the check can be performed in constant time.
 	 *
 	 * @tparam target_view  One of the supported views listed in \a view::Views
-	 * @tparam T            The matrix' elements type
-	 * @tparam Structure    The structure of the source and target matrix view
-	 * @tparam density      The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View         The source's View type
-	 * @tparam backend      The target backend
+	 * @tparam SourceMatrix The type of the source matrix
 	 *
-	 * @param source        The source structured matrix
+	 * @param source        The source ALP matrix
 	 *
 	 * @return A new \a target_view view over the source matrix.
-
+	 *
      * \parblock
      * \par Performance semantics.
      *        -# This function performs
@@ -2256,27 +2201,22 @@ namespace alp {
 	 *
 	 */
 	template<
-		enum view::Views target_view,
-		typename SourceMatrixType,
-		std::enable_if_t< is_matrix< SourceMatrixType >::value, void > * = nullptr
+		enum view::Views target_view = view::Views::original,
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value, void > * = nullptr
 	>
-	typename SourceMatrixType::template view_type< target_view >::type
-	get_view( SourceMatrixType &source ) {
+	typename SourceMatrix::template view_type< target_view >::type
+	get_view( SourceMatrix &source ) {
 
-		using target_strmat_t = typename SourceMatrixType::template view_type< target_view >::type;
+		using target_strmat_t = typename SourceMatrix::template view_type< target_view >::type;
 
-		target_strmat_t target(
-			source,
-			storage::AMFFactory::Reshape< target_view, typename SourceMatrixType::amf_type >::Create( internal::getAmf( source ) )
-		);
-
-		return target;
+		return target_strmat_t( source );
 	}
 
 	/**
-     *
+	 *
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
-	 * 		  Version where a target structure is specified. It can only generate a valide type if the target
+	 * 		  Version where a target structure is specified. It can only generate a valid type if the target
 	 * 		  structure is the same as the source's
 	 * 		  or a more specialized one that would preserve its static properties (e.g., symmetric reference
 	 * 		  to a square matrix -- any assumption based on symmetry would not break those based on square).
@@ -2285,15 +2225,11 @@ namespace alp {
 	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T                The matrix's elements type
-	 * @tparam Structure        The structure of the source and target matrix view
-	 * @tparam density          The type (i.e., \a alp::Density:Dense or \a alp::Density:Sparse) of storage scheme
-	 * @tparam View             The source's View type
-	 * @tparam backend          The target backend
+	 * @tparam SourceMatrix     The type of the source matrix
 	 *
-	 * @param source            The source structured matrix
+	 * @param source            The source ALP matrix
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
      * \parblock
      * \par Performance semantics.
@@ -2308,65 +2244,63 @@ namespace alp {
 	 */
 	template<
 		typename TargetStructure,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, ImfR, ImfC, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source ) {
+		typename SourceMatrix,
+		std::enable_if< is_matrix< SourceMatrix >::value > * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::original >::type
+	>::template change_structure< TargetStructure >::type
+	get_view( SourceMatrix &source ) {
 
-		static_assert( structures::is_in< Structure, typename TargetStructure::inferred_structures >::value,
+		static_assert( structures::is_in< typename SourceMatrix::structure, typename TargetStructure::inferred_structures >::value,
 			"Can only create a view when the target structure is compatible with the source." );
 
-		using source_strmat_t = Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-		using target_strmat_t = Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, ImfR, ImfC, backend >;
+		using target_strmat_t = typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::original >::type
+		>::template change_structure< TargetStructure >::type;
 
-		target_strmat_t target(
-			source,
-			storage::AMFFactory::Reshape< view::Views::original, typename source_strmat_t::amf_type >::Create( internal::getAmf( source ) )
-		);
-
-		return target;
+		return target_strmat_t( source );
 	}
 
 	namespace internal {
+
 		/**
 		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
-
 		template<
 			typename TargetStructure, typename TargetImfR, typename TargetImfC,
-			typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-		alp::Matrix<
-			T,
-			TargetStructure,
-			density,
-			view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-			TargetImfR,
-			TargetImfC,
-			backend
+			typename SourceMatrix,
+			std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 		>
-		get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-				TargetImfR imf_r, TargetImfC imf_c ) {
+		typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_structure< TargetStructure >::_and_::
+		template change_imfr< TargetImfR >::_and_::
+		template change_imfc< TargetImfC >::type
+		get_view( SourceMatrix &source, TargetImfR imf_r, TargetImfC imf_c ) {
 
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
 			//	throw std::runtime_error("Cannot gather with imf::Select yet.");
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< Structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
-			using source_strmat_t = alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >;
-			using target_strmat_t = alp::Matrix< T, TargetStructure, density, view::Original< source_strmat_t >, TargetImfR, TargetImfC, backend >;
+			using target_t = typename internal::new_container_type_from<
+				typename SourceMatrix::template view_type< view::gather >::type
+			>::template change_structure< TargetStructure >::_and_::
+			template change_imfr< TargetImfR >::_and_::
+			template change_imfc< TargetImfC >::type;
 
-			target_strmat_t target( source, imf_r, imf_c );
-
-			return target;
+			return target_t( source, imf_r, imf_c );
 		}
 	} // namespace internal
 
 	/**
-     *
+	 *
 	 * @brief Generate an original view where the type is compliant with the source Matrix.
 	 * Version where a range of rows and columns are selected to form a new view with specified target
 	 * structure. It can only generate a valide type if the target
@@ -2376,17 +2310,13 @@ namespace alp {
 	 *
 	 * @tparam TargetStructure  The target structure of the new view. It should verify
 	 *                          <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-	 * @tparam T                The matrix' elements type
-	 * @tparam Structure        The structure of the source and target matrix view
-	 * @tparam density          The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View             The source's View type
-	 * @tparam backend          The target backend
+	 * @tparam SourceMatrix     The type of source ALP matrix
 	 *
-	 * @param source            The source structured matrix
+	 * @param source            The source ALP matrix
 	 * @param rng_r             A valid range of rows
 	 * @param rng_c             A valid range of columns
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
      * \parblock
      * \par Performance semantics.
@@ -2401,10 +2331,16 @@ namespace alp {
 	 */
 	template<
 		typename TargetStructure,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Matrix< T, TargetStructure, density, view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >, imf::Strided, imf::Strided, backend >
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const utils::range& rng_r, const utils::range& rng_c ) {
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_structure< TargetStructure >::type
+	get_view(
+		SourceMatrix &source,
+		const utils::range& rng_r, const utils::range& rng_c
+	) {
 
 		return internal::get_view< TargetStructure >(
 			source,
@@ -2421,11 +2357,7 @@ namespace alp {
 	 * A structure preserving check as well as non-overlapping checks with existing views of \a source
 	 * are guaranteed only when each one of them incurs constant time work.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix     The type of source ALP matrix
 	 *
 	 * @param source      The source matrix
 	 * @param rng_r       A valid range of rows
@@ -2446,20 +2378,20 @@ namespace alp {
 	 */
 
 	template<
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	Matrix<
-		T,
-		Structure,
-		density,
-		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-		typename imf::composed_type< imf::Strided, ImfR >::type,
-		typename imf::composed_type< imf::Strided, ImfC >::type,
-		backend
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	get_view( Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const utils::range &rng_r, const utils::range &rng_c ) {
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_imfr< imf::Strided >::_and_::
+	template change_imfc< imf::Strided >::type
+	get_view(
+		SourceMatrix &source,
+		const utils::range &rng_r,
+		const utils::range &rng_c
+	) {
 
-		return internal::get_view< Structure >(
+		return internal::get_view< typename SourceMatrix::structure >(
 			source,
 			imf::Strided( rng_r.count(), nrows(source), rng_r.start, rng_r.stride ),
 			imf::Strided( rng_c.count(), ncols(source), rng_c.start, rng_c.stride ) );
@@ -2469,17 +2401,13 @@ namespace alp {
 	 *
 	 * @brief Generate a vector view on a row of the source matrix.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix The type of the source ALP matrix
 	 *
-	 * @param source      The source matrix
-	 * @param sel_r       A valid row index
-	 * @param rng_c       A valid range of columns
+	 * @param source        The source matrix
+	 * @param sel_r         A valid row index
+	 * @param rng_c         A valid range of columns
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2493,38 +2421,25 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View,
-		typename ImfR, typename ImfC, enum Backend backend
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	Vector<
-		T,
-		structures::General,
-		density,
-		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-		imf::Strided, imf::Strided,
-		backend
-	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::type
 	get_view(
-		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const size_t &sel_r, const utils::range &rng_c
+		SourceMatrix &source,
+		const size_t &sel_r,
+		const utils::range &rng_c
 	) {
-		return Vector<
-			T,
-			structures::General,
-			density,
-			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-			imf::Strided, imf::Strided,
-			backend
-		>(
+		using target_t = typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_container< alp::Vector >::type;
+
+		return target_t(
 			source,
-			storage::AMFFactory::Compose<
-				imf::Strided, imf::Strided,
-				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
-			>::Create(
-				imf::Strided( 1, nrows( source ), sel_r, 0 ),
-				imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride ),
-				internal::getAmf( source )
-			)
+			imf::Strided( rng_c.count(), nrows( source ), sel_r, 0 ),
+			imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride )
 		);
 	}
 
@@ -2532,17 +2447,13 @@ namespace alp {
 	 *
 	 * @brief Generate a vector view on a column of the source matrix.
 	 *
-	 * @tparam T          The matrix' elements type
-	 * @tparam Structure  The structure of the source and target matrix view
-	 * @tparam density    The type (i.e., sparse or dense) of storage scheme
-	 * @tparam View       The source's View type
-	 * @tparam backend    The target backend
+	 * @tparam SourceMatrix The type of the source ALP matrix
 	 *
-	 * @param source      The source matrix
-	 * @param rng_r       A valid range of rows
-	 * @param sel_c       A valid column index
+	 * @param source        The source matrix
+	 * @param rng_r         A valid range of rows
+	 * @param sel_c         A valid column index
 	 *
-	 * @return A new original view over the source structured matrix.
+	 * @return A new original view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2556,85 +2467,68 @@ namespace alp {
 	 *
 	 */
 	template<
-		typename T, typename Structure, enum Density density, typename View,
-		typename ImfR, typename ImfC, enum Backend backend
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	Vector<
-		T,
-		structures::General,
-		density,
-		view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-		imf::Strided, imf::Strided,
-		backend
-	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::type
 	get_view(
-		Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-		const utils::range &rng_r, const size_t &sel_c
+		SourceMatrix &source,
+		const utils::range &rng_r,
+		const size_t &sel_c
 	) {
-		return Vector<
-			T,
-			structures::General,
-			density,
-			view::Original< Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-			imf::Strided, imf::Strided,
-			backend
-		>(
+		using target_t = typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_container< alp::Vector >::type;
+
+		return target_t(
 			source,
-			storage::AMFFactory::Compose<
-				imf::Strided, imf::Strided,
-				typename Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type
-			>::Create(
-				imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
-				imf::Strided( 1, ncols( source ), sel_c, 0 ),
-				internal::getAmf( source )
-			)
+			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
+			imf::Strided( rng_r.count(), ncols( source ), sel_c, 0 )
 		);
 	}
 
 	/**
 	 *
-		* @brief Generate an original view where the type is compliant with the source Matrix.
-		* Version where a selection of rows and columns expressed as vectors of positions
-		* form a new view with specified target structure.
-		*
-		* @tparam TargetStructure The target structure of the new view. It should verify
-		*                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
-		* @tparam T               The matrix' elements type
-		* @tparam Structure       The structure of the source and target matrix view
-		* @tparam density         The type (i.e., sparse or dense) of storage scheme
-		* @tparam View            The source's View type
-		* @tparam backend         The target backend
-		*
-		* @param source           The source structured matrix
-		* @param sel_r            A valid permutation vector of row indeces
-		* @param sel_c            A valid permutation vector of column indeces
-		*
-		* @return A new original view over the source structured matrix.
-		*
-		*/
+	 * @brief Generate an original view where the type is compliant with the source Matrix.
+	 * Version where a selection of rows and columns expressed as vectors of positions
+	 * form a new view with specified target structure.
+	 *
+	 * @tparam TargetStructure The target structure of the new view. It should verify
+	 *                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
+	 * @tparam SourceMatrix    The type of the source ALP matrix
+	 * @tparam SelectVectorR   The type of the ALP vector defining permutation for rows
+	 * @tparam SelectVectorC   The type of the ALP vector defining permutation for columns
+	 *
+	 * @param source           The source ALP matrix
+	 * @param sel_r            A valid permutation vector of row indeces
+	 * @param sel_c            A valid permutation vector of column indeces
+	 *
+	 * @return A new original view over the source ALP matrix.
+	 *
+	 */
 	template<
 		typename TargetStructure,
-		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
-		typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC,
-		enum Backend backend
+		typename SourceMatrix,
+		typename SelectVectorR, typename SelectVectorC,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	alp::Matrix<
-		T,
-		TargetStructure,
-		density,
-		view::Original< alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > >,
-		typename imf::composed_type< imf::Select, ImfR >::type,
-		typename imf::composed_type< imf::Select, ImfC >::type,
-		backend
-	>
-	get_view( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > &source,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_r,
-			const Vector< IndexType, IndexStructure, density, IndexView, IndexImfR, IndexImfC, backend > & sel_c ) {
-
-		imf::Select imf_r( nrows(source), sel_r );
-		imf::Select imf_c( ncols(source), sel_c );
-
-		return internal::get_view<TargetStructure, T, Structure, density, View, ImfR, ImfC, backend>( source, imf_r, imf_c );
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_structure< TargetStructure >::_and_::
+	template change_imfr< imf::Select >::_and_::
+	template change_imfc< imf::Select >::type
+	get_view(
+		SourceMatrix &source,
+		const SelectVectorR &sel_r,
+		const SelectVectorC &sel_c
+	) {
+		return internal::get_view< TargetStructure >(
+			source,
+			imf::Select( nrows(source), sel_r ),
+			imf::Select( ncols(source), sel_c )
+		);
 	}
 
 	namespace structures {
