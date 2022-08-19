@@ -856,7 +856,7 @@ namespace alp {
 			);
 
 			typedef typename std::conditional<
-				View::type_id == view::Views::original,
+				( View::type_id == view::original ) || ( View::type_id == view::gather ),
 				typename storage::AMFFactory::Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
@@ -1026,6 +1026,12 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				// View -> view::Gather< self_type > ?
+				using type = Matrix< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
@@ -1034,11 +1040,6 @@ namespace alp {
 			struct view_type< view::diagonal, d > {
 				// Current solution considering that diagonal is applied directly to rectangular matrices
 				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
-			};
-
-			template < bool d >
-			struct view_type< view::vector, d > {
-				using type = Vector< T, structures::General, Density::Dense, view::Original< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			/**
@@ -1263,6 +1264,12 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::original, d > {
 				using type = Matrix< T, structures::Band< Intervals... >, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				// View -> view::Gather< self_type > ?
+				using type = Matrix< T, structures::Band< Intervals... >, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			template < bool d >
@@ -1500,6 +1507,12 @@ namespace alp {
 			};
 
 			template < bool d >
+			struct view_type< view::gather, d > {
+				// View -> view::Gather< self_type > ?
+				using type = Matrix< T, structures::Square, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::Square, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
@@ -1712,6 +1725,12 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::original, d > {
 				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				// View -> view::Gather< self_type > ?
+				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			template < bool d >
@@ -1928,6 +1947,12 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::original, d > {
 				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				// View -> view::Gather< self_type > ?
+				using type = Matrix< T, structures::UpperTriangular, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			template < bool d >
@@ -2250,7 +2275,7 @@ namespace alp {
 			std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceMatrix::template view_type< view::original >::type
+			typename SourceMatrix::template view_type< view::gather >::type
 		>::template change_structure< TargetStructure >::_and_::
 		template change_imfr< TargetImfR >::_and_::
 		template change_imfc< TargetImfC >::type
@@ -2266,7 +2291,7 @@ namespace alp {
 			}
 
 			using target_t = typename internal::new_container_type_from<
-				typename SourceMatrix::template view_type< view::original >::type
+				typename SourceMatrix::template view_type< view::gather >::type
 			>::template change_structure< TargetStructure >::_and_::
 			template change_imfr< TargetImfR >::_and_::
 			template change_imfc< TargetImfC >::type;
@@ -2311,10 +2336,8 @@ namespace alp {
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
 	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::original >::type
-	>::template change_structure< TargetStructure >::_and_::
-	template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_structure< TargetStructure >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range& rng_r, const utils::range& rng_c
@@ -2360,7 +2383,7 @@ namespace alp {
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
 	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::original >::type
+		typename SourceMatrix::template view_type< view::gather >::type
 	>::template change_imfr< imf::Strided >::_and_::
 	template change_imfc< imf::Strided >::type
 	get_view(
@@ -2402,13 +2425,17 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename SourceMatrix::template view_type< view::vector >::type
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::type
 	get_view(
 		SourceMatrix &source,
 		const size_t &sel_r,
 		const utils::range &rng_c
 	) {
-		using target_t = typename SourceMatrix::template view_type< view::vector >::type;
+		using target_t = typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_container< alp::Vector >::type;
 
 		return target_t(
 			source,
@@ -2444,13 +2471,18 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename SourceMatrix::template view_type< view::vector >::type
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range &rng_r,
 		const size_t &sel_c
 	) {
-		using target_t = typename SourceMatrix::template view_type< view::vector >::type;
+		using target_t = typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_container< alp::Vector >::type;
+
 		return target_t(
 			source,
 			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
@@ -2484,7 +2516,7 @@ namespace alp {
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
 	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::original >::type
+		typename SourceMatrix::template view_type< view::gather >::type
 	>::template change_structure< TargetStructure >::_and_::
 	template change_imfr< imf::Select >::_and_::
 	template change_imfc< imf::Select >::type

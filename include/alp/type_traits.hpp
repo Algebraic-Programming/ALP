@@ -367,6 +367,12 @@ namespace alp {
 			typedef Container< T, Structure, density, View, ImfR, ImfC, backend > original_container;
 			static_assert( is_matrix< original_container >::value || is_vector< original_container >::value , "ModifyType supports only ALP Matrix and Vector types." );
 
+			template< template< typename, typename, enum Density, typename, typename, typename, enum Backend > typename NewContainer >
+			struct change_container {
+				typedef NewContainer< T, Structure, density, View, ImfR, ImfC, backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
 			template< typename NewStructure >
 			struct change_structure {
 				typedef Container< T, NewStructure, density, View, ImfR, ImfC, backend > type;
