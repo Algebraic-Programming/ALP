@@ -65,7 +65,7 @@ namespace grb {
 					}
 
 					grb::Vector< VertexIDType > in( n );
-					grb::Vector< VertexIDType > out( n );
+					grb::Vector< VertexIDType > out( n ), out_buffer( n );
 
 					size_t steps;
 
@@ -76,7 +76,7 @@ namespace grb {
 						program,
 						group_ids,
 						Data(),
-						in, out,
+						in, out, out_buffer,
 						steps,
 						max_steps
 					);

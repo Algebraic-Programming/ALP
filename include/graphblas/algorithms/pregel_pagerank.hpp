@@ -97,16 +97,16 @@ namespace grb {
 					}
 
 					grb::Vector< IOType > in( n );
-					grb::Vector< IOType > out( n );
+					grb::Vector< IOType > out( n ), out_buffer( n );
 
 					return pregel.template execute<
-							grb::operators::add< PregelType >,
+							grb::operators::add< IOType >,
 							grb::identities::zero
 						> (
 							program,
 							scores,
 							parameters,
-							in, out,
+							in, out, out_buffer,
 							steps_taken,
 							max_steps
 						);

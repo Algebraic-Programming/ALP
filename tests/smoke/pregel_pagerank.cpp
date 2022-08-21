@@ -92,11 +92,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
         // prepare for launching pagerank algorithm
 	// 1. initalise pagerank scores and message buffers
-        grb::Vector< double > pr( n ), in_msgs( n ), out_msgs( n );
+        grb::Vector< double > pr( n ), in_msgs( n ), out_msgs( n ),
+		out_buffer( n );
 	// 2. initialise PageRank parameters
 	grb::algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::Data pr_data;
 	// 3. get handle to Pregel PageRank program
-	auto &pr_prog = grb::algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::program;
+	auto &pr_prog = grb::algorithms::pregel::PageRank<
+			double, PR_CONVERGENCE_MODE
+		>::program;
 
 	out.times.preamble = timer.time();
 
@@ -112,7 +115,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				grb::identities::zero
 			> (
 				pr_prog, pr, pr_data,
-				in_msgs, out_msgs,
+				in_msgs, out_msgs, out_buffer,
 				out.iterations
 		        );
 		double single_time = timer.time();
@@ -146,14 +149,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			rc = grb::set( pr, 0 );
 			if( rc == SUCCESS ) {
-				rc = pregel.template execute<
-						grb::operators::add< double >,
-						grb::identities::zero
-					> (
-						pr_prog, pr, pr_data,
-						in_msgs, out_msgs,
-						out.iterations
-				        );
+				rc = algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::execute(
+						pregel, pr, out.iterations, pr_data
+					);
 			}
 		}
 		time_taken = timer.time();
@@ -232,7 +230,7 @@ int main( int argc, char ** argv ) {
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-	char * end = NULL;
+	char * end = nullptr;
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {

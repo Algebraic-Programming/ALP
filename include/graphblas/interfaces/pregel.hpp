@@ -353,9 +353,11 @@ namespace grb {
 				 *                or may not be ignored, depending on the \a program
 				 *                behaviour during the first round of computation.
 				 *
-				 * @param[in] out Where outgoing messages are stored. Any initial values may
-				 *                or may not be ignored, depending on the \a program
-				 *                behaviour.
+				 * @param[in] out Where outgoing messages are stored. Any initial values
+				 *                will be ignored.
+				 *
+				 * @param[in] out_buffer A buffer with the exact same requirements of
+				 *                       \a out.
 				 *
 				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
 				 * ID. For sparse vectors \a in with more than zero nonzeroes, the initial
@@ -417,6 +419,7 @@ namespace grb {
 					const GlobalProgramData &data,
 					grb::Vector< IncomingMessageType > &in,
 					grb::Vector< OutgoingMessageType > &out,
+					grb::Vector< OutgoingMessageType > &out_buffer,
 					size_t &rounds,
 					const size_t max_rounds = 0
 				) {
@@ -496,6 +499,11 @@ namespace grb {
 						ret = grb::set( in, Id< IncomingMessageType >::value() );
 					}
 
+					// reset outgoing buffer
+					if( ret == SUCCESS ) {
+						ret = grb::set( out, Id< OutgoingMessageType >::value() );
+					}
+
 					// return if initialisation failed
 					if( ret != SUCCESS ) {
 						assert( ret == FAILED );
@@ -507,13 +515,6 @@ namespace grb {
 
 					// while there are active vertices, execute
 					while( ret == SUCCESS ) {
-
-						// reset outgoing buffer
-						if( ret == SUCCESS ) {
-							ret = grb::set< grb::descriptors::structural >(
-								out, activeVertices, Id< OutgoingMessageType >::value()
-							);
-						}
 
 						assert( max_rounds == 0 || step < max_rounds );
 						// run one step of the program
@@ -636,6 +637,15 @@ namespace grb {
 							ret = grb::vxm< grb::descriptors::structural >(
 								in, activeVertices, out, graph, ring
 							);
+						}
+
+						// sparsify and reset outgoing buffer
+						if( ret == SUCCESS ) {
+							ret = grb::clear( out_buffer );
+							ret = ret ? ret : grb::set< grb::descriptors::structural >(
+									out_buffer, activeVertices, Id< OutgoingMessageType >::value()
+								);
+							std::swap( out, out_buffer );
 						}
 
 #ifdef _DEBUG
