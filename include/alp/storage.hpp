@@ -291,6 +291,43 @@ namespace alp {
 			};
 
 			/**
+			 * Specialization for constant-mapping IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Constant, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** j factors contribute to the constant factor, while they become 0 */
+				typedef BivariateQuadratic<
+					Poly::Ax2, 0, 0,
+					Poly::Ax || Poly::Axy, 0,
+					Poly::A0 || Poly::Ay || Poly::Ay2,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Constant imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Constant imf, Poly p ) {
+					(void)imf;
+					return resulting_polynomial_type(
+						p.ax2,         // ax2
+						0,             // ay2
+						p.axy * imf.b, // axy
+						Poly::Ax * p.ax +
+						Poly::Axy * p.axy * imf.b, // ax
+						0,             // ay
+						Poly::A0 * p.a0 +
+						Poly::Ay * p.ay * imf.b +
+						Poly::Ay2 * p.ay2 * imf.b  // A0
+					);
+				}
+			};
+
+			/**
 			 * Specialization for zero IMF.
 			 */
 			template< typename Poly >

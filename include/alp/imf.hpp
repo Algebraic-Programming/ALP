@@ -122,6 +122,19 @@ namespace alp {
 		};
 
 		/**
+		 * The constant-mapping IMF.
+		 * \f$I_n = [0, n)\f$
+		 * \f$Constant = I_n \rightarrow [const, const+1); i \mapsto const\f$
+		 */
+
+		class Constant: public Strided {
+
+			public:
+
+				explicit Constant( const size_t n, const size_t value ) : Strided( n, n, value, 0 ) {}
+		};
+
+		/**
 		 * The zero IMF.
 		 * \f$I_n = [0, n)\f$
 		 * \f$Zero = I_n \rightarrow I_1; i \mapsto 0\f$
@@ -238,6 +251,16 @@ namespace alp {
 		};
 
 		template<>
+		struct composed_type< Id, Constant > {
+			typedef Constant type;
+		};
+
+		template<>
+		struct composed_type< Strided, Constant > {
+			typedef Constant type;
+		};
+
+		template<>
 		struct composed_type< Id, Zero > {
 			typedef Zero type;
 		};
@@ -279,6 +302,18 @@ namespace alp {
 			// The first function's co-domain must be equal to the second function's domain.
 			assert( g.N == f.n );
 			return Id( g.n );
+		}
+
+		template<>
+		Constant ComposedFactory::create( const Id &f, const Constant &g ) {
+			(void)f;
+			return Constant( g.n, g.b );
+		}
+
+		template<>
+		Constant ComposedFactory::create( const Strided &f, const Constant &g ) {
+			(void)f;
+			return Constant( g.n, g.b );
 		}
 
 		template<>
