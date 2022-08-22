@@ -2479,7 +2479,8 @@ namespace alp {
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_container< alp::Vector >::type
+	>::template change_container< alp::Vector >::_and_::
+	template change_imfc< imf::Constant >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range &rng_r,
@@ -2487,12 +2488,13 @@ namespace alp {
 	) {
 		using target_t = typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::gather >::type
-		>::template change_container< alp::Vector >::type;
+		>::template change_container< alp::Vector >::_and_::
+		template change_imfc< imf::Constant >::type;
 
 		return target_t(
 			source,
 			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
-			imf::Strided( rng_r.count(), ncols( source ), sel_c, 0 )
+			imf::Constant( ncols( source ), sel_c )
 		);
 	}
 
