@@ -733,26 +733,53 @@ namespace alp {
 			 *
 			 * Diagonal view is implemented by taking a square view over the matrix.
 			 *
+			 * \note \internal Converts a mapping polynomial from a bivariate-quadratic
+			 *                 to univariate quadratic by summing j-factors into
+			 *                 corresponding i-factors.
+			 *                 Implicitely applies a largest possible square view by
+			 *                 using Strided IMFs.
+			 *
 			 */
 			template< typename SourceAMF >
 			struct Reshape< view::Views::diagonal, SourceAMF > {
 
-				typedef typename AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF >::amf_type amf_type;
+				private:
 
-				static
-				amf_type
-				Create( const SourceAMF &amf ) {
-					const size_t nrows = amf.getLogicalDimensions().first;
-					const size_t ncols = amf.getLogicalDimensions().second;
-					const size_t smaller_dimension = std::min( nrows, ncols );
-					return AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF>::Create(
-						imf::Strided( smaller_dimension, nrows, 0, 1 ),
-						imf::Strided( smaller_dimension, ncols, 0, 1 ),
-						amf
-					);
-				}
+					/** Short name of the original mapping polynomial type */
+					typedef typename SourceAMF::mapping_polynomial_type orig_p;
 
-				Reshape() = delete;
+					/** The type of the resulting polynomial */
+					typedef polynomials::BivariateQuadratic<
+						orig_p::Ax2 || orig_p::Ay2, 0,
+						orig_p::Axy,
+						orig_p::Ax || orig_p::Ay, 0,
+						orig_p::A0, orig_p::D
+					> new_poly_type;
+
+				public:
+
+					typedef AMF< imf::Strided, imf::Strided, new_poly_type > amf_type;
+
+					static
+					amf_type
+					Create( const SourceAMF &amf ) {
+						const size_t nrows = amf.getLogicalDimensions().first;
+						const size_t ncols = amf.getLogicalDimensions().second;
+						const size_t smaller_dimension = std::min( nrows, ncols );
+						return amf_type(
+							imf::Strided( smaller_dimension, nrows, 0, 1 ),
+							imf::Strided( smaller_dimension, ncols, 0, 1 ),
+							new_poly_type(
+								orig_p::Ax2 * amf.map_poly.ax2 + orig_p::Ay2 * amf.map_poly.ay2, 0,
+								amf.map_poly.axy,
+								orig_p::Ax * amf.map_poly.ax + orig_p::Ay * amf.map_poly.ay, 0,
+								amf.map_poly.a0
+							),
+							amf.storage_dimensions
+						);
+					}
+
+					Reshape() = delete;
 
 			}; // class Reshape< diagonal, ... >
 
