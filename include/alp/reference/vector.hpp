@@ -409,6 +409,11 @@ namespace alp {
 				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference > type;
 			};
 
+			template < bool d >
+			struct view_type< view::gather, d > {
+				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference > type;
+			};
+
 			/**
 			 * Constructor for a storage-based vector that allocates storage.
 			 */
@@ -605,7 +610,7 @@ namespace alp {
 			std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceVector::template view_type< view::original >::type
+			typename SourceVector::template view_type< view::gather >::type
 		>::template change_structure< TargetStructure >::_and_::
 		template change_imfr< TargetImfR >::_and_::
 		template change_imfc< TargetImfC >::type
@@ -625,7 +630,7 @@ namespace alp {
 			}
 
 			using target_vec_t = typename internal::new_container_type_from<
-				typename SourceVector::template view_type< view::original >::type
+				typename SourceVector::template view_type< view::gather >::type
 			>::template change_structure< TargetStructure >::_and_::
 			template change_imfr< TargetImfR >::_and_::
 			template change_imfc< TargetImfC >::type;
@@ -659,10 +664,7 @@ namespace alp {
 		typename SourceVector,
 		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 	>
-	typename internal::new_container_type_from<
-		typename SourceVector::template view_type< view::original >::type
-	>::template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+	typename SourceVector::template view_type< view::gather >::type
 	get_view( SourceVector &source, const utils::range& rng ) {
 
 		return internal::get_view< typename SourceVector::structure >(

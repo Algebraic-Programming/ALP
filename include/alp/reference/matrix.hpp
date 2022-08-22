@@ -841,6 +841,13 @@ namespace alp {
 				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
+			/** Ensure that if the view is original, the IMFs are Id */
+			static_assert(
+				View::type_id != view::Views::original ||
+				( View::type_id == view::Views::original && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Original view with non-ID Index Mapping Functions is not supported."
+			);
+
 			/** Ensure that if the view is transposed, the IMFs are Id */
 			static_assert(
 				View::type_id != view::Views::transpose ||
@@ -848,15 +855,15 @@ namespace alp {
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
-			/** Ensure that if the view is diagonal, the IMFs are Id */
+			/** Ensure that if the view is diagonal, the IMFs are Strided */
 			static_assert(
 				View::type_id != view::Views::diagonal ||
 				( View::type_id == view::Views::diagonal && std::is_same< imf::Strided, ImfR >::value && std::is_same< imf::Strided, ImfC >::value ),
-				"Diagonal view with non-ID Index Mapping Functions is not supported."
+				"Diagonal view with non-Strided Index Mapping Functions is not supported."
 			);
 
 			typedef typename std::conditional<
-				( View::type_id == view::original ) || ( View::type_id == view::gather ),
+				View::type_id == view::gather,
 				typename storage::AMFFactory::Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
