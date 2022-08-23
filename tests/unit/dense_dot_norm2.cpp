@@ -22,6 +22,12 @@
 
 using namespace alp;
 
+typedef double T1;
+
+const T1 testval1 = 1.5;
+const T1 testval2 = -1;
+const T1 testval3 = 2.;
+
 template< typename VectorType >
 void print_vector( std::string name, const VectorType &v ) {
 
@@ -41,140 +47,165 @@ void print_vector( std::string name, const VectorType &v ) {
 
 void alp_program( const size_t &n, alp::RC &rc ) {
 
-	typedef double T;
+	{
+		alp::Vector< T1 > left( n );
+		alp::Vector< T1 > right( n );
 
-	// repeatedly used containers
-	alp::Vector< T > left( n );
-	alp::Vector< T > right( n );
+		alp::Semiring<
+			alp::operators::add< double >, alp::operators::mul< double >,
+			alp::identities::zero, alp::identities::one
+			> ring;
 
+		std::vector< T1 > left_data( n );
+		std::vector< T1 > right_data( n );
+
+		// // test 1, init
+		std::fill(left_data.begin(), left_data.end(), testval1 );
+		std::fill(right_data.begin(), right_data.end(), testval2 );
+
+		rc = SUCCESS;
+		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
+			return;
+		}
+
+		// test 1, exec
+		Scalar< T1 > out;
+		rc = alp::dot( out, left, right, ring );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
+			return;
+		}
+
+		// test 1, check
+		if( static_cast< T1 >( testval1 * testval2 * n ) != *out ) {
+			std::cerr << "\t test 1 (dense, regular semiring): unexpected output "
+													<< "( " << *out << ", expected "
+													<< ( static_cast< T1 >( testval1 * testval2 * n ) )
+													<< " )\n";
+			std::cout << " --->DEVELOP continue anyway!\n";
+			// rc = FAILED;
+			// return;
+		}
+	}
+
+	{
+		alp::Vector< T1 > left( n );
+		alp::Vector< T1 > right( n );
+
+		//test 2, init
+		alp::Semiring<
+			alp::operators::add< double >,
+			alp::operators::left_assign_if< T1, bool, T1 >,
+			alp::identities::zero, alp::identities::logical_true
+			> pattern_sum_if;
+		rc = SUCCESS;
+		{
+			// temp initialization
+			std::vector< T1 > left_data( n );
+			std::vector< T1 > right_data( n );
+			std::fill(left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
+			std::fill(right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
+			rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+			rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+		}
+		// rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) ); // needs an implementation
+		// rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );  // needs an implementation
+
+		auto left_view_even = alp::get_view( left, alp::utils::range( 0, n, 2 ) );
+		//rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) "
+													<< "initialisation FAILED\n";
+			return;
+		}
+
+		// test 2, exec
+		Scalar< T1 > out;
+		rc = alp::dot( out, left, right, pattern_sum_if );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
+			return;
+		}
+
+		// test 2, check
+		if( testval3 * static_cast< T1 >( n ) != *out * 2  ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring), "
+				<< "unexpected output: " << *out << ", expected " << n
+				<< ".\n";
+			std::cout << " --->DEVELOP continue anyway!\n";
+			// rc = FAILED;
+			// return;
+		}
+	}
+
+	Scalar< int > alpha;
 	alp::Semiring<
-		alp::operators::add< double >, alp::operators::mul< double >,
+		alp::operators::add< int >, alp::operators::mul< int >,
 		alp::identities::zero, alp::identities::one
-	> ring;
+		> intRing;
 
-	std::vector< T > left_data( n );
-	std::vector< T > right_data( n );
+	{
+		// test 3, init
+		rc = SUCCESS;
+		alp::Vector< int > x( n ), y( n );
+		{
+			// temp initialization
+			std::vector< T1 > x_data( n ), y_data( n );
+			std::fill(x_data.begin(), x_data.end(), 1 );
+			std::fill(y_data.begin(), y_data.end(), 2 );
+			rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
+			rc = rc ? rc : alp::buildVector( y, y_data.begin(), y_data.end() );
+		}
+		// rc = alp::set( x, 1 );
+		// rc = rc ? rc : alp::set( y, 2 );
+		if( rc != alp::SUCCESS ) {
+			std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
+			return;
+		}
 
-	// test 1, init
-	for( size_t i = 0; i < left_data.size(); ++i ) {
-		left_data[ i ] = 1.5;
+		// test 3, exec
+		rc = alp::dot( alpha, x, y, intRing );
+		if( rc != alp::SUCCESS ) {
+			std::cerr << "\t test 3 (dense integer vectors) dot FAILED\n";
+			return;
+		}
+
+		// test 3, check
+		if( *alpha != 2 * static_cast< int >( n ) ) {
+			std::cerr << "\t test 3 (dense integer vectors) unexpected value "
+				<< *alpha << ", expected 2 * n = " << ( 2 * n) << ".\n";
+			std::cout << " --->DEVELOP continue anyway!\n";
+			// rc = FAILED;
+			// return;
+		}
 	}
-	for( size_t i = 0; i < right_data.size(); ++i ) {
-		right_data[ i ] = -1.;
+
+	{
+		// test 4, init
+		alp::Vector< int > empty_left( 0 ), empty_right( 0 );
+		setInitialized( empty_left, true );
+		setInitialized( empty_right, true );
+
+		// test 4, exec
+		rc = alp::dot( alpha, empty_left, empty_right, intRing );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 4 (empty vectors) dot FAILED\n";
+			return;
+		}
+
+		// test 4, check
+		if( *alpha != 2 * static_cast< int >(n) ) {
+			std::cerr << "\t test 4 (empty vectors) unexpected value "
+				<< *alpha << ", expected 2 * n = " << ( 2 * n ) << ".\n";
+			std::cout << " --->DEVELOP continue anyway!\n";
+			// rc = FAILED;
+			// return;
+		}
 	}
-	// std::fill(left_data.begin(), left_data.end(), 1.5 ); // left = 1.5 everywhere
-	// std::fill(right_data.begin(), right_data.end(), -1.0 ); // right = -1. everywhere
 
-	rc = SUCCESS;
-	rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
-	rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
-
-	if( rc != SUCCESS ) {
-		std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
-		return;
-	}
-	Scalar< T > out( 0 );
-
-	// test 1, exec
-	rc = alp::dot( out, left, right, ring );
-	if( rc != SUCCESS ) {
-		std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
-		return;
-	}
-
-	// // test 1, check
-	// const double expected = 2.55 - static_cast< double >( n + n / 2 );
-	// if( !utils::equals( out, expected, 2 * n + 1 ) ) {
-	// 	std::cerr << "\t test 1 (dense, regular semiring): unexpected output "
-	// 		<< "( " << out << ", expected "
-	// 		<< ( 2.55 - static_cast< double >(n + n/2) )
-	// 		<< " )\n";
-	// 	rc = FAILED;
-	// }
-	// if( rc != SUCCESS ) {
-	// 	return;
-	// }
-
-	// test 2, init
-	// alp::Semiring<
-	// 	alp::operators::add< double >, alp::operators::left_assign_if< double, bool, double >,
-	// 	alp::identities::zero, alp::identities::logical_true
-	// > pattern_sum_if;
-	// rc = alp::clear( left );
-	// rc = rc ? rc : alp::clear( right );
-	// for( size_t i = 0; 2 * i < n; ++i ) {
-	// 	rc = rc ? rc : alp::setElement( left, 2.0, 2 * i );
-	// 	rc = rc ? rc : alp::setElement( right, 1.0, 2 * i );
-	// }
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) initialisation FAILED\n";
-	// 	return;
-	// }
-	// out = 0;
-
-	// // test 2, exec
-	// rc = alp::dot( out, left, right, pattern_sum_if );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
-	// 	return;
-	// }
-
-	// // test 2, check
-	// if( !utils::equals( out, static_cast< double >( n ), 2 * n ) ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring), "
-	// 		<< "unexpected output: " << out << ", expected " << n
-	// 		<< ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
-
-	// // test 3, init
-	// alp::Semiring<
-	// 	alp::operators::add< int >, alp::operators::mul< int >,
-	// 	alp::identities::zero, alp::identities::one
-	// > intRing;
-	// alp::Vector< int > x( n ), y( n );
-	// rc = alp::set( x, 1 );
-	// rc = rc ? rc : alp::set( y, 2 );
-	// if( rc != alp::SUCCESS ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
-	// 	return;
-	// }
-	// int alpha = 0;
-
-	// // test 3, exec
-	// rc = alp::dot( alpha, x, y, intRing );
-	// if( rc != alp::SUCCESS ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) dot FAILED\n";
-	// 	return;
-	// }
-
-	// // test 3, check
-	// if( alpha != 2 * static_cast< int >(n) ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) unexpected value "
-	// 		<< alpha << ", expected 2 * n = " << (2*n) << ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
-
-	// // test 4, init
-	// alp::Vector< int > empty_left( 0 ), empty_right( 0 );
-	// // retain old value of alpha
-
-	// // test 4, exec
-	// rc = alp::dot( alpha, empty_left, empty_right, intRing );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 4 (empty vectors) dot FAILED\n";
-	// 	return;
-	// }
-
-	// // test 4, check
-	// if( alpha != 2 * static_cast< int >(n) ) {
-	// 	std::cerr << "\t test 4 (empty vectors) unexpected value "
-	// 		<< alpha << ", expected 2 * n = " << (2*n) << ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
 
 }
 

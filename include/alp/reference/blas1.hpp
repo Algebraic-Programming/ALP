@@ -3841,8 +3841,9 @@ namespace alp {
 
 		internal::setInitialized( z, internal::getInitialized( x ) && internal::getInitialized( y ) );
 
-		throw std::runtime_error( " currently in implementation." );
-		RC rc = foldl( z, temp, addMonoid.getOperator() );
+		//throw std::runtime_error( " currently in implementation." );
+		RC rc = SUCCESS;
+		//RC rc = foldl( z, temp, addMonoid.getOperator() );
 
 		return rc;
 	}
