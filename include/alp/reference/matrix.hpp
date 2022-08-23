@@ -2388,10 +2388,7 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+	typename SourceMatrix::template view_type< view::gather >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range &rng_r,
