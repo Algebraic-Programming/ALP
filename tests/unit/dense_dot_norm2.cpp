@@ -72,7 +72,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		}
 
 		// test 1, exec
-		Scalar< T1 > out;
+		Scalar< T1 > out( 0 );
 		rc = alp::dot( out, left, right, ring );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
@@ -123,7 +123,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		}
 
 		// test 2, exec
-		Scalar< T1 > out;
+		Scalar< T1 > out( 0 );
 		rc = alp::dot( out, left, right, pattern_sum_if );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
@@ -141,7 +141,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		}
 	}
 
-	Scalar< int > alpha;
+	Scalar< int > alpha( 0 );
 	alp::Semiring<
 		alp::operators::add< int >, alp::operators::mul< int >,
 		alp::identities::zero, alp::identities::one

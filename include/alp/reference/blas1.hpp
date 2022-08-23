@@ -3839,7 +3839,8 @@ namespace alp {
 				data_lambda
 			);
 
-		internal::setInitialized( z, internal::getInitialized( x ) && internal::getInitialized( y ) );
+		internal::setInitialized( z, internal::getInitialized( z )
+			&& internal::getInitialized( x ) && internal::getInitialized( y ) );
 
 		//throw std::runtime_error( " currently in implementation." );
 		RC rc = SUCCESS;
