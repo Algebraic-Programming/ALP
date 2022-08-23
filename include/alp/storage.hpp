@@ -175,6 +175,28 @@ namespace alp {
 			};
 
 			/**
+			 * Specialization for Id IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_i< imf::Id, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef Poly resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Id imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Id imf, Poly p ) {
+					(void)imf;
+					return p;
+				}
+			};
+
+			/**
 			 * Specialization for strided IMF.
 			 */
 			template< typename Poly >
@@ -253,6 +275,28 @@ namespace alp {
 
 				static resulting_polynomial_type CreatePolynomial( Imf imf, Poly p ) {
 					(void) imf;
+					return p;
+				}
+			};
+
+			/**
+			 * Specialization for Id IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Id, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef Poly resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Id imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Id imf, Poly p ) {
+					(void)imf;
 					return p;
 				}
 			};
