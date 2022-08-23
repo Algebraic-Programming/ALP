@@ -387,7 +387,7 @@ namespace alp {
 
 			/** Returns the length of the vector */
 			size_t _length() const {
-				return std::max( this->amf.getLogicalDimensions().first, this->amf.getLogicalDimensions().second );
+				return this->amf.getLogicalDimensions().first;
 			}
 
 
@@ -547,7 +547,7 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
@@ -555,7 +555,7 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container
