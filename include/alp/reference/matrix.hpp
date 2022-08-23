@@ -2406,52 +2406,6 @@ namespace alp {
 
 	/**
 	 *
-	 * @brief Generate a vector view on a row of the source matrix.
-	 *
-	 * @tparam SourceMatrix The type of the source ALP matrix
-	 *
-	 * @param source        The source matrix
-	 * @param sel_r         A valid row index
-	 * @param rng_c         A valid range of columns
-	 *
-	 * @return A new original view over the source ALP matrix.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function performs
-	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
-	 *           of available views of \a source.
-	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
-	 *           of memory beyond the memory in use at the function call entry.
-	 *        -# This function may make system calls.
-	 * \endparblock
-	 *
-	 */
-	template<
-		typename SourceMatrix,
-		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
-	>
-	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_container< alp::Vector >::type
-	get_view(
-		SourceMatrix &source,
-		const size_t &sel_r,
-		const utils::range &rng_c
-	) {
-		using target_t = typename internal::new_container_type_from<
-			typename SourceMatrix::template view_type< view::gather >::type
-		>::template change_container< alp::Vector >::type;
-
-		return target_t(
-			source,
-			imf::Strided( rng_c.count(), nrows( source ), sel_r, 0 ),
-			imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride )
-		);
-	}
-
-	/**
-	 *
 	 * @brief Generate a vector view on a column of the source matrix.
 	 *
 	 * @tparam SourceMatrix The type of the source ALP matrix
@@ -2460,7 +2414,7 @@ namespace alp {
 	 * @param rng_r         A valid range of rows
 	 * @param sel_c         A valid column index
 	 *
-	 * @return A new original view over the source ALP matrix.
+	 * @return A new gather view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2496,6 +2450,49 @@ namespace alp {
 			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
 			imf::Constant( ncols( source ), sel_c )
 		);
+	}
+
+	/**
+	 *
+	 * @brief Generate a vector view on a row of the source matrix.
+	 *
+	 * @tparam SourceMatrix The type of the source ALP matrix
+	 *
+	 * @param source        The source matrix
+	 * @param sel_r         A valid row index
+	 * @param rng_c         A valid range of columns
+	 *
+	 * @return A new gather view over the source ALP matrix.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 *           of available views of \a source.
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
+	 *
+	 * \note \internal Row-view is implemented as a column view over a
+	 *                 tranposed source matrix
+	 *
+	 */
+	template<
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::transpose >::type::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::_and_::
+	template change_imfc< imf::Constant >::type
+	get_view(
+		SourceMatrix &source,
+		const size_t &sel_r,
+		const utils::range &rng_c
+	) {
+		auto source_transposed = get_view< view::transpose >( source );
+		return get_view( source_transposed, rng_c, sel_r );
 	}
 
 	/**
