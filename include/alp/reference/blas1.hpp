@@ -3811,12 +3811,38 @@ namespace alp {
 			"called with an output vector value type that does not match the third "
 			"domain of the given additive operator" );
 		(void)z;
-		(void)x;
-		(void)y;
-		(void)addMonoid;
-		(void)anyOp;
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		if( size( x ) != size( y ) ) {
+			return MISMATCH;
+		}
+
+		std::function< void( typename AddMonoid::D3 &, const size_t ) > data_lambda =
+			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i ) {
+				//set( ret, alp::identities::zero );
+				internal::apply( result, x[ i ], y[ i ], anyOp );
+			};
+
+		std::function< bool() > init_lambda =
+			[ &x, &y ]() -> bool {
+				return internal::getInitialized( x ) && internal::getInitialized( y );
+			};
+
+		Vector<
+			typename AddMonoid::D3,
+			structures::General,
+			Density::Dense,
+			view::Functor< std::function< void( typename AddMonoid::D3 &, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+			> temp(
+				init_lambda,
+				getLength( x ),
+				data_lambda
+			);
+
+		throw std::runtime_error( " currently in implementation." );
+		RC rc = foldl( z, temp, addMonoid.getOperator() );
+
+		return rc;
 	}
 
 	/** C++ scalar specialization */

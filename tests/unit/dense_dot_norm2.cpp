@@ -22,24 +22,58 @@
 
 using namespace alp;
 
+template< typename VectorType >
+void print_vector( std::string name, const VectorType &v ) {
+
+	if( ! alp::internal::getInitialized( v ) ) {
+		std::cout << "Vector " << name << " uninitialized.\n";
+		return;
+	}
+
+	std::cout << "Vector " << name << " of size " << alp::getLength( v ) << " contains the following elements:\n";
+
+	std::cout << "[\t";
+	for( size_t i = 0; i < alp::getLength( v ); ++i ) {
+		std::cout << v[ i ] << "\t";
+	}
+	std::cout << "]\n";
+}
+
 void alp_program( const size_t &n, alp::RC &rc ) {
 
-	// repeatedly used containers
-	alp::Vector< double > left( n );
-	alp::Vector< double > right( n );
+	typedef double T;
 
-	// test 1, init
+	// repeatedly used containers
+	alp::Vector< T > left( n );
+	alp::Vector< T > right( n );
+
 	alp::Semiring<
 		alp::operators::add< double >, alp::operators::mul< double >,
 		alp::identities::zero, alp::identities::one
 	> ring;
-	// rc = alp::set( left, 1.5 ); // left = 1.5 everywhere
-	// rc = rc ? rc : alp::set( right, -1.0 );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
-	// 	return;
-	// }
-	Scalar< double > out( 2.55 );
+
+	std::vector< T > left_data( n );
+	std::vector< T > right_data( n );
+
+	// test 1, init
+	for( size_t i = 0; i < left_data.size(); ++i ) {
+		left_data[ i ] = 1.5;
+	}
+	for( size_t i = 0; i < right_data.size(); ++i ) {
+		right_data[ i ] = -1.;
+	}
+	// std::fill(left_data.begin(), left_data.end(), 1.5 ); // left = 1.5 everywhere
+	// std::fill(right_data.begin(), right_data.end(), -1.0 ); // right = -1. everywhere
+
+	rc = SUCCESS;
+	rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+	rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+
+	if( rc != SUCCESS ) {
+		std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
+		return;
+	}
+	Scalar< T > out( 0 );
 
 	// test 1, exec
 	rc = alp::dot( out, left, right, ring );
