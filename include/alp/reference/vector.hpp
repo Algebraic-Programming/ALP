@@ -411,7 +411,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference > type;
+				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Id, reference > type;
 			};
 
 			/**
@@ -605,19 +605,18 @@ namespace alp {
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
 		template<
-			typename TargetStructure, typename TargetImfR, typename TargetImfC,
+			typename TargetStructure, typename TargetImfR,
 			typename SourceVector,
 			std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 		>
 		typename internal::new_container_type_from<
 			typename SourceVector::template view_type< view::gather >::type
 		>::template change_structure< TargetStructure >::_and_::
-		template change_imfr< TargetImfR >::_and_::
-		template change_imfc< TargetImfC >::type
+		template change_imfr< TargetImfR >::type
 		get_view(
 			SourceVector &source,
 			TargetImfR imf_r,
-			TargetImfC imf_c
+			imf::Id imf_c
 		) {
 
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
@@ -632,8 +631,7 @@ namespace alp {
 			using target_vec_t = typename internal::new_container_type_from<
 				typename SourceVector::template view_type< view::gather >::type
 			>::template change_structure< TargetStructure >::_and_::
-			template change_imfr< TargetImfR >::_and_::
-			template change_imfc< TargetImfC >::type;
+			template change_imfr< TargetImfR >::type;
 
 			return target_vec_t( source, imf_r, imf_c );
 		}
@@ -670,7 +668,7 @@ namespace alp {
 		return internal::get_view< typename SourceVector::structure >(
 			source,
 			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
-			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
+			std::move( imf::Id( 1 ) )
 		);
 	}
 
