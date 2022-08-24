@@ -124,14 +124,14 @@ namespace alp {
 		/**
 		 * The constant-mapping IMF.
 		 * \f$I_n = [0, n)\f$
-		 * \f$Constant = I_n \rightarrow [const, const+1); i \mapsto const\f$
+		 * \f$Constant = I_n \rightarrow I_N; i \mapsto const\f$ with \f$const in I_N\f$
 		 */
 
 		class Constant: public Strided {
 
 			public:
 
-				explicit Constant( const size_t n, const size_t value ) : Strided( n, n, value, 0 ) {}
+				explicit Constant( const size_t n, const size_t N, const size_t value ) : Strided( n, N, value, 0 ) {}
 		};
 
 		/**
@@ -307,13 +307,13 @@ namespace alp {
 		template<>
 		Constant ComposedFactory::create( const Id &f, const Constant &g ) {
 			(void)f;
-			return Constant( g.n, g.b );
+			return Constant( g.n, f.N, g.b );
 		}
 
 		template<>
 		Constant ComposedFactory::create( const Strided &f, const Constant &g ) {
 			(void)f;
-			return Constant( g.n, g.b );
+			return Constant( g.n, f.N, f.b + f.s * g.b );
 		}
 
 		template<>

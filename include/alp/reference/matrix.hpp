@@ -2445,7 +2445,7 @@ namespace alp {
 		return target_t(
 			source,
 			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
-			imf::Constant( ncols( source ), sel_c )
+			imf::Constant( 1, ncols( source ), sel_c )
 		);
 	}
 
