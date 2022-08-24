@@ -624,7 +624,7 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
