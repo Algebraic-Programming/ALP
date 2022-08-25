@@ -855,11 +855,11 @@ namespace alp {
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
-			/** Ensure that if the view is diagonal, the IMFs are Strided */
+			/** Ensure that if the view is diagonal, the row and column IMFs are Id and Zero, respectively */
 			static_assert(
 				View::type_id != view::Views::diagonal ||
-				( View::type_id == view::Views::diagonal && std::is_same< imf::Strided, ImfR >::value && std::is_same< imf::Strided, ImfC >::value ),
-				"Diagonal view with non-Strided Index Mapping Functions is not supported."
+				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Zero, ImfC >::value ),
+				"Diagonal view with non-Id Row and non-Zero Column Index Mapping Functions is not supported."
 			);
 
 			typedef typename std::conditional<
@@ -1043,8 +1043,20 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				// Current solution considering that diagonal is applied directly to rectangular matrices
-				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				/**
+				 * Diagonal view is applied only to square matrices.
+				 * Since General structure does not imply Square properties,
+				 * it is necessary to first apply a Square gather view
+				 */
+				using type = Vector<
+					T, structures::General, Density::Dense,
+					view::Diagonal<
+						typename internal::new_container_type_from<
+							typename self_type::template view_type< view::gather >::type
+						>::template change_structure< structures::Square >::type
+					>,
+					imf::Id, imf::Zero, reference
+				>;
 			};
 
 			/**
@@ -1525,7 +1537,7 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::diagonal, d > {
 				// Will be changed soon to allow pair of Ids as IMFs
-				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -1745,7 +1757,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -1967,7 +1979,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -2210,7 +2222,10 @@ namespace alp {
 	template<
 		enum view::Views target_view = view::Views::original,
 		typename SourceMatrix,
-		std::enable_if_t< is_matrix< SourceMatrix >::value, void > * = nullptr
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view != view::diagonal
+		> * = nullptr
 	>
 	typename SourceMatrix::template view_type< target_view >::type
 	get_view( SourceMatrix &source ) {
@@ -2218,6 +2233,47 @@ namespace alp {
 		using target_strmat_t = typename SourceMatrix::template view_type< target_view >::type;
 
 		return target_strmat_t( source );
+	}
+
+	/** Specialization for diagonal view over Square matrix */
+	template<
+		enum view::Views target_view = view::Views::original,
+		typename SourceMatrix,
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view == view::diagonal &&
+			structures::is_in< structures::Square, typename SourceMatrix::structure::inferred_structures >::value
+		> * = nullptr
+	>
+	typename SourceMatrix::template view_type< view::diagonal >::type
+	get_view( SourceMatrix &source ) {
+
+		using target_t = typename SourceMatrix::template view_type< view::diagonal >::type;
+		return target_t( source );
+	}
+
+	/**
+	 * Specialization for diagonal view over non-Square matrix.
+	 * A diagonal view is created over a intermediate gather
+	 * view with a square structure.
+	 */
+	template<
+		enum view::Views target_view = view::Views::original,
+		typename SourceMatrix,
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view == view::diagonal &&
+			!structures::is_in< structures::Square, typename SourceMatrix::structure::inferred_structures >::value
+		> * = nullptr
+	>
+	typename SourceMatrix::template view_type< view::diagonal >::type
+	get_view( SourceMatrix &source ) {
+
+		const size_t source_rows = nrows( source );
+		const size_t source_cols = ncols( source );
+		const size_t smaller_dimension = std::min( source_rows, source_cols );
+		auto square_view = get_view< structures::Square >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
+		return get_view< view::diagonal >( square_view );
 	}
 
 	/**

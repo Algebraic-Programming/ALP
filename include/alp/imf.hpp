@@ -323,6 +323,12 @@ namespace alp {
 		}
 
 		template<>
+		Zero ComposedFactory::create( const Zero &f, const Id &g ) {
+			(void)f;
+			return Zero( g.n );
+		}
+
+		template<>
 		Composed< Strided, Select > ComposedFactory::create( const Strided &f1, const Select &f2 ) {
 			return Composed< Strided, Select >( f1, f2 );
 		}

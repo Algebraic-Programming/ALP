@@ -838,17 +838,15 @@ namespace alp {
 
 				public:
 
-					typedef AMF< imf::Strided, imf::Strided, new_poly_type > amf_type;
+					typedef AMF< imf::Id, imf::Zero, new_poly_type > amf_type;
 
 					static
 					amf_type
 					Create( const SourceAMF &amf ) {
-						const size_t nrows = amf.getLogicalDimensions().first;
-						const size_t ncols = amf.getLogicalDimensions().second;
-						const size_t smaller_dimension = std::min( nrows, ncols );
+						assert( amf.getLogicalDimensions().first == amf.getLogicalDimensions().second );
 						return amf_type(
-							imf::Strided( smaller_dimension, nrows, 0, 1 ),
-							imf::Strided( smaller_dimension, ncols, 0, 1 ),
+							imf::Id( amf.getLogicalDimensions().first ),
+							imf::Zero( amf.getLogicalDimensions().second ),
 							new_poly_type(
 								orig_p::Ax2 * amf.map_poly.ax2 + orig_p::Ay2 * amf.map_poly.ay2 + orig_p::Axy * amf.map_poly.axy, 0, 0,
 								orig_p::Ax * amf.map_poly.ax + orig_p::Ay * amf.map_poly.ay, 0,
