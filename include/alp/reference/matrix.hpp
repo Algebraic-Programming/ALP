@@ -843,22 +843,22 @@ namespace alp {
 
 			/** Ensure that if the view is original, the IMFs are Id */
 			static_assert(
-				View::type_id != view::Views::original ||
-				( View::type_id == view::Views::original && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				View::type_id != view::original ||
+				( View::type_id == view::original && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
 				"Original view with non-ID Index Mapping Functions is not supported."
 			);
 
 			/** Ensure that if the view is transposed, the IMFs are Id */
 			static_assert(
-				View::type_id != view::Views::transpose ||
-				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				View::type_id != view::transpose ||
+				( View::type_id == view::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
 			/** Ensure that if the view is diagonal, the row and column IMFs are Id and Zero, respectively */
 			static_assert(
-				View::type_id != view::Views::diagonal ||
-				( View::type_id == view::Views::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Zero, ImfC >::value ),
+				View::type_id != view::diagonal ||
+				( View::type_id == view::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Zero, ImfC >::value ),
 				"Diagonal view with non-Id Row and non-Zero Column Index Mapping Functions is not supported."
 			);
 
@@ -1536,7 +1536,6 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				// Will be changed soon to allow pair of Ids as IMFs
 				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
@@ -2220,7 +2219,7 @@ namespace alp {
 	 *
 	 */
 	template<
-		enum view::Views target_view = view::Views::original,
+		enum view::Views target_view = view::original,
 		typename SourceMatrix,
 		std::enable_if_t<
 			is_matrix< SourceMatrix >::value &&
@@ -2237,7 +2236,7 @@ namespace alp {
 
 	/** Specialization for diagonal view over Square matrix */
 	template<
-		enum view::Views target_view = view::Views::original,
+		enum view::Views target_view = view::original,
 		typename SourceMatrix,
 		std::enable_if_t<
 			is_matrix< SourceMatrix >::value &&
@@ -2258,7 +2257,7 @@ namespace alp {
 	 * view with a square structure.
 	 */
 	template<
-		enum view::Views target_view = view::Views::original,
+		enum view::Views target_view = view::original,
 		typename SourceMatrix,
 		std::enable_if_t<
 			is_matrix< SourceMatrix >::value &&

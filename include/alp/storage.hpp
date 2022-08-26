@@ -132,22 +132,22 @@ namespace alp {
 			struct apply_view {};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::original, Polynomial > {
+			struct apply_view< view::original, Polynomial > {
 				typedef Polynomial type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::transpose, Polynomial > {
+			struct apply_view< view::transpose, Polynomial > {
 				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::diagonal, Polynomial > {
+			struct apply_view< view::diagonal, Polynomial > {
 				typedef Polynomial type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::_internal, Polynomial > {
+			struct apply_view< view::_internal, Polynomial > {
 				typedef None_type type;
 			};
 
@@ -356,7 +356,6 @@ namespace alp {
 				}
 
 				static resulting_polynomial_type CreatePolynomial( imf::Constant imf, Poly p ) {
-					(void)imf;
 					return resulting_polynomial_type(
 						p.ax2,         // ax2
 						0,             // ay2
@@ -759,7 +758,7 @@ namespace alp {
 			}; // class Reshape
 
 			template< typename SourceAMF >
-			struct Reshape< view::Views::original, SourceAMF > {
+			struct Reshape< view::original, SourceAMF > {
 
 				typedef SourceAMF amf_type;
 
@@ -774,13 +773,13 @@ namespace alp {
 			}; // class Reshape< original, ... >
 
 			template< typename SourceAMF >
-			struct Reshape< view::Views::transpose, SourceAMF > {
+			struct Reshape< view::transpose, SourceAMF > {
 
 				typedef AMF<
 					typename SourceAMF::imf_c_type,
 					typename SourceAMF::imf_r_type,
 					typename polynomials::apply_view<
-						view::Views::transpose,
+						view::transpose,
 						typename SourceAMF::mapping_polynomial_type
 					>::type
 				> amf_type;
@@ -788,7 +787,7 @@ namespace alp {
 				static
 				amf_type
 				Create( const SourceAMF &amf ) {
-					typedef typename polynomials::apply_view< view::Views::transpose, typename SourceAMF::mapping_polynomial_type >::type new_mapping_polynomial_type;
+					typedef typename polynomials::apply_view< view::transpose, typename SourceAMF::mapping_polynomial_type >::type new_mapping_polynomial_type;
 					return AMF<
 						typename SourceAMF::imf_c_type,
 						typename SourceAMF::imf_r_type,
@@ -822,7 +821,7 @@ namespace alp {
 			 *
 			 */
 			template< typename SourceAMF >
-			struct Reshape< view::Views::diagonal, SourceAMF > {
+			struct Reshape< view::diagonal, SourceAMF > {
 
 				private:
 
