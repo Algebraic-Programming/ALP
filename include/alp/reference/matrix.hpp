@@ -1041,24 +1041,6 @@ namespace alp {
 				using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
 
-			template < bool d >
-			struct view_type< view::diagonal, d > {
-				/**
-				 * Diagonal view is applied only to square matrices.
-				 * Since General structure does not imply Square properties,
-				 * it is necessary to first apply a Square gather view
-				 */
-				using type = Vector<
-					T, structures::General, Density::Dense,
-					view::Diagonal<
-						typename internal::new_container_type_from<
-							typename self_type::template view_type< view::gather >::type
-						>::template change_structure< structures::Square >::type
-					>,
-					imf::Id, imf::Zero, reference
-				>;
-			};
-
 			/**
 			 * Constructor for a storage-based matrix that allocates storage.
 			 */
@@ -2265,7 +2247,10 @@ namespace alp {
 			!structures::is_in< structures::Square, typename SourceMatrix::structure::inferred_structures >::value
 		> * = nullptr
 	>
-	typename SourceMatrix::template view_type< view::diagonal >::type
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_structure< structures::Square >::type
+	::template view_type< view::diagonal >::type
 	get_view( SourceMatrix &source ) {
 
 		const size_t source_rows = nrows( source );
