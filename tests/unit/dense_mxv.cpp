@@ -26,75 +26,75 @@
 
 using namespace alp;
 
-template< typename T, typename Operator, typename Monoid >
-void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
-							const std::vector< T > & vA, const size_t lda,
-							const std::vector< T > & vB, const size_t ldb,
-							const size_t m, const size_t k, const size_t n,
-							const Operator oper,
-							const Monoid monoid ) {
+// template< typename T, typename Operator, typename Monoid >
+// void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
+// 							const std::vector< T > & vA, const size_t lda,
+// 							const std::vector< T > & vB, const size_t ldb,
+// 							const size_t m, const size_t k, const size_t n,
+// 							const Operator oper,
+// 							const Monoid monoid ) {
     
-	T temp;
+// 	T temp;
 
-	for( size_t i = 0; i < m; ++i ) {
-		for( size_t j = 0; j < n; ++j ) {
-			T & c_val { vC[ i * ldc + j ] };
-			for( size_t l = 0; l < k; ++l ) {
-					const T & a_val { vA[ i * lda + l ] };
-					const T & b_val { vB[ l * ldb + j ] };
-					(void)internal::apply( temp, a_val, b_val, oper );
-					(void)internal::foldl( c_val, temp, monoid.getOperator() );
-			}
-		}
-	}
+// 	for( size_t i = 0; i < m; ++i ) {
+// 		for( size_t j = 0; j < n; ++j ) {
+// 			T & c_val { vC[ i * ldc + j ] };
+// 			for( size_t l = 0; l < k; ++l ) {
+// 					const T & a_val { vA[ i * lda + l ] };
+// 					const T & b_val { vB[ l * ldb + j ] };
+// 					(void)internal::apply( temp, a_val, b_val, oper );
+// 					(void)internal::foldl( c_val, temp, monoid.getOperator() );
+// 			}
+// 		}
+// 	}
 
-}
+// }
 
-template< typename MatType, typename T >
-void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda,
-						 const MatType & mA, double threshold=1e-7 ) {
+// template< typename MatType, typename T >
+// void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda,
+// 						 const MatType & mA, double threshold=1e-7 ) {
 
-	if( std::is_same< typename MatType::structure, structures::General >::value ) {
-		for( size_t row = 0; row < m; ++row ) {
-			for( size_t col = 0; col < n; ++col ) {
-				double va = ( double )( vA[ row * lda + col ] );
-				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
-				double re = std::abs( ( va - vm ) / va );
-				if( re > threshold ) {
-					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
-				}
-			}
-		}
-	} else if( std::is_same< typename MatType::structure, structures::Symmetric >::value ) {
-		for( size_t row = 0; row < m; ++row ) {
-			for( size_t col = row; col < n; ++col ) {
-				double va = ( double )( vA[ row * lda + col ] );
-				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
-				double re = std::abs( ( va - vm ) / va );
-				if( re > threshold ) {
-					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
-				}
-			}
-		}
-	} else if( std::is_same< typename MatType::structure, structures::UpperTriangular >::value ) {
-		for( size_t row = 0; row < m; ++row ) {
-			for( size_t col = row; col < n; ++col ) {
-				double va = ( double )( vA[ row * lda + col ] );
-				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
-				double re = std::abs( ( va - vm ) / va );
-				if( re > threshold ) {
-					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
-				}
-			}
-		}
-	}
+// 	if( std::is_same< typename MatType::structure, structures::General >::value ) {
+// 		for( size_t row = 0; row < m; ++row ) {
+// 			for( size_t col = 0; col < n; ++col ) {
+// 				double va = ( double )( vA[ row * lda + col ] );
+// 				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
+// 				double re = std::abs( ( va - vm ) / va );
+// 				if( re > threshold ) {
+// 					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
+// 				}
+// 			}
+// 		}
+// 	} else if( std::is_same< typename MatType::structure, structures::Symmetric >::value ) {
+// 		for( size_t row = 0; row < m; ++row ) {
+// 			for( size_t col = row; col < n; ++col ) {
+// 				double va = ( double )( vA[ row * lda + col ] );
+// 				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
+// 				double re = std::abs( ( va - vm ) / va );
+// 				if( re > threshold ) {
+// 					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
+// 				}
+// 			}
+// 		}
+// 	} else if( std::is_same< typename MatType::structure, structures::UpperTriangular >::value ) {
+// 		for( size_t row = 0; row < m; ++row ) {
+// 			for( size_t col = row; col < n; ++col ) {
+// 				double va = ( double )( vA[ row * lda + col ] );
+// 				double vm = ( double )( internal::access( mA, internal::getStorageIndex( mA, row, col ) ) );
+// 				double re = std::abs( ( va - vm ) / va );
+// 				if( re > threshold ) {
+// 					std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl; 
+// 				}
+// 			}
+// 		}
+// 	}
 
-}
+// }
 
-template< typename VecType, typename T >
-void diff_stdvec_vector( const std::vector< T > & vA, const size_t m, const VecType & v, double threshold=1e-7 ) {
-	diff_stdvec_matrix( vA, m, 1, 1, static_cast< const typename VecType::base_type & >( v ), threshold );
-}
+// template< typename VecType, typename T >
+// void diff_stdvec_vector( const std::vector< T > & vA, const size_t m, const VecType & v, double threshold=1e-7 ) {
+// 	diff_stdvec_matrix( vA, m, 1, 1, static_cast< const typename VecType::base_type & >( v ), threshold );
+// }
 
 void alp_program( const size_t & n, alp::RC & rc ) {
 

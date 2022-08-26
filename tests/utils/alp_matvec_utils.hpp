@@ -33,12 +33,12 @@
  * @param name 
  * @param A 
  */
-template< typename T, typename Structure >
-void print_alp_container( std::string name, const alp::Matrix< T, Structure, alp::Density::Dense > & A) {
+template< typename MatrixT, typename Structure >
+void print_alp_container( std::string name, const MatrixT & A) {
     
     typedef typename std::remove_const< typename std::remove_reference< decltype( A ) >::type >::type A_type;
 
-    static_assert( std::is_same< typename A_type::mapping_polynomial_type, alp::storage::polynomials::Full_type >::value, "print_alp_matrix_dense_full cannot print from non-full storage." );
+    static_assert( std::is_same< typename A_type::amf_type::mapping_polynomial_type, alp::storage::polynomials::Full_type >::value, "print_alp_matrix_dense_full cannot print from non-full storage." );
 
     if( ! alp::internal::getInitialized( A ) ) {
         std::cout << "Matrix " << name << " uninitialized.\n";
@@ -59,7 +59,7 @@ void print_alp_container( std::string name, const alp::Matrix< T, Structure, alp
 template< typename T, typename Structure >
 void print_alp_container( std::string name, const alp::Vector< T, Structure, alp::Density::Dense > & v) {
 
-    print_alp_container( name, static_cast< const typename alp::Vector< T, Structure >::base_type & >( v ) );
+    print_alp_container( name, get_view< view::matrix > ( v ) );
 }
 
 /**
@@ -128,7 +128,7 @@ void check_inf_norm_relerr( const std::vector< T > & vA, const size_t m, const s
 
 template< typename VecType, typename T >
 void check_inf_norm_relerr( const std::vector< T > & vA, const size_t m, const VecType & v, double threshold=1e-7 ) {
-    check_inf_norm_relerr( vA, m, 1, 1, static_cast< const typename VecType::base_type & >( v ), threshold );
+    check_inf_norm_relerr( vA, m, 1, 1, get_view< view::matrix >( v ), threshold );
 }
 
 /**

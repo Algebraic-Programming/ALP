@@ -527,7 +527,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Vector( SourceType &target_vector, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
+				base_type( target_vector, imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
@@ -544,8 +544,8 @@ namespace alp {
 				> * = nullptr
 			>
 			Vector( SourceType &target_vector ) :
-				base_type( getFunctor( target_vector ),
-					imf::Id( nrows ( target_vector ) ),
+				base_type( target_vector,
+					imf::Id( getLength( target_vector ) ),
 					imf::Id( 1 )
 				) {
 
