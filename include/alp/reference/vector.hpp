@@ -409,6 +409,17 @@ namespace alp {
 				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference > type;
 			};
 
+			// template < bool d >
+			// struct view_type< view::gather, d > {
+			// 	typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference > type;
+			// };
+			
+			// Temporary - waiting for Vector's views MR
+			template < bool d >
+			struct view_type< view::matrix, d > {
+				typedef Matrix< T, structures::General, Density::Dense, view::MatrixView< self_type >, imf::Strided, imf::Strided, reference > type;
+			};
+
 			/**
 			 * Constructor for a storage-based vector that allocates storage.
 			 */
@@ -507,7 +518,7 @@ namespace alp {
 				> * = nullptr
 			>
 			Vector( SourceType &target_vector, ImfR imf_r, ImfC imf_c ) :
-				base_type( getFunctor( target_vector ), imf_r, imf_c ) {}
+				base_type( target_vector, imf_r, imf_c ) {}
 
 			/**
 			 * Constructor for a view over another functor-based vector.
@@ -524,8 +535,8 @@ namespace alp {
 				> * = nullptr
 			>
 			Vector( SourceType &target_vector ) :
-				base_type( getFunctor( target_vector ),
-					imf::Id( nrows ( target_vector ) ),
+				base_type( target_vector,
+					imf::Id( getLength( target_vector ) ),
 					imf::Id( 1 )
 				) {
 
@@ -593,6 +604,51 @@ namespace alp {
 		return target_t( source );
 	}
 
+	/**
+     *
+	 * @brief Generate a view specified by \a target_view where the type is compliant with the
+	 * 		  \a source vector.
+	 * 		  The function guarantees the created view is non-overlapping with other
+	 *        existing views only when the check can be performed in constant time.
+	 *
+	 * @tparam target_view       One of the supported views listed in \a view::Views
+	 * @tparam SourceVectorType  The source vector type
+	 *
+	 * @param source        The source vector
+	 *
+	 * @return A new \a target_view view over the source vector.
+
+     * \parblock
+     * \par Performance semantics.
+     *        -# This function performs
+     *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 * 			 of available views of \a source.
+     *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+     *           of memory beyond the memory in use at the function call entry.
+     *        -# This function may make system calls.
+     * \endparblock
+	 *
+	 */
+	template<
+		enum view::Views target_view = view::original,
+		typename SourceVectorType,
+		std::enable_if_t< is_vector< SourceVectorType >::value, void > * = nullptr
+	>
+	// TODO
+	typename SourceVectorType::template view_type< target_view >::type
+	get_view( SourceVectorType &source ) {
+
+		using target_t = typename SourceVectorType::template view_type< target_view >::type;
+
+		if( target_view == view::matrix ) {
+
+		} else {
+			target_t target( source );
+		}
+
+		return target;
+	}
+
 	namespace internal {
 
 		/**
@@ -605,7 +661,7 @@ namespace alp {
 			std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceVector::template view_type< view::original >::type
+			typename SourceVector::template view_type< view::gather >::type
 		>::template change_structure< TargetStructure >::_and_::
 		template change_imfr< TargetImfR >::_and_::
 		template change_imfc< TargetImfC >::type
@@ -620,12 +676,12 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
 			using target_vec_t = typename internal::new_container_type_from<
-				typename SourceVector::template view_type< view::original >::type
+				typename SourceVector::template view_type< view::gather >::type
 			>::template change_structure< TargetStructure >::_and_::
 			template change_imfr< TargetImfR >::_and_::
 			template change_imfc< TargetImfC >::type;
@@ -659,16 +715,13 @@ namespace alp {
 		typename SourceVector,
 		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 	>
-	typename internal::new_container_type_from<
-		typename SourceVector::template view_type< view::original >::type
-	>::template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+	typename SourceVector::template view_type< view::gather >::type
 	get_view( SourceVector &source, const utils::range& rng ) {
 
 		return internal::get_view< typename SourceVector::structure >(
 			source,
-			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
-			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
+			std::move( imf::Strided( rng.count(), getLength( source ), rng.start, rng.stride ) ),
+			std::move( imf::Strided( rng.count(), getLength( source ), rng.start, rng.stride ) )
 		);
 	}
 

@@ -473,6 +473,21 @@ namespace alp {
 			void >::type * const = NULL ) {
 		(void)phase;
 
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Semiring::D1, typename InputStructMatT1::value_type >::value
+			), "alp::mxm",
+			"called with an input matrix A that does not match the first "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Semiring::D2, typename InputStructMatT2::value_type >::value ), "alp::mxm",
+			"called with an input matrix B that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Semiring::D4, typename OutputStructMatT::value_type >::value
+			), "alp::mxm",
+			"called with an output matrix C that does not match the output domain "
+			"of the given operator" );
+
 		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
@@ -495,6 +510,37 @@ namespace alp {
 		                               alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
 		(void)phase;
+
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Operator::D1, typename InputStructMatT1::value_type >::value
+			), "alp::mxm",
+			"called with an input matrix A that does not match the first "
+			"domain of the given multiplication operator" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Operator::D2, typename InputStructMatT2::value_type >::value
+			), "alp::mxm",
+			"called with an input matrix B that does not match the first "
+			"domain of the given multiplication operator" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Operator::D3, typename OutputStructMatT::value_type >::value ),
+			"alp::mxm",
+			"called with an output matrix C that does not match the output domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Monoid::D1, typename Operator::D3 >::value
+			), "alp::mxm",
+			"the output domain of the multiplication operator does not match the "
+			"first domain of the given addition monoid" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Monoid::D2, typename OutputStructMatT::value_type >::value
+			), "alp::mxm",
+			"the second domain of the given addition monoid does not match the "
+			"type of the output matrix C" );
+		NO_CAST_ASSERT( ( 
+				std::is_same< typename Monoid::D3, typename OutputStructMatT::value_type >::value
+			), "alp::mxm",
+			"the output type of the given addition monoid does not match the type "
+			"of the output matrix C" );
 
 		return internal::mxm_generic< false >( C, A, B, mulOp, addM, Monoid() );
 	}
