@@ -182,34 +182,41 @@ namespace alp {
 		namespace internal {
 
 
+			/**
+			 * @brief interval_ge
+			 * True if the intervals in the tuple on the left are larger or equal than 
+			 * the ones in the tuple on the right. Notice that a single interval on the
+			 * left may include multiple ones on the right, e.g., 
+			 * tuple< [1, 10) > ">=" tuple< [1, 3), [4, 5) >
+			 */
 			template < typename LeftTuple, typename RightTuple >
-			struct interval_le {
+			struct interval_ge {
 				static constexpr bool value = false;
 			};
 
 			template < >
-			struct interval_le< std::tuple< >, std::tuple< > > { 
+			struct interval_ge< std::tuple< >, std::tuple< > > { 
 
 				static constexpr bool value = true;
 
 			};
 
 			template < typename IntervalL, typename... IntervalsL >
-			struct interval_le< std::tuple< IntervalL, IntervalsL... >, std::tuple< > > { 
+			struct interval_ge< std::tuple< IntervalL, IntervalsL... >, std::tuple< > > { 
 
 				static constexpr bool value = true;
 
 			};
 
 			template < typename IntervalL, typename... IntervalsL, typename IntervalR, typename... IntervalsR >
-			struct interval_le< std::tuple< IntervalL, IntervalsL... >, std::tuple< IntervalR, IntervalsR... > > { 
+			struct interval_ge< std::tuple< IntervalL, IntervalsL... >, std::tuple< IntervalR, IntervalsR... > > { 
 
 				static constexpr bool value = 
 					( IntervalR::left >= IntervalL::left 
 						&& IntervalR::right <= IntervalL::right 
-						&& interval_le< std::tuple<IntervalL, IntervalsL... >, std::tuple< IntervalsR... > >::value ) 
+						&& interval_ge< std::tuple<IntervalL, IntervalsL... >, std::tuple< IntervalsR... > >::value ) 
 					|| ( IntervalR::left > IntervalL::right
-						&& interval_le< std::tuple< IntervalsL... >, std::tuple< IntervalR, IntervalsR... > >::value );
+						&& interval_ge< std::tuple< IntervalsL... >, std::tuple< IntervalR, IntervalsR... > >::value );
 
 			};
 
@@ -253,14 +260,14 @@ namespace alp {
 		} // namespace internal 
 
 		/**
-		 * @brief band_le
+		 * @brief band_ge
 		 * If the band geometry of the left structure is larger or equal than 
 		 * the one of the right structure.
 		 */
 
 		template < typename LeftStructure, typename RightStructure >
-		struct band_le {
-			static constexpr bool value = internal::interval_le< 
+		struct band_ge {
+			static constexpr bool value = internal::interval_ge< 
 				typename LeftStructure::band_intervals, typename RightStructure::band_intervals 
 			>::value;
 		};
