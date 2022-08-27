@@ -73,8 +73,8 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	//std::cout << "v_view2( " << alp::getLength( v_view2 ) << " )" << std::endl;
 
 	// TODO: temporarily comented until containers are ready
-    typedef std::tuple< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LeftTuple0;
-    typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 > > RightTuple0;
+	typedef alp::structures::Band< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LB0;
+	typedef alp::structures::Band< alp::Interval< -5, -4 >, alp::Interval< -3, -2 > > RB0;
 
     typedef std::tuple< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LeftTuple1;
     typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 >, alp::Interval< 2 > > RightTuple1;
@@ -91,22 +91,22 @@ void alp_program( const size_t & n, alp::RC & rc ) {
     typedef std::tuple< > Tuple5;
 
 
-    std::cout << "Is super set 0: " << alp::structures::internal::interval_le< LeftTuple0, RightTuple0 >::value << std::endl;
-    std::cout << "Is super set 0 rev: " << alp::structures::internal::interval_le< RightTuple0, LeftTuple0 >::value << std::endl;
+    std::cout << "Is LB0 >= RB0: " << alp::structures::band_ge< LB0, RB0 >::value << std::endl;
+    std::cout << "Is RB0 >= LB0: " << alp::structures::band_ge< RB0, LB0 >::value << std::endl;
 
-    std::cout << "Is super set 1: " << alp::structures::internal::interval_le< LeftTuple1, RightTuple1 >::value << std::endl;
-    std::cout << "Is super set 1 rev: " << alp::structures::internal::interval_le< RightTuple1, LeftTuple1 >::value << std::endl;
+    std::cout << "Is super set 1: " << alp::structures::internal::interval_ge< LeftTuple1, RightTuple1 >::value << std::endl;
+    std::cout << "Is super set 1 rev: " << alp::structures::internal::interval_ge< RightTuple1, LeftTuple1 >::value << std::endl;
 
-    std::cout << "Is super set 2: " << alp::structures::internal::interval_le< LeftTuple2, RightTuple2 >::value << std::endl;
-    std::cout << "Is super set 2 rev: " << alp::structures::internal::interval_le< RightTuple2, LeftTuple2 >::value << std::endl;
+    std::cout << "Is super set 2: " << alp::structures::internal::interval_ge< LeftTuple2, RightTuple2 >::value << std::endl;
+    std::cout << "Is super set 2 rev: " << alp::structures::internal::interval_ge< RightTuple2, LeftTuple2 >::value << std::endl;
 
-    std::cout << "Is super set 3: " << alp::structures::internal::interval_le< LeftTuple3, RightTuple3 >::value << std::endl;
-    std::cout << "Is super set 3 rev: " << alp::structures::internal::interval_le< RightTuple3, LeftTuple3 >::value << std::endl;
+    std::cout << "Is super set 3: " << alp::structures::internal::interval_ge< LeftTuple3, RightTuple3 >::value << std::endl;
+    std::cout << "Is super set 3 rev: " << alp::structures::internal::interval_ge< RightTuple3, LeftTuple3 >::value << std::endl;
 
-    std::cout << "Is super set 4: " << alp::structures::internal::interval_le< LeftTuple4, RightTuple4 >::value << std::endl;
-    std::cout << "Is super set 4 rev: " << alp::structures::internal::interval_le< RightTuple4, LeftTuple4 >::value << std::endl;
+    std::cout << "Is super set 4: " << alp::structures::internal::interval_ge< LeftTuple4, RightTuple4 >::value << std::endl;
+    std::cout << "Is super set 4 rev: " << alp::structures::internal::interval_ge< RightTuple4, LeftTuple4 >::value << std::endl;
 
-    std::cout << "Is super set 5: " << alp::structures::internal::interval_le< Tuple5, Tuple5 >::value << std::endl;
+    std::cout << "Is super set 5: " << alp::structures::internal::interval_ge< Tuple5, Tuple5 >::value << std::endl;
 
 	// alp::Matrix< float, alp::structures::Band< alp::Interval<-2, 5> > > BM0( n, n );
 	//alp::Matrix< float, alp::structures::Band< alp::RightOpenInterval<-2> > > BM1( n, n );
