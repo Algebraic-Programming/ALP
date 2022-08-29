@@ -841,22 +841,29 @@ namespace alp {
 				"Cannot handle views over void type by this determine_amf_type specialization."
 			);
 
+			/** Ensure that if the view is original, the IMFs are Id */
+			static_assert(
+				View::type_id != view::original ||
+				( View::type_id == view::original && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Original view with non-ID Index Mapping Functions is not supported."
+			);
+
 			/** Ensure that if the view is transposed, the IMFs are Id */
 			static_assert(
-				View::type_id != view::Views::transpose ||
-				( View::type_id == view::Views::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				View::type_id != view::transpose ||
+				( View::type_id == view::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
 				"Transposed view with non-ID Index Mapping Functions is not supported."
 			);
 
-			/** Ensure that if the view is diagonal, the IMFs are Id */
+			/** Ensure that if the view is diagonal, the row and column IMFs are Id and Zero, respectively */
 			static_assert(
-				View::type_id != view::Views::diagonal ||
-				( View::type_id == view::Views::diagonal && std::is_same< imf::Strided, ImfR >::value && std::is_same< imf::Strided, ImfC >::value ),
-				"Diagonal view with non-ID Index Mapping Functions is not supported."
+				View::type_id != view::diagonal ||
+				( View::type_id == view::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Zero, ImfC >::value ),
+				"Diagonal view with non-Id Row and non-Zero Column Index Mapping Functions is not supported."
 			);
 
 			typedef typename std::conditional<
-				( View::type_id == view::original ) || ( View::type_id == view::gather ),
+				View::type_id == view::gather,
 				typename storage::AMFFactory::Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
@@ -1032,12 +1039,6 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::General, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
-			};
-
-			template < bool d >
-			struct view_type< view::diagonal, d > {
-				// Current solution considering that diagonal is applied directly to rectangular matrices
-				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			/**
@@ -1517,8 +1518,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				// Will be changed soon to allow pair of Ids as IMFs
-				using type = Vector< T, structures::Square, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -1738,7 +1738,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::Symmetric, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -1960,7 +1960,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::diagonal, d > {
-				using type = Vector< T, structures::UpperTriangular, Density::Dense, view::Diagonal< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
 			};
 
 			/**
@@ -2201,9 +2201,12 @@ namespace alp {
 	 *
 	 */
 	template<
-		enum view::Views target_view = view::Views::original,
+		enum view::Views target_view = view::original,
 		typename SourceMatrix,
-		std::enable_if_t< is_matrix< SourceMatrix >::value, void > * = nullptr
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view != view::diagonal
+		> * = nullptr
 	>
 	typename SourceMatrix::template view_type< target_view >::type
 	get_view( SourceMatrix &source ) {
@@ -2211,6 +2214,50 @@ namespace alp {
 		using target_strmat_t = typename SourceMatrix::template view_type< target_view >::type;
 
 		return target_strmat_t( source );
+	}
+
+	/** Specialization for diagonal view over Square matrix */
+	template<
+		enum view::Views target_view = view::original,
+		typename SourceMatrix,
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view == view::diagonal &&
+			structures::is_in< structures::Square, typename SourceMatrix::structure::inferred_structures >::value
+		> * = nullptr
+	>
+	typename SourceMatrix::template view_type< view::diagonal >::type
+	get_view( SourceMatrix &source ) {
+
+		using target_t = typename SourceMatrix::template view_type< view::diagonal >::type;
+		return target_t( source );
+	}
+
+	/**
+	 * Specialization for diagonal view over non-Square matrix.
+	 * A diagonal view is created over a intermediate gather
+	 * view with a square structure.
+	 */
+	template<
+		enum view::Views target_view = view::original,
+		typename SourceMatrix,
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			target_view == view::diagonal &&
+			!structures::is_in< structures::Square, typename SourceMatrix::structure::inferred_structures >::value
+		> * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::gather >::type
+	>::template change_structure< structures::Square >::type
+	::template view_type< view::diagonal >::type
+	get_view( SourceMatrix &source ) {
+
+		const size_t source_rows = nrows( source );
+		const size_t source_cols = ncols( source );
+		const size_t smaller_dimension = std::min( source_rows, source_cols );
+		auto square_view = get_view< structures::Square >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
+		return get_view< view::diagonal >( square_view );
 	}
 
 	/**
@@ -2381,10 +2428,7 @@ namespace alp {
 		typename SourceMatrix,
 		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
-	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+	typename SourceMatrix::template view_type< view::gather >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range &rng_r,
@@ -2399,52 +2443,6 @@ namespace alp {
 
 	/**
 	 *
-	 * @brief Generate a vector view on a row of the source matrix.
-	 *
-	 * @tparam SourceMatrix The type of the source ALP matrix
-	 *
-	 * @param source        The source matrix
-	 * @param sel_r         A valid row index
-	 * @param rng_c         A valid range of columns
-	 *
-	 * @return A new original view over the source ALP matrix.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function performs
-	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
-	 *           of available views of \a source.
-	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
-	 *           of memory beyond the memory in use at the function call entry.
-	 *        -# This function may make system calls.
-	 * \endparblock
-	 *
-	 */
-	template<
-		typename SourceMatrix,
-		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
-	>
-	typename internal::new_container_type_from<
-		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_container< alp::Vector >::type
-	get_view(
-		SourceMatrix &source,
-		const size_t &sel_r,
-		const utils::range &rng_c
-	) {
-		using target_t = typename internal::new_container_type_from<
-			typename SourceMatrix::template view_type< view::gather >::type
-		>::template change_container< alp::Vector >::type;
-
-		return target_t(
-			source,
-			imf::Strided( rng_c.count(), nrows( source ), sel_r, 0 ),
-			imf::Strided( rng_c.count(), ncols( source ), rng_c.start, rng_c.stride )
-		);
-	}
-
-	/**
-	 *
 	 * @brief Generate a vector view on a column of the source matrix.
 	 *
 	 * @tparam SourceMatrix The type of the source ALP matrix
@@ -2453,7 +2451,7 @@ namespace alp {
 	 * @param rng_r         A valid range of rows
 	 * @param sel_c         A valid column index
 	 *
-	 * @return A new original view over the source ALP matrix.
+	 * @return A new gather view over the source ALP matrix.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -2472,7 +2470,8 @@ namespace alp {
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_container< alp::Vector >::type
+	>::template change_container< alp::Vector >::_and_::
+	template change_imfc< imf::Constant >::type
 	get_view(
 		SourceMatrix &source,
 		const utils::range &rng_r,
@@ -2480,13 +2479,57 @@ namespace alp {
 	) {
 		using target_t = typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::gather >::type
-		>::template change_container< alp::Vector >::type;
+		>::template change_container< alp::Vector >::_and_::
+		template change_imfc< imf::Constant >::type;
 
 		return target_t(
 			source,
 			imf::Strided( rng_r.count(), nrows( source ), rng_r.start, rng_r.stride ),
-			imf::Strided( rng_r.count(), ncols( source ), sel_c, 0 )
+			imf::Constant( 1, ncols( source ), sel_c )
 		);
+	}
+
+	/**
+	 *
+	 * @brief Generate a vector view on a row of the source matrix.
+	 *
+	 * @tparam SourceMatrix The type of the source ALP matrix
+	 *
+	 * @param source        The source matrix
+	 * @param sel_r         A valid row index
+	 * @param rng_c         A valid range of columns
+	 *
+	 * @return A new gather view over the source ALP matrix.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function performs
+	 *           \f$ \Theta(nref) \f$ amount of work where \f$ nref \f$ is the number
+	 *           of available views of \a source.
+	 *        -# A call to this function may use \f$ \mathcal{O}(1) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function may make system calls.
+	 * \endparblock
+	 *
+	 * \note \internal Row-view is implemented as a column view over a
+	 *                 tranposed source matrix
+	 *
+	 */
+	template<
+		typename SourceMatrix,
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceMatrix::template view_type< view::transpose >::type::template view_type< view::gather >::type
+	>::template change_container< alp::Vector >::_and_::
+	template change_imfc< imf::Constant >::type
+	get_view(
+		SourceMatrix &source,
+		const size_t &sel_r,
+		const utils::range &rng_c
+	) {
+		auto source_transposed = get_view< view::transpose >( source );
+		return get_view( source_transposed, rng_c, sel_r );
 	}
 
 	/**

@@ -132,22 +132,22 @@ namespace alp {
 			struct apply_view {};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::original, Polynomial > {
+			struct apply_view< view::original, Polynomial > {
 				typedef Polynomial type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::transpose, Polynomial > {
+			struct apply_view< view::transpose, Polynomial > {
 				typedef BivariateQuadratic< Polynomial::Ay2, Polynomial::Ax2, Polynomial::Axy, Polynomial::Ay, Polynomial::Ax, Polynomial::A0, Polynomial::D > type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::diagonal, Polynomial > {
+			struct apply_view< view::diagonal, Polynomial > {
 				typedef Polynomial type;
 			};
 
 			template< typename Polynomial >
-			struct apply_view< view::Views::_internal, Polynomial > {
+			struct apply_view< view::_internal, Polynomial > {
 				typedef None_type type;
 			};
 
@@ -170,6 +170,28 @@ namespace alp {
 
 				static resulting_polynomial_type CreatePolynomial( Imf imf, Poly p ) {
 					(void) imf;
+					return p;
+				}
+			};
+
+			/**
+			 * Specialization for Id IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_i< imf::Id, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef Poly resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Id imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Id imf, Poly p ) {
+					(void)imf;
 					return p;
 				}
 			};
@@ -258,6 +280,28 @@ namespace alp {
 			};
 
 			/**
+			 * Specialization for Id IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Id, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** Some static factors change after injecting strided IMF into the polynomial */
+				typedef Poly resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Id imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Id imf, Poly p ) {
+					(void)imf;
+					return p;
+				}
+			};
+
+			/**
 			 * Specialization for strided IMF.
 			 */
 			template< typename Poly >
@@ -286,6 +330,42 @@ namespace alp {
 						Poly::Ax * p.ax + Poly::Axy * p.axy * imf.b,                     // ax
 						2 * Poly::Ay2 * p.ay2 * imf.s * imf.b + Poly::Ay * p.ay * imf.s, // ay
 						Poly::Ay2 * p.ay2 * imf.b * imf.b + Poly::Ay * p.ay * imf.b + Poly::A0 * p.a0 // A0
+					);
+				}
+			};
+
+			/**
+			 * Specialization for constant-mapping IMF.
+			 */
+			template< typename Poly >
+			struct fuse_on_j< imf::Constant, Poly > {
+
+				/** The resulting IMF is an Id because strided IMF is fully fused into the polynomial */
+				typedef imf::Id resulting_imf_type;
+
+				/** j factors contribute to the constant factor, while they become 0 */
+				typedef BivariateQuadratic<
+					Poly::Ax2, 0, 0,
+					Poly::Ax || Poly::Axy, 0,
+					Poly::A0 || Poly::Ay || Poly::Ay2,
+					Poly::D
+				> resulting_polynomial_type;
+
+				static resulting_imf_type CreateImf( imf::Constant imf ) {
+					return imf::Id( imf.n );
+				}
+
+				static resulting_polynomial_type CreatePolynomial( imf::Constant imf, Poly p ) {
+					return resulting_polynomial_type(
+						p.ax2,         // ax2
+						0,             // ay2
+						0,             // axy
+						Poly::Ax * p.ax +
+						Poly::Axy * p.axy * imf.b, // ax
+						0,             // ay
+						Poly::A0 * p.a0 +
+						Poly::Ay * p.ay * imf.b +
+						Poly::Ay2 * p.ay2 * imf.b * imf.b  // A0
 					);
 				}
 			};
@@ -678,7 +758,7 @@ namespace alp {
 			}; // class Reshape
 
 			template< typename SourceAMF >
-			struct Reshape< view::Views::original, SourceAMF > {
+			struct Reshape< view::original, SourceAMF > {
 
 				typedef SourceAMF amf_type;
 
@@ -693,13 +773,13 @@ namespace alp {
 			}; // class Reshape< original, ... >
 
 			template< typename SourceAMF >
-			struct Reshape< view::Views::transpose, SourceAMF > {
+			struct Reshape< view::transpose, SourceAMF > {
 
 				typedef AMF<
 					typename SourceAMF::imf_c_type,
 					typename SourceAMF::imf_r_type,
 					typename polynomials::apply_view<
-						view::Views::transpose,
+						view::transpose,
 						typename SourceAMF::mapping_polynomial_type
 					>::type
 				> amf_type;
@@ -707,7 +787,7 @@ namespace alp {
 				static
 				amf_type
 				Create( const SourceAMF &amf ) {
-					typedef typename polynomials::apply_view< view::Views::transpose, typename SourceAMF::mapping_polynomial_type >::type new_mapping_polynomial_type;
+					typedef typename polynomials::apply_view< view::transpose, typename SourceAMF::mapping_polynomial_type >::type new_mapping_polynomial_type;
 					return AMF<
 						typename SourceAMF::imf_c_type,
 						typename SourceAMF::imf_r_type,
@@ -733,26 +813,49 @@ namespace alp {
 			 *
 			 * Diagonal view is implemented by taking a square view over the matrix.
 			 *
+			 * \note \internal Converts a mapping polynomial from a bivariate-quadratic
+			 *                 to univariate quadratic by summing j-factors into
+			 *                 corresponding i-factors.
+			 *                 Implicitely applies a largest possible square view by
+			 *                 using Strided IMFs.
+			 *
 			 */
 			template< typename SourceAMF >
-			struct Reshape< view::Views::diagonal, SourceAMF > {
+			struct Reshape< view::diagonal, SourceAMF > {
 
-				typedef typename AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF >::amf_type amf_type;
+				private:
 
-				static
-				amf_type
-				Create( const SourceAMF &amf ) {
-					const size_t nrows = amf.getLogicalDimensions().first;
-					const size_t ncols = amf.getLogicalDimensions().second;
-					const size_t smaller_dimension = std::min( nrows, ncols );
-					return AMFFactory::Compose< imf::Strided, imf::Strided, SourceAMF>::Create(
-						imf::Strided( smaller_dimension, nrows, 0, 1 ),
-						imf::Strided( smaller_dimension, ncols, 0, 1 ),
-						amf
-					);
-				}
+					/** Short name of the original mapping polynomial type */
+					typedef typename SourceAMF::mapping_polynomial_type orig_p;
 
-				Reshape() = delete;
+					/** The type of the resulting polynomial */
+					typedef polynomials::BivariateQuadratic<
+						orig_p::Ax2 || orig_p::Ay2 || orig_p::Axy, 0, 0,
+						orig_p::Ax || orig_p::Ay, 0,
+						orig_p::A0, orig_p::D
+					> new_poly_type;
+
+				public:
+
+					typedef AMF< imf::Id, imf::Zero, new_poly_type > amf_type;
+
+					static
+					amf_type
+					Create( const SourceAMF &amf ) {
+						assert( amf.getLogicalDimensions().first == amf.getLogicalDimensions().second );
+						return amf_type(
+							imf::Id( amf.getLogicalDimensions().first ),
+							imf::Zero( amf.getLogicalDimensions().second ),
+							new_poly_type(
+								orig_p::Ax2 * amf.map_poly.ax2 + orig_p::Ay2 * amf.map_poly.ay2 + orig_p::Axy * amf.map_poly.axy, 0, 0,
+								orig_p::Ax * amf.map_poly.ax + orig_p::Ay * amf.map_poly.ay, 0,
+								amf.map_poly.a0
+							),
+							amf.storage_dimensions
+						);
+					}
+
+					Reshape() = delete;
 
 			}; // class Reshape< diagonal, ... >
 

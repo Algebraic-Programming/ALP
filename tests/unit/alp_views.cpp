@@ -164,9 +164,14 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	print_vector( "Mcol", Mcol );
 	std::cout << "------------" << std::endl;
 
-	// diagonal view
+	// diagonal view on a general (non-square) matrix
 	auto Mdiag = alp::get_view< alp::view::Views::diagonal >( M );
 	print_vector( "Mdiag", Mdiag );
+
+	// diagonal view on a square matrix
+	auto Msquare = alp::get_view< alp::structures::Square >( M, alp::utils::range( 0, 5 ), alp::utils::range( 0, 5 ) );
+	auto Mdiagsquare = alp::get_view< alp::view::Views::diagonal >( Msquare );
+	print_vector( "Mdiagsquare", Mdiagsquare );
 
 	// view over a vector
 	auto Mdiagpart = alp::get_view( Mdiag, alp::utils::range( 1, 3 ) );

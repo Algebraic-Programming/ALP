@@ -387,7 +387,7 @@ namespace alp {
 
 			/** Returns the length of the vector */
 			size_t _length() const {
-				return std::max( this->amf.getLogicalDimensions().first, this->amf.getLogicalDimensions().second );
+				return this->amf.getLogicalDimensions().first;
 			}
 
 
@@ -407,6 +407,11 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::original, d > {
 				typedef Vector< T, structures::General, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference > type;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Id, reference > type;
 			};
 
 			/**
@@ -542,7 +547,7 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
@@ -550,7 +555,7 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, i, 0, 1 ) );
+				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container
@@ -600,19 +605,18 @@ namespace alp {
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
 		 */
 		template<
-			typename TargetStructure, typename TargetImfR, typename TargetImfC,
+			typename TargetStructure, typename TargetImfR,
 			typename SourceVector,
 			std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceVector::template view_type< view::original >::type
+			typename SourceVector::template view_type< view::gather >::type
 		>::template change_structure< TargetStructure >::_and_::
-		template change_imfr< TargetImfR >::_and_::
-		template change_imfc< TargetImfC >::type
+		template change_imfr< TargetImfR >::type
 		get_view(
 			SourceVector &source,
 			TargetImfR imf_r,
-			TargetImfC imf_c
+			imf::Id imf_c
 		) {
 
 			//if( std::dynamic_pointer_cast< imf::Select >( imf_r ) || std::dynamic_pointer_cast< imf::Select >( imf_c ) ) {
@@ -620,15 +624,14 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
+			if( ! (structures::isInstantiable< typename SourceVector::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
 				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
 			}
 
 			using target_vec_t = typename internal::new_container_type_from<
-				typename SourceVector::template view_type< view::original >::type
+				typename SourceVector::template view_type< view::gather >::type
 			>::template change_structure< TargetStructure >::_and_::
-			template change_imfr< TargetImfR >::_and_::
-			template change_imfc< TargetImfC >::type;
+			template change_imfr< TargetImfR >::type;
 
 			return target_vec_t( source, imf_r, imf_c );
 		}
@@ -659,16 +662,13 @@ namespace alp {
 		typename SourceVector,
 		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
 	>
-	typename internal::new_container_type_from<
-		typename SourceVector::template view_type< view::original >::type
-	>::template change_imfr< imf::Strided >::_and_::
-	template change_imfc< imf::Strided >::type
+	typename SourceVector::template view_type< view::gather >::type
 	get_view( SourceVector &source, const utils::range& rng ) {
 
 		return internal::get_view< typename SourceVector::structure >(
 			source,
 			std::move( imf::Strided( rng.count(), nrows(source), rng.start, rng.stride ) ),
-			std::move( imf::Strided( rng.count(), ncols(source), rng.start, rng.stride ) )
+			std::move( imf::Id( 1 ) )
 		);
 	}
 
