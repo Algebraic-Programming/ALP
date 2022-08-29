@@ -34,10 +34,26 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	alp::Scalar< T > zero_scalar( zero );
 	alp::Scalar< T > one_scalar( one );
 
-	std::cout << "A is initialized? " << ( alp::internal::getInitialized( A ) ? "true" : "false" ) << "\n";
+	assert( !alp::internal::getInitialized( A ) );
 	rc = alp::set( A, one_scalar );
-	std::cout << "A is initialized? " << ( alp::internal::getInitialized( A ) ? "true" : "false" ) << "\n";
+	assert( alp::internal::getInitialized( A ) );
 
+	alp::Matrix< T, alp::structures::General > B( n, n );
+	// set with matching structures and sizes, but source is uninitialized
+	rc = set( A, B );
+	assert( rc == alp::SUCCESS );
+	assert( !alp::internal::getInitialized( A ) );
+
+	// re-initialize matrix A
+	rc = set( A, one_scalar );
+	assert( rc == alp::SUCCESS );
+
+	// set a matrix to another matrix of the same structure but different size
+	alp::Matrix< T, alp::structures::General > C( 2 * n, n );
+	rc = set( C, A );
+	assert( rc == alp::MISMATCH );
+
+	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {
