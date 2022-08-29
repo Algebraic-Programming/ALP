@@ -1231,6 +1231,73 @@ namespace alp {
 
 	}
 
+	namespace internal {
+
+		/** Specialization for out-of-range band position - nothing to do */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename std::enable_if_t<
+				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
+		) noexcept {
+			(void)C;
+			(void)A;
+			return SUCCESS;
+		}
+
+		/** Specialization for a valid band position */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename std::enable_if_t<
+				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
+		) noexcept {
+			
+			const size_t M = nrows( C );
+			const size_t N = ncols( C );
+
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( A );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( A );
+
+			// In case of symmetry the iteration domain intersects the the upper
+			// (or lower) domain of C
+			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c { is_sym_c };
+
+			for( size_t i = 0; i < M; ++i ) {
+				for(
+					std::ptrdiff_t j = std::max( static_cast< std::ptrdiff_t >( 0 ), l );
+					j < std::min( static_cast< std::ptrdiff_t >( N ), u );
+					++j
+				) {
+					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+					if( sym_up_c && j < static_cast< std::ptrdiff_t >( i ) ) {
+						c_val = internal::access( C, internal::getStorageIndex( A, j, i ) );
+					} else {
+						c_val = internal::access( C, internal::getStorageIndex( A, i, j ) );
+					}
+				}
+			}
+
+			return set_band_generic< BandPos + 1 >( C, A );
+		}
+
+	} // namespace internal
+
 	/**
 	 * Sets all elements of the output matrix to the values of the input matrix. Unmasked version.
 	 * C = A
@@ -1250,8 +1317,10 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
 	>
-	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A ) noexcept {
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
+	) noexcept {
 		(void)C;
 		(void)A;
 		static_assert( ! std::is_same< OutputType, void >::value,
@@ -1263,12 +1332,32 @@ namespace alp {
 		// static checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
 
-		assert( false ); // "Needs an implementation."
-		return SUCCESS;
+		static_assert(
+			!internal::is_functor_based<
+				Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference >
+			>::value,
+			"alp::set cannot be called with a functor-based matrix as a destination."
+		);
+
+		static_assert(
+			std::is_same< OutputStructure, InputStructure >::value,
+			"alp::set cannot be called for containers with different structures."
+		);
+
+		if( ( nrows( C ) != nrows( A ) ) || ( ncols( C ) != ncols( A ) ) ) {
+			return MISMATCH;
+		}
+
+		if( !internal::getInitialized( A ) ) {
+			internal::setInitialized( C, false );
+			return SUCCESS;
+		}
+
+		return internal::set_band_generic< 0 >( C, A );
 	}
 
 	/**
-	 * Sets all elements of the given matrix to the value of the given scalar. Unmasked version.
+	 * Sets all elements of the given matrix to the value of the given scalar.
 	 * C = val
 	 * 
 	 * @tparam descr
