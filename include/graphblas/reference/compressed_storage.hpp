@@ -1175,7 +1175,7 @@ namespace grb {
 				/**
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
-				template< bool use_id, typename InputType, typename UnusedType = void >
+				template< bool use_id = false, typename InputType, typename UnusedType = void >
 				void copyFrom(
 					const Compressed_Storage< InputType, IND, SIZE > &other,
 					const size_t nz, const size_t m, const size_t start, size_t end,
