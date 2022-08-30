@@ -414,6 +414,11 @@ namespace alp {
 				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Id, reference > type;
 			};
 
+			template < bool d >
+			struct view_type< view::matrix, d > {
+				typedef Matrix< T, structures::General, Density::Dense, view::Matrix< self_type >, imf::Id, imf::Id, reference > type;
+			};
+
 			/**
 			 * Constructor for a storage-based vector that allocates storage.
 			 */
