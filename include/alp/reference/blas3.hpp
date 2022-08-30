@@ -1365,6 +1365,76 @@ namespace alp {
 		return internal::set_band_generic< 0 >( C, A );
 	}
 
+	namespace internal {
+
+		/** Specialization for out-of-range band position - nothing to do */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure,
+			typename std::enable_if_t<
+				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const Scalar< InputType, InputStructure, reference > &val
+		) noexcept {
+			(void)C;
+			(void)val;
+			return SUCCESS;
+		}
+
+		/** Specialization for a valid band position */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure,
+			typename std::enable_if_t<
+				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const Scalar< InputType, InputStructure, reference > &val
+		) noexcept {
+
+			const size_t M = nrows( C );
+			const size_t N = ncols( C );
+
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( C );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( C );
+
+			// In case of symmetry the iteration domain intersects the the upper
+			// (or lower) domain of C
+			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c { is_sym_c };
+
+			/** i-coordinate lower and upper limits considering matrix size and band limits */
+			std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
+			std::ptrdiff_t i_u_lim = std::min( M, l + N );
+
+			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
+				/** j-coordinate lower and upper limits considering matrix size and symmetry */
+				std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
+				std::ptrdiff_t j_sym_u_lim = is_sym_c && sym_up_c ? i + 1 : N;
+				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
+				std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
+				std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+
+				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
+					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
+					c_val = *val;
+				}
+			}
+
+			return set_band_generic< BandPos + 1 >( C, val );
+		}
+
+	} // namespace internal
+
 	/**
 	 * Sets all elements of the given matrix to the value of the given scalar.
 	 * C = val
@@ -1384,8 +1454,10 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType, typename InputStructure
 	>
-	RC set( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-		const Scalar< InputType, InputStructure, reference > &val ) noexcept {
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const Scalar< InputType, InputStructure, reference > &val
+	) noexcept {
 
 		static_assert( ! std::is_same< OutputType, void >::value,
 			"alp::set (set to value): cannot have a pattern "
@@ -1408,16 +1480,9 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const auto c_val = *val;
-		size_t storageDimensions = internal::getStorageDimensions( C );
-
-		for( size_t i = 0; i < storageDimensions; ++i ) {
-			internal::access( C, i ) = c_val;
-		}
-
 		internal::setInitialized( C, true );
 
-		return SUCCESS;
+		return internal::set_band_generic< 0 >( C, val );
 	}
 
 } // end namespace ``alp''
