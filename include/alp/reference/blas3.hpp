@@ -1268,27 +1268,31 @@ namespace alp {
 			const size_t M = nrows( C );
 			const size_t N = ncols( C );
 
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( A );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( A );
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( C );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( C );
 
 			// In case of symmetry the iteration domain intersects the the upper
 			// (or lower) domain of C
 			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
+			constexpr bool is_sym_a { structures::is_a< InputStructure, structures::Symmetric >::value };
 
 			// Temporary until adding multiple symmetry directions
 			constexpr bool sym_up_c { is_sym_c };
+			constexpr bool sym_up_a { is_sym_a };
 
 			for( size_t i = 0; i < M; ++i ) {
-				for(
-					std::ptrdiff_t j = std::max( static_cast< std::ptrdiff_t >( 0 ), l );
-					j < std::min( static_cast< std::ptrdiff_t >( N ), u );
-					++j
-				) {
+				/** j-coordinate lower and upper limits considering matrix size and symmetry */
+				std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
+				std::ptrdiff_t j_sym_u_lim = is_sym_c && sym_up_c ? i + 1 : N;
+				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
+				std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
+				std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
-					if( sym_up_c && j < static_cast< std::ptrdiff_t >( i ) ) {
-						c_val = internal::access( C, internal::getStorageIndex( A, j, i ) );
-					} else {
+					if( sym_up_c == sym_up_a ) {
 						c_val = internal::access( C, internal::getStorageIndex( A, i, j ) );
+					} else {
+						c_val = internal::access( C, internal::getStorageIndex( A, j, i ) );
 					}
 				}
 			}
