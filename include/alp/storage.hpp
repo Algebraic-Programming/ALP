@@ -859,6 +859,32 @@ namespace alp {
 
 			}; // class Reshape< diagonal, ... >
 
+			/**
+			 * Specialization for matrix views over vectors
+			 *
+			 * \note \internal The resulting AMF is equivalent to applying
+			 *                 a composition with two ID IMFs.
+			 *
+			 */
+			template< typename SourceAMF >
+			struct Reshape< view::matrix, SourceAMF > {
+
+				typedef typename AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::amf_type amf_type;
+
+				static
+				amf_type
+				Create( const SourceAMF &amf ) {
+					return storage::AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::Create(
+						imf::Id( amf.getLogicalDimensions().first ),
+						imf::Id( amf.getLogicalDimensions().second ),
+						amf
+					);
+				}
+
+				Reshape() = delete;
+
+			}; // class Reshape< diagonal, ... >
+
 		}; // class AMFFactory
 
 	}; // namespace storage
