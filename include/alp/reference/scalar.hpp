@@ -167,7 +167,7 @@ namespace alp {
 
 			/** \internal No implementation notes. */
 			lambda_reference operator*() noexcept {
-				assert( getInitialized( *this ) );
+				assert( internal::getInitialized( *this ) );
 				return value;
 			}
 
@@ -191,7 +191,7 @@ namespace alp {
 
 		template< typename T, typename Structure >
 		void setInitialized( Scalar< T, Structure, reference > &s, bool initialized ) noexcept {
-			s.initialized = s;
+			s.initialized = initialized;
 		}
 	} // end namespace ``alp::internal''
 
