@@ -52,6 +52,7 @@ namespace alp {
 			gather,
 			transpose,
 			diagonal,
+			matrix,
 			_internal
 		};
 
@@ -88,6 +89,15 @@ namespace alp {
 			using applied_to = OriginalType;
 
 			static constexpr Views type_id = Views::diagonal;
+
+		};
+
+		template< typename OriginalType >
+		struct Matrix {
+
+			using applied_to = OriginalType;
+
+			static constexpr Views type_id = Views::matrix;
 
 		};
 

@@ -189,6 +189,14 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	auto v_view = alp::get_view( v, alp::utils::range( 1, 3 ) );
 	print_vector( "v_view", v_view );
 
+	// matrix view over an original vector
+	auto v_mat_view = alp::get_view< alp::view::matrix >( v );
+	print_matrix( "v_mat_view", v_mat_view );
+
+	// matrix view over a vector, which is a vector view over a matrix
+	auto Mrow_mat_view = alp::get_view< alp::view::matrix >( Mrow );
+	print_matrix( "Mrow_mat_view", Mrow_mat_view );
+
 	rc = alp::SUCCESS;
 
 }
