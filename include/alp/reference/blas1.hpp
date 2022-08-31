@@ -1344,7 +1344,15 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
-		throw std::runtime_error( "Needs an implementation." );
+		setInitialized( x, internal::getInitialized( x ) && internal::getInitialized( beta ) );
+		if( ! internal::getInitialized( x ) ) {
+			return SUCCESS;
+		}
+
+		const size_t n = getLength( x );
+		for ( size_t i = 0; i < n ; i++ ) {
+			(void) foldl( x[ i ], beta, op );
+		}
 		return SUCCESS;
 	}
 
