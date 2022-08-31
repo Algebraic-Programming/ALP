@@ -638,9 +638,7 @@ namespace alp {
 
 					typedef AMF< final_imf_r_type, final_imf_c_type, final_polynomial_type > amf_type;
 
-					static
-					amf_type
-					Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
+					static amf_type Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
 						composed_imf_r_type composed_imf_r { imf::ComposedFactory::create( amf.imf_r, imf_r ) };
 						composed_imf_c_type composed_imf_c { imf::ComposedFactory::create( amf.imf_c, imf_c ) };
 						return amf_type(
@@ -746,9 +744,7 @@ namespace alp {
 
 				typedef SourceAMF amf_type;
 
-				static
-				amf_type
-				Create( const SourceAMF &amf ) {
+				static amf_type Create( const SourceAMF &amf ) {
 					throw std::invalid_argument( "Not implemented for the provided view type." );
 					return amf;
 				}
@@ -762,9 +758,7 @@ namespace alp {
 
 				typedef SourceAMF amf_type;
 
-				static
-				amf_type
-				Create( const SourceAMF &amf ) {
+				static amf_type Create( const SourceAMF &amf ) {
 					return amf_type( amf.imf_r, amf.imf_c, amf.map_poly, amf.storage_dimensions );
 				}
 
@@ -784,9 +778,7 @@ namespace alp {
 					>::type
 				> amf_type;
 
-				static
-				amf_type
-				Create( const SourceAMF &amf ) {
+				static amf_type Create( const SourceAMF &amf ) {
 					typedef typename polynomials::apply_view< view::transpose, typename SourceAMF::mapping_polynomial_type >::type new_mapping_polynomial_type;
 					return AMF<
 						typename SourceAMF::imf_c_type,
@@ -839,9 +831,7 @@ namespace alp {
 
 					typedef AMF< imf::Id, imf::Zero, new_poly_type > amf_type;
 
-					static
-					amf_type
-					Create( const SourceAMF &amf ) {
+					static amf_type Create( const SourceAMF &amf ) {
 						assert( amf.getLogicalDimensions().first == amf.getLogicalDimensions().second );
 						return amf_type(
 							imf::Id( amf.getLogicalDimensions().first ),
@@ -856,6 +846,30 @@ namespace alp {
 					}
 
 					Reshape() = delete;
+
+			}; // class Reshape< diagonal, ... >
+
+			/**
+			 * Specialization for matrix views over vectors
+			 *
+			 * \note \internal The resulting AMF is equivalent to applying
+			 *                 a composition with two ID IMFs.
+			 *
+			 */
+			template< typename SourceAMF >
+			struct Reshape< view::matrix, SourceAMF > {
+
+				typedef typename AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::amf_type amf_type;
+
+				static amf_type Create( const SourceAMF &amf ) {
+					return storage::AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::Create(
+						imf::Id( amf.getLogicalDimensions().first ),
+						imf::Id( amf.getLogicalDimensions().second ),
+						amf
+					);
+				}
+
+				Reshape() = delete;
 
 			}; // class Reshape< diagonal, ... >
 
