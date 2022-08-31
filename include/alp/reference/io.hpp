@@ -189,7 +189,6 @@ namespace alp {
 		const fwd_iterator &start,
 		const fwd_iterator &end
 	) noexcept {
-
 		// Temporarily assuming 1-1 mapping with user container
 		internal::setInitialized(v, true);
 
@@ -202,7 +201,7 @@ namespace alp {
 			*p = *it;
 		}
 
-		return PANIC;
+		return SUCCESS;
 	}
 
 } // end namespace ``alp''

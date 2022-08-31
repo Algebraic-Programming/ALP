@@ -230,6 +230,10 @@ add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( dense_fold dense_fold.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
 	BACKENDS alp_reference
 )
