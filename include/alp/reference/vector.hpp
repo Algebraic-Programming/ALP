@@ -414,6 +414,11 @@ namespace alp {
 				typedef Vector< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Id, reference > type;
 			};
 
+			template < bool d >
+			struct view_type< view::matrix, d > {
+				typedef Matrix< T, structures::General, Density::Dense, view::Matrix< self_type >, imf::Id, imf::Id, reference > type;
+			};
+
 			/**
 			 * Constructor for a storage-based vector that allocates storage.
 			 */
@@ -595,6 +600,33 @@ namespace alp {
 
 		using target_t = typename SourceVector::template view_type< view::original >::type;
 
+		return target_t( source );
+	}
+
+	/**
+	 * Create a matrix view over a vector.
+	 * The resulting matrix is a column matrix of size M x 1, where M is vector length.
+	 * The function guarantees the created view is non-overlapping with other
+	 * existing views only when the check can be performed in constant time.
+	 *
+	 * @tparam target_view   The type of the view to apply to the vector.
+	 *                       Only supports value view::matrix.
+	 * @tparam SourceVector  The type of the source ALP vector
+	 *
+	 * @param[in] source     The ALP Vector object over which the view is created.
+	 *
+	 */
+	template<
+		enum view::Views target_view,
+		typename SourceVector,
+		std::enable_if_t<
+			is_vector< SourceVector >::value &&
+			target_view == view::matrix
+		> * = nullptr
+	>
+	typename SourceVector::template view_type< target_view >::type
+	get_view( SourceVector &source ) {
+		using target_t = typename SourceVector::template view_type< target_view >::type;
 		return target_t( source );
 	}
 
