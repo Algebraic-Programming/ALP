@@ -1281,16 +1281,16 @@ namespace alp {
 			constexpr bool sym_up_a { is_sym_a };
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
-			std::ptrdiff_t i_u_lim = std::min( M, l + N );
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
+			const std::ptrdiff_t i_u_lim = std::min( M, l + N );
 
 			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
 				/** j-coordinate lower and upper limits considering matrix size and symmetry */
-				std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
-				std::ptrdiff_t j_sym_u_lim = is_sym_c && sym_up_c ? i + 1 : N;
+				const std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
+				const std::ptrdiff_t j_sym_u_lim = is_sym_c && !sym_up_c ? i + 1 : N;
 				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-				std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
-				std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
+				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
 
 				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
@@ -1413,16 +1413,16 @@ namespace alp {
 			constexpr bool sym_up_c { is_sym_c };
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
-			std::ptrdiff_t i_u_lim = std::min( M, l + N );
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
+			const std::ptrdiff_t i_u_lim = std::min( M, l + N );
 
 			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
 				/** j-coordinate lower and upper limits considering matrix size and symmetry */
-				std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
-				std::ptrdiff_t j_sym_u_lim = is_sym_c && sym_up_c ? i + 1 : N;
+				const std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
+				const std::ptrdiff_t j_sym_u_lim = is_sym_c && !sym_up_c ? i + 1 : N;
 				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-				std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
-				std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
+				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
 
 				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
