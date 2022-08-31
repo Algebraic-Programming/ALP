@@ -94,6 +94,14 @@ namespace alp {
 		template< typename D >
 		const D * getRaw( const Matrix< D, reference > & ) noexcept;
 
+		/** Forward declaration */
+		template< typename T >
+		const bool & getInitialized( const Vector< T, reference > & v ) noexcept;
+
+		/** Forward declaration */
+		template< typename T >
+		void setInitialized( Vector< T, reference > & v, const bool initialized ) noexcept;
+
 		template< typename D >
 		const bool & getInitialized( const alp::internal::Matrix< D, reference > & A ) noexcept {
 			return A.initialized;

@@ -28,6 +28,7 @@
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 #include <alp/scalar.hpp>
+#include <alp/vector.hpp>
 #include <alp/density.hpp>
 #include <alp/matrix.hpp>
 #include <alp/vector.hpp>
@@ -358,24 +359,31 @@ namespace alp {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC, typename ValStructure, typename T >
-	RC set( Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure
+	>
+	RC set(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
 		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if<
 			!alp::is_object< DataType >::value &&
 			!alp::is_object< T >::value,
 		void >::type * const = NULL
 	) {
-		(void)x;
-		(void)val;
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
-		throw std::runtime_error( "Needs an implementation." );
 
-		// done
-		return SUCCESS;
+		if( ! internal::getInitialized( val ) ) {
+			internal::setInitialized( x, false );
+			return SUCCESS;
+		}
+
+		// foldl requires left-hand side to be initialized prior to the call
+		internal::setInitialized( x, true );
+		return foldl( x, val, alp::operators::right_assign< DataType >() );
 	}
 
 	/**
@@ -518,8 +526,10 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
 	>
-	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y ) {
+	RC set(
+		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y
+	) {
 		// static sanity checks
 		NO_CAST_ASSERT(
 			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
@@ -537,10 +547,17 @@ namespace alp {
 			return ILLEGAL;
 		}
 
-		throw std::runtime_error( "Needs an implementation." );
+		if( getLength( x ) != getLength( y ) ) {
+			return MISMATCH;
+		}
 
-		// done
-		return SUCCESS;
+		if( !internal::getInitialized( y ) ) {
+			setInitialized( x, false );
+			return SUCCESS;
+		}
+
+		internal::setInitialized( x, true );
+		return foldl( x, y, alp::operators::right_assign< OutputType >() );
 	}
 
 	/**

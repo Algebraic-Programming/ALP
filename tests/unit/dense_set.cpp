@@ -53,6 +53,20 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	rc = set( C, A );
 	assert( rc == alp::MISMATCH );
 
+	alp::Vector< T > v( n );
+	assert( !alp::internal::getInitialized( v ) );
+
+	// set vector to a scalar
+	rc = set( v, one_scalar );
+	assert( rc == alp::SUCCESS );
+	assert( alp::internal::getInitialized( v ) );
+
+	// set vector to another vector
+	alp::Vector< T > u( n );
+	rc = set( u, v );
+	assert( rc == alp::SUCCESS );
+	assert( alp::internal::getInitialized( u ) );
+
 	rc = alp::SUCCESS;
 }
 
