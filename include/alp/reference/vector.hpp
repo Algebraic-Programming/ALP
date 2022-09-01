@@ -499,7 +499,7 @@ namespace alp {
 					internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Vector( bool initialized, const size_t length, LambdaType lambda ) :
+			Vector( std::function< bool() > initialized, const size_t length, LambdaType lambda ) :
 				base_type( initialized, length, 1, lambda ) {}
 
 			/**
