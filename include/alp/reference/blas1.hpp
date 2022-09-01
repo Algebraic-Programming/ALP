@@ -31,7 +31,8 @@
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
-#include <alp/blas0.hpp>
+#include "blas0.hpp"
+#include "blas2.hpp"
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -3951,16 +3952,20 @@ namespace alp {
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func,
+	template<
+		typename Func,
 		typename DataType1, typename DataStructure1, typename DataView1, typename InputImfR1, typename InputImfC1,
 		typename DataType2, typename DataStructure2, typename DataView2, typename InputImfR2, typename InputImfC2,
-		typename... Args >
-	RC eWiseLambda( const Func f,
-		const Vector< DataType1, DataStructure1, Density::Dense, DataView1, InputImfR1, InputImfC1, reference > & x,
-		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, InputImfR2, InputImfC2, reference > & y,
-		Args const &... args ) {
+		typename... Args
+	>
+	RC eWiseLambda(
+		const Func f,
+		Vector< DataType1, DataStructure1, Density::Dense, DataView1, InputImfR1, InputImfC1, reference > &x,
+		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, InputImfR2, InputImfC2, reference > &y,
+		Args const &... args
+	) {
 		// catch mismatch
-		if( size( x ) != size( y ) ) {
+		if( getLength( x ) != getLength( y ) ) {
 			return MISMATCH;
 		}
 		// continue
@@ -3974,15 +3979,22 @@ namespace alp {
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 */
-	template< typename Func,
+	template<
+		typename Func,
 		typename DataType, typename DataStructure, typename DataView, typename DataImfR, typename DataImfC
 	>
-	RC eWiseLambda( const Func f, const Vector< DataType, DataStructure, Density::Dense, DataView, DataImfR, DataImfC, reference > & x ) {
-	#ifdef _DEBUG
+	RC eWiseLambda( const Func f, Vector< DataType, DataStructure, Density::Dense, DataView, DataImfR, DataImfC, reference > &x ) {
+#ifdef _DEBUG
 		std::cout << "Info: entering eWiseLambda function on vectors.\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+#endif
+		auto x_as_matrix = get_view< view::matrix >( x );
+		return eWiseLambda(
+			[ &f ]( const size_t i, const size_t j, DataType &val ) {
+				(void)j;
+				f( i, val );
+			},
+			x_as_matrix
+		);
 	}
 
 	/**
