@@ -23,11 +23,17 @@
 #ifndef _H_ALP_REFERENCE_BLAS1
 #define _H_ALP_REFERENCE_BLAS1
 
+#include <functional>
+
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 #include <alp/scalar.hpp>
 #include <alp/density.hpp>
+#include <alp/matrix.hpp>
+#include <alp/vector.hpp>
+#include <alp/blas0.hpp>
+
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -817,9 +823,8 @@ namespace alp {
 		Scalar< IOType, IOStructure, reference > & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
-		
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+
+		return foldl( beta, x, monoid );
 	}
 
 	/** C++ scalar variant */
@@ -927,8 +932,7 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		return foldl( y, alpha, monoid );
 	}
 
 	/**
@@ -1332,26 +1336,36 @@ namespace alp {
 	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
 		const Scalar< InputType, InputStructure, reference > beta,
 		const Op & op = Op(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
+		  //const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
+		const typename std::enable_if<
+			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void
+		  >::type * = NULL ) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
+			|| std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
+			|| std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
+			|| std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 
-		setInitialized( x, internal::getInitialized( x ) && internal::getInitialized( beta ) );
-		if( ! internal::getInitialized( x ) ) {
+		internal::setInitialized(
+			x,
+			internal::getInitialized( x ) && internal::getInitialized( beta )
+		);
+
+		if( !internal::getInitialized( x ) ) {
 			return SUCCESS;
 		}
 
 		const size_t n = getLength( x );
 		for ( size_t i = 0; i < n ; i++ ) {
-			(void) foldl( x[ i ], beta, op );
+			(void) internal::foldl( x[ i ], *beta, op );
 		}
 		return SUCCESS;
 	}
@@ -4193,19 +4207,13 @@ namespace alp {
 	template< Descriptor descr = descriptors::no_operation,
 		typename IOType, typename IOStructure,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
 		class Monoid
 	>
-	RC foldl( Scalar< IOType, IOStructure, reference > &x,
+	RC foldl( Scalar< IOType, IOStructure, reference > &alpha,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && ! alp::is_object< MaskType >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "foldl: IOType <- [InputType] with a monoid called. Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. It has a mask of size " << size( mask ) << " with "
-				<< nnz( mask ) << " nonzeroes.\n";
-	#endif
+		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value,
+		  void >::type * const = NULL ) {
 
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, InputType >::value ), "alp::reduce", "called with a scalar IO type that does not match the input vector type" );
@@ -4218,9 +4226,21 @@ namespace alp {
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "alp::reduce",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::reduce", "called with a vector mask type that is not boolean" );
+		NO_CAST_ASSERT(  ! ( descr & descriptors::no_casting ), "alp::reduce", "called with a vector mask type that is not boolean" );
 
-		throw std::runtime_error( "Needs an implementation." );
+		internal::setInitialized(
+			alpha,
+			internal::getInitialized( alpha ) && internal::getInitialized( y )
+		);
+
+		if( !internal::getInitialized( alpha ) ) {
+			return SUCCESS;
+		}
+
+		const size_t n = getLength( y );
+		for ( size_t i = 0; i < n ; i++ ) {
+			(void) internal::foldl( *alpha, y[ i ], monoid.getOperator() );
+		}
 		return SUCCESS;
 	}
 
