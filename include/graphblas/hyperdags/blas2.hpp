@@ -67,7 +67,7 @@ namespace grb {
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 3 > sources{ &mask, &v, &A};
+		std::array< const void *, 4 > sources{ &mask, &v, &A, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX,
@@ -98,7 +98,7 @@ namespace grb {
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 			
-		std::array< const void *, 3 > sources{ &mask, &v, &A};
+		std::array< const void *, 4 > sources{ &mask, &v, &A, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -122,7 +122,7 @@ namespace grb {
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 2 > sources{ &v, &A};
+		std::array< const void *, 3 > sources{ &v, &A, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_RING,
@@ -147,7 +147,7 @@ namespace grb {
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 3 > sources{ &mask, &A, &v};
+		std::array< const void *, 4 > sources{ &mask, &A, &v, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING,
@@ -176,7 +176,7 @@ namespace grb {
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 4 > sources{ &mask, &A, &v, &v_mask};
+		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
@@ -212,7 +212,7 @@ namespace grb {
 		! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value && 
 		! std::is_same< InputType2, void >::value, void >::type * const = NULL ) {
 			
-		std::array< const void *, 4 > sources{ &mask, &A, &v, &v_mask};
+		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
@@ -238,7 +238,7 @@ namespace grb {
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
 		{
 		
-		std::array< const void *, 2 > sources{ &A, &v};
+		std::array< const void *, 3 > sources{ &A, &v, &u};
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_RING,
@@ -264,7 +264,7 @@ namespace grb {
 		 && ! grb::is_object< IOType >::value &&! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && !
 		std::is_same< InputType2, void >::value, void >::type * const = NULL )
  	{
- 		std::array< const void *, 2 > sources{ &A, &v};
+ 		std::array< const void *, 3 > sources{ &A, &v, &u};
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
@@ -377,7 +377,7 @@ namespace grb {
 		const std::function< size_t( size_t ) > &col_l2g,
 		const std::function< size_t( size_t ) > &col_g2l
 	) {
-		std::array< const void *, 4 > sources{ &v, &A, &mask, &v_mask };
+		std::array< const void *, 5 > sources{ &v, &A, &mask, &v_mask, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -412,7 +412,7 @@ namespace grb {
 		const Ring & ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
 	{
-		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
+		std::array< const void *, 5 > sources{ & v,& A, & mask,& v_mask, &u};
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -452,7 +452,7 @@ namespace grb {
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL )
 		{
-		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask};
+		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask, &u};
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -481,7 +481,7 @@ namespace grb {
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) 
 	{
-		std::array< const void *, 2 > sources{ & v,& A,};
+		std::array< const void *, 3 > sources{ & v,& A, &u};
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
