@@ -3828,9 +3828,12 @@ namespace alp {
 			return SUCCESS;
 		}
 
+#define TEMP_DISABLE
 		std::function< void( typename AddMonoid::D3 &, const size_t ) > data_lambda =
 			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i ) {
-				//set( ret, alp::identities::zero );
+#ifndef TEMP_DISABLE
+				set( result, alp::identities::zero );
+#endif
 				internal::apply( result, x[ i ], y[ i ], anyOp );
 			};
 
@@ -3851,7 +3854,6 @@ namespace alp {
 				getLength( x ),
 				data_lambda
 			);
-#define TEMP_DISABLE
 #ifdef TEMP_DISABLE
 		return SUCCESS;
 #else
