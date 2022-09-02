@@ -841,9 +841,9 @@ namespace alp {
 		class Monoid
 	>
 	RC foldr(
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		Scalar< IOType, IOStructure, reference > & beta,
-		const Monoid & monoid = Monoid(),
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if_t<
 			! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
 		> * const = NULL
@@ -859,8 +859,8 @@ namespace alp {
 		class Monoid
 	>
 	RC foldr(
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
-		IOType & beta,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
+		IOType &beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if_t<
 			! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
@@ -1363,9 +1363,9 @@ namespace alp {
 		class Op
 	>
 	RC foldl(
-		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &x,
 		const Scalar< InputType, InputStructure, reference > beta,
-		const Op & op = Op(),
+		const Op &op = Op(),
 		const typename std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
 		> * = NULL
@@ -1391,7 +1391,7 @@ namespace alp {
 		);
 
 #ifdef _DEBUG
-		std::cout << "foldl(Vector, Scalar,Op) called. Vector has size " << getLength( x ) << " .\n";
+		std::cout << "foldl(Vector,Scalar,Op) called. Vector has size " << getLength( x ) << " .\n";
 #endif
 
 		internal::setInitialized(
@@ -4251,8 +4251,8 @@ namespace alp {
 	>
 	RC foldl(
 		Scalar< IOType, IOStructure, reference > &alpha,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const Monoid & monoid = Monoid(),
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
 		> * const = NULL
