@@ -21,31 +21,8 @@
 #include <type_traits>
 #include <vector>
 #include <memory>
-#include <tuple>
 
 #include <alp.hpp>
-
-template< typename Tp, std::size_t I >
-typename std::enable_if< I == std::tuple_size< Tp >::value, void >::type
-interval_print() {
-}
-
-template< typename Tp, std::size_t I >
-typename std::enable_if< I < std::tuple_size< Tp >::value, void >::type
-interval_print() {
-        std::cout
-		<< "  <"<< std::tuple_element<I,Tp>::type::left << ", "
-		<< std::tuple_element<I,Tp>::type::right << "> ";
-	interval_print<Tp,I + 1>();
-}
-
-template<typename Tp>
-void interval_print( std::string header ) {
-	std::cout << header;
-	interval_print<Tp,0>();
-	std::cout << "\n";
-}
-
 
 template< typename StructuredMat >
 void ask_questions( const StructuredMat & M, std::string name ) {
@@ -96,57 +73,6 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	//std::cout << "v_view2( " << alp::getLength( v_view2 ) << " )" << std::endl;
 
 	// TODO: temporarily comented until containers are ready
-	typedef alp::structures::Band< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LB0;
-	typedef alp::structures::Band< alp::Interval< -5, -4 >, alp::Interval< -3, -2 > > RB0;
-
-	typedef std::tuple< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LeftTuple1;
-	typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 >, alp::Interval< 2 > > RightTuple1;
-
-	typedef std::tuple< alp::LeftOpenInterval< -2 >, alp::Interval<1, 4> > LeftTuple2;
-	typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 >, alp::Interval< 2 >, alp::Interval< 4 > > RightTuple2;
-
-	typedef std::tuple< alp::OpenInterval > LeftTuple3;
-	typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 >, alp::Interval< 2 >, alp::Interval< 4 > > RightTuple3;
-
-	typedef std::tuple< > LeftTuple4;
-	typedef std::tuple< alp::Interval< -5, -4 >, alp::Interval< -3, -2 >, alp::Interval< 2 >, alp::Interval< 4 > > RightTuple4;
-
-	typedef std::tuple< > Tuple5;
-
-	std::cout << "\n";
-	interval_print<LB0::band_intervals>( "LB0= " );
-	interval_print<RB0::band_intervals>( "RB0= " );
-	std::cout << "Is LB0 >= RB0: " << alp::structures::band_ge< LB0, RB0 >::value << std::endl;
-	std::cout << "Is RB0 >= LB0: " << alp::structures::band_ge< RB0, LB0 >::value << std::endl;
-
-	std::cout << "\n";
-	interval_print<LeftTuple1>( "LeftTuple1= " );
-	interval_print<RightTuple1>( "RightTuple1= " );
-	std::cout << "Is super set 1: " << alp::structures::internal::interval_ge< LeftTuple1, RightTuple1 >::value << std::endl;
-	std::cout << "Is super set 1 rev: " << alp::structures::internal::interval_ge< RightTuple1, LeftTuple1 >::value << std::endl;
-
-	std::cout << "\n";
-	interval_print<LeftTuple2>( "LeftTuple2= " );
-	interval_print<RightTuple2>( "RightTuple2= " );
-	std::cout << "Is super set 2: " << alp::structures::internal::interval_ge< LeftTuple2, RightTuple2 >::value << std::endl;
-	std::cout << "Is super set 2 rev: " << alp::structures::internal::interval_ge< RightTuple2, LeftTuple2 >::value << std::endl;
-
-	std::cout << "\n";
-	interval_print<LeftTuple3>( "LeftTuple3= " );
-	interval_print<RightTuple3>( "RightTuple3= " );
-	std::cout << "Is super set 3: " << alp::structures::internal::interval_ge< LeftTuple3, RightTuple3 >::value << std::endl;
-	std::cout << "Is super set 3 rev: " << alp::structures::internal::interval_ge< RightTuple3, LeftTuple3 >::value << std::endl;
-
-	std::cout << "\n";
-	interval_print<LeftTuple4>( "LeftTuple4= " );
-	interval_print<RightTuple4>( "RightTuple4= " );
-	std::cout << "Is super set 4: " << alp::structures::internal::interval_ge< LeftTuple4, RightTuple4 >::value << std::endl;
-	std::cout << "Is super set 4 rev: " << alp::structures::internal::interval_ge< RightTuple4, LeftTuple4 >::value << std::endl;
-
-	std::cout << "\n";
-	interval_print<Tuple5>( "Tuple5= " );
-	std::cout << "Is super set 5: " << alp::structures::internal::interval_ge< Tuple5, Tuple5 >::value << std::endl;
-
 	//alp::Matrix< float, alp::structures::Band< alp::Interval<-2, 5> > > BM0( n, n );
 	//alp::Matrix< float, alp::structures::Band< alp::RightOpenInterval<-2> > > BM1( n, n );
 	//alp::Matrix< float, alp::structures::Band< alp::LeftOpenInterval<-2> > > BM2( n, n );

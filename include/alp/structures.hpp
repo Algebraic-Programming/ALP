@@ -112,14 +112,14 @@ namespace alp {
 	namespace internal {
 		/**
 		 * @internal Compile-time check if a tuple of intervals is sorted and non-overlapping.
-		 * E.g., a pair ( [a, b) [c, d) ) with a < b < c < d
+		 * E.g., a pair ( [a, b) [c, d) ) with a < b <= c < d
 		 */
 		template< typename IntervalTuple >
 		struct is_tuple_sorted_non_overlapping;
 
 		template< std::ptrdiff_t _left0, std::ptrdiff_t _right0, std::ptrdiff_t _left1, std::ptrdiff_t _right1, typename... Intervals >
 		struct is_tuple_sorted_non_overlapping < std::tuple< Interval< _left0, _right0 >, Interval< _left1, _right1 >, Intervals... > > {
-			static constexpr bool value = ( _right0 < _left1 ) && is_tuple_sorted_non_overlapping< std::tuple< Interval< _left1, _right1 >, Intervals... > >::value;
+			static constexpr bool value = ( _right0 <= _left1 ) && is_tuple_sorted_non_overlapping< std::tuple< Interval< _left1, _right1 >, Intervals... > >::value;
 		};
 
 		template< std::ptrdiff_t _left, std::ptrdiff_t _right >
@@ -179,48 +179,8 @@ namespace alp {
 		template< typename Structure, typename... Structures >
 		struct is_in< Structure, std::tuple< Structure, Structures... > > : std::true_type {};
 
+
 		namespace internal {
-
-
-			/**
-			 * @brief interval_ge
-			 * True if the intervals in the tuple on the left are larger or equal than 
-			 * the ones in the tuple on the right. Notice that a single interval on the
-			 * left may include multiple ones on the right, e.g., 
-			 * tuple< [1, 10) > ">=" tuple< [1, 3), [4, 5) >
-			 */
-			template < typename LeftTuple, typename RightTuple >
-			struct interval_ge {
-				static constexpr bool value = false;
-			};
-
-			template < >
-			struct interval_ge< std::tuple< >, std::tuple< > > { 
-
-				static constexpr bool value = true;
-
-			};
-
-			template < typename IntervalL, typename... IntervalsL >
-			struct interval_ge< std::tuple< IntervalL, IntervalsL... >, std::tuple< > > { 
-
-				static constexpr bool value = true;
-
-			};
-
-			template < typename IntervalL, typename... IntervalsL, typename IntervalR, typename... IntervalsR >
-			struct interval_ge< std::tuple< IntervalL, IntervalsL... >, std::tuple< IntervalR, IntervalsR... > > { 
-
-				static constexpr bool value = 
-					( IntervalR::left >= IntervalL::left 
-						&& IntervalR::right <= IntervalL::right 
-						&& interval_ge< std::tuple<IntervalL, IntervalsL... >, std::tuple< IntervalsR... > >::value ) 
-					|| ( IntervalR::left > IntervalL::right
-						&& interval_ge< std::tuple< IntervalsL... >, std::tuple< IntervalR, IntervalsR... > >::value );
-
-			};
-
-
 			/**
 			 * @internal WIP interface. Symmetry may be extended so to describe the
 			 * direction of the symmetry.
@@ -258,19 +218,6 @@ namespace alp {
 				south_west
 			};
 		} // namespace internal 
-
-		/**
-		 * @brief band_ge
-		 * If the band geometry of the left structure is larger or equal than 
-		 * the one of the right structure.
-		 */
-
-		template < typename LeftStructure, typename RightStructure >
-		struct band_ge {
-			static constexpr bool value = internal::interval_ge< 
-				typename LeftStructure::band_intervals, typename RightStructure::band_intervals 
-			>::value;
-		};
 
 		struct BaseStructure {};
 
@@ -382,9 +329,7 @@ namespace alp {
 		 *
 		 * @tparam Intervals One or more \a alp::Interval types specifying the 
 		 *                   bands of the structure. These intervals should be 
-		 *                   non-overlapping, compact (at least distance of one
-		 *                   band between two intervals), and sorted according 
-		 *                   to the above 
+		 *                   non-overlapping and sorted according to the above 
 		 *                   assumption that all intervals are defined assuming 
 		 *                   the main diagonal has position zero.
 		 *                   \a alp::LeftOpenInterval ( \a alp::RightOpenInterval) 
