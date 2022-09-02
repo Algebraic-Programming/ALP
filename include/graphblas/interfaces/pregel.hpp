@@ -19,6 +19,65 @@ namespace grb {
 
 	namespace interfaces {
 
+		namespace config {
+
+			/**
+			 * The set of sparsification strategies supported by the ALP/Pregel
+			 * interface.
+			 */
+			enum SparsificationStrategy {
+
+				/** No sparsification. */
+				NONE = 0,
+
+				/**
+				 * Always applies the sparsification procedure.
+				 *
+				 * Does not consider whether the resulting operation would reduce the number
+				 * of vertex entries. This variant was tested against #NONE for
+				 * #out_sparsify, and found to be slower always.
+				 *
+				 * This strategy necessarily always applied on the Pregel::ActiveVertices
+				 * vector.
+				 */
+				ALWAYS,
+
+				/**
+				 * Sparsify only when the resulting vector would indeed be sparser.
+				 *
+				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
+				 *       since doing so requires computing the number of active vertices,
+				 *       which has the same complexity as actually sparsifying that vector.
+				 *
+				 * \todo This variant has never been tested for \a out_sparsify.
+				 */
+				WHEN_REDUCED,
+
+				/**
+				 * Sparsify only when the resulting vector would have half (or less) its
+				 * current number of nonzeroes.
+				 *
+				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
+				 *       since doing so requires computing the number of active vertices,
+				 *       which has the same complexity as actually sparsifying that vector.
+				 *
+				 * \todo This variant has never been tested for \a out_sparsify.
+				 */
+				WHEN_HALVED
+
+			};
+
+			/**
+			 * What sparsification strategy should be applied to the outgoing
+			 * messages.
+			 *
+			 * Only #NONE and #ALWAYS have been tested, with #NONE being faster on all
+			 * test cases.
+			 */
+			constexpr const SparsificationStrategy out_sparsify = NONE;
+
+		} // end namespace grb::interfaces::config
+
 		/**
 		 * The state of the vertex-center Pregel program that the user  may interface
 		 * with.
@@ -356,9 +415,6 @@ namespace grb {
 				 * @param[in] out Where outgoing messages are stored. Any initial values
 				 *                will be ignored.
 				 *
-				 * @param[in] out_buffer A buffer with the exact same requirements of
-				 *                       \a out.
-				 *
 				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
 				 * ID. For sparse vectors \a in with more than zero nonzeroes, the initial
 				 * contents will be overwritten by the identity of the reduction monoid. Any
@@ -385,6 +441,12 @@ namespace grb {
 				 * Vertex-programs execute in rounds and could, if the given program does
 				 * not infer proper termination conditions, run forever. To curb the number
 				 * of rounds, the following \em optional parameter may be given:
+				 *
+				 * @param[in] out_buffer An optional buffer area that should only be set
+				 *                       whenever the #config::out_sparsify configuration
+				 *                       parameter is not set to #NONE. If that is the case,
+				 *                       then \a out_buffer should have size and capacity
+				 *                       equal to the maximum vertex ID.
 				 *
 				 * @param[in] max_rounds The maximum number of rounds the \a program may
 				 *                       execute. Once reached and not terminated, the
@@ -419,8 +481,9 @@ namespace grb {
 					const GlobalProgramData &data,
 					grb::Vector< IncomingMessageType > &in,
 					grb::Vector< OutgoingMessageType > &out,
-					grb::Vector< OutgoingMessageType > &out_buffer,
 					size_t &rounds,
+					grb::Vector< OutgoingMessageType > &out_buffer =
+						grb::Vector< OutgoingMessageType >(0),
 					const size_t max_rounds = 0
 				) {
 					static_assert( grb::is_operator< Op >::value &&
@@ -454,6 +517,9 @@ namespace grb {
 						return ILLEGAL;
 					}
 					if( grb::capacity(out) != n ) {
+						return ILLEGAL;
+					}
+					if( config::out_sparsify && grb::capacity(out_buffer) != n ) {
 						return ILLEGAL;
 					}
 
@@ -500,6 +566,7 @@ namespace grb {
 					}
 
 					// reset outgoing buffer
+					size_t out_nnz = n;
 					if( ret == SUCCESS ) {
 						ret = grb::set( out, Id< OutgoingMessageType >::value() );
 					}
@@ -593,7 +660,8 @@ namespace grb {
 						}
 
 						// check if there is a next round
-						if( ret == SUCCESS && grb::nnz( activeVertices ) == 0 ) {
+						const size_t curActive = grb::nnz( activeVertices );
+						if( ret == SUCCESS && curActive == 0 ) {
 #ifdef _DEBUG
 							std::cout << "\t All vertices are inactive; "
 								<< "terminating Pregel program.\n";
@@ -640,12 +708,18 @@ namespace grb {
 						}
 
 						// sparsify and reset outgoing buffer
-						if( ret == SUCCESS ) {
-							ret = grb::clear( out_buffer );
-							ret = ret ? ret : grb::set< grb::descriptors::structural >(
-									out_buffer, activeVertices, Id< OutgoingMessageType >::value()
-								);
-							std::swap( out, out_buffer );
+						if( config::out_sparsify && ret == SUCCESS ) {
+							if( config::out_sparsify == config::ALWAYS ||
+								(config::out_sparsify == config::WHEN_REDUCED && out_nnz > curActive) ||
+								(config::out_sparsify == config::WHEN_HALVED && curActive <= out_nnz/2)
+							) {
+								ret = grb::clear( out_buffer );
+								ret = ret ? ret : grb::set< grb::descriptors::structural >(
+										out_buffer, activeVertices, Id< OutgoingMessageType >::value()
+									);
+								std::swap( out, out_buffer );
+								out_nnz = curActive;
+							}
 						}
 
 #ifdef _DEBUG

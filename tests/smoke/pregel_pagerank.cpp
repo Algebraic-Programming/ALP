@@ -92,8 +92,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
         // prepare for launching pagerank algorithm
 	// 1. initalise pagerank scores and message buffers
-        grb::Vector< double > pr( n ), in_msgs( n ), out_msgs( n ),
-		out_buffer( n );
+        grb::Vector< double > pr( n ), in_msgs( n ), out_msgs( n );
+	grb::Vector < double > out_buffer = interfaces::config::out_sparsify
+		? grb::Vector< double >( n )
+		: grb::Vector< double >( 0 );
 	// 2. initialise PageRank parameters
 	grb::algorithms::pregel::PageRank< double, PR_CONVERGENCE_MODE >::Data pr_data;
 	// 3. get handle to Pregel PageRank program
@@ -115,8 +117,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				grb::identities::zero
 			> (
 				pr_prog, pr, pr_data,
-				in_msgs, out_msgs, out_buffer,
-				out.iterations
+				in_msgs, out_msgs,
+				out.iterations,
+				out_buffer
 		        );
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {

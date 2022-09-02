@@ -65,7 +65,10 @@ namespace grb {
 					}
 
 					grb::Vector< VertexIDType > in( n );
-					grb::Vector< VertexIDType > out( n ), out_buffer( n );
+					grb::Vector< VertexIDType > out( n );
+					grb::Vector< VertexIDType > out_buffer = interfaces::config::out_sparsify
+						? grb::Vector< VertexIDType >( n )
+						: grb::Vector< VertexIDType >( 0 );
 
 					size_t steps;
 
@@ -76,8 +79,9 @@ namespace grb {
 						program,
 						group_ids,
 						Data(),
-						in, out, out_buffer,
+						in, out,
 						steps,
+						out_buffer,
 						max_steps
 					);
 

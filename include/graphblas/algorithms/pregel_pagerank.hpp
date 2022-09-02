@@ -97,7 +97,10 @@ namespace grb {
 					}
 
 					grb::Vector< IOType > in( n );
-					grb::Vector< IOType > out( n ), out_buffer( n );
+					grb::Vector< IOType > out( n );
+					grb::Vector< IOType > out_buffer = interfaces::config::out_sparsify
+						? grb::Vector< IOType >( n )
+						: grb::Vector< IOType >( 0 );
 
 					return pregel.template execute<
 							grb::operators::add< IOType >,
@@ -106,8 +109,9 @@ namespace grb {
 							program,
 							scores,
 							parameters,
-							in, out, out_buffer,
+							in, out,
 							steps_taken,
+							out_buffer,
 							max_steps
 						);
 				}
