@@ -401,8 +401,8 @@ namespace grb {
 				 * @param[in] vertex_state A vector that contains the state of each vertex.
 				 * @param[in] global_data  Global read-only state for the given \a program.
 				 *
-				 * The capacity and size of \a vertex_state must equal the maximum vertex
-				 * ID.
+				 * The capacity, size, and number of nonzeroes of \a vertex_state must equal
+				 * the maximum vertex ID.
 				 *
 				 * Finally, in the ALP spirit which aims to control all relevant performance
 				 * aspects, the workspace required by the Pregel runtime must be pre-
@@ -416,7 +416,7 @@ namespace grb {
 				 *                will be ignored.
 				 *
 				 * The capacities and sizes of \a in and \a out must equal the maximum vertex
-				 * ID. For sparse vectors \a in with more than zero nonzeroes, the initial
+				 * ID. For sparse vectors \a in with more than zero nonzeroes, all initial
 				 * contents will be overwritten by the identity of the reduction monoid. Any
 				 * initial contents for \a out will always be ignored as every round of
 				 * computation starts with the outgoing message set to the monoid identity.
@@ -463,6 +463,7 @@ namespace grb {
 				 *                         is not of the required size.
 				 * @returns #grb::ILLEGAL  At least one of \a vertex_state, \a in, or \a out
 				 *                         does not have the required capacity.
+				 * @returns #grb::ILLEGAL  If \a vertex_state is not dense.
 				 * @returns #grb::PANIC    In case an unrecoverable error was encountered
 				 *                         during execution.
 				 */
@@ -520,6 +521,9 @@ namespace grb {
 						return ILLEGAL;
 					}
 					if( config::out_sparsify && grb::capacity(out_buffer) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::nnz(vertex_state) != n ) {
 						return ILLEGAL;
 					}
 
