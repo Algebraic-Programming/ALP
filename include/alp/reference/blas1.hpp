@@ -27,11 +27,10 @@
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
-#include <alp/scalar.hpp>
-#include <alp/vector.hpp>
 #include <alp/density.hpp>
-#include <alp/matrix.hpp>
-#include <alp/vector.hpp>
+#include "scalar.hpp"
+#include "matrix.hpp"
+#include "vector.hpp"
 #include <alp/blas0.hpp>
 
 #ifndef NO_CAST_ASSERT
