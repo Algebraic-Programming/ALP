@@ -264,14 +264,15 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo " "
 			done
 
-			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm. Verifies via a"
-			echo "                                 simple regression test in number of rounds required."
+			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm using a global"
+			echo "                                 stopping criterion. Verifies via a simple regression test in"
+			echo "                                 number of rounds required."
 			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-				$runner ${TEST_BIN_DIR}/pregel_pagerank_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_pagerank_west0497_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/pregel_pagerank_west0497_${BACKEND}_${P}_${T}.log
-				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_pagerank_west0497_${BACKEND}_${P}_${T}.log; then
+				$runner ${TEST_BIN_DIR}/pregel_pagerank_global_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log; then
 					echo "Test FAILED"
-				elif ! grep -q '65 iterations to converge' ${TEST_OUT_DIR}/pregel_pagerank_west0497_${BACKEND}_${P}_${T}.log; then
+				elif ! grep -q '56 iterations to converge' ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log; then
 					echo "Verification FAILED"
 					echo "Test FAILED"
 				else
@@ -282,8 +283,27 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm. Verifies using a"
-			echo "                                 simple regression test in number of rounds required."
+			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm using a vertex-local"
+			echo "                                 stopping criterion. Verifies via a simple regression test in"
+			echo "                                 number of rounds required."
+			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
+				$runner ${TEST_BIN_DIR}/pregel_pagerank_local_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Test FAILED"
+				elif ! grep -q '47 iterations to converge' ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Verification FAILED"
+					echo "Test FAILED"
+				else
+					echo "Test OK"
+				fi
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Pregel strongly-connected components algorithm. Verifies"
+			echo "                                 using a simple regression test in number of rounds required."
 			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
 				$runner ${TEST_BIN_DIR}/pregel_strongly_connected_components_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log
