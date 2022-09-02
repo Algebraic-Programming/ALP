@@ -1459,15 +1459,20 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 		class OP
 	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
+	RC foldl(
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
+		const OP &op = OP(),
+		const typename std::enable_if_t<
+			alp::is_operator< OP >::value && !alp::is_object< IOType >::value && !alp::is_object< InputType >::value
+		> * = nullptr
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1485,7 +1490,20 @@ namespace alp {
 			return MISMATCH;
 		}
 
-		throw std::runtime_error( "Needs an implementation." );
+		if( !internal::getInitialized( x ) ) {
+			return SUCCESS;
+		}
+
+		if( !internal::getInitialized( y ) ) {
+			internal::setInitialized( x, false );
+			return SUCCESS;
+		}
+
+		for( size_t i = 0; i < n; ++i ) {
+			/** \internal \todo Implement RC check. Also applies to other locations. */
+			(void) internal::foldl( x[ i ], y[ i ], op );
+		}
+
 		return SUCCESS;
 	}
 
