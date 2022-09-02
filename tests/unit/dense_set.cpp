@@ -36,6 +36,7 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 
 	assert( !alp::internal::getInitialized( A ) );
 	rc = alp::set( A, one_scalar );
+	assert( rc == alp::SUCCESS );
 	assert( alp::internal::getInitialized( A ) );
 
 	alp::Matrix< T, alp::structures::General > B( n, n );
@@ -65,9 +66,9 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	alp::Vector< T > u( n );
 	rc = set( u, v );
 	assert( rc == alp::SUCCESS );
+	assert( v[ 0 ] == u[ 0 ] );
 	assert( alp::internal::getInitialized( u ) );
 
-	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {

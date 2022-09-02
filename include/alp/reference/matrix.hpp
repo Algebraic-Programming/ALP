@@ -441,7 +441,7 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
 		>
 		size_t getStorageDimensions( const MatrixType &A ) noexcept;
 
@@ -555,7 +555,7 @@ namespace alp {
 
 			template<
 				typename MatrixType,
-				std::enable_if< internal::is_storage_based< MatrixType >::value > *
+				std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 			>
 			friend size_t getStorageDimensions( const MatrixType &A ) noexcept;
 

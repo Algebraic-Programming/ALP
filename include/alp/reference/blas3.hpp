@@ -1251,7 +1251,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		/** Specialization for a valid band position */
+		/** Specialization for a valid band position. Assuming matrices have matching dimensions. */
 		template<
 			size_t BandPos,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
