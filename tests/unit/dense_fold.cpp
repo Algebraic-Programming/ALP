@@ -56,25 +56,24 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		alp::Semiring<
 			alp::operators::add< double >, alp::operators::mul< double >,
 			alp::identities::zero, alp::identities::one
-			> ring;
+		> ring;
 
 		std::vector< T1 > x_data( n );
 
 		// test 1, init
-		std::fill(x_data.begin(), x_data.end(), testval1 );
+		std::fill( x_data.begin(), x_data.end(), testval1 );
 
 		rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op)): initialisation FAILED\n";
+			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op )): initialisation FAILED\n";
 			return;
 		}
 
 		// test 1, exec
 		Scalar< T1 > out( testval2 );
-		auto OP = ring.getMultiplicativeOperator();
-		rc = alp::foldl( x, out, OP );
+		rc = alp::foldl( x, out, ring.getMultiplicativeOperator() );
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op)): foldl FAILED\n";
+			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op )): foldl FAILED\n";
 			return;
 		}
 
@@ -84,7 +83,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #endif
 		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
 			if( x[ i ] !=  testval1 * testval2 ) {
-				std::cerr << "\t test 1 ( foldl( vector, scalar, mul_op)): unexpected output "
+				std::cerr << "\t test 1 ( foldl( vector, scalar, mul_op )): unexpected output "
 					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "
 					  << ( static_cast< T1 >( testval1 * testval2 ) )
 					  << " )\n";
@@ -94,11 +93,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x[ i ] << " ";
-			}
-			else if ( i + 10 > alp::getLength( x ) ){
+			} else if ( i + 10 > alp::getLength( x ) ) {
 				std::cout << x[ i ] << " ";
-			}
-			else if ( i == 10 ){
+			} else if ( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
@@ -116,34 +113,33 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		alp::Semiring<
 			alp::operators::add< double >, alp::operators::mul< double >,
 			alp::identities::zero, alp::identities::one
-			> ring;
+		> ring;
 
 		rc = SUCCESS;
 		{
 			// temp initialization
 			std::vector< T1 > x_data( n );
-			std::fill(x_data.begin(), x_data.end(), static_cast< T1 >( testval2 ) );
+			std::fill( x_data.begin(), x_data.end(), static_cast< T1 >( testval2 ) );
 			rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
 		}
 		// rc = rc ? rc : alp::set( x, Scalar< T1 >( 0 ) ); // needs an implementation
 
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 2 (foldl( scalar, vector, add_op)) "
+			std::cerr << "\t test 2 (foldl( scalar, vector, add_op )) "
 				  << "initialisation FAILED\n";
 			return;
 		}
 
 		// test 2, exec
 		Scalar< T1 > out( testval3 );
-		auto monoid = ring.getAdditiveMonoid();
-		rc = alp::foldl( out, x, monoid );
+		rc = alp::foldl( out, x, ring.getAdditiveMonoid() );
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 2 (foldl( scalar, vector, monoid)) foldl FAILED\n";
+			std::cerr << "\t test 2 (foldl( scalar, vector, monoid )) foldl FAILED\n";
 			return;
 		}
 
 		// test 2, check
-		if(  testval3 + testval2 * static_cast< T1 >( n ) != *out ) {
+		if( testval3 + testval2 * static_cast< T1 >( n ) != *out ) {
 			std::cerr << "\t test 2 (foldl( scalar, vector, monoid)), "
 				  << "unexpected output: " << *out << ", expected "
 				  << testval3 + testval2 * static_cast< T1 >( n )
@@ -156,14 +152,14 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		// test 3 (foldl( scalar, vector_view, add_op))
 		auto x_view_even = alp::get_view( x, alp::utils::range( 0, n, 2 ) );
 		*out = testval3;
-		rc = alp::foldl( out, x_view_even, monoid );
+		rc = alp::foldl( out, x_view_even, ring.getAdditiveMonoid() );
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid)) foldl FAILED\n";
+			std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid )) foldl FAILED\n";
 			return;
 		}
 
 		// test 2, check
-		if(  testval3 + testval2 * static_cast< T1 >( n / 2 ) != *out ) {
+		if( testval3 + testval2 * static_cast< T1 >( n / 2 ) != *out ) {
 			std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid)), "
 				  << "unexpected output: " << *out << ", expected "
 				  << testval3 + testval2 * static_cast< T1 >( n / 2 )
