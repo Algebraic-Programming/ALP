@@ -3779,17 +3779,18 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AddMonoid, class AnyOp
 	>
-	RC dot( Scalar< OutputType, OutputStructure, reference > &z,
+	RC dot(
+		Scalar< OutputType, OutputStructure, reference > &z,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const typename std::enable_if_t< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
-			alp::is_operator< AnyOp >::value,
-		void >::type * const = NULL
+			alp::is_operator< AnyOp >::value
+		> * const = NULL
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
@@ -3815,6 +3816,18 @@ namespace alp {
 			return MISMATCH;
 		}
 
+		internal::setInitialized(
+			z,
+			internal::getInitialized( z ) && internal::getInitialized( x ) && internal::getInitialized( y )
+		);
+
+		if( !internal::getInitialized( z ) ) {
+#ifdef _DEBUG
+			std::cout << "dot(): one of input vectors or scalar are not initialized: do noting!\n";
+#endif
+			return SUCCESS;
+		}
+
 		std::function< void( typename AddMonoid::D3 &, const size_t ) > data_lambda =
 			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i ) {
 				//set( ret, alp::identities::zero );
@@ -3838,15 +3851,13 @@ namespace alp {
 				getLength( x ),
 				data_lambda
 			);
-
-		internal::setInitialized( z, internal::getInitialized( z )
-			&& internal::getInitialized( x ) && internal::getInitialized( y ) );
-
-		//throw std::runtime_error( " currently in implementation." );
-		RC rc = SUCCESS;
-		//RC rc = foldl( z, temp, addMonoid.getOperator() );
-
+#define TEMP_DISABLE
+#ifdef TEMP_DISABLE
+		return SUCCESS;
+#else
+		RC rc = foldl( z, temp, addMonoid );
 		return rc;
+#endif
 	}
 
 	/** C++ scalar specialization */

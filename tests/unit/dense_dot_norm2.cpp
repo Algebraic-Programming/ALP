@@ -54,14 +54,14 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		alp::Semiring<
 			alp::operators::add< double >, alp::operators::mul< double >,
 			alp::identities::zero, alp::identities::one
-			> ring;
+		> ring;
 
 		std::vector< T1 > left_data( n );
 		std::vector< T1 > right_data( n );
 
 		// // test 1, init
-		std::fill(left_data.begin(), left_data.end(), testval1 );
-		std::fill(right_data.begin(), right_data.end(), testval2 );
+		std::fill( left_data.begin(), left_data.end(), testval1 );
+		std::fill( right_data.begin(), right_data.end(), testval2 );
 
 		rc = SUCCESS;
 		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
@@ -82,9 +82,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		// test 1, check
 		if( static_cast< T1 >( testval1 * testval2 * n ) != *out ) {
 			std::cerr << "\t test 1 (dense, regular semiring): unexpected output "
-													<< "( " << *out << ", expected "
-													<< ( static_cast< T1 >( testval1 * testval2 * n ) )
-													<< " )\n";
+				  << "( " << *out << ", expected "
+				  << ( static_cast< T1 >( testval1 * testval2 * n ) )
+				  << " )\n";
 			std::cout << " --->DEVELOP continue anyway!\n";
 			// rc = FAILED;
 			// return;
@@ -100,14 +100,14 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			alp::operators::add< double >,
 			alp::operators::left_assign_if< T1, bool, T1 >,
 			alp::identities::zero, alp::identities::logical_true
-			> pattern_sum_if;
+		> pattern_sum_if;
 		rc = SUCCESS;
 		{
 			// temp initialization
 			std::vector< T1 > left_data( n );
 			std::vector< T1 > right_data( n );
-			std::fill(left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
-			std::fill(right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
+			std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
+			std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
 			rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
 			rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
 		}
@@ -118,7 +118,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		//rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 2 (sparse, non-standard semiring) "
-													<< "initialisation FAILED\n";
+				  << "initialisation FAILED\n";
 			return;
 		}
 
@@ -133,8 +133,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		// test 2, check
 		if( testval3 * static_cast< T1 >( n ) != *out * 2  ) {
 			std::cerr << "\t test 2 (sparse, non-standard semiring), "
-				<< "unexpected output: " << *out << ", expected " << n
-				<< ".\n";
+				  << "unexpected output: " << *out << ", expected " << n
+				  << ".\n";
 			std::cout << " --->DEVELOP continue anyway!\n";
 			// rc = FAILED;
 			// return;
@@ -145,7 +145,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	alp::Semiring<
 		alp::operators::add< int >, alp::operators::mul< int >,
 		alp::identities::zero, alp::identities::one
-		> intRing;
+	> intRing;
 
 	{
 		// test 3, init
@@ -154,8 +154,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		{
 			// temp initialization
 			std::vector< T1 > x_data( n ), y_data( n );
-			std::fill(x_data.begin(), x_data.end(), 1 );
-			std::fill(y_data.begin(), y_data.end(), 2 );
+			std::fill( x_data.begin(), x_data.end(), 1 );
+			std::fill( y_data.begin(), y_data.end(), 2 );
 			rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
 			rc = rc ? rc : alp::buildVector( y, y_data.begin(), y_data.end() );
 		}
@@ -176,7 +176,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		// test 3, check
 		if( *alpha != 2 * static_cast< int >( n ) ) {
 			std::cerr << "\t test 3 (dense integer vectors) unexpected value "
-				<< *alpha << ", expected 2 * n = " << ( 2 * n) << ".\n";
+				  << *alpha << ", expected 2 * n = " << ( 2 * n) << ".\n";
 			std::cout << " --->DEVELOP continue anyway!\n";
 			// rc = FAILED;
 			// return;
@@ -199,7 +199,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		// test 4, check
 		if( *alpha != 2 * static_cast< int >(n) ) {
 			std::cerr << "\t test 4 (empty vectors) unexpected value "
-				<< *alpha << ", expected 2 * n = " << ( 2 * n ) << ".\n";
+				  << *alpha << ", expected 2 * n = " << ( 2 * n ) << ".\n";
 			std::cout << " --->DEVELOP continue anyway!\n";
 			// rc = FAILED;
 			// return;
