@@ -24,7 +24,6 @@
 #define _H_ALP_REFERENCE_BLAS1
 
 #include <functional>
-
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
@@ -33,7 +32,6 @@
 #include <alp/matrix.hpp>
 #include <alp/vector.hpp>
 #include <alp/blas0.hpp>
-
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -53,6 +51,29 @@
 		"********************************************************************" \
 		"******************************\n" );
 #endif
+
+#define NO_CAST_OP_ASSERT( x, y, z )                                           \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the operator domains, as specified in the "            \
+		"documentation of the function " y ", supply an input argument of "    \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible operator where all domains "  \
+		"match those of the input parameters, as specified in the "            \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
 
 
 namespace alp {
@@ -819,10 +840,14 @@ namespace alp {
 		typename IOType, typename IOStructure,
 		class Monoid
 	>
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
+	RC foldr(
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
 		Scalar< IOType, IOStructure, reference > & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+		const typename std::enable_if_t<
+			! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL
+	) {
 
 		return foldl( beta, x, monoid );
 	}
@@ -833,12 +858,16 @@ namespace alp {
 		typename IOType,
 		class Monoid
 	>
-	RC foldr( const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
+	RC foldr(
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
-		
-		return foldr( x, Scalar< IOType >( beta ), monoid );
+		const typename std::enable_if_t<
+			! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL
+	) {
+
+		return foldl( x, Scalar< IOType >( beta ), monoid );
 	}
 
 	/**
@@ -1333,26 +1362,37 @@ namespace alp {
 		typename InputType, typename InputStructure,
 		class Op
 	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
+	RC foldl(
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
 		const Scalar< InputType, InputStructure, reference > beta,
 		const Op & op = Op(),
-		  //const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
-		const typename std::enable_if<
-			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void
-		  >::type * = NULL ) {
+		const typename std::enable_if_t<
+			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
+		> * = NULL
+	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
-			|| std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting )	|| std::is_same< typename Op::D1, IOType >::value ),
+			"alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
-			"of the given operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
-			|| std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting )	|| std::is_same< typename Op::D2, InputType >::value ),
+			"alp::foldl",
 			"called on a vector y of a type that does not match the second domain "
-			"of the given operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting )
-			|| std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting )	|| std::is_same< typename Op::D3, IOType >::value ),
+			"alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
-			"of the given operator" );
+			"of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "foldl(Vector, Scalar,Op) called. Vector has size " << getLength( x ) << " .\n";
+#endif
 
 		internal::setInitialized(
 			x,
@@ -1364,7 +1404,7 @@ namespace alp {
 		}
 
 		const size_t n = getLength( x );
-		for ( size_t i = 0; i < n ; i++ ) {
+		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldl( x[ i ], *beta, op );
 		}
 		return SUCCESS;
@@ -4209,24 +4249,34 @@ namespace alp {
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 		class Monoid
 	>
-	RC foldl( Scalar< IOType, IOStructure, reference > &alpha,
+	RC foldl(
+		Scalar< IOType, IOStructure, reference > &alpha,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value,
-		  void >::type * const = NULL ) {
+		const typename std::enable_if_t<
+			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL
+	) {
 
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, InputType >::value ), "alp::reduce", "called with a scalar IO type that does not match the input vector type" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D1 >::value ), "alp::reduce",
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, InputType >::value ),
+			"alp::reduce",
+			"called with a scalar IO type that does not match the input vector type"
+		);
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D1 >::value ), "alp::reduce",
 			"called with an input vector value type that does not match the first "
 			"domain of the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D2 >::value ), "alp::reduce",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D2 >::value ), "alp::reduce",
 			"called with an input vector type that does not match the second domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "alp::reduce",
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Monoid::D3 >::value ), "alp::reduce",
 			"called with an input vector type that does not match the third domain of "
 			"the given monoid" );
-		NO_CAST_ASSERT(  ! ( descr & descriptors::no_casting ), "alp::reduce", "called with a vector mask type that is not boolean" );
+
+#ifdef _DEBUG
+		std::cout << "foldl(Scalar,Vector,Op) called. Vector has size " << getLength( y ) << " .\n";
+#endif
 
 		internal::setInitialized(
 			alpha,
@@ -4238,7 +4288,7 @@ namespace alp {
 		}
 
 		const size_t n = getLength( y );
-		for ( size_t i = 0; i < n ; i++ ) {
+		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldl( *alpha, y[ i ], monoid.getOperator() );
 		}
 		return SUCCESS;
