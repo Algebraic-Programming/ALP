@@ -125,10 +125,26 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// do benchmark
 		double time_taken;
 		timer.reset();
+		grb::Vector< size_t > in_msgs( n ), out_msgs( n );
+		grb::Vector< size_t > out_buffer = interfaces::config::out_sparsify
+			? grb::Vector< size_t >( n )
+			: grb::Vector< size_t >( 0 );
+		out.times.preamble += timer.time();
+		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
-	        		rc = grb::algorithms::pregel::ConnectedComponents< size_t >::execute(
-					pregel, cc, pregel.num_vertices(), &(out.iterations) );
+				grb::set< grb::descriptors::use_index >( cc, 0 );
+				rc = pregel.template execute<
+					grb::operators::max< size_t >,
+					grb::identities::negative_infinity
+				>(
+					&(grb::algorithms::pregel::ConnectedComponents< size_t >::program),
+					cc,
+					grb::algorithms::pregel::ConnectedComponents< size_t >::Data(),
+					in_msgs, out_msgs,
+					out.iterations,
+					out_buffer
+				);
 			}
 		}
 		time_taken = timer.time();
