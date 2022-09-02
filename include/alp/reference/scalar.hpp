@@ -37,7 +37,7 @@ namespace alp {
 
 	namespace internal {
 		template< typename T, typename Structure >
-		bool getInitialized( Scalar< T, Structure, reference > & ) noexcept;
+		bool getInitialized( const Scalar< T, Structure, reference > & ) noexcept;
 
 		template< typename T, typename Structure >
 		void setInitialized( Scalar< T, Structure, reference > &, bool ) noexcept;
@@ -60,10 +60,12 @@ namespace alp {
 	 */
 	template< typename T, typename Structure >
 	class Scalar< T, Structure, reference > {
+
 		private:
+
 			typedef Scalar< T, Structure, reference > self_type;
 
-			friend bool internal::getInitialized<>( self_type & ) noexcept;
+			friend bool internal::getInitialized<>( const self_type & ) noexcept;
 
 			friend void internal::setInitialized<>( self_type &, bool ) noexcept;
 
@@ -79,6 +81,7 @@ namespace alp {
 
 			/** @see Vector::lambda_reference */
 			typedef T& lambda_reference;
+			typedef const T& const_lambda_reference;
 
 			/**
 			 * The main ALP scalar constructor.
@@ -167,12 +170,12 @@ namespace alp {
 
 			/** \internal No implementation notes. */
 			lambda_reference operator*() noexcept {
-				assert( getInitialized( *this ) );
+				assert( internal::getInitialized( *this ) );
 				return value;
 			}
 
 			/** \internal No implementation notes. */
-			const lambda_reference operator*() const noexcept {
+			const_lambda_reference operator*() const noexcept {
 				assert( getInitialized( *this ) );
 				return value;
 			}
@@ -185,13 +188,13 @@ namespace alp {
 
 	namespace internal {
 		template< typename T, typename Structure >
-		bool getInitialized( Scalar< T, Structure, reference > &s ) noexcept {
+		bool getInitialized( const Scalar< T, Structure, reference > &s ) noexcept {
 			return s.initialized;
 		}
 
 		template< typename T, typename Structure >
 		void setInitialized( Scalar< T, Structure, reference > &s, bool initialized ) noexcept {
-			s.initialized = s;
+			s.initialized = initialized;
 		}
 	} // end namespace ``alp::internal''
 
