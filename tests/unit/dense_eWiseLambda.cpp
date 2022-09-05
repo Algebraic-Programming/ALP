@@ -54,6 +54,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		std::cerr << "\talp::eWiseLambda (matrix, no vectors) FAILED\n";
 		return;
 	}
+	assert( internal::access( A, internal::getStorageIndex( A, 0, 0 ) ) == 1 );
 
 	// test eWiseLambda on vector
 	rc = alp::eWiseLambda(
@@ -68,6 +69,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		std::cerr << "\talp::eWiseLambda (vector) FAILED\n";
 		return;
 	}
+	assert( v[ 0 ] == 2 );
 
 	// test eWiseLambda on vector, consuming from another vector
 	rc = alp::eWiseLambda(
@@ -81,6 +83,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		std::cerr << "\talp::eWiseLambda (vector, vectors...) FAILED\n";
 		return;
 	}
+	assert( v[ 0 ] = u[ 0 ] );
 
 	// test eWiseLambda on Matrix, consuming two other vectors
 	rc = alp::eWiseLambda(
@@ -89,6 +92,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		},
 		A, u, v
 	);
+	assert( internal::access( A, internal::getStorageIndex( A, 0, 0 ) ) == 1 + u[ 0 ] + v[ 0 ] );
 
 	if( rc != SUCCESS ) {
 		std::cerr << "\talp::eWiseLambda (matrix, vectors...) FAILED\n";
