@@ -3828,12 +3828,11 @@ namespace alp {
 			return SUCCESS;
 		}
 
-#define TEMP_DISABLE
-		std::function< void( typename AddMonoid::D3 &, const size_t ) > data_lambda =
-			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i ) {
-#ifndef TEMP_DISABLE
-				set( result, alp::identities::zero );
-#endif
+		std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > data_lambda =
+			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i, const size_t j ) {
+				(void) j;
+				//set( result, alp::identities::zero );
+				result = 0;
 				internal::apply( result, x[ i ], y[ i ], anyOp );
 			};
 
@@ -3846,7 +3845,7 @@ namespace alp {
 			typename AddMonoid::D3,
 			structures::General,
 			Density::Dense,
-			view::Functor< std::function< void( typename AddMonoid::D3 &, const size_t ) > >,
+			view::Functor< std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
 			> temp(
@@ -3854,12 +3853,8 @@ namespace alp {
 				getLength( x ),
 				data_lambda
 			);
-#ifdef TEMP_DISABLE
-		return SUCCESS;
-#else
 		RC rc = foldl( z, temp, addMonoid );
 		return rc;
-#endif
 	}
 
 	/** C++ scalar specialization */
