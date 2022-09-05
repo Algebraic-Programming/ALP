@@ -398,8 +398,8 @@ namespace alp {
 			constexpr bool sym_up_a { is_sym_a };
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
-			const std::ptrdiff_t i_u_lim = std::min( M, l + N );
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
+			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
 
 			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
 				/** j-coordinate lower and upper limits considering matrix size and symmetry */
