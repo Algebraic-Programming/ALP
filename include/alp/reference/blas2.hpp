@@ -28,6 +28,7 @@
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
+#include <alp/matrix.hpp>
 
 namespace alp {
 
@@ -330,23 +331,111 @@ namespace alp {
 		return SUCCESS;
 	}
 
+	namespace internal {
+
+		/**
+		 * Applies the provided function to each element of the given band.
+		 * This function is called by the public eWiseLambda variant.
+		 * Forward declaration. Specializations handle bound checking.
+		 */
+		template<
+			size_t BandIndex, typename Func,
+			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
+			typename std::enable_if_t<
+				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseLambda(
+			const Func f,
+			alp::Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+		);
+
+		/** Specialization for an out-of-bounds band index */
+		template<
+			size_t BandIndex, typename Func,
+			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
+			typename std::enable_if_t<
+				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseLambda(
+			const Func f,
+			alp::Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+		) {
+			(void)f;
+			(void)A;
+			// nothing to do
+			return SUCCESS;
+		}
+
+		/**
+		 * Specialization for a within-the-range band index.
+		 * Applies the provided function to each element of the given band.
+		 * Upon completion, calls itself for the next band.
+		 */
+		template<
+			size_t BandIndex, typename Func,
+			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
+			typename std::enable_if_t<
+				BandIndex < std::tuple_size< typename Structure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseLambda(
+			const Func f,
+			alp::Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+		) {
+			const size_t M = nrows( A );
+			const size_t N = ncols( A );
+
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandIndex >( A );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandIndex >( A );
+
+			// In case of symmetry the iteration domain intersects the the upper
+			// (or lower) domain of A
+			constexpr bool is_sym_a = structures::is_a< Structure, structures::Symmetric >::value;
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_a = is_sym_a;
+
+			/** i-coordinate lower and upper limits considering matrix size and band limits */
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
+			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
+
+			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
+				/** j-coordinate lower and upper limits considering matrix size and symmetry */
+				const std::ptrdiff_t j_sym_l_lim = is_sym_a && sym_up_a ? i : 0;
+				const std::ptrdiff_t j_sym_u_lim = is_sym_a && !sym_up_a ? i + 1 : N;
+				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
+				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
+				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+
+				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
+					auto &a_val = internal::access( A, internal::getStorageIndex( A, i, j ) );
+					f( i, j, a_val );
+				}
+			}
+			return eWiseLambda< BandIndex + 1 >( f, A );
+		}
+
+	} // namespace internal
+
 	/**
-	 * Straightforward implementation using the column-major layout.
+	 * Delegates to single-band variant.
 	 *
 	 * @see alp::eWiseLambda for the user-level specification.
 	 */
-	template< class ActiveDistribution, typename Func,
+	template<
+		typename Func,
 		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC
 	>
-	RC eWiseLambda( const Func f,
-		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > & A,
-		const size_t s,
-		const size_t P ) {
+	RC eWiseLambda(
+		const Func f,
+		Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+	) {
 #ifdef _DEBUG
 		std::cout << "entering alp::eWiseLambda (matrices, reference ). A is " << alp::nrows( A ) << " by " << alp::ncols( A ) << " and holds " << alp::nnz( A ) << " nonzeroes.\n";
 #endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		return internal::eWiseLambda< 0 >( f, A );
 	}
 
 	/**
@@ -355,21 +444,25 @@ namespace alp {
 	 *
 	 * @see alp::eWiseLambda for the user-level specification.
 	 */
-	template< typename Func,
+	template<
+		typename Func,
 		typename DataType1, typename DataStructure1, typename DataView1, typename DataImfR1, typename DataImfC1,
 		typename DataType2, typename DataStructure2, typename DataView2, typename DataImfR2, typename DataImfC2,
 		typename... Args
 	>
-	RC eWiseLambda( const Func f,
-		const Matrix< DataType1, DataStructure1, Density::Dense, DataView1, DataImfR1, DataImfC1, reference > & A,
-		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, DataImfR2, DataImfC2, reference > x,
-		Args... args ) {
+	RC eWiseLambda(
+		const Func f,
+		Matrix< DataType1, DataStructure1, Density::Dense, DataView1, DataImfR1, DataImfC1, reference > &A,
+		const Vector< DataType2, DataStructure2, Density::Dense, DataView2, DataImfR2, DataImfC2, reference > &x,
+		Args const &... args
+	) {
 		// do size checking
-		if( ! ( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
-			std::cerr << "Mismatching dimensions: given vector of size " << size( x ) << " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
+		if( !( getLength( x ) == nrows( A ) || getLength( x ) == ncols( A ) ) ) {
+			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
+				<< " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
 		}
-		// no need for synchronisation, everything is local in reference implementation
+
 		return eWiseLambda( f, A, args... );
 	}
 
