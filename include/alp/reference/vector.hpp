@@ -234,7 +234,8 @@ namespace alp {
 				/** \internal No implementation notes. */
 				lambda_reference operator[]( const size_t i ) noexcept {
 					assert( i < n );
-					assert( initialized );
+					/** \internal \todo See if the assert below makes sense in some scenarios. */
+					//assert( initialized );
 					return data[ i ];
 				}
 

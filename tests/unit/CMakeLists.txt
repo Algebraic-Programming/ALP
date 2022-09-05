@@ -250,6 +250,10 @@ add_grb_executables( dense_outer dense_outer.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( dense_set dense_set.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( dense_structured_matrix dense_structured_matrix.cpp
 	BACKENDS alp_reference
 )
