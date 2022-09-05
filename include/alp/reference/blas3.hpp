@@ -1233,6 +1233,23 @@ namespace alp {
 
 	namespace internal {
 
+		/**
+		 * Forward declaration. Performs set operation on the provided band.
+		 * Specializations implement bound checking.
+		 */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename std::enable_if_t<
+				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
+		) noexcept;
+
 		/** Specialization for out-of-range band position - nothing to do */
 		template<
 			size_t BandPos,
@@ -1366,6 +1383,23 @@ namespace alp {
 	}
 
 	namespace internal {
+
+		/**
+		 * Forward declaration. Performs set operation on the provided band.
+		 * Specializations implement bound checking.
+		 */
+		template<
+			size_t BandPos,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename std::enable_if_t<
+				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC set_band(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+			const Scalar< InputType, InputStructure, reference > &val
+		) noexcept;
 
 		/** Specialization for out-of-range band position - nothing to do */
 		template<
