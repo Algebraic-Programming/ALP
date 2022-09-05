@@ -1242,7 +1242,7 @@ namespace alp {
 				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
-		RC set_band_generic(
+		RC set_band(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
 		) noexcept {
@@ -1260,7 +1260,7 @@ namespace alp {
 				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
-		RC set_band_generic(
+		RC set_band(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
 		) noexcept {
@@ -1302,7 +1302,7 @@ namespace alp {
 				}
 			}
 
-			return set_band_generic< BandPos + 1 >( C, A );
+			return set_band< BandPos + 1 >( C, A );
 		}
 
 	} // namespace internal
@@ -1362,7 +1362,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		return internal::set_band_generic< 0 >( C, A );
+		return internal::set_band< 0 >( C, A );
 	}
 
 	namespace internal {
@@ -1376,7 +1376,7 @@ namespace alp {
 				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
-		RC set_band_generic(
+		RC set_band(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const Scalar< InputType, InputStructure, reference > &val
 		) noexcept {
@@ -1394,7 +1394,7 @@ namespace alp {
 				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
-		RC set_band_generic(
+		RC set_band(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const Scalar< InputType, InputStructure, reference > &val
 		) noexcept {
@@ -1430,7 +1430,7 @@ namespace alp {
 				}
 			}
 
-			return set_band_generic< BandPos + 1 >( C, val );
+			return set_band< BandPos + 1 >( C, val );
 		}
 
 	} // namespace internal
@@ -1482,7 +1482,7 @@ namespace alp {
 
 		internal::setInitialized( C, true );
 
-		return internal::set_band_generic< 0 >( C, val );
+		return internal::set_band< 0 >( C, val );
 	}
 
 } // end namespace ``alp''
