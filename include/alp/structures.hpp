@@ -289,6 +289,20 @@ namespace alp {
 			using inferred_structures = std::tuple< General >;
 		};
 
+		struct Square: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
+		};
+
+		struct Symmetric: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
+		};
+
 		/**
 		 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
 		 * 		  and index mapping functions (IMFs) \a imf_r and \a imf_c can be defined over \a SourceStructure.
@@ -297,7 +311,7 @@ namespace alp {
 		 * @tparam TargetStructure The underlying structure of the target view.
 		 * @param imf_r            The IMF applied to the rows of the source matrix.
 		 * @param imf_c            The IMF applied to the columns of the source matrix.
-	
+
 		 * @return \a false if the function can determined that the new view may alter underlying assumptions
 		 * 			associated with the source structure \a SourceStructure; \a true otherwise.
 		 */
@@ -337,11 +351,12 @@ namespace alp {
 			};
 		};
 
-		struct Square: BaseStructure {
-
-			typedef std::tuple< OpenInterval > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
+		template<>
+		struct isInstantiable< Symmetric, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
 		};
 
 
@@ -416,13 +431,6 @@ namespace alp {
 		template < typename... Intervals >
 		struct tuple_to_band< std::tuple< Intervals... > > {
 			typedef Band< Intervals... > type;
-		};
-
-		struct Symmetric: BaseStructure {
-
-			typedef std::tuple< OpenInterval > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
 		};
 
 		struct SymmetricPositiveDefinite: BaseStructure {

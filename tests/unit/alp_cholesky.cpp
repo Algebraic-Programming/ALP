@@ -51,6 +51,12 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
 	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
 
+        alp::Scalar< double > zero_scalar( ring.getZero< double >() );
+        alp::Scalar< double > one_scalar( ring.getOne< double >() );
+
+        rc = alp::set( H, one_scalar );
+	rc = alp::set( L, one_scalar );
+
 	rc = algorithms::cholesky_lowtr( L, H, ring );
 }
 

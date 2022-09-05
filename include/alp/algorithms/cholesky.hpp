@@ -67,24 +67,24 @@ namespace alp {
 				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
 				Scalar< D > alpha;
 				rc = eWiseLambda(
-					[ &v, &alpha, &ring ]( const size_t i ) {
+					[ &alpha, &ring ]( const size_t i, D &val ) {
 						if ( i == 0 ) {
 #ifdef TEMP_DISABLE
-							*alpha = std::sqrt( v[ i ] );
 							internal::setInitialized( alpha, true );
+							*alpha = std::sqrt( val );
 #else
-							(void)set( alpha, std::sqrt( v[ i ] ) );
+							(void)set( alpha, std::sqrt( val ) );
 #endif
-							v[ i ] = *alpha;
+							val = *alpha;
 						}
 					}, v
 				);
 
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
 				rc = eWiseLambda(
-					[ &v, &alpha, &divide ]( const size_t i ) {
+					[ &alpha, &divide ]( const size_t i, D &val ) {
 						if ( i > 0 ) {
-							internal::foldl( v[ i ], *alpha, divide );
+							internal::foldl( val, *alpha, divide );
 						}
 					},
 					v
@@ -96,13 +96,16 @@ namespace alp {
 
 				auto vvt = outer( v, ring.getMultiplicativeOperator() );
 #ifdef TEMP_DISABLE
-				std::cout << "warning:  missing foldl( Mat, Mat, minus )";
-				std::function< void( typename operators::subtract< D > &, const size_t, const size_t ) > lambda_f_minus =
-					[ &LLprim, &vvt, &minus ]( typename operators::subtract< D >::D3 &result, const size_t i, const size_t j ) {
-						result = LLprim[ i, j ];
-						//result = minus( LLprim[ i, j ], vvt[ i, j ] );
-						//internal::apply( result, x[ i ], y[ j ], minus );
-					};
+				rc = alp::eWiseLambda(
+					[ &vvt, &minus, &divide ]( const size_t i, const size_t j, D &val ) {
+						internal::foldl(
+							val,
+							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
+							divide
+						);
+					},
+					LLprim
+				);
 #else
 				rc = foldl( LLprim, vvt, minus );
 #endif
