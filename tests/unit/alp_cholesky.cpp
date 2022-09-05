@@ -48,11 +48,8 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	// dimensions of sqare matrices H, L
 	size_t N = 10 * unit;
 
-	// dimensions of views over H, Q and R
-	size_t n = 2 * unit;
-
-	alp::Matrix< double, structures::SymmetricPositiveDefinite, Dense > H( N, N );
-	alp::Matrix< double, structures::LowerTriangular, Dense > L( N, N );
+	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
+	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
 
 	rc = algorithms::cholesky_lowtr( L, H, ring );
 }
