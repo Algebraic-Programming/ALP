@@ -176,7 +176,7 @@ namespace alp {
 
 			/** \internal No implementation notes. */
 			const_lambda_reference operator*() const noexcept {
-				assert( getInitialized( *this ) );
+				assert( internal::getInitialized( *this ) );
 				return value;
 			}
 
