@@ -102,10 +102,22 @@ namespace alp {
 
 			}; // BivariateQuadratic
 
+			/** p(i,j) = 0 */
 			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_type;
+
+			/** p(i,j) = Ni + j */
 			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_type; // TODO
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type; // TODO
+
+			/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
+			typedef BivariateQuadratic< -1, 0, 0, 1, 2, 0, 2 > Packed_Wide_First_type;
+
+			/** p(i,j) = (j^2 + 2i + j) / 2 */
+			typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > Packed_Narrow_First_type;
+
+			/** \internal \todo */
+			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type;
+
+			/** p(i,j) = i */
 			typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > Vector_type;
 
 			/**
