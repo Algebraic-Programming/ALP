@@ -28,6 +28,7 @@
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 #include <alp/scalar.hpp>
+#include <alp/vector.hpp>
 #include <alp/density.hpp>
 #include <alp/matrix.hpp>
 #include <alp/vector.hpp>
@@ -358,137 +359,31 @@ namespace alp {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC, typename ValStructure, typename T >
-	RC set( Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure
+	>
+	RC set(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
 		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if<
 			!alp::is_object< DataType >::value &&
 			!alp::is_object< T >::value,
 		void >::type * const = NULL
 	) {
-		(void)x;
-		(void)val;
 		// static sanity checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
-		throw std::runtime_error( "Needs an implementation." );
 
-		// done
-		return SUCCESS;
-	}
-
-	/**
-	 * Sets all elements of a Vector to the given value. Masked variant.
-	 *
-	 * This function is functionally equivalent to
-	 * \code
-	 * alp::operators::right_assign< DataType > op;
-	 * return foldl< descr >( x, mask, val, op );
-	 * \endcode,
-	 * \code
-	 * alp::operators::left_assign< DataType > op;
-	 * return foldr< descr >( val, x, mask, op );
-	 * \endcode, and the following pseudocode
-	 * \code
-	 * for( size_t i = 0; i < size(x); ++i ) {
-	 *     if( mask(i) ) { setElement( x, i, val ); }
-	 * \endcode.
-	 *
-	 * @tparam descr         The descriptor used for this operation.
-	 * @tparam DataType      The type of each element in the given vector.
-	 * @tparam DataStructure The Structure of the given vector.
-	 * @tparam View          The view type applied to the given vector.
-	 * @tparam T             The type of the given value.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# alp::descriptors::no_operation
-	 *   -# alp::descriptors::no_casting
-	 *   -# alp::descriptors::invert_mask
-	 *   -# alp::descriptors::structural_mask
-	 * \endparblock
-	 *
-	 * @param[in,out] x The Vector of which every element is to be set to equal
-	 *                  \a val.
-	 * @param[in]   val The value to set each element of \a x equal to.
-	 *
-	 * @returns SUCCESS       When the call completes successfully.
-	 *
-	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
-	 * match \a DataType, the code shall not compile.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
-	//  *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * If alp::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
-	//  * above shall be interpreted as \f$ size( m ) \f$ instead.
-	//  * \endparblock
-	 *
-	 * @see alp::foldl.
-	 * @see alp::foldr.
-	 * @see alp::operators::left_assign.
-	 * @see alp::operators::right_assign.
-	 * @see alp::setElement.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataView, typename DataStructure, typename DataImfR, typename DataImfC,
-		typename MaskStructure,  typename MaskType, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename T, typename ValStructure >
-	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, DataImfR, DataImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const Scalar< T, ValStructure, reference > val,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
-#ifdef _DEBUG
-		std::cout << "In alp::set (vector-to-value, masked)\n";
-#endif
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector to scalar, masked)",
-			"called with a value type that does not match that of the given "
-			"vector" );
-
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return set< descr >( x, val );
+		if( ! internal::getInitialized( val ) ) {
+			internal::setInitialized( x, false );
+			return SUCCESS;
 		}
 
-		// dynamic sanity checks
-		if( size( x ) != size( m ) ) {
-			return MISMATCH;
-		}
-
-		// pre-cast value to be copied
-		const DataType toCopy = static_cast< DataType >( val );
-
-		throw std::runtime_error( "Needs implementation" );
-
-		// done
-		return SUCCESS;
-	}
-
-	/** C++ scalar variant */
-	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataView, typename DataStructure, typename DataImfR, typename DataImfC,
-		typename MaskStructure,  typename MaskType, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename T >
-	RC set( Vector< DataType, DataStructure, Density::Dense, DataView, DataImfR, DataImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const T val,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
-#ifdef _DEBUG
-		std::cout << "In alp::set (vector-to-value, masked)\n";
-#endif
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector to scalar, masked)",
-			"called with a value type that does not match that of the given "
-			"vector" );
-
-		// delegate to alp::Scalar version
-		return set( x, m, Scalar< T >( val ) );
+		// foldl requires left-hand side to be initialized prior to the call
+		internal::setInitialized( x, true );
+		return foldl( x, val, alp::operators::right_assign< DataType >() );
 	}
 
 	/**
@@ -631,8 +526,10 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
 	>
-	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y ) {
+	RC set(
+		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y
+	) {
 		// static sanity checks
 		NO_CAST_ASSERT(
 			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
@@ -650,109 +547,17 @@ namespace alp {
 			return ILLEGAL;
 		}
 
-		throw std::runtime_error( "Needs an implementation." );
-
-		// done
-		return SUCCESS;
-	}
-
-	/**
-	 * Sets the content of a given vector \a x to be equal to that of
-	 * another given vector \a y. Masked variant.
-	 *
-	 * This operation is functionally equivalent to
-	 * \code
-	 * alp::operators::right_assign< T > op;
-	 * alp::foldl( x, mask, y, op );
-	 * \endcode,
-	 * \code
-	 * alp::operators::left_assign < T > op;
-	 * alp::foldr( y, x, mask, op );
-	 * \endcode, as well as the following pseudocode
-	 * \code
-	 * for( each nonzero in y ) {
-	 *    if( mask( nonzero.index ) ) {
-	 *        setElement( x, nonzero.index, nonzero.value );
-	 *    }
-	 * }
-	 * \endcode.
-	 *
-	 * The vector \a x may not equal \a y.
-	 *
-	 * @tparam descr           The descriptor of the operation.
-	 * @tparam OutputType      The type of each element in the output vector.
-	 * @tparam MaskType        The type of each element in the mask vector.
-	 * @tparam InputType       The type of each element in the input vector.
-	 * @tparam OutputStructure The structure of the output vector.
-	 * @tparam MaskStructure   The structure of the mask vector.
-	 * @tparam InputStructure  The structure of the input vector.
-	 * @tparam OutputView      The view applied to the output vector.
-	 * @tparam MaskView        The view applied to the mask vector.
-	 * @tparam InputView       The view applied to the input vector.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# alp::descriptors::no_operation
-	 *   -# alp::descriptors::no_casting
-	 *   -# alp::descriptors::invert_mask
-	 *   -# alp::descriptors::structural_mask
-	 * \endparblock
-	 *
-	 * @param[in,out] x The vector to be set.
-	 * @param[in]  mask The output mask.
-	 * @param[in]     y The source vector.
-	 *
-	 * When \a descr includes alp::descriptors::no_casting and if \a InputType
-	 * does not match \a OutputType, the code shall not compile.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
-	//  *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * If alp::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
-	//  * above shall be considered equal to \f$ nnz( y ) \f$.
-	//  * \endparblock
-	 *
-	 * @see alp::foldl.
-	 * @see alp::foldr.
-	 * @see alp::operators::left_assign.
-	 * @see alp::operators::right_assign.
-	 * @see alp::setElement.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
-	>
-	RC set( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * const = NULL ) {
-		// static sanity checks
-		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::set (Vector)", "called with vector parameters whose element data types do not match" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< MaskType, bool >::value ), "alp::set (Vector)", "called with non-bool mask element types" );
-		constexpr bool out_is_void = std::is_void< OutputType >::value;
-		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( ! in_is_void || out_is_void,
-			"alp::set (reference, Vector <- Vector, masked): "
-			"if input is void, then the output must be also" );
-		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
-			"alp::set (reference, Vector <- Vector, masked): "
-			"use_index descriptor cannot be set if output Vector is void" );
-
-		// catch contract violations
-		if( reinterpret_cast< void * >( &x ) == reinterpret_cast< const void * >( &y ) ) {
-			return ILLEGAL;
+		if( getLength( x ) != getLength( y ) ) {
+			return MISMATCH;
 		}
 
-		throw std::runtime_error( "Needs an implementation." );
+		if( !internal::getInitialized( y ) ) {
+			setInitialized( x, false );
+			return SUCCESS;
+		}
 
-		// done
-		return SUCCESS;
+		internal::setInitialized( x, true );
+		return foldl( x, y, alp::operators::right_assign< OutputType >() );
 	}
 
 	/**
@@ -1654,15 +1459,20 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 		class OP
 	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
+	RC foldl(
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
+		const OP &op = OP(),
+		const typename std::enable_if_t<
+			alp::is_operator< OP >::value && !alp::is_object< IOType >::value && !alp::is_object< InputType >::value
+		> * = nullptr
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1680,7 +1490,20 @@ namespace alp {
 			return MISMATCH;
 		}
 
-		throw std::runtime_error( "Needs an implementation." );
+		if( !internal::getInitialized( x ) ) {
+			return SUCCESS;
+		}
+
+		if( !internal::getInitialized( y ) ) {
+			internal::setInitialized( x, false );
+			return SUCCESS;
+		}
+
+		for( size_t i = 0; i < n; ++i ) {
+			/** \internal \todo Implement RC check. Also applies to other locations. */
+			(void) internal::foldl( x[ i ], y[ i ], op );
+		}
+
 		return SUCCESS;
 	}
 
