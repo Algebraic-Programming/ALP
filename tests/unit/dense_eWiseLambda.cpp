@@ -95,11 +95,6 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		return;
 	}
 	
-	
-
-	if( rc != SUCCESS ) {
-		return;
-	}
 }
 
 int main( int argc, char ** argv ) {

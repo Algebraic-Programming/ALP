@@ -392,10 +392,10 @@ namespace alp {
 
 			// In case of symmetry the iteration domain intersects the the upper
 			// (or lower) domain of A
-			constexpr bool is_sym_a { structures::is_a< Structure, structures::Symmetric >::value };
+			constexpr bool is_sym_a = structures::is_a< Structure, structures::Symmetric >::value;
 
 			// Temporary until adding multiple symmetry directions
-			constexpr bool sym_up_a { is_sym_a };
+			constexpr bool sym_up_a = is_sym_a;
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
 			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
@@ -457,7 +457,7 @@ namespace alp {
 		Args const &... args
 	) {
 		// do size checking
-		if( ! ( getLength( x ) == nrows( A ) || getLength( x ) == ncols( A ) ) ) {
+		if( !( getLength( x ) == nrows( A ) || getLength( x ) == ncols( A ) ) ) {
 			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
 				<< " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
