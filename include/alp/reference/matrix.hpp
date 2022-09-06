@@ -925,7 +925,7 @@ namespace alp {
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				typename determine_poly_factory< Structure, imf::Id, ImfC, reference >::factory_type::poly_type
+				typename determine_poly_factory< Structure, imf::Id, ImfC, reference >::factory_type
 			>::amf_type type;
 		};
 
@@ -939,7 +939,7 @@ namespace alp {
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				storage::polynomials::NoneFactory::poly_type
+				storage::polynomials::NoneFactory
 			>::amf_type type;
 		};
 
@@ -1086,10 +1086,11 @@ namespace alp {
 			 */
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( rows ),
 						ImfC( cols ),
-						internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type::Create( rows, cols ),
 						rows * cols
 					)
 				) {
@@ -1328,10 +1329,11 @@ namespace alp {
 			 */
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( rows ),
 						ImfC( cols ),
-						internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type::Create( rows, cols ),
 						rows * cols
 					)
 				) {
@@ -1566,10 +1568,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -1786,10 +1789,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type::Create( dim, dim ),
 						dim * dim
 					)
 				) {
@@ -2008,10 +2012,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
 						ImfC( dim ),
-						internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type::Create( dim, dim ),
 						dim * dim
 					)
 				) {

@@ -733,10 +733,10 @@ namespace alp {
 			 * @tparam PolyType  Type of the mapping polynomial.
 			 *
 			 */
-			template< typename PolyType >
+			template< typename PolyFactory >
 			struct FromPolynomial {
 
-				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
+				typedef AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > amf_type;
 
 				/**
 				 * Factory method used by 2D containers.
@@ -749,8 +749,8 @@ namespace alp {
 				 * @return  An AMF object of the type \a amf_type
 				 *
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Id imf_c, PolyType poly, size_t storage_dimensions ) {
-					return amf_type( imf_r, imf_c, poly, storage_dimensions );
+				static amf_type Create( imf::Id imf_r, imf::Id imf_c, size_t storage_dimensions ) {
+					return amf_type( imf_r, imf_c, PolyFactory::Create( imf_r.n, imf_c.n ), storage_dimensions );
 				}
 
 				/**
@@ -773,7 +773,7 @@ namespace alp {
 				 *                 polynomial and composes the provided Strided
 				 *                 IMFs with the dummy AMF.
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, PolyType poly, size_t storage_dimensions ) {
+				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, size_t storage_dimensions ) {
 
 					/**
 					 * Ensure that the assumptions do not break upon potential
@@ -782,13 +782,13 @@ namespace alp {
 					static_assert(
 						std::is_same<
 							amf_type,
-							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::amf_type
+							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::amf_type
 						>::value,
 						"The factory method returns the object of different type than declared. This is a bug."
 					);
-					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::Create(
+					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::Create(
 						imf_r, imf_c,
-						FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
+						FromPolynomial< PolyFactory >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), storage_dimensions )
 					);
 				}
 
