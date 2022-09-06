@@ -73,6 +73,7 @@ namespace alp {
 			struct BivariateQuadratic {
 
 				static_assert( Denominator != 0, "Denominator cannot be zero (division by zero).");
+				typedef int64_t dyn_coef_t;
 
 				static constexpr size_t Ax2 = coeffAx2;
 				static constexpr size_t Ay2 = coeffAy2;
@@ -81,12 +82,12 @@ namespace alp {
 				static constexpr size_t Ay  = coeffAy;
 				static constexpr size_t A0  = coeffA0;
 				static constexpr size_t D   = Denominator;
-				const size_t ax2, ay2, axy, ax, ay, a0;
+				const dyn_coef_t ax2, ay2, axy, ax, ay, a0;
 
 				BivariateQuadratic(
-					const size_t ax2, const size_t ay2, const size_t axy,
-					const size_t ax, const size_t ay,
-					const size_t a0 ) :
+					const dyn_coef_t ax2, const dyn_coef_t ay2, const dyn_coef_t axy,
+					const dyn_coef_t ax, const dyn_coef_t ay,
+					const dyn_coef_t a0 ) :
 					ax2( ax2 ), ay2( ay2 ), axy( axy ),
 					ax( ax ), ay( ay ),
 					a0( a0 ) {}
