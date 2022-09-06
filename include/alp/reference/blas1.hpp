@@ -3790,7 +3790,7 @@ namespace alp {
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
 			alp::is_operator< AnyOp >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
@@ -3816,12 +3816,7 @@ namespace alp {
 			return MISMATCH;
 		}
 
-		internal::setInitialized(
-			z,
-			internal::getInitialized( z ) && internal::getInitialized( x ) && internal::getInitialized( y )
-		);
-
-		if( !internal::getInitialized( z ) ) {
+		if( !( internal::getInitialized( z ) && internal::getInitialized( x ) && internal::getInitialized( y ) ) ) {
 #ifdef _DEBUG
 			std::cout << "dot(): one of input vectors or scalar are not initialized: do noting!\n";
 #endif
@@ -3846,11 +3841,11 @@ namespace alp {
 			view::Functor< std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
-			> temp(
-				init_lambda,
-				getLength( x ),
-				data_lambda
-			);
+		> temp(
+			init_lambda,
+			getLength( x ),
+			data_lambda
+		);
 		RC rc = foldl( z, temp, addMonoid );
 		return rc;
 	}

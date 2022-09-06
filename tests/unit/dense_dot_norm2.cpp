@@ -22,7 +22,7 @@
 
 using namespace alp;
 
-// disable some set() calls until set work in done
+// uncomment next line to disable some set()
 // #define TEMP_DISABLE_SET
 
 typedef double T1;
@@ -59,8 +59,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			alp::identities::zero, alp::identities::one
 		> ring;
 
-
-		// // test 1, init
+		// test 1, init
 		rc = SUCCESS;
 #ifndef TEMP_DISABLE_SET
 		rc = rc ? rc : alp::set( left, Scalar< T1 >( testval1 ) );
@@ -99,7 +98,6 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		}
 	}
 
-	// \todo \internal Revise test 2
 	{
 		alp::Vector< T1 > left( n );
 		alp::Vector< T1 > right( n );
@@ -197,9 +195,10 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	{
 		// test 4, init
-		alp::Vector< int > empty_left( 0 ), empty_right( 0 );
-		setInitialized( empty_left, true );
-		setInitialized( empty_right, true );
+		alp::Vector< int > empty_left( 0 );
+		alp::Vector< int > empty_right( 0 );
+		internal::setInitialized( empty_left, true );
+		internal::setInitialized( empty_right, true );
 
 		// test 4, exec
 		rc = alp::dot( alpha, empty_left, empty_right, intRing );
