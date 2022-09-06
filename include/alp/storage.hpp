@@ -103,42 +103,97 @@ namespace alp {
 			}; // BivariateQuadratic
 
 			/** p(i,j) = 0 */
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_type;
+			struct NoneFactory {
+
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return poly_type( 0, 0, 0, 0, 0, 0 );
+				}
+			}; // struct NoneFactory
 
 			/** p(i,j) = Ni + j */
-			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
+			template< bool row_major = true >
+			struct FullFactory {
 
-			/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
-			typedef BivariateQuadratic< -1, 0, 0, 1, 2, 0, 2 > Packed_Wide_First_type;
+				typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > poly_type;
 
-			/** p(i,j) = (j^2 + 2i + j) / 2 */
-			typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > Packed_Narrow_First_type;
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					if( row_major ){
+						return poly_type( 0, 0, 0, cols, 1, 0 );
+					} else {
+						return poly_type( 0, 0, 0, 1, rows, 0 );
+					}
+				}
+			}; // struct FullFactory
 
-			/** \internal \todo */
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type;
+			template< bool upper = true, bool row_major = true >
+			struct PackedFactory {
 
-			/** p(i,j) = i */
-			typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > Vector_type;
+				private:
 
-			/**
-			 * Polynomial factory method
-			 */
-			template< typename PolynomialType, typename... Args >
-			PolynomialType Create( Args... args ) {
-				return PolynomialType( args... );
-			}
+					/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
+					typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > Packed_Wide_First_type;
+					/** p(i,j) = (j^2 + 2i + j) / 2 */
+					typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > Packed_Narrow_First_type;
 
-			/** Specialization for Full storage of type i * dim + j */
-			template<>
-			Full_type Create< Full_type >( size_t dim ) {
-				return Full_type( 0, 0, 0, dim, 1, 0 );
-			}
+				public:
 
-			/** Specialization for Vector storage */
-			template<>
-			Vector_type Create< Vector_type >() {
-				return Vector_type( 0, 0, 0, 1, 0, 0 );
-			}
+					typedef typename std::conditional<
+						upper,
+						typename std::conditional<
+							row_major,
+							Packed_Wide_First_type,
+							Packed_Narrow_First_type
+						>::type,
+						typename std::conditional<
+							row_major,
+							Packed_Narrow_First_type,
+							Packed_Wide_First_type
+						>::type
+					>::type poly_type;
+
+					static poly_type Create( const size_t rows, const size_t cols ) {
+						assert( rows == cols );
+						if( upper ) {
+							if( row_major ) {
+								return poly_type( -1, 0, 0, 2 * cols - 1, 1, 0 );
+							} else {
+								return poly_type( 0, 1, 0, 1, 1, 0 );
+							}
+						} else {
+							if( row_major ) {
+								return poly_type( 0, 1, 0, 1, 1, 0 );
+							} else {
+								return poly_type( -1, 0, 0, 2 * rows - 1, 1, 0 );
+							}
+						}
+					}
+			}; // struct PackedFactory
+
+			struct BandFactory {
+
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					throw std::runtime_error( "Needs an implementation." );
+				}
+			}; // struct BandFactory
+
+			struct ArrayFactory {
+				/** p(i,j) = i */
+				typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return poly_type( 0, 0, 0, 1, 0, 0 );
+				}
+			};
 
 			template< enum view::Views view, typename Polynomial >
 			struct apply_view {};
@@ -160,7 +215,7 @@ namespace alp {
 
 			template< typename Polynomial >
 			struct apply_view< view::_internal, Polynomial > {
-				typedef None_type type;
+				typedef typename NoneFactory::poly_type type;
 			};
 
 			/**
