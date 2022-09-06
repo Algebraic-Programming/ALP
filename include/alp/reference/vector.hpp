@@ -388,7 +388,7 @@ namespace alp {
 
 			/** Returns the length of the vector */
 			size_t _length() const {
-				return this->amf.getLogicalDimensions().first;
+				return nrows( static_cast< const base_type & >( *this ) );
 			}
 
 
@@ -400,7 +400,16 @@ namespace alp {
 			typedef structures::General structure;
 
 			/** @see Vector::lambda_reference */
-			typedef T& lambda_reference;
+			typedef typename std::conditional<
+				internal::is_storage_based< self_type >::value,
+				T&,
+				T
+			>::type lambda_reference;
+			typedef typename std::conditional<
+				internal::is_storage_based< self_type >::value,
+				const T&,
+				const T
+			>::type const_lambda_reference;
 
 			template < view::Views view_tag, bool d=false >
 			struct view_type;
@@ -553,15 +562,15 @@ namespace alp {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
+				return this->access( this->getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 			/** \internal No implementation notes. */
-			const lambda_reference operator[]( const size_t i ) const noexcept {
+			const_lambda_reference operator[]( const size_t i ) const noexcept {
 				assert( i < _length() );
 				//assert( getInitialized( *v ) );
 				/** \internal \todo revise the third and fourth parameter for parallel backends */
-				return this->access( this->amf.getStorageIndex( i, 0, 0, 1 ) );
+				return this->access( this->getStorageIndex( i, 0, 0, 1 ) );
 			}
 
 	}; // class Vector with physical container
