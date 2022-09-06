@@ -21,10 +21,25 @@
 
 #include <alp.hpp>
 #include <alp/algorithms/cholesky.hpp>
+#include <alp/utils/parser/MatrixFileReader.hpp>
 
 using namespace alp;
 
 void alp_program( const size_t & unit, alp::RC & rc ) {
+	rc = SUCCESS;
+
+	alp::utils::MatrixFileReader<
+		double
+	> parser_A( std::string("/home/d/Repos/graphblas/datasets/mymatrix.mtx") );
+
+	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
+		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
+	}
+
+	return ;
+
+
+
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting ALP cholesky\n"
