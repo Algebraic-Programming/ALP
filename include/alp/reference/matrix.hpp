@@ -802,12 +802,39 @@ namespace alp {
 		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
 		struct determine_poly_factory {};
 
-		/** Specialization for matrices */
-		template< typename Structure, enum Backend backend >
-		struct determine_poly_factory< Structure, imf::Id, imf::Id, backend > {
+		/** Specialization for general matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::General, imf::Id, imf::Id, backend > {
 
-			/** \internal Currently the type is hard-coded. \todo Implement proper logic */
 			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for square matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::Square, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for upper-triangular matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< true, true > factory_type;
+		};
+
+		/** Specialization for lower-triangular matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::LowerTriangular, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< false, true > factory_type;
+		};
+
+		/** Specialization for symmetric matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< true, true > factory_type;
 		};
 
 		/** Specialization for vectors */
@@ -930,7 +957,7 @@ namespace alp {
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 				internal::StorageBasedMatrix< T,
-					typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
+					typename internal::determine_amf_type< Structure, View, ImfR, ImfC, reference >::type,
 					internal::requires_allocation< View >::value
 				>
 			>::type type;
