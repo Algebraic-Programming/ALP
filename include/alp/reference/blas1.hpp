@@ -3779,17 +3779,18 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AddMonoid, class AnyOp
 	>
-	RC dot( Scalar< OutputType, OutputStructure, reference > &z,
+	RC dot(
+		Scalar< OutputType, OutputStructure, reference > &z,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const typename std::enable_if_t< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
-			alp::is_operator< AnyOp >::value,
-		void >::type * const = NULL
+			alp::is_operator< AnyOp >::value
+		> * const = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
@@ -3811,12 +3812,42 @@ namespace alp {
 			"called with an output vector value type that does not match the third "
 			"domain of the given additive operator" );
 		(void)z;
-		(void)x;
-		(void)y;
-		(void)addMonoid;
-		(void)anyOp;
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		if( size( x ) != size( y ) ) {
+			return MISMATCH;
+		}
+
+		if( !( internal::getInitialized( z ) && internal::getInitialized( x ) && internal::getInitialized( y ) ) ) {
+#ifdef _DEBUG
+			std::cout << "dot(): one of input vectors or scalar are not initialized: do noting!\n";
+#endif
+			return SUCCESS;
+		}
+
+		std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > data_lambda =
+			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i, const size_t j ) {
+				(void) j;
+				internal::apply( result, x[ i ], y[ i ], anyOp );
+			};
+
+		std::function< bool() > init_lambda =
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
+			};
+
+		Vector<
+			typename AddMonoid::D3,
+			structures::General,
+			Density::Dense,
+			view::Functor< std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+		> temp(
+			init_lambda,
+			getLength( x ),
+			data_lambda
+		);
+		RC rc = foldl( z, temp, addMonoid );
+		return rc;
 	}
 
 	/** C++ scalar specialization */
