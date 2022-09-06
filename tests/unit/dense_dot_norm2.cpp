@@ -22,6 +22,9 @@
 
 using namespace alp;
 
+// disable some set() calls until set work in done
+// #define TEMP_DISABLE_SET
+
 typedef double T1;
 
 const T1 testval1 = 1.5;
@@ -56,16 +59,22 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			alp::identities::zero, alp::identities::one
 		> ring;
 
+
+		// // test 1, init
+		rc = SUCCESS;
+#ifndef TEMP_DISABLE_SET
+		rc = rc ? rc : alp::set( left, Scalar< T1 >( testval1 ) );
+		rc = rc ? rc : alp::set( right, Scalar< T1 >( testval2 ) );
+#else
 		std::vector< T1 > left_data( n );
 		std::vector< T1 > right_data( n );
 
-		// // test 1, init
 		std::fill( left_data.begin(), left_data.end(), testval1 );
 		std::fill( right_data.begin(), right_data.end(), testval2 );
 
-		rc = SUCCESS;
 		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
 		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+#endif
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
 			return;
@@ -85,9 +94,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 				  << "( " << *out << ", expected "
 				  << ( static_cast< T1 >( testval1 * testval2 * n ) )
 				  << " )\n";
-			std::cout << " --->DEVELOP continue anyway!\n";
-			// rc = FAILED;
-			// return;
+			rc = FAILED;
+			return;
 		}
 	}
 
@@ -103,20 +111,21 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			alp::identities::zero, alp::identities::logical_true
 		> pattern_sum_if;
 		rc = SUCCESS;
-		{
-			// temp initialization
-			std::vector< T1 > left_data( n );
-			std::vector< T1 > right_data( n );
-			std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
-			std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
-			rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
-			rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
-		}
-		// rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) ); // needs an implementation
-		// rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );  // needs an implementation
+#ifndef TEMP_DISABLE_SET
+		rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) );
+		rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );
+#else
+		// temp initialization
+		std::vector< T1 > left_data( n );
+		std::vector< T1 > right_data( n );
+		std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
+		std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
+		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+#endif
 
 		auto left_view_even = alp::get_view( left, alp::utils::range( 0, n, 2 ) );
-		//rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
+		rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 2 (sparse, non-standard semiring) "
 				  << "initialisation FAILED\n";
@@ -136,9 +145,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			std::cerr << "\t test 2 (sparse, non-standard semiring), "
 				  << "unexpected output: " << *out << ", expected " << n
 				  << ".\n";
-			std::cout << " --->DEVELOP continue anyway!\n";
-			// rc = FAILED;
-			// return;
+			rc = FAILED;
+			return;
 		}
 	}
 
@@ -151,17 +159,21 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	{
 		// test 3, init
 		rc = SUCCESS;
+
 		alp::Vector< int > x( n ), y( n );
-		{
-			// temp initialization
-			std::vector< T1 > x_data( n ), y_data( n );
-			std::fill( x_data.begin(), x_data.end(), 1 );
-			std::fill( y_data.begin(), y_data.end(), 2 );
-			rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
-			rc = rc ? rc : alp::buildVector( y, y_data.begin(), y_data.end() );
-		}
-		// rc = alp::set( x, 1 );
-		// rc = rc ? rc : alp::set( y, 2 );
+
+#ifndef TEMP_DISABLE_SET
+		rc = alp::set( x, Scalar< T1 >( 1 ) );
+		rc = rc ? rc : alp::set( y, Scalar< T1 >( 2 ) );
+#else
+		// temp initialization
+		std::vector< T1 > x_data( n ), y_data( n );
+		std::fill( x_data.begin(), x_data.end(), 1 );
+		std::fill( y_data.begin(), y_data.end(), 2 );
+		rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
+		rc = rc ? rc : alp::buildVector( y, y_data.begin(), y_data.end() );
+#endif
+
 		if( rc != alp::SUCCESS ) {
 			std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
 			return;
@@ -178,9 +190,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		if( *alpha != 2 * static_cast< int >( n ) ) {
 			std::cerr << "\t test 3 (dense integer vectors) unexpected value "
 				  << *alpha << ", expected 2 * n = " << ( 2 * n) << ".\n";
-			std::cout << " --->DEVELOP continue anyway!\n";
-			// rc = FAILED;
-			// return;
+			rc = FAILED;
+			return;
 		}
 	}
 
@@ -201,9 +212,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		if( *alpha != 2 * static_cast< int >(n) ) {
 			std::cerr << "\t test 4 (empty vectors) unexpected value "
 				  << *alpha << ", expected 2 * n = " << ( 2 * n ) << ".\n";
-			std::cout << " --->DEVELOP continue anyway!\n";
-			// rc = FAILED;
-			// return;
+			rc = FAILED;
+			return;
 		}
 	}
 
