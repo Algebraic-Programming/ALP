@@ -1090,8 +1090,7 @@ namespace alp {
 						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
 					>::Create(
 						ImfR( rows ),
-						ImfC( cols ),
-						rows * cols
+						ImfC( cols )
 					)
 				) {
 
@@ -1333,8 +1332,7 @@ namespace alp {
 						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
 					>::Create(
 						ImfR( rows ),
-						ImfC( cols ),
-						rows * cols
+						ImfC( cols )
 					)
 				) {
 				(void)cap;
@@ -1572,8 +1570,7 @@ namespace alp {
 						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
 					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 
@@ -1793,8 +1790,7 @@ namespace alp {
 						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
 					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 
@@ -2016,8 +2012,7 @@ namespace alp {
 						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
 					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 

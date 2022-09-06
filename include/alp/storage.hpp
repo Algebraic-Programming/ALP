@@ -113,6 +113,12 @@ namespace alp {
 					(void) cols;
 					return poly_type( 0, 0, 0, 0, 0, 0 );
 				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return 0;
+				}
 			}; // struct NoneFactory
 
 			/** p(i,j) = Ni + j */
@@ -127,6 +133,10 @@ namespace alp {
 					} else {
 						return poly_type( 0, 0, 0, 1, rows, 0 );
 					}
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					return rows * cols;
 				}
 			}; // struct FullFactory
 
@@ -172,6 +182,14 @@ namespace alp {
 							}
 						}
 					}
+
+					static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+						(void) cols;
+#endif
+						assert( rows == cols );
+						return rows * ( rows + 1 ) / 2;
+					}
 			}; // struct PackedFactory
 
 			struct BandFactory {
@@ -193,6 +211,11 @@ namespace alp {
 					(void) rows;
 					(void) cols;
 					return poly_type( 0, 0, 0, 1, 0, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					assert( ( rows == 1 ) || ( cols == 1 ) );
+					return rows * cols;
 				}
 			};
 
@@ -750,8 +773,8 @@ namespace alp {
 				 * @return  An AMF object of the type \a amf_type
 				 *
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Id imf_c, size_t storage_dimensions ) {
-					return amf_type( imf_r, imf_c, PolyFactory::Create( imf_r.n, imf_c.n ), storage_dimensions );
+				static amf_type Create( imf::Id imf_r, imf::Id imf_c ) {
+					return amf_type( imf_r, imf_c, PolyFactory::Create( imf_r.n, imf_c.n ), PolyFactory::GetStorageDimensions( imf_r.n, imf_c.n ) );
 				}
 
 				/**
@@ -774,7 +797,7 @@ namespace alp {
 				 *                 polynomial and composes the provided Strided
 				 *                 IMFs with the dummy AMF.
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, size_t storage_dimensions ) {
+				static amf_type Create( imf::Id imf_r, imf::Zero imf_c ) {
 
 					/**
 					 * Ensure that the assumptions do not break upon potential
@@ -789,7 +812,7 @@ namespace alp {
 					);
 					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::Create(
 						imf_r, imf_c,
-						FromPolynomial< PolyFactory >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), storage_dimensions )
+						FromPolynomial< PolyFactory >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
 					);
 				}
 
