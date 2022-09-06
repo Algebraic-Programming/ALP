@@ -3831,14 +3831,12 @@ namespace alp {
 		std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i, const size_t j ) {
 				(void) j;
-				//set( result, alp::identities::zero );
-				result = 0;
 				internal::apply( result, x[ i ], y[ i ], anyOp );
 			};
 
 		std::function< bool() > init_lambda =
-			[ &x, &y ]() -> bool {
-				return internal::getInitialized( x ) && internal::getInitialized( y );
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
 			};
 
 		Vector<

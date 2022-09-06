@@ -92,55 +92,55 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	}
 
 	// \todo \internal Revise test 2
-	//{
-	//	alp::Vector< T1 > left( n );
-	//	alp::Vector< T1 > right( n );
+	{
+		alp::Vector< T1 > left( n );
+		alp::Vector< T1 > right( n );
 
-	//	//test 2, init
-	//	alp::Semiring<
-	//		alp::operators::add< double >,
-	//		alp::operators::left_assign_if< T1, bool, T1 >,
-	//		alp::identities::zero, alp::identities::logical_true
-	//	> pattern_sum_if;
-	//	rc = SUCCESS;
-	//	{
-	//		// temp initialization
-	//		std::vector< T1 > left_data( n );
-	//		std::vector< T1 > right_data( n );
-	//		std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
-	//		std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
-	//		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
-	//		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
-	//	}
-	//	// rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) ); // needs an implementation
-	//	// rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );  // needs an implementation
+		//test 2, init
+		alp::Semiring<
+			alp::operators::add< double >,
+			alp::operators::left_assign_if< T1, bool, T1 >,
+			alp::identities::zero, alp::identities::logical_true
+		> pattern_sum_if;
+		rc = SUCCESS;
+		{
+			// temp initialization
+			std::vector< T1 > left_data( n );
+			std::vector< T1 > right_data( n );
+			std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
+			std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
+			rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+			rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+		}
+		// rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) ); // needs an implementation
+		// rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );  // needs an implementation
 
-	//	auto left_view_even = alp::get_view( left, alp::utils::range( 0, n, 2 ) );
-	//	//rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
-	//	if( rc != SUCCESS ) {
-	//		std::cerr << "\t test 2 (sparse, non-standard semiring) "
-	//			  << "initialisation FAILED\n";
-	//		return;
-	//	}
+		auto left_view_even = alp::get_view( left, alp::utils::range( 0, n, 2 ) );
+		//rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) "
+				  << "initialisation FAILED\n";
+			return;
+		}
 
-	//	// test 2, exec
-	//	Scalar< T1 > out( 0 );
-	//	rc = alp::dot( out, left, right, pattern_sum_if );
-	//	if( rc != SUCCESS ) {
-	//		std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
-	//		return;
-	//	}
+		// test 2, exec
+		Scalar< T1 > out( 0 );
+		rc = alp::dot( out, left, right, pattern_sum_if );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
+			return;
+		}
 
-	//	// test 2, check
-	//	if( testval3 * static_cast< T1 >( n ) != *out * 2  ) {
-	//		std::cerr << "\t test 2 (sparse, non-standard semiring), "
-	//			  << "unexpected output: " << *out << ", expected " << n
-	//			  << ".\n";
-	//		std::cout << " --->DEVELOP continue anyway!\n";
-	//		// rc = FAILED;
-	//		// return;
-	//	}
-	//}
+		// test 2, check
+		if( testval3 * static_cast< T1 >( n ) != *out * 2  ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring), "
+				  << "unexpected output: " << *out << ", expected " << n
+				  << ".\n";
+			std::cout << " --->DEVELOP continue anyway!\n";
+			// rc = FAILED;
+			// return;
+		}
+	}
 
 	Scalar< int > alpha( 0 );
 	alp::Semiring<
