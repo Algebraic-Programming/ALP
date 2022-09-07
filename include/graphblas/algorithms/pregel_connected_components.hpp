@@ -32,22 +32,25 @@ namespace grb {
 		namespace pregel {
 
 			/**
-			 * A vertex-centric Strongly Connected Components algorithm.
+			 * A vertex-centric Connected Components algorithm.
+			 *
+			 * @tparam VertexIDType A type large enough to assign an ID to each vertex
+			 *                      in the graph the algorithm is to run on.
 			 */
 			template< typename VertexIDType >
 			struct ConnectedComponents {
 
 				/**
-				 * This vertex-centric Strongly Connected Components algorithm does not
-				 * require any algorithm parameters.
+				 * This vertex-centric Connected Components algorithm does not require any
+				 * algorithm parameters.
 				 */
 				struct Data {};
 
 				/**
-				 * The vertex-centric program for computing the SCC. On termination, the
-				 * number of individual IDs in \a current_max_ID signifies the number of
-				 * components, while the value at each entry signifies which component
-				 * the vertex corresponds to.
+				 * The vertex-centric program for computing connected components. On
+				 * termination, the number of individual IDs in \a current_max_ID signifies
+				 * the number of components, while the value at each entry signifies which
+				 * component the vertex corresponds to.
 				 *
 				 * @param[in,out] current_max_ID On input: each entry is set to an unique
 				 *                               ID, corresponding to a unique ID for each
@@ -93,16 +96,16 @@ namespace grb {
 				}
 
 				/**
-				 * A convenience function that, given a Pregel instance, executes the SCC
+				 * A convenience function that, given a Pregel instance, executes the
 				 * #program.
 				 *
-				 * @param[in,out] pregel A Pregel instance over which to execute the SCC
+				 * @param[in,out] pregel A Pregel instance over which to execute the
 				 *                       program.
 				 * @param[out] group_ids The ID of the component the corresponding vertex
 				 *                       belongs to.
-				 * @param[in]  max_steps A maximum number of rounds the SCC program is
-				 *                       allowed to run. If \a 0, no maximum number of
-				 *                       rounds will be in effect.
+				 * @param[in]  max_steps A maximum number of rounds the program is allowed
+				 *                       to run. If \a 0, no maximum number of rounds will
+				 *                       be in effect.
 				 *
 				 * On succesful termination, the number of rounds is optionally written
 				 * out:
