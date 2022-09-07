@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <utility>
 
 #include <alp.hpp>
 #include <alp/algorithms/cholesky.hpp>
@@ -25,16 +26,84 @@
 
 using namespace alp;
 
-void alp_program( const size_t & unit, alp::RC & rc ) {
+
+struct inpdata {
+	size_t n = 100;
+	struct fname{
+		bool initialized = false;
+		const std::string flag="-fname";
+		std::string value;
+	};
+
+	struct nn{
+		bool initialized = false;
+		const std::string flag="-n";
+		std::string value;
+	};
+
+	typedef std::tuple< fname, nn  > pack;
+	pack packdata;
+
+	template< std::size_t I = 0, typename... Tp, typename F >
+	inline typename std::enable_if<I == sizeof...(Tp), void>::type
+	iterate_lambda(std::tuple<Tp...>& t, const F &func) {
+		(void)func;
+		(void)t;
+	};
+
+	template< std::size_t I = 0, typename... Tp, typename F >
+	inline typename std::enable_if<I < sizeof...(Tp), void>::type
+	iterate_lambda(std::tuple<Tp...>& t, const F &func) {
+		//std::cout << " " << std::get<I>(t).flag;
+		func( std::get<I>(t) );
+		iterate_lambda<I + 1, Tp...>(t, func);
+	};
+
+	void print_flags () {
+		std::cout << "available flags:\n";
+		auto lambda = [](auto &x){
+			std::cout << " " << x.flag << " " << x.initialized << " " << x.value << "\n";
+		};
+		iterate_lambda(packdata, lambda);
+		std::cout << "\n";
+	};
+
+	void set_flags ( int argc, char ** argv ) {
+		for( int i = 1 ; i < argc ; i += 2 ) {
+			std::string key = argv[ i ];
+			std::string val = argv[ i + 1 ];
+			auto lambda = [ &key, &val ] (auto &x){
+					if( x.flag ==  key ) {
+						x.value = val;
+						x.initialized = true;
+					}
+			};
+			iterate_lambda(packdata, lambda);
+		}
+	};
+
+	std::string get_fname () {
+		return (std::get<0>(packdata)).value;
+	}
+
+
+
+};
+
+
+void alp_program( const inpdata & unit, alp::RC & rc ) {
 	rc = SUCCESS;
+
+	auto fname = std::get<0>(unit.packdata).value;
 
 	alp::utils::MatrixFileReader<
 		double
-	> parser_A( std::string("/home/d/Repos/graphblas/datasets/mymatrix.mtx") );
+	> parser_A( fname );
 
 	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
 		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
 	}
+
 
 	return ;
 
@@ -46,7 +115,7 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	             "\tH = L * L^T\n";
 
 	// dimensions of sqare matrices H, L
-	size_t N = 10 * unit;
+	size_t N = 10 * unit.n;
 
 	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
 	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
@@ -62,36 +131,39 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 
 int main( int argc, char ** argv ) {
 	// defaults
-	bool printUsage = false;
-	size_t in = 100;
+	// bool printUsage = false;
+	inpdata in;
 
-	// error checking
-	if( argc > 2 ) {
-		printUsage = true;
-	}
-	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
-			printUsage = true;
-		} else {
-			// all OK
-			in = read;
-		}
-	}
-	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
-		return 1;
-	}
+	// // error checking
+	// if( argc > 2 ) {
+	// 	printUsage = true;
+	// }
+	// if( argc == 2 ) {
+	// 	size_t read;
+	// 	std::istringstream ss( argv[ 1 ] );
+	// 	if( ! ( ss >> read ) ) {
+	// 		std::cerr << "Error parsing first argument\n";
+	// 		printUsage = true;
+	// 	} else if( ! ss.eof() ) {
+	// 		std::cerr << "Error parsing first argument\n";
+	// 		printUsage = true;
+	// 	} else if( read % 2 != 0 ) {
+	// 		std::cerr << "Given value for n is odd\n";
+	// 		printUsage = true;
+	// 	} else {
+	// 		// all OK
+	// 		in.n = read;
+	// 	}
+	// }
+	// if( printUsage ) {
+	// 	std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
+	// 	std::cerr << "  -n (optional, default is 100): an even integer, the "
+	// 				 "test size.\n";
+	// 	return 1;
+	// }
+
+	in.set_flags( argc, argv );
+	in.print_flags();
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	alp::Launcher< AUTOMATIC > launcher;
