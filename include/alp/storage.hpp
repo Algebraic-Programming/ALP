@@ -33,6 +33,16 @@ namespace alp {
 
 	namespace storage {
 
+		enum StorageOrientation {
+			ROW_WISE,
+			COLUMN_WISE
+		};
+
+		enum StoredPart {
+			UPPER,
+			LOWER
+		};
+
 		/**
 		 * The namespace containts polynomials used to map coordinates
 		 * between logical and physical iteration spaces,
@@ -73,6 +83,7 @@ namespace alp {
 			struct BivariateQuadratic {
 
 				static_assert( Denominator != 0, "Denominator cannot be zero (division by zero).");
+				typedef int64_t dyn_coef_t;
 
 				static constexpr size_t Ax2 = coeffAx2;
 				static constexpr size_t Ay2 = coeffAy2;
@@ -81,12 +92,12 @@ namespace alp {
 				static constexpr size_t Ay  = coeffAy;
 				static constexpr size_t A0  = coeffA0;
 				static constexpr size_t D   = Denominator;
-				const size_t ax2, ay2, axy, ax, ay, a0;
+				const dyn_coef_t ax2, ay2, axy, ax, ay, a0;
 
 				BivariateQuadratic(
-					const size_t ax2, const size_t ay2, const size_t axy,
-					const size_t ax, const size_t ay,
-					const size_t a0 ) :
+					const dyn_coef_t ax2, const dyn_coef_t ay2, const dyn_coef_t axy,
+					const dyn_coef_t ax, const dyn_coef_t ay,
+					const dyn_coef_t a0 ) :
 					ax2( ax2 ), ay2( ay2 ), axy( axy ),
 					ax( ax ), ay( ay ),
 					a0( a0 ) {}
@@ -102,31 +113,190 @@ namespace alp {
 
 			}; // BivariateQuadratic
 
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > None_type;
-			typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > Full_type;
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Packed_type; // TODO
-			typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > Band_type; // TODO
-			typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > Vector_type;
+			/** \internal Defines the interface implemented by other polynomial factories */
+			struct AbstractFactory {
 
-			/**
-			 * Polynomial factory method
-			 */
-			template< typename PolynomialType, typename... Args >
-			PolynomialType Create( Args... args ) {
-				return PolynomialType( args... );
-			}
+				/** \internal Defines the type of the polynomial returned by Create */
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
 
-			/** Specialization for Full storage of type i * dim + j */
+				/** \internal Instantiates a polynomial */
+				static poly_type Create( const size_t rows, const size_t cols );
+
+				/** \internal Returns the size of storage associated with the defined polynomial */
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols );
+
+			}; // struct AbstractFactory
+
+			/** p(i,j) = 0 */
+			struct NoneFactory {
+
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return poly_type( 0, 0, 0, 0, 0, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return 0;
+				}
+			}; // struct NoneFactory
+
+			/** p(i,j) = Ni + j */
+			template< bool row_major = true >
+			struct FullFactory {
+
+				typedef BivariateQuadratic< 0, 0, 0, 1, 1, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					if( row_major ){
+						return poly_type( 0, 0, 0, cols, 1, 0 );
+					} else {
+						return poly_type( 0, 0, 0, 1, rows, 0 );
+					}
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					return rows * cols;
+				}
+			}; // struct FullFactory
+
+			/** Implements packed, triangle-like storage */
+			template< enum StoredPart stored_part, enum StorageOrientation orientation >
+			struct PackedFactory;
+
+			/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
 			template<>
-			Full_type Create< Full_type >( size_t dim ) {
-				return Full_type( 0, 0, 0, dim, 1, 0 );
-			}
+			struct PackedFactory< UPPER, ROW_WISE > {
 
-			/** Specialization for Vector storage */
+				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+					(void) rows;
+#endif
+					assert( rows == cols );
+					return poly_type( -1, 0, 0, 2 * cols - 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			};
+
+			/** p(i,j) = (j^2 + 2i + j) / 2 */
 			template<>
-			Vector_type Create< Vector_type >() {
-				return Vector_type( 0, 0, 0, 1, 0, 0 );
-			}
+			struct PackedFactory< UPPER, COLUMN_WISE > {
+
+				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+					(void) rows;
+#endif
+					assert( rows == cols );
+					return poly_type( 0, 1, 0, 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			}; // struct PackedFactory
+
+			/** p(i,j) = (i^2 + i + 2j) / 2 */
+			template<>
+			struct PackedFactory< LOWER, ROW_WISE > {
+
+				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+					(void) rows;
+#endif
+					assert( rows == cols );
+					return poly_type( 1, 0, 0, 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			}; // struct PackedFactory
+
+			/** p(i,j) = (-j^2 + 2i + (2M - 1)j) / 2 */
+			template<>
+			struct PackedFactory< LOWER, COLUMN_WISE > {
+
+				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) rows;
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return poly_type( 0, -1, 0, 1, 2 * rows - 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			};
+
+			template< size_t l, size_t u, bool row_wise >
+			struct BandFactory {
+
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					throw std::runtime_error( "Needs an implementation." );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					throw std::runtime_error( "Needs an implementation." );
+				}
+			}; // struct BandFactory
+
+			struct ArrayFactory {
+				/** p(i,j) = i */
+				typedef BivariateQuadratic< 0, 0, 0, 1, 0, 0, 1 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					return poly_type( 0, 0, 0, 1, 0, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+					assert( ( rows == 1 ) || ( cols == 1 ) );
+					return rows * cols;
+				}
+			};
 
 			template< enum view::Views view, typename Polynomial >
 			struct apply_view {};
@@ -148,7 +318,7 @@ namespace alp {
 
 			template< typename Polynomial >
 			struct apply_view< view::_internal, Polynomial > {
-				typedef None_type type;
+				typedef typename NoneFactory::poly_type type;
 			};
 
 			/**
@@ -666,10 +836,10 @@ namespace alp {
 			 * @tparam PolyType  Type of the mapping polynomial.
 			 *
 			 */
-			template< typename PolyType >
+			template< typename PolyFactory >
 			struct FromPolynomial {
 
-				typedef AMF< imf::Id, imf::Id, PolyType > amf_type;
+				typedef AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > amf_type;
 
 				/**
 				 * Factory method used by 2D containers.
@@ -682,8 +852,8 @@ namespace alp {
 				 * @return  An AMF object of the type \a amf_type
 				 *
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Id imf_c, PolyType poly, size_t storage_dimensions ) {
-					return amf_type( imf_r, imf_c, poly, storage_dimensions );
+				static amf_type Create( imf::Id imf_r, imf::Id imf_c ) {
+					return amf_type( imf_r, imf_c, PolyFactory::Create( imf_r.n, imf_c.n ), PolyFactory::GetStorageDimensions( imf_r.n, imf_c.n ) );
 				}
 
 				/**
@@ -706,7 +876,7 @@ namespace alp {
 				 *                 polynomial and composes the provided Strided
 				 *                 IMFs with the dummy AMF.
 				 */
-				static amf_type Create( imf::Id imf_r, imf::Zero imf_c, PolyType poly, size_t storage_dimensions ) {
+				static amf_type Create( imf::Id imf_r, imf::Zero imf_c ) {
 
 					/**
 					 * Ensure that the assumptions do not break upon potential
@@ -715,13 +885,13 @@ namespace alp {
 					static_assert(
 						std::is_same<
 							amf_type,
-							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::amf_type
+							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::amf_type
 						>::value,
 						"The factory method returns the object of different type than declared. This is a bug."
 					);
-					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, PolyType > >::Create(
+					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::Create(
 						imf_r, imf_c,
-						FromPolynomial< PolyType >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ), poly, storage_dimensions )
+						FromPolynomial< PolyFactory >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
 					);
 				}
 

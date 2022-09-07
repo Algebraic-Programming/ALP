@@ -800,32 +800,48 @@ namespace alp {
 		 *
 		 */
 		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
-		struct PolyFactory {};
+		struct determine_poly_factory {};
 
-		/** Specialization for matrices */
-		template< typename Structure, enum Backend backend >
-		struct PolyFactory< Structure, imf::Id, imf::Id, backend > {
+		/** Specialization for general matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::General, imf::Id, imf::Id, backend > {
 
-			/** \internal Currently the type is hard-coded. \todo Implement proper logic */
-			typedef storage::polynomials::Full_type type;
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
 
-			static type Create( const size_t nrows, const size_t ncols ) {
-				(void)nrows;
-				return type( 0, 0, 0, ncols, 1, 0 );
-			}
+		/** Specialization for square matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::Square, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for upper-triangular matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
+		};
+
+		/** Specialization for lower-triangular matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::LowerTriangular, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< storage::LOWER, storage::ROW_WISE > factory_type;
+		};
+
+		/** Specialization for symmetric matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for vectors */
 		template< typename Structure, enum Backend backend >
-		struct PolyFactory< Structure, imf::Id, imf::Zero, backend > {
+		struct determine_poly_factory< Structure, imf::Id, imf::Zero, backend > {
 
-			typedef storage::polynomials::Vector_type type;
-
-			static type Create( const size_t nrows, const size_t ncols ) {
-				(void)nrows;
-				(void)ncols;
-				return type( 0, 0, 0, 1, 0, 0 );
-			}
+			typedef storage::polynomials::ArrayFactory factory_type;
 		};
 
 		/**
@@ -909,7 +925,7 @@ namespace alp {
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				typename PolyFactory< Structure, imf::Id, ImfC, reference >::type
+				typename determine_poly_factory< Structure, imf::Id, ImfC, reference >::factory_type
 			>::amf_type type;
 		};
 
@@ -923,7 +939,7 @@ namespace alp {
 			);
 
 			typedef typename storage::AMFFactory::FromPolynomial<
-				storage::polynomials::None_type
+				storage::polynomials::NoneFactory
 			>::amf_type type;
 		};
 
@@ -941,7 +957,7 @@ namespace alp {
 				internal::is_view_over_functor< View >::value,
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 				internal::StorageBasedMatrix< T,
-					typename internal::determine_amf_type< structures::General, View, ImfR, ImfC, reference >::type,
+					typename internal::determine_amf_type< Structure, View, ImfR, ImfC, reference >::type,
 					internal::requires_allocation< View >::value
 				>
 			>::type type;
@@ -1070,11 +1086,11 @@ namespace alp {
 			 */
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( rows ),
-						ImfC( cols ),
-						internal::PolyFactory< structures::General, ImfR, ImfC, reference >::Create( rows, cols ),
-						rows * cols
+						ImfC( cols )
 					)
 				) {
 
@@ -1312,11 +1328,11 @@ namespace alp {
 			 */
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( rows ),
-						ImfC( cols ),
-						internal::PolyFactory< structure, ImfR, ImfC, reference >::Create( rows, cols ),
-						rows * cols
+						ImfC( cols )
 					)
 				) {
 				(void)cap;
@@ -1550,11 +1566,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						internal::PolyFactory< structures::Square, ImfR, ImfC, reference >::Create( dim, dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 
@@ -1770,11 +1786,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						internal::PolyFactory< structures::Symmetric, ImfR, ImfC, reference >::Create( dim, dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 
@@ -1992,11 +2008,11 @@ namespace alp {
 			 */
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial< typename base_type::amf_type::mapping_polynomial_type >::Create(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
 						ImfR( dim ),
-						ImfC( dim ),
-						internal::PolyFactory< structures::UpperTriangular, ImfR, ImfC, reference >::Create( dim, dim ),
-						dim * dim
+						ImfC( dim )
 					)
 				) {
 
