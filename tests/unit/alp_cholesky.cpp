@@ -90,6 +90,30 @@ struct inpdata {
 
 };
 
+template< typename T, typename Structure >
+void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
+
+	if( ! alp::internal::getInitialized( A ) ) {
+		std::cout << "Matrix " << name << " uninitialized.\n";
+		return;
+	}
+
+	std::cout << name << ":" << std::endl;
+	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
+		std::cout << "[\t";
+		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
+			if ( col < row ) {
+				std::cout << 0 << "\t";
+			} else {
+				auto pos  = internal::getStorageIndex( A, row, col );
+				std::cout << internal::access(A, pos ) << "\t";
+			}
+		}
+		std::cout << "]" << std::endl;
+	}
+}
+
+
 
 void alp_program( const inpdata & unit, alp::RC & rc ) {
 	rc = SUCCESS;
@@ -100,13 +124,26 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 		double
 	> parser_A( fname );
 
+	size_t N = parser_A.n();
+	std::cout << "parser_A.n() = " << parser_A.n() << "\n";
+	std::vector< double > A_data_full( N * N , 0 );
+	std::vector< double > A_data( N * ( N + 1 ) / 2, 0 );
+
 	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
-		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
+		//std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
+		auto i = it.i();
+		auto j = it.j();
+		auto v = it.v();
+		A_data_full[ i * N + j  ] = v;
 	}
 
-
-	return ;
-
+	size_t k = 0;
+	for( size_t i = 0; i < N ; ++i ){
+		for( size_t j = i; j < N ; ++j ){
+			A_data[ k ] =  A_data_full[ i * N + j  ];
+			k++;
+		}
+	}
 
 
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
@@ -115,18 +152,33 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	             "\tH = L * L^T\n";
 
 	// dimensions of sqare matrices H, L
-	size_t N = 10 * unit.n;
 
 	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
 	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
 
         alp::Scalar< double > zero_scalar( ring.getZero< double >() );
         alp::Scalar< double > one_scalar( ring.getOne< double >() );
+	if( !internal::getInitialized( zero_scalar ) ) {
+		std::cout << " zero_scalar is not initialized\n";
+	}
 
-        rc = alp::set( H, one_scalar );
-	rc = alp::set( L, one_scalar );
+        // rc = alp::set( H, one_scalar );
+	rc = rc ? rc : alp::buildMatrix( H, A_data.begin(), A_data.end() );
+	if( !internal::getInitialized( H ) ) {
+		std::cout << " Matrix H is not initialized\n";
+	}
 
-	rc = algorithms::cholesky_lowtr( L, H, ring );
+	print_matrix( std::string(" << H >> "), H);
+	print_matrix( std::string(" << L >> "), L);
+
+	rc = rc ? rc : alp::set( L, zero_scalar );
+	if( !internal::getInitialized( L ) ) {
+		std::cout << " Matrix L is not initialized\n";
+	}
+
+	rc = rc ? rc : algorithms::cholesky_lowtr( L, H, ring );
+
+	print_matrix( std::string(" << L >> "), L);
 }
 
 int main( int argc, char ** argv ) {
