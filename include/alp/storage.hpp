@@ -254,11 +254,18 @@ namespace alp {
 				}
 			};
 
+			template< size_t l, size_t u, bool row_wise >
 			struct BandFactory {
 
 				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
 
 				static poly_type Create( const size_t rows, const size_t cols ) {
+					(void) rows;
+					(void) cols;
+					throw std::runtime_error( "Needs an implementation." );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
 					(void) rows;
 					(void) cols;
 					throw std::runtime_error( "Needs an implementation." );
