@@ -73,7 +73,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< void,
-		std::conditional< (sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		std::conditional<
+			(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
 			grb::config::RowIndexType,
 			grb::config::ColIndexType
 		>::type
@@ -221,7 +222,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
@@ -261,7 +262,7 @@ int main( int argc, char ** argv ) {
 		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
 			verification = true;
 			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+				(void) strncpy( truth_filename, argv[ 6 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
@@ -294,7 +295,7 @@ int main( int argc, char ** argv ) {
 		}
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
-				<< (int)rc << std::endl;
+				<< grb::toString( rc ) << std::endl;
 			return 6;
 		}
 	}
