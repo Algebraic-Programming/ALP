@@ -25,8 +25,8 @@
 namespace alp {
 
 	namespace algorithms {
-		template< typename T, typename Structure >
-		void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
+		template< typename M >
+		void print_matrix( std::string name, const M & A) {
 
 			if( ! alp::internal::getInitialized( A ) ) {
 				std::cout << "Matrix " << name << " uninitialized.\n";
@@ -93,7 +93,11 @@ namespace alp {
 
 			for( size_t k = 0; k < n ; ++k ) {
 
-				auto v = get_view( LL , utils::range( k, n) , k );
+				auto v = get_view( LL, k, utils::range( k, n ) );
+#ifdef DEBUG
+				auto v_view = alp::get_view< view::matrix >( v );
+				print_matrix( " -- v --  " , v_view );
+#endif
 
 				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
 				Scalar< D > alpha;
@@ -172,10 +176,10 @@ namespace alp {
 			for( size_t k = 0; k < n ; ++k ) {
 
 				// L[ k: , k ] = LL[ k: , k ]
-				auto vL  = get_view( L  , utils::range( k, n), k  );
+				auto vL  = get_view( L  , k, utils::range( k, n )  );
 
 
-				auto vLL = get_view( LL , utils::range( k, n), k  );
+				auto vLL = get_view( LL , k, utils::range( k, n )  );
 
 				rc = set( vL, vLL );
 #ifdef DEBUG
