@@ -54,6 +54,31 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	rc = set( C, A );
 	assert( rc == alp::MISMATCH );
 
+	// set a symmetric matrix to a scalar
+	alp::Matrix< T, alp::structures::Symmetric > D( n, n );
+	rc = set( D, one_scalar );
+	assert( rc == alp::SUCCESS );
+	assert( alp::internal::getInitialized( D ) );
+	for( size_t i = 0; i < nrows( D ); ++i ) {
+		for( size_t j = i; j < ncols( D ); ++j ) {
+			assert( *one_scalar == alp::internal::access( D, alp::internal::getStorageIndex( D, i, j ) ) );
+		}
+	}
+
+	// set a symmetric matrix to another symmetric matrix
+	alp::Matrix< T, alp::structures::Symmetric > E( n, n );
+	rc = set( E, D );
+	assert( rc == alp::SUCCESS );
+	assert( alp::internal::getInitialized( E ) );
+	for( size_t i = 0; i < nrows( E ); ++i ) {
+		for( size_t j = i; j < ncols( E ); ++j ) {
+			assert(
+				alp::internal::access( E, alp::internal::getStorageIndex( E, i, j ) ) ==
+				alp::internal::access( D, alp::internal::getStorageIndex( D, i, j ) )
+			);
+		}
+	}
+
 	alp::Vector< T > v( n );
 	assert( !alp::internal::getInitialized( v ) );
 
