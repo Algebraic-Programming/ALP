@@ -505,9 +505,11 @@ namespace grb {
 						"The combiner must be an associate operator"
 					);
 					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
-						"The combiner left-hand input domain should match the incoming message type." );
+						"The combiner left-hand input domain should match the incoming message "
+						"type." );
 					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
-						"The combiner right-hand input domain should match the incoming message type." );
+						"The combiner right-hand input domain should match the incoming message "
+						"type." );
 					static_assert( std::is_same< typename Op::D1, IncomingMessageType >::value,
 						"The combiner output domain should match the incoming message type." );
 
