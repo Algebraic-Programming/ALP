@@ -125,7 +125,7 @@ add_grb_executables( pregel_pagerank_global pregel_pagerank.cpp
 	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=false
 )
 
-add_grb_executables( pregel_strongly_connected_components pregel_strongly_connected_components.cpp
+add_grb_executables( pregel_connected_components pregel_connected_components.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 

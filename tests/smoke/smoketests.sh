@@ -302,14 +302,14 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			echo ">>>      [x]           [ ]       Testing the Pregel strongly-connected components algorithm. Verifies"
+			echo ">>>      [x]           [ ]       Testing the Pregel connected components algorithm. Verifies"
 			echo "                                 using a simple regression test in number of rounds required."
 			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-				$runner ${TEST_BIN_DIR}/pregel_strongly_connected_components_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log
-				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
+				$runner ${TEST_BIN_DIR}/pregel_connected_components_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
 					echo "Test FAILED"
-				elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/pregel_strongly_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
+				elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
 					echo "Verification FAILED"
 					echo "Test FAILED"
 				else
