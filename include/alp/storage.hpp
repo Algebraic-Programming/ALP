@@ -103,6 +103,20 @@ namespace alp {
 
 			}; // BivariateQuadratic
 
+			/** \internal Defines the interface implemented by other polynomial factories */
+			struct AbstractFactory {
+
+				/** \internal Defines the type of the polynomial returned by Create */
+				typedef BivariateQuadratic< 0, 0, 0, 0, 0, 0, 1 > poly_type;
+
+				/** \internal Instantiates a polynomial */
+				static poly_type Create( const size_t rows, const size_t cols );
+
+				/** \internal Returns the size of storage associated with the defined polynomial */
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols );
+
+			}; // struct AbstractFactory
+
 			/** p(i,j) = 0 */
 			struct NoneFactory {
 
