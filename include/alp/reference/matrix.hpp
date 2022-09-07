@@ -2742,6 +2742,7 @@ namespace alp {
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
 	>::template change_container< alp::Vector >::_and_::
+	template change_structure< structures::General >::_and_::
 	template change_imfc< imf::Constant >::type
 	get_view(
 		SourceMatrix &source,
@@ -2751,6 +2752,7 @@ namespace alp {
 		using target_t = typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::gather >::type
 		>::template change_container< alp::Vector >::_and_::
+		template change_structure< structures::General >::_and_::
 		template change_imfc< imf::Constant >::type;
 
 		return target_t(
@@ -2793,6 +2795,7 @@ namespace alp {
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::transpose >::type::template view_type< view::gather >::type
 	>::template change_container< alp::Vector >::_and_::
+	template change_structure< structures::General >::_and_::
 	template change_imfc< imf::Constant >::type
 	get_view(
 		SourceMatrix &source,
