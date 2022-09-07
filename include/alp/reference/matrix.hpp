@@ -820,21 +820,21 @@ namespace alp {
 		template< enum Backend backend >
 		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, backend > {
 
-			typedef storage::polynomials::PackedFactory< true, true > factory_type;
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for lower-triangular matrix */
 		template< enum Backend backend >
 		struct determine_poly_factory< structures::LowerTriangular, imf::Id, imf::Id, backend > {
 
-			typedef storage::polynomials::PackedFactory< false, true > factory_type;
+			typedef storage::polynomials::PackedFactory< storage::LOWER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for symmetric matrix */
 		template< enum Backend backend >
 		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, backend > {
 
-			typedef storage::polynomials::PackedFactory< true, true > factory_type;
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for vectors */

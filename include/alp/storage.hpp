@@ -33,6 +33,16 @@ namespace alp {
 
 	namespace storage {
 
+		enum StorageOrientation {
+			ROW_WISE,
+			COLUMN_WISE
+		};
+
+		enum StoredPart {
+			UPPER,
+			LOWER
+		};
+
 		/**
 		 * The namespace containts polynomials used to map coordinates
 		 * between logical and physical iteration spaces,
@@ -155,12 +165,12 @@ namespace alp {
 			}; // struct FullFactory
 
 			/** Implements packed, triangle-like storage */
-			template< bool upper, bool row_major >
+			template< enum StoredPart stored_part, enum StorageOrientation orientation >
 			struct PackedFactory;
 
 			/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
 			template<>
-			struct PackedFactory< true, true > {
+			struct PackedFactory< UPPER, ROW_WISE > {
 
 				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
 
@@ -184,7 +194,7 @@ namespace alp {
 
 			/** p(i,j) = (j^2 + 2i + j) / 2 */
 			template<>
-			struct PackedFactory< true, false > {
+			struct PackedFactory< UPPER, COLUMN_WISE > {
 
 				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
 
@@ -208,7 +218,7 @@ namespace alp {
 
 			/** p(i,j) = (i^2 + i + 2j) / 2 */
 			template<>
-			struct PackedFactory< false, true > {
+			struct PackedFactory< LOWER, ROW_WISE > {
 
 				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
 
@@ -232,7 +242,7 @@ namespace alp {
 
 			/** p(i,j) = (-j^2 + 2i + (2M - 1)j) / 2 */
 			template<>
-			struct PackedFactory< false, false > {
+			struct PackedFactory< LOWER, COLUMN_WISE > {
 
 				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
 
