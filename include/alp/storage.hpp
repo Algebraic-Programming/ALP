@@ -154,57 +154,105 @@ namespace alp {
 				}
 			}; // struct FullFactory
 
-			template< bool upper = true, bool row_major = true >
-			struct PackedFactory {
+			/** Implements packed, triangle-like storage */
+			template< bool upper, bool row_major >
+			struct PackedFactory;
 
-				private:
+			/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
+			template<>
+			struct PackedFactory< true, true > {
 
-					/** p(i,j) = (-i^2 + (2N - 1)i + 2j) / 2 */
-					typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > Packed_Wide_First_type;
-					/** p(i,j) = (j^2 + 2i + j) / 2 */
-					typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > Packed_Narrow_First_type;
+				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
 
-				public:
-
-					typedef typename std::conditional<
-						upper,
-						typename std::conditional<
-							row_major,
-							Packed_Wide_First_type,
-							Packed_Narrow_First_type
-						>::type,
-						typename std::conditional<
-							row_major,
-							Packed_Narrow_First_type,
-							Packed_Wide_First_type
-						>::type
-					>::type poly_type;
-
-					static poly_type Create( const size_t rows, const size_t cols ) {
-						assert( rows == cols );
-						if( upper ) {
-							if( row_major ) {
-								return poly_type( -1, 0, 0, 2 * cols - 1, 1, 0 );
-							} else {
-								return poly_type( 0, 1, 0, 1, 1, 0 );
-							}
-						} else {
-							if( row_major ) {
-								return poly_type( 0, 1, 0, 1, 1, 0 );
-							} else {
-								return poly_type( -1, 0, 0, 2 * rows - 1, 1, 0 );
-							}
-						}
-					}
-
-					static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+				static poly_type Create( const size_t rows, const size_t cols ) {
 #ifndef DEBUG
-						(void) cols;
+					(void) cols;
+					(void) rows;
 #endif
-						assert( rows == cols );
-						return rows * ( rows + 1 ) / 2;
-					}
+					assert( rows == cols );
+					return poly_type( -1, 0, 0, 2 * cols - 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			};
+
+			/** p(i,j) = (j^2 + 2i + j) / 2 */
+			template<>
+			struct PackedFactory< true, false > {
+
+				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+					(void) rows;
+#endif
+					assert( rows == cols );
+					return poly_type( 0, 1, 0, 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
 			}; // struct PackedFactory
+
+			/** p(i,j) = (i^2 + i + 2j) / 2 */
+			template<>
+			struct PackedFactory< false, true > {
+
+				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+					(void) rows;
+#endif
+					assert( rows == cols );
+					return poly_type( 1, 0, 0, 1, 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			}; // struct PackedFactory
+
+			/** p(i,j) = (-j^2 + 2i + (2M - 1)j) / 2 */
+			template<>
+			struct PackedFactory< false, false > {
+
+				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
+
+				static poly_type Create( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) rows;
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return poly_type( 0, -1, 0, 1, 2 * rows - 1, 0 );
+				}
+
+				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
+#ifndef DEBUG
+					(void) cols;
+#endif
+					assert( rows == cols );
+					return rows * ( rows + 1 ) / 2;
+				}
+			};
 
 			struct BandFactory {
 
