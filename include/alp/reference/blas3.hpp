@@ -1298,8 +1298,8 @@ namespace alp {
 			constexpr bool sym_up_a { is_sym_a };
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
-			const std::ptrdiff_t i_u_lim = std::min( M, l + N );
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
+			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
 
 			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
 				/** j-coordinate lower and upper limits considering matrix size and symmetry */
@@ -1312,9 +1312,9 @@ namespace alp {
 				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 					if( sym_up_c == sym_up_a ) {
-						c_val = internal::access( C, internal::getStorageIndex( A, i, j ) );
+						c_val = internal::access( A, internal::getStorageIndex( A, i, j ) );
 					} else {
-						c_val = internal::access( C, internal::getStorageIndex( A, j, i ) );
+						c_val = internal::access( A, internal::getStorageIndex( A, j, i ) );
 					}
 				}
 			}
@@ -1347,8 +1347,6 @@ namespace alp {
 		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
 	) noexcept {
-		(void)C;
-		(void)A;
 		static_assert( ! std::is_same< OutputType, void >::value,
 			"alp::set (set to value): cannot have a pattern "
 			"matrix as output" );
@@ -1379,7 +1377,13 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		return internal::set_band< 0 >( C, A );
+		RC rc = internal::set_band< 0 >( C, A );
+
+		if( rc == SUCCESS ) {
+			internal::setInitialized( C, true );
+		}
+
+		return rc;
 	}
 
 	namespace internal {
@@ -1447,8 +1451,8 @@ namespace alp {
 			constexpr bool sym_up_c { is_sym_c };
 
 			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), u );
-			const std::ptrdiff_t i_u_lim = std::min( M, l + N );
+			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
+			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
 
 			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
 				/** j-coordinate lower and upper limits considering matrix size and symmetry */
@@ -1514,9 +1518,13 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		internal::setInitialized( C, true );
+		RC rc = internal::set_band< 0 >( C, val );
 
-		return internal::set_band< 0 >( C, val );
+		if( rc == SUCCESS ) {
+			internal::setInitialized( C, true );
+		}
+
+		return rc;
 	}
 
 } // end namespace ``alp''
