@@ -20,10 +20,34 @@
 #include <alp.hpp>
 
 #define TEMP_DISABLE
+#define DEBUG
 
 namespace alp {
 
 	namespace algorithms {
+		template< typename T, typename Structure >
+		void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
+
+			if( ! alp::internal::getInitialized( A ) ) {
+				std::cout << "Matrix " << name << " uninitialized.\n";
+				return;
+			}
+
+			std::cout << name << ":" << std::endl;
+			for( size_t row = 0; row < alp::nrows( A ); ++row ) {
+				std::cout << "[\t";
+				for( size_t col = 0; col < alp::ncols( A ); ++col ) {
+					if ( col < row ) {
+						std::cout << 0 << "\t";
+					} else {
+						auto pos  = internal::getStorageIndex( A, row, col );
+						std::cout << internal::access(A, pos ) << "\t";
+					}
+				}
+				std::cout << "]" << std::endl;
+			}
+		}
+
 
 		/**
 		 * @brief Computes the Cholesky decomposition LL^T = H of a real symmetric
@@ -59,6 +83,13 @@ namespace alp {
 			// Out of place specification of the operation
 			Matrix< D, structures::Symmetric, Dense > LL( n, n );
 			rc = set( LL, H );
+#ifdef DEBUG
+			if( rc != SUCCESS ) {
+				std::cerr << " set( LL, H ) failed\n";
+				return rc;
+			}
+#endif
+			print_matrix( " -- LL --  " , LL );
 
 			for( size_t k = 0; k < n ; ++k ) {
 
@@ -80,6 +111,13 @@ namespace alp {
 					}, v
 				);
 
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (0) failed\n";
+					return rc;
+				}
+#endif
+
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
 				rc = eWiseLambda(
 					[ &alpha, &divide ]( const size_t i, D &val ) {
@@ -90,6 +128,12 @@ namespace alp {
 					v
 				);
 
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (1) failed\n";
+					return rc;
+				}
+#endif
 
 				// LL[ k+1: , k+1: ] -= v*v^T
 				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
@@ -106,8 +150,20 @@ namespace alp {
 					},
 					LLprim
 				);
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (2) failed\n";
+					return rc;
+				}
+#endif
 #else
 				rc = foldl( LLprim, vvt, minus );
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " foldl( view, outer, minus ) failed\n";
+					return rc;
+				}
+#endif
 #endif
 
 			}
@@ -117,12 +173,20 @@ namespace alp {
 
 				// L[ k: , k ] = LL[ k: , k ]
 				auto vL  = get_view( L  , utils::range( k, n), k  );
+
+
 				auto vLL = get_view( LL , utils::range( k, n), k  );
 
 				rc = set( vL, vLL );
-
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " set( view, view ) failed\n";
+					return rc;
+				}
+#endif
 			}
 
+			assert( rc == SUCCESS );
 			return rc;
 		}
 
