@@ -176,7 +176,7 @@ namespace alp {
 			*p = *it;
 		}
 
-		return PANIC;
+		return SUCCESS;
 	}
 
 	/**
