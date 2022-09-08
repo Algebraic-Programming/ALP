@@ -155,6 +155,14 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	rc = rc ? rc : algorithms::cholesky_lowtr( L, H, ring );
 
 	print_matrix( std::string(" << L >> "), L);
+
+	alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
+	alp::set( LLT, zero_scalar );
+	print_matrix( " LLT ", LLT );
+	auto LT = alp::get_view< alp::view::transpose >( L );
+	print_matrix( " LT ", LT );
+	alp::mxm( LLT, LT, L, ring );
+	print_matrix( " LLT ", LLT );
 }
 
 int main( int argc, char ** argv ) {
