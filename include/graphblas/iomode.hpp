@@ -23,6 +23,7 @@
 #ifndef _H_GRB_IOMODE
 #define _H_GRB_IOMODE
 
+
 namespace grb {
 
 	/**
@@ -91,3 +92,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end ``_H_GRB_IOMODE''
+
