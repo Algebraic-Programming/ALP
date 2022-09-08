@@ -35,6 +35,9 @@ namespace alp {
 				/** The various files supported for reading. */
 				enum Type { MATRIX_MARKET, SNAP };
 
+				/** Matrix Market formats. */
+				enum MMformats { COORDINATE, ARRAY };
+
 				/** The filename of the matrix file. */
 				std::string _fn;
 
@@ -66,9 +69,6 @@ namespace alp {
 				 */
 				size_t _entries;
 
-				/** Whether the file to be read is pattern-only. */
-				bool _pattern;
-
 				/** Whether the file is symmetric or not. */
 				bool _symmetric;
 
@@ -89,6 +89,9 @@ namespace alp {
 
 				/** The type of the file. */
 				Type _type;
+
+				/** The type MM format. */
+				MMformats _mmformat;
 			};
 
 		} // namespace internal

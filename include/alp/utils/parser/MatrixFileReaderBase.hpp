@@ -44,7 +44,7 @@ namespace alp {
 			 * @tparam T The type a nonzero value iterator should return. Can be set to \a void in case the values are not of interest.
 			 * @tparam S (Optional) The type an nonzero index iterator should return. Default value: \a size_t.
 			 */
-			template< typename T, typename S >
+			template< typename T, typename S = size_t >
 			class MatrixFileReaderBase {
 
 			protected:
@@ -79,65 +79,98 @@ namespace alp {
 					// assume input is matrix market until we detect otherwise
 					bool mmfile = true;
 					std::string line;
+
 					// try and parse header
 					if( ! std::getline( infile, line ) ) {
 						// some type of error occurred-- rewind and let a non-mmfile parse try
 						mmfile = false;
 						(void)infile.seekg( start );
 					}
-					if( mmfile && ( line.size() < 14 || line.substr( 0, 14 ) != "%%MatrixMarket" ) ) {
+
+					std::stringstream streamline(line);
+					std::string wordinline;
+
+					if( mmfile && ( streamline >> wordinline ) && wordinline != "%%MatrixMarket" ) {
 						// some type of error occurred-- rewind and let a non-mmfile parse try
 						mmfile = false;
 						(void)infile.seekg( start );
 					}
+
 					if( mmfile ) {
-						std::cerr << "Info: MatrixMarket file detected. Header "
-									 "line: ``"
-								  << line << "''\n";
+						std::cerr << "Info: MatrixMarket file detected. Header line: ``"
+							  << line << "''\n";
 						// matrix market files are always 1-based
 						properties._oneBased = true;
 						properties._direct = true;
 						// parse header: object type
-						if( line.substr( 15, 6 ) != "matrix" ) {
-							throw std::runtime_error( "MatrixMarket file does "
-													  "not describe a "
-													  "matrix." );
+						if( !( streamline >> wordinline ) || wordinline != "matrix" ) {
+							throw std::runtime_error(
+								"MatrixMarket file does "
+								"not describe a "
+								"matrix."
+							);
 						}
 						// parse header: format type
-						if( line.substr( 22, 10 ) != "coordinate" ) {
-							throw std::runtime_error( "This parser only "
-													  "understands coordinate "
-													  "matrix storage." );
+						if ( streamline >> wordinline ) {
+							if( wordinline == "coordinate" ) {
+								properties._mmformat = MatrixFileProperties::MMformats::COORDINATE;
+								throw std::runtime_error(
+									"Matrix Market Coordinate format "
+									"should not be used in ALP."
+									"Please use GRB parser for sparse matrices (Coordinate format)."
+								);
+							} else if ( wordinline == "array" ) {
+								properties._mmformat = MatrixFileProperties::MMformats::ARRAY;
+								properties._direct = false;
+							} else {
+								throw std::runtime_error( "This parser only "
+											  "understands coordinate and array "
+											  "matrix storage." );
+							}
+						} else {
+							std::cout << "wordinline = " << wordinline << "\n";
+							throw std::runtime_error(
+								"Cannot parse matrix file header file."
+							);
 						}
 						// parse header: nonzero value type
-						unsigned int offset;
-						if( line.substr( 33, 7 ) == "pattern" ) {
-							properties._pattern = true;
-							offset = 7;
-						} else {
-							if( line.substr( 33, 4 ) != "real" ) {
-								throw std::runtime_error( "This parser only "
-														  "understands pattern "
-														  "or real matrices." );
-							} else {
-								properties._pattern = false;
+						if ( streamline >> wordinline ) {
+							if( wordinline != "real" ) {
+								throw std::runtime_error(
+									"This parser only "
+									"understands real matrices."
+								);
 							}
-							offset = 4;
+						} else {
+							std::cout << "wordinline = " << wordinline << "\n";
+							throw std::runtime_error(
+								"Cannot parse matrix file header file."
+							);
 						}
+
 						// parse header: structural information
-						++offset; // account for space
-						if( line.substr( 33 + offset, 9 ) == "symmetric" ) {
-							properties._symmetric = true;
-						} else {
-							if( line.substr( 33 + offset, 7 ) == "general" ) {
-								properties._symmetric = false;
+						if ( streamline >> wordinline ) {
+							if( wordinline == "symmetric" ) {
+								properties._symmetric = true;
 							} else {
-								throw std::runtime_error( "This parser only "
-														  "understands "
-														  "symmetric or "
-														  "general matrices." );
+								if( wordinline == "general" ) {
+									properties._symmetric = false;
+								} else {
+									throw std::runtime_error(
+										"This parser only "
+										"understands "
+										"symmetric or "
+										"general matrices."
+									);
+								}
 							}
+						} else {
+							std::cout << "wordinline = " << wordinline << "\n";
+							throw std::runtime_error(
+								"Cannot parse matrix file header file."
+							);
 						}
+
 						// ignore all comment lines
 						ignoreComments( infile );
 						// parse first header line
@@ -150,17 +183,39 @@ namespace alp {
 							std::istringstream iss( line );
 							// set defaults
 							properties._m = properties._n = properties._nz = properties._entries = 0;
-							if( ! ( iss >> properties._m >> properties._n >> properties._entries ) ) {
-								// could not read length line-- let a non-mtx parser try
-								mmfile = false;
-							} else {
-								// header parse OK, set nonzeroes field if we can:
-								if( ! properties._symmetric ) {
-									properties._nz = properties._entries;
+							if ( properties._mmformat == MatrixFileProperties::MMformats::COORDINATE ) {
+								if( ! ( iss >> properties._m >> properties._n >> properties._entries ) ) {
+									// could not read length line-- let a non-mtx parser try
+									mmfile = false;
 								} else {
-									properties._nz = static_cast< size_t >( -1 );
+									// header parse OK, set nonzeroes field if we can:
+									if( ! properties._symmetric ) {
+										properties._nz = properties._entries;
+									} else {
+										properties._nz = static_cast< size_t >( -1 );
+									}
+								}
+							} else if ( properties._mmformat == MatrixFileProperties::MMformats::ARRAY ) {
+								if( ! ( iss >> properties._m >> properties._n ) ) {
+									// could not read length line-- let a non-mtx parser try
+									mmfile = false;
+								} else {
+									properties._nz = properties._m * properties._n;
+									// header parse OK, set nonzeroes field if we can:
+									if( ! properties._symmetric ) {
+										properties._entries = properties._nz;
+									} else {
+										if( properties._n != properties._m ) {
+											throw std::runtime_error(
+												"Matrix market Symmetric should be square: N x N."
+											);
+											properties._nz = static_cast< size_t >( -1 );
+										}
+										properties._entries = properties._n * ( properties._n + 1 ) / 2;
+									}
 								}
 							}
+
 						}
 						// if we found a matrix market header but found non-standard lines
 						if( ! mmfile ) {
@@ -168,11 +223,11 @@ namespace alp {
 							(void)infile.seekg( start );
 							// and print warning
 							std::cerr << "Warning: first line of file "
-										 "indicated MatrixMarket format-- "
-										 "however, no valid header line after "
-										 "comment block was found. ";
+								"indicated MatrixMarket format-- "
+								"however, no valid header line after "
+								"comment block was found. ";
 							std::cerr << "Attempting to continue as though "
-										 "this is *not* a MatrixMarket file.\n";
+								"this is *not* a MatrixMarket file.\n";
 						}
 					}
 					// if header was successfully parsed, record type of file
@@ -185,8 +240,10 @@ namespace alp {
 
 				/** Prints info to stdout, to be called after successful construction. */
 				void coda() const noexcept {
-					std::cerr << "Info: MatrixFileReader constructed for " << properties._fn << ": an " << properties._m << " times " << properties._n << " matrix holding " << properties._entries
-							  << " entries. ";
+					std::cerr << "Info: MatrixFileReader constructed for "
+						  << properties._fn << ": an " << properties._m << " times "
+						  << properties._n << " matrix holding " << properties._entries
+						  << " entries. ";
 					if( properties._type == internal::MatrixFileProperties::Type::MATRIX_MARKET ) {
 						std::cerr << "Type is MatrixMarket";
 					} else {
@@ -211,8 +268,6 @@ namespace alp {
 				 * @param[in[ m         The number of rows to expect.
 				 * @param[in] n         The number of columns to expect.
 				 * @param[in] nz        The number of nonzeroes to expect.
-				 * @param[in] pattern   Whether the file is pattern-only. If not, \a T may
-				 *                      not be \a void.
 				 * @param[in] symmetric Whether the input is symmetric.
 				 * @param[in] direct    Whether the file uses direct indexing. If not, new
 				 *                      indices will be automatically inferred.
@@ -232,7 +287,6 @@ namespace alp {
 					const size_t n,
 					const size_t nz,
 					const size_t entries,
-					const bool pattern,
 					const bool symmetric,
 					const bool direct,
 					const bool symmetricmap ) {
@@ -242,7 +296,6 @@ namespace alp {
 					properties._n = n;
 					properties._nz = nz;
 					properties._entries = entries;
-					properties._pattern = pattern;
 					properties._symmetric = symmetric;
 					properties._direct = direct;
 					properties._symmetricmap = symmetricmap;
@@ -290,11 +343,6 @@ namespace alp {
 				/** Returns the number of entries in the underlying file. */
 				size_t entries() const noexcept {
 					return properties._entries;
-				}
-
-				/** Returns whether this is a pattern matrix. */
-				bool isPattern() const noexcept {
-					return properties._pattern;
 				}
 
 				/** Returns whether the matrix is symmetric. */
