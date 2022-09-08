@@ -109,6 +109,65 @@ namespace alp {
 		typedef OpenInterval type;
 	};
 
+	/**
+	 * Checks if a given diagonal belongs to the given interval.
+	 */
+	template< typename Interval >
+	bool is_within_interval( const std::ptrdiff_t diag_offset ) {
+		return ( ( diag_offset >= Interval::left ) && ( diag_offset < Interval::right ) );
+	}
+
+	namespace internal {
+
+		/**
+		 * Checks if a pair of coordinates (i, j) belong to non-zero structure
+		 * of the band defined by the band_index and the union of bands.
+		 * \note Does not check for matrix dimensions.
+		 */
+
+		/** Specialization for out-of-bounds band index */
+		template<
+			size_t band_index, typename bands,
+			std::enable_if_t<
+				band_index >= std::tuple_size< bands >::value
+			> * = nullptr
+		>
+		bool is_non_zero( const size_t i, const size_t j ) {
+			(void)i;
+			(void)j;
+			return false;
+		}
+
+		/** Specialization for within-the-bounds band index */
+		template<
+			size_t band_index, typename bands,
+			std::enable_if_t<
+				band_index < std::tuple_size< bands >::value
+			> * = nullptr
+		>
+		bool is_non_zero( const size_t i, const size_t j ) {
+
+			using band_interval = typename std::tuple_element< band_index, bands >::type;
+
+			if( is_within_interval< band_interval >( static_cast< std::ptrdiff_t >( j ) - static_cast< std::ptrdiff_t >( i ) ) ) {
+				return true;
+			} else {
+				return is_non_zero< band_index + 1, bands >( i, j );
+			}
+		}
+
+	} // namespace internal
+
+	/**
+	 * Checks if a pair of coordinates (i, j) belong to non-zero structure
+	 * of the band defined by the band_index and the union of bands.
+	 * \note Does not check for matrix dimensions.
+	 */
+	template< typename Structure >
+	bool is_non_zero( const size_t i, const size_t j ) {
+		return internal::is_non_zero< 0, typename Structure::band_intervals >( i, j );
+	}
+
 	namespace internal {
 		/**
 		 * @internal Compile-time check if a tuple of intervals is sorted and non-overlapping.
