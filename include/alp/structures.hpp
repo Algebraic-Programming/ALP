@@ -127,9 +127,9 @@ namespace alp {
 
 		/** Specialization for out-of-bounds band index */
 		template<
-			size_t band_index, typename bands,
+			size_t band_index, typename Bands,
 			std::enable_if_t<
-				band_index >= std::tuple_size< bands >::value
+				band_index >= std::tuple_size< Bands >::value
 			> * = nullptr
 		>
 		bool is_non_zero( const size_t i, const size_t j ) {
@@ -140,19 +140,19 @@ namespace alp {
 
 		/** Specialization for within-the-bounds band index */
 		template<
-			size_t band_index, typename bands,
+			size_t band_index, typename Bands,
 			std::enable_if_t<
-				band_index < std::tuple_size< bands >::value
+				band_index < std::tuple_size< Bands >::value
 			> * = nullptr
 		>
 		bool is_non_zero( const size_t i, const size_t j ) {
 
-			using band_interval = typename std::tuple_element< band_index, bands >::type;
+			using band_interval = typename std::tuple_element< band_index, Bands >::type;
 
 			if( is_within_interval< band_interval >( static_cast< std::ptrdiff_t >( j ) - static_cast< std::ptrdiff_t >( i ) ) ) {
 				return true;
 			} else {
-				return is_non_zero< band_index + 1, bands >( i, j );
+				return is_non_zero< band_index + 1, Bands >( i, j );
 			}
 		}
 
