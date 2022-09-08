@@ -23,22 +23,6 @@
 
 using namespace alp;
 
-template< typename Structure >
-void print_matrix( const alp::Matrix< double, Structure > & A) {
-	(void)A;
-	// if( ! alp::internal::getInitialized< double >( A ) ) {
-	// 	std::cout << "Matrix is uninitialized, nothing to print.\n";
-	// 	return;
-	// }
-	// const double * Araw = alp::getRaw( internal::getContainer( A ) );
-	// for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-	// 	for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-	// 		std::cout << Araw[row * alp::ncols( A ) + col] << " ";
-	// 	}
-	// 	std::cout << "\n";
-	// }
-}
-
 void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 

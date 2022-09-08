@@ -31,23 +31,6 @@ const T1 testval1 = 1.5;
 const T1 testval2 = -1;
 const T1 testval3 = 2.;
 
-template< typename VectorType >
-void print_vector( std::string name, const VectorType &v ) {
-
-	if( ! alp::internal::getInitialized( v ) ) {
-		std::cout << "Vector " << name << " uninitialized.\n";
-		return;
-	}
-
-	std::cout << "Vector " << name << " of size " << alp::getLength( v ) << " contains the following elements:\n";
-
-	std::cout << "[\t";
-	for( size_t i = 0; i < alp::getLength( v ); ++i ) {
-		std::cout << v[ i ] << "\t";
-	}
-	std::cout << "]\n";
-}
-
 void alp_program( const size_t &n, alp::RC &rc ) {
 
 	{

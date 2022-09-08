@@ -18,45 +18,8 @@
 #include <utility>
 #include <iostream>
 
-#include "alp.hpp"
-
-template< typename MatrixType >
-void print_matrix( std::string name, const MatrixType &A ) {
-
-	if( ! alp::internal::getInitialized( A ) ) {
-		std::cout << "Matrix " << name << " uninitialized.\n";
-		return;
-	}
-
-	std::cout << "Matrix " << name << " of size " << alp::dims( A ).first << " x " << alp::dims( A ).second << " contains the following elements:\n";
-
-	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "[\t";
-		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-			auto pos  = alp::internal::getStorageIndex( A, row, col );
-			// std::cout << "(" << pos << "): ";
-			std::cout << alp::internal::access( A, pos ) << "\t";
-		}
-		std::cout << "]\n";
-	}
-}
-
-template< typename VectorType >
-void print_vector( std::string name, const VectorType &v ) {
-
-	if( ! alp::internal::getInitialized( v ) ) {
-		std::cout << "Vector " << name << " uninitialized.\n";
-		return;
-	}
-
-	std::cout << "Vector " << name << " of size " << alp::getLength( v ) << " contains the following elements:\n";
-
-	std::cout << "[\t";
-	for( size_t i = 0; i < alp::getLength( v ); ++i ) {
-		std::cout << v[ i ] << "\t";
-	}
-	std::cout << "]\n";
-}
+#include <alp.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 template< typename T >
 void init_matrix( std::vector< T > &A, const size_t rows, const size_t cols ) {
