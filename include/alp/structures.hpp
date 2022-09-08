@@ -296,13 +296,6 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
 		};
 
-		struct Symmetric: BaseStructure {
-
-			typedef std::tuple< OpenInterval > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
-		};
-
 		/**
 		 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
 		 * 		  and index mapping functions (IMFs) \a imf_r and \a imf_c can be defined over \a SourceStructure.
@@ -345,14 +338,6 @@ namespace alp {
 
 		template<>
 		struct isInstantiable< UpperTriangular, UpperTriangular > {
-			template< typename ImfR, typename ImfC >
-			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return imf_r.isSame(imf_c);
-			};
-		};
-
-		template<>
-		struct isInstantiable< Symmetric, Symmetric > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				return imf_r.isSame(imf_c);
@@ -445,6 +430,14 @@ namespace alp {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				return ( ( imf_r.n == imf_c.n ) && ( imf_r.s == imf_c.s ) && ( imf_r.b == imf_c.b ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< Symmetric, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
 			};
 		};
 
