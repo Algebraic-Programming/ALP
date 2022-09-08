@@ -433,6 +433,21 @@ namespace alp {
 			typedef Band< Intervals... > type;
 		};
 
+		struct Symmetric: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< General, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.s == imf_c.s ) && ( imf_r.b == imf_c.b ) );
+			};
+		};
+
 		struct SymmetricPositiveDefinite: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;

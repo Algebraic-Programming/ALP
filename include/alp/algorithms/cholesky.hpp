@@ -25,6 +25,22 @@
 namespace alp {
 
 	namespace algorithms {
+		template< typename V >
+		void print_vector( std::string name, const V &v) {
+
+			if( ! alp::internal::getInitialized( v ) ) {
+				std::cout << "Vector " << name << " uninitialized.\n";
+				return;
+			}
+
+			std::cout << name << ":" << std::endl;
+			std::cout << "[\t";
+			for( size_t i = 0; i < alp::getLength( v ); ++i ) {
+					std::cout << std::setprecision(5) << v[ i ] << "\t";
+				}
+			std::cout << "]" << std::endl;
+		}
+
 		template< typename M >
 		void print_matrix( std::string name, const M & A) {
 
@@ -41,7 +57,7 @@ namespace alp {
 						std::cout << 0 << "\t";
 					} else {
 						auto pos  = internal::getStorageIndex( A, row, col );
-						std::cout << internal::access(A, pos ) << "\t";
+						std::cout << std::setprecision(5) << internal::access(A, pos ) << "\t";
 					}
 				}
 				std::cout << "]" << std::endl;
@@ -92,11 +108,13 @@ namespace alp {
 			print_matrix( " -- LL --  " , LL );
 
 			for( size_t k = 0; k < n ; ++k ) {
-
-				auto v = get_view( LL, k, utils::range( k, n ) );
 #ifdef DEBUG
-				auto v_view = alp::get_view< view::matrix >( v );
-				print_matrix( " -- v --  " , v_view );
+				std::cout << "============ Iteration " << k << " ============" << std::endl;
+#endif
+
+				auto a = get_view( LL, k, utils::range( k, n ) );
+#ifdef DEBUG
+				print_vector( " -- a --  " , a );
 #endif
 
 				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
@@ -112,9 +130,10 @@ namespace alp {
 #endif
 							val = *alpha;
 						}
-					}, v
+					}, a
 				);
 
+				std::cout << "alpha " << *alpha << std::endl;
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cerr << " eWiseLambda( lambda, view ) (0) failed\n";
@@ -122,12 +141,13 @@ namespace alp {
 				}
 #endif
 
+				auto v = get_view( LL, k, utils::range( k + 1, n ) );
+				print_vector( " -- v --  " , v );
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
 				rc = eWiseLambda(
 					[ &alpha, &divide ]( const size_t i, D &val ) {
-						if ( i > 0 ) {
-							internal::foldl( val, *alpha, divide );
-						}
+						(void)i;
+						internal::foldl( val, *alpha, divide );
 					},
 					v
 				);
@@ -143,14 +163,19 @@ namespace alp {
 				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
 				auto vvt = outer( v, ring.getMultiplicativeOperator() );
+#ifdef DEBUG
+				print_vector( " -- v --  " , v );
+				print_matrix( " vvt ", vvt );
+#endif
 #ifdef TEMP_DISABLE
 				rc = alp::eWiseLambda(
 					[ &vvt, &minus, &divide ]( const size_t i, const size_t j, D &val ) {
 						internal::foldl(
 							val,
 							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
-							divide
+							minus
 						);
+						std::cout << "lambda " << i << " " << j << " " << val << " " << internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ) << std::endl;
 					},
 					LLprim
 				);
@@ -170,6 +195,7 @@ namespace alp {
 #endif
 #endif
 
+				print_matrix( " -- LL --  " , LL );
 			}
 
 			// Finally collect output into L matrix and return
