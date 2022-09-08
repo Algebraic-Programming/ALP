@@ -460,14 +460,14 @@ namespace alp {
 
 		struct LowerTrapezoidal: BaseStructure {
 
-			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
+			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
 		struct LowerTriangular: BaseStructure {
 
-			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
+			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures, LowerTrapezoidal::inferred_structures >::type;
 		};
