@@ -22,6 +22,7 @@
 #include <alp.hpp>
 #include <alp/algorithms/cholesky.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 using namespace alp;
 
@@ -88,31 +89,6 @@ struct inpdata {
 
 
 };
-
-template< typename T, typename Structure >
-void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
-
-	if( ! alp::internal::getInitialized( A ) ) {
-		std::cout << "Matrix " << name << " uninitialized.\n";
-		return;
-	}
-
-	std::cout << name << ":" << std::endl;
-	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "[\t";
-		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-			if ( col < row ) {
-				std::cout << 0 << "\t";
-			} else {
-				auto pos  = internal::getStorageIndex( A, row, col );
-				std::cout << internal::access(A, pos ) << "\t";
-			}
-		}
-		std::cout << "]" << std::endl;
-	}
-}
-
-
 
 void alp_program( const inpdata & unit, alp::RC & rc ) {
 	rc = SUCCESS;

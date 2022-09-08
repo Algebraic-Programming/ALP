@@ -19,51 +19,14 @@
 
 #include <alp.hpp>
 
+#include "../../../tests/utils/print_alp_containers.hpp"
+
 #define TEMP_DISABLE
 #define DEBUG
 
 namespace alp {
 
 	namespace algorithms {
-		template< typename V >
-		void print_vector( std::string name, const V &v) {
-
-			if( ! alp::internal::getInitialized( v ) ) {
-				std::cout << "Vector " << name << " uninitialized.\n";
-				return;
-			}
-
-			std::cout << name << ":" << std::endl;
-			std::cout << "[\t";
-			for( size_t i = 0; i < alp::getLength( v ); ++i ) {
-					std::cout << std::setprecision(5) << v[ i ] << "\t";
-				}
-			std::cout << "]" << std::endl;
-		}
-
-		template< typename M >
-		void print_matrix( std::string name, const M & A) {
-
-			if( ! alp::internal::getInitialized( A ) ) {
-				std::cout << "Matrix " << name << " uninitialized.\n";
-				return;
-			}
-
-			std::cout << name << ":" << std::endl;
-			for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-				std::cout << "[\t";
-				for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-					if ( col < row ) {
-						std::cout << 0 << "\t";
-					} else {
-						auto pos  = internal::getStorageIndex( A, row, col );
-						std::cout << std::setprecision(5) << internal::access(A, pos ) << "\t";
-					}
-				}
-				std::cout << "]" << std::endl;
-			}
-		}
-
 
 		/**
 		 * @brief Computes the Cholesky decomposition LL^T = H of a real symmetric
