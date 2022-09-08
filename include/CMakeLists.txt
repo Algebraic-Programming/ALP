@@ -187,6 +187,11 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
+install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/interfaces/"
+	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/interfaces"
+	FILES_MATCHING REGEX "${HEADERS_REGEX}"
+)
+
 install( TARGETS algorithms EXPORT GraphBLASTargets )
 
 # this target lists the transition path headers

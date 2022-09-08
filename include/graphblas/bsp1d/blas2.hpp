@@ -513,6 +513,39 @@ namespace grb {
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
+		typename InputType3 = bool
+	>
+	RC vxm(
+		Vector< IOType, BSP1D, Coords > &u,
+		const Vector< InputType3, BSP1D, Coords > &u_mask,
+		const Vector< InputType1, BSP1D, Coords > &v,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		const Vector< bool, BSP1D, Coords > empty_mask( 0 );
+		// transpose is delegated to mxv
+		if( descr & descriptors::transpose_matrix ) {
+			return internal::bsp1d_mxv<
+				descr & ~( descriptors::transpose_matrix ), true, false, true
+			>( u, u_mask, A, v, empty_mask, ring, phase );
+		} else {
+			return internal::bsp1d_vxm< descr, true, false, true >(
+				u, u_mask, v, empty_mask, A, ring, phase
+			);
+		}
+	}
+
+	/** \internal Dispatches to bsp1d_vxm or bsp1d_mxv */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename Coords, typename RIT, typename CIT, typename NIT,
+		typename IOType = typename Ring::D4,
+		typename InputType1 = typename Ring::D1,
+		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
 		typename InputType4 = bool
 	>

@@ -546,6 +546,7 @@ namespace grb {
 		(void) v;
 		(void) A;
 		(void) ring;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
