@@ -20,28 +20,9 @@
 #include <vector>
 
 #include <alp.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 using namespace alp;
-
-template< typename T, typename Structure >
-void print_matrix( std::string name, const alp::Matrix< T, Structure > & A) {
-
-	if( ! alp::internal::getInitialized( A ) ) {
-		std::cout << "Matrix " << name << " uninitialized.\n";
-		return;
-	}
-	
-	std::cout << name << ":" << std::endl;
-	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "[\t";
-		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
-			auto pos  = internal::getStorageIndex( A, row, col );
-			// std::cout << "(" << pos << "): ";
-			std::cout << internal::access(A, pos ) << "\t";
-		}
-		std::cout << "]" << std::endl;
-	}
-}
 
 template< typename T >
 void print_stdvec_as_matrix( std::string name, const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda ) {
