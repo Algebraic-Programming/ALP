@@ -65,96 +65,17 @@ namespace alp {
 			 * @throws std::runtime_error If the given file does not exist.
 			 *
 			 */
-			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true ) {
+			MatrixFileReader( const std::string filename ) {
 				internal::MatrixFileProperties & properties = this->properties;
 				// set properties
 				properties._fn = filename;
-				properties._direct = direct;
-				properties._symmetricmap = symmetricmap;
 				// check for existance of file
 				this->exists();
 				// open up file stream to infer remainder properties
 				std::ifstream infile( properties._fn );
 				// try and find header
-				if( ! this->findHeader( infile ) ) {
-#ifdef _DEBUG
-					std::cout << "MatrixFileReader: couldn't parse header, "
-								 "inferring SNAP-based defaults; i.e."
-								 "not symmetric, 0-based.\n";
-#endif
-					// not found, so we have to infer matrix properties
-					// assume unsymmetric
-					properties._symmetric = false;
-					// assume zero-based (SNAP-like)
-					properties._oneBased = false;
-					// record we assume SNAP
-					properties._type = internal::MatrixFileProperties::Type::SNAP;
-					// ignore comments
-					this->ignoreComments( infile );
-					// initialise default values, declare buffers
-					properties._m = properties._n = properties._nz = properties._entries = 0;
-					S row, col;
-					T val;
-					// read until we drop
-					while( ( infile >> row >> col >> val ) ) {
-						++properties._entries;
-						++properties._nz;
-						// if symmetric, count non-diagonal entries twice
-						if( properties._symmetric && row != col ) {
-							++properties._nz;
-						}
-						(void)val;
-						if( ! direct ) {
-							const auto row_it = properties._row_map.find( row );
-							if( row_it != properties._row_map.end() ) {
-								row = row_it->second;
-							} else {
-								const size_t new_row_index = properties._row_map.size();
-								properties._row_map[ row ] = new_row_index;
-								row = new_row_index;
-							}
-							if( properties._symmetricmap ) {
-								const auto col_it = properties._row_map.find( col );
-								if( col_it != properties._row_map.end() ) {
-									col = col_it->second;
-								} else {
-									const size_t new_col_index = properties._col_map.size();
-									properties._row_map[ col ] = new_col_index;
-									col = new_col_index;
-								}
-							} else {
-								const auto col_it = properties._col_map.find( col );
-								if( col_it != properties._col_map.end() ) {
-									col = col_it->second;
-								} else {
-									const size_t new_col_index = properties._col_map.size();
-									properties._col_map[ col ] = new_col_index;
-									col = new_col_index;
-								}
-							}
-						}
-						// if symmetric, count non-diagonal entries twice
-						if( properties._symmetric && row != col ) {
-							++properties._nz;
-						}
-						// update dimensions
-						if( row > properties._m ) {
-							properties._m = row;
-						}
-						if( col > properties._n ) {
-							properties._n = col;
-						}
-					}
-					// correct _m and _n
-					if( properties._symmetricmap ) {
-						properties._m = std::max( properties._m, properties._n );
-						properties._n = properties._m;
-					}
-					if( properties._nz > 0 ) {
-						++properties._m;
-						++properties._n;
-					}
-				}
+				this->findHeader( infile ) ;
+				this->ignoreComments( infile ) ;
 				// print info to stdout
 				this->coda();
 #ifdef _DEBUG
@@ -212,134 +133,6 @@ namespace alp {
 				return internal::MatrixFileIterator< T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, true );
 			}
 		};
-
-// 		template< typename S >
-// 		class MatrixFileReader< void, S > : public internal::MatrixFileReaderBase< void, S > {
-
-// 			static_assert( std::is_integral< S >::value, "The template parameter S to MatrixFileReader must be integral." );
-
-// 			template< typename U, typename V >
-// 			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
-
-// 		public:
-// 			/**
-// 			 * Constructs a matrix reader using minimal information.
-// 			 *
-// 			 * This constructor will parse the file in its entirety once. The use of an iterator will parse the file \em again.
-// 			 *
-// 			 * @param[in] filename Which file to read.
-// 			 * @param[in] direct   (Optional) Whether the file uses direct indexing.
-// 			 *                     If not, new indices will be automatically inferred. Default value is \a true.
-// 			 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
-// 			 *                         the row map should equal the column map.
-// 			 *
-// 			 * @throws std::runtime_error If the given file does not exist.
-// 			 *
-// 			 */
-// 			MatrixFileReader( const std::string filename, const bool direct = true, const bool symmetricmap = true ) {
-// 				internal::MatrixFileProperties & properties = this->properties;
-// 				// set properties
-// 				properties._fn = filename;
-// 				properties._direct = direct;
-// 				properties._symmetricmap = symmetricmap;
-// 				// check for existance of file
-// 				this->exists();
-// 				// open up file stream to infer remainder properties
-// 				std::ifstream infile( properties._fn );
-// 				// try and find header
-// 				if( ! this->findHeader( infile ) ) {
-// 					// not found, so we have to infer values for _n, _m, and _nz
-// 					properties._symmetric = false;
-// 					// assume 0-based input (SNAP-like)
-// 					properties._oneBased = false;
-// 					// record we assume SNAP
-// 					properties._type = internal::MatrixFileProperties::Type::SNAP;
-// 					// ignore comments
-// 					this->ignoreComments( infile );
-// 					// initialise default values, declare buffers
-// 					properties._m = properties._n = properties._nz = properties._entries = 0;
-// 					S row, col;
-// 					// read until we drop
-// 					while( ( infile >> row >> col ) ) {
-// 						++properties._entries;
-// 						++properties._nz;
-// 						if( ! direct ) {
-// 							const auto row_it = properties._row_map.find( row );
-// 							if( row_it != properties._row_map.end() ) {
-// 								row = row_it->second;
-// 							} else {
-// 								const size_t new_row_index = properties._row_map.size();
-// 								properties._row_map[ row ] = new_row_index;
-// 								row = new_row_index;
-// 							}
-// 							if( properties._symmetricmap ) {
-// 								const auto col_it = properties._row_map.find( col );
-// 								if( col_it != properties._row_map.end() ) {
-// 									col = col_it->second;
-// 								} else {
-// 									const size_t new_col_index = properties._row_map.size();
-// 									properties._row_map[ col ] = new_col_index;
-// 									col = new_col_index;
-// 								}
-// 							} else {
-// 								const auto col_it = properties._col_map.find( col );
-// 								if( col_it != properties._col_map.end() ) {
-// 									col = col_it->second;
-// 								} else {
-// 									const size_t new_col_index = properties._col_map.size();
-// 									properties._col_map[ col ] = new_col_index;
-// 									col = new_col_index;
-// 								}
-// 							}
-// 						}
-// 						// if symmetric, count non-diagonal entries twice
-// 						if( properties._symmetric && row != col ) {
-// 							++properties._nz;
-// 						}
-// 						// update dimensions
-// 						if( row > properties._m ) {
-// 							properties._m = row;
-// 						}
-// 						if( col > properties._n ) {
-// 							properties._n = col;
-// 						}
-// 					}
-// 					// correct _m and _n
-// 					if( properties._symmetricmap ) {
-// 						properties._m = std::max( properties._m, properties._n );
-// 						properties._n = properties._m;
-// 					}
-// 					if( properties._nz > 0 ) {
-// 						++properties._m;
-// 						++properties._n;
-// 					}
-// 				}
-// 				// print info to stdout
-// 				this->coda();
-// #ifdef _DEBUG
-// 				std::cout << *this << "\n";
-// #endif
-// 			}
-
-// 			// we do not provide non-const iterators, as we will not modify files
-// 			// all other iterators follow the MatrixFileIterator codes:
-
-// 			// internal::MatrixFileIterator< void > begin( const IOMode mode = SEQUENTIAL ) {
-// 			// 	return cbegin( mode );
-// 			// }
-
-// 			// internal::MatrixFileIterator< void > end( const IOMode mode = SEQUENTIAL ) {
-// 			// 	return cend( mode );
-// 			// }
-
-// 			// internal::MatrixFileIterator< void > cbegin( const IOMode mode = SEQUENTIAL ) {
-// 			// 	return internal::MatrixFileIterator< void >( internal::MatrixFileReaderBase< void >::properties, mode );
-// 			// }
-
-// 			// internal::MatrixFileIterator< void > cend( const IOMode mode = SEQUENTIAL ) {
-// 			// 	return internal::MatrixFileIterator< void >( internal::MatrixFileReaderBase< void, S >::properties, mode, true );
-// 			// }
-// 		};
 
 		// /** Pretty printing function. */
 		// template< typename T, typename S >

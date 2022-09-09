@@ -100,8 +100,8 @@ namespace alp {
 						std::cerr << "Info: MatrixMarket file detected. Header line: ``"
 							  << line << "''\n";
 						// matrix market files are always 1-based
-						properties._oneBased = true;
-						properties._direct = true;
+						// properties._oneBased = true;
+
 						// parse header: object type
 						if( !( streamline >> wordinline ) || wordinline != "matrix" ) {
 							throw std::runtime_error(
@@ -121,7 +121,6 @@ namespace alp {
 								);
 							} else if ( wordinline == "array" ) {
 								properties._mmformat = MatrixFileProperties::MMformats::ARRAY;
-								properties._direct = false;
 							} else {
 								throw std::runtime_error( "This parser only "
 											  "understands coordinate and array "
@@ -135,10 +134,15 @@ namespace alp {
 						}
 						// parse header: nonzero value type
 						if ( streamline >> wordinline ) {
-							if( wordinline != "real" ) {
+							if( wordinline == "real" ) {
+								properties._datatype = MatrixFileProperties::MMdatatype::REAL;
+							} else if ( wordinline == "complex" ) {
+								properties._datatype = MatrixFileProperties::MMdatatype::COMPLEX;
+								throw std::runtime_error( "Complex  matrices still not supported." );
+							} else {
 								throw std::runtime_error(
 									"This parser only "
-									"understands real matrices."
+									"understands real or complex  matrices."
 								);
 							}
 						} else {
@@ -151,18 +155,14 @@ namespace alp {
 						// parse header: structural information
 						if ( streamline >> wordinline ) {
 							if( wordinline == "symmetric" ) {
-								properties._symmetric = true;
+								properties._symmetry = MatrixFileProperties::MMsymmetries::SYMMETRIC;
+							} else if ( wordinline == "general" ) {
+								properties._symmetry = MatrixFileProperties::MMsymmetries::GENERAL;
 							} else {
-								if( wordinline == "general" ) {
-									properties._symmetric = false;
-								} else {
-									throw std::runtime_error(
-										"This parser only "
-										"understands "
-										"symmetric or "
-										"general matrices."
-									);
-								}
+								throw std::runtime_error(
+									"This parser only understands "
+									"symmetric or general matrices."
+								);
 							}
 						} else {
 							std::cout << "wordinline = " << wordinline << "\n";
@@ -184,17 +184,7 @@ namespace alp {
 							// set defaults
 							properties._m = properties._n = properties._nz = properties._entries = 0;
 							if ( properties._mmformat == MatrixFileProperties::MMformats::COORDINATE ) {
-								if( ! ( iss >> properties._m >> properties._n >> properties._entries ) ) {
-									// could not read length line-- let a non-mtx parser try
-									mmfile = false;
-								} else {
-									// header parse OK, set nonzeroes field if we can:
-									if( ! properties._symmetric ) {
-										properties._nz = properties._entries;
-									} else {
-										properties._nz = static_cast< size_t >( -1 );
-									}
-								}
+								throw std::runtime_error( "Matrix market Coordinate format not supported." );
 							} else if ( properties._mmformat == MatrixFileProperties::MMformats::ARRAY ) {
 								if( ! ( iss >> properties._m >> properties._n ) ) {
 									// could not read length line-- let a non-mtx parser try
@@ -202,17 +192,18 @@ namespace alp {
 								} else {
 									properties._nz = properties._m * properties._n;
 									// header parse OK, set nonzeroes field if we can:
-									if( ! properties._symmetric ) {
+									if( properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL ) {
 										properties._entries = properties._nz;
-									} else {
+									} else if ( properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ) {
 										if( properties._n != properties._m ) {
-											throw std::runtime_error(
-												"Matrix market Symmetric should be square: N x N."
-											);
+											throw std::runtime_error( "Matrix market Symmetric should be square: N x N." );
 											properties._nz = static_cast< size_t >( -1 );
 										}
 										properties._entries = properties._n * ( properties._n + 1 ) / 2;
+									} else {
+										throw std::runtime_error( "Not implemented." );
 									}
+
 								}
 							}
 
@@ -244,14 +235,8 @@ namespace alp {
 						  << properties._fn << ": an " << properties._m << " times "
 						  << properties._n << " matrix holding " << properties._entries
 						  << " entries. ";
-					if( properties._type == internal::MatrixFileProperties::Type::MATRIX_MARKET ) {
-						std::cerr << "Type is MatrixMarket";
-					} else {
-						std::cerr << "Type is SNAP";
-					}
-					if( properties._symmetric ) {
-						std::cerr << " and the input is symmetric";
-					}
+					std::cerr << " type  = " << properties._type << " " ;
+					std::cerr << " symmetry  = " << properties._symmetry << " " ;
 					std::cerr << ".\n";
 				}
 
@@ -260,48 +245,6 @@ namespace alp {
 
 
 			public:
-
-				/**
-				 * Constructs a matrix reader using maximal information.
-				 *
-				 * @param[in] filename  Which file to read.
-				 * @param[in[ m         The number of rows to expect.
-				 * @param[in] n         The number of columns to expect.
-				 * @param[in] nz        The number of nonzeroes to expect.
-				 * @param[in] symmetric Whether the input is symmetric.
-				 * @param[in] direct    Whether the file uses direct indexing. If not, new
-				 *                      indices will be automatically inferred.
-				 * @param[in] symmetricmap Whether, in case \a direct is \a false, the row
-				 *                         map should exactly correspond to the column map.
-				 *                         If not, the row and column maps are computed
-				 *                         independently of each other.
-				 *
-				 * @throws std::runtime_error If the given file does not exist.
-				 *
-				 * This constructor will \em not parse the file completely (only the use of an
-				 * iterator such as begin() will do so). This constructor completes in
-				 * \f$ \mathcal{O}(1) \f$ time.
-				 */
-				MatrixFileReaderBase( const std::string filename,
-					const size_t m,
-					const size_t n,
-					const size_t nz,
-					const size_t entries,
-					const bool symmetric,
-					const bool direct,
-					const bool symmetricmap ) {
-					// set all properties
-					properties._fn = filename;
-					properties._m = m;
-					properties._n = n;
-					properties._nz = nz;
-					properties._entries = entries;
-					properties._symmetric = symmetric;
-					properties._direct = direct;
-					properties._symmetricmap = symmetricmap;
-					// check for existance of file
-					exists();
-				}
 
 				/** Returns the underlying file name. */
 				std::string filename() const noexcept {
@@ -333,9 +276,9 @@ namespace alp {
 				size_t nz() const {
 					if( properties._nz == static_cast< size_t >( -1 ) ) {
 						throw std::runtime_error( "File header or parse mode "
-												  "does not allow for an "
-												  "a-priori count of "
-												  "nonzeroes." );
+									  "does not allow for an "
+									  "a-priori count of "
+									  "nonzeroes." );
 					}
 					return properties._nz;
 				}
@@ -345,47 +288,6 @@ namespace alp {
 					return properties._entries;
 				}
 
-				/** Returns whether the matrix is symmetric. */
-				bool isSymmetric() const noexcept {
-					return properties._symmetric;
-				}
-
-				/** Returns whether the matrix uses direct indexing. */
-				bool usesDirectAddressing() const noexcept {
-					return properties._direct;
-				}
-
-				/**
-				 * Returns the current row map.
-				 *
-				 * Will always be empty when \a usesDirectAddressing is \a true. Will only
-				 * contain a mapping for those row coordinates that have been encountered
-				 * during parsing. This means any iterator associated to this instance
-				 * must have been exhausted before the map returned here is complete.
-				 *
-				 * Multiple iterators derived from this instance will share the same maps.
-				 */
-				const std::map< size_t, size_t > & rowMap() const noexcept {
-					return properties._row_map;
-				}
-
-				/**
-				 * Returns the current column map.
-				 *
-				 * Will always be empty when \a usesDirectAddressing is \a true. Will only
-				 * contain a mapping for those row coordinates that have been encountered
-				 * during parsing. This means any iterator associated to this instance
-				 * must have been exhausted before the map returned here is complete.
-				 *
-				 * Multiple iterators derived from this instance will share the same maps.
-				 */
-				const std::map< size_t, size_t > & colMap() const noexcept {
-					if( properties._symmetricmap ) {
-						return properties._row_map;
-					} else {
-						return properties._col_map;
-					}
-				}
 			};
 
 		} // namespace internal

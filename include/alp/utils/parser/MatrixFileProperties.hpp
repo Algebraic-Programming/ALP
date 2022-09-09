@@ -15,15 +15,9 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 25th, 26th of May, 2017
- */
-
 #ifndef _H_MATRIXFILE_PROPERTIES
 #define _H_MATRIXFILE_PROPERTIES
 
-#include <map>
 #include <string>
 
 namespace alp {
@@ -38,14 +32,14 @@ namespace alp {
 				/** Matrix Market formats. */
 				enum MMformats { COORDINATE, ARRAY };
 
+				/** Matrix Market formats. */
+				enum MMsymmetries { GENERAL, SYMMETRIC, SKEWSYMMETRIC, HERMITIAN };
+
+				/** Matrix Market formats. */
+				enum MMdatatype { REAL, COMPLEX };
+
 				/** The filename of the matrix file. */
 				std::string _fn;
-
-				/** Row-wise map for indirect datasets. */
-				std::map< size_t, size_t > _row_map;
-
-				/** Column-wise map for indirect datasets. */
-				std::map< size_t, size_t > _col_map;
 
 				/** The number of rows. */
 				size_t _m;
@@ -69,29 +63,18 @@ namespace alp {
 				 */
 				size_t _entries;
 
-				/** Whether the file is symmetric or not. */
-				bool _symmetric;
-
-				/**
-				 * Whether the file has direct indexing or not.
-				 *
-				 * If not, a consecutive indexing has to be inferred. This can happen
-				 * for row and column indices separately or simultaneously; see
-				 * #_symmetricmap.
-				 */
-				bool _direct;
-
-				/** If true, then _row_map equals _col_map at all times. */
-				bool _symmetricmap;
-
-				/** Whether the matrix file is 1-based. */
-				bool _oneBased;
-
 				/** The type of the file. */
 				Type _type;
 
 				/** The type MM format. */
 				MMformats _mmformat;
+
+				/** The symmetry type MM format. */
+				MMsymmetries _symmetry;
+
+				/** The MM data format. */
+				MMdatatype _datatype;
+
 			};
 
 		} // namespace internal
