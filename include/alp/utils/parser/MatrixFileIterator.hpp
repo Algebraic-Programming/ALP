@@ -54,15 +54,31 @@ namespace alp {
 	namespace utils {
 		namespace internal {
 
-			// template< typename ValType >
-			// void pasrse_line ( &infile, &row, &col, ValType &val, bool symmetric) {
-			// 	if ( symmetric ) {
-			// 	} else {
+			// template <typename T,
+			// 	  bool data_reflect = false,
+			// 	  size_t buffer_size = 0
+			// >
+			// struct BufferType {
+			// 	typename std::conditional<
+			// 		data_reflect,
+			// 		std::pair <
+			// 			std::array< T, buffer_size >, // direct buffer
+			// 			std::array< T, buffer_size >  // reflected buffer
+			// 			>,
+			// 		std::array<T, buffer_size> // direct buffer
+			// 	>::type data;
+			// 	typename std::conditional<
+			// 		data_reflect,
+			// 		std::pair <
+			// 			size_t, // direct buffer counter
+			// 			size_t  // reflecetd buffer counter
+			// 		>,
+			// 		size_t
+			// 	>::type pos;
+			// };
 
-			// 	}
-			// }
 
-			template< typename T, typename S = size_t >
+			template< typename T, bool data_reflect = false,  typename S = size_t >
 			class MatrixFileIterator {
 
 				// template< typename X1, typename X2 >
@@ -76,7 +92,7 @@ namespace alp {
 				static constexpr size_t buffer_size = alp::config::PARSER::bsize();
 
 				/** The nonzero buffer. */
-				OutputType * buffer;
+				OutputType *buffer;
 
 				/** The underlying MatrixReader. */
 				MatrixFileProperties & properties;
@@ -90,14 +106,20 @@ namespace alp {
 				/** The current position in the buffer. */
 				size_t pos;
 
+				/** The buffer couter (buffers used so far). */
+				size_t buffercount;
+
+				/** The i index counter. */
+				size_t icount;
+
+				/** The j index counter. */
+				size_t jcount;
+
 				/** Whether the \a infile stream \em and \a buffer have been depleted. */
 				bool ended;
 
 				/** Whether the first fill of the buffer is held until the first dereference of this iterator is taking place. */
 				bool started;
-
-				/** Whether the smmetric counterpart of the current nonzero was output. */
-				bool symmetricOut;
 
 				/** A function to apply to convert input values on the fly. */
 				std::function< void( T & ) > converter;
@@ -154,20 +176,24 @@ namespace alp {
 					IOMode mode, const std::function< void( T & ) > valueConverter,
 					const bool end = false
 				) :
-					buffer( NULL ), properties( prop ), infile( properties._fn ), spos(), pos( 0 ), ended( end ),
-					started( ! end ), symmetricOut( prop._symmetry == MatrixFileProperties::MMsymmetries::GENERAL ? false : true ),
+					buffer( NULL ), properties( prop ), infile( properties._fn ), spos(), pos( 0 ), buffercount( 0 ),
+					icount( 0 ), jcount( 0 ), ended( end ),
+					started( ! end ),
 					converter( valueConverter ) {
 					if( mode != SEQUENTIAL ) {
-						throw std::runtime_error( "Only sequential IO is supported by this iterator at "
-									  "present, sorry." ); // 
+						throw std::runtime_error(
+							"Only sequential IO is supported by this iterator at "
+							"present, sorry."
+						);
 					}
 				}
 
 				/** Copy constructor. */
 				MatrixFileIterator( const MatrixFileIterator< T > & other ) :
 					buffer( NULL ), properties( other.properties ), infile( properties._fn ), spos( other.spos ),
-					pos( other.pos ), ended( other.ended ), started( other.started ),
-					symmetricOut( other.symmetricOut ), converter( other.converter ) {
+					pos( other.pos ), buffercount( other.buffercount ),
+					icount( other.icount ), jcount( other.jcount ), ended( other.ended ), started( other.started ),
+					converter( other.converter ) {
 					// set latest stream position
 					(void)infile.seekg( spos );
 					// if buffer is nonempty
@@ -238,8 +264,6 @@ namespace alp {
 							buffer[ i ] = x.buffer[ i ];
 						}
 					}
-					// copy symmetry state
-					symmetricOut = x.symmetricOut;
 					// done
 					return *this;
 				}
@@ -289,24 +313,6 @@ namespace alp {
 						(void)operator++();
 					}
 
-					// // if symmtric and not given output yet and not diagonal
-					// if( properties._symmetric ) {
-					// 	throw std::runtime_error(
-					// 		"Temp work." );
-					// 	// // toggle symmetricOut
-					// 	// symmetricOut = ! symmetricOut;
-					// 	// // if we are giving symmetric output now
-					// 	// if( symmetricOut ) {
-					// 	// 	// make symmetric pair & exit if current nonzero is not diagonal
-					// 	// 	if( buffer[ pos ].first.first != buffer[ pos ].first.second ) {
-					// 	// 		std::swap( buffer[ pos ].first.first, buffer[ pos ].first.second );
-					// 	// 		return *this;
-					// 	// 	} else {
-					// 	// 		// if diagonal, reset symmetricOut and continue normal path
-					// 	// 		symmetricOut = false;
-					// 	// 	}
-					// 	// }
-					// }
 
 					// check if we need to parse from infile
 					if( pos == 0 ) {
@@ -315,6 +321,7 @@ namespace alp {
 						if( ! infile.good() ) {
 							ended = true;
 						}
+
 						// check if buffer is allocated
 						if( buffer == NULL ) {
 							// no, so allocate buffer
@@ -350,7 +357,7 @@ namespace alp {
 								converter( val );
 
 								// store read values
-								buffer[ i ] = val;
+								buffer[ buffer_size - 1 - i ] = val;
 							}
 
 #ifdef _DEBUG
@@ -358,6 +365,10 @@ namespace alp {
 								": buffer at index "
 								  << i << " now contains " << val << "\n";
 #endif
+						}
+
+						if( buffer_size == i ){
+							++buffercount;
 						}
 
 						// store new buffer position
@@ -372,6 +383,7 @@ namespace alp {
 						// simply increment and done
 						--pos;
 					}
+
 					// done
 					return *this;
 				}
@@ -408,43 +420,90 @@ namespace alp {
 					return &( buffer[ pos ] );
 				}
 
-				// /** Returns the current row index. */
-				// const S & i() const {
-				// 	if( started ) {
-				// 		const_cast< MatrixFileIterator< T > * >( this )->preprocess();
-				// 		const_cast< MatrixFileIterator< T > * >( this )->started = false;
-				// 		(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
-				// 	}
-				// 	if( ended ) {
-				// 		throw std::runtime_error( "Attempt to dereference (via "
-				// 								  "operator*) "
-				// 								  "MatrixFileIterator in end "
-				// 								  "position." );
-				// 	}
-				// 	throw std::runtime_error(
-				// 		"Temp work 3."
-				// 	);
-				// 	// return buffer[ pos ].first.first;
-				// }
+				/** Returns the current row index. */
+				const S & j() const {
+					if( started ) {
+						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
+						const_cast< MatrixFileIterator< T > * >( this )->started = false;
+						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
+					}
+					if( ended ) {
+						throw std::runtime_error( "Attempt to dereference (via "
+									  "operator*) "
+									  "MatrixFileIterator in end "
+									  "position." );
+					}
+					size_t I = buffercount * buffer_size - 1 - pos;
 
-				// /** Returns the current column index. */
-				// const S & j() const {
-				// 	if( started ) {
-				// 		const_cast< MatrixFileIterator< T > * >( this )->preprocess();
-				// 		const_cast< MatrixFileIterator< T > * >( this )->started = false;
-				// 		(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
-				// 	}
-				// 	if( ended ) {
-				// 		throw std::runtime_error( "Attempt to dereference (via "
-				// 								  "operator*) "
-				// 								  "MatrixFileIterator in end "
-				// 								  "position." );
-				// 	}
-				// 	throw std::runtime_error(
-				// 		"Temp work 4."
-				// 	);
-				// 	// return buffer[ pos ].first.second;
-				// }
+					if(
+						properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
+						properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
+					) {
+						throw std::runtime_error(
+							"Not implemented i,j: SYMMETRIC & HERMITIAN."
+						);
+					} else if (
+						properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
+					) {
+						throw std::runtime_error(
+							"Not implemented i,j: SKEWSYMMETRIC."
+						);
+					} else if (
+						properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
+					) {
+						I = I / properties._m;
+					} else {
+						throw std::runtime_error(
+							"Unknown Matrix Market format."
+						);
+					}
+
+					const_cast< MatrixFileIterator< T > * >( this )->icount = I;
+					return icount;
+				}
+
+				/** Returns the current column index. */
+				const S & i() const {
+					if( started ) {
+						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
+						const_cast< MatrixFileIterator< T > * >( this )->started = false;
+						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
+					}
+					if( ended ) {
+						throw std::runtime_error( "Attempt to dereference (via "
+									  "operator*) "
+									  "MatrixFileIterator in end "
+									  "position." );
+					}
+					size_t I = buffercount * buffer_size - 1 - pos;
+
+					if(
+						properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
+						properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
+					) {
+						throw std::runtime_error(
+							"Not implemented i,j: SYMMETRIC & HERMITIAN."
+						);
+					} else if (
+						properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
+					) {
+						throw std::runtime_error(
+							"Not implemented i,j: SKEWSYMMETRIC."
+						);
+					} else if (
+						properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
+					) {
+						I = I % properties._m;
+					} else {
+						throw std::runtime_error(
+							"Unknown Matrix Market format."
+						);
+					}
+
+
+					const_cast< MatrixFileIterator< T > * >( this )->jcount = I;
+					return jcount;
+				}
 
 				/** Returns the current nonzero value. */
 				const T & v() const {
@@ -459,6 +518,7 @@ namespace alp {
 												  "MatrixFileIterator in end "
 												  "position." );
 					}
+
 					return buffer[ pos ];
 				}
 			};
