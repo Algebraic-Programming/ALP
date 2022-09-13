@@ -2444,6 +2444,91 @@ namespace alp {
 
 		}
 
+		/**
+		 * Calculates the iteration space for row-dimension for the given matrix and band index.
+		 *
+		 * @tparam MatrixType The type of ALP matrix
+		 * @tparam band_index The index of the desired matrix band
+		 *
+		 * @param[in] A       ALP matrix
+		 *
+		 * @returns a pair of size_t values,
+		 *          the first representing lower and the second upper limit.
+		 */
+		template<
+			size_t band_index, typename MatrixType,
+			std::enable_if_t<
+				is_matrix< MatrixType >::value
+			> * = nullptr
+		>
+		std::pair< size_t, size_t > calculate_row_coordinate_limits( const MatrixType &A ) {
+
+			using Structure = typename MatrixType::structure;
+
+			static_assert(
+				band_index < std::tuple_size< typename Structure::band_intervals >::value,
+				"Provided band index is out of bounds."
+			);
+
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< band_index >( A );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< band_index >( A );
+
+			const std::ptrdiff_t lower_limit = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
+			const std::ptrdiff_t upper_limit = std::min( nrows( A ), -l + ncols( A ) );
+
+			assert( ( lower_limit >= 0 ) && ( static_cast< size_t >( lower_limit ) <= nrows( A ) ) );
+			assert( ( upper_limit >= 0 ) && ( static_cast< size_t >( upper_limit ) <= nrows( A ) ) );
+
+			return std::make_pair( static_cast< size_t >( lower_limit ), static_cast< size_t >( upper_limit ) );
+		}
+
+		/**
+		 * Calculates the iteration space for column-dimension for the given matrix, band index and row index.
+		 *
+		 * @tparam MatrixType The type of ALP matrix
+		 * @tparam band_index The index of the desired matrix band
+		 *
+		 * @param[in] A       ALP matrix
+		 * @param[in] row     Row index
+		 *
+		 * @returns a pair of size_t values,
+		 *          the first representing lower and the second upper limit.
+		 */
+		template<
+			size_t band_index, typename MatrixType,
+			std::enable_if_t<
+				is_matrix< MatrixType >::value
+			> * = nullptr
+		>
+		std::pair< size_t, size_t > calculate_column_coordinate_limits( const MatrixType &A, const size_t row ) {
+
+			using Structure = typename MatrixType::structure;
+
+			static_assert(
+				band_index < std::tuple_size< typename Structure::band_intervals >::value,
+				"Provided band index is out of bounds."
+			);
+
+			constexpr bool is_sym = structures::is_a< Structure, structures::Symmetric >::value;
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up = is_sym;
+
+			/** Band limits */
+			const std::ptrdiff_t l = structures::get_lower_bandwidth< band_index >( A );
+			const std::ptrdiff_t u = structures::get_upper_bandwidth< band_index >( A );
+			/** column-coordinate lower and upper limits considering matrix size and symmetry */
+			const std::ptrdiff_t sym_lower_limit = is_sym && sym_up ? row : 0;
+			const std::ptrdiff_t sym_upper_limit = is_sym && !sym_up ? row + 1 : ncols( A );
+			/** column-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
+			const std::ptrdiff_t lower_limit = std::max( sym_lower_limit, l );
+			const std::ptrdiff_t upper_limit = std::min( sym_upper_limit, u );
+
+			assert( ( lower_limit >= 0 ) && ( static_cast< size_t >( lower_limit ) <= ncols( A ) ) );
+			assert( ( upper_limit >= 0 ) && ( static_cast< size_t >( upper_limit ) <= ncols( A ) ) );
+
+			return std::make_pair( static_cast< size_t >( lower_limit ), static_cast< size_t >( upper_limit ) );
+		}
+
 	} // namespace structures
 
 	/**
