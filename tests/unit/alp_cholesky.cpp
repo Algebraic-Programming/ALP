@@ -28,21 +28,32 @@ using namespace alp;
 
 
 struct inpdata {
-	size_t n = 100;
 	struct fname{
 		bool initialized = false;
 		const std::string flag="-fname";
 		std::string value;
 	};
 
-	struct nn{
+	struct n{
 		bool initialized = false;
 		const std::string flag="-n";
-		std::string value;
+		double value;
 	};
 
-	typedef std::tuple< fname, nn  > pack;
+	typedef std::tuple< fname, n  > pack;
 	pack packdata;
+
+	template< typename X >
+	typename std::enable_if< std::is_same< X, double >::value , X>::type
+	stoX ( const std::string &s ) {
+		return( std::stod( s ) );
+	};
+
+	template< typename X >
+	typename std::enable_if< std::is_same< X, std::string >::value , X>::type
+	stoX ( const std::string &s ) {
+		return( s );
+	};
 
 	template< std::size_t I = 0, typename... Tp, typename F >
 	inline typename std::enable_if<I == sizeof...(Tp), void>::type
@@ -72,9 +83,9 @@ struct inpdata {
 		for( int i = 1 ; i < argc ; i += 2 ) {
 			std::string key = argv[ i ];
 			std::string val = argv[ i + 1 ];
-			auto lambda = [ &key, &val ] (auto &x){
+			auto lambda = [ &key, &val, this ] (auto &x){
 					if( x.flag ==  key ) {
-						x.value = val;
+						x.value = stoX< decltype(x.value) >( val );
 						x.initialized = true;
 					}
 			};
@@ -82,7 +93,7 @@ struct inpdata {
 		}
 	};
 
-	std::string get_fname () {
+	std::string get_fname ( ) const {
 		return (std::get<0>(packdata)).value;
 	}
 
@@ -93,26 +104,28 @@ struct inpdata {
 void alp_program( const inpdata & unit, alp::RC & rc ) {
 	rc = SUCCESS;
 
+	auto fname = unit.get_fname();
+
 	alp::utils::MatrixFileReader<
 		double
-	> parser_A( std::string("/home/d/Repos/graphblas/datasets/mymatrix.mtx") );
+	> parser_A( fname );
 
 	size_t N = parser_A.n();
-	std::cout << "parser_A.n() = " << parser_A.n() << "\n";
 	std::vector< double > A_data_full( N * N , 0 );
 	std::vector< double > A_data( N * ( N + 1 ) / 2, 0 );
 
+	size_t k = 0;
 	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
-		//std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
+		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
 		auto i = it.i();
 		auto j = it.j();
 		auto v = it.v();
 		A_data_full[ i * N + j  ] = v;
+		// add hoc solution here !!
+		if( j <= i ) {
+			A_data[ k++ ] = v;
+		}
 	}
-
-	return ;
-
-
 
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
@@ -120,7 +133,6 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	             "\tH = L * L^T\n";
 
 	// dimensions of sqare matrices H, L
-	size_t N = 10 * unit;
 
 	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
 	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
@@ -149,47 +161,50 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 
 	print_matrix( std::string(" << L >> "), L);
 
-	alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
-	alp::set( LLT, zero_scalar );
-	print_matrix( " LLT ", LLT );
-	auto LT = alp::get_view< alp::view::transpose >( L );
-	print_matrix( " LT ", LT );
-	alp::mxm( LLT, LT, L, ring );
-	print_matrix( " LLT ", LLT );
+	// alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
+	// alp::set( LLT, zero_scalar );
+	// print_matrix( " LLT ", LLT );
+	// auto LT = alp::get_view< alp::view::transpose >( L );
+	// print_matrix( " LT ", LT );
+	// alp::mxm( LLT, LT, L, ring );
+	// print_matrix( " LLT ", LLT );
 }
 
 int main( int argc, char ** argv ) {
 	// defaults
-	bool printUsage = false;
-	size_t in = 100;
+	// bool printUsage = false;
+	inpdata in;
 
-	// error checking
-	if( argc > 2 ) {
-		printUsage = true;
-	}
-	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
-			printUsage = true;
-		} else {
-			// all OK
-			in = read;
-		}
-	}
-	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
-		return 1;
-	}
+	// // error checking
+	// if( argc > 2 ) {
+	// 	printUsage = true;
+	// }
+	// if( argc == 2 ) {
+	// 	size_t read;
+	// 	std::istringstream ss( argv[ 1 ] );
+	// 	if( ! ( ss >> read ) ) {
+	// 		std::cerr << "Error parsing first argument\n";
+	// 		printUsage = true;
+	// 	} else if( ! ss.eof() ) {
+	// 		std::cerr << "Error parsing first argument\n";
+	// 		printUsage = true;
+	// 	} else if( read % 2 != 0 ) {
+	// 		std::cerr << "Given value for n is odd\n";
+	// 		printUsage = true;
+	// 	} else {
+	// 		// all OK
+	// 		in.n = read;
+	// 	}
+	// }
+	// if( printUsage ) {
+	// 	std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
+	// 	std::cerr << "  -n (optional, default is 100): an even integer, the "
+	// 				 "test size.\n";
+	// 	return 1;
+	// }
+
+	in.set_flags( argc, argv );
+	in.print_flags();
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	alp::Launcher< AUTOMATIC > launcher;
