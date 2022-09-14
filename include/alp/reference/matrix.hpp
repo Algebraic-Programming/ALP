@@ -2421,7 +2421,7 @@ namespace alp {
 		};
 
 		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		std::ptrdiff_t get_lower_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
+		std::ptrdiff_t get_lower_limit(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
 			const std::ptrdiff_t m = nrows( A );
 			constexpr std::ptrdiff_t cl_a = std::tuple_element< band, typename Structure::band_intervals >::type::left;
@@ -2433,7 +2433,7 @@ namespace alp {
 		}
 
 		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
-		std::ptrdiff_t get_upper_bandwidth(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
+		std::ptrdiff_t get_upper_limit(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
 			const std::ptrdiff_t n = ncols( A );
 			constexpr std::ptrdiff_t cu_a = std::tuple_element< band, typename Structure::band_intervals >::type::right;
@@ -2470,8 +2470,8 @@ namespace alp {
 				"Provided band index is out of bounds."
 			);
 
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< band_index >( A );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< band_index >( A );
+			const std::ptrdiff_t l = structures::get_lower_limit< band_index >( A );
+			const std::ptrdiff_t u = structures::get_upper_limit< band_index >( A );
 
 			const std::ptrdiff_t lower_limit = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
 			const std::ptrdiff_t upper_limit = std::min( nrows( A ), -l + ncols( A ) );
@@ -2514,8 +2514,8 @@ namespace alp {
 			constexpr bool sym_up = is_sym;
 
 			/** Band limits */
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< band_index >( A );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< band_index >( A );
+			const std::ptrdiff_t l = structures::get_lower_limit< band_index >( A );
+			const std::ptrdiff_t u = structures::get_upper_limit< band_index >( A );
 			/** column-coordinate lower and upper limits considering matrix size and symmetry */
 			const std::ptrdiff_t sym_lower_limit = is_sym && sym_up ? row : 0;
 			const std::ptrdiff_t sym_upper_limit = is_sym && !sym_up ? row + 1 : ncols( A );

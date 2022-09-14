@@ -205,11 +205,11 @@ namespace alp {
 			const std::ptrdiff_t N   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
 			const std::ptrdiff_t K   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
 
-			const std::ptrdiff_t l_a { structures::get_lower_bandwidth< BandPos1 >( A ) };
-			const std::ptrdiff_t u_a { structures::get_upper_bandwidth< BandPos1 >( A ) };
+			const std::ptrdiff_t l_a { structures::get_lower_limit< BandPos1 >( A ) };
+			const std::ptrdiff_t u_a { structures::get_upper_limit< BandPos1 >( A ) };
 
-			const std::ptrdiff_t l_b { structures::get_lower_bandwidth< BandPos2 >( B ) };
-			const std::ptrdiff_t u_b { structures::get_upper_bandwidth< BandPos2 >( B ) };
+			const std::ptrdiff_t l_b { structures::get_lower_limit< BandPos2 >( B ) };
+			const std::ptrdiff_t u_b { structures::get_upper_limit< BandPos2 >( B ) };
 			
 			// In case of symmetry the iteration domain intersects the the upper 
 			// (or lower) domain of C
