@@ -26,7 +26,7 @@
 
 using namespace alp;
 
-
+// an attempt to make more general parser
 struct inpdata {
 	struct fname{
 		bool initialized = false;
@@ -111,28 +111,11 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	> parser_A( fname );
 
 	size_t N = parser_A.n();
-	std::vector< double > A_data_full( N * N , 0 );
-	std::vector< double > A_data( N * ( N + 1 ) / 2, 0 );
-
-	size_t k = 0;
-	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
-		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
-		auto i = it.i();
-		auto j = it.j();
-		auto v = it.v();
-		A_data_full[ i * N + j  ] = v;
-		// add hoc solution here !!
-		if( j <= i ) {
-			A_data[ k++ ] = v;
-		}
-	}
 
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting ALP cholesky\n"
-	             "\tH = L * L^T\n";
-
-	// dimensions of sqare matrices H, L
+		"\tH = L * L^T\n";
 
 	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
 	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
@@ -144,7 +127,7 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	}
 
         // rc = alp::set( H, one_scalar );
-	rc = rc ? rc : alp::buildMatrix( H, A_data.begin(), A_data.end() );
+	rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	if( !internal::getInitialized( H ) ) {
 		std::cout << " Matrix H is not initialized\n";
 	}
@@ -161,13 +144,16 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 
 	print_matrix( std::string(" << L >> "), L);
 
-	// alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
-	// alp::set( LLT, zero_scalar );
-	// print_matrix( " LLT ", LLT );
-	// auto LT = alp::get_view< alp::view::transpose >( L );
-	// print_matrix( " LT ", LT );
-	// alp::mxm( LLT, LT, L, ring );
-	// print_matrix( " LLT ", LLT );
+	alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
+	alp::set( LLT, zero_scalar );
+	auto LT = alp::get_view< alp::view::transpose >( L );
+#ifdef DEBUG
+	print_matrix( " << LLT >> ", LLT );
+	print_matrix( " << LT >>  ", LT );
+#endif
+	alp::mxm( LLT, LT, L, ring );
+	print_matrix( " << LLT >> ", LLT );
+
 }
 
 int main( int argc, char ** argv ) {

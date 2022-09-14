@@ -23,7 +23,6 @@
 #include "../../../tests/utils/print_alp_containers.hpp"
 
 #define TEMP_DISABLE
-#define DEBUG
 
 namespace alp {
 
@@ -68,8 +67,8 @@ namespace alp {
 				std::cerr << " set( LL, H ) failed\n";
 				return rc;
 			}
-#endif
 			print_matrix( " -- LL --  " , LL );
+#endif
 
 			for( size_t k = 0; k < n ; ++k ) {
 #ifdef DEBUG
@@ -97,8 +96,8 @@ namespace alp {
 					}, a
 				);
 
-				std::cout << "alpha " << *alpha << std::endl;
 #ifdef DEBUG
+				std::cout << "alpha " << *alpha << std::endl;
 				if( rc != SUCCESS ) {
 					std::cerr << " eWiseLambda( lambda, view ) (0) failed\n";
 					return rc;
@@ -106,7 +105,9 @@ namespace alp {
 #endif
 
 				auto v = get_view( LL, k, utils::range( k + 1, n ) );
+#ifdef DEBUG
 				print_vector( " -- v --  " , v );
+#endif
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
 				rc = eWiseLambda(
 					[ &alpha, &divide ]( const size_t i, D &val ) {
@@ -139,7 +140,10 @@ namespace alp {
 							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
 							minus
 						);
-						std::cout << "lambda " << i << " " << j << " " << val << " " << internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ) << std::endl;
+#ifdef DEBUG
+						std::cout << "lambda " << i << " " << j << " " << val
+							  << " " << internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ) << std::endl;
+#endif
 					},
 					LLprim
 				);
@@ -156,10 +160,9 @@ namespace alp {
 					std::cerr << " foldl( view, outer, minus ) failed\n";
 					return rc;
 				}
-#endif
-#endif
-
 				print_matrix( " -- LL --  " , LL );
+#endif
+#endif
 			}
 
 			// Finally collect output into L matrix and return
@@ -167,8 +170,6 @@ namespace alp {
 
 				// L[ k: , k ] = LL[ k: , k ]
 				auto vL  = get_view( L  , k, utils::range( k, n )  );
-
-
 				auto vLL = get_view( LL , k, utils::range( k, n )  );
 
 				rc = set( vL, vLL );
