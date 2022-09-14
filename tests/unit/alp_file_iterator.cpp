@@ -27,6 +27,7 @@ using namespace alp;
 std::string fname;
 
 void alp_program( const size_t & in, alp::RC & rc ) {
+	(void)in;
 	rc = SUCCESS;
 
 	alp::utils::MatrixFileReader<
@@ -37,7 +38,7 @@ void alp_program( const size_t & in, alp::RC & rc ) {
 		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
 	}
 
-	return ;
+	return;
 }
 
 int main( int argc, char ** argv ) {

@@ -47,7 +47,7 @@ namespace alp {
 			template< typename T, typename S = size_t >
 			class MatrixFileReaderBase {
 
-			protected:
+				protected:
 				/** Properties, including filename etc. */
 				MatrixFileProperties properties;
 
@@ -146,7 +146,9 @@ namespace alp {
 								);
 							}
 						} else {
+#ifdef DEBUG
 							std::cout << "wordinline = " << wordinline << "\n";
+#endif
 							throw std::runtime_error(
 								"Cannot parse matrix file header file."
 							);
@@ -244,7 +246,7 @@ namespace alp {
 				MatrixFileReaderBase() {}
 
 
-			public:
+				public:
 
 				/** Returns the underlying file name. */
 				std::string filename() const noexcept {

@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,33 +15,15 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 25th of May, 2017
- */
 
 #ifndef _H_MATRIXFILEITERATOR
 #define _H_MATRIXFILEITERATOR
 
 #include <cstddef> //std::ptrdiff_t
 #include <fstream>
-#include <functional>
 #include <iostream>
-#include <limits>
 #include <sstream>
 #include <stdexcept> //std::runtime_error
-
-#include <stdlib.h> //posix_memalign
-
-#include <utility> //std::pair
-
-#include <assert.h>
-
-#include <alp/config.hpp>
-#include <alp/iomode.hpp>
-//#include <alp/spmd.hpp>
-//#include <alp/utils/config.hpp>
-//#include <alp/utils/hpparser.h>
 
 #include "MatrixFileProperties.hpp"
 
@@ -49,15 +31,16 @@ namespace alp {
 	namespace utils {
 		namespace internal {
 
-			template< typename T, bool data_reflect = false,  typename S = size_t >
+			template< typename T >
 			class MatrixFileIterator {
 
-			private:
+				private:
+
 				/** The output type of the base iterator. */
 				typedef T OutputType;
 
 				/** The underlying MatrixReader. */
-				MatrixFileProperties & properties;
+				MatrixFileProperties &properties;
 
 				/** The input stream. */
 				std::ifstream infile;
@@ -91,7 +74,7 @@ namespace alp {
 					bool mmfile = true;
 					// try and parse header
 					std::string mmheader;
-					if( ! std::getline( infile, mmheader ) ) {
+					if( !std::getline( infile, mmheader ) ) {
 						// some type of error occurred-- rewind and let a non-mmfile parse try
 						mmfile = false;
 						(void)infile.seekg( start );
@@ -117,38 +100,46 @@ namespace alp {
 					// done
 				}
 
+				void start() {
+					if( started ) {
+						preprocess();
+						started = false;
+						(void)operator++();
+					}
+				}
 
-			public:
+
+				public:
 
 				// standard STL iterator typedefs
 				typedef std::ptrdiff_t difference_type;
 				typedef OutputType value_type;
-				typedef OutputType & reference;
-				typedef OutputType * pointer;
+				typedef OutputType &reference;
+				typedef OutputType *pointer;
 				typedef std::forward_iterator_tag iterator_category;
 
 				typedef T nonzero_value_type;
 
 				/** Base constructor, starts in begin position. */
 				MatrixFileIterator(
-					MatrixFileProperties & prop,
+					MatrixFileProperties &prop,
 					IOMode mode, const std::function< void( T & ) > valueConverter,
 					const bool end = false
 				) :
 					properties( prop ), infile( properties._fn ), spos(),
 					colidx( 0 ), rowidx( 0 ), ended( end ),
-					started( ! end ),
+					started( !end ),
 					converter( valueConverter ) {
 					if( mode != SEQUENTIAL ) {
 						throw std::runtime_error(
 							"Only sequential IO is supported by this iterator at "
-							"present, sorry."
+							"present."
 						);
 					}
 				}
 
 				/** Copy constructor. */
-				MatrixFileIterator( const MatrixFileIterator< T > & other ) :
+				MatrixFileIterator( const MatrixFileIterator< T > &other ) :
 					properties( other.properties ), infile( properties._fn ), spos( other.spos ),
 					colidx( other.colidx ), rowidx( other.rowidx ), ended( other.ended ), started( other.started ),
 					converter( other.converter ) {
@@ -161,7 +152,7 @@ namespace alp {
 				}
 
 				/** Copies an iterator state. */
-				MatrixFileIterator & operator=( const MatrixFileIterator & x ) {
+				MatrixFileIterator &operator=( const MatrixFileIterator &x ) {
 					// copy ended state
 					ended = x.ended;
 					// copy started state
@@ -196,9 +187,9 @@ namespace alp {
 #ifndef NDEBUG
 					if( properties._fn != x.properties._fn ) {
 						std::cerr << "Warning: comparing two instances of "
-									 "MatrixFileIterator that are 1) nonempty "
-									 "*and* 2) not reading from the same "
-									 "file.\n";
+							"MatrixFileIterator that are 1) nonempty "
+							"*and* 2) not reading from the same "
+							"file.\n";
 					}
 #endif
 					// check if both are in start position
@@ -212,23 +203,19 @@ namespace alp {
 
 				/** Standard check for inequality, relies on equality check. */
 				bool operator!=( const MatrixFileIterator &x ) const {
-					return ! ( operator==( x ) );
+					return !( operator==( x ) );
 				}
 
 				// this assumes full triplet data
-				MatrixFileIterator & operator++() {
+				MatrixFileIterator &operator++() {
 					// if ended, stop
 					if( ended ) {
 						return *this;
 					}
 					// if this is the first function call on this iterator, call preprocess first
-					if( started ) {
-						preprocess();
-						started = false;
-						(void)operator++();
-					}
+					start();
 
-					if( ! ( infile >> val ) ) {
+					if( !( infile >> val ) ) {
 						ended = true;
 					} else {
 #ifdef _DEBUG
@@ -242,8 +229,8 @@ namespace alp {
 						converter( val );
 
 						if(
-							properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
-							properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
+							( properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ) ||
+							( properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN )
 						) {
 							++rowidx;
 							if( rowidx  == properties._n + 1 ) {
@@ -280,12 +267,9 @@ namespace alp {
 				}
 
 				/** Standard dereferencing of iterator. */
-				const OutputType & operator*() {
-					if( started ) {
-						preprocess();
-						started = false;
-						(void)operator++();
-					}
+				const OutputType &operator*() {
+					start();
+
 					if( ended ) {
 						throw std::runtime_error(
 							"Attempt to dereference (via operator*) "
@@ -297,11 +281,8 @@ namespace alp {
 
 				/** Standard pointer request of iterator. */
 				const OutputType * operator->() {
-					if( started ) {
-						preprocess();
-						started = false;
-						(void)operator++();
-					}
+					start();
+
 					if( ended ) {
 						throw std::runtime_error(
 							"Attempt to dereference (via "
@@ -310,11 +291,11 @@ namespace alp {
 							"position."
 						);
 					}
-					return &( val );
+					return &val;
 				}
 
 				/** Returns the current col index. */
-				const S j() const {
+				size_t j() {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
@@ -332,7 +313,7 @@ namespace alp {
 				}
 
 				/** Returns the current row index. */
-				const S i() const {
+				size_t i() {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
@@ -350,7 +331,7 @@ namespace alp {
 				}
 
 				/** Returns the current nonzero value. */
-				const T & v() const {
+				T & v() {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
@@ -369,9 +350,8 @@ namespace alp {
 				}
 			};
 
-
 		} // namespace internal
-	}     // namespace utils
+	} // namespace utils
 } // namespace alp
 
 #endif // end ``_H_MATRIXFILEITERATOR''

@@ -43,10 +43,7 @@ namespace alp {
 			template< typename U, typename V >
 			friend std::ostream & operator<<( std::ostream & out, const MatrixFileReader< U, V > & A );
 
-		private:
-
-
-		public:
+			public:
 
 			/**
 			 * Constructs a matrix reader using minimal information.
@@ -92,7 +89,8 @@ namespace alp {
 			 */
 			internal::MatrixFileIterator< T > begin(
 				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+				const std::function< void( T & ) > valueConverter = []( T & ) {}
+			) {
 				return cbegin( mode, valueConverter );
 			}
 
@@ -102,7 +100,8 @@ namespace alp {
 			 */
 			internal::MatrixFileIterator< T > end(
 				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+				const std::function< void( T & ) > valueConverter = []( T & ) {}
+			) {
 				return cend( mode, valueConverter );
 			}
 
@@ -133,27 +132,6 @@ namespace alp {
 				return internal::MatrixFileIterator< T >( internal::MatrixFileReaderBase< T, S >::properties, mode, valueConverter, true );
 			}
 		};
-
-		// /** Pretty printing function. */
-		// template< typename T, typename S >
-		// std::ostream & operator<<( std::ostream & out, const MatrixFileReader< T, S > & A ) {
-		// 	size_t nnz;
-		// 	try {
-		// 		nnz = A.nz();
-		// 	} catch( ... ) { nnz = -1; }
-		// 	out << A.filename() << " < ";
-		// 	if( nnz == static_cast< size_t >( -1 ) ) {
-		// 		out << "m: " << A.m() << ", n: " << A.n() << ", nz: "
-		// 			<< "<unknown>"
-		// 			<< ", entries: " << A.entries();
-		// 	} else {
-		// 		out << "m: " << A.m() << ", n: " << A.n() << ", nz: " << nnz << ", entries: " << A.entries();
-		// 	}
-		// 	out << ", symmetric: " << ( A.isSymmetric() ? "yes" : "no" );
-		// 	out << ", uses direct addressing: " << ( A.usesDirectAddressing() ? "yes" : "no" );
-		// 	out << " >\n";
-		// 	return out;
-		// }
 
 	} // namespace utils
 } // namespace alp
