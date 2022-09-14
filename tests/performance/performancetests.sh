@@ -72,10 +72,10 @@ DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
 DATASET_SIZES=(497 4039 27770 334863 1134890 3774768 3072441)
 KNN4SOLS=(118 499 2805 1 64 1 1048907)
 KNN6SOLS=(357 547 5176 1 246 1 1453447)
-
+s
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
-MULTIPLICATION_DATASETS=(west0497.mtx facebook_combined.txt cit-HepTh.txt com-amazon.ungraph.txt com-youtube.ungraph.txt cit-Patents.txt com-orkut.ungraph.txt)
-MULTIPLICATION_DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
+MULTIPLICATION_DATASETS=(west0497.mtx nos3.mtx aft01.mtx G2_circuit.mtx hood.mtx apache2.mtx ecology2.mtx)
+MULTIPLICATION_DATASET_MODES=(direct direct direct direct direct direct direct)
 
 #which command to use to run a GraphBLAS program
 LPF=yes
