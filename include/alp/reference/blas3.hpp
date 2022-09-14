@@ -205,11 +205,11 @@ namespace alp {
 			const std::ptrdiff_t N   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
 			const std::ptrdiff_t K   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
 
-			const std::ptrdiff_t l_a { structures::get_lower_bandwidth< BandPos1 >( A ) };
-			const std::ptrdiff_t u_a { structures::get_upper_bandwidth< BandPos1 >( A ) };
+			const std::ptrdiff_t l_a { structures::get_lower_limit< BandPos1 >( A ) };
+			const std::ptrdiff_t u_a { structures::get_upper_limit< BandPos1 >( A ) };
 
-			const std::ptrdiff_t l_b { structures::get_lower_bandwidth< BandPos2 >( B ) };
-			const std::ptrdiff_t u_b { structures::get_upper_bandwidth< BandPos2 >( B ) };
+			const std::ptrdiff_t l_b { structures::get_lower_limit< BandPos2 >( B ) };
+			const std::ptrdiff_t u_b { structures::get_upper_limit< BandPos2 >( B ) };
 			
 			// In case of symmetry the iteration domain intersects the the upper 
 			// (or lower) domain of C
@@ -1270,26 +1270,18 @@ namespace alp {
 
 		/** Specialization for a valid band position. Assuming matrices have matching dimensions. */
 		template<
-			size_t BandPos,
+			size_t band_index,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename std::enable_if_t<
-				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
+				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
 		RC set_band(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
 		) noexcept {
-			
-			const size_t M = nrows( C );
-			const size_t N = ncols( C );
 
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( C );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( C );
-
-			// In case of symmetry the iteration domain intersects the the upper
-			// (or lower) domain of C
 			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
 			constexpr bool is_sym_a { structures::is_a< InputStructure, structures::Symmetric >::value };
 
@@ -1297,19 +1289,13 @@ namespace alp {
 			constexpr bool sym_up_c { is_sym_c };
 			constexpr bool sym_up_a { is_sym_a };
 
-			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
-			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( A );
 
-			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
-				/** j-coordinate lower and upper limits considering matrix size and symmetry */
-				const std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
-				const std::ptrdiff_t j_sym_u_lim = is_sym_c && !sym_up_c ? i + 1 : N;
-				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
-				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
 
-				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( A, i );
+
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 					if( sym_up_c == sym_up_a ) {
 						c_val = internal::access( A, internal::getStorageIndex( A, i, j ) );
@@ -1319,13 +1305,12 @@ namespace alp {
 				}
 			}
 
-			return set_band< BandPos + 1 >( C, A );
+			return set_band< band_index + 1 >( C, A );
 		}
-
 	} // namespace internal
 
 	/**
-	 * Sets all elements of the output matrix to the values of the input matrix. Unmasked version.
+	 * Sets all elements of the output matrix to the values of the input matrix.
 	 * C = A
 	 * 
 	 * @tparam descr
@@ -1393,11 +1378,11 @@ namespace alp {
 		 * Specializations implement bound checking.
 		 */
 		template<
-			size_t BandPos,
+			size_t band_index,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename std::enable_if_t<
-				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
 		RC set_band(
@@ -1407,11 +1392,11 @@ namespace alp {
 
 		/** Specialization for out-of-range band position - nothing to do */
 		template<
-			size_t BandPos,
+			size_t band_index,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 			typename InputType, typename InputStructure,
 			typename std::enable_if_t<
-				BandPos >= std::tuple_size< typename OutputStructure::band_intervals >::value
+				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
 		RC set_band(
@@ -1425,11 +1410,11 @@ namespace alp {
 
 		/** Specialization for a valid band position */
 		template<
-			size_t BandPos,
+			size_t band_index,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 			typename InputType, typename InputStructure,
 			typename std::enable_if_t<
-				BandPos < std::tuple_size< typename OutputStructure::band_intervals >::value
+				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
 		RC set_band(
@@ -1437,38 +1422,20 @@ namespace alp {
 			const Scalar< InputType, InputStructure, reference > &val
 		) noexcept {
 
-			const size_t M = nrows( C );
-			const size_t N = ncols( C );
+			// i-coordinate lower and upper limits considering matrix size and band limits
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( C );
 
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandPos >( C );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandPos >( C );
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
 
-			// In case of symmetry the iteration domain intersects the the upper
-			// (or lower) domain of C
-			constexpr bool is_sym_c { structures::is_a< OutputStructure, structures::Symmetric >::value };
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( C, i );
 
-			// Temporary until adding multiple symmetry directions
-			constexpr bool sym_up_c { is_sym_c };
-
-			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
-			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
-
-			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
-				/** j-coordinate lower and upper limits considering matrix size and symmetry */
-				const std::ptrdiff_t j_sym_l_lim = is_sym_c && sym_up_c ? i : 0;
-				const std::ptrdiff_t j_sym_u_lim = is_sym_c && !sym_up_c ? i + 1 : N;
-				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
-				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
-
-				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 					c_val = *val;
 				}
 			}
 
-			return set_band< BandPos + 1 >( C, val );
+			return set_band< band_index + 1 >( C, val );
 		}
 
 	} // namespace internal

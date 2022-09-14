@@ -374,47 +374,28 @@ namespace alp {
 		 * Upon completion, calls itself for the next band.
 		 */
 		template<
-			size_t BandIndex, typename Func,
+			size_t band_index, typename Func,
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
 			typename std::enable_if_t<
-				BandIndex < std::tuple_size< typename Structure::band_intervals >::value
+				band_index < std::tuple_size< typename Structure::band_intervals >::value
 			> * = nullptr
 		>
 		RC eWiseLambda(
 			const Func f,
 			alp::Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
 		) {
-			const size_t M = nrows( A );
-			const size_t N = ncols( A );
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( A );
 
-			const std::ptrdiff_t l = structures::get_lower_bandwidth< BandIndex >( A );
-			const std::ptrdiff_t u = structures::get_upper_bandwidth< BandIndex >( A );
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
 
-			// In case of symmetry the iteration domain intersects the the upper
-			// (or lower) domain of A
-			constexpr bool is_sym_a = structures::is_a< Structure, structures::Symmetric >::value;
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( A, i );
 
-			// Temporary until adding multiple symmetry directions
-			constexpr bool sym_up_a = is_sym_a;
-
-			/** i-coordinate lower and upper limits considering matrix size and band limits */
-			const std::ptrdiff_t i_l_lim = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
-			const std::ptrdiff_t i_u_lim = std::min( M, -l + N );
-
-			for( size_t i = static_cast< size_t >( i_l_lim ); i < static_cast< size_t >( i_u_lim ); ++i ) {
-				/** j-coordinate lower and upper limits considering matrix size and symmetry */
-				const std::ptrdiff_t j_sym_l_lim = is_sym_a && sym_up_a ? i : 0;
-				const std::ptrdiff_t j_sym_u_lim = is_sym_a && !sym_up_a ? i + 1 : N;
-				/** j-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-				const std::ptrdiff_t j_l_lim = std::max( j_sym_l_lim, l );
-				const std::ptrdiff_t j_u_lim = std::min( j_sym_u_lim, u );
-
-				for( size_t j = static_cast< size_t >( j_l_lim ); j < static_cast< size_t >( j_u_lim ); ++j ) {
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
 					auto &a_val = internal::access( A, internal::getStorageIndex( A, i, j ) );
 					f( i, j, a_val );
 				}
 			}
-			return eWiseLambda< BandIndex + 1 >( f, A );
+			return eWiseLambda< band_index + 1 >( f, A );
 		}
 
 	} // namespace internal
