@@ -2470,16 +2470,22 @@ namespace alp {
 				"Provided band index is out of bounds."
 			);
 
-			const std::ptrdiff_t l = structures::get_lower_limit< band_index >( A );
-			const std::ptrdiff_t u = structures::get_upper_limit< band_index >( A );
+			// cast matrix dimensions to signed integer to allow for comparison with negative numbers
+			const std::ptrdiff_t M = static_cast< std::ptrdiff_t >( nrows( A ) );
+			const std::ptrdiff_t N = static_cast< std::ptrdiff_t >( ncols( A ) );
 
-			const std::ptrdiff_t lower_limit = std::max( static_cast< std::ptrdiff_t >( 0 ), -u );
-			const std::ptrdiff_t upper_limit = std::min( nrows( A ), -l + ncols( A ) );
+			// band limits are negated and inverted due to different orientation
+			// of coordinate system of band and matrix dimensions.
+			const std::ptrdiff_t l = -structures::get_upper_limit< band_index >( A );
+			const std::ptrdiff_t u = N - structures::get_lower_limit< band_index >( A );
 
-			assert( ( lower_limit >= 0 ) && ( static_cast< size_t >( lower_limit ) <= nrows( A ) ) );
-			assert( ( upper_limit >= 0 ) && ( static_cast< size_t >( upper_limit ) <= nrows( A ) ) );
+			// fit the limits within the matrix dimensions
+			const size_t lower_limit = static_cast< size_t >( std::max( std::min( l, M ), static_cast< std::ptrdiff_t >( 0 ) ) );
+			const size_t upper_limit = static_cast< size_t >( std::max( std::min( u, M ), static_cast< std::ptrdiff_t >( 0 ) ) );
 
-			return std::make_pair( static_cast< size_t >( lower_limit ), static_cast< size_t >( upper_limit ) );
+			assert( lower_limit <= upper_limit );
+
+			return std::make_pair( lower_limit, upper_limit );
 		}
 
 		/**
@@ -2504,29 +2510,42 @@ namespace alp {
 
 			using Structure = typename MatrixType::structure;
 
+			// Declaring this to avoid static casts to std::ptrdiff_t in std::min and std::max calls
+			const std::ptrdiff_t signed_zero = 0;
+
 			static_assert(
 				band_index < std::tuple_size< typename Structure::band_intervals >::value,
 				"Provided band index is out of bounds."
 			);
 
+			assert( row < nrows( A ) );
+
+			// cast matrix dimensions to signed integer to allow for comparison with negative numbers
+			const std::ptrdiff_t N = static_cast< std::ptrdiff_t >( ncols( A ) );
+
 			constexpr bool is_sym = structures::is_a< Structure, structures::Symmetric >::value;
 			// Temporary until adding multiple symmetry directions
 			constexpr bool sym_up = is_sym;
 
-			/** Band limits */
+			// Band limits
 			const std::ptrdiff_t l = structures::get_lower_limit< band_index >( A );
 			const std::ptrdiff_t u = structures::get_upper_limit< band_index >( A );
-			/** column-coordinate lower and upper limits considering matrix size and symmetry */
-			const std::ptrdiff_t sym_lower_limit = is_sym && sym_up ? row : 0;
-			const std::ptrdiff_t sym_upper_limit = is_sym && !sym_up ? row + 1 : ncols( A );
-			/** column-coordinate lower and upper limits, also considering the band limits in addition to the factors above */
-			const std::ptrdiff_t lower_limit = std::max( sym_lower_limit, l );
-			const std::ptrdiff_t upper_limit = std::min( sym_upper_limit, u );
 
-			assert( ( lower_limit >= 0 ) && ( static_cast< size_t >( lower_limit ) <= ncols( A ) ) );
-			assert( ( upper_limit >= 0 ) && ( static_cast< size_t >( upper_limit ) <= ncols( A ) ) );
+			// Band limits taking into account symmetry
+			const std::ptrdiff_t sym_l = is_sym && sym_up ? std::max( signed_zero, l ) : l;
+			const std::ptrdiff_t sym_u = is_sym && !sym_up ? std::min( signed_zero, u ) : u;
 
-			return std::make_pair( static_cast< size_t >( lower_limit ), static_cast< size_t >( upper_limit ) );
+			// column coordinate lower and upper limits considering the provided row coordinate
+			const std::ptrdiff_t sym_l_row = static_cast< std::ptrdiff_t >( row ) + sym_l;
+			const std::ptrdiff_t sym_u_row = sym_l_row + ( sym_u - sym_l );
+
+			// fit the limits within the matrix dimensions
+			const size_t lower_limit = static_cast< size_t >( std::max( std::min( sym_l_row, N ), signed_zero ) );
+			const size_t upper_limit = static_cast< size_t >( std::max( std::min( sym_u_row, N ), signed_zero ) );
+
+			assert( lower_limit <= upper_limit );
+
+			return std::make_pair( lower_limit, upper_limit );
 		}
 
 	} // namespace structures
