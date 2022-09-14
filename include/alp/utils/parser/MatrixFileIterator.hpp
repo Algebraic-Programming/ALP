@@ -44,11 +44,6 @@
 //#include <alp/utils/hpparser.h>
 
 #include "MatrixFileProperties.hpp"
-#include "config.hpp"
-
-#ifdef _GRB_WITH_OMP
-#include <alp/omp/config.hpp>
-#endif
 
 namespace alp {
 	namespace utils {
@@ -57,18 +52,9 @@ namespace alp {
 			template< typename T, bool data_reflect = false,  typename S = size_t >
 			class MatrixFileIterator {
 
-				// template< typename X1, typename X2 >
-				// friend std::ostream & operator<<( std::ostream &, const MatrixFileIterator< X1, X2 > & );
-
 			private:
 				/** The output type of the base iterator. */
 				typedef T OutputType;
-
-				// /** Iterators will retrieve this many lines at a time from the input file. */
-				// static constexpr size_t buffer_size = alp::config::PARSER::bsize();
-
-				// /** The nonzero buffer. */
-				// OutputType *buffer;
 
 				/** The underlying MatrixReader. */
 				MatrixFileProperties & properties;
@@ -79,20 +65,14 @@ namespace alp {
 				/** The input stream position. */
 				std::streampos spos;
 
-				// /** The current position in the buffer. */
-				// size_t pos;
-
-				// /** The buffer couter (buffers used so far). */
-				// size_t buffercount;
-
-				/** The ... */
+				/** The curent value */
 				OutputType val;
 
 				/** The i index counter. */
-				size_t icount;
+				size_t colidx;
 
 				/** The j index counter. */
-				size_t jcount;
+				size_t rowidx;
 
 				/** Whether the \a infile stream \em and \a buffer have been depleted. */
 				bool ended;
@@ -156,7 +136,7 @@ namespace alp {
 					const bool end = false
 				) :
 					properties( prop ), infile( properties._fn ), spos(),
-					icount( 0 ), jcount( 0 ), ended( end ),
+					colidx( 0 ), rowidx( 0 ), ended( end ),
 					started( ! end ),
 					converter( valueConverter ) {
 					if( mode != SEQUENTIAL ) {
@@ -170,7 +150,7 @@ namespace alp {
 				/** Copy constructor. */
 				MatrixFileIterator( const MatrixFileIterator< T > & other ) :
 					properties( other.properties ), infile( properties._fn ), spos( other.spos ),
-					icount( other.icount ), jcount( other.jcount ), ended( other.ended ), started( other.started ),
+					colidx( other.colidx ), rowidx( other.rowidx ), ended( other.ended ), started( other.started ),
 					converter( other.converter ) {
 					// set latest stream position
 					(void)infile.seekg( spos );
@@ -225,11 +205,6 @@ namespace alp {
 					if( started && x.started ) {
 						return true;
 					}
-					// // otherwise, only can compare equal if in the same position
-					// if( pos && x.pos ) {
-					// 	// AND in the same input stream position
-					// 	return spos == x.spos;
-					// }
 
 					// otherwise, not equal
 					return false;
@@ -266,16 +241,14 @@ namespace alp {
 						// convert value
 						converter( val );
 
-
-
 						if(
 							properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
 							properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
 						) {
-							++icount;
-							if( icount  == properties._n + 1 ) {
-								++jcount;
-								icount = jcount + 1;
+							++rowidx;
+							if( rowidx  == properties._n + 1 ) {
+								++colidx;
+								rowidx = colidx + 1;
 							}
 						} else if (
 							properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
@@ -286,10 +259,10 @@ namespace alp {
 						} else if (
 							properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
 						) {
-							++jcount;
-							if( jcount == properties._m + 1 ) {
-								jcount = 1;
-								++icount;
+							++rowidx;
+							if( rowidx == properties._m + 1 ) {
+								rowidx = 1;
+								++colidx;
 							}
 
 						}
@@ -306,55 +279,59 @@ namespace alp {
 					return *this;
 				}
 
-				// /** Standard dereferencing of iterator. */
-				// const OutputType & operator*() {
-				// 	if( started ) {
-				// 		preprocess();
-				// 		started = false;
-				// 		(void)operator++();
-				// 	}
-				// 	if( ended ) {
-				// 		throw std::runtime_error(
-				// 			"Attempt to dereference (via operator*) "
-				// 			"MatrixFileIterator in end "
-				// 			"position." );
-				// 	}
-				// 	return buffer[ pos ];
-				// }
+				/** Standard dereferencing of iterator. */
+				const OutputType & operator*() {
+					if( started ) {
+						preprocess();
+						started = false;
+						(void)operator++();
+					}
+					if( ended ) {
+						throw std::runtime_error(
+							"Attempt to dereference (via operator*) "
+							"MatrixFileIterator in end "
+							"position." );
+					}
+					return val;
+				}
 
-				// /** Standard pointer request of iterator. */
-				// const OutputType * operator->() {
-				// 	if( started ) {
-				// 		preprocess();
-				// 		started = false;
-				// 		(void)operator++();
-				// 	}
-				// 	if( ended ) {
-				// 		throw std::runtime_error( "Attempt to dereference (via "
-				// 								  "operator->) "
-				// 								  "MatrixFileIterator in end "
-				// 								  "position." );
-				// 	}
-				// 	return &( buffer[ pos ] );
-				// }
+				/** Standard pointer request of iterator. */
+				const OutputType * operator->() {
+					if( started ) {
+						preprocess();
+						started = false;
+						(void)operator++();
+					}
+					if( ended ) {
+						throw std::runtime_error(
+							"Attempt to dereference (via "
+							"operator->) "
+							"MatrixFileIterator in end "
+							"position."
+						);
+					}
+					return &( val );
+				}
 
-				/** Returns the current row index. */
+				/** Returns the current col index. */
 				const S j() const {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
-						// (void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
+						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
 					}
 					if( ended ) {
-						throw std::runtime_error( "Attempt to dereference (via "
-									  "operator*) "
-									  "MatrixFileIterator in end "
-									  "position." );
+						throw std::runtime_error(
+							"Attempt to dereference (via "
+							"operator*) "
+							"MatrixFileIterator in end "
+							"position."
+						);
 					}
-					return icount - 1;
+					return colidx;
 				}
 
-				/** Returns the current column index. */
+				/** Returns the current row index. */
 				const S i() const {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
@@ -362,12 +339,14 @@ namespace alp {
 						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
 					}
 					if( ended ) {
-						throw std::runtime_error( "Attempt to dereference (via "
-									  "operator*) "
-									  "MatrixFileIterator in end "
-									  "position." );
+						throw std::runtime_error(
+							"Attempt to dereference (via "
+							"operator*) "
+							"MatrixFileIterator in end "
+							"position."
+						);
 					}
-					return jcount;
+					return rowidx - 1;
 				}
 
 				/** Returns the current nonzero value. */
@@ -378,10 +357,12 @@ namespace alp {
 						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
 					}
 					if( ended ) {
-						throw std::runtime_error( "Attempt to dereference (via "
-												  "operator*) "
-												  "MatrixFileIterator in end "
-												  "position." );
+						throw std::runtime_error(
+							"Attempt to dereference (via "
+							"operator*) "
+							"MatrixFileIterator in end "
+							"position."
+						);
 					}
 
 					return val;

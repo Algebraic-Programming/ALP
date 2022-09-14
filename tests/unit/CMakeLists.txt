@@ -42,6 +42,10 @@ add_grb_executables( alp_type_traits alp_type_traits.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( alp_file_iterator alp_file_iterator.cpp
+	BACKENDS alp_reference
+)      
+
 add_grb_executables( argmax argmax.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
