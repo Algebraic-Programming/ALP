@@ -54,30 +54,6 @@ namespace alp {
 	namespace utils {
 		namespace internal {
 
-			// template <typename T,
-			// 	  bool data_reflect = false,
-			// 	  size_t buffer_size = 0
-			// >
-			// struct BufferType {
-			// 	typename std::conditional<
-			// 		data_reflect,
-			// 		std::pair <
-			// 			std::array< T, buffer_size >, // direct buffer
-			// 			std::array< T, buffer_size >  // reflected buffer
-			// 			>,
-			// 		std::array<T, buffer_size> // direct buffer
-			// 	>::type data;
-			// 	typename std::conditional<
-			// 		data_reflect,
-			// 		std::pair <
-			// 			size_t, // direct buffer counter
-			// 			size_t  // reflecetd buffer counter
-			// 		>,
-			// 		size_t
-			// 	>::type pos;
-			// };
-
-
 			template< typename T, bool data_reflect = false,  typename S = size_t >
 			class MatrixFileIterator {
 
@@ -88,11 +64,11 @@ namespace alp {
 				/** The output type of the base iterator. */
 				typedef T OutputType;
 
-				/** Iterators will retrieve this many lines at a time from the input file. */
-				static constexpr size_t buffer_size = alp::config::PARSER::bsize();
+				// /** Iterators will retrieve this many lines at a time from the input file. */
+				// static constexpr size_t buffer_size = alp::config::PARSER::bsize();
 
-				/** The nonzero buffer. */
-				OutputType *buffer;
+				// /** The nonzero buffer. */
+				// OutputType *buffer;
 
 				/** The underlying MatrixReader. */
 				MatrixFileProperties & properties;
@@ -103,11 +79,14 @@ namespace alp {
 				/** The input stream position. */
 				std::streampos spos;
 
-				/** The current position in the buffer. */
-				size_t pos;
+				// /** The current position in the buffer. */
+				// size_t pos;
 
-				/** The buffer couter (buffers used so far). */
-				size_t buffercount;
+				// /** The buffer couter (buffers used so far). */
+				// size_t buffercount;
+
+				/** The ... */
+				OutputType val;
 
 				/** The i index counter. */
 				size_t icount;
@@ -176,7 +155,7 @@ namespace alp {
 					IOMode mode, const std::function< void( T & ) > valueConverter,
 					const bool end = false
 				) :
-					buffer( NULL ), properties( prop ), infile( properties._fn ), spos(), pos( 0 ), buffercount( 0 ),
+					properties( prop ), infile( properties._fn ), spos(),
 					icount( 0 ), jcount( 0 ), ended( end ),
 					started( ! end ),
 					converter( valueConverter ) {
@@ -190,31 +169,15 @@ namespace alp {
 
 				/** Copy constructor. */
 				MatrixFileIterator( const MatrixFileIterator< T > & other ) :
-					buffer( NULL ), properties( other.properties ), infile( properties._fn ), spos( other.spos ),
-					pos( other.pos ), buffercount( other.buffercount ),
+					properties( other.properties ), infile( properties._fn ), spos( other.spos ),
 					icount( other.icount ), jcount( other.jcount ), ended( other.ended ), started( other.started ),
 					converter( other.converter ) {
 					// set latest stream position
 					(void)infile.seekg( spos );
-					// if buffer is nonempty
-					if( pos > 0 ) {
-						// allocate buffer
-						if( posix_memalign( (void **)&buffer, config::CACHE_LINE_SIZE::value(), buffer_size * sizeof( OutputType ) ) != 0 ) {
-							buffer = NULL;
-							throw std::runtime_error( "Error during allocation of internal iterator memory." );
-						}
-						// copy any remaining buffer contents
-						for( size_t i = 0; i < pos; ++i ) {
-							buffer[ i ] = other.buffer[ i ];
-						}
-					}
 				}
 
 				/** Base destructor. */
 				~MatrixFileIterator() {
-					if( buffer != NULL ) {
-						free( buffer );
-					}
 				}
 
 				/** Copies an iterator state. */
@@ -241,30 +204,6 @@ namespace alp {
 					// not yet done, copy input file stream position
 					(void)infile.seekg( x.spos );
 					spos = x.spos;
-					pos = x.pos;
-					// copy any remaining buffer contents
-					if( pos > 0 ) {
-						// check if buffer is allocated
-						if( buffer == NULL ) {
-							// no, so allocate buffer
-							if( posix_memalign(
-								    (void **)&buffer,
-								    config::CACHE_LINE_SIZE::value(),
-								    buffer_size * sizeof( OutputType )
-							    ) != 0 ) {
-								buffer = NULL;
-								throw std::runtime_error(
-									"Error during allocation of internal iterator memory."
-								);
-							}
-						}
-						// copy remote buffer contents
-						assert( pos < buffer_size );
-						for( size_t i = 0; i <= pos; ++i ) {
-							buffer[ i ] = x.buffer[ i ];
-						}
-					}
-					// done
 					return *this;
 				}
 
@@ -286,11 +225,12 @@ namespace alp {
 					if( started && x.started ) {
 						return true;
 					}
-					// otherwise, only can compare equal if in the same position
-					if( pos && x.pos ) {
-						// AND in the same input stream position
-						return spos == x.spos;
-					}
+					// // otherwise, only can compare equal if in the same position
+					// if( pos && x.pos ) {
+					// 	// AND in the same input stream position
+					// 	return spos == x.spos;
+					// }
+
 					// otherwise, not equal
 					return false;
 				}
@@ -313,119 +253,97 @@ namespace alp {
 						(void)operator++();
 					}
 
-
-					// check if we need to parse from infile
-					if( pos == 0 ) {
-						// try and parse buffer_size new values
-						size_t i = 0;
-						if( ! infile.good() ) {
-							ended = true;
-						}
-
-						// check if buffer is allocated
-						if( buffer == NULL ) {
-							// no, so allocate buffer
-							if( posix_memalign(
-								    (void **)&buffer,
-								    config::CACHE_LINE_SIZE::value(),
-								    buffer_size * sizeof( OutputType )
-							    ) != 0 ) {
-								buffer = NULL;
-								throw std::runtime_error(
-									"Error during allocation of internal iterator memory."
-								);
-							}
-						}
-
-						for( ; ! ended && i < buffer_size; ++i ) {
-							S row, col;
-							T val;
-							if( ! ( infile >> val ) ) {
-								if( i == 0 ) {
-									ended = true;
-								}
-								break;
-							} else {
-#ifdef _DEBUG
-								T temp = val;
-								converter( temp );
-								std::cout << "MatrixFileIterator::operator++  parsed line ``"
-									  << val  << "'', with value after conversion "
-									  << temp << "\n";
-#endif
-								// convert value
-								converter( val );
-
-								// store read values
-								buffer[ buffer_size - 1 - i ] = val;
-							}
-
-#ifdef _DEBUG
-							std::cout << "MatrixFileIterator::operator++ "
-								": buffer at index "
-								  << i << " now contains " << val << "\n";
-#endif
-						}
-
-						if( buffer_size == i ){
-							++buffercount;
-						}
-
-						// store new buffer position
-						if( i > 0 ) {
-							pos = i - 1;
-						} else {
-							assert( ended );
-						}
-						// store new stream position
-						spos = infile.tellg();
+					if( ! ( infile >> val ) ) {
+						ended = true;
 					} else {
-						// simply increment and done
-						--pos;
+#ifdef _DEBUG
+						T temp = val;
+						converter( temp );
+						std::cout << "MatrixFileIterator::operator++  parsed line ``"
+							  << val  << "'', with value after conversion "
+							  << temp << "\n";
+#endif
+						// convert value
+						converter( val );
+
+
+
+						if(
+							properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
+							properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
+						) {
+							++icount;
+							if( icount  == properties._n + 1 ) {
+								++jcount;
+								icount = jcount + 1;
+							}
+						} else if (
+							properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
+						) {
+							throw std::runtime_error(
+								"Not implemented i,j: SKEWSYMMETRIC."
+							);
+						} else if (
+							properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
+						) {
+							++jcount;
+							if( jcount == properties._m + 1 ) {
+								jcount = 1;
+								++icount;
+							}
+
+						}
+
 					}
+
+#ifdef _DEBUG
+					std::cout << "MatrixFileIterator::operator++ "
+						": buffer at index "
+						  << i << " now contains " << val << "\n";
+#endif
 
 					// done
 					return *this;
 				}
 
-				/** Standard dereferencing of iterator. */
-				const OutputType & operator*() {
-					if( started ) {
-						preprocess();
-						started = false;
-						(void)operator++();
-					}
-					if( ended ) {
-						throw std::runtime_error(
-							"Attempt to dereference (via operator*) "
-							"MatrixFileIterator in end "
-							"position." );
-					}
-					return buffer[ pos ];
-				}
+				// /** Standard dereferencing of iterator. */
+				// const OutputType & operator*() {
+				// 	if( started ) {
+				// 		preprocess();
+				// 		started = false;
+				// 		(void)operator++();
+				// 	}
+				// 	if( ended ) {
+				// 		throw std::runtime_error(
+				// 			"Attempt to dereference (via operator*) "
+				// 			"MatrixFileIterator in end "
+				// 			"position." );
+				// 	}
+				// 	return buffer[ pos ];
+				// }
 
-				/** Standard pointer request of iterator. */
-				const OutputType * operator->() {
-					if( started ) {
-						preprocess();
-						started = false;
-						(void)operator++();
-					}
-					if( ended ) {
-						throw std::runtime_error( "Attempt to dereference (via "
-												  "operator->) "
-												  "MatrixFileIterator in end "
-												  "position." );
-					}
-					return &( buffer[ pos ] );
-				}
+				// /** Standard pointer request of iterator. */
+				// const OutputType * operator->() {
+				// 	if( started ) {
+				// 		preprocess();
+				// 		started = false;
+				// 		(void)operator++();
+				// 	}
+				// 	if( ended ) {
+				// 		throw std::runtime_error( "Attempt to dereference (via "
+				// 								  "operator->) "
+				// 								  "MatrixFileIterator in end "
+				// 								  "position." );
+				// 	}
+				// 	return &( buffer[ pos ] );
+				// }
 
 				/** Returns the current row index. */
-				const S & j() const {
+				const S j() const {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
-						(void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
+						// (void)const_cast< MatrixFileIterator< T > * >( this )->operator++();
 					}
 					if( ended ) {
 						throw std::runtime_error( "Attempt to dereference (via "
@@ -433,37 +351,11 @@ namespace alp {
 									  "MatrixFileIterator in end "
 									  "position." );
 					}
-					size_t I = buffercount * buffer_size - 1 - pos;
-
-					if(
-						properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
-						properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
-					) {
-						throw std::runtime_error(
-							"Not implemented i,j: SYMMETRIC & HERMITIAN."
-						);
-					} else if (
-						properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
-					) {
-						throw std::runtime_error(
-							"Not implemented i,j: SKEWSYMMETRIC."
-						);
-					} else if (
-						properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
-					) {
-						I = I / properties._m;
-					} else {
-						throw std::runtime_error(
-							"Unknown Matrix Market format."
-						);
-					}
-
-					const_cast< MatrixFileIterator< T > * >( this )->icount = I;
-					return icount;
+					return icount - 1;
 				}
 
 				/** Returns the current column index. */
-				const S & i() const {
+				const S i() const {
 					if( started ) {
 						const_cast< MatrixFileIterator< T > * >( this )->preprocess();
 						const_cast< MatrixFileIterator< T > * >( this )->started = false;
@@ -475,33 +367,6 @@ namespace alp {
 									  "MatrixFileIterator in end "
 									  "position." );
 					}
-					size_t I = buffercount * buffer_size - 1 - pos;
-
-					if(
-						properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC ||
-						properties._symmetry == MatrixFileProperties::MMsymmetries::HERMITIAN
-					) {
-						throw std::runtime_error(
-							"Not implemented i,j: SYMMETRIC & HERMITIAN."
-						);
-					} else if (
-						properties._symmetry == MatrixFileProperties::MMsymmetries::SKEWSYMMETRIC
-					) {
-						throw std::runtime_error(
-							"Not implemented i,j: SKEWSYMMETRIC."
-						);
-					} else if (
-						properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL
-					) {
-						I = I % properties._m;
-					} else {
-						throw std::runtime_error(
-							"Unknown Matrix Market format."
-						);
-					}
-
-
-					const_cast< MatrixFileIterator< T > * >( this )->jcount = I;
 					return jcount;
 				}
 
@@ -519,7 +384,7 @@ namespace alp {
 												  "position." );
 					}
 
-					return buffer[ pos ];
+					return val;
 				}
 			};
 
