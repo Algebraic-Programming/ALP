@@ -26,6 +26,9 @@
 
 using namespace alp;
 
+typedef double ScalarType;
+constexpr ScalarType tol = 1.e-12;
+
 // an attempt to make more general parser
 struct inpdata {
 	struct fname{
@@ -101,50 +104,17 @@ struct inpdata {
 
 };
 
-void alp_program( const inpdata & unit, alp::RC & rc ) {
-	rc = SUCCESS;
-
-	auto fname = unit.get_fname();
-
-	alp::utils::MatrixFileReader<
-		double
-	> parser_A( fname );
-
-	size_t N = parser_A.n();
-
-	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
-
-	std::cout << "\tTesting ALP cholesky\n"
-		"\tH = L * L^T\n";
-
-	alp::Matrix< double, structures::Symmetric, Dense > H( N, N );
-	alp::Matrix< double, structures::UpperTriangular, Dense > L( N, N );
-
-        alp::Scalar< double > zero_scalar( ring.getZero< double >() );
-        alp::Scalar< double > one_scalar( ring.getOne< double >() );
-	if( !internal::getInitialized( zero_scalar ) ) {
-		std::cout << " zero_scalar is not initialized\n";
-	}
-
-        // rc = alp::set( H, one_scalar );
-	rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
-	if( !internal::getInitialized( H ) ) {
-		std::cout << " Matrix H is not initialized\n";
-	}
-
-	print_matrix( std::string(" << H >> "), H);
-	print_matrix( std::string(" << L >> "), L);
-
-	rc = rc ? rc : alp::set( L, zero_scalar );
-	if( !internal::getInitialized( L ) ) {
-		std::cout << " Matrix L is not initialized\n";
-	}
-
-	rc = rc ? rc : algorithms::cholesky_lowtr( L, H, ring );
-
-	print_matrix( std::string(" << L >> "), L);
-
-	alp::Matrix< double, alp::structures::Symmetric > LLT( N, N );
+//** check the solution by calculating the Frobenius norm of (H-LL^T) **//
+template< typename T, typename RingType, typename ZeroType >
+alp::RC check_cholesky_solution(
+	const  alp::Matrix< T, structures::Symmetric, Dense > &H,
+	alp::Matrix< T, structures::UpperTriangular, Dense > &L,
+	const ZeroType &zero_scalar,
+	const RingType &ring
+) {
+	alp::RC rc = SUCCESS;
+	const size_t N = nrows( H );
+	alp::Matrix< T, alp::structures::Symmetric > LLT( N, N );
 	alp::set( LLT, zero_scalar );
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
@@ -152,8 +122,106 @@ void alp_program( const inpdata & unit, alp::RC & rc ) {
 	print_matrix( " << LT >>  ", LT );
 #endif
 	alp::mxm( LLT, LT, L, ring );
+#ifdef DEBUG
 	print_matrix( " << LLT >> ", LLT );
+#endif
 
+	alp::Matrix< T, alp::structures::Symmetric > TMP( N, N );
+	alp::set( TMP, zero_scalar );
+
+	// LLT = -LLT
+	alp::Scalar< T > alpha( -1 );
+	rc = rc ? rc : alp::eWiseLambda(
+		[ ]( const size_t i, const size_t j, T &val ) {
+			(void)i;
+			(void)j;
+			val = -val;
+		},
+		LLT
+	);
+#ifdef DEBUG
+	print_matrix( " << -LLT  >> ", LLT );
+#endif
+
+	// TMP = H - LLT
+	rc = rc ? rc : alp::eWiseApply(
+		TMP, H, LLT,
+		ring.getAdditiveMonoid()
+	);
+#ifdef DEBUG
+	print_matrix( " << H - LLT  >> ", TMP );
+#endif
+
+	//Frobenius norm
+	T fnorm = 0;
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
+			(void)i;
+			(void)j;
+			fnorm += val*val;
+		},
+		TMP
+	);
+	fnorm = std::sqrt(fnorm);
+	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
+	if ( tol < fnorm ) {
+		throw std::runtime_error(
+			"The Frobenius norm is too large. "
+			"Make sure that you have used SPD matrix as input."
+		);
+	}
+
+	return rc;
+}
+
+void alp_program( const inpdata &unit, alp::RC &rc ) {
+	rc = SUCCESS;
+	auto fname = unit.get_fname();
+	alp::utils::MatrixFileReader< ScalarType > parser_A( fname );
+	size_t N = parser_A.n();
+
+	alp::Semiring<
+		alp::operators::add< ScalarType >,
+		alp::operators::mul< ScalarType >,
+		alp::identities::zero,
+		alp::identities::one
+	> ring;
+	alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
+
+	std::cout << "\tTesting ALP cholesky\n"
+		"\tH = L * L^T\n";
+
+	alp::Matrix< ScalarType, structures::Symmetric, Dense > H( N, N );
+	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N, N );
+
+	if( !parser_A.isSymmetric() ) {
+		std::cout << "Symmetric matrix epxected as input!\n";
+		rc = ILLEGAL;
+		return;
+	}
+
+	rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
+
+	if( !internal::getInitialized( H ) ) {
+		std::cout << " Matrix H is not initialized\n";
+	}
+
+#ifdef DEBUG
+	print_matrix( std::string(" << H >> "), H);
+	print_matrix( std::string(" << L >> "), L);
+#endif
+
+	rc = rc ? rc : alp::set( L, zero_scalar	);
+
+	if( !internal::getInitialized( L ) ) {
+		std::cout << " Matrix L is not initialized\n";
+	}
+
+	rc = rc ? rc : algorithms::cholesky_lowtr( L, H, ring );
+#ifdef DEBUG
+	print_matrix( std::string(" << L >> "), L);
+#endif
+	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
 }
 
 int main( int argc, char ** argv ) {
