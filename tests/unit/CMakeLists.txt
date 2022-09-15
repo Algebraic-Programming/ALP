@@ -230,6 +230,10 @@ add_grb_executables( dense_matrix_access dense_matrix_access.cpp
 #	BACKENDS alp_reference
 #)
 
+add_grb_executables( dense_eWiseApply dense_eWiseApply.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( dense_eWiseLambda dense_eWiseLambda.cpp
 	BACKENDS alp_reference
 )
@@ -243,10 +247,6 @@ add_grb_executables( dense_fold dense_fold.cpp
 )
 
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
-	BACKENDS alp_reference
-)
-
-add_grb_executables( dense_matrix_eWiseApply dense_matrix_eWiseApply.cpp
 	BACKENDS alp_reference
 )
 
