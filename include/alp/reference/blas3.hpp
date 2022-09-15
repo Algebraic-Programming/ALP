@@ -502,34 +502,41 @@ namespace alp {
 	namespace internal {
 
 		/**
-		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 * Applies eWiseApply to all elements of the given band
+		 * Forward declaration. Specialization handle bound-checking.
+		 * Assumes compatible parameters:
+		 *   - matching structures
+		 *   - matching dynamic
 		 */
-
 		template<
-			bool allow_void,
+			size_t band_index,
 			bool left_scalar, bool right_scalar,
 			Descriptor descr,
 			class MulMonoid,
 			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-			class Operator
+			typename InputTypeScalar2, typename InputStructureScalar2,
+			class Operator,
+			typename std::enable_if_t<
+				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
 		>
-		RC eWiseApply_matrix_generic(
+		RC eWiseApply_matrix_band_generic(
 			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
 			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
-			const InputType1 *alpha,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
 			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
-			const InputType1 *beta,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
-			const PHASE &phase,
 			const typename std::enable_if<
 				!alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value &&
 				!alp::is_object< InputType2 >::value &&
 				alp::is_operator< Operator >::value,
-			void >::type * const = NULL
+			void >::type * const = nullptr
 		) {
 			(void)C;
 			(void)A;
@@ -538,53 +545,154 @@ namespace alp {
 			(void)beta;
 			(void)oper;
 			(void)mulMonoid;
-			static_assert( allow_void ||
-				( !(
-				     std::is_same< InputType1, void >::value ||
-				     std::is_same< InputType2, void >::value
-				) ),
-				"alp::internal::eWiseApply_matrix_generic: the non-monoid version of "
-				"elementwise mxm can only be used if neither of the input matrices "
-				"is a pattern matrix (of type void)" );
+			return SUCCESS;
+		}
+
+		/** Specialization for band index within the bounds */
+		template<
+			size_t band_index,
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class MulMonoid,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+			typename InputTypeScalar2, typename InputStructureScalar2,
+			class Operator,
+			typename std::enable_if_t<
+				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseApply_matrix_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
+			const Operator &oper,
+			const MulMonoid &mulMonoid,
+			const typename std::enable_if<
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value,
+			void >::type * const = nullptr
+		) {
+			(void)mulMonoid;
+			assert( C != nullptr );
+			// In case of symmetry the iteration domain intersects the the upper
+			// (or lower) domain of A
+			constexpr bool is_sym_c = structures::is_a< OutputStructure, structures::Symmetric >::value;
+			constexpr bool is_sym_a = structures::is_a< InputStructure1, structures::Symmetric >::value;
+			constexpr bool is_sym_b = structures::is_a< InputStructure2, structures::Symmetric >::value;
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c = is_sym_c;
+			constexpr bool sym_up_a = is_sym_a;
+			constexpr bool sym_up_b = is_sym_b;
+
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( *C );
+
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
+
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( *C, i );
+
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
+					auto &C_val = internal::access( *C, internal::getStorageIndex( *C, i, j ) );
+
+					// Calculate indices to A and B depending on matching symmetry with C
+					const size_t A_i = ( sym_up_c == sym_up_a ) ? i : j;
+					const size_t A_j = ( sym_up_c == sym_up_a ) ? j : i;
+					const size_t B_i = ( sym_up_c == sym_up_b ) ? i : j;
+					const size_t B_j = ( sym_up_c == sym_up_b ) ? j : i;
+
+					if( left_scalar ) {
+						if( right_scalar ) {
+							// C = alpha . beta
+							internal::apply( C_val, **alpha, **beta, oper );
+						} else {
+							// C = alpha . B
+							const auto &B_val = internal::access( *B, internal::getStorageIndex( *B, B_i, B_j ) );
+							internal::apply( C_val, **alpha, B_val, oper );
+						}
+					} else {
+						if( right_scalar ) {
+							// C = A . beta
+							const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+							internal::apply( C_val, A_val, **beta, oper );
+						} else {
+							// C = A . B
+							const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+							const auto &B_val = internal::access( *B, internal::getStorageIndex( *B, B_i, B_j ) );
+							internal::apply( C_val, A_val, B_val, oper );
+						}
+					}
+				}
+			}
+			return eWiseApply_matrix_band_generic<
+				band_index + 1, left_scalar, right_scalar, descr
+			>( C, A, alpha, B, beta, oper, mulMonoid );
+		}
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 */
+		template<
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class MulMonoid,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+			typename InputTypeScalar2, typename InputStructureScalar2,
+			class Operator
+		>
+		RC eWiseApply_matrix_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
+			const Operator &oper,
+			const MulMonoid &mulMonoid,
+			const typename std::enable_if<
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_operator< Operator >::value,
+			void >::type * const = NULL
+		) {
+			(void)alpha;
+			(void)beta;
+			(void)oper;
+			(void)mulMonoid;
 
 #ifdef _DEBUG
 			std::cout << "In alp::internal::eWiseApply_matrix_generic\n";
 #endif
 
-			// get whether the matrices should be transposed prior to execution
-			// constexpr bool trans_left = descr & descriptors::transpose_left;
-			// constexpr bool trans_right = descr & descriptors::transpose_right;
-
 			// run-time checks
 			// TODO: support left/right_scalar
-			// const size_t m = alp::nrows( *C );
-			// const size_t n = alp::ncols( *C );
-			// const size_t m_A = !trans_left ? alp::nrows( *A ) : alp::ncols( *A );
-			// const size_t n_A = !trans_left ? alp::ncols( *A ) : alp::nrows( *A );
-			// const size_t m_B = !trans_right ? alp::nrows( *B ) : alp::ncols( *B );
-			// const size_t n_B = !trans_right ? alp::ncols( *B ) : alp::nrows( *B );
+			const size_t m = alp::nrows( *C );
+			const size_t n = alp::ncols( *C );
 
-			// if( m != m_A || m != m_B || n != n_A || n != n_B ) {
-			// 	return MISMATCH;
-			// }
-
-
-			// retrieve buffers
-			// end buffer retrieval
-
-			// initialisations
-			// end initialisations
-
-			// symbolic phase
-			if( phase == SYMBOLIC ) {
+			if( !left_scalar ){
+				assert( A != nullptr );
+				if( m != nrows( *A ) || n != ncols( *A ) ) {
+					return MISMATCH;
+				}
+			}
+			if( !right_scalar ){
+				assert( B != nullptr );
+				if( m != nrows( *B ) || n != ncols( *B ) ) {
+					return MISMATCH;
+				}
 			}
 
-			// computational phase
-			if( phase == NUMERICAL ) {
-			}
-
-			// done
-			return SUCCESS;
+			// delegate to single-band variant
+			return eWiseApply_matrix_band_generic< 0, left_scalar, right_scalar, descr >( C, A, alpha, B, beta, oper, mulMonoid );
 		}
 
 	} // namespace internal
@@ -624,11 +732,11 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class MulMonoid
 	>
-	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const MulMonoid &mulmono,
-		const PHASE phase = NUMERICAL,
 		const typename std::enable_if< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -656,11 +764,14 @@ namespace alp {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
+		std::cout << "In alp::eWiseApply (reference, monoid)\n";
 #endif
+		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
+		constexpr bool left_scalar = false;
+		constexpr bool right_scalar = false;
 
-		return internal::eWiseApply_matrix_generic< true, false, false, descr >(
-			&C, &A, static_cast< const InputType1 * >( nullptr ), &B, static_cast< const InputType2 * >( nullptr ), mulmono.getOperator(), mulmono, phase
+		return internal::eWiseApply_matrix_generic< left_scalar, right_scalar, descr >(
+			&C, &A, no_scalar, &B, no_scalar, mulmono.getOperator(), mulmono
 		);
 	}
 
@@ -673,15 +784,15 @@ namespace alp {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType1,
+		typename InputType1, typename InputStructure1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class MulMonoid
 	>
-	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-		const InputType1 &alpha,
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const MulMonoid &mulmono,
-		const PHASE phase = NUMERICAL,
 		const typename std::enable_if< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -709,21 +820,20 @@ namespace alp {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
+		std::cout << "In alp::eWiseApply (reference, monoid)\n";
 #endif
 
-		const Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > * no_matrix = nullptr;
-		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
-			&C,
-			no_matrix,
-			&alpha,
-			&B,
-			static_cast< const InputType2 * >( nullptr ),
-			mulmono.getOperator(), mulmono, phase
+		constexpr Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > * no_matrix = nullptr;
+		constexpr Scalar< InputType2, structures::General, reference > *no_scalar = nullptr;
+		constexpr bool left_scalar = true;
+		constexpr bool right_scalar = false;
+
+		return internal::eWiseApply_matrix_generic< left_scalar, right_scalar, descr >(
+			&C, no_matrix, &alpha, &B, no_scalar, mulmono.getOperator(), mulmono
 		);
 	}
 
-/**
+	/**
 	 * Computes \f$ C = A . beta \f$ for a given monoid.
 	 *
 	 * Case where \a B is a scalar.
@@ -732,14 +842,14 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2,
+		typename InputType2, typename InputStructure2,
 		class MulMonoid
 	>
-	RC eWiseApply( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
-		const InputType2 &beta,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const MulMonoid &mulmono,
-		const PHASE phase = NUMERICAL,
 		const typename std::enable_if< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -767,17 +877,16 @@ namespace alp {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In alp::eWiseApply_matrix_generic (reference, monoid)\n";
+		std::cout << "In alp::eWiseApply (reference, monoid)\n";
 #endif
 
-		const Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > * no_matrix = nullptr;
-		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
-			&C,
-			&A,
-			static_cast< const InputType1 * >( nullptr ),
-			no_matrix,
-			&beta,
-			mulmono.getOperator(), mulmono, phase
+		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
+		constexpr Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		constexpr bool left_scalar = false;
+		constexpr bool right_scalar = true;
+
+		return internal::eWiseApply_matrix_generic< left_scalar, right_scalar, descr >(
+			&C, &A, no_scalar, no_matrix, &beta, mulmono.getOperator(), mulmono
 		);
 	}
 
