@@ -256,28 +256,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	time_taken = timer.time();
 	out.times.postamble = time_taken;
 
-	// copy to pinned vector for printing result comparison
-	//TODO: refactor to avoid out of memory error
-	/*Vector< double > a( l * n);
-	rc = clear(a);
-
-	auto it = C.begin();
-	while( it != C.end() ) {
-		// col + (row * rowsize)
-		const size_t i = ( *it ).first.first + ( ( *it ).first.second * n );
-
-		rc = rc ? rc : setElement( a, ( *it ).second, i );
-		it.operator++();
-
-		if( rc != SUCCESS ) {
-			std::cerr << "Error during copy/pinning of result matrix: " << rc << '\n';
-			out.error_code = 40;
-			return;
-		}
-	}
-
-	out.pinnedVector = PinnedVector< double >( a, SEQUENTIAL );
-	*/
 	int nnz = 0;
 	auto it = C.begin();
 	while( it != C.end() ) {
