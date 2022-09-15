@@ -29,79 +29,8 @@ using namespace alp;
 typedef double ScalarType;
 constexpr ScalarType tol = 1.e-12;
 
-// an attempt to make more general parser
 struct inpdata {
-	struct fname{
-		bool initialized = false;
-		const std::string flag="-fname";
-		std::string value;
-	};
-
-	struct n{
-		bool initialized = false;
-		const std::string flag="-n";
-		double value;
-	};
-
-	typedef std::tuple< fname, n  > pack;
-	pack packdata;
-
-	template< typename X >
-	typename std::enable_if< std::is_same< X, double >::value , X>::type
-	stoX ( const std::string &s ) {
-		return( std::stod( s ) );
-	};
-
-	template< typename X >
-	typename std::enable_if< std::is_same< X, std::string >::value , X>::type
-	stoX ( const std::string &s ) {
-		return( s );
-	};
-
-	template< std::size_t I = 0, typename... Tp, typename F >
-	inline typename std::enable_if<I == sizeof...(Tp), void>::type
-	iterate_lambda(std::tuple<Tp...>& t, const F &func) {
-		(void)func;
-		(void)t;
-	};
-
-	template< std::size_t I = 0, typename... Tp, typename F >
-	inline typename std::enable_if<I < sizeof...(Tp), void>::type
-	iterate_lambda(std::tuple<Tp...>& t, const F &func) {
-		//std::cout << " " << std::get<I>(t).flag;
-		func( std::get<I>(t) );
-		iterate_lambda<I + 1, Tp...>(t, func);
-	};
-
-	void print_flags () {
-		std::cout << "available flags:\n";
-		auto lambda = [](auto &x){
-			std::cout << " " << x.flag << " " << x.initialized << " " << x.value << "\n";
-		};
-		iterate_lambda(packdata, lambda);
-		std::cout << "\n";
-	};
-
-	void set_flags ( int argc, char ** argv ) {
-		for( int i = 1 ; i < argc ; i += 2 ) {
-			std::string key = argv[ i ];
-			std::string val = argv[ i + 1 ];
-			auto lambda = [ &key, &val, this ] (auto &x){
-					if( x.flag ==  key ) {
-						x.value = stoX< decltype(x.value) >( val );
-						x.initialized = true;
-					}
-			};
-			iterate_lambda(packdata, lambda);
-		}
-	};
-
-	std::string get_fname ( ) const {
-		return (std::get<0>(packdata)).value;
-	}
-
-
-
+	std::string fname;
 };
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) **//
@@ -176,7 +105,7 @@ alp::RC check_cholesky_solution(
 
 void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
-	auto fname = unit.get_fname();
+	auto fname = unit.fname;
 	alp::utils::MatrixFileReader< ScalarType > parser_A( fname );
 	size_t N = parser_A.n();
 
@@ -226,39 +155,38 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 
 int main( int argc, char ** argv ) {
 	// defaults
-	// bool printUsage = false;
+	bool printUsage = false;
 	inpdata in;
 
-	// // error checking
-	// if( argc > 2 ) {
-	// 	printUsage = true;
-	// }
-	// if( argc == 2 ) {
-	// 	size_t read;
-	// 	std::istringstream ss( argv[ 1 ] );
-	// 	if( ! ( ss >> read ) ) {
-	// 		std::cerr << "Error parsing first argument\n";
-	// 		printUsage = true;
-	// 	} else if( ! ss.eof() ) {
-	// 		std::cerr << "Error parsing first argument\n";
-	// 		printUsage = true;
-	// 	} else if( read % 2 != 0 ) {
-	// 		std::cerr << "Given value for n is odd\n";
-	// 		printUsage = true;
-	// 	} else {
-	// 		// all OK
-	// 		in.n = read;
-	// 	}
-	// }
-	// if( printUsage ) {
-	// 	std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-	// 	std::cerr << "  -n (optional, default is 100): an even integer, the "
-	// 				 "test size.\n";
-	// 	return 1;
-	// }
+	// error checking
+	if( argc == 3 ) {
+		std::string readflag;
+		std::istringstream ss1( argv[ 1 ] );
+		std::istringstream ss2( argv[ 2 ] );
+		if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+			std::cerr << "Error parsing first argument\n";
+			printUsage = true;
+		} else if( readflag != std::string("-fname") ) {
+			std::cerr << "Given first argument is unknown\n";
+			printUsage = true;
+		} else {
+			if( ! ( ( ss2 >> in.fname ) &&  ss2.eof() ) ) {
+				std::cerr << "Error parsing second argument\n";
+				printUsage = true;
+			} else {
+				// all fine
+			}
+		}
+	} else {
+		std::cout << "Wrong number of arguments\n" ;
+		printUsage = true;
+	}
 
-	in.set_flags( argc, argv );
-	in.print_flags();
+	if( printUsage ) {
+		std::cerr << "Usage: " << argv[ 0 ] << " -fname FILENAME \n";
+		std::cerr << "  FILENAME .mtx file.\n";
+		return 1;
+	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	alp::Launcher< AUTOMATIC > launcher;
