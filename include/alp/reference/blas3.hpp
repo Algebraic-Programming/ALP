@@ -897,7 +897,7 @@ namespace alp {
 		 * Specialization handle bound-checking.
 		 * Assumes compatible parameters:
 		 *   - matching structures
-		 *   - matching dynamic
+		 *   - matching dynamic sizes
 		 */
 		template<
 			size_t band_index,
@@ -927,12 +927,12 @@ namespace alp {
 				alp::is_semiring< Ring >::value
 			> * const = nullptr
 		) {
-			(void)C;
-			(void)A;
-			(void)alpha;
-			(void)B;
-			(void)beta;
-			(void)ring;
+			(void) C;
+			(void) A;
+			(void) alpha;
+			(void) B;
+			(void) beta;
+			(void) ring;
 			return SUCCESS;
 		}
 
@@ -1077,6 +1077,7 @@ namespace alp {
 		}
 
 	} // namespace internal
+
 	/**
 	 * Calculates the element-wise multiplication of two matrices,
 	 *     \f$ C = C + A .* B \f$,
@@ -1178,23 +1179,28 @@ namespace alp {
 			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
-		(void)C;
-		(void)A;
-		(void)B;
-		(void)ring;
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
-			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
-			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
-			"third domain of the given semiring" );
-	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
-	#endif
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- matrix x matrix) dispatches to internal::eWiseMul_matrix_generic (matrix <- matrix x matrix)\n";
+#endif
 		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
 		constexpr bool left_scalar = false;
 		constexpr bool right_scalar = false;
@@ -1222,23 +1228,28 @@ namespace alp {
 			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
-		(void)C;
-		(void)alpha;
-		(void)B;
-		(void)ring;
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
-			"match the first domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
-			"not match the second domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
-			"third domain of the given semiring" );
-	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
-	#endif
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- scalar x matrix) dispatches to internal::eWiseMul_matrix_generic (matrix <- scalar x matrix)\n";
+#endif
 		constexpr Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
 		constexpr Scalar< InputType2, structures::General, reference > *no_scalar = nullptr;
 		constexpr bool left_scalar = true;
@@ -1267,23 +1278,28 @@ namespace alp {
 			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
-		(void)C;
-		(void)A;
-		(void)beta;
-		(void)ring;
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
-			"match the first domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
-			"not match the second domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
-			"third domain of the given semiring" );
-	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
-	#endif
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- matrix x scalar) dispatches to internal::eWiseMul_matrix_generic (matrix <- matrix x scalar)\n";
+#endif
 		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
 		constexpr Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
 		constexpr bool left_scalar = false;
