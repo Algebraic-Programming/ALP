@@ -135,11 +135,12 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2, typename InputType3,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename InputType3, typename RIT, typename CIT, typename NIT,
 		Backend backend, typename Coords
 	>
 	RC zip(
-		Matrix< OutputType, backend > &A,
+		Matrix< OutputType, backend, RIT, CIT, NIT > &A,
 		const Vector< InputType1, backend, Coords > &x,
 		const Vector< InputType2, backend, Coords > &y,
 		const Vector< InputType3, backend, Coords > &z,
@@ -169,11 +170,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType1, typename InputType2, typename InputType3,
-		Backend backend,
-		typename Coords
+		typename RIT, typename CIT, typename NIT,
+		Backend backend, typename Coords
 	>
 	RC zip(
-		Matrix< void, backend > &A,
+		Matrix< void, backend, RIT, CIT, NIT > &A,
 		const Vector< InputType1, backend, Coords > &x,
 		const Vector< InputType2, backend, Coords > &y,
 		const Phase &phase = EXECUTE
@@ -182,7 +183,8 @@ namespace grb {
 		(void) y;
 		(void) phase;
 #ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, void)\n";
+		std::cerr << "Selected backend does not implement grb::zip (vectors into "
+			<< "matrices, void)\n";
 #endif
 #ifndef NDEBUG
 		const bool selected_backend_does_not_support_zip_from_vectors_to_void_matrix
