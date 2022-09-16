@@ -973,17 +973,28 @@ namespace alp {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
-	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		(void)C;
+		(void)A;
+		(void)B;
+		(void)ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
@@ -1005,17 +1016,24 @@ namespace alp {
 	/**
 	 * eWiseMul, version where A is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, 
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
-	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
 		(void)C;
 		(void)alpha;
 		(void)B;
