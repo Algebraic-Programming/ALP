@@ -129,6 +129,8 @@ build_test:
     exclude:
       - build/**/*.o
       - build/**/*.o.d
+      - build/**/CMakeFiles
+      - build/**/*.dir
     expire_in: 30 minutes
 
 
