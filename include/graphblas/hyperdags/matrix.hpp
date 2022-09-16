@@ -178,28 +178,28 @@ namespace grb {
 		
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline internal::Compressed_Storage<
-			T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			T, RIT, NIT
 		> & getCRS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCRS( internal::getMatrix( A ) );
 		}
 
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline const internal::Compressed_Storage<
-			T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			T, RIT, NIT
 		> & getCRS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCRS( internal::getMatrix(A) );
 		}
 
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline internal::Compressed_Storage<
-			T, grb::config::ColIndexType, grb::config::NonzeroIndexType
+			T, CIT, NIT
 		> & getCCS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCCS( internal::getMatrix(A) );
 		}
 
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline const internal::Compressed_Storage<
-			T, grb::config::ColIndexType, grb::config::NonzeroIndexType
+			T, CIT, NIT
 		> & getCCS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCCS( internal::getMatrix(A) );
 		}
