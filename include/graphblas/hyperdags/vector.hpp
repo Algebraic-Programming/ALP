@@ -28,8 +28,9 @@
 
 
 namespace grb {
-	template< typename T >
-	class Matrix< T, hyperdags >;
+
+	template< typename T, typename RIT, typename CIT, typename NIT >
+	class Matrix< T, hyperdags, RIT, CIT, NIT >;
 
 	namespace internal {
 

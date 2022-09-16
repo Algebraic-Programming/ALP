@@ -30,131 +30,182 @@ namespace grb {
 
 	namespace internal {
 
-		template< typename T >
-		Matrix< T, _GRB_WITH_HYPERDAGS_USING > & getMatrix(
-			Matrix< T, grb::hyperdags > &
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > & getMatrix(
+			Matrix< T, grb::hyperdags, RIT, CIT, NIT > &
 		);
 
-		template< typename T >
-		const Matrix< T, _GRB_WITH_HYPERDAGS_USING> & getMatrix(
-			const Matrix< T, grb::hyperdags > &x
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		const Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > & getMatrix(
+			const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &x
 		);
 		
 
-		template< typename T >
-		inline internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< T, grb::hyperdags > & A ) noexcept;
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage<
+			T, RIT, NIT
+		> & getCRS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept;
 
-		template< typename T >
-		inline const internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< T, grb::hyperdags > & A ) noexcept;
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage<
+			T, RIT, NIT
+		> & getCRS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept;
 
-		template< typename T >
-		inline internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< T, grb::hyperdags > & A ) noexcept;
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage<
+			T, CIT, NIT
+		> & getCCS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept;
 
-		template< typename T >
-		inline const internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< T, grb::hyperdags > & A ) noexcept;
-
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage<
+			T, CIT, NIT
+		> & getCCS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept;
 
 	}
 
-	template< typename T >
-	class Matrix< T, hyperdags > {
+	template< typename T, typename RIT, typename CIT, typename NIT >
+	class Matrix< T, hyperdags, RIT, CIT, NIT > {
 
 
 		template< typename A >
-		friend Matrix< A, _GRB_WITH_HYPERDAGS_USING > & internal::getMatrix(
-			Matrix< A, grb::hyperdags > &
+		friend Matrix<
+			A, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT
+		> & internal::getMatrix(
+			Matrix< A, grb::hyperdags, RIT, CIT, NIT > &
 		);
 
 		template< typename A >
-		friend const Matrix< A, _GRB_WITH_HYPERDAGS_USING > & internal::getMatrix(
-			const Matrix< A, grb::hyperdags > &
-		);
+		friend const Matrix<
+			A, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT
+		> & internal::getMatrix( const Matrix< A, grb::hyperdags, RIT, CIT, NIT > & );
 
 
 		private:
 
 			/** \internal Simply use an underlying implementation */
-			typedef Matrix< T, grb::_GRB_WITH_HYPERDAGS_USING > MyMatrixType;
+			typedef Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > MyMatrixType;
 
 			MyMatrixType matrix;
 
 
 		public:
-			Matrix( const size_t rows, const size_t columns ) : matrix( rows, columns ) {}
-			Matrix( const size_t rows, const size_t columns, const size_t nz ) : matrix(rows, columns, nz) {}
+
+			Matrix( const size_t rows, const size_t columns ) :
+				matrix( rows, columns )
+			{}
+
+			Matrix( const size_t rows, const size_t columns, const size_t nz ) :
+				matrix(rows, columns, nz)
+			{}
 			
-			template< class ActiveDistribution = internal::Distribution< grb::_GRB_WITH_HYPERDAGS_USING > >
-			typename internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution >
-			begin( const IOMode mode = PARALLEL, const size_t s = 0, const size_t P = 1 ) const {
-				return matrix.begin(mode, s, P);
+			template<
+				class ActiveDistribution = internal::Distribution<
+					_GRB_WITH_HYPERDAGS_USING
+				>
+			>
+			typename internal::Compressed_Storage<
+				T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			>::template ConstIterator< ActiveDistribution > begin(
+				const IOMode mode = PARALLEL, const size_t s = 0, const size_t P = 1
+			) const {
+				return matrix.begin( mode, s, P );
 			}
 
-			template< class ActiveDistribution = internal::Distribution< grb::_GRB_WITH_HYPERDAGS_USING > >
-			typename internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution >
-			end( const IOMode mode = PARALLEL, const size_t s = 0, const size_t P = 1 ) const {
+			template<
+				class ActiveDistribution = internal::Distribution<
+					_GRB_WITH_HYPERDAGS_USING
+				>
+			>
+			typename internal::Compressed_Storage<
+				T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			>::template ConstIterator< ActiveDistribution > end(
+				const IOMode mode = PARALLEL, const size_t s = 0, const size_t P = 1
+			) const {
 				return matrix.end(mode, s, P);
 			}
 
-			template< class ActiveDistribution = internal::Distribution< grb::_GRB_WITH_HYPERDAGS_USING > >
-			typename internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution >
-			cbegin( const IOMode mode = PARALLEL ) const {
+			template<
+				class ActiveDistribution = internal::Distribution<
+					_GRB_WITH_HYPERDAGS_USING
+				>
+			>
+			typename internal::Compressed_Storage<
+				T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			>::template ConstIterator< ActiveDistribution > cbegin(
+				const IOMode mode = PARALLEL
+			) const {
 				return matrix.cbegin(mode);
 			}
 
-			template< class ActiveDistribution = internal::Distribution< grb::_GRB_WITH_HYPERDAGS_USING > >
-			typename internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType >::template ConstIterator< ActiveDistribution >
-			cend( const IOMode mode = PARALLEL ) const {
+			template<
+				class ActiveDistribution = internal::Distribution<
+					_GRB_WITH_HYPERDAGS_USING
+				>
+			>
+			typename internal::Compressed_Storage<
+				T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			>::template ConstIterator< ActiveDistribution > cend(
+				const IOMode mode = PARALLEL
+			) const {
 				return matrix.cend(mode);
 			}
 
 	};
 
-	template< typename D >
-	struct is_container< Matrix< D, hyperdags > > {
+	template< typename D, typename RIT, typename CIT, typename NIT >
+	struct is_container< Matrix< D, hyperdags, RIT, CIT, NIT > > {
 		/** A hyperdags matrix is an ALP container. */
 		static const constexpr bool value = true;
 	};
 
 	namespace internal {
 
-		template< typename T >
-		Matrix< T, _GRB_WITH_HYPERDAGS_USING > & getMatrix(
-			Matrix< T, grb::hyperdags > &x
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > & getMatrix(
+			Matrix< T, grb::hyperdags, RIT, CIT, NIT > &x
 		) {
 			return x.matrix;
 		}
 
-		template< typename T >
-		const Matrix< T, _GRB_WITH_HYPERDAGS_USING > & getMatrix(
-			const Matrix< T, grb::hyperdags > &x
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		const Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > & getMatrix(
+			const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &x
 		) {
 			return x.matrix;
 		}
 		
 		
-		template< typename T >
-		inline internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( Matrix< T, grb::hyperdags > & A ) noexcept {
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage<
+			T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+		> & getCRS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
+			return getCRS( internal::getMatrix( A ) );
+		}
+
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage<
+			T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+		> & getCRS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCRS( internal::getMatrix(A) );
 		}
 
-		template< typename T >
-		inline const internal::Compressed_Storage< T, grb::config::RowIndexType, grb::config::NonzeroIndexType > & getCRS( const Matrix< T, grb::hyperdags > & A ) noexcept {
-			return getCRS( internal::getMatrix(A) );
-		}
-
-		template< typename T >
-		inline internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( Matrix< T, grb::hyperdags > & A ) noexcept {
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline internal::Compressed_Storage<
+			T, grb::config::ColIndexType, grb::config::NonzeroIndexType
+		> & getCCS( Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCCS( internal::getMatrix(A) );
 		}
 
-		template< typename T >
-		inline const internal::Compressed_Storage< T, grb::config::ColIndexType, grb::config::NonzeroIndexType > & getCCS( const Matrix< T, grb::hyperdags > & A ) noexcept {
+		template< typename T, typename RIT, typename CIT, typename NIT >
+		inline const internal::Compressed_Storage<
+			T, grb::config::ColIndexType, grb::config::NonzeroIndexType
+		> & getCCS( const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &A ) noexcept {
 			return getCCS( internal::getMatrix(A) );
 		}
 
-	}
+	} // end ``grb::internal''
 
 }
 
-#endif
+#endif // end ``_H_GRB_HYPERDAGS_MATRIX''
 

@@ -27,6 +27,7 @@
 #ifndef _H_GRB_HYPERDAGS_BLAS3
 #define _H_GRB_HYPERDAGS_BLAS3
 
+#include <graphblas/phase.hpp>
 #include <graphblas/matrix.hpp>
 
 #include <graphblas/hyperdags/init.hpp>
@@ -36,9 +37,9 @@ namespace grb {
 
 	template<
 		typename InputType >
-	RC clear( Matrix< InputType, hyperdags > & A ) noexcept {
+	RC clear( Matrix< InputType, hyperdags > &A ) noexcept {
 		// delegate
-		return clear(internal::getMatrix(A));
+		return clear( internal::getMatrix(A) );
 	}
 
 	template<
@@ -46,12 +47,14 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		class MulMonoid
 	>
-	RC eWiseApply( Matrix< OutputType, hyperdags > &C,
+	RC eWiseApply(
+		Matrix< OutputType, hyperdags > &C,
 		const Matrix< InputType1, hyperdags > &A,
 		const Matrix< InputType2, hyperdags > &B,
 		const MulMonoid &mulmono,
-		const PHASE phase = NUMERICAL,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const Phase phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
@@ -78,7 +81,7 @@ namespace grb {
 		const Matrix< InputType1, hyperdags > &A,
 		const Matrix< InputType2, hyperdags > &B,
 		const Operator &mulOp,
-		const PHASE phase = NUMERICAL,
+		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -161,7 +164,7 @@ namespace grb {
 		const Matrix< InputType1, hyperdags > &A,
 		const Matrix< InputType2, hyperdags > &B,
 		const Semiring &ring = Semiring(),
-		const PHASE &phase = NUMERICAL,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -192,7 +195,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &B,
 		const Operator &mulOp,
 		const Monoid &addM,
-		const PHASE &phase = NUMERICAL,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -224,7 +227,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &u,
 		const Vector< InputType2, hyperdags, Coords > &v,
 		const Operator &mul = Operator(),
-		const PHASE &phase = NUMERICAL,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< Operator >::value &&
 			!grb::is_object< InputType1 >::value &&
