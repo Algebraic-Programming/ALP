@@ -258,11 +258,12 @@ namespace grb {
 		typename Coords
 	>
 	RC zip(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > & A,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Vector< InputType3, hyperdags, Coords > & z ) {
-		return zip<descr>(
+		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &A,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Vector< InputType3, hyperdags, Coords > &z
+	) {
+		return zip< descr >(
 			internal::getMatrix( A ),
 			internal::getVector( x ),  internal::getVector( y ), internal::getVector( z )
 		);
