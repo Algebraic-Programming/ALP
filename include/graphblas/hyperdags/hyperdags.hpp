@@ -236,7 +236,11 @@ namespace grb {
 				E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
 				
 				FOLDR_VECTOR_SCALAR_MONOID,
+
+				FOLDR_VECTOR_MASK_SCALAR_MONOID,
 				
+				FOLDL_SCALAR_VECTOR_MONOID,
+
 				FOLDL_SCALAR_VECTOR_MASK_MONOID,
 				
 				EWISELAMBDA,
@@ -415,7 +419,7 @@ namespace grb {
 				
 			};
 
-			const constexpr size_t numOperationVertexTypes = 97;
+			const constexpr size_t numOperationVertexTypes = 99;
 
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
@@ -430,6 +434,8 @@ namespace grb {
 				ZIP,
 				E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
 				FOLDR_VECTOR_SCALAR_MONOID,
+				FOLDR_VECTOR_MASK_SCALAR_MONOID,
+				FOLDL_SCALAR_VECTOR_MONOID,
 				FOLDL_SCALAR_VECTOR_MASK_MONOID,
 				EWISELAMBDA,
 				BUILD_VECTOR,
