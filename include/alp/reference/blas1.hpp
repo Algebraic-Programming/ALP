@@ -2365,7 +2365,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
 	#endif
-		return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
+		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
+		return PANIC;
 	}
 
 	/**
@@ -2398,7 +2399,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- scalar x vector) dispatches to eWiseMulAdd (vector <- scalar x vector + 0)\n";
 	#endif
-		return eWiseMulAdd< descr >( z, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
+		// return eWiseMulAdd< descr >( z, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
+		return PANIC;
 	}
 
 	/**
@@ -2431,7 +2433,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference) dispatches to eWiseMulAdd with 0.0 as additive scalar\n";
 	#endif
-		return eWiseMulAdd< descr >( z, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
+		// return eWiseMulAdd< descr >( z, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
+		return PANIC;
 	}
 
 	/**
@@ -2472,7 +2475,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- vector x vector, masked) dispatches to eWiseMulAdd (vector <- vector x vector + 0, masked)\n";
 	#endif
-		return eWiseMulAdd< descr >( z, m, x, y, ring.template getZero< Ring::D4 >(), ring );
+		// return eWiseMulAdd< descr >( z, m, x, y, ring.template getZero< Ring::D4 >(), ring );
+		return PANIC;
 	}
 
 	/**
@@ -2511,7 +2515,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- scalar x vector, masked) dispatches to eWiseMulAdd (vector <- scalar x vector + 0, masked)\n";
 	#endif
-		return eWiseMulAdd< descr >( z, m, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
+		// return eWiseMulAdd< descr >( z, m, alpha, y, ring.template getZero< typename Ring::D4 >(), ring );
+		return PANIC;
 	}
 
 	/**
@@ -2550,7 +2555,8 @@ namespace alp {
 	#ifdef _DEBUG
 		std::cout << "eWiseMul (reference, masked) dispatches to masked eWiseMulAdd with 0.0 as additive scalar\n";
 	#endif
-		return eWiseMulAdd< descr >( z, m, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
+		// return eWiseMulAdd< descr >( z, m, x, beta, ring.template getZero< typename Ring::D4 >(), ring.getMultiplicativeOperator() );
+		return PANIC;
 	}
 
 	// internal namespace for implementation of alp::dot
