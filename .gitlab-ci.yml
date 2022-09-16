@@ -122,6 +122,7 @@ build_test:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) build_tests_all
+    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
       - build/
