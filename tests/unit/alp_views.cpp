@@ -122,6 +122,13 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	print_vector( "Mrow", Mrow );
 	std::cout << "------------" << std::endl;
 
+	// row-view on a symmetric matrix
+	alp::Matrix< T, alp::structures::Symmetric > A( n, n );
+	alp::set( A, alp::get_view< alp::structures::Symmetric >( M, alp::utils::range( 0, n ), alp::utils::range( 0, n ) ) );
+	auto Arow = alp::get_view( A, 2, alp::utils::range( 2, n ) );
+	print_vector( "Arow", Arow );
+	(void)Arow;
+
 	// column-view
 	auto Mcol = alp::get_view( M, alp::utils::range( 1, m - 1 ), n - 2 );
 	print_vector( "Mcol", Mcol );

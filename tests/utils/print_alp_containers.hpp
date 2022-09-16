@@ -42,12 +42,12 @@ void print_matrix( std::string name, const MatrixType &A ) {
 		std::cout << "|";
 		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
 			if( alp::is_non_zero< typename alp::inspect_structure< MatrixType >::type >( row, col ) ) {
-				const auto k = ( !is_sym || ( is_sym && ( sym_up == ( row > col ) ) ) ) ?
+				const auto k = ( !is_sym || ( is_sym && ( sym_up == ( row < col ) ) ) ) ?
 					alp::internal::getStorageIndex( A, row, col ) :
 					alp::internal::getStorageIndex( A, col, row );
 				std::cout << std::setprecision( 3 ) << "\t" << alp::internal::access( A, k );
 			} else {
-				std::cout << std::setprecision( 0 ) << "\t" << 0;
+				std::cout << std::setprecision( 0 ) << "\t" << ".";
 			}
 		}
 		std::cout << "\t" << "|" << "\n";

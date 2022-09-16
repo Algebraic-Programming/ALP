@@ -289,6 +289,13 @@ namespace alp {
 			using inferred_structures = std::tuple< General >;
 		};
 
+		struct Square: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
+		};
+
 		/**
 		 * @brief Static and runtime check to determine if a matrix view of structure TargetStructure
 		 * 		  and index mapping functions (IMFs) \a imf_r and \a imf_c can be defined over \a SourceStructure.
@@ -297,7 +304,7 @@ namespace alp {
 		 * @tparam TargetStructure The underlying structure of the target view.
 		 * @param imf_r            The IMF applied to the rows of the source matrix.
 		 * @param imf_c            The IMF applied to the columns of the source matrix.
-	
+
 		 * @return \a false if the function can determined that the new view may alter underlying assumptions
 		 * 			associated with the source structure \a SourceStructure; \a true otherwise.
 		 */
@@ -335,13 +342,6 @@ namespace alp {
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				return imf_r.isSame(imf_c);
 			};
-		};
-
-		struct Square: BaseStructure {
-
-			typedef std::tuple< OpenInterval > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
 		};
 
 
@@ -425,6 +425,22 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Symmetric >, Square::inferred_structures >::type;
 		};
 
+		template<>
+		struct isInstantiable< General, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.s == imf_c.s ) && ( imf_r.b == imf_c.b ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< Symmetric, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
+		};
+
 		struct SymmetricPositiveDefinite: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
@@ -444,14 +460,14 @@ namespace alp {
 
 		struct LowerTrapezoidal: BaseStructure {
 
-			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
+			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
 		struct LowerTriangular: BaseStructure {
 
-			typedef std::tuple< LeftOpenInterval< 0 > > band_intervals;
+			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures, LowerTrapezoidal::inferred_structures >::type;
 		};

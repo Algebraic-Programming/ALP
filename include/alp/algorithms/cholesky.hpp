@@ -16,8 +16,13 @@
 
 #include <cmath>
 #include <iostream>
+#include <iomanip>
 
 #include <alp.hpp>
+
+#include "../../../tests/utils/print_alp_containers.hpp"
+
+#define TEMP_DISABLE
 
 namespace alp {
 
@@ -42,9 +47,9 @@ namespace alp {
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D > >
-		RC cholesky_lowtr(
-			Matrix< D, structures::LowerTriangular, Dense > &L,
-			const Matrix< D, structures::SymmetricPositiveDefinite, Dense > &H,
+		RC cholesky_uptr(
+			Matrix< D, structures::UpperTriangular, Dense > &L,
+			const Matrix< D, structures::Symmetric, Dense > &H,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide() ) {
@@ -55,54 +60,116 @@ namespace alp {
 			const size_t n = nrows( H );
 
 			// Out of place specification of the operation
-			Matrix< D, structures::SymmetricPositiveDefinite, Dense > LL( n, n );
+			Matrix< D, structures::Symmetric, Dense > LL( n, n );
 			rc = set( LL, H );
 
+			if( rc != SUCCESS ) {
+				std::cerr << " set( LL, H ) failed\n";
+				return rc;
+			}
+#ifdef DEBUG
+			print_matrix( " -- LL --  " , LL );
+#endif
+
 			for( size_t k = 0; k < n ; ++k ) {
+#ifdef DEBUG
+				std::cout << "============ Iteration " << k << " ============" << std::endl;
+#endif
 
-				const size_t m = n - k - 1;
-
-				auto v = get_view( LL , utils::range( k, n) , k );
+				auto a = get_view( LL, k, utils::range( k, n ) );
+#ifdef DEBUG
+				print_vector( " -- a --  " , a );
+#endif
 
 				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
 				Scalar< D > alpha;
 				rc = eWiseLambda(
-							[ &v, &alpha, &ring ]( const size_t i ) {
-								if ( i == 0 ) {
-									v[ i ] = alpha = std::sqrt( v[ i ] );
-								}
-							},
-							v );
+					[ &alpha, &ring ]( const size_t i, D &val ) {
+						if ( i == 0 ) {
+#ifdef TEMP_DISABLE
+							internal::setInitialized( alpha, true );
+							*alpha = std::sqrt( val );
+#else
+							(void)set( alpha, std::sqrt( val ) );
+#endif
+							val = *alpha;
+						}
+					},
+					a
+				);
 
+#ifdef DEBUG
+				std::cout << "alpha " << *alpha << std::endl;
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (0) failed\n";
+					return rc;
+				}
+#endif
+
+				auto v = get_view( LL, k, utils::range( k + 1, n ) );
+#ifdef DEBUG
+				print_vector( " -- v --  " , v );
+#endif
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
 				rc = eWiseLambda(
-							[ &v, &alpha, &divide ]( const size_t i ) {
-								if ( i > 0 ) {
-									foldl( v[ i ], alpha, divide );
-								}
-							},
-							v );
+					[ &alpha, &divide ]( const size_t i, D &val ) {
+						(void)i;
+						internal::foldl( val, *alpha, divide );
+					},
+					v
+				);
 
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (1) failed\n";
+					return rc;
+				}
+#endif
 
 				// LL[ k+1: , k+1: ] -= v*v^T
 				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
-				vvt = outer( v, ring.getMultiplicativeOperator() );
-				rc = foldl( LLprim, vvt, minus );
+				auto vvt = outer( v, ring.getMultiplicativeOperator() );
+#ifdef DEBUG
+				print_vector( " -- v --  " , v );
+				print_matrix( " vvt ", vvt );
+#endif
 
+				rc = alp::eWiseLambda(
+					[ &vvt, &minus, &divide ]( const size_t i, const size_t j, D &val ) {
+						internal::foldl(
+							val,
+							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
+							minus
+						);
+					},
+					LLprim
+				);
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (2) failed\n";
+					return rc;
+				}
+#endif
 			}
 
 			// Finally collect output into L matrix and return
 			for( size_t k = 0; k < n ; ++k ) {
 
 				// L[ k: , k ] = LL[ k: , k ]
-				auto vL  = get_view( L  , utils::range( k, n) , k );
-				auto vLL = get_view( LL , utils::range( k, n) , k );
+				auto vL  = get_view( L, k, utils::range( k, n )  );
+				auto vLL = get_view( LL, k, utils::range( k, n )  );
 
 				rc = set( vL, vLL );
-
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " set( view, view ) failed\n";
+					return rc;
+				}
+#endif
 			}
 
+			assert( rc == SUCCESS );
 			return rc;
 		}
 
