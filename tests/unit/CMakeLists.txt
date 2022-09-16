@@ -34,19 +34,19 @@ add_grb_executables( add15m add15m.cpp
 )
 
 add_grb_executables( argmax argmax.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( argmin argmin.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( buildVector buildVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( clearMatrix clearMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( compareParserTest parser.cpp
@@ -55,11 +55,11 @@ add_grb_executables( compareParserTest parser.cpp
 )
 
 add_grb_executables( copyAndAssignVectorIterator copyAndAssignVectorIterator.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( copyVector copyVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( distribution_bsp1d distribution_bsp1d.cpp
@@ -71,7 +71,7 @@ add_grb_executables( distribution distribution.cpp
 )
 
 add_grb_executables( id id.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( dot dot.cpp
@@ -79,25 +79,25 @@ add_grb_executables( dot dot.cpp
 )
 
 add_grb_executables( emptyVector emptyVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( ewiseapply ewiseapply.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( collectives_blas0 auto_launcher.cpp
 	launcher/collectives_blas0.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( fold_to_scalar auto_launcher.cpp
 	launcher/reduce.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( fork_launcher fork_launcher.cpp
@@ -110,20 +110,20 @@ add_grb_executable_custom( hpparser ${ALP_UTILS_SRC_PATH}/hpparser.c
 )
 
 add_grb_executables( masked_mxv masked_mxv.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( masked_vxm masked_vxm.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( matrixIterator matrixIterator.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( matrixSet matrixSet.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( moveVector moveVector.cpp
@@ -139,11 +139,11 @@ add_grb_executables( mul15m mul15m.cpp
 )
 
 add_grb_executables( muladd muladd.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( mxm mxm.cpp
-	BACKENDS reference reference_omp #bsp1d hybrid
+	BACKENDS reference reference_omp hyperdags #bsp1d hybrid
 )
 
 add_grb_executables( parserTest utilParserTest.cpp
@@ -152,27 +152,27 @@ add_grb_executables( parserTest utilParserTest.cpp
 )
 
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( set set.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( sparse_mxv sparse_mxv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( sparse_vxm sparse_vxm.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( stdVector stdVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( swapVector swapVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( thread_local_storage thread_local_storage.cpp
@@ -181,47 +181,47 @@ add_grb_executables( thread_local_storage thread_local_storage.cpp
 )
 
 add_grb_executables( vectorToMatrix vectorToMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( vmxa vmxa.cpp
-	BACKENDS reference reference_omp bsp1d
+	BACKENDS reference reference_omp bsp1d hyperdags
 )
 
 add_grb_executables( vmx vmx.cpp
-	BACKENDS reference reference_omp bsp1d
+	BACKENDS reference reference_omp bsp1d hyperdags
 )
 
 add_grb_executables( zip zip.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( masked_muladd masked_muladd.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( spy spy.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( dense_spmv dense_spmv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( moveMatrix moveMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( stdMatrix stdMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( eWiseApply_matrix eWiseApply_matrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( outer outer.cpp
@@ -229,28 +229,28 @@ add_grb_executables( outer outer.cpp
 )
 
 add_grb_executables( mxv mxv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( vxm vxm.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( capacity capacity.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( wait wait.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 add_grb_executables( buildMatrixUnique buildMatrixUnique.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( pinnedVector pinnedVector.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
 # targets to list and build the test for this category
