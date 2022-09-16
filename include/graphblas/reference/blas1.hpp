@@ -8666,7 +8666,8 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC dot( OutputType &z,
+	RC dot(
+		OutputType &z,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
@@ -8798,7 +8799,8 @@ namespace grb {
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC dot( IOType &x,
+	RC dot(
+		IOType &x,
 		const Vector< InputType1, reference, Coords > &left,
 		const Vector< InputType2, reference, Coords > &right,
 		const Ring &ring = Ring(),
