@@ -263,6 +263,16 @@ namespace alp {
 					return properties._n;
 				}
 
+				/** Check if matrix is symmetric. */
+				bool isSymmetric() const noexcept {
+					return properties._symmetry == MatrixFileProperties::MMsymmetries::SYMMETRIC;
+				}
+
+				/** Check if matrix is symmetric. */
+				bool isGeneral() const noexcept {
+					return properties._symmetry == MatrixFileProperties::MMsymmetries::GENERAL;
+				}
+
 				/**
 				 * If known, returns the number of nonzeroes contained in the matrix file.
 				 *

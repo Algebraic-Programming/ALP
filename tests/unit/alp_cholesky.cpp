@@ -22,71 +22,212 @@
 #include <alp.hpp>
 #include <alp/algorithms/cholesky.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 using namespace alp;
 
-void alp_program( const size_t & unit, alp::RC & rc ) {
-	rc = SUCCESS;
+typedef double ScalarType;
+constexpr ScalarType tol = 1.e-10;
+constexpr size_t RNDSEED = 1;
 
-	alp::utils::MatrixFileReader<
-		double
-	> parser_A( std::string("/home/d/Repos/graphblas/datasets/mymatrix.mtx") );
+struct inpdata {
+	std::string fname="";
+	size_t N=0;
+};
 
-	for ( auto it = parser_A.begin() ; it != parser_A.end() ; ++it  ) {
-		std::cout << " i,j,v= " << it.i() << " " << it.j() << " " << it.v() << "\n";
+//** gnerate upper/lower triangular part of a SPD matrix */
+template< typename T >
+void generate_spd_matrix( size_t N, std::vector<T> &data ) {
+	std::srand( RNDSEED );
+	size_t k = 0;
+	for( size_t i = 0; i < N; ++i ) {
+		for( size_t j = i; j < N; ++j ) {
+			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			if( i == j ) {
+				data[ k ] = data[ k ] + static_cast< T >( N );
+			}
+			++k;
+		}
+	}
+}
+
+
+//** check the solution by calculating the Frobenius norm of (H-LL^T) */
+template< typename T, typename RingType, typename ZeroType >
+alp::RC check_cholesky_solution(
+	const alp::Matrix< T, structures::Symmetric, Dense > &H,
+	alp::Matrix< T, structures::UpperTriangular, Dense > &L,
+	const ZeroType &zero_scalar,
+	const RingType &ring
+) {
+	alp::RC rc = SUCCESS;
+	const size_t N = nrows( H );
+	alp::Matrix< T, alp::structures::Symmetric > LLT( N, N );
+	rc = rc ? rc : alp::set( LLT, zero_scalar );
+	auto LT = alp::get_view< alp::view::transpose >( L );
+#ifdef DEBUG
+	print_matrix( " << LLT >> ", LLT );
+	print_matrix( " << LT >>  ", LT );
+#endif
+	rc = rc ? rc : alp::mxm( LLT, LT, L, ring );
+#ifdef DEBUG
+	print_matrix( " << LLT >> ", LLT );
+#endif
+
+	alp::Matrix< T, alp::structures::Symmetric > HminsLLt( N, N );
+	rc = rc ? rc : alp::set( HminsLLt, zero_scalar );
+
+	// LLT = -LLT
+	rc = rc ? rc : alp::eWiseLambda(
+		[ ]( const size_t i, const size_t j, T &val ) {
+			(void)i;
+			(void)j;
+			val = -val;
+		},
+		LLT
+	);
+#ifdef DEBUG
+	print_matrix( " << -LLT  >> ", LLT );
+#endif
+
+	// HminsLLt = H - LLT
+	rc = rc ? rc : alp::eWiseApply(
+		HminsLLt, H, LLT,
+		ring.getAdditiveMonoid()
+	);
+#ifdef DEBUG
+	print_matrix( " << H - LLT  >> ", HminsLLt );
+#endif
+
+	//Frobenius norm
+	T fnorm = 0;
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
+			(void)i;
+			(void)j;
+			fnorm += val * val;
+		},
+		HminsLLt
+	);
+	fnorm = std::sqrt( fnorm );
+	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
+	if( tol < fnorm ) {
+		std::cout << "The Frobenius norm is too large. "
+			"Make sure that you have used SPD matrix as input.\n";
+		return FAILED;
 	}
 
-	return ;
+	return rc;
+}
 
+void alp_program( const inpdata &unit, alp::RC &rc ) {
+	rc = SUCCESS;
 
+	size_t N = 0;
+	if( !unit.fname.empty() ) {
+		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
+		N = parser_A.n();
+		if( !parser_A.isSymmetric() ) {
+			std::cout << "Symmetric matrix epxected as input!\n";
+			rc = ILLEGAL;
+			return;
+		}
+	} else if( unit.N != 0 )  {
+		N = unit.N;
+	}
 
-	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
+	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N, N );
+	alp::Matrix< ScalarType, structures::Symmetric, Dense > H( N, N );
+
+	if( !unit.fname.empty() ) {
+		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
+		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
+	} else if( unit.N != 0 )  {
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		generate_spd_matrix( N, matrix_data );
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
+	}
+
+	alp::Semiring<
+		alp::operators::add< ScalarType >,
+		alp::operators::mul< ScalarType >,
+		alp::identities::zero,
+		alp::identities::one
+	> ring;
+	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
 
 	std::cout << "\tTesting ALP cholesky\n"
-	             "\tH = L * L^T\n";
+		"\tH = L * L^T\n";
 
-	// dimensions of sqare matrices H, L
-	size_t N = 10 * unit;
+	if( !internal::getInitialized( H ) ) {
+		std::cout << " Matrix H is not initialized\n";
+		return;
+	}
 
-	// dimensions of views over H, Q and R
-	size_t n = 2 * unit;
+#ifdef DEBUG
+	print_matrix( std::string(" << H >> "), H );
+	print_matrix( std::string(" << L >> "), L );
+#endif
 
-	alp::Matrix< double, structures::SymmetricPositiveDefinite, Dense > H( N, N );
-	alp::Matrix< double, structures::LowerTriangular, Dense > L( N, N );
+	rc = rc ? rc : alp::set( L, zero_scalar	);
 
-	rc = algorithms::cholesky_lowtr( L, H, ring );
+	if( !internal::getInitialized( L ) ) {
+		std::cout << " Matrix L is not initialized\n";
+		return;
+	}
+
+	rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
+#ifdef DEBUG
+	print_matrix( std::string(" << L >> "), L );
+#endif
+	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
 }
 
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
-	size_t in = 100;
+	inpdata in;
 
 	// error checking
-	if( argc > 2 ) {
-		printUsage = true;
-	}
-	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+	if( argc == 3 ) {
+		std::string readflag;
+		std::istringstream ss1( argv[ 1 ] );
+		std::istringstream ss2( argv[ 2 ] );
+		if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
+		} else if(
+			( readflag != std::string( "-fname" ) ) &&
+			( readflag != std::string( "-n" ) )
+		) {
+			std::cerr << "Given first argument is unknown\n";
 			printUsage = true;
 		} else {
-			// all OK
-			in = read;
+			if( readflag == std::string( "-fname" ) ) {
+				if( ! ( ( ss2 >> in.fname ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing second argument\n";
+					printUsage = true;
+				}
+			}
+
+			if( readflag == std::string( "-n" ) ) {
+				if( ! ( ( ss2 >> in.N ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing second argument\n";
+					printUsage = true;
+				}
+			}
+
 		}
+	} else {
+		std::cout << "Wrong number of arguments\n" ;
+		printUsage = true;
 	}
+
 	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "Usage: \n";
+		std::cerr << "       " << argv[ 0 ] << " -fname FILENAME.mtx \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N \n";
 		return 1;
 	}
 
