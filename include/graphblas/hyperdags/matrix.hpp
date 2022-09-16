@@ -66,18 +66,19 @@ namespace grb {
 	template< typename T, typename RIT, typename CIT, typename NIT >
 	class Matrix< T, hyperdags, RIT, CIT, NIT > {
 
-
-		template< typename A >
+		template< typename A, typename sRIT, typename sCIT, typename sNIT >
 		friend Matrix<
-			A, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT
+			A, _GRB_WITH_HYPERDAGS_USING, sRIT, sCIT, sNIT
 		> & internal::getMatrix(
-			Matrix< A, grb::hyperdags, RIT, CIT, NIT > &
+			Matrix< A, grb::hyperdags, sRIT, sCIT, sNIT > &
 		);
 
-		template< typename A >
+		template< typename A, typename sRIT, typename sCIT, typename sNIT >
 		friend const Matrix<
-			A, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT
-		> & internal::getMatrix( const Matrix< A, grb::hyperdags, RIT, CIT, NIT > & );
+			A, _GRB_WITH_HYPERDAGS_USING, sRIT, sCIT, sNIT
+		> & internal::getMatrix(
+			const Matrix< A, grb::hyperdags, sRIT, sCIT, sNIT > &
+		);
 
 
 		private:
