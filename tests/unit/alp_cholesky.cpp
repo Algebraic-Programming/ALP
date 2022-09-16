@@ -38,10 +38,10 @@ struct inpdata {
 //** gnerate upper/lower triangular part of a SPD matrix */
 template< typename T >
 void generate_spd_matrix( size_t N, std::vector<T> &data ) {
-	std::srand(RNDSEED);
+	std::srand( RNDSEED );
 	size_t k = 0;
-	for( size_t i = 0; i < N ; ++i ) {
-		for( size_t j = i; j < N ; ++j ) {
+	for( size_t i = 0; i < N; ++i ) {
+		for( size_t j = i; j < N; ++j ) {
 			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
 			if( i == j ) {
 				data[ k ] = data[ k ] + static_cast< T >( N );
