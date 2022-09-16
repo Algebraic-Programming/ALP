@@ -1057,6 +1057,49 @@ namespace alp {
 	}
 
 	/**
+	 * eWiseMul, version where B is a scalar.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2
+	>
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		(void)C;
+		(void)A;
+		(void)beta;
+		(void)ring;
+		// static sanity checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+	#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
+	#endif
+		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
+	}
+
+	/**
 	 * @brief  Outer product of two vectors. The result matrix \a A will contain \f$ uv^T \f$.
 	 * 
 	 * @tparam descr      	The descriptor to be used (descriptors::no_operation
