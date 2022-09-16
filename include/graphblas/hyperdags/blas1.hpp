@@ -275,12 +275,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename IOType, typename InputType, typename Coords
 	>
-	RC foldr( const InputType & alpha,
-		Vector< IOType, hyperdags, Coords > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! grb::is_object< InputType >::value && !
-		grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL )
-		{
+	RC foldr(
+		const InputType &alpha,
+		Vector< IOType, hyperdags, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< IOType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
 		std::array< const void *, 2 > sources{ &alpha, &y,  };
 		std::array< const void *, 2 > destinations{ &monoid,  &y, };
 		internal::hyperdags::generator.addOperation(
@@ -437,7 +441,7 @@ namespace grb {
 			grb::is_operator< Op >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 2 > sources{&x, beta };
+		std::array< const void *, 2 > sources{ &x, &beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDL_VECTOR_BETA_OP,
