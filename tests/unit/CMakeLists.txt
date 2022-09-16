@@ -34,7 +34,6 @@ add_grb_executables( add15m add15m.cpp
 #	BACKENDS alp_reference
 #)
 
-# Temporarily disable until containers rework is completed
 add_grb_executables( alp_cholesky alp_cholesky.cpp
 	BACKENDS alp_reference
 )

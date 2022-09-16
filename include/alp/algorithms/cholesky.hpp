@@ -47,7 +47,7 @@ namespace alp {
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D > >
-		RC cholesky_lowtr(
+		RC cholesky_uptr(
 			Matrix< D, structures::UpperTriangular, Dense > &L,
 			const Matrix< D, structures::Symmetric, Dense > &H,
 			const Ring & ring = Ring(),
@@ -62,11 +62,12 @@ namespace alp {
 			// Out of place specification of the operation
 			Matrix< D, structures::Symmetric, Dense > LL( n, n );
 			rc = set( LL, H );
-#ifdef DEBUG
+
 			if( rc != SUCCESS ) {
 				std::cerr << " set( LL, H ) failed\n";
 				return rc;
 			}
+#ifdef DEBUG
 			print_matrix( " -- LL --  " , LL );
 #endif
 
@@ -93,7 +94,8 @@ namespace alp {
 #endif
 							val = *alpha;
 						}
-					}, a
+					},
+					a
 				);
 
 #ifdef DEBUG
@@ -132,7 +134,7 @@ namespace alp {
 				print_vector( " -- v --  " , v );
 				print_matrix( " vvt ", vvt );
 #endif
-#ifdef TEMP_DISABLE
+
 				rc = alp::eWiseLambda(
 					[ &vvt, &minus, &divide ]( const size_t i, const size_t j, D &val ) {
 						internal::foldl(
@@ -140,10 +142,6 @@ namespace alp {
 							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
 							minus
 						);
-#ifdef DEBUG
-						std::cout << "lambda " << i << " " << j << " " << val
-							  << " " << internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ) << std::endl;
-#endif
 					},
 					LLprim
 				);
@@ -153,24 +151,14 @@ namespace alp {
 					return rc;
 				}
 #endif
-#else
-				rc = foldl( LLprim, vvt, minus );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cerr << " foldl( view, outer, minus ) failed\n";
-					return rc;
-				}
-				print_matrix( " -- LL --  " , LL );
-#endif
-#endif
 			}
 
 			// Finally collect output into L matrix and return
 			for( size_t k = 0; k < n ; ++k ) {
 
 				// L[ k: , k ] = LL[ k: , k ]
-				auto vL  = get_view( L  , k, utils::range( k, n )  );
-				auto vLL = get_view( LL , k, utils::range( k, n )  );
+				auto vL  = get_view( L, k, utils::range( k, n )  );
+				auto vLL = get_view( LL, k, utils::range( k, n )  );
 
 				rc = set( vL, vLL );
 #ifdef DEBUG
