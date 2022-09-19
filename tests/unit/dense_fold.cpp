@@ -280,6 +280,88 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #endif
 		}
 	}
+
+	// test 4
+	// test 4 (foldl( vector, vector, add_op))
+	// test 4 (foldr( vector, vector, add_op))
+	{
+		alp::Semiring<
+			alp::operators::add< double >, alp::operators::mul< double >,
+			alp::identities::zero, alp::identities::one
+		> ring;
+
+		alp::Vector< T1 > x( n );
+		alp::Vector< T1 > y( n );
+
+		std::vector< T1 > data( n );
+
+		std::fill( data.begin(), data.end(), static_cast< T1 >( testval2 ) );
+		rc = rc ? rc : alp::buildVector( x, data.begin(), data.end() );
+
+		std::fill( data.begin(), data.end(), static_cast< T1 >( testval3 ) );
+		rc = rc ? rc : alp::buildVector( y, data.begin(), data.end() );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 4 alp::buildVector FAILED\n";
+			return;
+		}
+
+		// test 4 (foldl( vector, vector, add_op))
+		rc = alp::foldl( x, y, ring.getAdditiveOperator() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 4 (foldl( vector, vector, monoid )) foldl FAILED\n";
+			return;
+		}
+
+		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
+			if( x[ i ] !=  testval2 +  testval3 ) {
+				std::cerr << "\t test 4 ( foldl): unexpected output "
+					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval2 + testval3 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+
+			if( y[ i ] !=  testval3 ) {
+				std::cerr << "\t test 4 ( foldl): unexpected output, vector y should not be modified "
+					  << "vector [" <<  i << " ] ( " << y[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval3 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+		}
+
+		// test 4 (foldr( vector, vector, add_op))
+		rc = alp::foldr( x, y, ring.getAdditiveOperator() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 4 (foldr( vector, vector, monoid )) foldr FAILED\n";
+			return;
+		}
+
+		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
+			if( x[ i ] !=  testval2 +  testval3 ) {
+				std::cerr << "\t test 4 ( foldr): unexpected output, vector x should not be modified "
+					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval2 + testval3 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+
+			if( y[ i ] !=  testval2 +  2 * testval3 ) {
+				std::cerr << "\t test 4 ( foldr): unexpected output, "
+					  << "vector [" <<  i << " ] ( " << y[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval2 +  2 * testval3 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+		}
+
+	}
+
 }
 
 int main( int argc, char ** argv ) {
