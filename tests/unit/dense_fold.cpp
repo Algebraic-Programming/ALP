@@ -30,11 +30,13 @@ const T1 testval3 = 2.;
 
 void alp_program( const size_t &n, alp::RC &rc ) {
 
-	// test 1 foldl( vector, scalar, mul_op)
+	// test 1
+	// foldl( vector, scalar, mul_op)
+	// foldr( scalar, vector, mul_op)
 	{
 		rc = SUCCESS;
 
-		alp::Vector< T1 > x( n );
+		alp::Vector< T1 > x_l( n );
 
 		alp::Semiring<
 			alp::operators::add< double >, alp::operators::mul< double >,
@@ -43,31 +45,31 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 		std::vector< T1 > x_data( n );
 
-		// test 1, init
+		// test 1 foldl , init
 		std::fill( x_data.begin(), x_data.end(), testval1 );
 
-		rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
+		rc = rc ? rc : alp::buildVector( x_l, x_data.begin(), x_data.end() );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op )): initialisation FAILED\n";
 			return;
 		}
 
-		// test 1, exec
+		// test 1 foldl, exec
 		Scalar< T1 > out( testval2 );
-		rc = alp::foldl( x, out, ring.getMultiplicativeOperator() );
+		rc = alp::foldl( x_l, out, ring.getMultiplicativeOperator() );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 1 (foldl( vector, scalar, mul_op )): foldl FAILED\n";
 			return;
 		}
 
-		// test 1, check
+		// test 1 foldl, check
 #ifdef DEBUG
-		std::cout << "x = ";
+		std::cout << "x_l = ";
 #endif
-		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
-			if( x[ i ] !=  testval1 * testval2 ) {
+		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
+			if( x_l[ i ] !=  testval1 * testval2 ) {
 				std::cerr << "\t test 1 ( foldl( vector, scalar, mul_op )): unexpected output "
-					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "
+					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
 					  << ( static_cast< T1 >( testval1 * testval2 ) )
 					  << " )\n";
 				rc = FAILED;
@@ -75,22 +77,62 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			}
 #ifdef DEBUG
 			if( i < 10 ) {
-				std::cout << x[ i ] << " ";
-			} else if ( i + 10 > alp::getLength( x ) ) {
-				std::cout << x[ i ] << " ";
+				std::cout << x_l[ i ] << " ";
+			} else if ( i + 10 > alp::getLength( x_l ) ) {
+				std::cout << x_l[ i ] << " ";
 			} else if ( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
 		}
+
+		// test 1 foldr, exec
+		alp::Vector< T1 > x_r( n );
+		Scalar< T1 > out_r( testval2 );
+
+		// test 1 foldr, init
+		std::fill( x_data.begin(), x_data.end(), testval1 );
+		rc = rc ? rc : alp::buildVector( x_r, x_data.begin(), x_data.end() );
+
+		// test 1 foldr, exec
+		rc = alp::foldr( out_r, x_r, ring.getMultiplicativeMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 1 (foldr( scalar, vector, mul_op )): foldr FAILED\n";
+			return;
+		}
+		// test 1 foldr, check
 #ifdef DEBUG
-		std::cout << "\n";
+		std::cout << "x_r = ";
 #endif
+		for( size_t i = 0; i < alp::getLength( x_r ); ++i ) {
+			if( x_r[ i ] !=  testval1 * testval2 ) {
+				std::cerr << "\t test 1 ( foldr( scalar, vector, mul_op )): unexpected output "
+					  << "vector [" <<  i << " ] ( " << x_r[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval1 * testval2 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+#ifdef DEBUG
+			if( i < 10 ) {
+				std::cout << x_r[ i ] << " ";
+			} else if ( i + 10 > alp::getLength( x_r ) ) {
+				std::cout << x_r[ i ] << " ";
+			} else if ( i == 10 ) {
+				std::cout << " ...  ";
+			}
+#endif
+		}
+
+
 	}
 
-	// test 2 foldl( scalar, vector, add_op)
+
+	// test 2
+	// foldl( scalar, vector, add_op)
+	// foldr( vector, scalar, add_op)
 	{
-		alp::Vector< T1 > x( n );
+		alp::Vector< T1 > x_l( n );
 
 		//test 2, init
 		alp::Semiring<
@@ -103,9 +145,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			// temp initialization
 			std::vector< T1 > x_data( n );
 			std::fill( x_data.begin(), x_data.end(), static_cast< T1 >( testval2 ) );
-			rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
+			rc = rc ? rc : alp::buildVector( x_l, x_data.begin(), x_data.end() );
 		}
-		// rc = rc ? rc : alp::set( x, Scalar< T1 >( 0 ) ); // needs an implementation
+		// rc = rc ? rc : alp::set( x_l, Scalar< T1 >( 0 ) ); // needs an implementation
 
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 2 (foldl( scalar, vector, add_op )) "
@@ -115,7 +157,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 		// test 2, exec
 		Scalar< T1 > out( testval3 );
-		rc = alp::foldl( out, x, ring.getAdditiveMonoid() );
+		rc = alp::foldl( out, x_l, ring.getAdditiveMonoid() );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t test 2 (foldl( scalar, vector, monoid )) foldl FAILED\n";
 			return;
@@ -133,7 +175,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 
 		// test 3 (foldl( scalar, vector_view, add_op))
-		auto x_view_even = alp::get_view( x, alp::utils::range( 0, n, 2 ) );
+		auto x_view_even = alp::get_view( x_l, alp::utils::range( 0, n, 2 ) );
 		*out = testval3;
 		rc = alp::foldl( out, x_view_even, ring.getAdditiveMonoid() );
 		if( rc != SUCCESS ) {
