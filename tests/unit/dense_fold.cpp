@@ -199,7 +199,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #endif
 		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
 			if( x_l[ i ] !=  testval2 ) {
-				std::cerr << "\t test 2 ( foldr/r): unexpected output, vector x_l should not be modified "
+				std::cerr << "\t test 2 ( foldl/r): unexpected output, vector x_l should not be modified "
 					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
 					  << ( static_cast< T1 >( testval1 * testval2 ) )
 					  << " )\n";
@@ -217,26 +217,69 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #endif
 		}
 
-		// // test 3 (foldl( scalar, vector_view, add_op))
-		// auto x_view_even = alp::get_view( x_l, alp::utils::range( 0, n, 2 ) );
-		// *out = testval3;
-		// rc = alp::foldl( out, x_view_even, ring.getAdditiveMonoid() );
-		// if( rc != SUCCESS ) {
-		// 	std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid )) foldl FAILED\n";
-		// 	return;
-		// }
+		// test 3
+		// test 3 (foldl( scalar, vector_view, add_op))
+		// test 3 (foldr( vector_view, scalar, add_op))
+		auto x_view_even_l = alp::get_view( x_l, alp::utils::range( 0, n, 2 ) );
+		*out = testval3;
+		rc = alp::foldl( out, x_view_even_l, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid )) foldl FAILED\n";
+			return;
+		}
 
-		// // test 2, check
-		// if( testval3 + testval2 * static_cast< T1 >( n / 2 ) != *out ) {
-		// 	std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid)), "
-		// 		  << "unexpected output: " << *out << ", expected "
-		// 		  << testval3 + testval2 * static_cast< T1 >( n / 2 )
-		// 		  << ".\n";
-		// 	rc = FAILED;
-		// 	return;
-		// }
+		// test 3 foldl, check
+		if( testval3 + testval2 * static_cast< T1 >( n / 2 ) != *out ) {
+			std::cerr << "\t test 3 (foldl( scalar, vector_view, monoid )), "
+				  << "unexpected output: " << *out << ", expected "
+				  << testval3 + testval2 * static_cast< T1 >( n / 2 )
+				  << ".\n";
+			rc = FAILED;
+			return;
+		}
+
+		// test 3 (foldr( vector_view, scalar, add_op))
+		auto x_view_even_r = alp::get_view( x_l, alp::utils::range( 0, n, 2 ) );
+		*out = testval3;
+		rc = alp::foldr( x_view_even_r, out, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 3 (foldr( vector_view, scalar, monoid )) foldr FAILED\n";
+			return;
+		}
+
+		// test 3 foldr, check
+		if( testval3 + testval2 * static_cast< T1 >( n / 2 ) != *out ) {
+			std::cerr << "\t test 3 (foldr( vector_view, scalar, monoid )), "
+				  << "unexpected output: " << *out << ", expected "
+				  << testval3 + testval2 * static_cast< T1 >( n / 2 )
+				  << ".\n";
+			rc = FAILED;
+			return;
+		}
+
+#ifdef DEBUG
+		std::cout << "x_l = ";
+#endif
+		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
+			if( x_l[ i ] !=  testval2 ) {
+				std::cerr << "\t test 3 ( foldl/r): unexpected output, vector x_l should not be modified "
+					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
+					  << ( static_cast< T1 >( testval1 * testval2 ) )
+					  << " )\n";
+				rc = FAILED;
+				return;
+			}
+#ifdef DEBUG
+			if( i < 10 ) {
+				std::cout << x_l[ i ] << " ";
+			} else if ( i + 10 > alp::getLength( x_l ) ) {
+				std::cout << x_l[ i ] << " ";
+			} else if ( i == 10 ) {
+				std::cout << " ...  ";
+			}
+#endif
+		}
 	}
-
 }
 
 int main( int argc, char ** argv ) {
