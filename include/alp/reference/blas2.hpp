@@ -766,6 +766,90 @@ namespace alp {
 		return SUCCESS;
 	}
 
+	/** Folds element-wise B into A */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Monoid
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &B,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+		(void) A;
+		(void) B;
+		(void) monoid;
+
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
+	}
+
+	/** Folds element-wise beta into A */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Monoid
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Scalar< InputType, InputStructure, reference > &beta,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+		(void) A;
+		(void) beta;
+		(void) monoid;
+
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
+	}
+
 	/** @} */
 
 } // end namespace ``alp''
