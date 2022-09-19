@@ -795,7 +795,6 @@ namespace alp {
 		);
 
 		if( !internal::getInitialized( y ) ) {
-			std::cout << " premature return \n";
 			return SUCCESS;
 		}
 
