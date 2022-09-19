@@ -30,6 +30,28 @@
 #include <alp/rc.hpp>
 #include <alp/matrix.hpp>
 
+#define NO_CAST_OP_ASSERT( x, y, z )                                           \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the operator domains, as specified in the "            \
+		"documentation of the function " y ", supply an input argument of "    \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible operator where all domains "  \
+		"match those of the input parameters, as specified in the "            \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
 namespace alp {
 
 	/**
@@ -519,8 +541,11 @@ namespace alp {
 		) {
 			// Ensure that the provided containers are compatible with static configuration
 			assert( C != nullptr );
-			assert( scalar && ( alpha != nullptr ) );
-			assert( !scalar && ( A != nullptr ) );
+			if( scalar ) {
+				assert( alpha != nullptr );
+			} else {
+				assert( A != nullptr );
+			}
 
 			constexpr bool is_sym_c = structures::is_a< IOStructure, structures::Symmetric >::value;
 			constexpr bool is_sym_a = structures::is_a< InputStructure, structures::Symmetric >::value;
@@ -846,13 +871,17 @@ namespace alp {
 		(void) beta;
 		(void) monoid;
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		constexpr bool left = true;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, monoid ) ;
 	}
 
 	/** @} */
 
 } // end namespace ``alp''
+
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS2''
 
