@@ -447,6 +447,171 @@ namespace alp {
 		return eWiseLambda( f, A, args... );
 	}
 
+	namespace internal {
+
+		/**
+		 * Applies fold to all elements of the given band
+		 * Depending on the values of left and scalar, performs the following variants:
+		 * - left == true  && scalar == true:  C = C . alpha
+		 * - left == true  && scalar == false: C = C . A
+		 * - left == false && scalar == true:  C = alpha . C
+		 * - left == false && scalar == false: C = A . C
+		 * This variants handles out-of-bounds band index.
+		 * All variants assume compatible parameters:
+		 *   - matching structures
+		 *   - matching dynamic sizes
+		 */
+		template<
+			size_t band_index,
+			bool left, // if true, performs foldl, otherwise foldr
+			bool scalar,
+			Descriptor descr,
+			class Monoid,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar,
+			typename std::enable_if_t<
+				band_index >= std::tuple_size< typename IOStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC fold_matrix_band_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Monoid &monoid,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_monoid< Monoid >::value
+			> * const = nullptr
+		) {
+			(void) C;
+			(void) A;
+			(void) alpha;
+			(void) monoid;
+			return SUCCESS;
+		}
+
+		/** Specialization for band index within the bounds */
+		template<
+			size_t band_index,
+			bool left, // if true, performs foldl, otherwise foldr
+			bool scalar,
+			Descriptor descr,
+			class Monoid,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar,
+			typename std::enable_if_t<
+				band_index < std::tuple_size< typename IOStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC fold_matrix_band_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Monoid &monoid,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_monoid< Monoid >::value
+			> * const = nullptr
+		) {
+			// Ensure that the provided containers are compatible with static configuration
+			assert( C != nullptr );
+			assert( scalar && ( alpha != nullptr ) );
+			assert( !scalar && ( A != nullptr ) );
+
+			constexpr bool is_sym_c = structures::is_a< IOStructure, structures::Symmetric >::value;
+			constexpr bool is_sym_a = structures::is_a< InputStructure, structures::Symmetric >::value;
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c = is_sym_c;
+			constexpr bool sym_up_a = is_sym_a;
+
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( *C );
+
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
+
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( *C, i );
+
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
+					auto &IO_val = internal::access( *C, internal::getStorageIndex( *C, i, j ) );
+
+					if( scalar ) {
+						if( left ) {
+							// C = C . alpha
+							(void) internal::foldl( IO_val, **alpha, monoid.getOperator() );
+						} else {
+							// C = alpha . C
+							(void) internal::foldr( **alpha, IO_val, monoid.getOperator() );
+						}
+					} else {
+						// C = A . C
+						// Calculate indices to 'A' depending on matching symmetry with 'C'
+						const size_t A_i = ( sym_up_c == sym_up_a ) ? i : j;
+						const size_t A_j = ( sym_up_c == sym_up_a ) ? j : i;
+						const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+
+						if( left ) {
+							// C = C . A
+							(void) internal::foldl( IO_val, A_val, monoid.getOperator() );
+						} else {
+							// C = A . C
+							(void) internal::foldr( A_val, IO_val, monoid.getOperator() );
+						}
+					}
+				}
+			}
+			return fold_matrix_band_generic<
+				band_index + 1, left, scalar, descr
+			>( C, A, alpha, monoid );
+		}
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 */
+		template<
+			bool left, bool scalar,
+			Descriptor descr,
+			class Monoid,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar
+		>
+		RC fold_matrix_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Monoid &monoid,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_monoid< Monoid >::value
+			> * const = nullptr
+		) {
+
+#ifdef _DEBUG
+			std::cout << "In alp::internal::fold_matrix_generic\n";
+#endif
+
+			// run-time checks
+			// TODO: support left/right_scalar
+			const size_t m = alp::nrows( *C );
+			const size_t n = alp::ncols( *C );
+
+			if( !scalar ){
+				assert( A != nullptr );
+				if( m != nrows( *A ) || n != ncols( *A ) ) {
+					return MISMATCH;
+				}
+			}
+
+			// delegate to single-band variant
+			return fold_matrix_band_generic< 0, left, scalar, descr >( C, A, alpha, monoid );
+		}
+
+	} // namespace internal
 	/**
 	 * For all elements in a ALP Matrix \a B, fold the value \f$ \alpha \f$
 	 * into each element.
