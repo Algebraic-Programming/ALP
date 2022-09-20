@@ -51,7 +51,8 @@ namespace alp {
 		 */
 		template<
 			typename D = double,
-			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > >
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
+		>
 		RC gemm_like_example(
 			size_t m,
 			size_t n,
@@ -73,31 +74,42 @@ namespace alp {
 			size_t strideCr,
 			size_t startCc,
 			size_t strideCc,
-			const Ring &ring = Ring() ) {
+			const Ring &ring = Ring()
+		) {
 
 			auto At = get_view< view::transpose >( A ); // Transposed view of matrix A
-			auto At_blk = get_view( At,
+			auto At_blk = get_view(
+				At,
 				utils::range( startAr, startAr + m, strideAr ),
-				utils::range( startAc, startAc + k, strideAc ) );
+				utils::range( startAc, startAc + k, strideAc )
+			);
 
-			auto B_blk = get_view( B,
+			auto B_blk = get_view(
+				B,
 				utils::range( startBr, startBr + k, strideBr ),
-				utils::range( startBc, startBc + n, strideBc ) );
+				utils::range( startBc, startBc + n, strideBc )
+			);
 
-			auto C_blk = get_view( C,
+			auto C_blk = get_view(
+				C,
 				utils::range( startCr, startCr + m, strideCr ),
-				utils::range( startCc, startCc + n, strideCc ) );
+				utils::range( startCc, startCc + n, strideCc )
+			);
 
 			Matrix< D, structures::General, Dense > C_tmp( m, n );
 
 			RC rc = SUCCESS;
 
-			rc = foldr( beta, C_blk, ring.getMultiplicativeMonoid() ); // C_blk = beta * C_blk
+			// C_blk = beta * C_blk
+			rc = rc ? rc : foldr( beta, C_blk, ring.getMultiplicativeMonoid() );
 
-			rc = set( C_tmp, Scalar< D >( ring.template getZero< D >() ) ); // C_tmp = 0
-			rc = mxm( C_tmp, At_blk, B_blk, ring ); // C_tmp += At_blk * B_blk
+			// C_tmp = 0
+			rc = rc ? rc : set( C_tmp, Scalar< D >( ring.template getZero< D >() ) );
+			// C_tmp += At_blk * B_blk
+			rc = rc ? rc : mxm( C_tmp, At_blk, B_blk, ring );
 
-			rc = eWiseMul( C_blk, alpha, C_tmp, ring ); // C_blk += alpha * C_tmp
+			// C_blk += alpha * C_tmp
+			rc = rc ? rc : eWiseMul( C_blk, alpha, C_tmp, ring );
 
 			return rc;
 		}
