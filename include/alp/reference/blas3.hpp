@@ -890,6 +890,194 @@ namespace alp {
 		);
 	}
 
+	namespace internal {
+
+		/**
+		 * Applies eWiseMul to all elements of the given band
+		 * Specialization handle bound-checking.
+		 * Assumes compatible parameters:
+		 *   - matching structures
+		 *   - matching dynamic sizes
+		 */
+		template<
+			size_t band_index,
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class Ring,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+			typename InputTypeScalar2, typename InputStructureScalar2,
+			typename std::enable_if_t<
+				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseMul_matrix_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
+			const Ring &ring,
+			const std::enable_if_t<
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value
+			> * const = nullptr
+		) {
+			(void) C;
+			(void) A;
+			(void) alpha;
+			(void) B;
+			(void) beta;
+			(void) ring;
+			return SUCCESS;
+		}
+
+		/** Specialization for band index within the bounds */
+		template<
+			size_t band_index,
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class Ring,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+			typename InputTypeScalar2, typename InputStructureScalar2,
+			typename std::enable_if_t<
+				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC eWiseMul_matrix_band_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
+			const Ring &ring,
+			const std::enable_if_t<
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value
+			> * const = nullptr
+		) {
+			assert( C != nullptr );
+			// In case of symmetry the iteration domain intersects the the upper
+			// (or lower) domain of A
+			constexpr bool is_sym_c = structures::is_a< OutputStructure, structures::Symmetric >::value;
+			constexpr bool is_sym_a = structures::is_a< InputStructure1, structures::Symmetric >::value;
+			constexpr bool is_sym_b = structures::is_a< InputStructure2, structures::Symmetric >::value;
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c = is_sym_c;
+			constexpr bool sym_up_a = is_sym_a;
+			constexpr bool sym_up_b = is_sym_b;
+
+			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( *C );
+
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
+
+				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( *C, i );
+
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
+					OutputType C_tmp;
+
+					// Calculate indices to A and B depending on matching symmetry with C
+					const size_t A_i = ( sym_up_c == sym_up_a ) ? i : j;
+					const size_t A_j = ( sym_up_c == sym_up_a ) ? j : i;
+					const size_t B_i = ( sym_up_c == sym_up_b ) ? i : j;
+					const size_t B_j = ( sym_up_c == sym_up_b ) ? j : i;
+
+					if( left_scalar ) {
+						if( right_scalar ) {
+							// C = alpha . beta
+							internal::apply( C_tmp, **alpha, **beta, ring.getMultiplicativeOperator() );
+						} else {
+							// C = alpha . B
+							const auto &B_val = internal::access( *B, internal::getStorageIndex( *B, B_i, B_j ) );
+							internal::apply( C_tmp, **alpha, B_val, ring.getMultiplicativeOperator() );
+						}
+					} else {
+						if( right_scalar ) {
+							// C = A . beta
+							const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+							internal::apply( C_tmp, A_val, **beta, ring.getMultiplicativeOperator() );
+						} else {
+							// C = A . B
+							const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+							const auto &B_val = internal::access( *B, internal::getStorageIndex( *B, B_i, B_j ) );
+							internal::apply( C_tmp, A_val, B_val, ring.getMultiplicativeOperator() );
+						}
+					}
+
+					auto &C_val = internal::access( *C, internal::getStorageIndex( *C, i, j ) );
+					internal::foldl( C_val, C_tmp, ring.getAdditiveOperator() );
+				}
+			}
+			return eWiseMul_matrix_band_generic<
+				band_index + 1, left_scalar, right_scalar, descr
+			>( C, A, alpha, B, beta, ring );
+		}
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 */
+		template<
+			bool left_scalar, bool right_scalar,
+			Descriptor descr,
+			class Ring,
+			typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+			typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+			typename InputTypeScalar1, typename InputStructureScalar1,
+			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+			typename InputTypeScalar2, typename InputStructureScalar2
+		>
+		RC eWiseMul_matrix_generic(
+			alp::Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > *C,
+			const alp::Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > *A,
+			const alp::Scalar< InputTypeScalar1, InputStructureScalar1, reference > *alpha,
+			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
+			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
+			const Ring &ring = Ring(),
+			const std::enable_if_t<
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
+				alp::is_semiring< Ring >::value
+			> * const = nullptr
+		) {
+
+#ifdef _DEBUG
+			std::cout << "In alp::internal::eWiseMul_matrix_generic\n";
+#endif
+
+			// run-time checks
+			const size_t m = alp::nrows( *C );
+			const size_t n = alp::ncols( *C );
+
+			if( !left_scalar ){
+				assert( A != nullptr );
+				if( m != nrows( *A ) || n != ncols( *A ) ) {
+					return MISMATCH;
+				}
+			}
+			if( !right_scalar ){
+				assert( B != nullptr );
+				if( m != nrows( *B ) || n != ncols( *B ) ) {
+					return MISMATCH;
+				}
+			}
+
+			// delegate to single-band variant
+			return eWiseMul_matrix_band_generic< 0, left_scalar, right_scalar, descr >( C, A, alpha, B, beta, ring );
+		}
+
+	} // namespace internal
+
 	/**
 	 * Calculates the element-wise multiplication of two matrices,
 	 *     \f$ C = C + A .* B \f$,
@@ -973,69 +1161,150 @@ namespace alp {
 	 *
 	 * @see This is a specialised form of eWiseMulAdd.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
-	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
 		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
-			"match the first domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
-			"not match the second domain of the given semiring" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
-			"third domain of the given semiring" );
-	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
-	#endif
-		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- matrix x matrix) dispatches to internal::eWiseMul_matrix_generic (matrix <- matrix x matrix)\n";
+#endif
+		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
+		constexpr bool left_scalar = false;
+		constexpr bool right_scalar = false;
+		return internal::eWiseMul_matrix_generic< left_scalar, right_scalar, descr >( &C, &A, no_scalar, &B, no_scalar, ring );
 	}
 
 	/**
 	 * eWiseMul, version where A is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class Ring,
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, 
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
-	RC eWiseMul( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
-		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
-		(void)C;
-		(void)alpha;
-		(void)B;
-		(void)ring;
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
-			"match the first domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ), "alp::eWiseMul",
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
-			"not match the second domain of the given semiring" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ), "alp::eWiseMul",
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
-			"third domain of the given semiring" );
-	#ifdef _DEBUG
-		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches to eWiseMulAdd (vector <- vector x vector + 0)\n";
-	#endif
-		// return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(), ring );
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- scalar x matrix) dispatches to internal::eWiseMul_matrix_generic (matrix <- scalar x matrix)\n";
+#endif
+		constexpr Matrix< InputType1, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		constexpr Scalar< InputType2, structures::General, reference > *no_scalar = nullptr;
+		constexpr bool left_scalar = true;
+		constexpr bool right_scalar = false;
+		return internal::eWiseMul_matrix_generic< left_scalar, right_scalar, descr >( &C, no_matrix, &alpha, &B, no_scalar, ring );
+	}
+
+	/**
+	 * eWiseMul, version where B is a scalar.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2
+	>
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+		const Scalar< InputType2, InputStructure2, reference > &beta,
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			"alp::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			"alp::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring"
+		);
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			"alp::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "eWiseMul (reference, matrix <- matrix x scalar) dispatches to internal::eWiseMul_matrix_generic (matrix <- matrix x scalar)\n";
+#endif
+		constexpr Scalar< InputType1, structures::General, reference > *no_scalar = nullptr;
+		constexpr Matrix< InputType2, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		constexpr bool left_scalar = false;
+		constexpr bool right_scalar = true;
+		return internal::eWiseMul_matrix_generic< left_scalar, right_scalar, descr >( &C, &A, no_scalar, no_matrix, &beta, ring );
 	}
 
 	/**

@@ -233,6 +233,10 @@ add_grb_executables( dense_eWiseLambda dense_eWiseLambda.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( dense_eWiseMul dense_eWiseMul.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
 	BACKENDS alp_reference
 )
