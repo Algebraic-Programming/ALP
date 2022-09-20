@@ -958,7 +958,7 @@ namespace alp {
 			const alp::Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > *B,
 			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
 			const Ring &ring,
-			const typename std::enable_if_t<
+			const std::enable_if_t<
 				!alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value &&
 				!alp::is_object< InputType2 >::value &&
@@ -1181,19 +1181,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
 			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
 			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
 			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring"
@@ -1230,19 +1230,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
 			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring"
 		);
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
 			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring"
 		);
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
 			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring"
@@ -1280,19 +1280,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ),
 			"alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring"
 		);
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D2, InputType2 >::value ),
 			"alp::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring"
 		);
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, OutputType >::value ),
 			"alp::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring"
