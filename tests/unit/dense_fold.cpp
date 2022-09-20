@@ -362,12 +362,15 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	}
 
-	// test 3 foldl( matrix, scalar, add_op)
+	// test 5
+	// test 5 (foldl( matrix, scalar, add_monoid))
+	// test 5 (foldl( matrix, matrix, add_monoid))
 	{
 		alp::Matrix< T1, alp::structures::General > A( n, n );
+		alp::Matrix< T1, alp::structures::General > B( n, n );
 		alp::Scalar< T1 > alpha( testval1 );
 
-		//test 2, init
+		//test 5, init
 		alp::Semiring<
 			alp::operators::add< double >, alp::operators::mul< double >,
 			alp::identities::zero, alp::identities::one
@@ -375,26 +378,84 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 		rc = SUCCESS;
 		rc = rc ? rc : alp::set( A, alp::Scalar< T1 >( testval2 ) );
+		rc = rc ? rc : alp::set( B, alp::Scalar< T1 >( testval3 ) );
 
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 3 (foldl( matrix, scalar, add_op )) "
+			std::cerr << "\t test 5 (foldl( matrix, scalar, add_op )) "
 				  << "initialisation FAILED\n";
 			return;
 		}
 
-		// test 2, exec
+		// test 5 (foldl( matrix, scalar, add_monoid)) exec
 		rc = alp::foldl( A, alpha, ring.getAdditiveMonoid() );
 		if( rc != SUCCESS ) {
-			std::cerr << "\t test 2 (foldl( matrix, scalar, monoid )) foldl FAILED\n";
+			std::cerr << "\t test 5 (foldl( matrix, scalar, monoid )) foldl FAILED\n";
+			return;
+		}
+
+		// test 5 (foldl( matrix, matrix, add_monoid)) exec
+		rc = alp::foldl( A, B, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 5 (foldl( matrix, matrix, monoid )) foldl FAILED\n";
 			return;
 		}
 
 		// test 2, check
 		const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, 0, 0 ) );
-		if( testval1 + testval2 != A_val ) {
-			std::cerr << "\t test 3 (foldl( matrix, scalar, monoid)), "
+		if( testval1 + testval2 + testval3 != A_val ) {
+			std::cerr << "\t test 5 (foldl( matrix, scalar, monoid ), foldl( matrix, matrix, monoid )), "
 				  << "unexpected output: " << A_val << ", expected "
-				  << testval1 + testval2
+				  << testval1 + testval2 + testval3
+				  << ".\n";
+			rc = FAILED;
+			return;
+		}
+	}
+
+	// test 6
+	// test 6 (foldr( scalar, matrix, add_monoid ))
+	// test 6 (foldr( matrix, matrix, add_monoid ))
+	{
+		alp::Matrix< T1, alp::structures::General > A( n, n );
+		alp::Matrix< T1, alp::structures::General > B( n, n );
+		alp::Scalar< T1 > alpha( testval1 );
+
+		//test 6, init
+		alp::Semiring<
+			alp::operators::add< double >, alp::operators::mul< double >,
+			alp::identities::zero, alp::identities::one
+		> ring;
+
+		rc = SUCCESS;
+		rc = rc ? rc : alp::set( A, alp::Scalar< T1 >( testval2 ) );
+		rc = rc ? rc : alp::set( B, alp::Scalar< T1 >( testval3 ) );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 6 (foldr( scalar, matrix, monoid ), foldr( matrix, matrix, monoid )) "
+				  << "initialisation FAILED\n";
+			return;
+		}
+
+		// test 6 (foldr( scalar, matrix, add_monoid )) exec
+		rc = alp::foldr( alpha, B, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 6 (foldr( matrix, scalar, monoid )) foldl FAILED\n";
+			return;
+		}
+
+		// test 6 (foldr( matrix, matrix, add_monoid )) exec
+		rc = alp::foldr( A, B, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 6 (foldr( matrix, matrix, monoid )) foldl FAILED\n";
+			return;
+		}
+
+		// test 2, check
+		const auto B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, 0, 0 ) );
+		if( testval1 + testval2 + testval3 != B_val ) {
+			std::cerr << "\t test 6 (foldr( scalar, matrix, monoid ), foldr( matrix, matrix, monoid )), "
+				  << "unexpected output: " << B_val << ", expected "
+				  << testval1 + testval2 + testval3
 				  << ".\n";
 			rc = FAILED;
 			return;
