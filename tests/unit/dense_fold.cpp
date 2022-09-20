@@ -362,6 +362,44 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	}
 
+	// test 3 foldl( matrix, scalar, add_op)
+	{
+		alp::Matrix< T1, alp::structures::General > A( n, n );
+		alp::Scalar< T1 > alpha( testval1 );
+
+		//test 2, init
+		alp::Semiring<
+			alp::operators::add< double >, alp::operators::mul< double >,
+			alp::identities::zero, alp::identities::one
+		> ring;
+
+		rc = SUCCESS;
+		rc = rc ? rc : alp::set( A, alp::Scalar< T1 >( testval2 ) );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 3 (foldl( matrix, scalar, add_op )) "
+				  << "initialisation FAILED\n";
+			return;
+		}
+
+		// test 2, exec
+		rc = alp::foldl( A, alpha, ring.getAdditiveMonoid() );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (foldl( matrix, scalar, monoid )) foldl FAILED\n";
+			return;
+		}
+
+		// test 2, check
+		const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, 0, 0 ) );
+		if( testval1 + testval2 != A_val ) {
+			std::cerr << "\t test 3 (foldl( matrix, scalar, monoid)), "
+				  << "unexpected output: " << A_val << ", expected "
+				  << testval1 + testval2
+				  << ".\n";
+			rc = FAILED;
+			return;
+		}
+	}
 }
 
 int main( int argc, char ** argv ) {
