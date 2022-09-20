@@ -753,7 +753,7 @@ namespace alp {
 		constexpr bool left = false;
 		constexpr bool scalar = true;
 		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, monoid.getOperator() ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, &alpha, monoid.getOperator() ) ;
 	}
 
 	/** Folds element-wise alpha into B, operator variant */
@@ -795,7 +795,7 @@ namespace alp {
 		constexpr bool left = false;
 		constexpr bool scalar = true;
 		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, op ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, &alpha, op ) ;
 	}
 
 	/** Folds element-wise A into B, monoid variant */
