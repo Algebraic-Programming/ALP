@@ -756,7 +756,49 @@ namespace alp {
 		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, monoid.getOperator() ) ;
 	}
 
-	/** Folds element-wise A into B */
+	/** Folds element-wise alpha into B, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldr(
+		const Scalar< InputType, InputStructure, reference > &alpha,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+
+		// fold to the right, with scalar as input
+		constexpr bool left = false;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, op ) ;
+	}
+
+	/** Folds element-wise A into B, monoid variant */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
@@ -798,7 +840,49 @@ namespace alp {
 		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid.getOperator() ) ;
 	}
 
-	/** Folds element-wise B into A */
+	/** Folds element-wise A into B, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldr(
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+
+		// fold to the right, with matrix as input (no scalar)
+		constexpr bool left = false;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, op ) ;
+	}
+
+	/** Folds element-wise B into A, monoid variant */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
@@ -839,7 +923,48 @@ namespace alp {
 		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid.getOperator() ) ;
 	}
 
-	/** Folds element-wise beta into A */
+	/** Folds element-wise B into A, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+
+		constexpr bool left = true;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, op ) ;
+	}
+
+	/** Folds element-wise beta into A, monoid variant */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename InputStructure,
@@ -878,6 +1003,47 @@ namespace alp {
 		constexpr bool scalar = true;
 		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
 		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, monoid.getOperator() ) ;
+	}
+
+	/** Folds element-wise beta into A, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Scalar< InputType, InputStructure, reference > &beta,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldr",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldr",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator"
+		);
+
+		constexpr bool left = true;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, op ) ;
 	}
 
 	/** @} */
