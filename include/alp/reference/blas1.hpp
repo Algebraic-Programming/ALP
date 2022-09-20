@@ -649,9 +649,9 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		Scalar< IOType, IOStructure, reference > &beta,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 
 #ifdef _DEBUG
@@ -684,9 +684,9 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		IOType &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 		return foldr( x, Scalar< IOType >( beta ), monoid );
 	}
@@ -771,9 +771,9 @@ namespace alp {
 		const Scalar< InputType, InputStructure, reference > &alpha,
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
@@ -819,9 +819,9 @@ namespace alp {
 		const Scalar< InputType, InputStructure, reference > &alpha,
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &y,
 		const OP & op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< OP >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldr",
@@ -936,9 +936,9 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &y,
 		const OP & op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value
-		> * = NULL
+		> * = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, InputType >::value ), "alp::eWiseFoldr",
@@ -1058,9 +1058,9 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_monoid< Monoid >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value
-		> * = NULL
+		> * = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ), "alp::eWiseFoldr",
@@ -1161,9 +1161,9 @@ namespace alp {
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &x,
 		const Scalar< InputType, InputStructure, reference > beta,
 		const Op &op = Op(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
-		> * = NULL
+		> * = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
@@ -1217,11 +1217,15 @@ namespace alp {
 		typename InputType, typename InputStructure,
 		class Op
 	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
+	RC foldl(
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
 		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
 		const Scalar< InputType, InputStructure, reference > &beta,
 		const Op & op = Op(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value, void >::type * = NULL ) {
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
+		> * = nullptr
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1318,10 +1322,14 @@ namespace alp {
 		typename InputType,
 		class Monoid
 	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
+	RC foldl(
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
 		const InputType beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * = NULL ) {
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * = nullptr
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1353,8 +1361,10 @@ namespace alp {
 		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value, void >::type * =
-			NULL ) {
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * = nullptr
+		) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1459,7 +1469,7 @@ namespace alp {
 		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value && !alp::is_object< IOType >::value && !alp::is_object< InputType >::value
 		> * = nullptr
 	) {
@@ -1579,7 +1589,10 @@ namespace alp {
 	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value, void >::type * = NULL ) {
+		const std::enable_if_t<
+			alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value
+		  > * = nullptr
+		) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
 			"called with a vector x of a type that does not match the first domain "
@@ -1594,94 +1607,6 @@ namespace alp {
 		// dynamic sanity checks
 		const size_t n = size( x );
 		if( n != size( y ) ) {
-			return MISMATCH;
-		}
-
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ y = y . x \f$ for a given operator.
-	 *
-	 * Masked variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
-		class OP
-	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
-			NULL ) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename OP::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl", "called with a mask that does not have boolean entries " );
-
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, y, op );
-		}
-
-		// dynamic sanity checks
-		const size_t n = size( x );
-		if( n != size( y ) || n != size( m ) ) {
-			return MISMATCH;
-		}
-
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ y = y + x \f$ for a given monoid.
-	 *
-	 * Masked variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
-		class Monoid
-	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< alp::is_monoid< Monoid >::value && ! alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value, void >::type * =
-			NULL ) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl", "called with a mask that does not have boolean entries " );
-
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, y, monoid );
-		}
-
-		// dynamic sanity checks
-		const size_t n = size( x );
-		if( n != size( y ) || n != size( m ) ) {
 			return MISMATCH;
 		}
 
@@ -4110,7 +4035,7 @@ namespace alp {
 		const Monoid &monoid = Monoid(),
 		const typename std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
-		> * const = NULL
+		> * const = nullptr
 	) {
 
 		// static sanity checks

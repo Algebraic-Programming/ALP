@@ -66,7 +66,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 		std::cout << "x_l = ";
 #endif
-		if ( *out_r != testval2 ) {
+		if( *out_r != testval2 ) {
 			std::cerr << "\t test 1 ( foldl( vector, scalar, mul_op )): unexpected output ";
 			std::cerr << "\t scalar should not me modified here\n";
 			rc = FAILED;
@@ -84,9 +84,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::getLength( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i == 10 ) {
+			} else if( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
@@ -122,9 +122,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_r[ i ] << " ";
-			} else if ( i + 10 > alp::getLength( x_r ) ) {
+			} else if( i + 10 > alp::getLength( x_r ) ) {
 				std::cout << x_r[ i ] << " ";
-			} else if ( i == 10 ) {
+			} else if( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
@@ -209,9 +209,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::getLength( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i == 10 ) {
+			} else if( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
@@ -272,9 +272,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::getLength( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
-			} else if ( i == 10 ) {
+			} else if( i == 10 ) {
 				std::cout << " ...  ";
 			}
 #endif
