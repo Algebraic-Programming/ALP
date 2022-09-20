@@ -489,7 +489,7 @@ namespace alp {
 			bool left, // if true, performs foldl, otherwise foldr
 			bool scalar,
 			Descriptor descr,
-			class Monoid,
+			class Operator,
 			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename InputTypeScalar, typename InputStructureScalar,
@@ -501,17 +501,17 @@ namespace alp {
 			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
 			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
-			const Monoid &monoid,
+			const Operator &op,
 			const std::enable_if_t<
 				!alp::is_object< IOType >::value &&
 				!alp::is_object< InputType >::value &&
-				alp::is_monoid< Monoid >::value
+				alp::is_operator< Operator >::value
 			> * const = nullptr
 		) {
 			(void) C;
 			(void) A;
 			(void) alpha;
-			(void) monoid;
+			(void) op;
 			return SUCCESS;
 		}
 
@@ -521,7 +521,7 @@ namespace alp {
 			bool left, // if true, performs foldl, otherwise foldr
 			bool scalar,
 			Descriptor descr,
-			class Monoid,
+			class Operator,
 			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename InputTypeScalar, typename InputStructureScalar,
@@ -533,11 +533,11 @@ namespace alp {
 			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
 			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
-			const Monoid &monoid,
+			const Operator &op,
 			const std::enable_if_t<
 				!alp::is_object< IOType >::value &&
 				!alp::is_object< InputType >::value &&
-				alp::is_monoid< Monoid >::value
+				alp::is_operator< Operator >::value
 			> * const = nullptr
 		) {
 			// Ensure that the provided containers are compatible with static configuration
@@ -567,10 +567,10 @@ namespace alp {
 					if( scalar ) {
 						if( left ) {
 							// C = C . alpha
-							(void) internal::foldl( IO_val, **alpha, monoid.getOperator() );
+							(void) internal::foldl( IO_val, **alpha, op );
 						} else {
 							// C = alpha . C
-							(void) internal::foldr( **alpha, IO_val, monoid.getOperator() );
+							(void) internal::foldr( **alpha, IO_val, op );
 						}
 					} else {
 						// C = A . C
@@ -581,17 +581,17 @@ namespace alp {
 
 						if( left ) {
 							// C = C . A
-							(void) internal::foldl( IO_val, A_val, monoid.getOperator() );
+							(void) internal::foldl( IO_val, A_val, op );
 						} else {
 							// C = A . C
-							(void) internal::foldr( A_val, IO_val, monoid.getOperator() );
+							(void) internal::foldr( A_val, IO_val, op );
 						}
 					}
 				}
 			}
 			return fold_matrix_band_generic<
 				band_index + 1, left, scalar, descr
-			>( C, A, alpha, monoid );
+			>( C, A, alpha, op );
 		}
 
 		/**
@@ -600,7 +600,7 @@ namespace alp {
 		template<
 			bool left, bool scalar,
 			Descriptor descr,
-			class Monoid,
+			class Operator,
 			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename InputTypeScalar, typename InputStructureScalar
@@ -609,11 +609,11 @@ namespace alp {
 			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
 			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
 			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
-			const Monoid &monoid,
+			const Operator &op,
 			const std::enable_if_t<
 				!alp::is_object< IOType >::value &&
 				!alp::is_object< InputType >::value &&
-				alp::is_monoid< Monoid >::value
+				alp::is_operator< Operator >::value
 			> * const = nullptr
 		) {
 
@@ -634,7 +634,7 @@ namespace alp {
 			}
 
 			// delegate to single-band variant
-			return fold_matrix_band_generic< 0, left, scalar, descr >( C, A, alpha, monoid );
+			return fold_matrix_band_generic< 0, left, scalar, descr >( C, A, alpha, op );
 		}
 
 	} // namespace internal
@@ -747,7 +747,7 @@ namespace alp {
 		constexpr bool left = false;
 		constexpr bool scalar = true;
 		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, monoid ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, monoid.getOperator() ) ;
 	}
 
 	/** Folds element-wise A into B */
@@ -789,7 +789,7 @@ namespace alp {
 		constexpr bool left = false;
 		constexpr bool scalar = false;
 		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid.getOperator() ) ;
 	}
 
 	/** Folds element-wise B into A */
@@ -830,7 +830,7 @@ namespace alp {
 		constexpr bool left = true;
 		constexpr bool scalar = false;
 		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid.getOperator() ) ;
 	}
 
 	/** Folds element-wise beta into A */
@@ -871,7 +871,7 @@ namespace alp {
 		constexpr bool left = true;
 		constexpr bool scalar = true;
 		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
-		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, monoid ) ;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, monoid.getOperator() ) ;
 	}
 
 	/** @} */
