@@ -111,13 +111,7 @@ namespace alp {
 				print_vector( " -- v --  " , v );
 #endif
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
-				rc = eWiseLambda(
-					[ &alpha, &divide ]( const size_t i, D &val ) {
-						(void)i;
-						internal::foldl( val, *alpha, divide );
-					},
-					v
-				);
+				rc = foldl( v, alpha, divide );
 
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -135,8 +129,9 @@ namespace alp {
 				print_matrix( " vvt ", vvt );
 #endif
 
+				// this eWiseLambda should be replaced by foldl on matrices
 				rc = alp::eWiseLambda(
-					[ &vvt, &minus, &divide ]( const size_t i, const size_t j, D &val ) {
+					[ &vvt, &minus ]( const size_t i, const size_t j, D &val ) {
 						internal::foldl(
 							val,
 							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
