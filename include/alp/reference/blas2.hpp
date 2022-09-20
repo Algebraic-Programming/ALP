@@ -741,12 +741,12 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator"
 		);
-		(void) alpha;
-		(void) B;
-		(void) monoid;
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		// fold to the right, with scalar as input
+		constexpr bool left = false;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, alpha, monoid ) ;
 	}
 
 	/** Folds element-wise A into B */
@@ -783,12 +783,12 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator"
 		);
-		(void) A;
-		(void) B;
-		(void) monoid;
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		// fold to the right, with matrix as input (no scalar)
+		constexpr bool left = false;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid ) ;
 	}
 
 	/** Folds element-wise B into A */
@@ -825,12 +825,11 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator"
 		);
-		(void) A;
-		(void) B;
-		(void) monoid;
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		constexpr bool left = true;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid ) ;
 	}
 
 	/** Folds element-wise beta into A */
@@ -867,9 +866,6 @@ namespace alp {
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator"
 		);
-		(void) A;
-		(void) beta;
-		(void) monoid;
 
 		constexpr bool left = true;
 		constexpr bool scalar = true;
