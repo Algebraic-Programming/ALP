@@ -555,11 +555,17 @@ namespace alp {
 			constexpr bool sym_up_c = is_sym_c;
 			constexpr bool sym_up_a = is_sym_a;
 
-			const auto i_limits = structures::calculate_row_coordinate_limits< band_index >( *C );
+			// It is assumed without checking that bands of A are a subset of bands of C. TODO: Implement proper check.
+			// If input is scalar, iterating over bands of C, otherwise over bands of A
+			const auto i_limits = scalar ?
+				structures::calculate_row_coordinate_limits< band_index >( *C ) :
+				structures::calculate_row_coordinate_limits< band_index >( *A );
 
 			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
 
-				const auto j_limits = structures::calculate_column_coordinate_limits< band_index >( *C, i );
+				const auto j_limits = scalar ?
+					structures::calculate_column_coordinate_limits< band_index >( *C, i ) :
+					structures::calculate_column_coordinate_limits< band_index >( *A, i );
 
 				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
 					auto &IO_val = internal::access( *C, internal::getStorageIndex( *C, i, j ) );
