@@ -352,15 +352,21 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::argmin"
-				$runner ${TEST_BIN_DIR}/argmin_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/argmin_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::argmax"
-				$runner ${TEST_BIN_DIR}/argmax_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/argmax_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::set (matrices)"
-				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
+				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
@@ -535,12 +541,18 @@ for MODE in debug ndebug; do
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the normal (+,*)"
 				echo "                                 semiring over integers on a diagonal matrix"
 				echo " "
-				$runner ${TEST_BIN_DIR}/vmx_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/vmx_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing vector times matrix using a (*,+) semiring over"
 				echo "                                 doubles on a diagonal matrix"
 				echo " "
-				$runner ${TEST_BIN_DIR}/vmxa_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/vmxa_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the number (+,*)"
 				echo "                                 semiring over integers on a diagonal 15x15 matrix. Each"
