@@ -748,6 +748,7 @@ namespace alp {
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
 
 		// fold to the right, with scalar as input
 		constexpr bool left = false;
@@ -790,6 +791,7 @@ namespace alp {
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
 
 		// fold to the right, with scalar as input
 		constexpr bool left = false;
@@ -832,6 +834,7 @@ namespace alp {
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
 
 		// fold to the right, with matrix as input (no scalar)
 		constexpr bool left = false;
@@ -874,6 +877,7 @@ namespace alp {
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
 
 		// fold to the right, with matrix as input (no scalar)
 		constexpr bool left = false;
@@ -916,6 +920,7 @@ namespace alp {
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
 
 		constexpr bool left = true;
 		constexpr bool scalar = false;
@@ -957,6 +962,7 @@ namespace alp {
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
 
 		constexpr bool left = true;
 		constexpr bool scalar = false;
@@ -998,6 +1004,7 @@ namespace alp {
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
 
 		constexpr bool left = true;
 		constexpr bool scalar = true;
@@ -1039,6 +1046,7 @@ namespace alp {
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
 		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
 
 		constexpr bool left = true;
 		constexpr bool scalar = true;
