@@ -17,12 +17,30 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 #include <alp.hpp>
 #include <alp/algorithms/gemm.hpp>
 
 using namespace alp;
+
+template< typename... Args >
+RC gemm_dispatch( bool transposeA, bool transposeB, Args&&... args ) {
+	if( transposeA ) {
+		if( transposeB ) {
+			return algorithms::gemm_like_example< true, true >( std::forward< Args >( args )... );
+		} else {
+			return algorithms::gemm_like_example< true, false >( std::forward< Args >( args )... );
+		}
+	} else {
+		if( transposeB ) {
+			return algorithms::gemm_like_example< false, true >( std::forward< Args >( args )... );
+		} else {
+			return algorithms::gemm_like_example< false, false >( std::forward< Args >( args )... );
+		}
+	}
+}
 
 void alp_program( const size_t &unit, alp::RC &rc ) {
 
@@ -38,11 +56,6 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	size_t N = 20 * unit;
 	size_t K = 30 * unit;
 
-	// dimensions of views over A, B and C
-	size_t m = unit;
-	size_t n = 2 * unit;
-	size_t k = 3 * unit;
-
 	alp::Matrix< double, structures::General > A( M, K );
 	alp::Matrix< double, structures::General > B( K, N );
 	alp::Matrix< double, structures::General > C( M, N );
@@ -53,12 +66,6 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	constexpr double C_value = 4;
 	rc = rc ? rc : alp::set( A, alp::Scalar< double >( A_value ) );
 	rc = rc ? rc : alp::set( B, alp::Scalar< double >( B_value ) );
-	rc = rc ? rc : alp::set( C, alp::Scalar< double >( C_value ) );
-
-	constexpr double alpha_value = 0.5;
-	constexpr double beta_value = 1.5;
-	Scalar< double > alpha( alpha_value );
-	Scalar< double > beta( beta_value );
 
 #ifdef DEBUG
 	if( rc != SUCCESS ) {
@@ -68,57 +75,88 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 
 	assert( rc == SUCCESS );
 
-	// Set parameters to the gemm-like algorithm
-	const size_t startAr = 1;
-	const size_t startAc = 1;
-	const size_t startBr = 2;
-	const size_t startBc = 2;
-	const size_t startCr = 3;
-	const size_t startCc = 3;
-	const size_t stride = 1;
+	constexpr double alpha_value = 0.5;
+	constexpr double beta_value = 1.5;
+	Scalar< double > alpha( alpha_value );
+	Scalar< double > beta( beta_value );
 
+	const std::vector< std::pair< bool, bool > > transpose_AB_configs = {
+		{ false, false }, { false, true }, { true, false }, { true, true }
+	};
 
-	// Call gemm-like algorithm
-	rc = rc ? rc : algorithms::gemm_like_example(
-		m, n, k,
-		alpha,
-		A, startAr, stride, startAc, stride,
-		B, startBr, stride, startBc, stride,
-		beta,
-		C, startCr, stride, startCc, stride,
-		ring
-	);
-	assert( rc == SUCCESS );
+	for( auto config : transpose_AB_configs ){
+		const bool transposeA = config.first;
+		const bool transposeB = config.second;
 
-	// Check correctness
-	if( rc != SUCCESS ) {
-		return;
-	}
+		// dimensions of views over A, B and C
+		size_t m = unit;
+		size_t n = 2 * unit;
+		size_t k = 3 * unit;
 
-	// Check numerical correctness
-	// Elements in the submatrix should be equal to
-	//     alpha_value * A_value * B_value * k + beta_value * C_value,
-	// while the elements outside the submatrix should be equal to
-	//     C_value.
-	for( size_t i = 0; i < alp::nrows( C ); ++i ) {
-		for( size_t j = 0; j < alp::nrows( C ); ++j ) {
+		// Set parameters to the gemm-like algorithm
+		const size_t startAr = 1;
+		const size_t startAc = 1;
+		const size_t startBr = 2;
+		const size_t startBc = 2;
+		const size_t startCr = 3;
+		const size_t startCc = 3;
+		const size_t stride = 1;
 
-			const double expected_value = ( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) ?
-				alpha_value * A_value * B_value * k + beta_value * C_value :
-				C_value;
+		rc = rc ? rc : alp::set( C, alp::Scalar< double >( C_value ) );
+#ifndef NDEBUG
+		if( rc != SUCCESS ) {
+			std::cerr << "Initialization of C failed\n";
+		}
+#endif
 
-			const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
+		// Call gemm-like algorithm
+#ifndef NDEBUG
+		std::cout << "Calling gemm_like_example with "
+			<< ( transposeA ? "" : "non-" ) << "transposed A and "
+			<< ( transposeB ? "" : "non-" ) << "transposed B.\n";
+#endif
+		rc = rc ? rc : gemm_dispatch(
+			transposeA, transposeB,
+			m, n, k,
+			alpha,
+			A, startAr, stride, startAc, stride,
+			B, startBr, stride, startBc, stride,
+			beta,
+			C, startCr, stride, startCc, stride,
+			ring
+		);
 
-			if( expected_value != calculated_value ) {
-				std::cerr << "Numerically incorrect: "
-					"at (" << i << ", " << j << ") "
-					"expected " << expected_value << ", but got " << calculated_value << "\n";
-				rc = FAILED;
-				return;
+		// Check correctness
+		if( rc != SUCCESS ) {
+			return;
+		}
+
+		// Check numerical correctness
+		// Elements in the submatrix should be equal to
+		//     alpha_value * A_value * B_value * k + beta_value * C_value,
+		// while the elements outside the submatrix should be equal to
+		//     C_value.
+		for( size_t i = 0; i < alp::nrows( C ); ++i ) {
+			for( size_t j = 0; j < alp::nrows( C ); ++j ) {
+
+				const double expected_value = ( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) ?
+					alpha_value * A_value * B_value * k + beta_value * C_value :
+					C_value;
+
+				const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
+
+				if( expected_value != calculated_value ) {
+#ifndef NDEBUG
+					std::cerr << "Numerically incorrect: "
+						"at (" << i << ", " << j << ") "
+						"expected " << expected_value << ", but got " << calculated_value << "\n";
+#endif
+					rc = FAILED;
+					return;
+				}
 			}
 		}
 	}
-
 }
 
 int main( int argc, char ** argv ) {
