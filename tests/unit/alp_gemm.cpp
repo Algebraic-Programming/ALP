@@ -24,7 +24,10 @@
 
 using namespace alp;
 
-void alp_program( const size_t & unit, alp::RC & rc ) {
+void alp_program( const size_t &unit, alp::RC &rc ) {
+
+	rc = SUCCESS;
+
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting ALP gemm_like_example\n"
@@ -44,17 +47,78 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< double, structures::General > B( K, N );
 	alp::Matrix< double, structures::General > C( M, N );
 
-	Scalar< double > alpha( 0.5 );
-	Scalar< double > beta( 1.5 );
+	// Initialize containers A, B, C, alpha, beta
+	constexpr double A_value = 2;
+	constexpr double B_value = 3;
+	constexpr double C_value = 4;
+	rc = rc ? rc : alp::set( A, alp::Scalar< double >( A_value ) );
+	rc = rc ? rc : alp::set( B, alp::Scalar< double >( B_value ) );
+	rc = rc ? rc : alp::set( C, alp::Scalar< double >( C_value ) );
 
-	rc = algorithms::gemm_like_example(
+	constexpr double alpha_value = 0.5;
+	constexpr double beta_value = 1.5;
+	Scalar< double > alpha( alpha_value );
+	Scalar< double > beta( beta_value );
+
+#ifdef DEBUG
+	if( rc != SUCCESS ) {
+		std::cerr << "Initialization failed\n";
+	}
+#endif
+
+	assert( rc == SUCCESS );
+
+	// Set parameters to the gemm-like algorithm
+	const size_t startAr = 1;
+	const size_t startAc = 1;
+	const size_t startBr = 2;
+	const size_t startBc = 2;
+	const size_t startCr = 3;
+	const size_t startCc = 3;
+	const size_t stride = 1;
+
+
+	// Call gemm-like algorithm
+	rc = rc ? rc : algorithms::gemm_like_example(
 		m, n, k,
 		alpha,
-		A, 1, 1, 1, 1,
-		B, 2, 1, 2, 4,
+		A, startAr, stride, startAc, stride,
+		B, startBr, stride, startBc, stride,
 		beta,
-		C, 0, 0, 1, 1,
-		ring );
+		C, startCr, stride, startCc, stride,
+		ring
+	);
+	assert( rc == SUCCESS );
+
+	// Check correctness
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// Check numerical correctness
+	// Elements in the submatrix should be equal to
+	//     alpha_value * A_value * B_value * k + beta_value * C_value,
+	// while the elements outside the submatrix should be equal to
+	//     C_value.
+	for( size_t i = 0; i < alp::nrows( C ); ++i ) {
+		for( size_t j = 0; j < alp::nrows( C ); ++j ) {
+
+			const double expected_value = ( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) ?
+				alpha_value * A_value * B_value * k + beta_value * C_value :
+				C_value;
+
+			const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
+
+			if( expected_value != calculated_value ) {
+				std::cerr << "Numerically incorrect: "
+					"at (" << i << ", " << j << ") "
+					"expected " << expected_value << ", but got " << calculated_value << "\n";
+				rc = FAILED;
+				return;
+			}
+		}
+	}
+
 }
 
 int main( int argc, char ** argv ) {
