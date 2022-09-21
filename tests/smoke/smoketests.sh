@@ -142,8 +142,8 @@ for BACKEND in ${BACKENDS[@]}; do
 				bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} 2>&1 | sed -e '1p' -e '/===/!d' > ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
 				head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
 			fi
+			echo " "
 
 			echo ">>>      [x]           [ ]       Tests an automatically launching version of the simple pagerank"
 			echo "                                 algorithm for a small 10 x 10 problem. Verifies against known"
