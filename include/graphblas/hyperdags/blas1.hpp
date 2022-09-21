@@ -344,8 +344,8 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &alpha, &y,  };
-		std::array< const void *, 2 > destinations{ &monoid,  &y, };
+		std::array< const void *, 2 > sources{ &alpha, &y };
+		std::array< const void *, 1 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
 		internal::hyperdags::FOLDR_APLHA_VECTOR_MONOID,
 		sources.begin(), sources.end(),
