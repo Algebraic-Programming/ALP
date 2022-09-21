@@ -120,8 +120,31 @@ namespace grb {
 		return getID(internal::getMatrix( A ));
 	}
 
+	template<>
+	RC wait< hyperdags >();
 
+	/** \internal Dispatch to base wait implementation */
+	template<
+		typename InputType, typename Coords,
+		typename ... Args
+	>
+	RC wait(
+		const Vector< InputType, hyperdags, Coords > &x,
+		const Args &... args
+	) {
+		(void) x;
+		return wait( args... );
+	}
 
+	/** \internal Dispatch to base wait implementation */
+	template< typename InputType, typename... Args >
+	RC wait(
+		const Matrix< InputType, hyperdags > &A,
+		const Args &... args
+	) {
+		(void) A;
+		return wait( args... );
+	}
 
 } // namespace grb
 
