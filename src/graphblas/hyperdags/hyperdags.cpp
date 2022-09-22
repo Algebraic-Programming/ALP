@@ -66,6 +66,17 @@ std::string grb::internal::hyperdags::toString(
 
 		case SET_FROM_VECTOR:
 			return "set (vector, vector)";
+			
+		case ZIP:
+			return "zip";
+			
+		case E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP:
+			return "eWiseApply (vector, vector, vector, op)";
+		
+		case FOLDR_VECTOR_SCALAR_MONOID:
+			return "foldr(vector, scalar, monoid)";
+			
+			
 	}
 	assert( false );
 	return "unknown operation";
