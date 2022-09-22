@@ -30,6 +30,29 @@
 #include <alp/rc.hpp>
 #include <alp/matrix.hpp>
 
+#define NO_CAST_OP_ASSERT( x, y, z )                                           \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the operator domains, as specified in the "            \
+		"documentation of the function " y ", supply an input argument of "    \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible operator where all domains "  \
+		"match those of the input parameters, as specified in the "            \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
+
 namespace alp {
 
 	/**
@@ -447,29 +470,203 @@ namespace alp {
 		return eWiseLambda( f, A, args... );
 	}
 
+	namespace internal {
+
+		/**
+		 * Applies fold to all elements of the given band
+		 * Depending on the values of left and scalar, performs the following variants:
+		 * - left == true  && scalar == true:  C = C . alpha
+		 * - left == true  && scalar == false: C = C . A
+		 * - left == false && scalar == true:  C = alpha . C
+		 * - left == false && scalar == false: C = A . C
+		 * This variants handles out-of-bounds band index.
+		 * All variants assume compatible parameters:
+		 *   - matching structures
+		 *   - matching dynamic sizes
+		 */
+		template<
+			size_t band_index,
+			bool left, // if true, performs foldl, otherwise foldr
+			bool scalar,
+			Descriptor descr,
+			class Operator,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar,
+			typename std::enable_if_t<
+				band_index >= std::tuple_size< typename IOStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC fold_matrix_band_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Operator &op,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_operator< Operator >::value
+			> * const = nullptr
+		) {
+			(void) C;
+			(void) A;
+			(void) alpha;
+			(void) op;
+			return SUCCESS;
+		}
+
+		/** Specialization for band index within the bounds */
+		template<
+			size_t band_index,
+			bool left, // if true, performs foldl, otherwise foldr
+			bool scalar,
+			Descriptor descr,
+			class Operator,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar,
+			typename std::enable_if_t<
+				band_index < std::tuple_size< typename IOStructure::band_intervals >::value
+			> * = nullptr
+		>
+		RC fold_matrix_band_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Operator &op,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_operator< Operator >::value
+			> * const = nullptr
+		) {
+			// Ensure that the provided containers are compatible with static configuration
+			assert( C != nullptr );
+			if( scalar ) {
+				assert( alpha != nullptr );
+			} else {
+				assert( A != nullptr );
+			}
+
+			constexpr bool is_sym_c = structures::is_a< IOStructure, structures::Symmetric >::value;
+			constexpr bool is_sym_a = structures::is_a< InputStructure, structures::Symmetric >::value;
+
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up_c = is_sym_c;
+			constexpr bool sym_up_a = is_sym_a;
+
+			// It is assumed without checking that bands of A are a subset of bands of C. TODO: Implement proper check.
+			// If input is scalar, iterating over bands of C, otherwise over bands of A
+			const auto i_limits = scalar ?
+				structures::calculate_row_coordinate_limits< band_index >( *C ) :
+				structures::calculate_row_coordinate_limits< band_index >( *A );
+
+			for( size_t i = i_limits.first; i < i_limits.second; ++i ) {
+
+				const auto j_limits = scalar ?
+					structures::calculate_column_coordinate_limits< band_index >( *C, i ) :
+					structures::calculate_column_coordinate_limits< band_index >( *A, i );
+
+				for( size_t j = j_limits.first; j < j_limits.second; ++j ) {
+					auto &IO_val = internal::access( *C, internal::getStorageIndex( *C, i, j ) );
+
+					if( scalar ) {
+						if( left ) {
+							// C = C . alpha
+							(void) internal::foldl( IO_val, **alpha, op );
+						} else {
+							// C = alpha . C
+							(void) internal::foldr( **alpha, IO_val, op );
+						}
+					} else {
+						// C = A . C
+						// Calculate indices to 'A' depending on matching symmetry with 'C'
+						const size_t A_i = ( sym_up_c == sym_up_a ) ? i : j;
+						const size_t A_j = ( sym_up_c == sym_up_a ) ? j : i;
+						const auto &A_val = internal::access( *A, internal::getStorageIndex( *A, A_i, A_j ) );
+
+						if( left ) {
+							// C = C . A
+							(void) internal::foldl( IO_val, A_val, op );
+						} else {
+							// C = A . C
+							(void) internal::foldr( A_val, IO_val, op );
+						}
+					}
+				}
+			}
+			return fold_matrix_band_generic<
+				band_index + 1, left, scalar, descr
+			>( C, A, alpha, op );
+		}
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply variants refer to.
+		 */
+		template<
+			bool left, bool scalar,
+			Descriptor descr,
+			class Operator,
+			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+			typename InputTypeScalar, typename InputStructureScalar
+		>
+		RC fold_matrix_generic(
+			alp::Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > *C,
+			const alp::Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > *A,
+			const alp::Scalar< InputTypeScalar, InputStructureScalar, reference > *alpha,
+			const Operator &op,
+			const std::enable_if_t<
+				!alp::is_object< IOType >::value &&
+				!alp::is_object< InputType >::value &&
+				alp::is_operator< Operator >::value
+			> * const = nullptr
+		) {
+
+#ifdef _DEBUG
+			std::cout << "In alp::internal::fold_matrix_generic\n";
+#endif
+
+			// run-time checks
+			// TODO: support left/right_scalar
+			const size_t m = alp::nrows( *C );
+			const size_t n = alp::ncols( *C );
+
+			if( !scalar ){
+				assert( A != nullptr );
+				if( m != nrows( *A ) || n != ncols( *A ) ) {
+					return MISMATCH;
+				}
+			}
+
+			// delegate to single-band variant
+			return fold_matrix_band_generic< 0, left, scalar, descr >( C, A, alpha, op );
+		}
+
+	} // namespace internal
 	/**
-	 * For all elements in a ALP Matrix \a A, fold the value \f$ \alpha \f$
+	 * For all elements in a ALP Matrix \a B, fold the value \f$ \alpha \f$
 	 * into each element.
 	 *
 	 * The original value of \f$ \alpha \f$ is used as the left-hand side input
 	 * of the operator \a op. The right-hand side inputs for \a op are retrieved
-	 * from the input Matrix \a A. The result of the operation is stored in \a A,
+	 * from the input Matrix \a B. The result of the operation is stored in \a A,
 	 * thus overwriting its previous values.
 	 *
-	 * The value of \f$ A_i,j \f$ after a call to thus function thus equals
-	 * \f$ \alpha \odot A_i,j \f$, for all \f$ i, j \in \{ 0, 1, \dots, n - 1 \} \f$.
+	 * The value of \f$ B_i,j \f$ after a call to thus function thus equals
+	 * \f$ \alpha \odot B_i,j \f$, for all \f$ i, j \in \{ 0, 1, \dots, n - 1 \} \f$.
 	 *
 	 * @tparam descr         The descriptor used for evaluating this function.
 	 *                       By default, this is alp::descriptors::no_operation.
 	 * @tparam OP            The type of the operator to be applied.
 	 * @tparam InputType     The type of \a alpha.
-	 * @tparam IOType        The type of the elements in \a A.
-	 * @tparam IOStructure   The structure of the matrix \a A.
-	 * @tparam IOView        The view applied to the matrix \a A.
+	 * @tparam IOType        The type of the elements in \a B.
+	 * @tparam IOStructure   The structure of the matrix \a B.
+	 * @tparam IOView        The view applied to the matrix \a B.
 	 *
 	 * @param[in]     alpha The input value to apply as the left-hand side input
 	 *                      to \a op.
-	 * @param[in,out] A     On function entry: the initial values to be applied as
+	 * @param[in,out] B     On function entry: the initial values to be applied as
 	 *                      the right-hand side input to \a op.
 	 *                      On function exit: the output data.
 	 * @param[in]     op    The monoid under which to perform this left-folding.
@@ -518,36 +715,350 @@ namespace alp {
 	 * @see alp::operators::internal::Operator for a discussion on when in-place
 	 *      and/or vectorised operations are used.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename InputStructure,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 		class Monoid
 	>
-	RC foldr( const Scalar< InputType, InputStructure, reference > & alpha,
-		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & A,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value, void >::type * const = NULL ) {
+	RC foldr(
+		const Scalar< InputType, InputStructure, reference > &alpha,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
 		// static sanity checks
-		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
-		//	"called with a vector x of a type that does not match the first domain "
-		//	"of the given operator" );
-		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
-		//	"called on a vector y of a type that does not match the second domain "
-		//	"of the given operator" );
-		//NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
-		//	"called on a vector x of a type that does not match the third domain "
-		//	"of the given operator" );
-		(void)alpha;
-		(void)A;
-		(void)monoid;
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ),
+			"alp::foldr",
+			"called with a scalar alpha of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
 
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
+		// fold to the right, with scalar as input
+		constexpr bool left = false;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, &alpha, monoid.getOperator() ) ;
+	}
+
+	/** Folds element-wise alpha into B, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldr(
+		const Scalar< InputType, InputStructure, reference > &alpha,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType >::value ),
+			"alp::foldr",
+			"called with a scalar alpha B of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
+
+		// fold to the right, with scalar as input
+		constexpr bool left = false;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, no_matrix, &alpha, op ) ;
+	}
+
+	/** Folds element-wise A into B, monoid variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Monoid
+	>
+	RC foldr(
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, InputType >::value ),
+			"alp::foldr",
+			"called with a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
+
+		// fold to the right, with matrix as input (no scalar)
+		constexpr bool left = false;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, &A, no_scalar, monoid.getOperator() ) ;
+	}
+
+	/** Folds element-wise A into B, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldr(
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A,
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType >::value ),
+			"alp::foldr",
+			"called with a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldr",
+			"called on a matrix B of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
+
+		// fold to the right, with matrix as input (no scalar)
+		constexpr bool left = false;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &B, &A, no_scalar, op ) ;
+	}
+
+	/** Folds element-wise B into A, monoid variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Monoid
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &B,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			"alp::foldl",
+			"called with a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
+
+		constexpr bool left = true;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, monoid.getOperator() ) ;
+	}
+
+	/** Folds element-wise B into A, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &B,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldl",
+			"called with a matrix B of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
+
+		constexpr bool left = true;
+		constexpr bool scalar = false;
+		constexpr Scalar< InputType, structures::General, reference > *no_scalar = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, &B, no_scalar, op ) ;
+	}
+
+	/** Folds element-wise beta into A, monoid variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Monoid
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Scalar< InputType, InputStructure, reference > &beta,
+		const Monoid &monoid = Monoid(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			"alp::foldl",
+			"called with a scalar beta of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are a subset of IOStructure's bands
+
+		constexpr bool left = true;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, monoid.getOperator() ) ;
+	}
+
+	/** Folds element-wise beta into A, operator variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure,
+		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
+		class Operator
+	>
+	RC foldl(
+		Matrix< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > &A,
+		const Scalar< InputType, InputStructure, reference > &beta,
+		const Operator &op = Operator(),
+		const std::enable_if_t<
+			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_operator< Operator >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the first domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			"alp::foldl",
+			"called with a scalar beta of a type that does not match the second domain "
+			"of the given operator"
+		);
+		NO_CAST_OP_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			"alp::foldl",
+			"called on a matrix A of a type that does not match the third domain "
+			"of the given operator"
+		);
+		// TODO: check that InputStructure's bands are identical to IOStructure's bands
+
+		constexpr bool left = true;
+		constexpr bool scalar = true;
+		constexpr Matrix< InputType, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > *no_matrix = nullptr;
+		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, op ) ;
 	}
 
 	/** @} */
 
 } // end namespace ``alp''
+
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS2''
 
