@@ -1541,14 +1541,18 @@ namespace alp {
 		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
 	) noexcept {
-		static_assert( ! std::is_same< OutputType, void >::value,
-			"alp::set (set to value): cannot have a pattern "
-			"matrix as output" );
+		static_assert(
+			!std::is_same< OutputType, void >::value,
+			"alp::set (set to value): cannot have a pattern matrix as output"
+		);
 #ifdef _DEBUG
-		std::cout << "Called alp::set (matrix-to-value, reference)" << std::endl;
+		std::cout << "Called alp::set (matrix-to-matrix, reference)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ),
+			"alp::set", "called with non-matching value types"
+		);
 
 		static_assert(
 			!internal::is_functor_based<
@@ -1557,6 +1561,8 @@ namespace alp {
 			"alp::set cannot be called with a functor-based matrix as a destination."
 		);
 
+		// TODO: Improve this check to account for non-zero structrue (i.e., bands)
+		//       and algebraic properties (e.g., symmetry)
 		static_assert(
 			std::is_same< OutputStructure, InputStructure >::value,
 			"alp::set cannot be called for containers with different structures."
@@ -1599,14 +1605,18 @@ namespace alp {
 		const Scalar< InputType, InputStructure, reference > &val
 	) noexcept {
 
-		static_assert( ! std::is_same< OutputType, void >::value,
-			"alp::set (set to value): cannot have a pattern "
-			"matrix as output" );
+		static_assert(
+			!std::is_same< OutputType, void >::value,
+			"alp::set (set to matrix): cannot have a pattern matrix as output"
+		);
 #ifdef _DEBUG
 		std::cout << "Called alp::set (matrix-to-value, reference)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "alp::set", "called with non-matching value types" );
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ),
+			"alp::set", "called with non-matching value types"
+		);
 
 		static_assert(
 			!internal::is_functor_based<
