@@ -301,6 +301,30 @@ std::string grb::internal::hyperdags::toString(
 		case EWISELAMBDA_FUNC_VECTOR:
 			return "eWiseLambda(function, vector)";
 			
+		case MXM_MATRIX_MATRIX_MATRIX_SEMIRING:
+			return "mxm(matrix, matrix, matrix, semiring, scalar)";
+			
+		case CLEAR_MATRIX:
+			return "clear(matrix)";
+		
+		case BUILDMATRIXUNIQUE_MATRIX_START_END_MODE:
+			return "buildMatrixUnique(matrix, scalar, scalar, scalar)";
+			
+		case CAPACITY_VECTOR:
+			return "capacity(vector)";
+		
+		case CAPACITY_MATRIX:
+			return "capacity(matrix)";
+		
+		case RESIZE:
+			return "resize(vector, scalar)";
+		
+		case GETID_VECTOR:
+			return "getID(vector)";
+			
+		case GETID_MATRIX:
+			return "getID(matrix)";
+		
 	}
 	assert( false );
 	return "unknown operation";
