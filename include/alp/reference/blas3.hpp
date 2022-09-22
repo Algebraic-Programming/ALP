@@ -236,7 +236,7 @@ namespace alp {
 					auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 					// Size + Symmetry constraints
-					//    sym_up_a * i <= l < K * (!sym_up_b) + (j+1) * (sym_up_b)   
+					//    sym_up_a * i <= l < K * (!sym_up_b) + ( j + 1 ) * (sym_up_b)   
 					// Band constraints
 					// /\ i + l_a      <= l < i + u_a        
 					// /\ j - u_b + 1  <= l < j - l_b + 1
@@ -268,11 +268,11 @@ namespace alp {
 						auto &c_val = internal::access( C, internal::getStorageIndex( C, i, j ) );
 
 						// Size + Symmetry constraints
-						//    max(sym_up_a * i, j) <= l < K
+						//    max(sym_up_a * i, j + 1 ) <= l < K
 						// Band constraints
 						// /\ i + l_a              <= l < i + u_a 
 						// /\ j - u_b + 1          <= l < j - l_b + 1
-						for( std::ptrdiff_t l = std::max( { sym_up_a * i, j, i + l_a, j - u_b + 1 } ); 
+						for( std::ptrdiff_t l = std::max( { sym_up_a * i, j + 1, i + l_a, j - u_b + 1 } ); 
 							l < std::min( { K, i + u_a, j - l_b + 1 } ); 
 							++l ) {
 							const auto ta { internal::access( A, internal::getStorageIndex( A, i, l ) ) };
