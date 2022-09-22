@@ -35,24 +35,24 @@
 namespace grb {
 		
 	template< typename InputType >
-	size_t nrows( const Matrix< InputType, hyperdags > & A ) noexcept {
+	size_t nrows( const Matrix< InputType, hyperdags > &A ) noexcept {
 		return nrows(internal::getMatrix(A));
 	}
 	
 	template< typename InputType >
-	size_t ncols( const Matrix< InputType, hyperdags > & A ) noexcept {
+	size_t ncols( const Matrix< InputType, hyperdags > &A ) noexcept {
 		return ncols(internal::getMatrix(A));
 	}
 	
 	template< typename InputType >
-	size_t nnz( const Matrix< InputType, hyperdags > & A ) noexcept {
+	size_t nnz( const Matrix< InputType, hyperdags > &A ) noexcept {
 		return nnz(internal::getMatrix(A));
 	}
 	
 	template<
 		 typename InputType 
 	>
-	RC resize( Matrix< InputType, hyperdags > & A, const size_t new_nz ) noexcept {
+	RC resize( Matrix< InputType, hyperdags > &A, const size_t new_nz ) noexcept {
 		return resize(internal::getMatrix(A), new_nz);
 	}
 	
@@ -60,14 +60,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename IOType,
 		typename InputType1, typename InputType2, typename InputType3, typename Coords 
 	>
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Matrix< InputType2, hyperdags > & A,
-		const Ring & ring = Ring(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Matrix< InputType2, hyperdags > &A,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 4 > sources{ &mask, &v, &A, &u};
+		std::array< const void *, 4 > sources{ &mask, &v, &A, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX,
@@ -88,17 +88,17 @@ namespace grb {
 		typename InputType3,
 		typename Coords 
 	>
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Matrix< InputType2, hyperdags > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Matrix< InputType2, hyperdags > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) {
 			
-		std::array< const void *, 4 > sources{ &mask, &v, &A, &u};
+		std::array< const void *, 4 > sources{ &mask, &v, &A, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -116,13 +116,13 @@ namespace grb {
 		typename InputType2 = typename Ring::D2,
 		typename Coords 	
 	>
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Matrix< InputType2, hyperdags > & A,
-		const Ring & ring = Ring(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Matrix< InputType2, hyperdags > &A,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 3 > sources{ &v, &A, &u};
+		std::array< const void *, 3 > sources{ &v, &A, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_RING,
@@ -147,7 +147,7 @@ namespace grb {
 		const Ring & ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 4 > sources{ &mask, &A, &v, &u};
+		std::array< const void *, 4 > sources{ &mask, &A, &v, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING,
@@ -168,15 +168,15 @@ namespace grb {
 		typename InputType4,
 		typename Coords 
 	>
-	RC mxv( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Matrix< InputType2, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Vector< InputType4, hyperdags, Coords > & v_mask,
-		const Ring & ring,
+	RC mxv( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Matrix< InputType2, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Vector< InputType4, hyperdags, Coords > &v_mask,
+		const Ring &ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 		
-		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u};
+		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
@@ -200,19 +200,19 @@ namespace grb {
 		typename InputType4,
 		typename Coords 
 	>
-	RC mxv( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Matrix< InputType2, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Vector< InputType4, hyperdags, Coords > & v_mask,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+	RC mxv( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Matrix< InputType2, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Vector< InputType4, hyperdags, Coords > &v_mask,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && 
 		! grb::is_object< IOType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && 
 		! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value && 
 		! std::is_same< InputType2, void >::value, void >::type * const = NULL ) {
 			
-		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u};
+		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
@@ -231,14 +231,14 @@ namespace grb {
 		typename InputType2 = typename Ring::D2,
 		typename Coords 
 	>
-	RC mxv( Vector< IOType, hyperdags, Coords > & u,
-		const Matrix< InputType2, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Ring & ring,
+	RC mxv( Vector< IOType, hyperdags, Coords > &u,
+		const Matrix< InputType2, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Ring &ring,
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
 		{
 		
-		std::array< const void *, 3 > sources{ &A, &v, &u};
+		std::array< const void *, 3 > sources{ &A, &v, &u };
 		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_RING,
@@ -255,16 +255,16 @@ namespace grb {
 		 class MultiplicativeOperator, typename IOType, typename InputType1, typename InputType2, typename Coords
 	>
 		 
-	RC mxv( Vector< IOType, hyperdags, Coords > & u,
-		const Matrix< InputType2, hyperdags > & A,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+	RC mxv( Vector< IOType, hyperdags, Coords > &u,
+		const Matrix< InputType2, hyperdags > &A,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value
 		 && ! grb::is_object< IOType >::value &&! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && !
 		std::is_same< InputType2, void >::value, void >::type * const = NULL )
  	{
- 		std::array< const void *, 3 > sources{ &A, &v, &u};
+ 		std::array< const void *, 3 > sources{ &A, &v, &u };
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
@@ -404,15 +404,15 @@ namespace grb {
 		typename InputType4,
 		typename Coords 
 	>
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Vector< InputType4, hyperdags, Coords > & v_mask,
-		const Matrix< InputType2, hyperdags > & A,
-		const Ring & ring = Ring(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Vector< InputType4, hyperdags, Coords > &v_mask,
+		const Matrix< InputType2, hyperdags > &A,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< grb::is_semiring< Ring >::value, void >::type * const = NULL ) 
 	{
-		std::array< const void *, 5 > sources{ & v,& A, & mask,& v_mask, &u};
+		std::array< const void *, 5 > sources{ &v, &A, &mask, &v_mask, &u };
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -440,19 +440,19 @@ namespace grb {
 		typename InputType3,
 		typename InputType4,
 		typename Coords >
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType3, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Vector< InputType4, hyperdags, Coords > & v_mask,
-		const Matrix< InputType2, hyperdags > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType3, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Vector< InputType4, hyperdags, Coords > &v_mask,
+		const Matrix< InputType2, hyperdags > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && ! grb::is_object< InputType4 >::value &&
 				! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL )
 		{
-		std::array< const void *, 4 > sources{ & v,& A, & mask,& v_mask, &u};
+		std::array< const void *, 4 > sources{ &v, &A, &mask, &v_mask, &u };
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -472,16 +472,16 @@ namespace grb {
 		typename IOType, typename InputType1, 
 		typename InputType2, typename Coords
 	>
-	RC vxm( Vector< IOType, hyperdags, Coords > & u,
-		const Vector< InputType1, hyperdags, Coords > & v,
-		const Matrix< InputType2, hyperdags > & A,
-		const AdditiveMonoid & add = AdditiveMonoid(),
-		const MultiplicativeOperator & mul = MultiplicativeOperator(),
+	RC vxm( Vector< IOType, hyperdags, Coords > &u,
+		const Vector< InputType1, hyperdags, Coords > &v,
+		const Matrix< InputType2, hyperdags > &A,
+		const AdditiveMonoid &add = AdditiveMonoid(),
+		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value && grb::is_operator< MultiplicativeOperator >::value && ! grb::is_object< IOType >::value &&
 				! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
 			void >::type * const = NULL ) 
 	{
-		std::array< const void *, 3 > sources{ & v,& A, &u};
+		std::array< const void *, 3 > sources{ &v, &A, &u };
  		std::array< const void *, 1 > destinations{ &u };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,

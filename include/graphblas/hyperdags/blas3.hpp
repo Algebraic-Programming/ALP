@@ -206,7 +206,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &A, &B};
+		std::array< const void *, 2 > sources{ &A, &B };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::MXM_MATRIX_MATRIX_MATRIX_MONOID,
@@ -239,7 +239,7 @@ namespace grb {
 			!grb::is_object< OutputType >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &u, &v};
+		std::array< const void *, 2 > sources{ &u, &v };
 		std::array< const void *, 1 > destinations{ &A };
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::OUTER,

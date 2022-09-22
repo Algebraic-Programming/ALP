@@ -33,8 +33,8 @@ namespace grb {
 		const fwd_iterator end,
 		const IOMode mode
 	) {
-		std::array< const void *, 1 > sources{ &A};
-		std::array< const void *, 0 > destinations{  };
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
 				sources.begin(), sources.end(),
@@ -48,8 +48,8 @@ namespace grb {
 	>
 	size_t capacity( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
 	
-		std::array< const void *, 1 > sources{ &x};
-		std::array< const void *, 0 > destinations{  };
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::CAPACITY_VECTOR,
 				sources.begin(), sources.end(),
@@ -62,8 +62,8 @@ namespace grb {
 		typename DataType 
 	>
 	size_t capacity( const Matrix< DataType, hyperdags > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A};
-		std::array< const void *, 0 > destinations{  };
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::CAPACITY_MATRIX,
 				sources.begin(), sources.end(),
@@ -78,8 +78,8 @@ namespace grb {
 	RC resize( Vector< InputType, hyperdags, Coords > &x, 
 		const size_t new_nz ) noexcept {
 		
-		std::array< const void *, 1 > sources{ &x};
-		std::array< const void *, 0 > destinations{  };
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::RESIZE,
 				sources.begin(), sources.end(),
@@ -95,7 +95,7 @@ namespace grb {
 	uintptr_t getID( const Vector< InputType, hyperdags, Coords > &x )
 	{
 	
-		std::array< const void *, 1 > sources{ &x};
+		std::array< const void *, 1 > sources{ &x };
 		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::GETID_VECTOR,
@@ -109,7 +109,7 @@ namespace grb {
 		typename InputType
 	>
 	uintptr_t getID( const Matrix< InputType, hyperdags > &A ) {
-		std::array< const void *, 1 > sources{ &A};
+		std::array< const void *, 1 > sources{ &A };
 		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 				internal::hyperdags::GETID_MATRIX,

@@ -158,6 +158,8 @@ namespace grb {
 			grb::is_semiring< Semiring >::value,
 		void >::type * const = nullptr
 	) {
+		// note: dispatches to the above dot-variant, which will handle the HyperDAG
+		// generation.
 		return dot< descr >(
 			z, x, y,
 			ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
@@ -197,8 +199,8 @@ namespace grb {
 		typename DataType, typename MaskType, typename T,
 		typename Coords
 	>
-	RC set( Vector< DataType, hyperdags, Coords > & x,
-		const Vector< MaskType, hyperdags, Coords > & m,
+	RC set( Vector< DataType, hyperdags, Coords > &x,
+		const Vector< MaskType, hyperdags, Coords > &m,
 		const T val,
 		const typename std::enable_if< ! grb::is_object< DataType >::value &&
 		! grb::is_object< T >::value, void >::type * const = NULL ) 	{
@@ -218,8 +220,8 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType, typename Coords
 	>
-	RC set( Vector< OutputType, hyperdags, Coords > & x,
-		const Vector< InputType, hyperdags, Coords > & y ){
+	RC set( Vector< OutputType, hyperdags, Coords > &x,
+		const Vector< InputType, hyperdags, Coords > &y ){
 
 		std::array< const void *, 1 > sources{ &y };
 		std::array< const void *, 1 > destinations{ &x };
@@ -235,9 +237,9 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename T, typename U, typename Coords
 	>
-	RC zip( Vector< std::pair< T, U >, hyperdags, Coords > & z,
-		const Vector< T, hyperdags, Coords > & x,
-		const Vector< U, hyperdags, Coords > & y,
+	RC zip( Vector< std::pair< T, U >, hyperdags, Coords > &z,
+		const Vector< T, hyperdags, Coords > &x,
+		const Vector< U, hyperdags, Coords > &y,
 		const typename std::enable_if< ! grb::is_object< T >::value &&
 		! grb::is_object< U >::value, void >::type * const = NULL
 		) {
@@ -258,10 +260,10 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const OP & op = OP(),
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 		grb::is_operator< OP >::value, void >::type * const = NULL
@@ -292,6 +294,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// TODO register beta as a source scalar
 		std::array< const void *, 2 > sources{ &x, &beta };
 		std::array< const void *, 1 > destinations{ &beta };
 		internal::hyperdags::generator.addOperation(
@@ -317,6 +320,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// TODO register beta as a source scalar
 		std::array< const void *, 3 > sources{ &x, &beta, &m };
 		std::array< const void *, 1 > destinations{ &beta };
 		internal::hyperdags::generator.addOperation(
@@ -344,6 +348,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// TODO register alpha as a source scalar
 		std::array< const void *, 2 > sources{ &alpha, &y };
 		std::array< const void *, 1 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
@@ -368,6 +373,7 @@ namespace grb {
 			grb::is_operator< OP >::value,
 		void >::type * const = nullptr
 	) {
+		// TODO register alpha as a source scalar
 		std::array< const void *, 2 > sources{ &alpha, &y };
 		std::array< const void *, 1 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
@@ -416,7 +422,7 @@ namespace grb {
 			!grb::is_object< MaskType >::value && !grb::is_object< IOType >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &x, &m, & y };
+		std::array< const void *, 2 > sources{ &x, &m, &y };
 		std::array< const void *, 2 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR,
@@ -445,7 +451,7 @@ namespace grb {
 			!grb::is_object< IOType >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &x, & y };
+		std::array< const void *, 2 > sources{ &x, &y };
 		std::array< const void *, 2 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDR_VECTOR_VECTOR_MONOID,
@@ -474,7 +480,7 @@ namespace grb {
 			!grb::is_object< IOType >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 3 > sources{ &x, &m, & y };
+		std::array< const void *, 3 > sources{ &x, &m, &y };
 		std::array< const void *, 2 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDR_VECTOR_VECTOR_VECTOR_MONOID,
@@ -501,6 +507,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value,
 		void >::type * const = nullptr
 	) {
+		// TODO register x as a source scalar
 		std::array< const void *, 2 > sources{ &x, &y };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -529,6 +536,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value,
 		void >::type * const = nullptr
 	) {
+		// TODO register x as a source scalar
 		std::array< const void *, 3 > sources{ &x, &y, &mask };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -549,13 +557,14 @@ namespace grb {
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const InputType beta,
-		const Op & op = Op(),
+		const Op &op = Op(),
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Op >::value,
 		void >::type * = nullptr
 	) {
+		// TODO register beta as a source scalar
 		std::array< const void *, 2 > sources{ &x, &beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -582,7 +591,8 @@ namespace grb {
 			grb::is_operator< Op >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 3 > sources{ &x, &m, beta };
+		// TODO register beta as a source scalar
+		std::array< const void *, 3 > sources{ &x, &m, &beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDL_VECTOR_VECTOR_BETA_OP,
@@ -607,6 +617,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * = nullptr
 	) {
+		// TODO register beta as a source scalar
 		std::array< const void *, 2 > sources{ &x, &beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
@@ -633,7 +644,8 @@ namespace grb {
 			grb::is_monoid< Monoid >::value,
 		void >::type * = nullptr
 	) {
-		std::array< const void *, 3 > sources{ &x, &m, beta };
+		// TODO register beta as a source scalar
+		std::array< const void *, 3 > sources{ &x, &m, &beta };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::FOLDL_VECTOR_VECTOR_BETA_MONOID,
@@ -711,7 +723,7 @@ namespace grb {
 			!grb::is_object< InputType >::value,
 		void >::type * = nullptr
 	) {
-			std::array< const void *, 3 > sources{&x, &m, &y };
+			std::array< const void *, 3 > sources{ &x, &m, &y };
 			std::array< const void *, 1 > destinations{ &x };
 			internal::hyperdags::generator.addOperation(
 				internal::hyperdags::FOLDL_VECTOR_VECTOR_VECTOR_MONOID,
@@ -772,7 +784,7 @@ namespace grb {
 		>
 		RC hyperdag_ewisevector(
 			const Func f,
-			const Vector< DataType, grb::hyperdags, Coords > & x,
+			const Vector< DataType, grb::hyperdags, Coords > &x,
 			std::vector< const void * > &sources,
 			std::vector< const void * > &destinations
 		) {
@@ -792,10 +804,10 @@ namespace grb {
 		>
 		RC hyperdag_ewisevector(
 			const Func f,
-			const Vector< DataType1, grb::hyperdags, Coords > & x,
+			const Vector< DataType1, grb::hyperdags, Coords > &x,
 			std::vector< const void * > &sources,
 			std::vector< const void * > &destinations,
-			const Vector< DataType2, grb::hyperdags, Coords > & y,
+			const Vector< DataType2, grb::hyperdags, Coords > &y,
 			Args... args
 		) {
 			sources.push_back( &y );
@@ -810,8 +822,8 @@ namespace grb {
 		typename DataType2,
 		typename Coords,
 		typename... Args >
-	RC eWiseLambda( const Func f, const Vector< DataType1, hyperdags, Coords > & x,
-			 const Vector< DataType2, hyperdags, Coords > & y, Args const &... args ) {
+	RC eWiseLambda( const Func f, const Vector< DataType1, hyperdags, Coords > &x,
+			 const Vector< DataType2, hyperdags, Coords > &y, Args const &... args ) {
 			std::vector< const void * > sources, destinations;
 			return internal::hyperdag_ewisevector( f, x, sources, destinations, y, args... );
 	}
@@ -822,12 +834,12 @@ namespace grb {
 		typename InputType, typename fwd_iterator, typename Coords,
 		class Dup = operators::right_assign< InputType >
 	>
-	RC buildVector( Vector< InputType, hyperdags, Coords > & x,
+	RC buildVector( Vector< InputType, hyperdags, Coords > &x,
 		fwd_iterator start, const fwd_iterator end,
-		const IOMode mode, const Dup & dup = Dup()
+		const IOMode mode, const Dup &dup = Dup()
 	) {
 		std::array< const void *, 0 > sources;
-		std::array< const void *, 1 > destinations{ &x};
+		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::BUILD_VECTOR,
 			sources.begin(), sources.end(),
@@ -849,7 +861,7 @@ namespace grb {
 		const Dup &dup = Dup()) {
 
 		std::array< const void *, 0 > sources;
-		std::array< const void *, 1 > destinations{ &x};
+		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::BUILD_VECTOR_WITH_VALUES,
 			sources.begin(), sources.end(),
@@ -861,8 +873,7 @@ namespace grb {
 	template<
 		typename DataType, typename Coords
 	>
-	size_t size( const Vector< DataType, hyperdags, Coords > & x ) {
-
+	size_t size( const Vector< DataType, hyperdags, Coords > &x ) {
 		std::array< const void *, 1 > sources{ &x };
 		std::array< const void *, 0 > destinations;
 		internal::hyperdags::generator.addOperation(
@@ -876,10 +887,10 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const OP & op = OP(),
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value
 		&& ! grb::is_object< InputType1 >::value
 		&& ! grb::is_object< InputType2 >::value
@@ -887,7 +898,7 @@ namespace grb {
 		void >::type * const = NULL){
 
 		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR,
 			sources.begin(), sources.end(),
@@ -899,16 +910,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		 typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const OP & op = OP(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value
 		&& grb::is_operator< OP >::value, void >::type * const = NULL )	{
 
 		std::array< const void *, 1 > sources{ &y };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_BETA,
 			sources.begin(), sources.end(),
@@ -920,17 +931,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const Monoid & monoid = Monoid(),
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
 		void >::type * const = NULL )	{
 
-		std::array< const void *, 2 > sources{ &x, & mask};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 2 > sources{ &x, &mask };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA,
 			sources.begin(), sources.end(),
@@ -942,17 +953,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		 typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const OP & op = OP(),
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
 		void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{ &x, & mask};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 2 > sources{ &x, &mask };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA,
 			sources.begin(), sources.end(),
@@ -964,17 +975,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Monoid & monoid = Monoid(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType
 		>::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid
 		>::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{& mask, &y,};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR,
 			sources.begin(), sources.end(),
@@ -986,16 +997,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const OP & op = OP(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{& mask, &y,};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP,
 			sources.begin(), sources.end(),
@@ -1007,18 +1018,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const OP & op = OP(),
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const OP &op = OP(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value &&
-		grb::is_operator< OP >::value, void >::type * const = NULL ){
-
-		std::array< const void *, 3 > sources{& mask, &x, &y};
-		std::array< const void *, 1 > destinations{ &z};
+		grb::is_operator< OP >::value, void >::type * const = nullptr
+	) {
+		std::array< const void *, 3 > sources{ &mask, &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP,
 			sources.begin(), sources.end(),
@@ -1030,18 +1041,19 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const Monoid & monoid = Monoid(),
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value &&
 		grb::is_monoid< Monoid >::value,
-		void >::type * const = NULL ) {
-
-		std::array< const void *, 1 > sources{& x};
-		std::array< const void *, 1 > destinations{ &z};
+		void >::type * const = nullptr
+	) {
+		// TODO add beta as source scalar?
+		std::array< const void *, 2 > sources{ &x, &beta };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_SCALAR_MONOID,
 			sources.begin(), sources.end(),
@@ -1054,15 +1066,15 @@ namespace grb {
 		 Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		 typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Monoid & monoid = Monoid(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 1 > sources{&y};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > sources{ &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_SCALAR_VECTOR_MONOID,
 			sources.begin(), sources.end(),
@@ -1074,17 +1086,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & mask,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Monoid & monoid = Monoid(),
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< MaskType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value
 		&& grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 3 > sources{& mask, &x, &y};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 3 > sources{ &mask, &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID,
 			sources.begin(), sources.end(),
@@ -1096,15 +1108,15 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType,
 		typename InputType1, typename InputType2, typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Monoid & monoid = Monoid(),
+	RC eWiseApply( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{&x, &y};
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID,
 			sources.begin(), sources.end(),
@@ -1116,18 +1128,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
-		const Vector< InputType1, hyperdags, Coords > & _a,
-		const Vector< InputType2, hyperdags, Coords > & _x,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
+		const Vector< InputType1, hyperdags, Coords > &_a,
+		const Vector< InputType2, hyperdags, Coords > &_x,
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 4 > sources{&_m, &_a, &_x, &_y};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 4 > sources{ &_m, &_a, &_x, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD,
 			sources.begin(), sources.end(),
@@ -1140,18 +1152,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
-		const Vector< InputType1, hyperdags, Coords > & _a,
-		const Vector< InputType2, hyperdags, Coords > & _x,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
+		const Vector< InputType1, hyperdags, Coords > &_a,
+		const Vector< InputType2, hyperdags, Coords > &_x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 3 > sources{&_m, &_a, &_x};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 3 > sources{ &_m, &_a, &_x };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR,
 			sources.begin(), sources.end(),
@@ -1164,16 +1176,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & _x,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+		const Vector< InputType2, hyperdags, Coords > &_x,
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{&_x, &_y};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 2 > sources{ &_x, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_ALPHA,
 			sources.begin(), sources.end(),
@@ -1185,16 +1197,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< InputType1, hyperdags, Coords > & _a,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< InputType1, hyperdags, Coords > &_a,
 		const InputType2 chi,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{&_a, &_y};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 2 > sources{ &_a, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_CHI,
 			sources.begin(), sources.end(),
@@ -1206,18 +1218,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & _x,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+		const Vector< InputType2, hyperdags, Coords > &_x,
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 3 > sources{&_m, &_x, &_y};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 3 > sources{ &_m, &_x, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR_CHI,
 			sources.begin(), sources.end(),
@@ -1229,18 +1241,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
-		const Vector< InputType1, hyperdags, Coords > & _a,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
+		const Vector< InputType1, hyperdags, Coords > &_a,
 		const InputType2 chi,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 3 > sources{&_m, &_a, &_y};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 3 > sources{ &_m, &_a, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR_CHI_RING,
 			sources.begin(), sources.end(),
@@ -1252,18 +1264,19 @@ namespace grb {
 		 Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		 typename InputType2, typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
-		const Vector< InputType1, hyperdags, Coords > & _a,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
+		const Vector< InputType1, hyperdags, Coords > &_a,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{&_m, &_a};
-		std::array< const void *, 1 > destinations{ &_z};
+		// TODO add beta and gamma as source scalars?
+		std::array< const void *, 4 > sources{ &_m, &_a, &beta, &gamma };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_BETA,
 			sources.begin(), sources.end(),
@@ -1275,18 +1288,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType, typename MaskType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< MaskType, hyperdags, Coords > & _m,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< MaskType, hyperdags, Coords > &_m,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & _x,
+		const Vector< InputType2, hyperdags, Coords > &_x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{&_m, &_x};
-		std::array< const void *, 1 > destinations{ &_z};
+		std::array< const void *, 2 > sources{ &_m, &_x };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA,
 			sources.begin(), sources.end(),
@@ -1299,18 +1312,19 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2, typename InputType3, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & m,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
 		const InputType1 alpha,
 		const InputType2 beta,
-		const Vector< InputType3, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+		const Vector< InputType3, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{&m, &y};
-		std::array< const void *, 1 > destinations{ &z};
+		// TODO add beta and alpha as source sclars?
+		std::array< const void *, 4 > sources{ &m, &y, &alpha, &beta };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_TWO_VECTOR_ALPHA_BETA,
 			sources.begin(), sources.end(),
@@ -1322,18 +1336,19 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
 		typename MaskType, typename InputType1, typename InputType2, typename InputType3, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & m,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 		! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 1 > sources{&m};
-		std::array< const void *, 1 > destinations{ &z};
+		// TODO add source scalars?
+		std::array< const void *, 4 > sources{ &m, &alpha, &beta, &gamma };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA,
 			sources.begin(), sources.end(),
@@ -1344,14 +1359,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation, typename T, typename U, typename Coords
 	>
-	RC unzip( Vector< T, hyperdags, Coords > & x,
-		Vector< U, hyperdags, Coords > & y,
-		const Vector< std::pair< T, U >, hyperdags, Coords > & in,
+	RC unzip( Vector< T, hyperdags, Coords > &x,
+		Vector< U, hyperdags, Coords > &y,
+		const Vector< std::pair< T, U >, hyperdags, Coords > &in,
 		const typename std::enable_if< ! grb::is_object< T >::value &&
 		! grb::is_object< U >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{&x,&y};
-		std::array< const void *, 1 > destinations{ &in};
+		std::array< const void *, 2 > sources{ &x, &y };
+		std::array< const void *, 1 > destinations{ &in };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::UNZIP_VECTOR_VECTOR_VECTOR,
 			sources.begin(), sources.end(),
@@ -1364,17 +1379,17 @@ namespace grb {
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< InputType1, hyperdags, Coords > & _a,
-		const Vector< InputType2, hyperdags, Coords > & _x,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< InputType1, hyperdags, Coords > &_a,
+		const Vector< InputType2, hyperdags, Coords > &_x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && !
 		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 		! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
 		{
-		std::array< const void *, 2 > sources{& _a,& _x};
-		std::array< const void *, 1 > destinations{ & _z};
+		std::array< const void *, 2 > sources{ &_a, &_x };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING,
 			sources.begin(), sources.end(),
@@ -1386,17 +1401,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< InputType1, hyperdags, Coords > & _a,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< InputType1, hyperdags, Coords > &_a,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value &&
-		grb::is_semiring< Ring >::value, void >::type * const = NULL )
-		{
-		std::array< const void *, 1 > sources{& _a};
-		std::array< const void *, 1 > destinations{ & _z};
+		grb::is_semiring< Ring >::value, void >::type * const = nullptr
+	) {
+		//TODO add beta, gamma as source scalars?
+		std::array< const void *, 3 > sources{ &_a, &beta, &gamma };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_BETA_GAMMA_RING,
 			sources.begin(), sources.end(),
@@ -1408,17 +1424,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & _x,
+		const Vector< InputType2, hyperdags, Coords > &_x,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value,
-		 void >::type * const = NULL ) {
-
-		std::array< const void *, 1 > sources{& _x};
-		std::array< const void *, 1 > destinations{ & _z};
+		 void >::type * const = nullptr
+	) {
+		// TODO add alpha, gamma as source scalar?
+		std::array< const void *, 3 > sources{ &_x, &alpha, &gamma };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_VECTOR_GAMMA_RING,
 			sources.begin(), sources.end(),
@@ -1430,16 +1447,18 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
 	 	typename InputType1, typename InputType2, typename InputType3, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
-		const Vector< InputType3, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+		const Vector< InputType3, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && !
 		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value
-		&& grb::is_semiring< Ring >::value, void >::type * const = NULL ){
-		std::array< const void *, 1 > sources{& y};
-		std::array< const void *, 1 > destinations{ & z};
+		&& grb::is_semiring< Ring >::value, void >::type * const = nullptr
+	) {
+		// TODO add alpha, beta as source scalars?
+		std::array< const void *, 3 > sources{ &y, &alpha, &beta };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_BETA_VECTOR_RING,
 			sources.begin(), sources.end(),
@@ -1451,15 +1470,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
 		typename InputType1, typename InputType2, typename InputType3, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & z,
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const InputType3 gamma,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
-		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
-		std::array< const void *, 0 > sources{};
-		std::array< const void *, 1 > destinations{ & z};
+		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL
+	) {
+		// TODO add alpha, beta, gamma as source scalars?
+		std::array< const void *, 3 > sources{ &alpha, &beta, &gamma };
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_ALPHA_BETA_GAMMA_RING,
 			sources.begin(), sources.end(),
@@ -1471,16 +1492,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename InputType3, typename OutputType, typename Coords
 	>
-	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > & _z,
-		const Vector< InputType1, hyperdags, Coords > & _a,
-		const Vector< InputType2, hyperdags, Coords > & _x,
-		const Vector< InputType3, hyperdags, Coords > & _y,
-		const Ring & ring = Ring(),
+	RC eWiseMulAdd( Vector< OutputType, hyperdags, Coords > &_z,
+		const Vector< InputType1, hyperdags, Coords > &_a,
+		const Vector< InputType2, hyperdags, Coords > &_x,
+		const Vector< InputType3, hyperdags, Coords > &_y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
 		{
-		std::array< const void *, 3 > sources{ &_a, &_x, &_y};
-		std::array< const void *, 1 > destinations{ & _z};
+		std::array< const void *, 3 > sources{ &_a, &_x, &_y };
+		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_VECTOR_VECTOR_RING,
 			sources.begin(), sources.end(),
@@ -1492,16 +1513,16 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename OutputType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 
 		std::array< const void *, 2 > sources{ &x, &y };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_RING,
 			sources.begin(), sources.end(),
@@ -1515,16 +1536,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
-			
+			void >::type * const = nullptr
+	) {
+		// TODO add alpha as source sclalar?
 		std::array< const void *, 2 > sources{ &alpha, &y };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_ALPHA_VECTOR_RING,
 			sources.begin(), sources.end(),
@@ -1536,16 +1558,17 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename OutputType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
-			
+			void >::type * const = nullptr
+	) {
+		// TODO add beta as source scalar?
 		std::array< const void *, 2 > sources{ &x, &beta };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_BETA_RING,
 			sources.begin(), sources.end(),
@@ -1557,79 +1580,75 @@ namespace grb {
 	template< Descriptor descr = descriptors::no_operation, class Ring,
 		  typename InputType1, typename InputType2, typename OutputType, typename MaskType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & m,
-		const Vector< InputType1, hyperdags, Coords > & x,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
 				grb::is_semiring< Ring >::value,
 			void >::type * const = NULL ) {
 		
 		std::array< const void *, 3 > sources{ &m, &x, &y };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 			internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
-		return eWiseMul <descr> (internal::getVector(z), internal::getVector(m),  internal::getVector(x),  internal::getVector(y), ring);
+		return eWiseMul <descr> (internal::getVector(z), internal::getVector(m), internal::getVector(x), internal::getVector(y), ring);
 	}
 
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename OutputType, typename MaskType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & m,
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
 		const InputType1 alpha,
-		const Vector< InputType2, hyperdags, Coords > & y,
-		const Ring & ring = Ring(),
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! 
 		grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
 				grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
-
+			void >::type * const = nullptr
+	) {
+		// TODO add alpha as source scalar?
 		std::array< const void *, 3 > sources{ &m, &alpha, &y };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 			internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
-		return eWiseMul <descr> (internal::getVector(z), internal::getVector(m),  alpha,  internal::getVector(y), ring);
+		return eWiseMul< descr >(
+				internal::getVector(z), internal::getVector(m),
+				alpha, internal::getVector(y), ring
+			);
 	}
-
 
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring, typename InputType1,
 		typename InputType2, typename OutputType, typename MaskType, typename Coords 
 	>
-	RC eWiseMul( Vector< OutputType, hyperdags, Coords > & z,
-		const Vector< MaskType, hyperdags, Coords > & m,
-		const Vector< InputType1, hyperdags, Coords > & x,
+	RC eWiseMul( Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< MaskType >::value &&
 				grb::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+			void >::type * const = nullptr
+	) {
+		// TODO add beta as source scalar?
 		std::array< const void *, 3 > sources{ &m, &x, &beta };
-		std::array< const void *, 1 > destinations{ &z};
+		std::array< const void *, 1 > destinations{ &z };
 			internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMul <descr> (internal::getVector(z), internal::getVector(m), internal::getVector(x), beta, ring);
 	}
-
-
-
-
-
-
-
-
-
 
 } // end namespace grb
 
