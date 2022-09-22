@@ -353,6 +353,14 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< Square, Square > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
 		/**
 		 * @brief A Band is a structure described by a compile-time tuple of 
 		 *        sorted, non-overlapping integer intervals which 
