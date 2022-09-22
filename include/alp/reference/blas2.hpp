@@ -731,19 +731,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
 			"alp::foldr",
 			"called with a matrix B of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
 			"alp::foldr",
 			"called on a scalar alpha of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
 			"alp::foldr",
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
@@ -774,19 +774,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
 			"alp::foldr",
 			"called with a matrix B of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
 			"alp::foldr",
 			"called on a scalar alpha of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
 			"alp::foldr",
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
@@ -817,19 +817,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
 			"alp::foldr",
 			"called with a matrix B of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
 			"alp::foldr",
 			"called on a matrix A of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
 			"alp::foldr",
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
@@ -860,19 +860,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
 			"alp::foldr",
 			"called with a matrix B of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
 			"alp::foldr",
 			"called on a matrix A of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
 			"alp::foldr",
 			"called on a matrix B of a type that does not match the third domain "
 			"of the given operator"
@@ -903,19 +903,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
 			"alp::foldl",
 			"called with a matrix A of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
 			"alp::foldl",
 			"called on a matrix B of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
 			"alp::foldl",
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
@@ -945,19 +945,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
 			"alp::foldl",
 			"called with a matrix A of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
 			"alp::foldl",
 			"called on a matrix B of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
 			"alp::foldl",
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
@@ -987,19 +987,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
 			"alp::foldl",
 			"called with a matrix A of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ),
 			"alp::foldl",
 			"called on a scalar beta of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ),
 			"alp::foldl",
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
@@ -1029,19 +1029,19 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),
 			"alp::foldl",
 			"called with a matrix A of a type that does not match the first domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType >::value ),
 			"alp::foldl",
 			"called on a scalar beta of a type that does not match the second domain "
 			"of the given operator"
 		);
 		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
+			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, IOType >::value ),
 			"alp::foldl",
 			"called on a matrix A of a type that does not match the third domain "
 			"of the given operator"
