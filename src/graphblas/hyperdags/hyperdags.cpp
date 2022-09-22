@@ -174,8 +174,65 @@ std::string grb::internal::hyperdags::toString(
 		
 		case MXM_MATRIX_MATRIX_MATRIX_MONOID:
 			return "mxm(matrix, matrix, matrix, monoid, scalar, scalar)";
-				
 		
+		case OUTER:
+			return "outer(matrix, vector, vector, scalar, scalar)";
+		
+		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R:
+			return "mxv(vector, vector, matrix, vector, vector, ring)";
+		
+		case ZIP_MATRIX_VECTOR_VECTOR:
+			return "zip(matrix, vector, vector)";
+			
+		case UNZIP_VECTOR_VECTOR_VECTOR:
+			return "unzip(matrix, vector, vector)";
+		
+		case EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING:
+			return "eWiseMulAdd(vector, vector, vector, scalar, ring)";
+			
+		case EWISEMULADD_VECTOR_VECTOR_BETA_GAMMA_RING:
+			return "eWiseMulAdd(vector, vector, scalar, scalar, ring)";
+		
+		case EWISEMULADD_VECTOR_ALPHA_VECTOR_GAMMA_RING:
+			return "eWiseMulAdd(vector, vector, scalar, ring)";
+		
+		case EWISEMULADD_VECTOR_ALPHA_BETA_VECTOR_RING:
+			return "eWiseMulAdd(vector, scalar, scalar, vector, ring)";
+		
+		case EWISEMULADD_VECTOR_ALPHA_BETA_GAMMA_RING:
+			return "eWiseMulAdd(vector, scalar, scalar, scalar, ring)";
+		
+		case EWISEMULADD_VECTOR_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseMulAdd(vector, vector, vector, vector, ring)";
+		
+		case VXM_VECTOR_VECTOR_VECTOR_MATRIX:
+			return "vxm(vector, vector, vector, matrix, ring)";
+			
+		case VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
+			return "vxm(vector, vector, vector, matrix, scalar, scalar)";
+		
+		case VXM_VECTOR_VECTOR_MATRIX_RING:
+			return "vxm(vector, vector, matrix, ring)";
+		
+		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING:
+			return "mxv(vector, vector, matrix, vector, ring)";
+			
+		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A:
+			return "mxv(vector, vector, matrix, vector, vector, scalar, scalar)";
+		
+		case MXV_VECTOR_MATRIX_VECTOR_RING:
+			return "mxv(vector, matrix, vector, ring)";
+		
+		case MXV_VECTOR_MATRIX_VECTOR_ADD_MUL:
+			return "mxv(vector, matrix, vector, scalar, scalar)";
+		
+		case EWISELAMBDA_FUNC_MATRIX:
+			return "eWiseLambda(function, matrix)";
+		
+		case VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
+			return "vxm(vector, vector, vector, vector, matrix, scalar, scalar )";
+			
+			
 	}
 	assert( false );
 	return "unknown operation";
