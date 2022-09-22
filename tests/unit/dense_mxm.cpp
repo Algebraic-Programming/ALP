@@ -72,20 +72,77 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
 template< typename Structure, typename T >
 void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
 
-	if( std::is_same< Structure, structures::General >::value ) {
-		std::fill( vA.begin(), vA.end(), one );
-	} else if( std::is_same< Structure, structures::Symmetric >::value ) {
-		std::fill( vA.begin(), vA.end(), one );
-	} else if( std::is_same< Structure, structures::UpperTriangular >::value ) {
-		for( size_t row = 0; row < m; ++row ) {
-			for( size_t col = 0; col < row; ++col ) {
-				vA[ row * lda + col ] = zero;
-			}
-			for( size_t col = row; col < n; ++col ) {
-				vA[ row * lda + col ] = one;
+		if( std::is_same< Structure, structures::General >::value ) {
+			std::fill( vA.begin(), vA.end(), one );
+		} else if( std::is_same< Structure, structures::Symmetric >::value ) {
+			std::fill( vA.begin(), vA.end(), one );
+		} else if( std::is_same< Structure, structures::UpperTriangular >::value ) {
+			for( size_t row = 0; row < m; ++row ) {
+				for( size_t col = 0; col < row; ++col ) {
+					vA[ row * lda + col ] = zero;
+				}
+				for( size_t col = row; col < n; ++col ) {
+					vA[ row * lda + col ] = one;
+				}
 			}
 		}
-	}
+
+}
+
+template< typename Structure, typename T >
+void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one, const T inc ) {
+
+		T val = one;
+		if( std::is_same< Structure, structures::General >::value ) {
+			for( size_t row = 0; row < m; ++row ) {
+				for( size_t col = 0; col < n; ++col ) {
+					vA[ row * lda + col ] = val;
+					val += inc;
+				}
+			}
+		} else if( std::is_same< Structure, structures::Symmetric >::value ) {
+			for( size_t row = 0; row < m; ++row ) {
+				for( size_t col = row; col < n; ++col ) {
+					vA[ row * lda + col ] = vA[ col * lda + row ] = val;
+					val += inc;
+				}
+			}
+		} else if( std::is_same< Structure, structures::UpperTriangular >::value ) {
+			for( size_t row = 0; row < m; ++row ) {
+				for( size_t col = 0; col < row; ++col ) {
+					vA[ row * lda + col ] = zero;
+				}
+				for( size_t col = row; col < n; ++col ) {
+					vA[ row * lda + col ] = val;
+					val += inc;
+				}
+			}
+		}
+
+}
+
+template< typename Structure, typename T >
+void stdvec_build_matrix_packed( std::vector< T > & vA, const T one ) {
+
+	std::fill( vA.begin(), vA.end(), one );
+
+}
+
+template< typename Structure, typename T >
+void stdvec_build_matrix_packed( std::vector< T > & vA, const T one, const T inc ) {
+
+		T val = one;
+		if( std::is_same< Structure, structures::Symmetric >::value ) { // Assumes Packed Row - Upper
+			for( auto & elem: vA ) {
+				elem = val;
+				val += inc;
+			}
+		} else if( std::is_same< Structure, structures::UpperTriangular >::value ) { // Assumes Packed Row - Upper
+			for( auto & elem: vA ) {
+				elem = val;
+				val += inc;
+			}
+		}
 
 }
 
@@ -141,11 +198,23 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	T one  = ring.getOne< T >();
 	T zero = ring.getZero< T >();
 
-	std::vector< T > A_data( n * n, one );
-	std::vector< T > B_data( n * n, one );
+	std::vector< T > A_data( n * n );
+	std::vector< T > B_data( n * n );
 	std::vector< T > C_data( n * n, zero );
 
+	std::vector< T > A_packed( n * ( n + 1 ) / 2 );
+	std::vector< T > B_packed( n * ( n + 1 ) / 2 );
+	std::vector< T > C_packed( n * ( n + 1 ) / 2, zero );
+
+	std::vector< T > A_vec( n * n );
+	std::vector< T > B_vec( n * n );
+	std::vector< T > C_vec( n * n, zero );
+
 	std::cout << "\tTesting dense General mxm " << n << std::endl;
+
+	stdvec_build_matrix< structures::General >( A_data, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::General >( B_data, n, n, n, zero, one, one );
+
 	// initialize test
 	alp::Matrix< T, structures::General > A( n, n );
 	alp::Matrix< T, structures::General > B( n, n );
@@ -164,9 +233,8 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	print_matrix("C - POST", C);
 
-	std::vector< T > A_vec( n * n, one );
-	std::vector< T > B_vec( n * n, one );
-	std::vector< T > C_vec( n * n, zero );
+	stdvec_build_matrix< structures::General >( A_vec, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::General >( B_vec, n, n, n, zero, one, one );
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
@@ -178,17 +246,21 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::Matrix< T, structures::UpperTriangular > UB( n );
 	alp::Matrix< T, structures::UpperTriangular > UC( n );
 
-	rc = alp::buildMatrix( UA, A_data.begin(), A_data.end() );
-	rc = alp::buildMatrix( UB, B_data.begin(), B_data.end() );
-	stdvec_build_matrix< structures::General >( C_data, n, n, n, zero, zero );
-	rc = alp::buildMatrix( UC, C_data.begin(), C_data.end() );
+	stdvec_build_matrix_packed< structures::UpperTriangular >( A_packed, one, one );
+	stdvec_build_matrix_packed< structures::UpperTriangular >( B_packed, one, one );
 
+	rc = alp::buildMatrix( UA, A_packed.begin(), A_packed.end() );
+	rc = alp::buildMatrix( UB, B_packed.begin(), B_packed.end() );
+	rc = alp::buildMatrix( UC, C_packed.begin(), C_packed.end() );
+
+	print_matrix("UA", UA);
+	print_matrix("UB", UB);
 	print_matrix("UC - PRE", UC);
 	rc = alp::mxm( UC, UA, UB, ring );
 	print_matrix("UC - POST", UC);
 
-	stdvec_build_matrix< structures::UpperTriangular >( A_vec, n, n, n, zero, one );
-	stdvec_build_matrix< structures::UpperTriangular >( B_vec, n, n, n, zero, one );
+	stdvec_build_matrix< structures::UpperTriangular >( A_vec, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::UpperTriangular >( B_vec, n, n, n, zero, one, one );
 	stdvec_build_matrix< structures::General >( C_vec, n, n, n, zero, zero );
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
@@ -199,19 +271,50 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	alp::Matrix< T, structures::Symmetric > SC( n );
 
-	stdvec_build_matrix< structures::General >( C_data, n, n, n, zero, zero );
-	rc = alp::buildMatrix( SC, C_data.begin(), C_data.end() );
+	stdvec_build_matrix< structures::Symmetric >( A_data, n, n, n, zero, one, one );
 
+	rc = alp::buildMatrix( A,  A_data.begin(), A_data.end() );
+	rc = alp::buildMatrix( SC, C_packed.begin(), C_packed.end() );
+
+	print_matrix("A", A );
+	print_matrix("A^T", alp::get_view< alp::view::transpose >( A ) );
 	print_matrix("SC - PRE", SC);
 	rc = alp::mxm( SC, A, alp::get_view< alp::view::transpose >( A ), ring );
 	print_matrix("SC - POST", SC);
 
-	stdvec_build_matrix< structures::General >( A_vec, n, n, n, zero, one );
+	stdvec_build_matrix< structures::Symmetric >( A_vec, n, n, n, zero, one, one );
 	stdvec_build_matrix< structures::Symmetric >( C_vec, n, n, n, zero, zero );
 
 	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, A_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
 	diff_stdvec_matrix( C_vec, n, n, n, SC );
+
+	std::cout << "\n\n=========== Testing Symmetric x Symmetric Output ============\n\n";
+
+	alp::Matrix< T, structures::Symmetric > SA( n );
+	alp::Matrix< T, structures::Symmetric > SB( n );
+
+	stdvec_build_matrix_packed< structures::Symmetric >( A_packed, one, one );
+	stdvec_build_matrix_packed< structures::Symmetric >( B_packed, one, one + one );
+
+	rc = alp::buildMatrix( SA, A_packed.begin(), A_packed.end() );
+	rc = alp::buildMatrix( SB, B_packed.begin(), B_packed.end() );
+	rc = alp::buildMatrix( C,  C_data.begin(), C_data.end() );
+
+	print_matrix("SA", SA);
+	print_matrix("SB", SB);
+	print_matrix("C - PRE", C);
+	rc = alp::mxm( C, SA, SB, ring );
+	print_matrix("C - POST", C);
+
+	stdvec_build_matrix< structures::Symmetric >( A_vec, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::Symmetric >( B_vec, n, n, n, zero, one, one + one );
+	stdvec_build_matrix< structures::General >( C_vec, n, n, n, zero, zero );
+
+	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
+
+	diff_stdvec_matrix( C_vec, n, n, n, C );
+
 
 }
 
