@@ -1649,13 +1649,8 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		RC rc = internal::set_band< 0 >( C, A );
-
-		if( rc == SUCCESS ) {
-			internal::setInitialized( C, true );
-		}
-
-		return rc;
+		internal::setInitialized( C, true );
+		return foldl( C, A, alp::operators::right_assign< OutputType >() );
 	}
 
 	namespace internal {
@@ -1772,13 +1767,8 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		RC rc = internal::set_band< 0 >( C, val );
-
-		if( rc == SUCCESS ) {
-			internal::setInitialized( C, true );
-		}
-
-		return rc;
+		internal::setInitialized( C, true );
+		return foldl( C, val, alp::operators::right_assign< OutputType >() );
 	}
 
 } // end namespace ``alp''
