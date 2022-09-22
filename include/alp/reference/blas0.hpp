@@ -288,6 +288,87 @@ namespace alp {
 		return rc;
 	}
 
+	/**
+	 * Sets the value of a given scalar \a alpha to be equal to that of
+	 * another given scalar \a beta.
+	 *
+	 * This operation is functionally equivalent to
+	 * \code
+	 * alp::operators::right_assign< T > op;
+	 * alp::foldl( alpha, beta, op );
+	 * \endcode,
+	 * \code
+	 * alp::operators::left_assign < T > op;
+	 * alp::foldr( beta, alpha, op );
+	 * \endcode, as well as the following pseudocode
+	 * \code
+	 * *alpha = *beta;
+	 * \endcode.
+	 *
+	 * The scalar \a alpha may not equal \a beta.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# alp::descriptors::no_operation
+	 *   -# alp::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * @tparam descr           The descriptor of the operation.
+	 * @tparam OutputType      The element type in the output scalar.
+	 * @tparam InputType       The element type in the input scalar.
+	 * @tparam OutputStructure The structure of the ouput scalar.
+	 * @tparam InputStructure  The structure of the input scalar.
+	 *
+	 * @param[in,out] alpha The scalar to be set.
+	 * @param[in]     beta  The source scalar.
+	 *
+	 * When \a descr includes alp::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta(1) \f$ work;
+	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * \endparblock
+	 *
+	 * @see alp::foldl.
+	 * @see alp::foldr.
+	 * @see alp::operators::left_assign.
+	 * @see alp::operators::right_assign.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure,
+		typename InputType, typename InputStructure
+	>
+	RC set(
+		Scalar< OutputType, OutputStructure, reference > &alpha,
+		const Scalar< InputType, InputStructure, reference > &beta,
+		const std::enable_if<
+			!alp::is_object< InputType >::value &&
+			!alp::is_object< OutputType >::value
+		> * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT(
+			( !( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ),
+			"alp::set (scalar)",
+			"called with a value type that does not match that of the given "
+			"scalar"
+		);
+
+		if( !internal::getInitialized( beta ) ) {
+			internal::setInitialized( alpha, false );
+			return SUCCESS;
+		}
+
+		// foldl requires left-hand side to be initialized prior to the call
+		internal::setInitialized( alpha, true );
+		return foldl( alpha, beta, alp::operators::right_assign< OutputType >() );
+	}
 	/** @} */
 	
 } // end namespace ``alp''
