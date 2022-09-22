@@ -94,6 +94,14 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	assert( v[ 0 ] == u[ 0 ] );
 	assert( alp::internal::getInitialized( u ) );
 
+	// set scalar to another scalar
+	alp::Scalar< T > beta;
+	assert( !alp::internal::getInitialized( beta ) );
+	rc = set( beta, one_scalar );
+	assert( rc == alp::SUCCESS );
+	assert( alp::internal::getInitialized( beta ) );
+	assert( *beta == *one_scalar );
+
 }
 
 int main( int argc, char ** argv ) {
