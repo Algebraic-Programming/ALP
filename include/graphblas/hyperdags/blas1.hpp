@@ -860,8 +860,8 @@ namespace grb {
 		const IOMode mode,
 		const Dup &dup = Dup()) {
 
-		std::array< const void *, 0 > sources;
-		std::array< const void *, 1 > destinations{ &x };
+		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 0 > destinations;
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::BUILD_VECTOR_WITH_VALUES,
 			sources.begin(), sources.end(),

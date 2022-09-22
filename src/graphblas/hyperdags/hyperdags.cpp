@@ -76,6 +76,26 @@ std::string grb::internal::hyperdags::toString(
 		case FOLDR_VECTOR_SCALAR_MONOID:
 			return "foldr(vector, scalar, monoid)";
 			
+		 case FOLDR_VECTOR_MASK_SCALAR_MONOID:
+		 	return "foldr(vector, vector, scalar, monoid)";
+		 	
+		 case FOLDL_SCALAR_VECTOR_MONOID:
+		 	return "foldl(scalar, vector, monoid)";
+		 
+		 case FOLDL_SCALAR_VECTOR_MASK_MONOID:
+		 	return "foldl(calar, vector, vector, monoid)";	
+		 	
+		 case EWISELAMBDA:
+		 	return "eWiseLambda(f, vector)";
+		 
+		 case BUILD_VECTOR:
+		 	return "buildVector(vector, scalar, scalar, scalar, scalar)";	
+		
+		 case BUILD_VECTOR_WITH_VALUES:
+		 	return "buildVector(vector, scalar, scalar, scalar, scalar, scalar)";			
+			
+			
+			
 			
 	}
 	assert( false );
