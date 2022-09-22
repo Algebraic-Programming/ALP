@@ -160,9 +160,20 @@ std::string grb::internal::hyperdags::toString(
 		case EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA:
 			return "eWiseMulAdd(vector, vector, scalar, scalar, scalar, ring)";
 		
-		//case EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE:
-		//	return "";
+		case EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE:
+			return "eWiseApply(matrix, matrix, matrix, scalar, scalar)";
 		
+		case EWISEAPPLY_MATRIX_MATRIX_MATRIX_MULMONOID_PHASE:
+			return "eWiseApply(matrix, matrix, matrix, scalar, scalar)";
+		
+		case SET_MATRIX_MATRIX:
+			return "set(matrix, matrix)";	
+		
+		case SET_MATRIX_MATRIX_INPUT2:
+			return "set(matrix, matrix, scalar)";	
+		
+		case MXM_MATRIX_MATRIX_MATRIX_MONOID:
+			return "mxm(matrix, matrix, matrix, monoid, scalar, scalar)";
 				
 		
 	}
