@@ -231,7 +231,75 @@ std::string grb::internal::hyperdags::toString(
 		
 		case VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
 			return "vxm(vector, vector, vector, vector, matrix, scalar, scalar )";
+		
+		case VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
+			return "vxm(vector, vector, vector, matrix, scalar, scalar)";
+		
+		case VXM_VECTOR_VECTOR_MATRIX_ADD_MUL:
+			return "vxm(vector, vector, matrix, scalar, scalar)";
+		
+		case FOLDL_VECTOR_BETA_OP:
+			return "foldl(vector, scalar, scalar)";
+		
+		case FOLDL_VECTOR_VECTOR_BETA_OP:
+			return "foldl(vector, vector, scalar, scalar)";
 			
+		case FOLDL_VECTOR_BETA_MONOID:
+			return "foldl(vector, scalar, monoid)";
+		
+		case FOLDL_VECTOR_VECTOR_BETA_MONOID:
+			return "foldl(vector, vector, scalar, monoid)";
+		
+		case FOLDL_VECTOR_VECTOR_MONOID:
+			return "foldl(vector, vector, monoid)";
+		
+		case FOLDL_VECTOR_VECTOR_VECTOR_MONOID:
+			return "foldl(vector, vector, vector, monoid)";
+		
+		case FOLDL_VECTOR_VECTOR_VECTOR_OP:
+			return "foldl(vector, vector, vecotr, scalar)";
+		
+		case FOLDL_VECTOR_VECTOR_OP:
+			return "foldl(vector, vector, scalar)";
+		
+		case FOLDR_APLHA_VECTOR_MONOID:
+			return "foldr(scalar, vector, monoid)";
+		
+		case FOLDR_APLHA_VECTOR_OPERATOR:
+			return "foldr(scalar, vector, scalar)";
+		
+		case FOLDR_VECTOR_VECTOR_OPERATOR:
+			return "foldr(vector, vector, scalar)";
+	
+		case FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR:
+			return "foldr(vector, vector, vector, scalar)";
+		
+		case FOLDR_VECTOR_VECTOR_MONOID:
+			return "foldr(vector, vector, monoid)";
+		
+		case FOLDR_VECTOR_VECTOR_VECTOR_MONOID:
+			return "foldr(vector, vector, vector, monoid)";
+		
+		case EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseMulAdd(vector, vector, vector, vector, scalar)";
+		
+		case EWISEMUL_VECTOR_ALPHA_VECTOR_RING:
+			return "eWiseMul(vector, scalar, vector, scalar)";
+		
+		case EWISEMUL_VECTOR_VECTOR_BETA_RING:
+			return "eWiseMul(vector, vector, scalar, scalar)";
+		
+		case EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseMul(vector, vector, vector, vector, scalar)";
+		
+		case EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING:
+			return "eWiseMul(vector, vector, scalar, vector, scalar)";
+			
+		case EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING:
+			return "eWiseMul(vector, vector, vector, scalar, scalar)";
+		
+		case EWISELAMBDA_FUNC_VECTOR:
+			return "eWiseLambda(function, vector)";
 			
 	}
 	assert( false );

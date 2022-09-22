@@ -1524,7 +1524,7 @@ namespace grb {
 		std::array< const void *, 2 > sources{ &x, &y };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_RING,
+			internal::hyperdags::EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), internal::getVector(z), internal::getVector(x), internal::getVector(y), ring);
