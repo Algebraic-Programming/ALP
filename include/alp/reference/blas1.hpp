@@ -2634,7 +2634,7 @@ namespace alp {
 		void >::type * const = NULL
 	) {
 		Scalar< IOType, structures::General, backend > res( x );
-		RC rc = alp::dot< descr >( x,
+		RC rc = alp::dot< descr >( res,
 			left, right,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator()
@@ -2642,7 +2642,7 @@ namespace alp {
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		/** \internal \todo extract res.value into x */
+		x = *res;
 		return SUCCESS;
 	}
 
@@ -2896,18 +2896,19 @@ namespace alp {
 		class Ring,
 		Backend backend
 	>
-	RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
+	RC norm2(
+		Scalar< OutputType, OutputStructure, backend > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if<
-			std::is_floating_point< OutputType >::value,
-		void >::type * const = NULL
+		const std::enable_if_t<
+			std::is_floating_point< OutputType >::value
+		> * const = nullptr
 	) {
-		RC ret = alp::dot< descr >( x, y, y, ring );
-		if( ret == SUCCESS ) {
-			x = sqrt( x );
+		RC rc = alp::dot< descr >( *x, y, y, ring );
+		if( rc == SUCCESS ) {
+			*x = sqrt( *x );
 		}
-		return ret;
+		return rc;
 	}
 
 	/** C++ scalar version */
@@ -2931,7 +2932,7 @@ namespace alp {
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		/** \internal \todo extract res.value into x */
+		x = *res;
 		return SUCCESS;
 	}
 
