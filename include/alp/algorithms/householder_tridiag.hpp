@@ -26,12 +26,6 @@
 
 #define TEMPDISABLE
 
-#ifdef TEMPDISABLE
-typedef alp::structures::Square Symmetric;
-#else
-typedef alp::structures::Symmetric Symmetric;
-#endif
-
 namespace alp {
 
 	namespace algorithms {
@@ -61,8 +55,8 @@ namespace alp {
 			// Matrix< D, structures::Orthogonal, Dense > &Q,
 			Matrix< D, structures::Square, Dense > &Q,
 			// Matrix< D, SymmetricTridiagonal, Dense > &T, // Need to be add this once alp -> alp is done
-			Matrix< D, Symmetric, Dense > &T, // Need to be add this once alp -> alp is done
-			const Matrix< D, Symmetric, Dense > &H,
+			Matrix< D, structures::Symmetric, Dense > &T, // Need to be add this once alp -> alp is done
+			const Matrix< D, structures::Symmetric, Dense > &H,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide() ) {
@@ -96,7 +90,7 @@ namespace alp {
 #endif
 
 			// Out of place specification of the computation
-			Matrix< D, Symmetric, Dense > RR( n );
+			Matrix< D, structures::Symmetric, Dense > RR( n );
 
 			// auto RR = get_view< view::transpose >( R0 ); 
 			rc = set( RR, H );
@@ -185,7 +179,7 @@ namespace alp {
 
 				// ===== Calculate reflector Qk =====
 				// Q_k = identity( n )
-				Matrix< D, Symmetric, Dense > Qk( n );
+				Matrix< D, structures::Symmetric, Dense > Qk( n );
 #ifdef TEMPDISABLE
 				rc = set( Qk, zero );
 				rc = rc ? rc : alp::eWiseLambda(
@@ -205,7 +199,7 @@ namespace alp {
 #endif
 
 				// this part might be rewriten without temp matrix using functors
-				Matrix< D, Symmetric, Dense > vvt( m );
+				Matrix< D, structures::Symmetric, Dense > vvt( m );
 
 				// vvt = v * v^T
 #ifndef TEMPDISABLE
@@ -327,7 +321,7 @@ namespace alp {
 #ifndef TEMPDISABLE
 			rc = set( T, get_view< SymmetricTridiagonal > ( RR ) );
 #else
-			rc = set( T, get_view< Symmetric > ( RR ) );
+			rc = set( T, get_view< structures::Symmetric > ( RR ) );
 #endif
 			return rc;
 		}

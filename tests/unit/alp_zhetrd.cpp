@@ -24,12 +24,12 @@
 
 #define DEBUG
 
-#define TEMPDISABLE
+//#define TEMPDISABLE
 
 using namespace alp;
 
 #ifdef TEMPDISABLE
-typedef alp::structures::Square Symmetric;
+typedef alp::structures::Symmetric Symmetric;
 #else
 typedef alp::structures::Symmetric Symmetric;
 #endif
@@ -37,21 +37,21 @@ typedef double ScalarType;
 constexpr ScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
-#ifdef TEMPDISABLE
-//***********************//
-//temp functions
-template< typename T >
-void generate_general_symm_matrix( size_t N, std::vector<T> &data ) {
-	size_t k = 0;
-	for( size_t i = 0; i < N; ++i ) {
-		for( size_t j = 0; j < N; ++j ) {
-			data[ k ] = static_cast< T >( i + j * j ) ;
-			++k;
-		}
-	}
-}
-//***********************//
-#else
+// #ifdef TEMPDISABLE
+// //***********************//
+// //temp functions
+// template< typename T >
+// void generate_general_symm_matrix( size_t N, std::vector<T> &data ) {
+// 	size_t k = 0;
+// 	for( size_t i = 0; i < N; ++i ) {
+// 		for( size_t j = 0; j < N; ++j ) {
+// 			data[ k ] = static_cast< T >( i + j * j ) ;
+// 			++k;
+// 		}
+// 	}
+// }
+// //***********************//
+// #else
 //** gnerate upper/lower triangular part of a Symmetric matrix */
 template< typename T >
 void generate_symm_matrix( size_t N, std::vector<T> &data ) {
@@ -59,12 +59,13 @@ void generate_symm_matrix( size_t N, std::vector<T> &data ) {
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			data[ k ] = static_cast< T >( i + j*j ) ;
+			// data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
 			++k;
 		}
 	}
 }
-#endif
+// #endif
 
 //** check if rows/columns or matrix Q are orthogonal */
 template<
@@ -134,15 +135,30 @@ RC check_solution(
 	RC rc = SUCCESS;
 	const size_t n = nrows( Q );
 
+#ifdef DEBUG
+	std::cout << " ** check_solution **\n";
+	std::cout << " input matrices:\n";
+	print_matrix( " << H >> ", H );
+	print_matrix( " << Q >> ", Q );
+	print_matrix( " << T >> ", T );
+	std::cout << " ********************\n";
+#endif
+
 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQt( n );
 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQtmH( n );
 	const Scalar< D > zero( ring.template getZero< D >() );
 
 	rc = rc ? rc : set( QTQt, zero );
 	rc = rc ? rc : mxm( QTQt, T, alp::get_view< alp::view::transpose >( Q ), ring );
+#ifdef DEBUG
+	print_matrix( " << TQt >> ", QTQt );
+#endif
 	rc = rc ? rc : set( QTQtmH, zero );
-	rc = rc ? rc : mxm( QTQtmH, QTQt, Q, ring );
+	rc = rc ? rc : mxm( QTQtmH, Q, QTQt, ring );
 	rc = rc ? rc : set( QTQt, QTQtmH );
+#ifdef DEBUG
+	print_matrix( " << QTQt >> ", QTQt );
+#endif
 #ifndef TEMPDISABLE
 	rc = foldl( QTQtmH, H, minus );
 #else
@@ -157,6 +173,9 @@ RC check_solution(
 		QTQtmH
 	);
 #endif
+#ifdef DEBUG
+	print_matrix( " << QTQtmH >> ", QTQtmH ); <<<-- that to do with the symmetry
+#endif
 
 	//Frobenius norm
 	D fnorm = 0;
@@ -168,6 +187,7 @@ RC check_solution(
 		},
 		QTQtmH
 	);
+
 	fnorm = std::sqrt( fnorm );
 #ifdef DEBUG
 	std::cout << " FrobeniusNorm(H-QTQt) = " << fnorm << "\n";
@@ -209,13 +229,13 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< ScalarType, Symmetric > T( N );
 
 	{
-#ifdef TEMPDISABLE
-		std::vector< ScalarType > matrix_data( N * N );
-		generate_general_symm_matrix( N, matrix_data );
-#else
+// #ifdef TEMPDISABLE
+// 		std::vector< ScalarType > matrix_data( N * N );
+// 		generate_general_symm_matrix( N, matrix_data );
+// #else
 		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
 		generate_symm_matrix( N, matrix_data );
-#endif
+// #endif
 
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 #ifdef DEBUG
