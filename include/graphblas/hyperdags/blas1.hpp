@@ -1141,7 +1141,7 @@ namespace grb {
 		std::array< const void *, 4 > sources{ &_m, &_a, &_x, &_y };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD,
+			internal::hyperdags::EWISE_MUL_ADD,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a),
@@ -1165,7 +1165,7 @@ namespace grb {
 		std::array< const void *, 3 > sources{ &_m, &_a, &_x };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR,
+			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a),
@@ -1187,7 +1187,7 @@ namespace grb {
 		std::array< const void *, 2 > sources{ &_x, &_y };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_ALPHA,
+			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_ALPHA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), alpha, internal::getVector(_x), internal::getVector(_y), ring);
@@ -1208,7 +1208,7 @@ namespace grb {
 		std::array< const void *, 2 > sources{ &_a, &_y };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_CHI,
+			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_CHI,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_a), chi, internal::getVector(_y), ring);
@@ -1231,7 +1231,7 @@ namespace grb {
 		std::array< const void *, 3 > sources{ &_m, &_x, &_y };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR_CHI,
+			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR_CHI,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), alpha, internal::getVector(_x), internal::getVector(_y), ring);
@@ -1254,7 +1254,7 @@ namespace grb {
 		std::array< const void *, 3 > sources{ &_m, &_a, &_y };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_FOUR_VECTOR_CHI_RING,
+			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR_CHI_RING,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a), chi,  internal::getVector(_y), ring);
@@ -1278,7 +1278,7 @@ namespace grb {
 		std::array< const void *, 4 > sources{ &_m, &_a, &beta, &gamma };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_BETA,
+			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_BETA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), internal::getVector(_a), beta,  gamma, ring);
@@ -1301,7 +1301,7 @@ namespace grb {
 		std::array< const void *, 2 > sources{ &_m, &_x };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA,
+			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(_z), internal::getVector(_m), alpha, internal::getVector(_x), gamma, ring);
@@ -1326,7 +1326,7 @@ namespace grb {
 		std::array< const void *, 4 > sources{ &m, &y, &alpha, &beta };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_TWO_VECTOR_ALPHA_BETA,
+			internal::hyperdags::EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), internal::getVector(m), alpha, beta, internal::getVector(y), ring);
@@ -1350,7 +1350,7 @@ namespace grb {
 		std::array< const void *, 4 > sources{ &m, &alpha, &beta, &gamma };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA,
+			internal::hyperdags::EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseMulAdd <descr> (internal::getVector(z), internal::getVector(m), alpha, beta, gamma, ring);

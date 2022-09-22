@@ -92,11 +92,79 @@ std::string grb::internal::hyperdags::toString(
 		 	return "buildVector(vector, scalar, scalar, scalar, scalar)";	
 		
 		 case BUILD_VECTOR_WITH_VALUES:
-		 	return "buildVector(vector, scalar, scalar, scalar, scalar, scalar)";			
+		 	return "buildVector(vector, scalar, scalar, scalar, scalar, scalar)";
+		 
+		 case SIZE:
+		 	return "size(vector)";	
+		 
+		 case EWISEAPPLY_VECTOR_VECTOR:
+		 	return "eWiseApply(vector, vector, vector, scalar, monoid)";
+		 
+		 case EWISEAPPLY_VECTOR_BETA:
+		 	return "eWiseApply(vector, scalar, vector, operation)";
+		 
+		 case EWISEAPPLY_VECTOR_VECTOR_BETA:
+		 	return "eWiseApply(vector, vector, vector, scalar, monoid)";
+		 
+		 case EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA:
+		 	return "eWiseApply(vector, vector, vector, scalar, operation)";
+		 	
+		 case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR:
+		 	return "eWiseApply(vector, vector, scalar, vector, monoid)";
+		 
+		 case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP:
+		 	return "eWiseApply(vector, vector, scalar, vector, operation)"; 
+		 
+		 case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP:
+		 	return "eWiseApply(vector, vector, vector, vector, operation)";
+		 
+		 case EWISEAPPLY_VECTOR_SCALAR_MONOID:
+		 	return "eWiseApply(vector, vector, scalar, monoid)";
+		 
+		 case EWISEAPPLY_SCALAR_VECTOR_MONOID:
+		 	return "eWiseApply(vector, scalar, vector, monoid)";
+		 
+		 case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID:
+		 	return "eWiseApply(vector, vector, vector, vector, monoid)";
+		 
+		 case EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID:
+		 	return "eWiseApply(vector, vector, vector, monoid)";
+		 
+		 case EWISE_MUL_ADD:
+		 	return "eWiseMulAdd(vector, vector, vector, vector, vector, ring)";
+		 
+		 case EWISE_MUL_ADD_FOUR_VECTOR:
+		 	return "eWiseMulAdd(vector, vector, vector, vector, scalar, ring)";
+		 	
+		 case EWISE_MUL_ADD_THREE_VECTOR_ALPHA:
+		 	return "eWiseMulAdd(vector, scalar, vector, scalar, ring)";	
+		 
+		 case EWISE_MUL_ADD_THREE_VECTOR_CHI:
+		 	return "eWiseMulAdd(vector, vector, scalar, vector, ring)";
+		
+		case EWISE_MUL_ADD_FOUR_VECTOR_CHI:
+		 	return "eWiseMulAdd(vector, vector, vector, scalar, vector, ring)";
+		 	
+		case EWISE_MUL_ADD_FOUR_VECTOR_CHI_RING:
+			return "eWiseMulAdd(vector, vector, vector, scalar, vector, ring)";
 			
-			
-			
-			
+		case EWISE_MUL_ADD_THREE_VECTOR_BETA:
+			return "eWiseMulAdd(vector, vector, vector, scalar, scalar, ring)";
+		
+		case EWISE_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA:
+			return "eWiseMulAdd(vector, vector, vector, scalar, ring)";
+		
+		case EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA:
+			return "eWiseMulAdd(vector, vector, scalar, scalar, vector, ring)";
+		
+		case EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA:
+			return "eWiseMulAdd(vector, vector, scalar, scalar, scalar, ring)";
+		
+		//case EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE:
+		//	return "";
+		
+				
+		
 	}
 	assert( false );
 	return "unknown operation";
