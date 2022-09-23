@@ -19,6 +19,8 @@
 #define _H_TEST_UTILS_PRINT_ALP_CONTAINERS
 
 #include <iomanip>
+#include <cstdlib>
+#include <climits>
 
 #include <alp.hpp>
 
@@ -45,7 +47,9 @@ void print_matrix( std::string name, const MatrixType &A ) {
 				const auto k = ( !is_sym || ( is_sym && ( sym_up == ( row < col ) ) ) ) ?
 					alp::internal::getStorageIndex( A, row, col ) :
 					alp::internal::getStorageIndex( A, col, row );
-				std::cout << std::setprecision( 10 ) << "\t" << alp::internal::access( A, k );
+				auto val = alp::internal::access( A, k );
+				val = std::abs(val) < 1.e-10 ? 0 : val;
+				std::cout << std::setprecision( 10 ) << "\t" << val  ;
 				if( col + 1 != alp::ncols( A ) ) {
 					std::cout <<  ",";
 				}

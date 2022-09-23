@@ -28,11 +28,6 @@
 
 using namespace alp;
 
-#ifdef TEMPDISABLE
-typedef alp::structures::Symmetric Symmetric;
-#else
-typedef alp::structures::Symmetric Symmetric;
-#endif
 typedef double ScalarType;
 constexpr ScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
@@ -174,7 +169,7 @@ RC check_solution(
 	);
 #endif
 #ifdef DEBUG
-	print_matrix( " << QTQtmH >> ", QTQtmH ); <<<-- that to do with the symmetry
+	print_matrix( " << QTQtmH >> ", QTQtmH );
 #endif
 
 	//Frobenius norm
@@ -222,11 +217,11 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	// dimensions of sqare matrices H, Q and R
 	size_t N = unit;
 
-	alp::Matrix< ScalarType, Symmetric > H( N );
+	alp::Matrix< ScalarType, structures::Symmetric > H( N );
 	//alp::Matrix< ScalarType, structures::Orthogonal > Q( N );
 	alp::Matrix< ScalarType, structures::Square > Q( N );
 	//alp::Matrix< ScalarType, structures::SymmetricTridiagonal > T( N );
-	alp::Matrix< ScalarType, Symmetric > T( N );
+	alp::Matrix< ScalarType, structures::Symmetric > T( N );
 
 	{
 // #ifdef TEMPDISABLE
