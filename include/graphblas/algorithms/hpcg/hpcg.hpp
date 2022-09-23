@@ -121,7 +121,7 @@ namespace grb {
 			ret = ret ? ret : grb::set( p, 0 );
 
 			ret = ret ? ret : grb::set( p, x );
-			ret = ret ? ret : grb::mxv( Ap, A, x, ring ); // Ap = A * x
+			ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, x, ring ); // Ap = A * x
 			assert( ret == SUCCESS );
 
 			ret = ret ? ret : grb::eWiseApply( r, b, Ap, minus ); // r = b - Ap;
@@ -186,7 +186,7 @@ namespace grb {
 #endif
 
 				ret = ret ? ret : grb::set( Ap, 0 );
-				ret = ret ? ret : grb::mxv( Ap, A, p, ring ); // Ap = A * p;
+				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, p, ring ); // Ap = A * p;
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( Ap, "middle Ap" );

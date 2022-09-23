@@ -41,6 +41,8 @@
 // here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
 #ifdef HPCG_PRINT_STEPS
 
+#include <cstdio>
+
 // HPCG_PRINT_STEPS requires defining the following symbols
 
 /**
@@ -176,15 +178,16 @@ template< typename T,
 		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
 	>
 void print_norm( const grb::Vector< T > & r, const char * head, const Ring & ring ) {
-	T norm;
-	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
+	T norm = 0;
+	RC ret = grb::dot( norm, r, r, ring ); // norm = r' * r;
 	(void)ret;
 	assert( ret == SUCCESS );
-	std::cout << ">>> ";
 	if( head != nullptr ) {
 		std::cout << head << ": ";
+		printf(">>> %s: %lf\n", head, norm );
+	} else {
+		printf(">>> %lf\n", norm );
 	}
-	std::cout << norm << std::endl;
 }
 #endif
 
@@ -377,7 +380,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 			" by the minimum system dimension" )
 		.add_optional_argument( "--test-rep", sim_in.test_repetitions, grb::config::BENCHMARKING::inner(), "consecutive test repetitions before benchmarking" )
 		.add_optional_argument( "--init-iter", outer_iterations, grb::config::BENCHMARKING::outer(), "test repetitions with complete initialization" )
-		.add_optional_argument( "--max_iter", sim_in.max_iterations, MAX_ITERATIONS_DEF, "maximum number of HPCG iterations" )
+		.add_optional_argument( "--max-iter", sim_in.max_iterations, MAX_ITERATIONS_DEF, "maximum number of HPCG iterations" )
 		.add_optional_argument( "--max-residual-norm", max_residual_norm, MAX_NORM,
 			"maximum norm for the residual to be acceptable (does NOT limit "
 			"the execution of the algorithm)" )

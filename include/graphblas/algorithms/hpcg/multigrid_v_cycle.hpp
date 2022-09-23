@@ -76,7 +76,7 @@ namespace grb {
 				// actual coarsening, from  ncols(*coarsening_data->A) == *coarsening_data->system_size * 8
 				// to *coarsening_data->system_size
 				ret = ret ? ret : grb::set( coarsening_data.r, 0 );
-				ret = ret ? ret : grb::mxv( coarsening_data.r, coarsening_data.coarsening_matrix, coarsening_data.Ax_finer,
+				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( coarsening_data.r, coarsening_data.coarsening_matrix, coarsening_data.Ax_finer,
 									  ring ); // r = coarsening_matrix * Ax_finer
 				return ret;
 			}
@@ -108,7 +108,7 @@ namespace grb {
 				// to nrows(x_fine)
 				ret = ret ? ret : set( coarsening_data.Ax_finer, 0 );
 
-				ret = ret ? ret : grb::mxv< grb::descriptors::transpose_matrix >( coarsening_data.Ax_finer, coarsening_data.coarsening_matrix, coarsening_data.z, ring );
+				ret = ret ? ret : grb::mxv< grb::descriptors::transpose_matrix | grb::descriptors::dense >( coarsening_data.Ax_finer, coarsening_data.coarsening_matrix, coarsening_data.z, ring );
 				assert( ret == SUCCESS );
 
 				ret = ret ? ret : grb::foldl( x_fine, coarsening_data.Ax_finer, ring.getAdditiveMonoid() ); // x_fine += Ax_finer;
@@ -216,7 +216,7 @@ namespace grb {
 #endif
 
 				ret = ret ? ret : grb::set( cd.Ax_finer, 0 );
-				ret = ret ? ret : grb::mxv( cd.Ax_finer, data.A, data.z, ring );
+				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( cd.Ax_finer, data.A, data.z, ring );
 				assert( ret == SUCCESS );
 
 				ret = ret ? ret : compute_coarsening( data.r, cd, ring, minus );

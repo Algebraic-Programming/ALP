@@ -29,7 +29,6 @@
 
 #include <graphblas.hpp>
 
-
 namespace grb {
 	namespace algorithms {
 		namespace internal {
@@ -77,11 +76,11 @@ namespace grb {
 					                // nonetheless, it is left not to violate the semantics of RBGS in case also the false values
 					                // had been initialized (in which case the check is fundamental); if only true values were initialized,
 					                // we expect CPU branch prediction to neutralize the branch cost
-									if( color_mask[ i ] ) {
+									// if( color_mask[ i ] ) {
 										IOType d = A_diagonal[ i ];
 										IOType v = r[ i ] - smoother_temp[ i ] + x[ i ] * d;
 										x[ i ] = v / d;
-									}
+									// }
 								},
 								color_mask, x, r, smoother_temp, A_diagonal );
 				assert( ret == SUCCESS );
