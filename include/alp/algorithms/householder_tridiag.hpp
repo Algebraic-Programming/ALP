@@ -46,21 +46,17 @@ namespace alp {
 		 */
 		template<
 			typename D = double,
+			typename SymmOrHermType,
+			typename SymmOrHermTridiagonalType,
+			typename OrthogonalType,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
-			class Divide = operators::divide< D > >
+			class Divide = operators::divide< D >
+		>
 		RC householder_tridiag(
-#ifndef TEMPDISABLE
-			Matrix< D, structures::Orthogonal, Dense > &Q,
-#else
-			Matrix< D, structures::Square, Dense > &Q,
-#endif
-#ifndef TEMPDISABLE
-			Matrix< D, SymmetricTridiagonal, Dense > &T, // Need to be add this once alp -> alp is done
-#else
-			Matrix< D, structures::Symmetric, Dense > &T,
-#endif
-			const Matrix< D, structures::Symmetric, Dense > &H,
+			Matrix< D, OrthogonalType, Dense > &Q,
+			Matrix< D, SymmOrHermTridiagonalType, Dense > &T,
+			const Matrix< D, SymmOrHermType, Dense > &H,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide() ) {
@@ -81,7 +77,7 @@ namespace alp {
 			}
 
 			// Out of place specification of the computation
-			Matrix< D, structures::Symmetric, Dense > RR( n );
+			Matrix< D, SymmOrHermType, Dense > RR( n );
 
 			// auto RR = get_view< view::transpose >( R0 ); 
 			rc = set( RR, H );
@@ -94,11 +90,7 @@ namespace alp {
 #endif
 
 			// a temporary for storing the mxm result
-#ifndef TEMPDISABLE
-			Matrix< D, structures::Orthogonal, Dense > Qtmp( n, n );
-#else
-			Matrix< D, structures::Square, Dense > Qtmp( n, n );
-#endif
+			Matrix< D, OrthogonalType, Dense > Qtmp( n, n );
 
 			for( size_t k = 0; k < n - 2; ++k ) {
 #ifdef DEBUG
@@ -162,13 +154,13 @@ namespace alp {
 
 				// ===== Calculate reflector Qk =====
 				// Q_k = identity( n )
-				Matrix< D, structures::Symmetric, Dense > Qk( n );
+				Matrix< D, SymmOrHermType, Dense > Qk( n );
 				rc = alp::set( Qk, zero );
 				auto Qk_diag = alp::get_view< alp::view::diagonal >( Qk );
 				rc = rc ? rc : alp::set( Qk_diag, one );
 
 				// this part can be rewriten without temp matrix using functors
-				Matrix< D, structures::Symmetric, Dense > vvt( m );
+				Matrix< D, SymmOrHermType, Dense > vvt( m );
 
 				// vvt = v * v^T
 				rc = set(vvt, outer( v, ring.getMultiplicativeOperator() ) );
@@ -222,11 +214,8 @@ namespace alp {
 			}
 
 			// T = RR
-#ifndef TEMPDISABLE
-			rc = set( T, get_view< SymmetricTridiagonal > ( RR ) );
-#else
-			rc = set( T, get_view< structures::Symmetric > ( RR ) );
-#endif
+
+			rc = set( T, get_view< SymmOrHermTridiagonalType > ( RR ) );
 			return rc;
 		}
 	} // namespace algorithms
