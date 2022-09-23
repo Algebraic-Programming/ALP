@@ -37,21 +37,30 @@ void print_matrix( std::string name, const MatrixType &A ) {
 	// Temporary until adding multiple symmetry directions
 	constexpr bool sym_up { is_sym };
 
-	std::cout << name << ":" << std::endl;
+	std::cout << name << "= [\n";
 	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
-		std::cout << "|";
+		std::cout << " [";
 		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
 			if( alp::is_non_zero< typename alp::inspect_structure< MatrixType >::type >( row, col ) ) {
 				const auto k = ( !is_sym || ( is_sym && ( sym_up == ( row < col ) ) ) ) ?
 					alp::internal::getStorageIndex( A, row, col ) :
 					alp::internal::getStorageIndex( A, col, row );
-				std::cout << std::setprecision( 3 ) << "\t" << alp::internal::access( A, k );
+				std::cout << std::setprecision( 10 ) << "\t" << alp::internal::access( A, k );
+				if( col + 1 != alp::ncols( A ) ) {
+					std::cout <<  ",";
+				}
 			} else {
 				std::cout << std::setprecision( 0 ) << "\t" << ".";
 			}
 		}
-		std::cout << "\t" << "|" << "\n";
+		if( row + 1 != alp::nrows( A ) ) {
+			std::cout << "\t" << "]," << "\n";
+		} else {
+			std::cout << "\t" << "]" << "\n";
+		}
+
 	}
+	std::cout << "]\n";
 }
 
 template<
