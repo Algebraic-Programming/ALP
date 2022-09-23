@@ -205,7 +205,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< DataType >::value &&
 		! grb::is_object< T >::value, void >::type * const = NULL ) 	{
 
-		std::array< const void *, 2 > sources{ &m };
+		std::array< const void *, 2 > sources{ &m, val };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_USING_MASK_AND_SCALAR,
@@ -897,10 +897,10 @@ namespace grb {
 		&& grb::is_operator< OP >::value,
 		void >::type * const = NULL){
 
-		std::array< const void *, 1 > sources{ &x };
+		std::array< const void *, 2 > sources{ &x, &beta };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR,
+			internal::hyperdags::EWISEAPPLY_VECTOR_BETA,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseApply <descr> (internal::getVector(z), internal::getVector(x), beta, op);
@@ -918,10 +918,10 @@ namespace grb {
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value
 		&& grb::is_operator< OP >::value, void >::type * const = NULL )	{
 
-		std::array< const void *, 1 > sources{ &y };
+		std::array< const void *, 2 > sources{ &y, &alpha };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_BETA,
+			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR,
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseApply <descr> (internal::getVector(z), alpha, internal::getVector(y), op);
@@ -940,7 +940,7 @@ namespace grb {
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value,
 		void >::type * const = NULL )	{
 
-		std::array< const void *, 2 > sources{ &x, &mask };
+		std::array< const void *, 3 > sources{ &x, &mask, &beta };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA,
@@ -962,7 +962,7 @@ namespace grb {
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value,
 		void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{ &x, &mask };
+		std::array< const void *, 3 > sources{ &x, &mask, &beta  };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA,
@@ -984,7 +984,7 @@ namespace grb {
 		>::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid
 		>::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 3 > sources{ &mask, &y, &alpha };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR,
@@ -1005,7 +1005,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< MaskType >::value &&
 		! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< OP >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 3 > sources{ &mask, &y, &alpha };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP,
@@ -1073,7 +1073,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 1 > sources{ &y };
+		std::array< const void *, 2 > sources{ &y, &alpha };
 		std::array< const void *, 1 > destinations{ &z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_SCALAR_VECTOR_MONOID,
@@ -1162,7 +1162,7 @@ namespace grb {
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 3 > sources{ &_m, &_a, &_x };
+		std::array< const void *, 4 > sources{ &_m, &_a, &_x, &gamma };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR,
@@ -1184,7 +1184,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{ &_x, &_y };
+		std::array< const void *, 3 > sources{ &_x, &_y, &alpha };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_ALPHA,
@@ -1205,7 +1205,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value &&
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL ){
 
-		std::array< const void *, 2 > sources{ &_a, &_y };
+		std::array< const void *, 3 > sources{ &_a, &_y, &chi };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_CHI,
@@ -1228,7 +1228,7 @@ namespace grb {
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 3 > sources{ &_m, &_x, &_y };
+		std::array< const void *, 4 > sources{ &_m, &_x, &_y, &alpha };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR_CHI,
@@ -1251,7 +1251,7 @@ namespace grb {
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 3 > sources{ &_m, &_a, &_y };
+		std::array< const void *, 4 > sources{ &_m, &_a, &_y, &chi };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_FOUR_VECTOR_CHI_RING,
@@ -1298,7 +1298,7 @@ namespace grb {
 		! grb::is_object< InputType2 >::value && ! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value &&
 		! grb::is_object< MaskType >::value, void >::type * const = NULL ) {
 
-		std::array< const void *, 2 > sources{ &_m, &_x };
+		std::array< const void *, 4 > sources{ &_m, &_x, &alpha, &gamma };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISE_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA,
@@ -1388,7 +1388,7 @@ namespace grb {
 		grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 		! grb::is_object< InputType3 >::value && grb::is_semiring< Ring >::value, void >::type * const = NULL )
 		{
-		std::array< const void *, 2 > sources{ &_a, &_x };
+		std::array< const void *, 3 > sources{ &_a, &_x, &gamma };
 		std::array< const void *, 1 > destinations{ &_z };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING,
