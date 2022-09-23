@@ -22,9 +22,8 @@
 #include <alp/algorithms/householder_tridiag.hpp>
 #include "../utils/print_alp_containers.hpp"
 
-#define DEBUG
-
-//#define TEMPDISABLE
+//once TEMPDISABLE is remnoved the code should be in the final version
+#define TEMPDISABLE
 
 using namespace alp;
 
@@ -32,21 +31,6 @@ typedef double ScalarType;
 constexpr ScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
-// #ifdef TEMPDISABLE
-// //***********************//
-// //temp functions
-// template< typename T >
-// void generate_general_symm_matrix( size_t N, std::vector<T> &data ) {
-// 	size_t k = 0;
-// 	for( size_t i = 0; i < N; ++i ) {
-// 		for( size_t j = 0; j < N; ++j ) {
-// 			data[ k ] = static_cast< T >( i + j * j ) ;
-// 			++k;
-// 		}
-// 	}
-// }
-// //***********************//
-// #else
 //** gnerate upper/lower triangular part of a Symmetric matrix */
 template< typename T >
 void generate_symm_matrix( size_t N, std::vector<T> &data ) {
@@ -54,13 +38,12 @@ void generate_symm_matrix( size_t N, std::vector<T> &data ) {
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ k ] = static_cast< T >( i + j*j ) ;
-			// data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			//data[ k ] = static_cast< T >( i + j*j ) ;
+			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
 			++k;
 		}
 	}
 }
-// #endif
 
 //** check if rows/columns or matrix Q are orthogonal */
 template<
@@ -145,45 +128,51 @@ RC check_solution(
 
 	rc = rc ? rc : set( QTQt, zero );
 	rc = rc ? rc : mxm( QTQt, T, alp::get_view< alp::view::transpose >( Q ), ring );
-#ifdef DEBUG
-	print_matrix( " << TQt >> ", QTQt );
-#endif
 	rc = rc ? rc : set( QTQtmH, zero );
 	rc = rc ? rc : mxm( QTQtmH, Q, QTQt, ring );
 	rc = rc ? rc : set( QTQt, QTQtmH );
 #ifdef DEBUG
-	print_matrix( " << QTQt >> ", QTQt );
+	print_matrix( " << QTQtmH >> ", QTQtmH );
+	print_matrix( " << H >> ", H );
+	std::cout << "call foldl( mat, mat, minus )\n";
 #endif
+
 #ifndef TEMPDISABLE
 	rc = foldl( QTQtmH, H, minus );
 #else
 	rc = rc ? rc : alp::eWiseLambda(
-		[ &H, &minus ]( const size_t i, const size_t j, D &val ) {
-			internal::foldl(
-				val,
-				internal::access( H, internal::getStorageIndex( H, i, j ) ),
-				minus
-			);
+		[ &H, &minus, &zero ]( const size_t i, const size_t j, D &val ) {
+			if ( j >= i ) {
+				internal::foldl(
+					val,
+					internal::access( H, internal::getStorageIndex( H, i, j ) ),
+					minus
+				);
+			} else {
+				val = *zero;
+			}
 		},
 		QTQtmH
 	);
 #endif
+
 #ifdef DEBUG
 	print_matrix( " << QTQtmH >> ", QTQtmH );
+	print_matrix( " << H >> ", H );
 #endif
 
 	//Frobenius norm
-	D fnorm = 0;
+	D fnorm = ring.template getZero< D >();
 	rc = rc ? rc : alp::eWiseLambda(
-		[ &fnorm ]( const size_t i, const size_t j, D &val ) {
-			(void)i;
-			(void)j;
-			fnorm += val * val;
+		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
 		},
 		QTQtmH
 	);
-
 	fnorm = std::sqrt( fnorm );
+
 #ifdef DEBUG
 	std::cout << " FrobeniusNorm(H-QTQt) = " << fnorm << "\n";
 #endif
@@ -224,18 +213,10 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< ScalarType, structures::Symmetric > T( N );
 
 	{
-// #ifdef TEMPDISABLE
-// 		std::vector< ScalarType > matrix_data( N * N );
-// 		generate_general_symm_matrix( N, matrix_data );
-// #else
 		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
 		generate_symm_matrix( N, matrix_data );
-// #endif
 
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
-#ifdef DEBUG
-		print_matrix( " << H >> ", H );
-#endif
 	}
 
 	rc = algorithms::householder_tridiag( Q, T, H, ring );
