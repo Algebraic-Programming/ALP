@@ -205,7 +205,7 @@ namespace grb {
 		const typename std::enable_if< ! grb::is_object< DataType >::value &&
 		! grb::is_object< T >::value, void >::type * const = NULL ) 	{
 
-		std::array< const void *, 2 > sources{ &m, val };
+		std::array< const void *, 2 > sources{ &m, &val };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_USING_MASK_AND_SCALAR,
