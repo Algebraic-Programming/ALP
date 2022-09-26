@@ -132,19 +132,28 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		}
 
 		// Check numerical correctness
-		// Elements in the submatrix should be equal to
-		//     alpha_value * A_value * B_value * k + beta_value * C_value,
-		// while the elements outside the submatrix should be equal to
-		//     C_value.
 		for( size_t i = 0; i < alp::nrows( C ); ++i ) {
 			for( size_t j = 0; j < alp::nrows( C ); ++j ) {
 
-				const double expected_value = ( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) ?
-					alpha_value * A_value * B_value * k + beta_value * C_value :
-					C_value;
+				// Calculate the expected value
+				double expected_value;
 
+				if( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) {
+					double mxm_res = 0;
+					for( size_t kk = startAc; kk < startAc + k * stride; kk += stride ) {
+						const double A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, i, kk ) );
+						const double B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, kk, j ) );
+						mxm_res += A_val * B_val;
+					}
+					expected_value = alpha_value * mxm_res + beta_value * C_value;
+				} else {
+					expected_value = C_value;
+				}
+
+				// Obtain the value calculated by the gemm-like algorithm
 				const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
 
+				// Compare and report
 				if( expected_value != calculated_value ) {
 #ifndef NDEBUG
 					std::cerr << "Numerically incorrect: "
