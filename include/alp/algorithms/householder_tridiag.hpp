@@ -18,7 +18,7 @@
 #include <sstream>
 
 #include <alp.hpp>
-
+#include <alp/utils/iscomplex.hpp> // tmp copy from grb, change after rebase
 #include "../tests/utils/print_alp_containers.hpp"
 
 //once TEMPDISABLE is remnoved the code should be in the final version
@@ -56,7 +56,7 @@ namespace alp {
 		RC householder_tridiag(
 			Matrix< D, OrthogonalType, Dense > &Q,
 			Matrix< D, SymmOrHermTridiagonalType, Dense > &T,
-			const Matrix< D, SymmOrHermType, Dense > &H,
+			Matrix< D, SymmOrHermType, Dense > &H,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide() ) {
@@ -79,7 +79,6 @@ namespace alp {
 			// Out of place specification of the computation
 			Matrix< D, SymmOrHermType, Dense > RR( n );
 
-			// auto RR = get_view< view::transpose >( R0 ); 
 			rc = set( RR, H );
 			if( rc != SUCCESS ) {
 				std::cerr << " set( RR, H ) failed\n";
@@ -117,7 +116,20 @@ namespace alp {
 				}
 
 				Scalar< D > alpha( zero );
+				//in the final version norm2 should work
+				//out of the box, then remove #ifdef _COMPLEX
+#ifdef _COMPLEX
+				rc = rc ? rc : eWiseLambda(
+					[ &alpha ]( const size_t i, D &val ) {
+						(void) i;
+						*alpha = *alpha + std::norm( val );
+					},
+					v
+				);
+				*alpha = std::sqrt( *alpha );
+#else
 				rc = norm2( alpha, v, ring );
+#endif
 				if( rc != SUCCESS ) {
 					std::cerr << " norm2( alpha, v, ring ) failed\n";
 					return rc;
@@ -140,7 +152,21 @@ namespace alp {
 				}
 
 				Scalar< D > norm_v( zero );
+				//in the final version norm2 should work
+				//out of the box, then remove #ifdef _COMPLEX
+#ifdef _COMPLEX
+				rc = rc ? rc : eWiseLambda(
+					[ &norm_v ]( const size_t i, D &val ) {
+						(void) i;
+						*norm_v = *norm_v + std::norm( val );
+					},
+					v
+				);
+				*norm_v = std::sqrt( *norm_v );
+#else
 				rc = norm2( norm_v, v, ring );
+#endif
+
 				if( rc != SUCCESS ) {
 					std::cerr << " norm2( norm_v, v, ring ) failed\n";
 					return rc;
@@ -162,8 +188,35 @@ namespace alp {
 				// this part can be rewriten without temp matrix using functors
 				Matrix< D, SymmOrHermType, Dense > vvt( m );
 
-				// vvt = v * v^T
-				rc = rc ? rc : set(vvt, outer( v, ring.getMultiplicativeOperator() ) );
+				// vvt = v * v^H  (^H = ^T*)
+				//there should be no need to have separate version for _COMPLEX
+				// once outer(v) on complex==D returrn symmetric-hermitian
+				// this ifdef should be then removed
+				// to implement outer(v) , dot() and norm2() we need to use
+				// utisl/iscomplex.hpp, from blas1,2,3, not sure if tihs is ok
+				//complex outer should return (symmetric)hermitian
+				//set will not work untill this is supported
+
+#ifdef _COMPLEX
+
+#ifdef TEMPDISABLE
+				rc = rc ? rc : set( vvt, zero );
+				internal::setInitialized( vvt, true );
+				rc = rc ? rc : alp::eWiseLambda(
+					[ &v ]( const size_t i, const size_t j, D &val ) {
+						//coulum-wise algorithm version outer(v,conj(v))
+						// val = v[ i ] * grb::utils::is_complex< D >::conjugate( v[ j ]  );
+						//row-wise algorithm version outer(conj(v),v)
+						val = v[ j ] * grb::utils::is_complex< D >::conjugate( v[ i ]  );
+
+					}
+					,
+					vvt
+				);
+#endif
+#else
+				rc = rc ? rc : set( vvt, outer( v, ring.getMultiplicativeOperator() ) );
+#endif
 
 				// vvt = 2 * vvt
 				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
@@ -183,13 +236,20 @@ namespace alp {
 				// ===== End of Calculate reflector Qk ====
 
 				// ===== Update R =====
-				// Rk = Qk * Rk * Qk^T
+				// Rk = Qk * Rk * Qk
 
 				// RRQk = RR * Qk
 				Matrix< D, structures::Square, Dense > RRQk( n );
 				rc = rc ? rc : set( RRQk, zero );
 				rc = rc ? rc : mxm( RRQk, RR, Qk, ring );
-				// RR = QkT * RRQk
+				if( rc != SUCCESS ) {
+					std::cerr << " mxm( RRQk, RR, Qk, ring ); failed\n";
+					return rc;
+				}
+#ifdef DEBUG
+				print_matrix( " << RR x Qk = >> ", RRQk );
+#endif
+				// RR = Qk * RRQk
 				rc = rc ? rc : set( RR, zero );
 				rc = rc ? rc : mxm( RR, Qk, RRQk, ring );
 
@@ -199,9 +259,9 @@ namespace alp {
 				// ===== End of Update R =====
 
 				// ===== Update Q =====
-				// Q = Q * conjugate( QkT )
+				// Q = Q * Qk
 
-				// Qtmp = Q * QkT
+				// Qtmp = Q * Qk
 				rc = rc ? rc : set( Qtmp, zero );
 				rc = rc ? rc : mxm( Qtmp, Q, Qk, ring );
 
