@@ -103,18 +103,18 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		const bool transposeB = config.second;
 
 		// dimensions of views over A, B and C
-		size_t m = unit;
+		size_t m = 1 * unit;
 		size_t n = 2 * unit;
 		size_t k = 3 * unit;
 
 		// Set parameters to the gemm-like algorithm
 		const size_t startAr = 1;
-		const size_t startAc = 1;
-		const size_t startBr = 2;
-		const size_t startBc = 2;
-		const size_t startCr = 3;
-		const size_t startCc = 3;
-		const size_t stride = 1;
+		const size_t startAc = 2;
+		const size_t startBr = 3;
+		const size_t startBc = 4;
+		const size_t startCr = 5;
+		const size_t startCc = 6;
+		const size_t stride = 2;
 
 		rc = rc ? rc : set( C, C_orig );
 #ifndef NDEBUG
