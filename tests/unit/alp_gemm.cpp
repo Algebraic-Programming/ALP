@@ -156,8 +156,12 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 				if( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) {
 					double mxm_res = 0;
 					for( size_t kk = startAc; kk < startAc + k * stride; kk += stride ) {
-						const double A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, i, kk ) );
-						const double B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, kk, j ) );
+						const size_t A_i = transposeA ? kk : i;
+						const size_t A_j = transposeA ? i : kk;
+						const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, A_i, A_j ) );
+						const size_t B_i = transposeB ? j : kk;
+						const size_t B_j = transposeB ? kk : j;
+						const auto B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, B_i, B_j ) );
 						mxm_res += A_val * B_val;
 					}
 					expected_value = alpha_value * mxm_res + beta_value * C_orig_value;
