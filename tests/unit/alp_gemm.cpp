@@ -153,14 +153,21 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 				double expected_value;
 				double C_orig_value = alp::internal::access( C_orig, alp::internal::getStorageIndex( C_orig, i, j ) );
 
-				if( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) {
+				if(
+					( i >= startCr ) && ( i < startCr + m * stride ) &&
+					( j >= startCc ) && ( j < startCc + n * stride ) &&
+					( ( i - startCr ) % stride == 0 ) &&
+					( ( j - startCc ) % stride == 0 )
+				) {
 					double mxm_res = 0;
-					for( size_t kk = startAc; kk < startAc + k * stride; kk += stride ) {
-						const size_t A_i = transposeA ? kk : i;
-						const size_t A_j = transposeA ? i : kk;
+					for( size_t kk = 0; kk < k; ++kk ) {
+						const size_t sub_i = ( i - startCr ) / stride;
+						const size_t sub_j = ( j - startCc ) / stride;
+						const size_t A_i = startAr + stride * ( transposeA ? kk : sub_i );
+						const size_t A_j = startAc + stride * ( transposeA ? sub_i : kk );
 						const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, A_i, A_j ) );
-						const size_t B_i = transposeB ? j : kk;
-						const size_t B_j = transposeB ? kk : j;
+						const size_t B_i = startBr + stride * ( transposeB ? sub_j : kk );
+						const size_t B_j = startBc + stride * ( transposeB ? kk : sub_j );
 						const auto B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, B_i, B_j ) );
 						mxm_res += A_val * B_val;
 					}
