@@ -288,6 +288,8 @@ runMultiplicationKernels()
 	local dataSet=$3
 	local parseMode=$4
 
+	# the check for the matrices existence is assumed to have already passed
+
 	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
 
 		# ---------------------------------------------------------------------
