@@ -36,19 +36,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		a = b;
 		a = b;
 	}
+#if 0 // disable below only if operator= is defined for grb::Matrix
 	if( n > 17 ) {
 		Matrix< void > A( n, n, 1 ), B( n, n, 1 );
 		size_t anInteger = 17;
-		const size_t * const end = (&anInteger) + 1;
-		rc = buildMatrixUnique( A, &anInteger, end, &anInteger, end, SEQUENTIAL );
+		const size_t * const start = &anInteger;
+		rc = buildMatrixUnique( A, start, start, 1, SEQUENTIAL );
 		anInteger = 7;
-		rc = rc ? rc : buildMatrixUnique( B, &anInteger, end, &anInteger, end, SEQUENTIAL );
+		rc = rc ? rc : buildMatrixUnique( B, start, start, 1, SEQUENTIAL );
 		A = B;
 		A = B;
 	} else {
 		std::cerr << "Warning: part of the test is disabled-- "
 			<< "please choose a larger size n\n";
 	}
+#endif
 	return;
 }
 
