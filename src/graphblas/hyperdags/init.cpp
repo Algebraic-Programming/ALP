@@ -55,6 +55,13 @@ grb::RC grb::finalize< grb::hyperdags >() {
 			<< "no. " << it->getLocalID()
 			<< "\n";
 	}
+	std::cout << "%\t Output vertices:\n";
+	for( auto it = hyperdag.outputsBegin(); it != hyperdag.outputsEnd(); ++it ) {
+		std::cout << "%\t\t " << it->getGlobalID() << ": "
+			<< grb::internal::hyperdags::toString( it->getType() ) << " "
+			<< "no. " << it->getLocalID()
+			<< "\n";
+	}
 	std::cout << hypergraph.numHyperedges() << " "
 		<< hypergraph.numVertices() << " "
 		<< hypergraph.numPins() << "\n";

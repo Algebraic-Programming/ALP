@@ -42,6 +42,20 @@ std::string grb::internal::hyperdags::toString(
 }
 
 std::string grb::internal::hyperdags::toString(
+	const enum OutputVertexType type
+) noexcept {
+	switch( type ) {
+
+		case CONTAINER_OUTPUT:
+			return "output container";
+
+	}
+	assert( false );
+	return "unidentified output vertex type";
+}
+
+
+std::string grb::internal::hyperdags::toString(
 	const enum OperationVertexType type
 ) noexcept {
 	switch( type ) {
@@ -358,7 +372,7 @@ grb::internal::hyperdags::SourceVertex grb::internal::hyperdags::SourceVertexGen
 	const size_t global_id
 ) {
 	const size_t local_id = (nextID[ type ])++;
-	grb::internal::hyperdags::SourceVertex ret( type, local_id, global_id );
+	grb::internal::hyperdags::SourceVertex ret(type, local_id, global_id );
 	return ret;
 }
 
@@ -380,7 +394,11 @@ size_t grb::internal::hyperdags::SourceVertexGenerator::size() const {
 grb::internal::hyperdags::OutputVertex::OutputVertex(
 	const size_t _lid,
 	const size_t _gid
-) noexcept : local_id( _lid ), global_id( _gid ) {}
+) noexcept : local_id( _lid ), global_id( _gid ) {type = OutputVertexType::CONTAINER_OUTPUT;}
+
+enum grb::internal::hyperdags::OutputVertexType grb::internal::hyperdags::OutputVertex::getType() const noexcept {
+	return type;
+}
 
 size_t grb::internal::hyperdags::OutputVertex::getLocalID() const noexcept {
 	return local_id;
@@ -395,7 +413,7 @@ grb::internal::hyperdags::OutputVertexGenerator::OutputVertexGenerator() noexcep
 grb::internal::hyperdags::OutputVertex grb::internal::hyperdags::OutputVertexGenerator::create(
 	const size_t global_id
 ) {
-	grb::internal::hyperdags::OutputVertex ret( nextID++, global_id );
+	grb::internal::hyperdags::OutputVertex ret(nextID++, global_id );
 	return ret;
 }
 
@@ -548,6 +566,16 @@ grb::internal::hyperdags::HyperDAG::sourcesEnd() const {
 	return sourceVertices.cend();
 }
 
+std::vector< grb::internal::hyperdags::OutputVertex >::const_iterator
+grb::internal::hyperdags::HyperDAG::outputsBegin() const {
+	return outputVertices.cbegin();
+}
+
+std::vector< grb::internal::hyperdags::OutputVertex >::const_iterator
+grb::internal::hyperdags::HyperDAG::outputsEnd() const {
+	return outputVertices.cend();
+}
+
 grb::internal::hyperdags::HyperDAGGenerator::HyperDAGGenerator() noexcept {}
 
 void grb::internal::hyperdags::HyperDAGGenerator::addSource(
@@ -597,7 +625,7 @@ grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::
 		grb::internal::hyperdags::OutputVertexGenerator outputGen;
 		for( const auto &pair : operationOrOutputVertices ) {
 			grb::internal::hyperdags::OutputVertex toAdd =
-				outputGen.create( pair.second.first );
+				outputGen.create(pair.second.first );
 			outputVec.push_back( toAdd );
 		}
 	}

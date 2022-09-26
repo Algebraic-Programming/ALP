@@ -151,16 +151,34 @@ namespace grb {
 
 			// 2: everything related to output vertices
 
-			/* TODO maybe not needed-- so far, only one output type
+			/** \internal The types of source vertices that may be generated. */
 			enum OutputVertexType {
-				CONTAINER
-			}*/
+
+				/**
+				 * \internal The output is a container with contents that are generated
+				 *           by ALP.
+				 */
+				CONTAINER_OUTPUT,
+			};
+
+			const constexpr size_t numOutputVertexTypes = 1;
+
+			const constexpr enum OutputVertexType
+				allOutputVertexTypes[ numOutputVertexTypes ] =
+			{
+				CONTAINER_OUTPUT
+			};
+
+			std::string toString( const enum OutputVertexType type ) noexcept;
 
 			/** \internal An output vertex. */
 			class OutputVertex {
 
 				private:
 
+					/** \internal The type of the output */
+					enum OutputVertexType type;
+					
 					/** \internal The output vertex ID */
 					const size_t local_id;
 
@@ -170,7 +188,9 @@ namespace grb {
 
 				public:
 
-					OutputVertex( const size_t, const size_t ) noexcept;
+					OutputVertex(const size_t, const size_t ) noexcept;
+
+					enum OutputVertexType getType() const noexcept;
 
 					size_t getLocalID() const noexcept;
 
@@ -198,7 +218,7 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					OutputVertex create( const size_t id );
+					OutputVertex create(const size_t id );
 
 					/**
 					 * \internal
@@ -357,7 +377,6 @@ namespace grb {
 				
 				VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
 				
-				
 				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
 				
 				VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
@@ -482,7 +501,6 @@ namespace grb {
 				GETID_MATRIX,
 				EWISELAMBDA_FUNC_MATRIX,
 				VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				
 				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
 				VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
 				FOLDL_VECTOR_BETA_OP,
@@ -741,6 +759,10 @@ namespace grb {
 					std::vector< SourceVertex >::const_iterator sourcesBegin() const;
 
 					std::vector< SourceVertex >::const_iterator sourcesEnd() const;
+					
+					std::vector< OutputVertex >::const_iterator outputsBegin() const;
+
+					std::vector< OutputVertex >::const_iterator outputsEnd() const;
 
 			};
 
