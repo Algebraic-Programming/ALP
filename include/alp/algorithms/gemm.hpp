@@ -82,6 +82,22 @@ namespace alp {
 			const Ring &ring = Ring()
 		) {
 
+			// Ensure the compatibility of parameters
+			const size_t endCr = startCr + m * strideCr;
+			const size_t endCc = startCc + n * strideCc;
+			const size_t endAr = transposeA ? startAr + k * strideAr : startAr + m * strideAr;
+			const size_t endAc = transposeA ? startAc + m * strideAc : startAc + k * strideAc;
+			const size_t endBr = transposeB ? startBr + n * strideBr : startBr + k * strideBr;
+			const size_t endBc = transposeB ? startBc + k * strideBc : startBc + n * strideBc;
+
+			if(
+				( endAr > nrows( A ) ) || ( endAc > ncols( A ) ) ||
+				( endBr > nrows( B ) ) || ( endBc > ncols( B ) ) ||
+				( endCr > nrows( C ) ) || ( endCc > ncols( C ) )
+			) {
+				return MISMATCH;
+			}
+
 			const size_t mA = transposeA ? k : m;
 			const size_t kA = transposeA ? m : k;
 			auto A_blk_orig = get_view(
