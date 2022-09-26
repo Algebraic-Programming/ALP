@@ -74,8 +74,8 @@ KNN4SOLS=(118 499 2805 1 64 1 1048907)
 KNN6SOLS=(357 547 5176 1 246 1 1453447)
 
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
-MULTIPLICATION_DATASETS=(west0497.mtx nos3.mtx aft01.mtx G2_circuit.mtx hood.mtx apache2.mtx ecology2.mtx)
-MULTIPLICATION_DATASET_MODES=(direct direct direct direct direct direct direct)
+MULTIPLICATION_DATASETS=(gyro_m.mtx vanbody.mtx G2_circuit.mtx bundle_adj.mtx apache2.mtx Emilia_923.mtx ecology2.mtx Serena.mtx G3_circuit.mtx Queen_4147.mtx cavity17.mtx s3rmt3m3.mtx bcsstk17.mtx s3dkt3m2.mtx cage14.mtx cage15.mtx ldoor.mtx)
+MULTIPLICATION_DATASET_MODES=(direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct)
 
 #which command to use to run a GraphBLAS program
 LPF=yes
@@ -429,7 +429,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo "Warning: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi
@@ -477,7 +477,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo "Warning: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi

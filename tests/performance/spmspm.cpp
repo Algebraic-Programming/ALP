@@ -15,6 +15,11 @@
  * limitations under the License.
  */
 
+/*
+ * @authors Anders Hansson, Aristeidis Mastoras, A. N. Yzelman
+ * @date May, 2022
+ */
+
 #include <exception>
 #include <iostream>
 #include <vector>
@@ -25,6 +30,7 @@
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
+
 
 using namespace grb;
 
