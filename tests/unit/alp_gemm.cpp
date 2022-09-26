@@ -25,6 +25,21 @@
 
 using namespace alp;
 
+template<
+	typename MatrixType,
+	typename std::enable_if_t< alp::is_matrix< MatrixType >::value > * = nullptr
+>
+alp::RC initialize_random( MatrixType &A ) {
+	alp::internal::setInitialized( A, true );
+	for( size_t i = 0; i < alp::nrows( A ); ++i ) {
+		for( size_t j = 0; j < alp::ncols( A ); ++j ) {
+			alp::internal::access( A, alp::internal::getStorageIndex( A, i, j ) ) = static_cast< double >( rand() ) / RAND_MAX;
+		}
+	}
+
+	return alp::SUCCESS;
+}
+
 template< typename... Args >
 RC gemm_dispatch( bool transposeA, bool transposeB, Args&&... args ) {
 	if( transposeA ) {
@@ -59,13 +74,12 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	alp::Matrix< double, structures::General > A( M, K );
 	alp::Matrix< double, structures::General > B( K, N );
 	alp::Matrix< double, structures::General > C( M, N );
+	alp::Matrix< double, structures::General > C_orig( M, N );
 
 	// Initialize containers A, B, C, alpha, beta
-	constexpr double A_value = 2;
-	constexpr double B_value = 3;
-	constexpr double C_value = 4;
-	rc = rc ? rc : alp::set( A, alp::Scalar< double >( A_value ) );
-	rc = rc ? rc : alp::set( B, alp::Scalar< double >( B_value ) );
+	rc = rc ? rc : initialize_random( A );
+	rc = rc ? rc : initialize_random( B );
+	rc = rc ? rc : initialize_random( C_orig );
 
 #ifdef DEBUG
 	if( rc != SUCCESS ) {
@@ -102,7 +116,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		const size_t startCc = 3;
 		const size_t stride = 1;
 
-		rc = rc ? rc : alp::set( C, alp::Scalar< double >( C_value ) );
+		rc = rc ? rc : set( C, C_orig );
 #ifndef NDEBUG
 		if( rc != SUCCESS ) {
 			std::cerr << "Initialization of C failed\n";
@@ -137,6 +151,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 
 				// Calculate the expected value
 				double expected_value;
+				double C_orig_value = alp::internal::access( C_orig, alp::internal::getStorageIndex( C_orig, i, j ) );
 
 				if( ( i >= startCr ) && ( i < startCr + m ) && ( j >= startCc ) && ( j < startCc + n ) ) {
 					double mxm_res = 0;
@@ -145,9 +160,9 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 						const double B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, kk, j ) );
 						mxm_res += A_val * B_val;
 					}
-					expected_value = alpha_value * mxm_res + beta_value * C_value;
+					expected_value = alpha_value * mxm_res + beta_value * C_orig_value;
 				} else {
-					expected_value = C_value;
+					expected_value = C_orig_value;
 				}
 
 				// Obtain the value calculated by the gemm-like algorithm
