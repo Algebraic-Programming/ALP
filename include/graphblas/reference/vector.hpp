@@ -651,7 +651,8 @@ namespace grb {
 				 * given container. If it is equal, this iterator will be set to its end
 				 * position.
 				 */
-				ConstIterator( const Vector< D, reference, MyCoordinates > &in,
+				ConstIterator(
+					const Vector< D, reference, MyCoordinates > &in,
 					size_t initial = 0,
 					size_t processID = 0, size_t numProcesses = 1
 				) noexcept :
