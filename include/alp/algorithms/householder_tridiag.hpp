@@ -45,7 +45,7 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D = double,
+			typename D,
 			typename SymmOrHermType,
 			typename SymmOrHermTridiagonalType,
 			typename OrthogonalType,
@@ -163,10 +163,10 @@ namespace alp {
 				Matrix< D, SymmOrHermType, Dense > vvt( m );
 
 				// vvt = v * v^T
-				rc = set(vvt, outer( v, ring.getMultiplicativeOperator() ) );
+				rc = rc ? rc : set(vvt, outer( v, ring.getMultiplicativeOperator() ) );
 
 				// vvt = 2 * vvt
-				rc = foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
+				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
 
 
 #ifdef DEBUG
@@ -175,7 +175,7 @@ namespace alp {
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
 				auto Qk_view = get_view( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
-				rc = foldl( Qk_view, vvt, minus );
+				rc = rc ? rc : foldl( Qk_view, vvt, minus );
 
 #ifdef DEBUG
 				print_matrix( " << Qk >> ", Qk );
@@ -187,11 +187,11 @@ namespace alp {
 
 				// RRQk = RR * Qk
 				Matrix< D, structures::Square, Dense > RRQk( n );
-				rc = set( RRQk, zero );
-				rc = mxm( RRQk, RR, Qk, ring );
+				rc = rc ? rc : set( RRQk, zero );
+				rc = rc ? rc : mxm( RRQk, RR, Qk, ring );
 				// RR = QkT * RRQk
-				rc = set( RR, zero );
-				rc = mxm( RR, Qk, RRQk, ring );
+				rc = rc ? rc : set( RR, zero );
+				rc = rc ? rc : mxm( RR, Qk, RRQk, ring );
 
 #ifdef DEBUG
 				print_matrix( " << RR( updated ) >> ", RR );
@@ -202,11 +202,11 @@ namespace alp {
 				// Q = Q * conjugate( QkT )
 
 				// Qtmp = Q * QkT
-				rc = set( Qtmp, zero );
-				rc = mxm( Qtmp, Q, Qk, ring );
+				rc = rc ? rc : set( Qtmp, zero );
+				rc = rc ? rc : mxm( Qtmp, Q, Qk, ring );
 
 				// Q = Qtmp
-				rc = set( Q, Qtmp );
+				rc = rc ? rc : set( Q, Qtmp );
 #ifdef DEBUG
 				print_matrix( " << Q updated >> ", Q );
 #endif
@@ -215,7 +215,7 @@ namespace alp {
 
 			// T = RR
 
-			rc = set( T, get_view< SymmOrHermTridiagonalType > ( RR ) );
+			rc = rc ? rc : set( T, get_view< SymmOrHermTridiagonalType > ( RR ) );
 			return rc;
 		}
 	} // namespace algorithms
