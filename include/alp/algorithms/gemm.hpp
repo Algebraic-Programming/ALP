@@ -102,8 +102,8 @@ namespace alp {
 			const size_t kA = transposeA ? m : k;
 			auto A_blk_orig = get_view(
 				A,
-				utils::range( startAr, startAr + mA, strideAr ),
-				utils::range( startAc, startAc + kA, strideAc )
+				utils::range( startAr, startAr + mA * strideAr, strideAr ),
+				utils::range( startAc, startAc + kA * strideAc, strideAc )
 			);
 
 			auto A_blk = get_view< transposeA ? view::transpose : view::original >( A_blk_orig );
@@ -112,16 +112,16 @@ namespace alp {
 			const size_t nB = transposeB ? k : n;
 			auto B_blk_orig = get_view(
 				B,
-				utils::range( startBr, startBr + kB, strideBr ),
-				utils::range( startBc, startBc + nB, strideBc )
+				utils::range( startBr, startBr + kB * strideBr, strideBr ),
+				utils::range( startBc, startBc + nB * strideBc, strideBc )
 			);
 
 			auto B_blk = get_view< transposeB ? view::transpose : view::original >( B_blk_orig );
 
 			auto C_blk = get_view(
 				C,
-				utils::range( startCr, startCr + m, strideCr ),
-				utils::range( startCc, startCc + n, strideCc )
+				utils::range( startCr, startCr + m * strideCr, strideCr ),
+				utils::range( startCc, startCc + n * strideCc, strideCc )
 			);
 
 			Matrix< D, structures::General, Dense > C_tmp( m, n );
