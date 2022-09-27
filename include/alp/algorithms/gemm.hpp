@@ -27,9 +27,12 @@ namespace alp {
 		 *        \f$C_blk = \alpha \cdot At_blk \cdot B_blk + \beta \cdot C_blk\f$,
 		 *        where \f$At_blk, B_blk, C_blk\f$ are sub-matrices (optionally at
 		 *        a stride both row- and column-wise) of matrices
-		 *        \f$A, B, C\f$, respectively, and \f$At_blk\f$ is a transposed view
-		 *        over the \f$A\f$ matrix.
+		 *        \f$A, B, C\f$, respectively, and \f$At_blk\f$ and \f$B_blk$ may be
+		 *        transposed views over the \f$A\f$ and \f$B\f$ sub-matrices
+		 *        depending on parameters \f$transposeA\f$ and \f$transposeB\f$, respectively.
 		 *
+		 * @tparam transposeA  Whether to transpose A
+		 * @tparam transposeB  Whether to transpose B
 		 * @tparam D         Data element type
 		 * @tparam Ring      Type of the semiring used in computation
 		 * @param m          Number of rows of matrices \a C_blk and \a At_blk
@@ -50,54 +53,95 @@ namespace alp {
 		 * @return RC        SUCCESS if the execution was correct
 		 */
 		template<
+			bool transposeA = false,
+			bool transposeB = false,
 			typename D = double,
-			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > >
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
+		>
 		RC gemm_like_example(
-			size_t m,
-			size_t n,
-			size_t k,
-			Scalar< D > alpha,
+			const size_t m,
+			const size_t n,
+			const size_t k,
+			const Scalar< D > &alpha,
 			Matrix< D, structures::General, Dense > &A,
-			size_t startAr,
-			size_t strideAr,
-			size_t startAc,
-			size_t strideAc,
+			const size_t startAr,
+			const size_t strideAr,
+			const size_t startAc,
+			const size_t strideAc,
 			Matrix< D, structures::General, Dense > &B,
-			size_t startBr,
-			size_t strideBr,
-			size_t startBc,
-			size_t strideBc,
-			Scalar< D > beta,
+			const size_t startBr,
+			const size_t strideBr,
+			const size_t startBc,
+			const size_t strideBc,
+			const Scalar< D > &beta,
 			Matrix< D, structures::General, Dense > &C,
-			size_t startCr,
-			size_t strideCr,
-			size_t startCc,
-			size_t strideCc,
-			const Ring &ring = Ring() ) {
+			const size_t startCr,
+			const size_t strideCr,
+			const size_t startCc,
+			const size_t strideCc,
+			const Ring &ring = Ring()
+		) {
 
-			auto At = get_view< view::transpose >( A ); // Transposed view of matrix A
-			auto At_blk = get_view( At,
-				utils::range( startAr, startAr + m, strideAr ),
-				utils::range( startAc, startAc + k, strideAc ) );
+			// Ensure the compatibility of parameters
+			const size_t endCr = startCr + m * strideCr;
+			const size_t endCc = startCc + n * strideCc;
+			const size_t endAr = transposeA ? startAr + k * strideAr : startAr + m * strideAr;
+			const size_t endAc = transposeA ? startAc + m * strideAc : startAc + k * strideAc;
+			const size_t endBr = transposeB ? startBr + n * strideBr : startBr + k * strideBr;
+			const size_t endBc = transposeB ? startBc + k * strideBc : startBc + n * strideBc;
 
-			auto B_blk = get_view( B,
-				utils::range( startBr, startBr + k, strideBr ),
-				utils::range( startBc, startBc + n, strideBc ) );
+			if(
+				( endAr > nrows( A ) ) || ( endAc > ncols( A ) ) ||
+				( endBr > nrows( B ) ) || ( endBc > ncols( B ) ) ||
+				( endCr > nrows( C ) ) || ( endCc > ncols( C ) )
+			) {
+				return MISMATCH;
+			}
 
-			auto C_blk = get_view( C,
-				utils::range( startCr, startCr + m, strideCr ),
-				utils::range( startCc, startCc + n, strideCc ) );
+			const size_t mA = transposeA ? k : m;
+			const size_t kA = transposeA ? m : k;
+			auto A_blk_orig = get_view(
+				A,
+				utils::range( startAr, startAr + mA * strideAr, strideAr ),
+				utils::range( startAc, startAc + kA * strideAc, strideAc )
+			);
+
+			auto A_blk = get_view< transposeA ? view::transpose : view::original >( A_blk_orig );
+
+			const size_t kB = transposeB ? n : k;
+			const size_t nB = transposeB ? k : n;
+			auto B_blk_orig = get_view(
+				B,
+				utils::range( startBr, startBr + kB * strideBr, strideBr ),
+				utils::range( startBc, startBc + nB * strideBc, strideBc )
+			);
+
+			auto B_blk = get_view< transposeB ? view::transpose : view::original >( B_blk_orig );
+
+			auto C_blk = get_view(
+				C,
+				utils::range( startCr, startCr + m * strideCr, strideCr ),
+				utils::range( startCc, startCc + n * strideCc, strideCc )
+			);
 
 			Matrix< D, structures::General, Dense > C_tmp( m, n );
 
 			RC rc = SUCCESS;
 
-			rc = foldr( beta, C_blk, ring.getMultiplicativeMonoid() ); // C_blk = beta * C_blk
+			// C_blk = beta * C_blk
+			rc = rc ? rc : foldr( beta, C_blk, ring.getMultiplicativeMonoid() );
+			assert( rc == SUCCESS );
 
-			rc = set( C_tmp, Scalar< D >( ring.template getZero< D >() ) ); // C_tmp = 0
-			rc = mxm( C_tmp, At_blk, B_blk, ring ); // C_tmp += At_blk * B_blk
+			// C_tmp = 0
+			rc = rc ? rc : set( C_tmp, Scalar< D >( ring.template getZero< D >() ) );
+			assert( rc == SUCCESS );
+			// C_tmp += At_blk * B_blk
+			rc = rc ? rc : mxm( C_tmp, A_blk, B_blk, ring );
+			assert( rc == SUCCESS );
 
-			rc = eWiseMul( C_blk, alpha, C_tmp, ring ); // C_blk += alpha * C_tmp
+			// C_blk += alpha * C_tmp
+			rc = rc ? rc : eWiseMul( C_blk, alpha, C_tmp, ring );
+			assert( rc == SUCCESS );
 
 			return rc;
 		}

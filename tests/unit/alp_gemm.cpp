@@ -17,14 +17,56 @@
 
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 #include <alp.hpp>
 #include <alp/algorithms/gemm.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 using namespace alp;
 
-void alp_program( const size_t & unit, alp::RC & rc ) {
+/**
+ * Initializes matrix elements to random values between 0 and 1.
+ * Assumes the matrix uses full storage.
+ * \todo Add support for any type of storage.
+ */
+template<
+	typename MatrixType,
+	typename std::enable_if_t< alp::is_matrix< MatrixType >::value > * = nullptr
+>
+alp::RC initialize_random( MatrixType &A ) {
+	alp::internal::setInitialized( A, true );
+	for( size_t i = 0; i < alp::nrows( A ); ++i ) {
+		for( size_t j = 0; j < alp::ncols( A ); ++j ) {
+			alp::internal::access( A, alp::internal::getStorageIndex( A, i, j ) ) = static_cast< double >( rand() ) / RAND_MAX;
+		}
+	}
+
+	return alp::SUCCESS;
+}
+
+template< typename... Args >
+RC gemm_dispatch( bool transposeA, bool transposeB, Args&&... args ) {
+	if( transposeA ) {
+		if( transposeB ) {
+			return algorithms::gemm_like_example< true, true >( std::forward< Args >( args )... );
+		} else {
+			return algorithms::gemm_like_example< true, false >( std::forward< Args >( args )... );
+		}
+	} else {
+		if( transposeB ) {
+			return algorithms::gemm_like_example< false, true >( std::forward< Args >( args )... );
+		} else {
+			return algorithms::gemm_like_example< false, false >( std::forward< Args >( args )... );
+		}
+	}
+}
+
+void alp_program( const size_t &unit, alp::RC &rc ) {
+
+	rc = SUCCESS;
+
 	alp::Semiring< alp::operators::add< double >, alp::operators::mul< double >, alp::identities::zero, alp::identities::one > ring;
 
 	std::cout << "\tTesting ALP gemm_like_example\n"
@@ -35,26 +77,140 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	size_t N = 20 * unit;
 	size_t K = 30 * unit;
 
-	// dimensions of views over A, B and C
-	size_t m = unit;
-	size_t n = 2 * unit;
-	size_t k = 3 * unit;
-
 	alp::Matrix< double, structures::General > A( M, K );
 	alp::Matrix< double, structures::General > B( K, N );
 	alp::Matrix< double, structures::General > C( M, N );
+	alp::Matrix< double, structures::General > C_orig( M, N );
 
-	Scalar< double > alpha( 0.5 );
-	Scalar< double > beta( 1.5 );
+	// Initialize containers A, B, C, alpha, beta
+	rc = rc ? rc : initialize_random( A );
+	rc = rc ? rc : initialize_random( B );
+	rc = rc ? rc : initialize_random( C_orig );
 
-	rc = algorithms::gemm_like_example(
-		m, n, k,
-		alpha,
-		A, 1, 1, 1, 1,
-		B, 2, 1, 2, 4,
-		beta,
-		C, 0, 0, 1, 1,
-		ring );
+#ifdef DEBUG
+	if( rc != SUCCESS ) {
+		std::cerr << "Initialization failed\n";
+	}
+#endif
+
+	assert( rc == SUCCESS );
+
+#ifdef DEBUG
+	print_matrix( "A", A );
+	print_matrix( "B", B );
+	print_matrix( "C_orig", C_orig );
+#endif
+
+	constexpr double alpha_value = 0.5;
+	constexpr double beta_value = 1.5;
+	Scalar< double > alpha( alpha_value );
+	Scalar< double > beta( beta_value );
+
+	const std::vector< std::pair< bool, bool > > transpose_AB_configs = {
+		{ false, false }, { false, true }, { true, false }, { true, true }
+	};
+
+	for( auto config : transpose_AB_configs ){
+		const bool transposeA = config.first;
+		const bool transposeB = config.second;
+
+		// dimensions of views over A, B and C
+		size_t m = 1 * unit;
+		size_t n = 2 * unit;
+		size_t k = 3 * unit;
+
+		// Set parameters to the gemm-like algorithm
+		const size_t startAr = 1;
+		const size_t startAc = 2;
+		const size_t startBr = 3;
+		const size_t startBc = 4;
+		const size_t startCr = 5;
+		const size_t startCc = 6;
+		const size_t stride = 2;
+
+		rc = rc ? rc : set( C, C_orig );
+#ifndef NDEBUG
+		if( rc != SUCCESS ) {
+			std::cerr << "Initialization of C failed\n";
+		}
+#endif
+
+		// Call gemm-like algorithm
+#ifndef NDEBUG
+		std::cout << "Calling gemm_like_example with "
+			<< ( transposeA ? "" : "non-" ) << "transposed A and "
+			<< ( transposeB ? "" : "non-" ) << "transposed B.\n";
+#endif
+		rc = rc ? rc : gemm_dispatch(
+			transposeA, transposeB,
+			m, n, k,
+			alpha,
+			A, startAr, stride, startAc, stride,
+			B, startBr, stride, startBc, stride,
+			beta,
+			C, startCr, stride, startCc, stride,
+			ring
+		);
+
+		// Check correctness
+		if( rc != SUCCESS ) {
+			return;
+		}
+
+		// Check numerical correctness
+		for( size_t i = 0; i < alp::nrows( C ); ++i ) {
+			for( size_t j = 0; j < alp::nrows( C ); ++j ) {
+
+				// Calculate the expected value
+				double expected_value;
+				double C_orig_value = alp::internal::access( C_orig, alp::internal::getStorageIndex( C_orig, i, j ) );
+
+				// Check if coordinates (i, j) fall into the gather view over C
+				if(
+					( i >= startCr ) && ( i < startCr + m * stride ) &&
+					( j >= startCc ) && ( j < startCc + n * stride ) &&
+					( ( i - startCr ) % stride == 0 ) &&
+					( ( j - startCc ) % stride == 0 )
+				) {
+					double mxm_res = 0;
+					for( size_t kk = 0; kk < k; ++kk ) {
+						// coordinates within the gather view over C
+						const size_t sub_i = ( i - startCr ) / stride;
+						const size_t sub_j = ( j - startCc ) / stride;
+
+						// take into account the gather view on A and potential transposition
+						const size_t A_i = startAr + stride * ( transposeA ? kk : sub_i );
+						const size_t A_j = startAc + stride * ( transposeA ? sub_i : kk );
+						const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, A_i, A_j ) );
+
+						// take into account the gather view on B and potential transposition
+						const size_t B_i = startBr + stride * ( transposeB ? sub_j : kk );
+						const size_t B_j = startBc + stride * ( transposeB ? kk : sub_j );
+						const auto B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, B_i, B_j ) );
+
+						mxm_res += A_val * B_val;
+					}
+					expected_value = alpha_value * mxm_res + beta_value * C_orig_value;
+				} else {
+					expected_value = C_orig_value;
+				}
+
+				// Obtain the value calculated by the gemm-like algorithm
+				const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
+
+				// Compare and report
+				if( expected_value != calculated_value ) {
+#ifndef NDEBUG
+					std::cerr << "Numerically incorrect: "
+						"at (" << i << ", " << j << ") "
+						"expected " << expected_value << ", but got " << calculated_value << "\n";
+#endif
+					rc = FAILED;
+					return;
+				}
+			}
+		}
+	}
 }
 
 int main( int argc, char ** argv ) {
