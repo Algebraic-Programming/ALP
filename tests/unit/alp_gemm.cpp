@@ -22,9 +22,15 @@
 
 #include <alp.hpp>
 #include <alp/algorithms/gemm.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 using namespace alp;
 
+/**
+ * Initializes matrix elements to random values between 0 and 1.
+ * Assumes the matrix uses full storage.
+ * \todo Add support for any type of storage.
+ */
 template<
 	typename MatrixType,
 	typename std::enable_if_t< alp::is_matrix< MatrixType >::value > * = nullptr
@@ -88,6 +94,12 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 #endif
 
 	assert( rc == SUCCESS );
+
+#ifdef DEBUG
+	print_matrix( "A", A );
+	print_matrix( "B", B );
+	print_matrix( "C_orig", C_orig );
+#endif
 
 	constexpr double alpha_value = 0.5;
 	constexpr double beta_value = 1.5;
@@ -153,6 +165,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 				double expected_value;
 				double C_orig_value = alp::internal::access( C_orig, alp::internal::getStorageIndex( C_orig, i, j ) );
 
+				// Check if coordinates (i, j) fall into the gather view over C
 				if(
 					( i >= startCr ) && ( i < startCr + m * stride ) &&
 					( j >= startCc ) && ( j < startCc + n * stride ) &&
@@ -161,14 +174,20 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 				) {
 					double mxm_res = 0;
 					for( size_t kk = 0; kk < k; ++kk ) {
+						// coordinates within the gather view over C
 						const size_t sub_i = ( i - startCr ) / stride;
 						const size_t sub_j = ( j - startCc ) / stride;
+
+						// take into account the gather view on A and potential transposition
 						const size_t A_i = startAr + stride * ( transposeA ? kk : sub_i );
 						const size_t A_j = startAc + stride * ( transposeA ? sub_i : kk );
 						const auto A_val = alp::internal::access( A, alp::internal::getStorageIndex( A, A_i, A_j ) );
+
+						// take into account the gather view on B and potential transposition
 						const size_t B_i = startBr + stride * ( transposeB ? sub_j : kk );
 						const size_t B_j = startBc + stride * ( transposeB ? kk : sub_j );
 						const auto B_val = alp::internal::access( B, alp::internal::getStorageIndex( B, B_i, B_j ) );
+
 						mxm_res += A_val * B_val;
 					}
 					expected_value = alpha_value * mxm_res + beta_value * C_orig_value;
