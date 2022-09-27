@@ -489,14 +489,14 @@ namespace alp {
 
 		struct Tridiagonal: BaseStructure {
 
-			typedef std::tuple< Interval< -1, 1 > > band_intervals;
+			typedef std::tuple< Interval< -1, 2 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< Tridiagonal >, Square::inferred_structures, Band< OpenInterval >::inferred_structures >::type;
 		};
 
 		struct SymmetricTridiagonal: BaseStructure {
 
-			typedef std::tuple< Interval< -1, 1 > > band_intervals;
+			typedef std::tuple< Interval< -1, 2 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< SymmetricTridiagonal >, Symmetric::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
