@@ -491,7 +491,7 @@ namespace alp {
 
 			typedef std::tuple< Interval< -1, 2 > > band_intervals;
 
-			using inferred_structures = tuple_cat< std::tuple< Tridiagonal >, Square::inferred_structures, Band< OpenInterval >::inferred_structures >::type;
+			using inferred_structures = tuple_cat< std::tuple< Tridiagonal >, Square::inferred_structures >::type;
 		};
 
 		struct SymmetricTridiagonal: BaseStructure {
