@@ -15,33 +15,40 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Contains the configuration parameters for the reference and reference_omp
+ * backends.
+ *
  * @author A. N. Yzelman
- * @date 8th of August, 2016
+ * @date 14th of January 2022.
  */
 
-#ifndef _H_GRB_CONFIG
-#define _H_GRB_CONFIG
+#ifndef _H_GRB_DENSEREF_CONFIG
+#define _H_GRB_DENSEREF_CONFIG
 
-#include "base/config.hpp"
+#include <graphblas/base/config.hpp>
 
-// include all active configurations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/config.hpp"
- #include "graphblas/denseref/config.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/config.hpp"
-#endif
-#ifdef _GRB_WITH_OMP
- #include "graphblas/omp/config.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/config.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/config.hpp"
-#endif
+namespace grb {
 
-#endif // end ``_H_GRB_CONFIG''
+	/**
+	 * \defgroup reference The reference backend implementation
+	 *
+	 * Groups all definitions and documentations corresponding to the #reference
+	 * and #reference_omp implementations.
+	 * @{
+	 */
+
+	namespace config {
+
+		/** \internal No backend-specific configuration parameters yet */
+
+	} // namespace config
+
+	/** @} */
+
+} // namespace grb
+
+#endif // end ``_H_GRB_DENSEREF_CONFIG''
 

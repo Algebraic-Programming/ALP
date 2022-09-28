@@ -26,10 +26,10 @@
 #include "base/distribution.hpp"
 
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/distribution.hpp"
+ #include "graphblas/bsp1d/distribution.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/distribution.hpp"
+ #include "graphblas/banshee/distribution.hpp"
 #endif
 
 #endif // end `_H_GRB_DISTRIBUTION'

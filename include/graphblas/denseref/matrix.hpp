@@ -17,31 +17,20 @@
 
 /*
  * @author A. N. Yzelman
- * @date 8th of August, 2016
+ * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_CONFIG
-#define _H_GRB_CONFIG
+#ifndef _H_GRB_DENSEREF_MATRIX
+#define _H_GRB_DENSEREF_MATRIX
 
-#include "base/config.hpp"
+namespace grb {
 
-// include all active configurations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/config.hpp"
- #include "graphblas/denseref/config.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/config.hpp"
-#endif
-#ifdef _GRB_WITH_OMP
- #include "graphblas/omp/config.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/config.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/config.hpp"
-#endif
+	/** \internal TODO */
+	template< typename T >
+	class Matrix< T, reference_dense > {
+	};
 
-#endif // end ``_H_GRB_CONFIG''
+} // end namespace ``grb''
+
+#endif // end ``_H_GRB_DENSEREF_MATRIX''
 

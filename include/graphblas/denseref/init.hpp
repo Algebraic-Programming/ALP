@@ -17,31 +17,25 @@
 
 /*
  * @author A. N. Yzelman
- * @date 8th of August, 2016
+ * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_CONFIG
-#define _H_GRB_CONFIG
+#ifndef _H_GRB_DENSEREF_INIT
+#define _H_GRB_DENSEREF_INIT
 
-#include "base/config.hpp"
+#include <graphblas/base/init.hpp>
 
-// include all active configurations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/config.hpp"
- #include "graphblas/denseref/config.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/config.hpp"
-#endif
-#ifdef _GRB_WITH_OMP
- #include "graphblas/omp/config.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/config.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/config.hpp"
-#endif
+namespace grb {
 
-#endif // end ``_H_GRB_CONFIG''
+	/** \internal No-op init */
+	template<>
+	RC init< reference_dense >( const size_t, const size_t, void * const );
+
+	/** \internal No-op init */
+	template<>
+	RC finalize< reference_dense >();
+
+} // end namespace ``grb''
+
+#endif // end ``_H_GRB_DENSEREF_INIT''
 
