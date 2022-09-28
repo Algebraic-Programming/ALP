@@ -103,30 +103,6 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	add_subdirectory( graphblas )
 endif()
 
-# this target lists the algorithms implemented on top of the generic functionalities,
-# hence it depends only on backend_headers_nodefs
-add_library( algorithms INTERFACE )
-target_link_libraries( algorithms INTERFACE backend_headers_nodefs )
-
-target_include_directories(
-	algorithms INTERFACE
-
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms>
-	$<INSTALL_INTERFACE:graphblas/algorithms>
-)
-
-install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/algorithms"
-	FILES_MATCHING REGEX "${HEADERS_REGEX}"
-)
-
-install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/interfaces/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/interfaces"
-	FILES_MATCHING REGEX "${HEADERS_REGEX}"
-)
-
-install( TARGETS algorithms EXPORT GraphBLASTargets )
-
 # this target lists the transition path headers
 # these are plain C headers and do not have any dependences
 add_library( transition INTERFACE )
