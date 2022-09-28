@@ -844,6 +844,18 @@ namespace alp {
 			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
+		/** Specialization for symmetric tridiagonal matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::SymmetricTridiagonal, imf::Id, imf::Id, backend > {
+
+			private:
+				using interval = std::tuple_element< 0, structures::SymmetricTridiagonal::band_intervals >::type;
+
+			public:
+				//typedef storage::polynomials::BandFactory< interval, storage::ROW_WISE > factory_type;
+				typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for vectors */
 		template< typename Structure, enum Backend backend >
 		struct determine_poly_factory< Structure, imf::Id, imf::Zero, backend > {
@@ -2001,6 +2013,229 @@ namespace alp {
 			template < bool d >
 			struct view_type< view::transpose, d > {
 				using type = Matrix< T, structures::Symmetric, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::diagonal, d > {
+				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, reference >;
+			};
+
+			/**
+			 * Constructor for a storage-based matrix that allocates storage.
+			 */
+			Matrix( const size_t dim, const size_t cap = 0 ) :
+				base_type(
+					storage::AMFFactory::FromPolynomial<
+						typename internal::determine_poly_factory< structure, ImfR, ImfC, reference >::factory_type
+					>::Create(
+						ImfR( dim ),
+						ImfC( dim )
+					)
+				) {
+
+				(void)cap;
+
+				static_assert(
+					std::is_same< ImfR, imf::Id >::value &&
+					std::is_same< ImfC, imf::Id >::value,
+					"This constructor can only be used with Id IMFs."
+				);
+
+				static_assert(
+					internal::is_view_over_storage< View >::value &&
+					internal::requires_allocation< View >::value,
+					"This constructor can only be used in storage-based allocation-requiring Matrix specializations."
+				);
+			}
+
+			/**
+			 * Constructor for a view over another storage-based matrix.
+			 */
+			template<
+				typename SourceType,
+				std::enable_if_t<
+					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Compose<
+						ImfR, ImfC, typename SourceType::base_type::amf_type
+					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
+				) {}
+
+			/**
+			 * Constructor for a view over another matrix applying a view defined
+			 * by View template parameter of the constructed matrix.
+			 */
+			template<
+				typename SourceType,
+				std::enable_if_t<
+					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( SourceType &source_matrix ) :
+				base_type(
+					getContainer( source_matrix ),
+					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+				) {}
+
+			/**
+			 * @deprecated
+			 * Constructor for a view over another storage-based matrix.
+			 *
+			 * @tparam ViewType The dummy View type of the constructed matrix.
+			 *                  Uses SFINAE to enable this constructor only for
+			 *                 	a view over a storage-based matrix.
+			 * @tparam AmfType  The type of the amf used to construct the matrix.
+			 *
+			 */
+			template<
+				typename SourceType,
+				typename AmfType,
+				std::enable_if_t<
+					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( SourceType &source_matrix, AmfType &&amf ) :
+				base_type(
+					getContainer( source_matrix ),
+					std::forward< typename base_type::amf_type >( amf )
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, AmfType >::value,
+					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
+				);
+			}
+
+			/**
+			 * Constructor for a functor-based matrix that allocates memory.
+			 */
+			template<
+				typename LambdaType,
+				std::enable_if_t<
+					std::is_same< LambdaType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( std::function< bool() > initialized, const size_t dim, LambdaType lambda ) :
+				base_type( initialized, imf::Id( dim ), imf::Id( dim ), lambda ) {
+
+				static_assert(
+					std::is_same< ImfR, imf::Id >::value &&
+					std::is_same< ImfC, imf::Id >::value,
+					"This constructor can only be used with Id IMFs."
+				);
+
+			}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename SourceType,
+				std::enable_if_t<
+					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
+				base_type( getFunctor( source_matrix ), imf_r, imf_c ) {}
+
+			/**
+			 * Constructor for a view over another functor-based matrix.
+			 */
+			template<
+				typename SourceType,
+				std::enable_if_t<
+					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_view_over_functor< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( SourceType &source_matrix ) :
+				Matrix( getFunctor( source_matrix ),
+					imf::Id( nrows ( source_matrix ) ),
+					imf::Id( ncols ( source_matrix ) )
+				) {
+
+				static_assert(
+					std::is_same< ImfR, imf::Id >::value &&
+					std::is_same< ImfC, imf::Id >::value,
+					"This constructor can only be used with Id IMFs."
+				);
+
+			}
+
+	}; // Symmetric Matrix
+
+	/**
+	 * @brief SymmetricTridiagonal matrix
+	 */
+	template< typename T, typename View, typename ImfR, typename ImfC >
+	class Matrix< T, structures::SymmetricTridiagonal, Density::Dense, View, ImfR, ImfC, reference > :
+		public internal::matrix_base_class< T, structures::SymmetricTridiagonal, Density::Dense, View, ImfR, ImfC, reference >::type {
+
+		protected:
+			typedef Matrix< T, structures::SymmetricTridiagonal, Density::Dense, View, ImfR, ImfC, reference > self_type;
+
+			/*********************
+				Storage info friends
+			******************** */
+
+			template< typename fwd_iterator >
+			friend RC buildMatrix( Matrix< T, structures::SymmetricTridiagonal, Density::Dense, View, ImfR, ImfC, reference > & A,
+				const fwd_iterator & start, const fwd_iterator & end );
+
+			template< typename fwd_iterator >
+			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
+				return buildMatrix( *(this->_container), start, end );
+			}
+
+		public:
+			/** Exposes the types and the static properties. */
+			typedef structures::SymmetricTridiagonal structure;
+			/**
+			 * Indicates if a matrix needs to allocate data-related memory
+			 * (for the internal container or functor object).
+			 * False if it is a view over another matrix or a functor.
+			 */
+			static constexpr bool requires_allocation = internal::requires_allocation< View >::value;
+
+			/**
+			 * Expose the base type class to enable internal functions to cast
+			 * the type of objects of this class to the base class type.
+			 */
+			typedef typename internal::matrix_base_class< T, structures::SymmetricTridiagonal, Density::Dense, View, ImfR, ImfC, reference >::type base_type;
+
+			// A general Structure knows how to define a reference to itself (which is an original reference view)
+			// as well as other static views.
+			template < view::Views view_tag, bool d=false >
+			struct view_type;
+
+			template < bool d >
+			struct view_type< view::original, d > {
+				using type = Matrix< T, structures::SymmetricTridiagonal, Density::Dense, view::Original< self_type >, imf::Id, imf::Id, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::gather, d > {
+				using type = Matrix< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+			};
+
+			template < bool d >
+			struct view_type< view::transpose, d > {
+				using type = Matrix< T, structures::SymmetricTridiagonal, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
 			};
 
 			template < bool d >

@@ -36,6 +36,7 @@ void ask_questions( const StructuredMat & M, std::string name ) {
 	std::cout << "\tsquare? " << alp::structures::is_a< typename M_type::structure, alp::structures::Square >::value << std::endl;
 	std::cout << "\tfull rank? " << alp::structures::is_a< typename M_type::structure, alp::structures::FullRank >::value << std::endl;
 	std::cout << "\tnon-singular? " << alp::structures::is_a< typename M_type::structure, alp::structures::NonSingular >::value << std::endl;
+	std::cout << "\tsymmetric? " << alp::structures::is_in< alp::structures::Symmetric, typename M_type::structure::inferred_structures >::value << std::endl;
 }
 
 void alp_program( const size_t & n, alp::RC & rc ) {
@@ -47,6 +48,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::Matrix< float, alp::structures::General > M( n, n );
 	alp::Matrix< float, alp::structures::Square > A( n );
 	alp::Matrix< float, alp::structures::Orthogonal > Orth( n );
+	alp::Matrix< float, alp::structures::SymmetricTridiagonal > SymmTridiag( n );
 	// TODO: temporarily comented until containers are ready
 	//alp::Matrix< float, alp::structures::NonSingular > B( n, n );
 	//alp::Matrix< float, alp::structures::FullRank > C( n, 2 * n );
@@ -58,6 +60,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
 	ask_questions( Orth, "Orth" );
+	ask_questions( SymmTridiag, "SymmTridiag" );
 	// TODO: temporarily comented until containers are ready
 	//ask_questions( B, "B" );
 	//ask_questions( C, "C" );
