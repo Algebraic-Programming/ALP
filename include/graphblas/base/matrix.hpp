@@ -427,13 +427,6 @@ namespace grb {
 
 	};
 
-template< typename InputType, Backend backend >
-RC clear( Matrix< InputType, backend > & A ) noexcept {
-	// this is the generic stub implementation
-	return UNSUPPORTED;
-}
-
-
 } // end namespace ``grb''
 
 #endif // end _H_GRB_MATRIX_BASE
