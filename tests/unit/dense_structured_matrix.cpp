@@ -46,6 +46,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	// initialize test
 	alp::Matrix< float, alp::structures::General > M( n, n );
 	alp::Matrix< float, alp::structures::Square > A( n );
+	alp::Matrix< float, alp::structures::Orthogonal > Orth( n );
 	// TODO: temporarily comented until containers are ready
 	//alp::Matrix< float, alp::structures::NonSingular > B( n, n );
 	//alp::Matrix< float, alp::structures::FullRank > C( n, 2 * n );
@@ -56,6 +57,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	ask_questions( M, "M" );
 	ask_questions( A, "A" );
+	ask_questions( Orth, "Orth" );
 	// TODO: temporarily comented until containers are ready
 	//ask_questions( B, "B" );
 	//ask_questions( C, "C" );
