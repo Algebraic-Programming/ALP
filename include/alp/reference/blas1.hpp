@@ -24,7 +24,6 @@
 #define _H_ALP_REFERENCE_BLAS1
 
 #include <functional>
-#include <complex>
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
@@ -2897,26 +2896,18 @@ namespace alp {
 		class Ring,
 		Backend backend
 	>
-	RC norm2(
-		Scalar< OutputType, OutputStructure, backend > &x,
+	RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
-		const Ring &ring = Ring()
-		// ,
-		// const std::enable_if_t<
-		// 	std::is_floating_point< OutputType >::value
-		// // 	||
-		// // ( std::is_same<
-		// //   OutputType,
-		// //   std::complex< typename OutputType::value_type >
-		// //   >::value
-		// //   && std::is_floating_point< typename OutputType::value_type >::value )
-		// > * const = nullptr
+		const Ring &ring = Ring(),
+		const typename std::enable_if<
+			std::is_floating_point< OutputType >::value,
+		void >::type * const = NULL
 	) {
-		RC rc = alp::dot< descr >( *x, y, y, ring );
-		if( rc == SUCCESS ) {
-			*x = std::sqrt( *x );
+		RC ret = alp::dot< descr >( x, y, y, ring );
+		if( ret == SUCCESS ) {
+			*x = sqrt( *x );
 		}
-		return rc;
+		return ret;
 	}
 
 	/** C++ scalar version */
@@ -2940,7 +2931,7 @@ namespace alp {
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		x = *res;
+		/** \internal \todo extract res.value into x */
 		return SUCCESS;
 	}
 
