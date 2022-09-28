@@ -32,13 +32,14 @@
 
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/pinnedvector.hpp>
+ #include <graphblas/reference/pinnedvector.hpp>
+ #include <graphblas/denseref/pinnedvector.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/pinnedvector.hpp>
+ #include <graphblas/bsp1d/pinnedvector.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/pinnedvector.hpp>
+ #include <graphblas/banshee/pinnedvector.hpp>
 #endif
 
 // specify default only if requested during compilation

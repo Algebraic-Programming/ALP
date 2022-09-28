@@ -112,11 +112,18 @@ endif()
 # paths may have spaces, hence wrap them inside single quotes ''
 
 # shared memory backends
-if ( WITH_REFERENCE_BACKEND )
+if( WITH_REFERENCE_BACKEND )
 	addBackendWrapperGenOptions( "reference"
 		COMPILE_DEFINITIONS "${REFERENCE_SELECTION_DEFS}"
 		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
+	)
+endif()
+
+if( WITH_DENSE_BACKEND )
+	addBackendWrapperGenOptions( "reference_dense"
+		COMPILE_DEFINITIONS "${DENSE_SELECTION_DEFS}"
+		LINK_FLAGS "${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a"
 	)
 endif()
 
