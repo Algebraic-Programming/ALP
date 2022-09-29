@@ -524,8 +524,7 @@ namespace alp {
 				using inferred_structures = tuple_cat<
 					std::tuple< SymmetricTridiagonal >,
 					Symmetric::inferred_structures,
-					Tridiagonal::inferred_structures,
-					Band< I >::inferred_structures
+					Tridiagonal::inferred_structures
 				>::type;
 		};
 
@@ -542,8 +541,7 @@ namespace alp {
 				using inferred_structures = tuple_cat<
 					std::tuple< HermitianTridiagonal >,
 					Hermitian::inferred_structures,
-					Tridiagonal::inferred_structures,
-					Band< I >::inferred_structures
+					Tridiagonal::inferred_structures
 				>::type;
 		};
 
