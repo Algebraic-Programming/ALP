@@ -28,44 +28,53 @@
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../utils/print_alp_containers.hpp"
 
-//once TEMPDISABLE is remnoved the code should be in the final version
+//once TEMPDISABLE is removed the code should be in the final version
 #define TEMPDISABLE
 
 using namespace alp;
 
 using BaseScalarType = double;
+using Orthogonal = structures::Orthogonal;
+
 #ifdef _COMPLEX
 using ScalarType = std::complex< BaseScalarType >;
+//not fully implemented structures
+using HermitianOrSymmetricTridiagonal = structures::HermitianTridiagonal;
+using HermitianOrSymmetric = structures::Hermitian;
 #else
 using ScalarType = BaseScalarType;
+using HermitianOrSymmetricTridiagonal = structures::SymmetricTridiagonal;
+//fully implemented structures
+using HermitianOrSymmetric = structures::Symmetric;
 #endif
 
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
 //temp function untill Hermitian containter is implemented
-//** gnerate symmetric-hermitian matrix in square container */
+//** gnerate symmetric-hermitian matrix in a square container */
 template<
 	typename T
 >
 void generate_symmherm_matrix(
 	size_t N,
-	std::vector<T> &data
+	std::vector<T> &data,
+	const typename std::enable_if<
+		grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
 ) {
 	std::srand( RNDSEED );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-#ifdef _COMPLEX
 			T val( std::rand(), std::rand() );
 			data[ i * N + j ] = val / std::abs( val );
-			//data[ i * N + j ] = std::complex< double >( i + 1 , j * j + 1 );
 			if( j != i ) {
-				data[ j * N + i ] = std::conj( data[ i * N + j ]  );
+				data[ j * N + i ] = grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			}
 			if( j == i ) {
-				data[ i * N + j ] += std::conj( data[ i * N + j ]  );
+				data[ i * N + j ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			}
-#endif
 		}
 	}
 }
@@ -74,21 +83,20 @@ void generate_symmherm_matrix(
 template<
 	typename T
 >
-void generate_symm_matrix(
+void generate_symmherm_matrix(
 	size_t N,
-	std::vector<T> &data
+	std::vector<T> &data,
+	const typename std::enable_if<
+		!grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
 ) {
 	std::srand( RNDSEED );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			//data[ k ] = static_cast< T >( i + j*j ) ;
-#ifdef _COMPLEX
-			T val( std::rand(), std::rand() );
-			data[ k ] = val / std::abs( val );
-#else
+			//data[ k ] = static_cast< T >( i + j*j ); // easily reproducible
 			data[ k ] = static_cast< T >( std::rand() )  / RAND_MAX;
-#endif
 			++k;
 		}
 	}
@@ -277,41 +285,26 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	// dimensions of sqare matrices H, Q and R
 	size_t N = unit;
 
-#ifdef TEMPDISABLE
-	//not fully implemented structures
-	using Orthogonal = structures::Square;
-#ifdef _COMPLEX
-	using HermitianTridiagonal = structures::Square;
-	using Hermitian = structures::Hermitian;
-#else
-	using SymmetricTridiagonal = structures::SymmetricTridiagonal;
-	//fully implemented structures
-	using Symmetric = structures::Symmetric;
-#endif
-#endif
-
-#ifdef _COMPLEX
 	alp::Matrix< ScalarType, Orthogonal > Q( N );
-	alp::Matrix< ScalarType, HermitianTridiagonal > T( N );
-	alp::Matrix< ScalarType, Hermitian > H( N );
-	std::vector< ScalarType > matrix_data( N * N );
-	generate_symmherm_matrix( N, matrix_data );
-#else
-	alp::Matrix< ScalarType, Orthogonal > Q( N );
-	alp::Matrix< ScalarType, SymmetricTridiagonal > T( N );
-	alp::Matrix< ScalarType, Symmetric > H( N );
-	std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
-	generate_symm_matrix( N, matrix_data );
-#endif
+	alp::Matrix< ScalarType, HermitianOrSymmetricTridiagonal > T( N );
+	alp::Matrix< ScalarType, HermitianOrSymmetric > H( N );
 
-	{
+
+	if ( grb::utils::is_complex< ScalarType >::value ) {
+		std::vector< ScalarType > matrix_data( N * N );
+		generate_symmherm_matrix( N, matrix_data );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
-#ifdef DEBUG
-		print_matrix( " input matrix H ", H );
-#endif
+	} else {
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		generate_symmherm_matrix( N, matrix_data );
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
+#ifdef DEBUG
+	print_matrix( " input matrix H ", H );
+#endif
 
- 	rc = algorithms::householder_tridiag( Q, T, H, ring );
+
+ 	rc = rc ? rc : algorithms::householder_tridiag( Q, T, H, ring );
 
 
 #ifdef DEBUG
