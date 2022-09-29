@@ -1483,7 +1483,7 @@ namespace alp {
 		typename Operator::D3,
 		typename std::conditional<
 			grb::utils::is_complex< typename Operator::D3 >::value,
-			alp::structures::General,
+			alp::structures::Hermitian,
 			alp::structures::Symmetric
 		>::type,
 		Density::Dense,
@@ -1524,7 +1524,7 @@ namespace alp {
 			typename Operator::D3,
 			typename std::conditional<
 				grb::utils::is_complex< typename Operator::D3 >::value,
-				alp::structures::General,
+				alp::structures::Hermitian,
 				alp::structures::Symmetric
 			>::type,
 			Density::Dense,

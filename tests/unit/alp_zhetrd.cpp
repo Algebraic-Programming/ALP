@@ -282,9 +282,9 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	using Orthogonal = structures::Square;
 #ifdef _COMPLEX
 	using HermitianTridiagonal = structures::Square;
-	using Hermitian = structures::Square;
+	using Hermitian = structures::Hermitian;
 #else
-	using SymmetricTridiagonal = structures::Symmetric;
+	using SymmetricTridiagonal = structures::SymmetricTridiagonal;
 	//fully implemented structures
 	using Symmetric = structures::Symmetric;
 #endif
