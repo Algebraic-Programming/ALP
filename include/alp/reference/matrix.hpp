@@ -868,6 +868,8 @@ namespace alp {
 		struct determine_poly_factory< structures::HermitianTridiagonal, imf::Id, imf::Id, backend > {
 
 			private:
+				// This will be used in the commented line below once band storage is added.
+				// Added for readability.
 				using interval = std::tuple_element< 0, structures::SymmetricTridiagonal::band_intervals >::type;
 
 			public:
