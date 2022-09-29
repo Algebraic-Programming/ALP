@@ -844,6 +844,13 @@ namespace alp {
 			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
+		/** Specialization for hermitian matrix */
+		template< enum Backend backend >
+		struct determine_poly_factory< structures::Hermitian, imf::Id, imf::Id, backend > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for symmetric tridiagonal matrix */
 		template< enum Backend backend >
 		struct determine_poly_factory< structures::SymmetricTridiagonal, imf::Id, imf::Id, backend > {
