@@ -49,6 +49,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	alp::Matrix< float, alp::structures::Square > A( n );
 	alp::Matrix< float, alp::structures::Orthogonal > Orth( n );
 	alp::Matrix< float, alp::structures::SymmetricTridiagonal > SymmTridiag( n );
+	alp::Matrix< float, alp::structures::Hermitian > Hermit( n );
 	// TODO: temporarily comented until containers are ready
 	//alp::Matrix< float, alp::structures::NonSingular > B( n, n );
 	//alp::Matrix< float, alp::structures::FullRank > C( n, 2 * n );
@@ -61,6 +62,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	ask_questions( A, "A" );
 	ask_questions( Orth, "Orth" );
 	ask_questions( SymmTridiag, "SymmTridiag" );
+	ask_questions( Hermit, "Hermit" );
 	// TODO: temporarily comented until containers are ready
 	//ask_questions( B, "B" );
 	//ask_questions( C, "C" );
