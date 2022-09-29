@@ -448,6 +448,13 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
 		};
 
+		struct Hermitian: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< Hermitian >, Square::inferred_structures >::type;
+		};
+
 		struct Trapezoidal: BaseStructure {
 
 			using inferred_structures = tuple_cat< std::tuple< Trapezoidal >, Band< OpenInterval >::inferred_structures >::type;
