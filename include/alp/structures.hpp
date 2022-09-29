@@ -524,8 +524,24 @@ namespace alp {
 				using inferred_structures = tuple_cat<
 					std::tuple< SymmetricTridiagonal >,
 					Symmetric::inferred_structures,
-					Tridiagonal::inferred_structures,
-					Band< I >::inferred_structures
+					Tridiagonal::inferred_structures
+				>::type;
+		};
+
+		struct HermitianTridiagonal: BaseStructure {
+
+			private:
+
+				typedef Interval< -1, 2 > I;
+
+			public:
+
+				typedef std::tuple< I > band_intervals;
+
+				using inferred_structures = tuple_cat<
+					std::tuple< HermitianTridiagonal >,
+					Hermitian::inferred_structures,
+					Tridiagonal::inferred_structures
 				>::type;
 		};
 
