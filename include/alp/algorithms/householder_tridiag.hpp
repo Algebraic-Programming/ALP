@@ -18,7 +18,7 @@
 #include <sstream>
 
 #include <alp.hpp>
-#include <alp/utils/iscomplex.hpp> // tmp copy from grb, change after rebase
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../tests/utils/print_alp_containers.hpp"
 
 //once TEMPDISABLE is remnoved the code should be in the final version
@@ -116,20 +116,7 @@ namespace alp {
 				}
 
 				Scalar< D > alpha( zero );
-				//in the final version norm2 should work
-				//out of the box, then remove #ifdef _COMPLEX
-#ifdef _COMPLEX
-				rc = rc ? rc : eWiseLambda(
-					[ &alpha ]( const size_t i, D &val ) {
-						(void) i;
-						*alpha = *alpha + std::norm( val );
-					},
-					v
-				);
-				*alpha = std::sqrt( *alpha );
-#else
 				rc = norm2( alpha, v, ring );
-#endif
 				if( rc != SUCCESS ) {
 					std::cerr << " norm2( alpha, v, ring ) failed\n";
 					return rc;
@@ -152,21 +139,7 @@ namespace alp {
 				}
 
 				Scalar< D > norm_v( zero );
-				//in the final version norm2 should work
-				//out of the box, then remove #ifdef _COMPLEX
-#ifdef _COMPLEX
-				rc = rc ? rc : eWiseLambda(
-					[ &norm_v ]( const size_t i, D &val ) {
-						(void) i;
-						*norm_v = *norm_v + std::norm( val );
-					},
-					v
-				);
-				*norm_v = std::sqrt( *norm_v );
-#else
 				rc = norm2( norm_v, v, ring );
-#endif
-
 				if( rc != SUCCESS ) {
 					std::cerr << " norm2( norm_v, v, ring ) failed\n";
 					return rc;
@@ -192,8 +165,6 @@ namespace alp {
 				//there should be no need to have separate version for _COMPLEX
 				// once outer(v) on complex==D returrn symmetric-hermitian
 				// this ifdef should be then removed
-				// to implement outer(v) , dot() and norm2() we need to use
-				// utisl/iscomplex.hpp, from blas1,2,3, not sure if tihs is ok
 				//complex outer should return (symmetric)hermitian
 				//set will not work untill this is supported
 

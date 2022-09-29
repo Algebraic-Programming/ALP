@@ -25,7 +25,7 @@
 
 #include <alp.hpp>
 #include <alp/algorithms/householder_tridiag.hpp>
-#include <alp/utils/iscomplex.hpp> // tmp copy from grb, change after rebase
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../utils/print_alp_containers.hpp"
 
 //once TEMPDISABLE is remnoved the code should be in the final version
@@ -112,22 +112,7 @@ RC check_overlap( alp::Matrix< T, Structure, alp::Density::Dense, ViewType > &Q,
 		for ( size_t j = 0; j < n; ++j ) {
 			auto vj = get_view( Q, j, utils::range( 0, n ) );
 			Scalar< T > alpha( ring.template getZero< T >() );
-			if( grb::utils::is_complex< T >::value ) {
-				//someting like this should be implemented
-				//rc = rc ? rc : dot_complex( alpha, vi, vj, ring );
-				Vector< T, structures::General, Dense > vj_star( n );
-				rc = set( vj_star, vj );
-				rc = rc ? rc : eWiseLambda(
-					[ ]( const size_t i, T &val ) {
-						(void) i;
-						val = grb::utils::is_complex< T >::conjugate( val );
-					},
-					vj_star
-				);
-				rc = rc ? rc : dot( alpha, vi, vj_star, ring );
-			} else {
-				rc = dot( alpha, vi, vj, ring );
-			}
+			rc = dot( alpha, vi, vj, ring );
 			if( rc != SUCCESS ) {
 				std::cerr << " dot( alpha, vi, vj, ring ) failed\n";
 				return PANIC;
@@ -335,8 +320,6 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 #endif
 
 	rc = check_overlap( Q );
-	auto Qt = alp::get_view< alp::view::transpose >( Q );
-	rc = rc ? rc : check_overlap( Qt );
 	if( rc != SUCCESS ) {
 		std::cout << "Error: mratrix Q is not orthogonal\n";
 	}
