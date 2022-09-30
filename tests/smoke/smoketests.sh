@@ -524,12 +524,13 @@ for BACKEND in ${BACKENDS[@]}; do
 	echo "#################################################################"
 	echo " "
 
-	# echo ">>>      [x]           [ ]       Tests k-nearest-neighbourhood (k-NN) calculation through"
-	# echo "                                 breadth-first search on a tiny graph."
-	# bash -c "$runner ${TEST_BIN_DIR}/small_knn_${BACKEND} ${P} &> ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log"
-	# head -1 ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log
-	# grep 'Test OK' ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-	# echo " "
+	NTEST_CHOLESKY=30
+	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
+	echo "                                 symmetric matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_${BACKEND}  -n ${NTEST_CHOLESKY} &> ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log || echo "Test FAILED"
+	echo " "
 	
 done
 

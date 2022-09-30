@@ -159,6 +159,10 @@ add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+add_grb_executables( alp_cholesky alp_cholesky.cpp
+	BACKENDS alp_reference
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"
