@@ -51,6 +51,26 @@ using HermitianOrSymmetric = structures::Symmetric;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
+//** conjugate matrix in place */
+template<
+	typename D,
+	typename AnyStructure
+>
+RC conjugate( alp::Matrix< D, AnyStructure, alp::Density::Dense > &M ) {
+	RC rc = SUCCESS;
+	if( grb::utils::is_complex< D >::value ) {
+		rc = rc ? rc : alp::eWiseLambda(
+			[ ]( const size_t i, const size_t j, D &val ) {
+				(void) i;
+				(void) j;
+				val = grb::utils::is_complex< D >::conjugate( val );
+			},
+			M
+		);
+	}
+	return rc;
+}
+
 //temp function untill Hermitian containter is implemented
 //** gnerate symmetric-hermitian matrix in a square container */
 template<
@@ -184,29 +204,9 @@ RC check_solution(
 	const Scalar< D > zero( ring.template getZero< D >() );
 
 	rc = rc ? rc : set( QTQh, zero );
-	//Q=conjugate(Q)
-	if( grb::utils::is_complex< D >::value ) {
-		rc = rc ? rc : alp::eWiseLambda(
-			[ ]( const size_t i, const size_t j, D &val ) {
-				(void) i;
-				(void) j;
-				val = grb::utils::is_complex< D >::conjugate( val );
-			},
-			Q
-		);
-	}
+	rc = rc ? rc : conjugate( Q );
 	rc = rc ? rc : mxm( QTQh, T, alp::get_view< alp::view::transpose >( Q ), ring );
-	//Q=conjugate(Q)
-	if( grb::utils::is_complex< D >::value ) {
-		rc = rc ? rc : alp::eWiseLambda(
-			[ ]( const size_t i, const size_t j, D &val ) {
-				(void) i;
-				(void) j;
-				val = grb::utils::is_complex< D >::conjugate( val );
-			},
-			Q
-		);
-	}
+	rc = rc ? rc : conjugate( Q );
 	rc = rc ? rc : set( QTQhmH, zero );
 	rc = rc ? rc : mxm( QTQhmH, Q, QTQh, ring );
 	rc = rc ? rc : set( QTQh, QTQhmH );
