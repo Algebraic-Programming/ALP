@@ -26,6 +26,8 @@
 
 using namespace alp;
 
+static double tol = 1.e-7;
+
 /**
  * Initializes matrix elements to random values between 0 and 1.
  * Assumes the matrix uses full storage.
@@ -199,7 +201,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 				const auto calculated_value = alp::internal::access( C, alp::internal::getStorageIndex( C, i, j ) );
 
 				// Compare and report
-				if( expected_value != calculated_value ) {
+				if( std::abs( expected_value - calculated_value ) > tol ) {
 #ifndef NDEBUG
 					std::cerr << "Numerically incorrect: "
 						"at (" << i << ", " << j << ") "
