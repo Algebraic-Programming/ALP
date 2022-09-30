@@ -29,6 +29,7 @@
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 #include <alp/matrix.hpp>
+#include <graphblas/utils/iscomplex.hpp>
 
 #define NO_CAST_OP_ASSERT( x, y, z )                                           \
 	static_assert( x,                                                          \
@@ -1054,6 +1055,118 @@ namespace alp {
 		return internal::fold_matrix_generic< left, scalar, descr >( &A, no_matrix, &beta, op ) ;
 	}
 
+	/**
+	 * Returns a view over the input matrix returning conjugate of the accessed element.
+	 * This avoids materializing the resulting container.
+	 * The elements are calculated lazily on access.
+	 *
+	 * @tparam descr      	    The descriptor to be used (descriptors::no_operation
+	 *                    	    if left unspecified).
+	 * @tparam InputType  	    The value type of the input matrix.
+	 * @tparam InputStructure   The Structure type applied to the input matrix.
+	 * @tparam InputView        The view type applied to the input matrix.
+	 *
+	 * @param A      The input matrix
+	 *
+	 * @return Matrix view over a lambda function defined in this function.
+	 *
+	 * Specialization for non-square matrices. This distinction is necessary due
+	 * to different constructor signature for square and non-square matrices.
+	 *
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
+		std::enable_if_t<
+			!structures::is_in< structures::Square, typename Structure::inferred_structures >::value
+		> * = nullptr
+	>
+	Matrix<
+		DataType, Structure, Density::Dense,
+		view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		reference
+	>
+	conjugate(
+		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value
+		> * const = nullptr
+	) {
+
+		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
+			[ &A ]( DataType &result, const size_t i, const size_t j ) {
+				result = grb::utils::is_complex< DataType >::conjugate(
+					internal::access( A, internal::getStorageIndex( A, i, j ) )
+				);
+			};
+		std::function< bool() > init_lambda =
+			[ &A ]() -> bool {
+				return internal::getInitialized( A );
+			};
+		
+		return Matrix<
+			DataType,
+			Structure,
+			Density::Dense,
+			view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+			>(
+				init_lambda,
+				nrows( A ),
+				ncols( A ),
+				data_lambda
+			);
+
+	}
+
+	/** Specialization for square matrices */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
+		std::enable_if_t<
+			structures::is_in< structures::Square, typename Structure::inferred_structures >::value
+		> * = nullptr
+	>
+	Matrix<
+		DataType, Structure, Density::Dense,
+		view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		reference
+	>
+	conjugate(
+		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value
+		> * const = nullptr
+	) {
+
+		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
+			[ &A ]( DataType &result, const size_t i, const size_t j ) {
+				result = grb::utils::is_complex< DataType >::conjugate(
+					internal::access( A, internal::getStorageIndex( A, i, j ) )
+				);
+			};
+		std::function< bool() > init_lambda =
+			[ &A ]() -> bool {
+				return internal::getInitialized( A );
+			};
+		
+		return Matrix<
+			DataType,
+			Structure,
+			Density::Dense,
+			view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+			>(
+				init_lambda,
+				nrows( A ),
+				data_lambda
+			);
+
+	}
 	/** @} */
 
 } // end namespace ``alp''
