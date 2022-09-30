@@ -39,7 +39,12 @@ echo "**************************************************************************
 echo "      FUNCTIONAL    PERFORMANCE                       DESCRIPTION      "
 echo "----------------------------------------------------------------------------------------"
 echo " "
+# run non alp_ backends
 for BACKEND in ${BACKENDS[@]}; do
+	if [ "${BACKEND:0:4}" == "alp_" ]; then
+	    continue
+	fi
+	
 	if [ "$BACKEND" = "bsp1d" ]; then
 		if [ -z "${LPFRUN}" ]; then
 			echo "LPFRUN is not set!"
@@ -503,6 +508,29 @@ for BACKEND in ${BACKENDS[@]}; do
 		bash -c "(set -o pipefail && ${LPFRUN} -np 6 ${TEST_BIN_DIR}/from_mpi_launch_simple_pagerank_broadcast &> ${TEST_OUT_DIR}/from_mpi_launch_simple_pagerank_broadcast && printf 'Test OK.\n\n') || (printf 'Test FAILED.\n\n')"
 
 	fi
+done
+
+for BACKEND in ${BACKENDS[@]}; do
+	if [ "${BACKEND:0:4}" != "alp_" ]; then
+		continue
+	fi
+
+	runner=
+	echo "#################################################################"
+	echo "# Starting standardised smoke tests for the ${BACKEND} backend"
+	if [ "x${runner}" != "x" ]; then
+	    echo "#   using runner \`\`$runner''"
+	fi
+	echo "#################################################################"
+	echo " "
+
+	# echo ">>>      [x]           [ ]       Tests k-nearest-neighbourhood (k-NN) calculation through"
+	# echo "                                 breadth-first search on a tiny graph."
+	# bash -c "$runner ${TEST_BIN_DIR}/small_knn_${BACKEND} ${P} &> ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log"
+	# head -1 ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log
+	# grep 'Test OK' ${TEST_OUT_DIR}/small_knn_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+	# echo " "
+	
 done
 
 echo "*****************************************************************************************"
