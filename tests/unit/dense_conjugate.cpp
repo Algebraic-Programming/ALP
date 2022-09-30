@@ -145,7 +145,6 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	rc = rc ? rc : test_conjugate< std::complex< BaseScalarType > >( n );
 	rc = rc ? rc : test_conjugate< BaseScalarType >( n );
 
-	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {
