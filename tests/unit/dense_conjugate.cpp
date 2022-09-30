@@ -87,7 +87,7 @@ alp::RC check_if_same( const MatrixType1 &A, const MatrixType2 &B, const Ring &r
 		[ &fnorm, &ring ]( const size_t i, const size_t j, T &val ) {
 			(void) i;
 			(void) j;
-			const BaseScalarType valsquare = static_cast< BaseScalarType >( std::real( val * grb::utils::is_complex< T >::conjugate( val ) ) );
+			const BaseScalarType valsquare = std::norm( val );
 			alp::internal::foldl(
 				fnorm,
 				valsquare,
