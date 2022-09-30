@@ -109,6 +109,8 @@ template<
 	typename Structure = typename std::conditional<
 		grb::utils::is_complex< T >::value,
 		alp::structures::Hermitian,
+		// Should be Symmetric.
+		// Temporarily using Square until fold is fixed to support folding symmetric onto more general structures
 		alp::structures::Square
 	>::type
 >
