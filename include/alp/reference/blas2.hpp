@@ -1078,7 +1078,7 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
 		std::enable_if_t<
-			!structures::is_in< structures::Square, typename Structure::inferred_structures >::value
+			!structures::is_a< Structure, structures::Square >::value
 		> * = nullptr
 	>
 	Matrix<
@@ -1126,7 +1126,7 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
 		std::enable_if_t<
-			structures::is_in< structures::Square, typename Structure::inferred_structures >::value
+			structures::is_a< Structure, structures::Square >::value
 		> * = nullptr
 	>
 	Matrix<
