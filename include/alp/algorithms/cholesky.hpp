@@ -22,8 +22,6 @@
 
 #include "../../../tests/utils/print_alp_containers.hpp"
 
-#define TEMP_DISABLE
-
 namespace alp {
 
 	namespace algorithms {
@@ -86,12 +84,7 @@ namespace alp {
 				rc = eWiseLambda(
 					[ &alpha, &ring ]( const size_t i, D &val ) {
 						if ( i == 0 ) {
-#ifdef TEMP_DISABLE
-							internal::setInitialized( alpha, true );
-							*alpha = std::sqrt( val );
-#else
-							(void)set( alpha, std::sqrt( val ) );
-#endif
+							(void)set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
 							val = *alpha;
 						}
 					},
