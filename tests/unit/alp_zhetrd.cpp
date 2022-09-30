@@ -76,14 +76,14 @@ RC conjugate( alp::Matrix< D, AnyStructure, alp::Density::Dense > &M ) {
 template<
 	typename T
 >
-void generate_symmherm_matrix(
+std::vector< T > generate_symmherm_matrix_data(
 	size_t N,
-	std::vector<T> &data,
 	const typename std::enable_if<
 		grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
+	std::vector< T > data( N * N );
 	std::srand( RNDSEED );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
@@ -97,20 +97,21 @@ void generate_symmherm_matrix(
 			}
 		}
 	}
+	return data;
 }
 
 //** gnerate upper/lower triangular part of a Symmetric matrix */
 template<
 	typename T
 >
-void generate_symmherm_matrix(
+std::vector< T >  generate_symmherm_matrix_data(
 	size_t N,
-	std::vector<T> &data,
 	const typename std::enable_if<
 		!grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
+	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
 	std::srand( RNDSEED );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
@@ -120,6 +121,7 @@ void generate_symmherm_matrix(
 			++k;
 		}
 	}
+	return data;
 }
 
 //** check if rows/columns or matrix Q are orthogonal */
@@ -288,15 +290,8 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< ScalarType, Orthogonal > Q( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetricTridiagonal > T( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetric > H( N );
-
-
-	if ( grb::utils::is_complex< ScalarType >::value ) {
-		std::vector< ScalarType > matrix_data( N * N );
-		generate_symmherm_matrix( N, matrix_data );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
-	} else {
-		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
-		generate_symmherm_matrix( N, matrix_data );
+	{
+		auto matrix_data = generate_symmherm_matrix_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 #ifdef DEBUG
