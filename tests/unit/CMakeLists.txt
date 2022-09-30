@@ -224,6 +224,10 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp
 )
 
+add_grb_executables( dense_conjugate dense_conjugate.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( dense_matrix_access dense_matrix_access.cpp
 	BACKENDS alp_reference
 )
