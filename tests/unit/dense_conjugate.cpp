@@ -26,21 +26,22 @@
 #include <alp.hpp>
 #include "../utils/print_alp_containers.hpp"
 
-constexpr float tol = 1.e-10;
+typedef float BaseScalarType;
+constexpr BaseScalarType tol = 1.e-10;
 
 template< typename T >
 T random_value();
 
 template<>
-float random_value< float >() {
-	return static_cast< float >( rand() ) / RAND_MAX;
+BaseScalarType random_value< BaseScalarType >() {
+	return static_cast< BaseScalarType >( rand() ) / RAND_MAX;
 }
 
 template<>
-std::complex< float > random_value< std::complex< float > >() {
-	const float re = random_value< float >();
-	const float im = random_value< float >();
-	return std::complex< float >( re, im );
+std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() {
+	const BaseScalarType re = random_value< BaseScalarType >();
+	const BaseScalarType im = random_value< BaseScalarType >();
+	return std::complex< BaseScalarType >( re, im );
 }
 
 template< typename MatrixType >
@@ -81,16 +82,16 @@ alp::RC check_if_same( const MatrixType1 &A, const MatrixType2 &B, const Ring &r
 	rc = rc ? rc : alp::foldl( E, A, ring.getAdditiveOperator() );
 	rc = rc ? rc : alp::foldl( E, B, alp::operators::subtract< T >() );
 
-	float fnorm = ring.template getZero< float >();
+	BaseScalarType fnorm = ring.template getZero< BaseScalarType >();
 	rc = rc ? rc : alp::eWiseLambda(
 		[ &fnorm, &ring ]( const size_t i, const size_t j, T &val ) {
 			(void) i;
 			(void) j;
-			const float valsquare = static_cast< float >( std::real( val * grb::utils::is_complex< T >::conjugate( val ) ) );
+			const BaseScalarType valsquare = static_cast< BaseScalarType >( std::real( val * grb::utils::is_complex< T >::conjugate( val ) ) );
 			alp::internal::foldl(
 				fnorm,
 				valsquare,
-				alp::operators::add< float >()
+				alp::operators::add< BaseScalarType >()
 			);
 		},
 		E
@@ -141,8 +142,8 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	rc = alp::SUCCESS;
 
-	rc = rc ? rc : test_conjugate< std::complex< float > >( n );
-	rc = rc ? rc : test_conjugate< float >( n );
+	rc = rc ? rc : test_conjugate< std::complex< BaseScalarType > >( n );
+	rc = rc ? rc : test_conjugate< BaseScalarType >( n );
 
 	rc = alp::SUCCESS;
 }
