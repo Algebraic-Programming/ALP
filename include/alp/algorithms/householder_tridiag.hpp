@@ -21,9 +21,6 @@
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../tests/utils/print_alp_containers.hpp"
 
-//once TEMPDISABLE is remnoved the code should be in the final version
-#define TEMPDISABLE
-
 namespace alp {
 
 	namespace algorithms {
@@ -161,34 +158,7 @@ namespace alp {
 				// this part can be rewriten without temp matrix using functors
 				Matrix< D, SymmOrHermType, Dense > vvt( m );
 
-				// vvt = v * v^H  (^H = ^T*)
-				//there should be no need to have separate version for _COMPLEX
-				// once outer(v) on complex==D returrn symmetric-hermitian
-				// this ifdef should be then removed
-				//complex outer should return (symmetric)hermitian
-				//set will not work untill this is supported
-
-#ifdef _COMPLEX
-
-#ifdef TEMPDISABLE
-				rc = rc ? rc : set( vvt, zero );
-				internal::setInitialized( vvt, true );
-				rc = rc ? rc : alp::eWiseLambda(
-					[ &v ]( const size_t i, const size_t j, D &val ) {
-						//coulum-wise algorithm version outer(v,conj(v))
-						// val = v[ i ] * grb::utils::is_complex< D >::conjugate( v[ j ]  );
-						//row-wise algorithm version outer(conj(v),v)
-						val = v[ j ] * grb::utils::is_complex< D >::conjugate( v[ i ]  );
-
-					}
-					,
-					vvt
-				);
-#endif
-#else
 				rc = rc ? rc : set( vvt, outer( v, ring.getMultiplicativeOperator() ) );
-#endif
-
 				// vvt = 2 * vvt
 				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
 
@@ -199,7 +169,12 @@ namespace alp {
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
 				auto Qk_view = get_view( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
-				rc = rc ? rc : foldl( Qk_view, vvt, minus );
+				//conjugate view should replace this check
+				if ( grb::utils::is_complex< D >::value ) {
+					rc = rc ? rc : foldl( Qk_view, alp::get_view< alp::view::transpose >( vvt ), minus );
+				} else {
+					rc = rc ? rc : foldl( Qk_view, vvt, minus );
+				}
 
 #ifdef DEBUG
 				print_matrix( " << Qk >> ", Qk );
