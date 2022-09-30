@@ -2251,7 +2251,7 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				using type = Matrix< T, structures::General, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Matrix< T, structures::Hermitian, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
 			};
 
 			template < bool d >

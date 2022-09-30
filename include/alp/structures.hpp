@@ -463,6 +463,14 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Hermitian >, Square::inferred_structures >::type;
 		};
 
+		template<>
+		struct isInstantiable< Hermitian, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
+		};
+
 		struct Trapezoidal: BaseStructure {
 
 			using inferred_structures = tuple_cat< std::tuple< Trapezoidal >, Band< OpenInterval >::inferred_structures >::type;
