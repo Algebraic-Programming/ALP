@@ -531,6 +531,13 @@ for BACKEND in ${BACKENDS[@]}; do
 	head -1 ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log || echo "Test FAILED"
 	echo " "
+
+	NTEST_GEMM=100
+	echo ">>>      [x]           [ ]       Tests Gemm on matrix (${NTEST_GEMM}x${NTEST_GEMM}x${NTEST_GEMM})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_gemm_${BACKEND} ${NTEST_GEMM} &> ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log || echo "Test FAILED"
+	echo " "
 	
 done
 

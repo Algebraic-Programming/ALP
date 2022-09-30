@@ -159,6 +159,10 @@ add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+add_grb_executables( alp_gemm alp_gemm.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( alp_cholesky alp_cholesky.cpp
 	BACKENDS alp_reference
 )
