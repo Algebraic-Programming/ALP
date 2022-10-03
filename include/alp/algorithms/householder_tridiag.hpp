@@ -170,7 +170,7 @@ namespace alp {
 #endif
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
-				auto Qk_view = get_view( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
+				auto Qk_view = get_view< SymmOrHermType >( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 				if ( grb::utils::is_complex< D >::value ) {
 					rc = rc ? rc : foldl( Qk_view, alp::get_view< alp::view::transpose >( vvt ), minus );
 				} else {
