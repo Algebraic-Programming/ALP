@@ -540,7 +540,7 @@ for BACKEND in ${BACKENDS[@]}; do
 	echo " "
 
 	NTEST_HOUSEHOLDER=100
-	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
+	echo ">>>      [x]           [ ]       Tests dsytrd (Householder tridiagonalisaiton) on"
 	echo ">>>                               a real symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log

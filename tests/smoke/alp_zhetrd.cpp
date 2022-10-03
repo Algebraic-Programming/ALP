@@ -64,23 +64,19 @@ std::vector< T > generate_symmherm_matrix_data(
 	>::type * const = nullptr
 ) {
 	std::vector< T > data( N * N );
+	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
 	std::srand( RNDSEED );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			T val( std::rand(), std::rand() );
 			data[ i * N + j ] = val / std::abs( val );
-			if( j != i ) {
-				data[ j * N + i ] = grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
-			}
-			if( j == i ) {
-				data[ i * N + j ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
-			}
+			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 		}
 	}
 	return data;
 }
 
-//** gnerate upper/lower triangular part of a Symmetric matrix */
+//** generate upper/lower triangular part of a Symmetric matrix */
 template<
 	typename T
 >

@@ -123,9 +123,11 @@ namespace alp {
 					[ &alpha, &ring, &divide, &minus ]( const size_t i, D &val ) {
 						if ( i == 0 ) {
 							Scalar< D > norm_v0( std::abs( val ) );
-							internal::foldl( *alpha, val, ring.getMultiplicativeOperator() );
-							internal::foldl( *alpha, *norm_v0, divide );
-							internal::foldl( val, *alpha, minus );
+							Scalar< D > val_scalar( val );
+							foldl( alpha, val_scalar, ring.getMultiplicativeOperator() );
+							foldl( alpha, norm_v0, divide );
+							foldl( val_scalar, alpha, minus );
+							val = *val_scalar;
 						}
 					},
 					v
@@ -169,7 +171,6 @@ namespace alp {
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
 				auto Qk_view = get_view( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
-				//conjugate view should replace this check
 				if ( grb::utils::is_complex< D >::value ) {
 					rc = rc ? rc : foldl( Qk_view, alp::get_view< alp::view::transpose >( vvt ), minus );
 				} else {
