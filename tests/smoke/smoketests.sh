@@ -538,10 +538,27 @@ for BACKEND in ${BACKENDS[@]}; do
 	head -1 ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log || echo "Test FAILED"
 	echo " "
+
+	NTEST_HOUSEHOLDER=100
+	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
+	echo ">>>                               a real symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
+	echo ">>>                               a complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
 	
 done
 
 echo "*****************************************************************************************"
 echo "All smoke tests done."
 echo " "
+
 
