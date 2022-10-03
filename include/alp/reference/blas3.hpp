@@ -30,6 +30,7 @@
 #include <alp/descriptors.hpp>
 #include <alp/structures.hpp>
 #include <alp/blas0.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -1441,13 +1442,18 @@ namespace alp {
 		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &y, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
-				internal::apply( result, x[ i ], y[ j ], mul );
+				internal::apply(
+					result,
+					x[ i ],
+					grb::utils::is_complex< InputType2 >::conjugate( y[ j ] ),
+					mul
+				);
 			};
 		std::function< bool() > init_lambda =
 			[ &x, &y ]() -> bool {
 				return internal::getInitialized( x ) && internal::getInitialized( y );
 			};
-		
+
 		return Matrix<
 			typename Operator::D3,
 			structures::General,
@@ -1455,12 +1461,12 @@ namespace alp {
 			view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
-			>(
-				init_lambda,
-				getLength( x ),
-				getLength( y ),
-				data_lambda
-			);
+		>(
+			init_lambda,
+			getLength( x ),
+			getLength( y ),
+			data_lambda
+		);
 
 	}
 
@@ -1473,7 +1479,14 @@ namespace alp {
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 		class Operator
 	>
-	Matrix< typename Operator::D3, structures::Symmetric, Density::Dense,
+	Matrix<
+		typename Operator::D3,
+		typename std::conditional<
+			grb::utils::is_complex< typename Operator::D3 >::value,
+			alp::structures::Hermitian,
+			alp::structures::Symmetric
+		>::type,
+		Density::Dense,
 		view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 		imf::Id, imf::Id,
 		reference
@@ -1496,25 +1509,33 @@ namespace alp {
 		std::function< void( typename Operator::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &mul ]( typename Operator::D3 &result, const size_t i, const size_t j ) {
 				//set( ret, alp::identities::zero );
-				internal::apply( result, x[ i ], x[ j ], mul );
+				internal::apply(
+					result, x[ i ],
+					grb::utils::is_complex< InputType >::conjugate( x[ j ] ),
+					mul
+				);
 			};
 		std::function< bool() > init_lambda =
 			[ &x ]() -> bool {
 				return internal::getInitialized( x );
 			};
-		
+
 		return Matrix<
 			typename Operator::D3,
-			structures::Symmetric,
+			typename std::conditional<
+				grb::utils::is_complex< typename Operator::D3 >::value,
+				alp::structures::Hermitian,
+				alp::structures::Symmetric
+			>::type,
 			Density::Dense,
 			view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
-			>(
-				init_lambda,
-				getLength( x ),
-				data_lambda
-			);
+		>(
+			init_lambda,
+			getLength( x ),
+			data_lambda
+		);
 
 	}
 

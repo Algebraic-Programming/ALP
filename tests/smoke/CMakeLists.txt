@@ -167,6 +167,15 @@ add_grb_executables( alp_cholesky alp_cholesky.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( alp_zhetrd alp_zhetrd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zhetrd_complex alp_zhetrd.cpp
+        BACKENDS alp_reference
+        COMPILE_DEFINITIONS _COMPLEX
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"
