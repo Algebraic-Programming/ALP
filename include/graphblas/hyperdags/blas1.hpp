@@ -42,7 +42,7 @@ namespace grb {
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const Phase phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -103,6 +103,7 @@ namespace grb {
 		Vector< std::pair< T, U >, hyperdags, Coords > &z,
 		const Vector< T, hyperdags, Coords > &x,
 		const Vector< U, hyperdags, Coords > &y,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< T >::value &&
 			!grb::is_object< U >::value,
@@ -117,7 +118,8 @@ namespace grb {
 		);
 		return zip< descr >(
 			internal::getVector(z),
-			internal::getVector(x), internal::getVector(y)
+			internal::getVector(x), internal::getVector(y),
+			phase
 		);
 	}
 
@@ -131,6 +133,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -148,7 +151,7 @@ namespace grb {
 		return eWiseApply< descr >(
 			internal::getVector(z),
 			internal::getVector(x), internal::getVector(y),
-			op
+			op, phase
 		);
 	}
 
@@ -160,6 +163,7 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
@@ -177,7 +181,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return foldr< descr >( internal::getVector(x), beta, monoid );
+		return foldr< descr >( internal::getVector(x), beta, monoid, phase );
 	}
 
 	template<
@@ -189,11 +193,12 @@ namespace grb {
 		const Vector< MaskType, hyperdags, Coords > &m,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
-			grb::is_monoid< Monoid >::value, void
-		>::type * const = nullptr
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
 	) {
 		internal::hyperdags::generator.addSource(
 			internal::hyperdags::SCALAR,
@@ -208,7 +213,7 @@ namespace grb {
 		);
 		return foldr< descr >(
 			internal::getVector(x), internal::getVector(m),
-			beta, monoid
+			beta, monoid, phase
 		);
 	}
 
@@ -220,6 +225,7 @@ namespace grb {
 		const InputType &alpha,
 		Vector< IOType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
@@ -233,11 +239,11 @@ namespace grb {
 		std::array< const void *, 2 > sources{ &alpha, &y };
 		std::array< const void *, 1 > destinations{ &y };
 		internal::hyperdags::generator.addOperation(
-		internal::hyperdags::FOLDR_APLHA_VECTOR_MONOID,
-		sources.begin(), sources.end(),
-		destinations.begin(), destinations.end()
+			internal::hyperdags::FOLDR_APLHA_VECTOR_MONOID,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
 		);
-		return foldr< descr >( alpha, internal::getVector(y), monoid );
+		return foldr< descr >( alpha, internal::getVector(y), monoid, phase );
 	}
 
 	template<
@@ -248,6 +254,7 @@ namespace grb {
 		const InputType &alpha,
 		Vector< IOType, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
@@ -265,7 +272,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return foldr< descr >( alpha, internal::getVector(y), op );
+		return foldr< descr >( alpha, internal::getVector(y), op, phase );
 	}
 
 	template<
@@ -276,6 +283,7 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > &x,
 		Vector< IOType, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< OP >::value &&
 			!grb::is_object< InputType >::value &&
@@ -289,7 +297,11 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return foldr< descr >( internal::getVector(x), internal::getVector(y), op );
+		return foldr< descr >(
+			internal::getVector(x),
+			internal::getVector(y),
+			op, phase
+		);
 	}
 
 	template<
@@ -301,6 +313,7 @@ namespace grb {
 		const Vector< MaskType, hyperdags, Coords > &m,
 		Vector< IOType, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< OP >::value &&
 			!grb::is_object< InputType >::value &&
@@ -319,7 +332,7 @@ namespace grb {
 			internal::getVector(x),
 			internal::getVector(m),
 			internal::getVector(y),
-			op
+			op, phase
 		);
 	}
 
@@ -331,6 +344,7 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > &x,
 		Vector< IOType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< InputType >::value &&
@@ -346,19 +360,21 @@ namespace grb {
 		);
 		return foldr< descr >(
 			internal::getVector(x), internal::getVector(y),
-			monoid
+			monoid, phase
 		);
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid, typename IOType,
-		typename MaskType, typename InputType, typename Coords
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename Coords
 	>
 	RC foldr(
 		const Vector< InputType, hyperdags, Coords > &x,
 		const Vector< MaskType, hyperdags, Coords > &m,
 		Vector< IOType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -375,7 +391,7 @@ namespace grb {
 		);
 		return foldr< descr >(
 			internal::getVector(x), internal::getVector(m),
-			internal::getVector(y), monoid
+			internal::getVector(y), monoid, phase
 		);
 	}
 
@@ -387,6 +403,7 @@ namespace grb {
 		IOType &x,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -405,19 +422,21 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			x, internal::getVector(y), monoid
+			x, internal::getVector(y), monoid, phase
 		);
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
-		typename InputType, typename IOType, typename MaskType, typename Coords
+		typename InputType, typename IOType, typename MaskType,
+		typename Coords
 	>
 	RC foldl(
 		IOType &x,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const Vector< MaskType, hyperdags, Coords > &mask,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -437,7 +456,8 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			x, internal::getVector(y), internal::getVector(mask), monoid
+			x, internal::getVector(y), internal::getVector(mask),
+			monoid, phase
 		);
 	}
 
@@ -449,6 +469,7 @@ namespace grb {
 		Vector< IOType, hyperdags, Coords > &x,
 		const InputType beta,
 		const Op &op = Op(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -466,7 +487,7 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return foldl< descr >( internal::getVector(x), beta, op );
+		return foldl< descr >( internal::getVector(x), beta, op, phase );
 	}
 
 	template<
@@ -478,6 +499,7 @@ namespace grb {
 		const Vector< MaskType, hyperdags, Coords > &m,
 		const InputType beta,
 		const Op &op = Op(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -497,7 +519,8 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x), internal::getVector(m), beta, op
+			internal::getVector(x), internal::getVector(m),
+			beta, op, phase
 		);
 	}
 
@@ -509,6 +532,7 @@ namespace grb {
 		Vector< IOType, hyperdags, Coords > &x,
 		const InputType beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -526,18 +550,20 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end()
 		);
-		return foldl< descr >( internal::getVector(x), beta, monoid );
+		return foldl< descr >( internal::getVector(x), beta, monoid, phase );
 	}
 
 	template<
 		 Descriptor descr = descriptors::no_operation, class Monoid,
-		 typename IOType, typename MaskType, typename InputType, typename Coords
+		 typename IOType, typename MaskType, typename InputType,
+		 typename Coords
 	>
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const Vector< MaskType, hyperdags, Coords > &m,
 		const InputType &beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -557,18 +583,21 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x), internal::getVector(m), beta, monoid
+			internal::getVector(x), internal::getVector(m),
+			beta, monoid, phase
 		);
 	}
 
 	template <
 		Descriptor descr = descriptors::no_operation,
-		class Monoid, typename IOType, typename InputType, typename Coords
+		class Monoid, typename IOType, typename InputType,
+		typename Coords
 	>
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< IOType >::value &&
@@ -583,20 +612,22 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x), internal::getVector(y), monoid
+			internal::getVector(x), internal::getVector(y),
+			monoid, phase
 		);
 	}
 
-	template
-	<
+	template <
 		Descriptor descr = descriptors::no_operation, class OP,
-		typename IOType, typename MaskType, typename InputType, typename Coords
+		typename IOType, typename MaskType, typename InputType,
+		typename Coords
 	>
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const Vector< MaskType, hyperdags, Coords > &m,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< OP >::value &&
 			!grb::is_object< IOType >::value &&
@@ -612,19 +643,22 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x),internal::getVector(m), internal::getVector(y), op
+			internal::getVector(x), internal::getVector(m),
+			internal::getVector(y), op, phase
 		);
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
-		typename IOType, typename MaskType, typename InputType, typename Coords
+		typename IOType, typename MaskType, typename InputType,
+		typename Coords
 	>
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const Vector< MaskType, hyperdags, Coords > &m,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< IOType >::value &&
@@ -640,18 +674,21 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x),internal::getVector(m), internal::getVector(y), monoid
+			internal::getVector(x),internal::getVector(m),
+			internal::getVector(y), monoid, phase
 		);
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class OP, typename IOType, typename InputType, typename Coords
+		class OP, typename IOType, typename InputType,
+		typename Coords
 	>
 	RC foldl(
 		Vector< IOType, hyperdags, Coords > &x,
 		const Vector< InputType, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< OP >::value &&
 			!grb::is_object< IOType >::value &&
@@ -666,13 +703,12 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return foldl< descr >(
-			internal::getVector(x),internal::getVector(y), op
+			internal::getVector(x), internal::getVector(y),
+			op, phase
 		);
 	}
 
-	template<
-		typename Func, typename DataType, typename Coords
-	>
+	template< typename Func, typename DataType, typename Coords >
 	RC eWiseLambda(
 		const Func f, const Vector< DataType, hyperdags, Coords > &x
 	) {
@@ -755,6 +791,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value
 			&& !grb::is_object< InputType1 >::value
@@ -773,7 +810,8 @@ namespace grb {
 			sources.begin(), sources.end(),
 			destinations.begin(), destinations.end());
 		return eWiseApply< descr >(
-			internal::getVector(z), internal::getVector(x), beta, op
+			internal::getVector(z), internal::getVector(x), beta,
+			op, phase
 		);
 	}
 
@@ -786,6 +824,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -802,9 +841,11 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
-			internal::getVector(z), alpha, internal::getVector(y), op
+			internal::getVector(z), alpha, internal::getVector(y),
+			op, phase
 		);
 	}
 
@@ -820,6 +861,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -837,10 +879,12 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			internal::getVector(x), beta, monoid
+			internal::getVector(x), beta,
+			monoid, phase
 		);
 	}
 
@@ -855,6 +899,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -872,17 +917,20 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			internal::getVector(x), beta, op
+			internal::getVector(x), beta,
+			op, phase
 		);
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
 		typename OutputType, typename MaskType,
-		typename InputType1, typename InputType2, typename Coords
+		typename InputType1, typename InputType2,
+		typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -890,6 +938,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -907,10 +956,12 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			alpha, internal::getVector(y), monoid
+			alpha, internal::getVector(y),
+			monoid, phase
 		);
 	}
 
@@ -925,6 +976,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -946,13 +998,16 @@ namespace grb {
 		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			alpha, internal::getVector(y), op
+			alpha, internal::getVector(y),
+			op, phase
 		);
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		typename MaskType, typename InputType1, typename InputType2, typename Coords
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -960,6 +1015,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -973,10 +1029,12 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			internal::getVector(x), internal::getVector(y), op
+			internal::getVector(x), internal::getVector(y),
+			op, phase
 		);
 	}
 
@@ -990,6 +1048,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1009,8 +1068,9 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return eWiseApply< descr >(
-			internal::getVector(z), internal::getVector(x),
-			beta, monoid
+			internal::getVector(z),
+			internal::getVector(x), beta,
+			monoid, phase
 		);
 	}
 
@@ -1024,6 +1084,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1044,7 +1105,8 @@ namespace grb {
 		);
 		return eWiseApply< descr >(
 			internal::getVector(z),
-			alpha, internal::getVector(y), monoid
+			alpha, internal::getVector(y),
+			monoid, phase
 		);
 	}
 
@@ -1059,6 +1121,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -1072,22 +1135,26 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z), internal::getVector(mask),
-			internal::getVector(x), internal::getVector(y), monoid
+			internal::getVector(x), internal::getVector(y),
+			monoid, phase
 		);
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
-		typename OutputType, typename InputType1, typename InputType2, typename Coords
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1100,10 +1167,12 @@ namespace grb {
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID,
 			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end());
+			destinations.begin(), destinations.end()
+		);
 		return eWiseApply< descr >(
 			internal::getVector(z),
-			internal::getVector(x), internal::getVector(y), monoid
+			internal::getVector(x), internal::getVector(y),
+			monoid, phase
 		);
 	}
 
@@ -1789,6 +1858,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1809,7 +1879,8 @@ namespace grb {
 		);
 		return eWiseMul< descr >(
 			internal::getVector(z),
-			alpha, internal::getVector(y), ring
+			alpha, internal::getVector(y),
+			ring, phase
 		);
 	}
 
@@ -1823,6 +1894,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1843,7 +1915,8 @@ namespace grb {
 		);
 		return eWiseMul< descr >(
 			internal::getVector(z),
-			internal::getVector(x), beta, ring
+			internal::getVector(x), beta,
+			ring, phase
 		);
 	}
 
@@ -1858,6 +1931,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1876,7 +1950,7 @@ namespace grb {
 		return eWiseMul< descr >(
 			internal::getVector(z),
 			internal::getVector(m), internal::getVector(x), internal::getVector(y),
-			ring
+			ring, phase
 		);
 	}
 
@@ -1891,6 +1965,7 @@ namespace grb {
 		const InputType1 alpha,
 		const Vector< InputType2, hyperdags, Coords > &y,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1912,7 +1987,8 @@ namespace grb {
 		);
 		return eWiseMul< descr >(
 			internal::getVector(z), internal::getVector(m),
-			alpha, internal::getVector(y), ring
+			alpha, internal::getVector(y),
+			ring, phase
 		);
 	}
 
@@ -1927,6 +2003,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -1948,7 +2025,8 @@ namespace grb {
 		);
 		return eWiseMul< descr >(
 			internal::getVector(z), internal::getVector(m),
-			internal::getVector(x), beta, ring
+			internal::getVector(x), beta,
+			ring, phase
 		);
 	}
 

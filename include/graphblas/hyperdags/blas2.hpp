@@ -45,6 +45,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const Matrix< InputType2, hyperdags > &A,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -62,7 +63,8 @@ namespace grb {
 		);
 		return vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
-			internal::getVector(v), internal::getMatrix(A), ring
+			internal::getVector(v), internal::getMatrix(A),
+			ring, phase
 		);
 	}
 	
@@ -79,6 +81,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value &&
@@ -99,7 +102,8 @@ namespace grb {
 		
 		return vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
-			internal::getVector(v), internal::getMatrix(A), add, mul
+			internal::getVector(v), internal::getMatrix(A),
+			add, mul, phase
 		);
 	}
 
@@ -116,6 +120,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const Matrix< InputType2, hyperdags > &A,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -131,7 +136,9 @@ namespace grb {
 			destinations.begin(), destinations.end()
 		);
 		return vxm< descr >(
-			internal::getVector(u), internal::getVector(v), internal::getMatrix(A), ring
+			internal::getVector(u),
+			internal::getVector(v), internal::getMatrix(A),
+			ring, phase
 		);
 	}
 	
@@ -150,6 +157,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &A,
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const Ring &ring,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -167,7 +175,8 @@ namespace grb {
 		);
 		return mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
-			internal::getMatrix(A), internal::getVector(v), ring
+			internal::getMatrix(A), internal::getVector(v),
+			ring, phase
 		);
 	}
 	
@@ -186,6 +195,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const Vector< InputType4, hyperdags, Coords > &v_mask,
 		const Ring &ring,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -205,7 +215,7 @@ namespace grb {
 		return mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getMatrix(A), internal::getVector(v), internal::getVector(v_mask),
-			ring
+			ring, phase
 		);
 	}
 
@@ -225,6 +235,7 @@ namespace grb {
 		const Vector< InputType4, hyperdags, Coords > &v_mask,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value && 
@@ -246,7 +257,7 @@ namespace grb {
 		return mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getMatrix(A), internal::getVector(v), internal::getVector(v_mask),
-			add, mul
+			add, mul, phase
 		);
 	}
 
@@ -263,6 +274,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &A,
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const Ring &ring,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -280,7 +292,8 @@ namespace grb {
 		);
 		return mxv< descr >(
 			internal::getVector(u),
-			internal::getMatrix(A), internal::getVector(v), ring
+			internal::getMatrix(A), internal::getVector(v),
+			ring, phase
 		);
 	}
 
@@ -295,6 +308,7 @@ namespace grb {
 		const Vector< InputType1, hyperdags, Coords > &v,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value &&
@@ -313,7 +327,8 @@ namespace grb {
 		);
 		return mxv< descr >(
 			internal::getVector(u),
-			internal::getMatrix(A), internal::getVector(v), add, mul
+			internal::getMatrix(A), internal::getVector(v),
+			add, mul, phase
 		);
 	}
 
@@ -409,6 +424,7 @@ namespace grb {
 		const Vector< InputType4, hyperdags, Coords > &v_mask,
 		const Matrix< InputType2, hyperdags > &A,
 		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -428,7 +444,7 @@ namespace grb {
 		return vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
-			ring
+			ring, phase
 		);
 	}
 
@@ -448,6 +464,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value &&
@@ -469,7 +486,7 @@ namespace grb {
 		return vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
-			add, mul
+			add, mul, phase
 		);
 	}
 
@@ -484,6 +501,7 @@ namespace grb {
 		const Matrix< InputType2, hyperdags > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value &&
@@ -503,7 +521,7 @@ namespace grb {
 		return vxm< descr >(
 			internal::getVector(u),
 			internal::getVector(v), internal::getMatrix(A),
-			add, mul
+			add, mul, phase
 		);
 	}	
 

@@ -53,7 +53,7 @@ namespace grb {
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
 		void >::type * const = nullptr
-	){
+	) {
 		std::array< const void *, 2 > sources{ &A, &B };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
@@ -211,7 +211,8 @@ namespace grb {
 		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &A,
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const Vector< InputType2, hyperdags, Coords > &y,
-		const Vector< InputType3, hyperdags, Coords > &z
+		const Vector< InputType3, hyperdags, Coords > &z,
+		const Phase &phase = EXECUTE
 	) {
 		std::array< const void *, 3 > sources{ &x, &y, &z };
 		std::array< const void *, 1 > destinations{ &A };
@@ -222,7 +223,9 @@ namespace grb {
 		);
 		return zip< descr >(
 			internal::getMatrix( A ),
-			internal::getVector( x ),  internal::getVector( y ), internal::getVector( z )
+			internal::getVector( x ),  internal::getVector( y ),
+			internal::getVector( z ),
+			phase
 		);
 	}
 
@@ -235,7 +238,8 @@ namespace grb {
 	RC zip(
 		Matrix< void, hyperdags, RIT, CIT, NIT > &A,
 		const Vector< InputType1, hyperdags, Coords > &x,
-		const Vector< InputType2, hyperdags, Coords > &y
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Phase &phase = EXECUTE
 	) {
 		std::array< const void *, 2 > sources{ &x, &y };
 		std::array< const void *, 1 > destinations{ &A };
@@ -246,7 +250,8 @@ namespace grb {
 		);
 		return zip< descr >(
 			internal::getMatrix( A ),
-			internal::getVector( x ),  internal::getVector( y )
+			internal::getVector( x ),  internal::getVector( y ),
+			phase
 		);
 	}
 
