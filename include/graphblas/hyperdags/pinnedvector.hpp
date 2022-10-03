@@ -41,9 +41,14 @@ namespace grb {
 
 		private:
 
-			typedef PinnedVector< IOType, grb::_GRB_WITH_HYPERDAGS_USING > MyPinnedVector;
+			/** This implementation relies on the sub-backend. */
+			typedef PinnedVector< IOType, grb::_GRB_WITH_HYPERDAGS_USING >
+				MyPinnedVector;
 
+			/** Instance of the underlying backend. */
 			MyPinnedVector pinned_vector;
+
+
 		public:
 
 			/** \internal No implementation notes. */
@@ -53,10 +58,10 @@ namespace grb {
 			PinnedVector(
 				const Vector< IOType, hyperdags, internal::hyperdags::Coordinates > &x,
 				const IOMode mode
-			): pinned_vector(internal::getVector(x), mode) {}; 
+			): pinned_vector( internal::getVector(x), mode ) {}; 
 			
 
-			// default destructor is OK
+			// default destructor is allowed
 
 			/** \internal No implementation notes. */
 			inline size_t size() const noexcept {
@@ -74,22 +79,23 @@ namespace grb {
 				const size_t k,
 				const OutputType one
 			) const noexcept {
-				return pinned_vector.getNonzeroValue(k, one);
+				return pinned_vector.getNonzeroValue( k, one );
 			}
 
 			/** \internal No implementation notes. */
 			inline IOType getNonzeroValue(
 				const size_t k
 			) const noexcept {
-				return pinned_vector.getNonzeroValue(k);
+				return pinned_vector.getNonzeroValue( k );
 			}
 
 			/** \internal No implementation notes. */
 			inline size_t getNonzeroIndex(
 				const size_t k
 			) const noexcept {
-				return pinned_vector.getNonzeroIndex(k);
+				return pinned_vector.getNonzeroIndex( k );
 			}
+
 	};
 
 } // namespace grb

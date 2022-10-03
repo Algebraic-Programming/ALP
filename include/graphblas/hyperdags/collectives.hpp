@@ -42,77 +42,81 @@
 		"* Possible fix 2 | Provide a value of the same type as the first "    \
 		"domain of the given operator.\n"                                      \
 		"* Possible fix 3 | Ensure the operator given to this call to " y " h" \
-		"as"                                                                   \
-		" a"                                                                   \
-		"ll"                                                                   \
-		" o"                                                                   \
-		"f "                                                                   \
-		"it"                                                                   \
-		"s "                                                                   \
-		"do"                                                                   \
-		"ma"                                                                   \
-		"in"                                                                   \
-		"s "                                                                   \
-		"eq"                                                                   \
-		"ua"                                                                   \
-		"l "                                                                   \
-		"to"                                                                   \
-		" e"                                                                   \
-		"ac"                                                                   \
-		"h "                                                                   \
-		"ot"                                                                   \
-		"he"                                                                   \
-		"r."                                                                   \
-		"\n"                                                                   \
+		"as all of its domains equal to each other.\n"                         \
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
+
 namespace grb {
 
 	template<>
 	class collectives< hyperdags > {
 
-	private:
-		/** Disallow instantiation of this class. */
-		collectives() {}
+		private:
 
-	public:
-		/**
-		 * Implementation details: the reference implementation has a single user
-		 * process, so this call is a no-op.
-		 */
-		template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType >
-		static RC allreduce( IOType &inout, const Operator op = Operator() ) {
-			return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::allreduce(inout, op);
+			/** Disallow instantiation of this class. */
+			collectives() {}
+
+		public:
+
+			/**
+			 * Implementation details: the reference implementation has a single user
+			 * process, so this call is a no-op.
+			 */
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Operator, typename IOType
+			>
+			static RC allreduce(
+				IOType &inout, const Operator op = Operator()
+			) {
+			return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::allreduce(
+				inout, op
+			);
 		}
 
-		/**
-		 * Implementation details: the reference implementation has a single user
-		 * process, so this call is a no-op.
-		 */
-		template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType >
-		static RC reduce( IOType &inout, const size_t root = 0, const Operator op = Operator() ) {
-			// static checks
-			return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::reduce(inout, root, op);
-		}
+			/**
+			 * Implementation details: the reference implementation has a single user
+			 * process, so this call is a no-op.
+			 */
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Operator, typename IOType
+			>
+			static RC reduce(
+				IOType &inout, const size_t root = 0, const Operator op = Operator()
+			) {
+				// static checks
+				return grb::collectives< grb::_GRB_WITH_HYPERDAGS_USING >::reduce(
+					inout, root, op
+				);
+			}
 
-		/**
-		 * Implementation details: the reference implementation has a single user
-		 * process, so this call is a no-op.
-		 */
-		template< typename IOType >
-		static RC broadcast( IOType &inout, const size_t root = 0 ) {
-			return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::broadcast(inout, root);
-		}
+			/**
+			 * Implementation details: the reference implementation has a single user
+			 * process, so this call is a no-op.
+			 */
+			template< typename IOType >
+			static RC broadcast( IOType &inout, const size_t root = 0 ) {
+				return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::broadcast(
+					inout, root
+				);
+			}
 
-		/** Implementation details: in a single user processes, this is a no-op. */
-		template< Descriptor descr = descriptors::no_operation, typename IOType >
-		static RC broadcast( IOType * inout, const size_t size, const size_t root = 0 ) {
-			return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::broadcast(inout, size, root);
-		}
+			/** Implementation details: in a single user processes, this is a no-op. */
+			template< Descriptor descr = descriptors::no_operation, typename IOType >
+			static RC broadcast(
+				IOType * inout, const size_t size, const size_t root = 0
+			) {
+				return grb::collectives<grb::_GRB_WITH_HYPERDAGS_USING>::broadcast(
+					inout, size, root
+				);
+			}
 
 	}; // end class `collectives< hyperdags >'
+
 } // namespace grb
 
-
 #endif // end ``_H_GRB_HYPERDAGS_COLL''
+

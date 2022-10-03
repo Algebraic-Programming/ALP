@@ -54,33 +54,34 @@ namespace grb {
 				/**
 				 * \internal Scalars are always handled as a new source. We do not track
 				 * whether the same scalars are re-used, because we cannot reliably do so
-				 * (due to a lack of an alp::Scalar).
+				 * (due to a lack of an grb::Scalar).
 				 */
 				SCALAR,
 
 				/**
-				 * \internal The source is a container with contents that are not generated
-				 *           by ALP.
+				 * \internal The source is a container managed by ALP.
 				 */
 				CONTAINER,
 
 				/**
-				 * \internal The source is a container with contents initialised by a call
-				 *           to set.
+				 * \internal The source is an iterator passed to ALP.
 				 */
-				SET
+				ITERATOR
 			};
 
+			/** \internal The number of source vertex types. */
 			const constexpr size_t numSourceVertexTypes = 3;
 
+			/** \internal An array of all source vertex types. */
 			const constexpr enum SourceVertexType
 				allSourceVertexTypes[ numSourceVertexTypes ] =
 			{
 				SCALAR,
 				CONTAINER,
-				SET
+				ITERATOR
 			};
 
+			/** \internal @returns The type, as a string, of a source vertex. */
 			std::string toString( const enum SourceVertexType type ) noexcept;
 
 			/** \internal A source vertex. */
@@ -91,7 +92,7 @@ namespace grb {
 					/** \internal The type of source */
 					enum SourceVertexType type;
 
-					/** \internal The type-wise ID of the vertex */
+					/** \internal The ID amongst vertices of the same type */
 					size_t local_id;
 
 					/** \internal The global ID of the vertex */
@@ -100,15 +101,25 @@ namespace grb {
 
 				public:
 
+					/**
+					 * \internal The default source vertex constructor.
+					 *
+					 * @param[in] type The type of the vertex.
+					 * @param[in] lid  The ID of vertices of the same type.
+					 * @param[in] gid  The global ID of the vertex.
+					 */
 					SourceVertex(
-						const enum SourceVertexType,
-						const size_t, const size_t
+						const enum SourceVertexType type,
+						const size_t lid, const size_t gid
 					) noexcept;
 
+					/** \internal @returns The vertex type. */
 					enum SourceVertexType getType() const noexcept;
 
+					/** \internal @returns The type ID. */
 					size_t getLocalID() const noexcept;
 
+					/** \internal @returns The global ID. */
 					size_t getGlobalID() const noexcept;
 
 			};
@@ -124,6 +135,7 @@ namespace grb {
 
 				public:
 
+					/** \internal Default constructor. */
 					SourceVertexGenerator();
 
 					/**
@@ -151,24 +163,27 @@ namespace grb {
 
 			// 2: everything related to output vertices
 
-			/** \internal The types of source vertices that may be generated. */
+			/** \internal The types of output vertices that may be generated. */
 			enum OutputVertexType {
 
 				/**
-				 * \internal The output is a container with contents that are generated
-				 *           by ALP.
+				 * \internal The output is an ALP container.
 				 */
-				CONTAINER_OUTPUT,
+				CONTAINER_OUTPUT
+
 			};
 
+			/** \internal The number of distinct output vertex types. */
 			const constexpr size_t numOutputVertexTypes = 1;
 
+			/** \internal An array of output vertex types. */
 			const constexpr enum OutputVertexType
 				allOutputVertexTypes[ numOutputVertexTypes ] =
 			{
 				CONTAINER_OUTPUT
 			};
 
+			/** \internal @returns A string form of a given output vertex type. */
 			std::string toString( const enum OutputVertexType type ) noexcept;
 
 			/** \internal An output vertex. */
@@ -188,25 +203,40 @@ namespace grb {
 
 				public:
 
-					OutputVertex(const size_t, const size_t ) noexcept;
+					/** 
+					 * \internal Default constructor.
+					 *
+					 * @param[in] lid The ID within vertices of this type.
+					 * @param[in] gid The global vertex ID.
+					 *
+					 * Recall there is only one output vertex type, hence the precise type is
+					 * not a constructor argument.
+					 */
+					OutputVertex( const size_t lid, const size_t gid ) noexcept;
 
+					/** \internal @returns The type of this output vertex. */
 					enum OutputVertexType getType() const noexcept;
 
+					/** \internal @returns The ID amongst vertices of the same type. */
 					size_t getLocalID() const noexcept;
 
+					/** \internal @returns The ID amongst all vertices. */
 					size_t getGlobalID() const noexcept;
 
 			};
 
+			/** \internal Helps create output vertices. */
 			class OutputVertexGenerator {
 
 				private:
 
+					/** \internal Keeps track of the next output vertex ID. */
 					size_t nextID;
 
 
 				public:
 
+					/** \internal Default constructor. */
 					OutputVertexGenerator() noexcept;
 
 					/**
@@ -218,7 +248,7 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					OutputVertex create(const size_t id );
+					OutputVertex create( const size_t id );
 
 					/**
 					 * \internal
@@ -242,9 +272,10 @@ namespace grb {
 
 				SET_VECTOR_ELEMENT,
 
-				/** \internal The monoid-operator version, specifically */
 				DOT,
 				
+				SET_USING_VALUE,
+
 				SET_USING_MASK_AND_VECTOR,
 				
 				SET_USING_MASK_AND_SCALAR,
@@ -329,6 +360,8 @@ namespace grb {
 				
 				UNZIP_VECTOR_VECTOR_VECTOR,
 				
+				ZIP_MATRIX_VECTOR_VECTOR_VECTOR,
+
 				ZIP_MATRIX_VECTOR_VECTOR,
 				
 				CLEAR_MATRIX,
@@ -422,12 +455,13 @@ namespace grb {
 				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
 				
 				EWISELAMBDA_FUNC_VECTOR
-			
-				
+
 			};
 
-			const constexpr size_t numOperationVertexTypes = 94;
+			/** \internal How many operation vertex types exist. */
+			const constexpr size_t numOperationVertexTypes = 95;
 
+			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
 			{
@@ -435,6 +469,7 @@ namespace grb {
 				CLEAR_VECTOR,
 				SET_VECTOR_ELEMENT,
 				DOT,
+				SET_USING_VALUE,
 				SET_USING_MASK_AND_VECTOR,
 				SET_USING_MASK_AND_SCALAR,
 				SET_FROM_VECTOR,
@@ -477,6 +512,7 @@ namespace grb {
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,
 				OUTER,
 				UNZIP_VECTOR_VECTOR_VECTOR,
+				ZIP_MATRIX_VECTOR_VECTOR_VECTOR,
 				ZIP_MATRIX_VECTOR_VECTOR,
 				CLEAR_MATRIX,
 				EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING,
@@ -524,9 +560,9 @@ namespace grb {
 				EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING,
 				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
 				EWISELAMBDA_FUNC_VECTOR
-	
 			};
 
+			/** \internal @returns The operation vertex type as a string. */
 			std::string toString( const enum OperationVertexType ) noexcept;
 
 			/** \internal An operation vertex */
@@ -534,38 +570,67 @@ namespace grb {
 
 				private:
 
+					/** \internal The type of the vertex. */
 					const enum OperationVertexType type;
 
+					/** \internal The ID amongst vertices of the same type. */
 					const size_t local_id;
 
+					/** \internal The ID amongst all vertices. */
 					const size_t global_id;
 
 
 				public:
 
+					/**
+					 * \internal
+					 * Base constructor.
+					 *
+					 * @param[in] type The type of the new operation vertex.
+					 * @param[in] lid  An ID amongst vertices of the same type.
+					 * @param[in] gid  An ID unique amongst all vertices.
+					 * \endinternal
+					 */
 					OperationVertex(
-						const enum OperationVertexType,
-						const size_t, const size_t
+						const enum OperationVertexType type,
+						const size_t lid, const size_t gid
 					) noexcept;
 
+					/** \internal @returns The type of this vertex. */
 					enum OperationVertexType getType() const noexcept;
 
+					/**
+					 * \internal
+					 * @returns An ID unique amongst all vertices of the same type.
+					 * \endinternal
+					 */
 					size_t getLocalID() const noexcept;
 
+					/**
+					 * \internal
+					 * @returns An ID unique amongst all vertices, regardless of type.
+					 * \endinternal
+					 */
 					size_t getGlobalID() const noexcept;
 
 			};
 
-
+			/** \internal Helps generate operation vertices. */
 			class OperationVertexGenerator {
 
 				private:
 
+					/**
+					 * \internal
+					 * A map that keeps track of the number of vertices of each type.
+					 * \endinternal
+					 */
 					std::map< enum OperationVertexType, size_t > nextID;
 
 
 				public:
 
+					/** \internal Base constructor. */
 					OperationVertexGenerator();
 
 					/**
@@ -597,7 +662,7 @@ namespace grb {
 			/**
 			 * \internal
 			 * 
-			 * Encodes any hypergraph
+			 * Encodes any hypergraph that may yet grow.
 			 *
 			 * \endinternal
 			 */
@@ -683,10 +748,13 @@ namespace grb {
 					 */
 					size_t createVertex() noexcept;
 
+					/** \internal @returns The number of vertices in the current graph. */
 					size_t numVertices() const noexcept;
 
+					/** \internal @returns The number of hyperedges in the current graph. */
 					size_t numHyperedges() const noexcept;
 
+					/** \internal @returns The total number of pins in the current graph. */
 					size_t numPins() const noexcept;
 
 					/**
@@ -712,30 +780,52 @@ namespace grb {
 
 				private:
 
+					/** \internal The underlying hypergraph. */
 					Hypergraph hypergraph;
 
+					/** \internal The number of source vertices. */
 					size_t num_sources;
 
+					/** \internal The number of operation vertices. */
 					size_t num_operations;
 
+					/** \internal The number of output vertices. */
 					size_t num_outputs;
 
+					/** \internal A vector of source vertices. */
 					std::vector< SourceVertex > sourceVertices;
 
+					/** \internal A vector of operation vertices. */
 					std::vector< OperationVertex > operationVertices;
 
+					/** \internal A vector of output vertices. */
 					std::vector< OutputVertex > outputVertices;
 
+					/** \internal A map from source vertex IDs to global IDs. */
 					std::map< size_t, size_t > source_to_global_id;
 
+					/** \internal A map from operation vertex IDs to global IDs. */
 					std::map< size_t, size_t > operation_to_global_id;
 
+					/** \internal A map from output vertex IDs to global IDs. */
 					std::map< size_t, size_t > output_to_global_id;
 
+					/** \internal A map from global IDs to their types. */
 					std::map< size_t, enum VertexType > global_to_type;
 
+					/** \internal A map from global IDs to their local IDs. */
 					std::map< size_t, size_t > global_to_local_id;
 
+					/**
+					 * \internal
+					 *
+					 * Base constructor.
+					 *
+					 * @param[in] _hypergraph The base hypergraph.
+					 * @param[in] _srcVec     Vector of source vertices.
+					 * @param[in] _opVec      Vector of operation vertices.
+					 * @param[in] _outVec     Vector of output vertices.
+					 */
 					HyperDAG(
 						Hypergraph _hypergraph,
 						const std::vector< SourceVertex > &_srcVec,
@@ -747,21 +837,28 @@ namespace grb {
 				public:
 
 
-					/** \internal @returns The hypergraph representation of the HyperDAG. */
+					/** @returns The hypergraph representation of the HyperDAG. */
 					Hypergraph get() const noexcept;
 
+					/** @returns The number of source vertices. */
 					size_t numSources() const noexcept;
 
+					/** @returns The number of operation vertices. */
 					size_t numOperations() const noexcept;
 
+					/** @returns The number of output vertices. */
 					size_t numOutputs() const noexcept;
 
+					/** @returns A start iterator to the source vertices. */
 					std::vector< SourceVertex >::const_iterator sourcesBegin() const;
 
+					/** @returns End iterator matching #sourcesBegin(). */
 					std::vector< SourceVertex >::const_iterator sourcesEnd() const;
 					
+					/** @returns A start iterator to the output vertices. */
 					std::vector< OutputVertex >::const_iterator outputsBegin() const;
 
+					/** @returns End iterator matching #outputsBegin. */
 					std::vector< OutputVertex >::const_iterator outputsEnd() const;
 
 			};
@@ -822,12 +919,22 @@ namespace grb {
 						std::pair< size_t, OperationVertexType >
 					> operationOrOutputVertices;
 
+					/** \internal Source vertex generator. */
 					SourceVertexGenerator sourceGen;
 
+					/** \internal Operation vertex generator. */
 					OperationVertexGenerator operationGen;
 
 					// OutputVertexGenerator is a local field of #finalize()
 
+					/**
+					 * \internal
+					 * Adds a source vertex to the hypergraph.
+					 *
+					 * @param[in] type    The type of source vertex.
+					 * @param[in] pointer A unique identifier of the source.
+					 * \endinternal
+					 */
 					size_t addAnySource(
 						const SourceVertexType type,
 						const void * const pointer
@@ -836,18 +943,22 @@ namespace grb {
 
 				public:
 
+					/**
+					 * \internal Base constructor.
+					 */
 					HyperDAGGenerator() noexcept;
 
 					/**
 					 * \internal
-					 * Sometimes, but not always, do we know for sure that a given operation
-					 * generates a source vertex-- for example, #SourceVertexType::SET.
+					 *
+					 * Sometimes a given \em operation generates a source vertex-- for example,
+					 * the scalar input/output argument to grb::dot.
 					 *
 					 * In such cases, this function should be called to register the source
 					 * vertex.
 					 *
 					 * @param[in] type    The type of source vertex
-					 * @param[in] pointer A pointer to the source vertex
+					 * @param[in] pointer A unique identifier corresponding to the source
 					 *
 					 * \warning \a type cannot be #SourceVertexType::CONTAINER-- such source
 					 *          vertices should be automatically resolved via #addOperation.
@@ -861,6 +972,7 @@ namespace grb {
 
 					/**
 					 * \internal
+					 *
 					 * Registers a new operation with the HyperDAG.
 					 *
 					 * @param[in] type The type of operation being registered.

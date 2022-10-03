@@ -33,6 +33,7 @@
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
 
+
 namespace grb {
 
 	/**
@@ -144,13 +145,13 @@ namespace grb {
 
 					/** Standard equals operator. */
 					bool operator==( const const_iterator &other ) const {
-						(void)other;
+						(void) other;
 						return false;
 					}
 
 					/** @returns The negation of operator==(). */
-					bool operator!=( const const_iterator & other ) const {
-						(void)other;
+					bool operator!=( const const_iterator &other ) const {
+						(void) other;
 						return true;
 					}
 
@@ -219,8 +220,8 @@ namespace grb {
 			 *          code sections.
 			 */
 			Vector( const size_t n, const size_t nz ) {
-				(void)n;
-				(void)nz;
+				(void) n;
+				(void) nz;
 			}
 
 			/**
@@ -228,7 +229,7 @@ namespace grb {
 			 * above where \a nz is to taken equal to \a n.
 			 */
 			Vector( const size_t n ) {
-				(void)n;
+				(void) n;
 			}
 
 			/**
@@ -252,7 +253,7 @@ namespace grb {
 			 * \endparblock
 			 */
 			Vector( Vector< D, implementation, C > &&x ) noexcept {
-				(void)x;
+				(void) x;
 			}
 
 			/**
@@ -270,8 +271,10 @@ namespace grb {
 			 *         -# this move assignment moves \f$ \Theta(1) \f$ data only.
 			 * \endparblock
 			 */
-			Vector< D, implementation, C >& operator=( Vector< D, implementation, C > &&x ) noexcept {
-				(void)x;
+			Vector< D, implementation, C >& operator=(
+				Vector< D, implementation, C > &&x
+			) noexcept {
+				(void) x;
 				return *this;
 			}
 
@@ -470,12 +473,20 @@ namespace grb {
 			 * @see grb::buildVector for the GraphBLAS standard dispatcher to this
 			 *                       function.
 			 */
-			template< Descriptor descr = descriptors::no_operation, class Accum = typename operators::right_assign< D, D, D >, typename fwd_iterator = const D * __restrict__ >
-			RC build( const Accum & accum, const fwd_iterator start, const fwd_iterator end, fwd_iterator npos ) {
-				(void)accum;
-				(void)start;
-				(void)end;
-				(void)npos;
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Accum = typename operators::right_assign< D, D, D >,
+				typename fwd_iterator = const D * __restrict__
+			>
+			RC build(
+				const Accum &accum,
+				const fwd_iterator start, const fwd_iterator end,
+				fwd_iterator npos
+			) {
+				(void) accum;
+				(void) start;
+				(void) end;
+				(void) npos;
 				return PANIC;
 			}
 
@@ -577,18 +588,25 @@ namespace grb {
 			 * @see grb::buildVector for the GraphBLAS standard dispatcher to this
 			 *                       function.
 			 */
-			template< Descriptor descr = descriptors::no_operation,
+			template<
+				Descriptor descr = descriptors::no_operation,
 				class Accum = operators::right_assign< D, D, D >,
 				typename ind_iterator = const size_t * __restrict__,
 				typename nnz_iterator = const D * __restrict__,
-				class Dup = operators::right_assign< D, D, D > >
-			RC build( const Accum & accum, const ind_iterator ind_start, const ind_iterator ind_end, const nnz_iterator nnz_start, const nnz_iterator nnz_end, const Dup & dup = Dup() ) {
-				(void)accum;
-				(void)ind_start;
-				(void)ind_end;
-				(void)nnz_start;
-				(void)nnz_end;
-				(void)dup;
+				class Dup = operators::right_assign< D, D, D >
+			>
+			RC build(
+				const Accum &accum,
+				const ind_iterator ind_start, const ind_iterator ind_end,
+				const nnz_iterator nnz_start, const nnz_iterator nnz_end,
+				const Dup &dup = Dup()
+			) {
+				(void) accum;
+				(void) ind_start;
+				(void) ind_end;
+				(void) nnz_start;
+				(void) nnz_end;
+				(void) dup;
 				return PANIC;
 			}
 
@@ -695,26 +713,30 @@ namespace grb {
 			 * @see grb::buildVector for the GraphBLAS standard dispatcher to this
 			 *                       function.
 			 */
-			template< Descriptor descr = descriptors::no_operation,
+			template<
+				Descriptor descr = descriptors::no_operation,
 				typename mask_type,
 				class Accum,
 				typename ind_iterator = const size_t * __restrict__,
 				typename nnz_iterator = const D * __restrict__,
-				class Dup = operators::right_assign< D, typename nnz_iterator::value_type, D > >
-			RC build( const Vector< mask_type, implementation, C > mask,
-				const Accum & accum,
+				class Dup = operators::right_assign< D, typename nnz_iterator::value_type, D >
+			>
+			RC build(
+				const Vector< mask_type, implementation, C > &mask,
+				const Accum &accum,
 				const ind_iterator ind_start,
 				const ind_iterator ind_end,
 				const nnz_iterator nnz_start,
 				const nnz_iterator nnz_end,
-				const Dup & dup = Dup() ) {
-				(void)mask;
-				(void)accum;
-				(void)ind_start;
-				(void)ind_end;
-				(void)nnz_start;
-				(void)nnz_end;
-				(void)dup;
+				const Dup &dup = Dup()
+			) {
+				(void) mask;
+				(void) accum;
+				(void) ind_start;
+				(void) ind_end;
+				(void) nnz_start;
+				(void) nnz_end;
+				(void) dup;
 				return PANIC;
 			}
 
@@ -743,8 +765,8 @@ namespace grb {
 			 * \endparblock
 			 */
 			template< typename T >
-			RC size( T & size ) const {
-				(void)size;
+			RC size( T &size ) const {
+				(void) size;
 				return PANIC;
 			}
 
@@ -773,8 +795,8 @@ namespace grb {
 			 * \endparblock
 			 */
 			template< typename T >
-			RC nnz( T & nnz ) const {
-				(void)nnz;
+			RC nnz( T &nnz ) const {
+				(void) nnz;
 				return PANIC;
 			}
 
@@ -838,9 +860,11 @@ namespace grb {
 			 *      #lambda_reference.
 			 */
 			template< class Monoid >
-			lambda_reference operator()( const size_t i, const Monoid & monoid = Monoid() ) {
-				(void)i;
-				(void)monoid;
+			lambda_reference operator()(
+				const size_t i, const Monoid &monoid = Monoid()
+			) {
+				(void) i;
+				(void) monoid;
 				return PANIC;
 			}
 
@@ -906,14 +930,16 @@ namespace grb {
 			 *      #lambda_reference.
 			 */
 			lambda_reference operator[]( const size_t i ) {
-				(void)i;
+				(void) i;
 			#ifndef _GRB_NO_EXCEPTIONS
-				throw std::runtime_error( "Requesting lambda reference of unimplemented "
-										  "Vector backend." );
+				throw std::runtime_error(
+					"Requesting lambda reference of unimplemented Vector backend."
+				);
 			#endif
 			}
-}
-;
-}
+	};
+
+} // end namespace ``grb''
 
 #endif // _H_GRB_VECTOR_BASE
+

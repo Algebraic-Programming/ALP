@@ -157,7 +157,7 @@ or assume default paths (--with-lpf)"
 			;;
 	--with-hyperdags-using=*)
 			hyperdags=yes
-			hyperdags_uses="${arg#--with-hyperdags-using=}"
+			hyperdags_using="${arg#--with-hyperdags-using=}"
 			;;
 	--debug-build)
 			debug_build=yes

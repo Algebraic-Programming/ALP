@@ -64,7 +64,7 @@ cmake_dependent_option( WITH_HYBRID_BACKEND "Also build the Hybrid backend \
 )
 # other dependent options
 cmake_dependent_option( WITH_HYPERDAGS_BACKEND "Building the Hyperdags backend needs \
-WITH_HYPERDAGS_USING set" ON WITH_HYPERDAGS_USING OFF )
+	WITH_HYPERDAGS_USING set" ON WITH_HYPERDAGS_USING OFF )
 # to customize build flags for either backends or tests
 option( COMMON_COMPILE_DEFINITIONS
 	"Compilation definitions for BOTH backends and tests; they override the defaults"

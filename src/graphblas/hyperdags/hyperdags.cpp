@@ -31,10 +31,10 @@ std::string grb::internal::hyperdags::toString(
 			return "input scalar";
 
 		case CONTAINER:
-			return "user-initialised container";
+			return "ALP/GraphBLAS container";
 
-		case SET:
-			return "container initialised by a call to set";
+		case ITERATOR:
+			return "input iterator";
 
 	}
 	assert( false );
@@ -61,283 +61,289 @@ std::string grb::internal::hyperdags::toString(
 	switch( type ) {
 
 		case NNZ_VECTOR:
-			return "nnz (vector)";
+			return "nnz( vector )";
 
 		case CLEAR_VECTOR:
-			return "clear (vector)";
+			return "clear( vector )";
 
 		case SET_VECTOR_ELEMENT:
-			return "setElement (vector)";
+			return "setElement( vector )";
 
 		case DOT:
-			return "dot";
+			return "dot( scalar, vector, vector )";
+
+		case SET_USING_VALUE:
+			return "set( vector, scalar )";
 
 		case SET_USING_MASK_AND_VECTOR:
-			return "set (vector, vector, vector)";
+			return "set( vector, vector, vector )";
 
 		case SET_USING_MASK_AND_SCALAR:
-			return "set (vector, vector, scalar)";
+			return "set( vector, vector, scalar )";
 
 		case SET_FROM_VECTOR:
-			return "set (vector, vector)";
+			return "set( vector, vector )";
 			
 		case ZIP:
-			return "zip";
+			return "zip( vector, vector, vector )";
 
 		case E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP:
-			return "eWiseApply (vector, vector, vector, op)";
+			return "eWiseApply( vector, vector, vector, op )";
 
 		case FOLDR_VECTOR_SCALAR_MONOID:
-			return "foldr(vector, scalar, monoid)";
+			return "foldr( vector, scalar, monoid )";
 
 		case FOLDR_VECTOR_MASK_SCALAR_MONOID:
-			return "foldr(vector, vector, scalar, monoid)";
+			return "foldr( vector, vector, scalar, monoid )";
 
 		case FOLDL_SCALAR_VECTOR_MONOID:
-			return "foldl(scalar, vector, monoid)";
+			return "foldl( scalar, vector, monoid )";
 
 		case FOLDL_SCALAR_VECTOR_MASK_MONOID:
-			return "foldl(calar, vector, vector, monoid)";	
+			return "foldl( calar, vector, vector, monoid )";	
 
 		case EWISELAMBDA:
-			return "eWiseLambda(f, vector)";
+			return "eWiseLambda( f, vector )";
 
 		case BUILD_VECTOR:
-		return "buildVector(vector, scalar, scalar, scalar, scalar)";	
+			return "buildVector( vector, scalar, scalar, scalar, scalar )";	
 
 		case BUILD_VECTOR_WITH_VALUES:
-		return "buildVector(vector, scalar, scalar, scalar, scalar, scalar)";
+			return "buildVector( vector, scalar, scalar, scalar, scalar, scalar )";
 
 		case SIZE:
-			return "size(vector)";	
+			return "size( vector )";	
 
 		case EWISEAPPLY_VECTOR_VECTOR:
-			return "eWiseApply(vector, vector, vector, scalar, monoid)";
+			return "eWiseApply( vector, vector, vector, scalar, monoid)";
 
 		case EWISEAPPLY_VECTOR_BETA:
-			return "eWiseApply(vector, scalar, vector, operation)";
+			return "eWiseApply( vector, scalar, vector, operation)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_BETA:
-			return "eWiseApply(vector, vector, vector, scalar, monoid)";
+			return "eWiseApply( vector, vector, vector, scalar, monoid)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA:
-			return "eWiseApply(vector, vector, vector, scalar, operation)";
+			return "eWiseApply( vector, vector, vector, scalar, operation)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR:
-			return "eWiseApply(vector, vector, scalar, vector, monoid)";
+			return "eWiseApply( vector, vector, scalar, vector, monoid)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP:
-			return "eWiseApply(vector, vector, scalar, vector, operation)"; 
+			return "eWiseApply( vector, vector, scalar, vector, operation)"; 
 
 		case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP:
-			return "eWiseApply(vector, vector, vector, vector, operation)";
+			return "eWiseApply( vector, vector, vector, vector, operation)";
 
 		case EWISEAPPLY_VECTOR_SCALAR_MONOID:
-			return "eWiseApply(vector, vector, scalar, monoid)";
+			return "eWiseApply( vector, vector, scalar, monoid)";
 
 		case EWISEAPPLY_SCALAR_VECTOR_MONOID:
-			return "eWiseApply(vector, scalar, vector, monoid)";
+			return "eWiseApply( vector, scalar, vector, monoid)";
 
 		case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID:
-			return "eWiseApply(vector, vector, vector, vector, monoid)";
+			return "eWiseApply( vector, vector, vector, vector, monoid)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID:
-			return "eWiseApply(vector, vector, vector, monoid)";
+			return "eWiseApply( vector, vector, vector, monoid)";
 
 		case EWISE_MUL_ADD:
-			return "eWiseMulAdd(vector, vector, vector, vector, vector, ring)";
+			return "eWiseMulAdd( vector, vector, vector, vector, vector, ring)";
 
 		case EWISE_MUL_ADD_FOUR_VECTOR:
-			return "eWiseMulAdd(vector, vector, vector, vector, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, vector, vector, scalar, ring)";
 
 		case EWISE_MUL_ADD_THREE_VECTOR_ALPHA:
-			return "eWiseMulAdd(vector, scalar, vector, scalar, ring)";	
+			return "eWiseMulAdd( vector, scalar, vector, scalar, ring)";	
 
 		case EWISE_MUL_ADD_THREE_VECTOR_CHI:
-			return "eWiseMulAdd(vector, vector, scalar, vector, ring)";
+			return "eWiseMulAdd( vector, vector, scalar, vector, ring)";
 
 		case EWISE_MUL_ADD_FOUR_VECTOR_CHI:
-			return "eWiseMulAdd(vector, vector, vector, scalar, vector, ring)";
+			return "eWiseMulAdd( vector, vector, vector, scalar, vector, ring)";
 
 		case EWISE_MUL_ADD_FOUR_VECTOR_CHI_RING:
-			return "eWiseMulAdd(vector, vector, vector, scalar, vector, ring)";
+			return "eWiseMulAdd( vector, vector, vector, scalar, vector, ring)";
 			
 		case EWISE_MUL_ADD_THREE_VECTOR_BETA:
-			return "eWiseMulAdd(vector, vector, vector, scalar, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, vector, scalar, scalar, ring)";
 
 		case EWISE_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA:
-			return "eWiseMulAdd(vector, vector, vector, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, vector, scalar, ring)";
 
 		case EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA:
-			return "eWiseMulAdd(vector, vector, scalar, scalar, vector, ring)";
+			return "eWiseMulAdd( vector, vector, scalar, scalar, vector, ring)";
 
 		case EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA:
-			return "eWiseMulAdd(vector, vector, scalar, scalar, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, scalar, scalar, scalar, ring)";
 
 		case EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE:
-			return "eWiseApply(matrix, matrix, matrix, scalar, scalar)";
+			return "eWiseApply( matrix, matrix, matrix, scalar, scalar )";
 
 		case EWISEAPPLY_MATRIX_MATRIX_MATRIX_MULMONOID_PHASE:
-			return "eWiseApply(matrix, matrix, matrix, scalar, scalar)";
+			return "eWiseApply( matrix, matrix, matrix, scalar, scalar )";
 
 		case SET_MATRIX_MATRIX:
-			return "set(matrix, matrix)";	
+			return "set( matrix, matrix )";	
 
 		case SET_MATRIX_MATRIX_INPUT2:
-			return "set(matrix, matrix, scalar)";	
+			return "set( matrix, matrix, scalar )";	
 
 		case MXM_MATRIX_MATRIX_MATRIX_MONOID:
-			return "mxm(matrix, matrix, matrix, monoid, scalar, scalar)";
+			return "mxm( matrix, matrix, matrix, monoid, scalar, scalar )";
 
 		case OUTER:
-			return "outer(matrix, vector, vector, scalar, scalar)";
+			return "outer( matrix, vector, vector, scalar, scalar )";
 
 		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R:
-			return "mxv(vector, vector, matrix, vector, vector, ring)";
+			return "mxv( vector, vector, matrix, vector, vector, ring)";
+
+		case ZIP_MATRIX_VECTOR_VECTOR_VECTOR:
+			return "zip( matrix, vector, vector, vector )";
 
 		case ZIP_MATRIX_VECTOR_VECTOR:
-			return "zip(matrix, vector, vector)";
+			return "zip( matrix, vector, vector )";
 			
 		case UNZIP_VECTOR_VECTOR_VECTOR:
-			return "unzip(matrix, vector, vector)";
+			return "unzip( matrix, vector, vector )";
 		
 		case EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING:
-			return "eWiseMulAdd(vector, vector, vector, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, vector, scalar, ring)";
 			
 		case EWISEMULADD_VECTOR_VECTOR_BETA_GAMMA_RING:
-			return "eWiseMulAdd(vector, vector, scalar, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, scalar, scalar, ring)";
 		
 		case EWISEMULADD_VECTOR_ALPHA_VECTOR_GAMMA_RING:
-			return "eWiseMulAdd(vector, vector, scalar, ring)";
+			return "eWiseMulAdd( vector, vector, scalar, ring)";
 		
 		case EWISEMULADD_VECTOR_ALPHA_BETA_VECTOR_RING:
-			return "eWiseMulAdd(vector, scalar, scalar, vector, ring)";
+			return "eWiseMulAdd( vector, scalar, scalar, vector, ring)";
 		
 		case EWISEMULADD_VECTOR_ALPHA_BETA_GAMMA_RING:
-			return "eWiseMulAdd(vector, scalar, scalar, scalar, ring)";
+			return "eWiseMulAdd( vector, scalar, scalar, scalar, ring)";
 		
 		case EWISEMULADD_VECTOR_VECTOR_VECTOR_VECTOR_RING:
-			return "eWiseMulAdd(vector, vector, vector, vector, ring)";
+			return "eWiseMulAdd( vector, vector, vector, vector, ring)";
 		
 		case VXM_VECTOR_VECTOR_VECTOR_MATRIX:
-			return "vxm(vector, vector, vector, matrix, ring)";
+			return "vxm( vector, vector, vector, matrix, ring)";
 			
 		case VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
-			return "vxm(vector, vector, vector, matrix, scalar, scalar)";
+			return "vxm( vector, vector, vector, matrix, scalar, scalar )";
 		
 		case VXM_VECTOR_VECTOR_MATRIX_RING:
-			return "vxm(vector, vector, matrix, ring)";
+			return "vxm( vector, vector, matrix, ring)";
 		
 		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING:
-			return "mxv(vector, vector, matrix, vector, ring)";
+			return "mxv( vector, vector, matrix, vector, ring)";
 			
 		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A:
-			return "mxv(vector, vector, matrix, vector, vector, scalar, scalar)";
+			return "mxv( vector, vector, matrix, vector, vector, scalar, scalar )";
 		
 		case MXV_VECTOR_MATRIX_VECTOR_RING:
-			return "mxv(vector, matrix, vector, ring)";
+			return "mxv( vector, matrix, vector, ring)";
 		
 		case MXV_VECTOR_MATRIX_VECTOR_ADD_MUL:
-			return "mxv(vector, matrix, vector, scalar, scalar)";
+			return "mxv( vector, matrix, vector, scalar, scalar )";
 		
 		case EWISELAMBDA_FUNC_MATRIX:
-			return "eWiseLambda(function, matrix)";
+			return "eWiseLambda(function, matrix )";
 		
 		case VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
-			return "vxm(vector, vector, vector, vector, matrix, scalar, scalar )";
+			return "vxm( vector, vector, vector, vector, matrix, scalar, scalar )";
 		
 		case VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
-			return "vxm(vector, vector, vector, matrix, scalar, scalar)";
+			return "vxm( vector, vector, vector, matrix, scalar, scalar )";
 		
 		case VXM_VECTOR_VECTOR_MATRIX_ADD_MUL:
-			return "vxm(vector, vector, matrix, scalar, scalar)";
+			return "vxm( vector, vector, matrix, scalar, scalar )";
 		
 		case FOLDL_VECTOR_BETA_OP:
-			return "foldl(vector, scalar, scalar)";
+			return "foldl( vector, scalar, scalar )";
 		
 		case FOLDL_VECTOR_VECTOR_BETA_OP:
-			return "foldl(vector, vector, scalar, scalar)";
+			return "foldl( vector, vector, scalar, scalar )";
 			
 		case FOLDL_VECTOR_BETA_MONOID:
-			return "foldl(vector, scalar, monoid)";
+			return "foldl( vector, scalar, monoid)";
 		
 		case FOLDL_VECTOR_VECTOR_BETA_MONOID:
-			return "foldl(vector, vector, scalar, monoid)";
+			return "foldl( vector, vector, scalar, monoid)";
 		
 		case FOLDL_VECTOR_VECTOR_MONOID:
-			return "foldl(vector, vector, monoid)";
+			return "foldl( vector, vector, monoid)";
 		
 		case FOLDL_VECTOR_VECTOR_VECTOR_MONOID:
-			return "foldl(vector, vector, vector, monoid)";
+			return "foldl( vector, vector, vector, monoid)";
 		
 		case FOLDL_VECTOR_VECTOR_VECTOR_OP:
-			return "foldl(vector, vector, vecotr, scalar)";
+			return "foldl( vector, vector, vecotr, scalar )";
 		
 		case FOLDL_VECTOR_VECTOR_OP:
-			return "foldl(vector, vector, scalar)";
+			return "foldl( vector, vector, scalar )";
 		
 		case FOLDR_APLHA_VECTOR_MONOID:
-			return "foldr(scalar, vector, monoid)";
+			return "foldr( scalar, vector, monoid)";
 		
 		case FOLDR_APLHA_VECTOR_OPERATOR:
-			return "foldr(scalar, vector, scalar)";
+			return "foldr( scalar, vector, scalar )";
 		
 		case FOLDR_VECTOR_VECTOR_OPERATOR:
-			return "foldr(vector, vector, scalar)";
+			return "foldr( vector, vector, scalar )";
 	
 		case FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR:
-			return "foldr(vector, vector, vector, scalar)";
+			return "foldr( vector, vector, vector, scalar )";
 		
 		case FOLDR_VECTOR_VECTOR_MONOID:
-			return "foldr(vector, vector, monoid)";
+			return "foldr( vector, vector, monoid)";
 		
 		case FOLDR_VECTOR_VECTOR_VECTOR_MONOID:
-			return "foldr(vector, vector, vector, monoid)";
+			return "foldr( vector, vector, vector, monoid)";
 		
 		case EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING:
-			return "eWiseMulAdd(vector, vector, vector, vector, scalar)";
+			return "eWiseMulAdd( vector, vector, vector, vector, scalar )";
 		
 		case EWISEMUL_VECTOR_ALPHA_VECTOR_RING:
-			return "eWiseMul(vector, scalar, vector, scalar)";
+			return "eWiseMul( vector, scalar, vector, scalar )";
 		
 		case EWISEMUL_VECTOR_VECTOR_BETA_RING:
-			return "eWiseMul(vector, vector, scalar, scalar)";
+			return "eWiseMul( vector, vector, scalar, scalar )";
 		
 		case EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING:
-			return "eWiseMul(vector, vector, vector, vector, scalar)";
+			return "eWiseMul( vector, vector, vector, vector, scalar )";
 		
 		case EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING:
-			return "eWiseMul(vector, vector, scalar, vector, scalar)";
+			return "eWiseMul( vector, vector, scalar, vector, scalar )";
 			
 		case EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING:
-			return "eWiseMul(vector, vector, vector, scalar, scalar)";
+			return "eWiseMul( vector, vector, vector, scalar, scalar )";
 		
 		case EWISELAMBDA_FUNC_VECTOR:
-			return "eWiseLambda(function, vector)";
+			return "eWiseLambda(function, vector )";
 			
 		case MXM_MATRIX_MATRIX_MATRIX_SEMIRING:
-			return "mxm(matrix, matrix, matrix, semiring, scalar)";
+			return "mxm( matrix, matrix, matrix, semiring, scalar )";
 			
 		case CLEAR_MATRIX:
-			return "clear(matrix)";
+			return "clear( matrix )";
 		
 		case BUILDMATRIXUNIQUE_MATRIX_START_END_MODE:
-			return "buildMatrixUnique(matrix, scalar, scalar, scalar)";
+			return "buildMatrixUnique( matrix, scalar, scalar, scalar )";
 			
 		case CAPACITY_VECTOR:
-			return "capacity(vector)";
+			return "capacity( vector )";
 		
 		case CAPACITY_MATRIX:
-			return "capacity(matrix)";
+			return "capacity( matrix )";
 		
 		case RESIZE:
-			return "resize(vector, scalar)";
+			return "resize( vector, scalar )";
 		
 		case GETID_VECTOR:
-			return "getID(vector)";
+			return "getID( vector )";
 			
 		case GETID_MATRIX:
-			return "getID(matrix)";
+			return "getID( matrix )";
 		
 	}
 	assert( false );
@@ -349,7 +355,8 @@ grb::internal::hyperdags::SourceVertex::SourceVertex(
 	const size_t _local_id, const size_t _global_id
 ) noexcept : type( _type ), local_id( _local_id ), global_id( _global_id ) {}
 
-enum grb::internal::hyperdags::SourceVertexType grb::internal::hyperdags::SourceVertex::getType() const noexcept {
+enum grb::internal::hyperdags::SourceVertexType
+grb::internal::hyperdags::SourceVertex::getType() const noexcept {
 	return type;
 }
 
@@ -367,26 +374,20 @@ grb::internal::hyperdags::SourceVertexGenerator::SourceVertexGenerator() {
 	}
 }
 
-grb::internal::hyperdags::SourceVertex grb::internal::hyperdags::SourceVertexGenerator::create(
+grb::internal::hyperdags::SourceVertex
+grb::internal::hyperdags::SourceVertexGenerator::create(
 	const grb::internal::hyperdags::SourceVertexType type,
 	const size_t global_id
 ) {
 	const size_t local_id = (nextID[ type ])++;
-	grb::internal::hyperdags::SourceVertex ret(type, local_id, global_id );
+	grb::internal::hyperdags::SourceVertex ret( type, local_id, global_id );
 	return ret;
 }
 
 size_t grb::internal::hyperdags::SourceVertexGenerator::size() const {
 	size_t ret = 0;
-	{
-		const auto &it = nextID.find( grb::internal::hyperdags::SourceVertexType::CONTAINER );
-		assert( it != nextID.end() );
-		ret += it->second;
-	}
-	{
-		const auto &it = nextID.find( grb::internal::hyperdags::SourceVertexType::SET );
-		assert( it != nextID.end() );
-		ret += it->second;
+	for( auto &pair : nextID ) {
+		ret += pair.second;
 	}
 	return ret;
 }
@@ -394,9 +395,12 @@ size_t grb::internal::hyperdags::SourceVertexGenerator::size() const {
 grb::internal::hyperdags::OutputVertex::OutputVertex(
 	const size_t _lid,
 	const size_t _gid
-) noexcept : local_id( _lid ), global_id( _gid ) {type = OutputVertexType::CONTAINER_OUTPUT;}
+) noexcept : local_id( _lid ), global_id( _gid ) {
+	type = OutputVertexType::CONTAINER_OUTPUT;
+}
 
-enum grb::internal::hyperdags::OutputVertexType grb::internal::hyperdags::OutputVertex::getType() const noexcept {
+enum grb::internal::hyperdags::OutputVertexType
+grb::internal::hyperdags::OutputVertex::getType() const noexcept {
 	return type;
 }
 
@@ -408,12 +412,15 @@ size_t grb::internal::hyperdags::OutputVertex::getGlobalID() const noexcept {
 	return global_id;
 }
 
-grb::internal::hyperdags::OutputVertexGenerator::OutputVertexGenerator() noexcept : nextID( 0 ) {}
+grb::internal::hyperdags::OutputVertexGenerator::OutputVertexGenerator()
+	noexcept : nextID( 0 )
+{}
 
-grb::internal::hyperdags::OutputVertex grb::internal::hyperdags::OutputVertexGenerator::create(
+grb::internal::hyperdags::OutputVertex
+grb::internal::hyperdags::OutputVertexGenerator::create(
 	const size_t global_id
 ) {
-	grb::internal::hyperdags::OutputVertex ret(nextID++, global_id );
+	grb::internal::hyperdags::OutputVertex ret( nextID++, global_id );
 	return ret;
 }
 
@@ -426,7 +433,8 @@ grb::internal::hyperdags::OperationVertex::OperationVertex(
 	const size_t _lid, const size_t _gid
 ) noexcept : type( _type ), local_id( _lid ), global_id( _gid ) {}
 
-enum grb::internal::hyperdags::OperationVertexType grb::internal::hyperdags::OperationVertex::getType() const noexcept {
+enum grb::internal::hyperdags::OperationVertexType
+grb::internal::hyperdags::OperationVertex::getType() const noexcept {
 	return type;
 }
 
@@ -456,15 +464,15 @@ grb::internal::hyperdags::OperationVertexGenerator::create(
 
 size_t grb::internal::hyperdags::OperationVertexGenerator::size() const {
 	size_t ret = 0;
-	{
-		const auto &it = nextID.find( grb::internal::hyperdags::OperationVertexType::NNZ_VECTOR );
-		assert( it != nextID.end() );
-		ret += it->second;
+	for( auto &pair : nextID ) {
+		ret += pair.second;
 	}
 	return ret;
 }
 
-grb::internal::hyperdags::Hypergraph::Hypergraph() noexcept : num_vertices( 0 ), num_pins( 0 ) {}
+grb::internal::hyperdags::Hypergraph::Hypergraph() noexcept :
+	num_vertices( 0 ), num_pins( 0 )
+{}
 
 size_t grb::internal::hyperdags::Hypergraph::createVertex() noexcept {
 	return num_vertices++;
@@ -537,10 +545,13 @@ grb::internal::hyperdags::HyperDAG::HyperDAG(
 	}
 
 	// final sanity check
-	assert( num_sources + num_operations + num_outputs == hypergraph.numVertices() );
+	assert(
+		num_sources + num_operations + num_outputs == hypergraph.numVertices()
+	);
 }
 
-grb::internal::hyperdags::Hypergraph grb::internal::hyperdags::HyperDAG::get() const noexcept {
+grb::internal::hyperdags::Hypergraph
+grb::internal::hyperdags::HyperDAG::get() const noexcept {
 	return hypergraph;
 }
 
@@ -617,7 +628,8 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	return global_id;
 }
 
-grb::internal::hyperdags::HyperDAG grb::internal::hyperdags::HyperDAGGenerator::finalize() const {
+grb::internal::hyperdags::HyperDAG
+grb::internal::hyperdags::HyperDAGGenerator::finalize() const {
 	std::vector< grb::internal::hyperdags::OutputVertex > outputVec;
 
 	// generate outputVertices

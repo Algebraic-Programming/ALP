@@ -29,6 +29,7 @@
 
 #include "exec.hpp"
 
+
 namespace grb {
 
 	template< enum EXEC_MODE mode >
@@ -41,33 +42,49 @@ namespace grb {
 			typedef Benchmarker< mode, _GRB_WITH_HYPERDAGS_USING > MyBenchmarkerType;
 
 			MyBenchmarkerType benchmarker;
+
+
 		public:
-			Benchmarker( size_t process_id = 0,         // user process ID
-				size_t nprocs = 1,                  // total number of user processes
-				std::string hostname = "localhost", // one of the user process hostnames
-				std::string port = "0"              // a free port at hostname
-				) :
-				benchmarker( process_id, nprocs, hostname, port ) {}
+
+			Benchmarker(
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
+			) :
+				benchmarker( process_id, nprocs, hostname, port )
+			{}
 
 			template< typename U >
 			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
-				const void * data_in, const size_t in_size,
+				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-				return benchmarker.exec( grb_program, data_in, in_size, data_out, inner, outer, broadcast );
+				return benchmarker.exec(
+					grb_program,
+					data_in, in_size,
+					data_out,
+					inner, outer,
+					broadcast
+				);
 			}
 
 			/** No implementation notes. */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T & data_in, U &data_out, // input & output data
-				const size_t inner,
-				const size_t outer,
+			RC exec(
+				void ( *grb_program )( const T &, U & ),
+				const T &data_in, U &data_out,
+				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) {
-				return benchmarker.exec( grb_program, data_in, data_out, inner, outer, broadcast );
+				return benchmarker.exec(
+					grb_program,
+					data_in, data_out,
+					inner, outer,
+					broadcast
+				);
 			}
 
 	};

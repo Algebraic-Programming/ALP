@@ -37,17 +37,35 @@ namespace grb {
 
 		private:
 
+			/**
+			 * Rely on underlying backend.
+			 */
 			typedef Launcher< mode, _GRB_WITH_HYPERDAGS_USING > MyLauncherType;
 
+			/**
+			 * Instantiate the sub-backend.
+			 */
 			MyLauncherType launcher;
+
 
 		public:
 
-			Launcher( const size_t process_id = 0, const size_t nprocs = 1,
+			/**
+			 * Default constructor.
+			 *
+			 * Simply calls that of the underlying constructor.
+			 */
+			Launcher(
+				const size_t process_id = 0, const size_t nprocs = 1,
 				const std::string hostname = "localhost",
 				const std::string port = "0"
 			) : launcher( process_id, nprocs, hostname, port ) {}
 
+			/**
+			 * Variable input-size execution.
+			 *
+			 * Simply calls underlying launcher.
+			 */
 			template< typename U >
 			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in,
@@ -58,6 +76,11 @@ namespace grb {
 				return launcher.exec( grb_program, data_in, in_size, data_out, broadcast );
 			}
 
+			/**
+			 * Fixed-size execution.
+			 *
+			 * Simply calls underlying launcher.
+			 */
 			template< typename T, typename U >
 			RC exec( void ( *grb_program )( const T &, U & ),
 				const T &data_in,

@@ -29,24 +29,27 @@ namespace grb {
 	template<>
 	class spmd< hyperdags > {
 
-	public:
+		public:
 
-		static inline size_t nprocs() noexcept {
-			return spmd<_GRB_WITH_HYPERDAGS_USING>::nprocs();
-		}
+			static inline size_t nprocs() noexcept {
+				return spmd<_GRB_WITH_HYPERDAGS_USING>::nprocs();
+			}
 
-		static inline size_t pid() noexcept {
-			return spmd<_GRB_WITH_HYPERDAGS_USING>::pid();
-		}
+			static inline size_t pid() noexcept {
+				return spmd<_GRB_WITH_HYPERDAGS_USING>::pid();
+			}
 
-		static RC sync( const size_t msgs_in = 0, const size_t msgs_out = 0 ) noexcept {
-			return spmd<_GRB_WITH_HYPERDAGS_USING>::sync(msgs_in, msgs_out);
-		}
+			static RC sync(
+				const size_t msgs_in = 0, const size_t msgs_out = 0
+			) noexcept {
+				return spmd<_GRB_WITH_HYPERDAGS_USING>::sync(msgs_in, msgs_out);
+			}
 
-		static RC barrier() noexcept {
-			return spmd<_GRB_WITH_HYPERDAGS_USING>::barrier();
-		}
+			static RC barrier() noexcept {
+				return spmd<_GRB_WITH_HYPERDAGS_USING>::barrier();
+			}
 
 	}; // end class ``spmd'' reference implementation
 
 } // namespace grb
+

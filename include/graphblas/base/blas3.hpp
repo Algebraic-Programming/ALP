@@ -28,6 +28,7 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
+
 namespace grb {
 
 	/**
@@ -83,17 +84,18 @@ namespace grb {
 		const Phase &phase = EXECUTE
 	) {
 #ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::mxm (semiring version)\n";
+		std::cerr << "Selected backend does not implement grb::mxm "
+			<< "(semiring version)\n";
 #endif
 #ifndef NDEBUG
 		const bool selected_backend_does_not_support_mxm = false;
 		assert( selected_backend_does_not_support_mxm );
 #endif
-		(void)C;
-		(void)A;
-		(void)B;
-		(void)ring;
-		(void)phase;
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) ring;
+		(void) phase;
 		// this is the generic stub implementation
 		return UNSUPPORTED;
 	}
@@ -151,7 +153,8 @@ namespace grb {
 		(void) z;
 		(void) phase;
 #ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::zip (vectors into matrices, non-void)\n";
+		std::cerr << "Selected backend does not implement grb::zip (vectors into "
+			<< "matrices, non-void)\n";
 #endif
 #ifndef NDEBUG
 		const bool selected_backend_does_not_support_zip_from_vectors_to_matrix
@@ -161,8 +164,6 @@ namespace grb {
 		const RC ret = grb::clear( A );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
-
-
 
 	/**
 	 * Specialisation of grb::zip for void output matrices.

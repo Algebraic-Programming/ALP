@@ -29,9 +29,14 @@
 namespace grb {
 
 	namespace internal {
+
 		namespace hyperdags {
+
+			/** Singleton generator instance. */
 			extern HyperDAGGenerator generator;
+
 		}
+
 	}
 
 	template<>

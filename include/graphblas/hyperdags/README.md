@@ -296,14 +296,9 @@ and the `allOperationVertexTypes` array.
 TODOs
 =====
 
-1. Implement more standard ALP/GraphBLAS operations.
-
-2. Instead of building `std::array`s for `sources` and `destinations` by
+1. Instead of building `std::array`s for `sources` and `destinations` by
    recording pointers, use the new `grb::getID` function for ALP vectors and
    matrices instead. For scalars `z`, indices of type `uintptr_t` must be
    derived by converting them from pointers as follows:
    `const uintptr_t z_id = reinterpret_cast< uintptr_t >( &z );`
-
-3. Implement support for matrices in the `hyperdags` backend-- currently, only
-   vector containers are supported.
 

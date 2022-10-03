@@ -41,22 +41,30 @@ namespace grb {
 		}
 
 		template< typename T >
-		Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > & getVector(
+		Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > &
+		getVector(
 			Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &
 		);
 
 		template< typename T >
-		const Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > & getVector(
+		const Vector< T, _GRB_WITH_HYPERDAGS_USING, typename hyperdags::Coordinates > &
+		getVector(
 			const Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &x
 		);
 		
 		
 		template< typename T>
-		inline const T * getRaw( const Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > & x ) ;
-		
+		inline const T * getRaw(
+			const Vector<
+				T, grb::hyperdags,
+				typename internal::hyperdags::Coordinates
+			> &x
+		);
 		
 		template< typename T>
-		inline T * getRaw( Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > & x  ) ;
+		inline T * getRaw(
+			Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > &x
+		);
 	
 	}
 
@@ -64,24 +72,33 @@ namespace grb {
 	class Vector< T, hyperdags, internal::hyperdags::Coordinates > {
 
 		template< typename A >
-		friend Vector< A, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & internal::getVector(
+		friend Vector<
+			A, _GRB_WITH_HYPERDAGS_USING,
+			internal::hyperdags::Coordinates
+		> & internal::getVector(
 			Vector< A, grb::hyperdags, internal::hyperdags::Coordinates > &
 		);
 
 		template< typename A >
-		friend const Vector< A, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & internal::getVector(
+		friend const Vector<
+			A, _GRB_WITH_HYPERDAGS_USING,
+			internal::hyperdags::Coordinates
+		> & internal::getVector(
 			const Vector< A, grb::hyperdags, internal::hyperdags::Coordinates > &
 		);
 
-
 		friend class PinnedVector< T, hyperdags >;
+
 
 		private:
 
 			typedef Vector< T, hyperdags, internal::hyperdags::Coordinates > SelfType;
 			
 			/** \internal Simply use an underlying implementation */
-			typedef Vector< T, grb::_GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > MyVectorType;
+			typedef Vector<
+				T, grb::_GRB_WITH_HYPERDAGS_USING,
+				internal::hyperdags::Coordinates
+			> MyVectorType;
 
 			template< Backend A >
 			using ConstIterator = typename MyVectorType::template ConstIterator< A >;
@@ -118,22 +135,30 @@ namespace grb {
 			~Vector() {}
 
 			template< Backend spmd_backend = reference >
-			ConstIterator< spmd_backend > cbegin( const size_t s = 0, const size_t P = 1 ) const {
+			ConstIterator< spmd_backend > cbegin(
+				const size_t s = 0, const size_t P = 1
+			) const {
 				return vector.cbegin( s, P );
 			}
 
 			template< Backend spmd_backend = reference >
-			ConstIterator< spmd_backend > cend( const size_t s = 0, const size_t P = 1 ) const {
+			ConstIterator< spmd_backend > cend(
+				const size_t s = 0, const size_t P = 1
+			) const {
 				return vector.cend( s, P );
 			}
 
 			template< Backend spmd_backend = reference >
-			ConstIterator< spmd_backend > begin( const size_t s = 0, const size_t P = 1 ) const {
+			ConstIterator< spmd_backend > begin(
+				const size_t s = 0, const size_t P = 1
+			) const {
 				return vector.begin( s, P );
 			}
 
 			template< Backend spmd_backend = reference >
-			ConstIterator< spmd_backend > end( const size_t s = 0, const size_t P = 1 ) const {
+			ConstIterator< spmd_backend > end(
+				const size_t s = 0, const size_t P = 1
+			) const {
 				return vector.end( s, P );
 			}
 			
@@ -169,29 +194,38 @@ namespace grb {
 	namespace internal {
 
 		template< typename T >
-		Vector< T, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & getVector(
+		Vector<
+			T, _GRB_WITH_HYPERDAGS_USING,
+			internal::hyperdags::Coordinates
+		> & getVector(
 			Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
 		) {
 			return x.vector;
 		}
 
 		template< typename T >
-		const Vector< T, _GRB_WITH_HYPERDAGS_USING, internal::hyperdags::Coordinates > & getVector(
+		const Vector<
+			T, _GRB_WITH_HYPERDAGS_USING,
+			internal::hyperdags::Coordinates
+		> & getVector(
 			const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
 		) {
 			return x.vector;
 		}
 		
-		
 		template< typename T>
-		inline const T * getRaw( const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > & x ) {
+		inline const T * getRaw(
+			const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
+		) {
 			return getRaw(getVector<T>(x));
 		};
 		
 		template< typename T>
-		inline T * getRaw( Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > & x  ) {
+		inline T * getRaw(
+			Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
+		) {
 			return getRaw(getVector<T>(x));
-			};
+		};
 
 	}
 }
