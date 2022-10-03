@@ -353,6 +353,14 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< Square, Square > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
 		/**
 		 * @brief A Band is a structure described by a compile-time tuple of 
 		 *        sorted, non-overlapping integer intervals which 
@@ -453,6 +461,14 @@ namespace alp {
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< Hermitian >, Square::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< Hermitian, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
 		};
 
 		struct Trapezoidal: BaseStructure {

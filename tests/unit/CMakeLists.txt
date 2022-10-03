@@ -33,6 +33,7 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+
 add_grb_executables( alp_views alp_views.cpp
 	BACKENDS alp_reference
 )
@@ -225,9 +226,9 @@ add_grb_executables( dense_matrix_access dense_matrix_access.cpp
 )
 
 # Temporarily disable this test until the necessary Matrix class specialization are adapted to the new functor-based infrastructure.
-#add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
-#	BACKENDS alp_reference
-#)
+# add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
+# 	BACKENDS alp_reference
+# )
 
 add_grb_executables( dense_eWiseApply dense_eWiseApply.cpp
 	BACKENDS alp_reference

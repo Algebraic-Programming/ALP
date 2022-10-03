@@ -33,6 +33,7 @@
 #include "vector.hpp"
 #include "blas0.hpp"
 #include "blas2.hpp"
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -2508,7 +2509,11 @@ namespace alp {
 		std::function< void( typename AddMonoid::D3 &, const size_t, const size_t ) > data_lambda =
 			[ &x, &y, &anyOp ]( typename AddMonoid::D3 &result, const size_t i, const size_t j ) {
 				(void) j;
-				internal::apply( result, x[ i ], y[ i ], anyOp );
+				internal::apply(
+					result, x[ i ],
+					grb::utils::is_complex< InputType2 >::conjugate( y[ i ] ),
+					anyOp
+				);
 			};
 
 		std::function< bool() > init_lambda =
@@ -2634,7 +2639,7 @@ namespace alp {
 		void >::type * const = NULL
 	) {
 		Scalar< IOType, structures::General, backend > res( x );
-		RC rc = alp::dot< descr >( x,
+		RC rc = alp::dot< descr >( res,
 			left, right,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator()
@@ -2642,7 +2647,7 @@ namespace alp {
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		/** \internal \todo extract res.value into x */
+		x = *res;
 		return SUCCESS;
 	}
 
@@ -2896,16 +2901,18 @@ namespace alp {
 		class Ring,
 		Backend backend
 	>
-	RC norm2( Scalar< OutputType, OutputStructure, backend > &x,
+	RC norm2(
+		Scalar< OutputType, OutputStructure, backend > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
-			std::is_floating_point< OutputType >::value,
-		void >::type * const = NULL
+			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,
+			void
+		>::type * const = NULL
 	) {
 		RC ret = alp::dot< descr >( x, y, y, ring );
 		if( ret == SUCCESS ) {
-			x = sqrt( x );
+			*x = sqrt( *x );
 		}
 		return ret;
 	}
@@ -2923,15 +2930,16 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
-			std::is_floating_point< OutputType >::value,
-		void >::type * const = nullptr
+			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,
+			void
+		>::type * const = nullptr
 	) {
 		Scalar< OutputType, structures::General, reference > res( x );
 		RC rc = norm2( res, y, ring );
 		if( rc != SUCCESS ) {
 			return rc;
 		}
-		/** \internal \todo extract res.value into x */
+		x = *res;
 		return SUCCESS;
 	}
 
