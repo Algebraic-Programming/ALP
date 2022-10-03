@@ -91,12 +91,15 @@ namespace grb {
 			!grb::is_object< T >::value,
 		void >::type * const = nullptr
 	) {
-		// always force input scalar to be a new source
 		internal::hyperdags::generator.addSource(
 			internal::hyperdags::SCALAR,
 			&val
 		);
-		std::array< const void *, 2 > sources{ &x, &val };
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::USER_INT,
+			&i
+		);
+		std::array< const void *, 3 > sources{ &x, &val, &i };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_VECTOR_ELEMENT,

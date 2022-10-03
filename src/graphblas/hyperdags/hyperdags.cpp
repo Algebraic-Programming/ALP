@@ -36,6 +36,9 @@ std::string grb::internal::hyperdags::toString(
 		case ITERATOR:
 			return "input iterator";
 
+		case USER_INT:
+			return "input integer";
+
 	}
 	assert( false );
 	return "unidentified source vertex type";
@@ -62,6 +65,9 @@ std::string grb::internal::hyperdags::toString(
 
 		case NNZ_VECTOR:
 			return "nnz( vector )";
+
+		case NNZ_MATRIX:
+			return "nnz( matrix )";
 
 		case CLEAR_VECTOR:
 			return "clear( vector )";
@@ -113,6 +119,12 @@ std::string grb::internal::hyperdags::toString(
 
 		case SIZE:
 			return "size( vector )";	
+
+		case NROWS:
+			return "nrows( matrix )";
+
+		case NCOLS:
+			return "ncols( matrix )";
 
 		case EWISEAPPLY_VECTOR_VECTOR:
 			return "eWiseApply( vector, vector, vector, scalar, monoid)";
@@ -338,6 +350,9 @@ std::string grb::internal::hyperdags::toString(
 		
 		case RESIZE:
 			return "resize( vector, scalar )";
+
+		case RESIZE_MATRIX:
+			return "resize( matrix, scalar )";
 		
 		case GETID_VECTOR:
 			return "getID( vector )";

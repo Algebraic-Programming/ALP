@@ -36,22 +36,57 @@ namespace grb {
 		
 	template< typename InputType >
 	size_t nrows( const Matrix< InputType, hyperdags > &A ) noexcept {
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::NROWS,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
 		return nrows(internal::getMatrix(A));
 	}
 	
 	template< typename InputType >
 	size_t ncols( const Matrix< InputType, hyperdags > &A ) noexcept {
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::NCOLS,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
 		return ncols(internal::getMatrix(A));
 	}
 	
 	template< typename InputType >
 	size_t nnz( const Matrix< InputType, hyperdags > &A ) noexcept {
+		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 0 > destinations{};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::NNZ_MATRIX,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
 		return nnz(internal::getMatrix(A));
 	}
 	
 	template< typename InputType >
-	RC resize( Matrix< InputType, hyperdags > &A, const size_t new_nz ) noexcept {
-		return resize(internal::getMatrix(A), new_nz);
+	RC resize(
+		Matrix< InputType, hyperdags > &A,
+		const size_t new_nz
+	) noexcept {
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::USER_INT,
+			&new_nz
+		);
+		std::array< const void *, 2 > sources{ &A, &new_nz };
+		std::array< const void *, 1 > destinations{ &A };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::RESIZE_MATRIX,
+			sources.begin(), sources.end(),
+			destinations.begin(), destinations.end()
+		);
+		return resize( internal::getMatrix(A), new_nz );
 	}
 	
 	template< 

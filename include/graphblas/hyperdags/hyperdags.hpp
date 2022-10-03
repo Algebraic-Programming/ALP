@@ -54,7 +54,7 @@ namespace grb {
 				/**
 				 * \internal Scalars are always handled as a new source. We do not track
 				 * whether the same scalars are re-used, because we cannot reliably do so
-				 * (due to a lack of an grb::Scalar).
+				 * due to a lack of an grb::Scalar.
 				 */
 				SCALAR,
 
@@ -66,11 +66,18 @@ namespace grb {
 				/**
 				 * \internal The source is an iterator passed to ALP.
 				 */
-				ITERATOR
+				ITERATOR,
+
+				/**
+				 * \internal The source is a user integer passed to ALP, usually signifying
+				 *           an index or a size.
+				 */
+				USER_INT
+
 			};
 
 			/** \internal The number of source vertex types. */
-			const constexpr size_t numSourceVertexTypes = 3;
+			const constexpr size_t numSourceVertexTypes = 4;
 
 			/** \internal An array of all source vertex types. */
 			const constexpr enum SourceVertexType
@@ -78,7 +85,8 @@ namespace grb {
 			{
 				SCALAR,
 				CONTAINER,
-				ITERATOR
+				ITERATOR,
+				USER_INT
 			};
 
 			/** \internal @returns The type, as a string, of a source vertex. */
@@ -268,6 +276,8 @@ namespace grb {
 
 				NNZ_VECTOR,
 
+				NNZ_MATRIX,
+
 				CLEAR_VECTOR,
 
 				SET_VECTOR_ELEMENT,
@@ -301,6 +311,10 @@ namespace grb {
 				BUILD_VECTOR_WITH_VALUES,
 				
 				SIZE,
+
+				NROWS,
+
+				NCOLS,
 				
 				EWISEAPPLY_VECTOR_VECTOR,
 				
@@ -401,6 +415,8 @@ namespace grb {
 				CAPACITY_MATRIX,
 				
 				RESIZE,
+
+				RESIZE_MATRIX,
 				
 				GETID_VECTOR,
 				
@@ -459,13 +475,14 @@ namespace grb {
 			};
 
 			/** \internal How many operation vertex types exist. */
-			const constexpr size_t numOperationVertexTypes = 95;
+			const constexpr size_t numOperationVertexTypes = 99;
 
 			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
 				allOperationVertexTypes[ numOperationVertexTypes ] =
 			{
 				NNZ_VECTOR,
+				NNZ_MATRIX,
 				CLEAR_VECTOR,
 				SET_VECTOR_ELEMENT,
 				DOT,
@@ -483,6 +500,8 @@ namespace grb {
 				BUILD_VECTOR,
 				BUILD_VECTOR_WITH_VALUES,
 				SIZE,
+				NROWS,
+				NCOLS,
 				EWISEAPPLY_VECTOR_VECTOR,
 				EWISEAPPLY_VECTOR_BETA,
 				EWISEAPPLY_VECTOR_VECTOR_BETA,
@@ -533,6 +552,7 @@ namespace grb {
 				CAPACITY_VECTOR,
 				CAPACITY_MATRIX,
 				RESIZE,
+				RESIZE_MATRIX,
 				GETID_VECTOR,
 				GETID_MATRIX,
 				EWISELAMBDA_FUNC_MATRIX,

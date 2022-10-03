@@ -77,7 +77,11 @@ namespace grb {
 		Vector< InputType, hyperdags, Coords > &x, 
 		const size_t new_nz
 	) noexcept {
-		std::array< const void *, 1 > sources{ &x };
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::USER_INT,
+			&new_nz
+		);
+		std::array< const void *, 2 > sources{ &x, &new_nz };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::RESIZE,
