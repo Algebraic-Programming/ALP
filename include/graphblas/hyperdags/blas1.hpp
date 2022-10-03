@@ -901,7 +901,9 @@ namespace grb {
 		Args const &... args
 	) {
 		std::vector< const void * > sources, destinations;
-		return internal::hyperdag_ewisevector( f, x, sources, destinations, y, args... );
+		return internal::hyperdag_ewisevector(
+			f, x, sources, destinations, y, args...
+		);
 	}
 
 	template<
@@ -975,8 +977,9 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		typename InputType1, typename InputType2, typename Coords
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -1007,7 +1010,7 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		 typename InputType1, typename InputType2, typename Coords
+		typename InputType1, typename InputType2, typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -1073,8 +1076,9 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		typename MaskType, typename InputType1, typename InputType2, typename Coords
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1,
+		typename InputType2, typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -1142,8 +1146,9 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
-		typename MaskType, typename InputType1, typename InputType2, typename Coords
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType, typename InputType1,
+		typename InputType2, typename Coords
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -1675,8 +1680,9 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring, typename OutputType,
-		typename MaskType, typename InputType1, typename InputType2, typename InputType3, typename Coords
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename MaskType, typename InputType1,
+		typename InputType2, typename InputType3, typename Coords
 	>
 	RC eWiseMulAdd(
 		Vector< OutputType, hyperdags, Coords > &z,

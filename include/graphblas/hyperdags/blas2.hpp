@@ -49,16 +49,15 @@ namespace grb {
 		return nnz(internal::getMatrix(A));
 	}
 	
-	template<
-		 typename InputType 
-	>
+	template< typename InputType >
 	RC resize( Matrix< InputType, hyperdags > &A, const size_t new_nz ) noexcept {
 		return resize(internal::getMatrix(A), new_nz);
 	}
 	
 	template< 
-		Descriptor descr = descriptors::no_operation, class Ring, typename IOType,
-		typename InputType1, typename InputType2, typename InputType3, typename Coords 
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename Coords 
 	>
 	RC vxm(
 		Vector< IOType, hyperdags, Coords > &u,

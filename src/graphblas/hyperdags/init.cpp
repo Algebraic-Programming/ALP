@@ -26,15 +26,23 @@
 
 
 namespace grb {
+
 	namespace internal {
+
 		namespace hyperdags {
+
 			HyperDAGGenerator generator;
+
 		}
+
 	}
+
 }
 
 template<>
-grb::RC grb::init< grb::hyperdags >( const size_t s, const size_t P, void * const ) {
+grb::RC grb::init< grb::hyperdags >(
+	const size_t s, const size_t P, void * const
+) {
 	std::cerr << "Info: grb::init (hyperdags) called.\n";
 	return grb::init< grb::_GRB_WITH_HYPERDAGS_USING >( s, P, nullptr );
 }
