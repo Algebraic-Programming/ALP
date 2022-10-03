@@ -33,14 +33,6 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
-add_grb_executables( alp_gemm alp_gemm.cpp
-	BACKENDS alp_reference
-)
-
-add_grb_executables( alp_cholesky alp_cholesky.cpp
-	BACKENDS alp_reference
-)
-
 add_grb_executables( alp_views alp_views.cpp
 	BACKENDS alp_reference
 )
