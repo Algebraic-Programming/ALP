@@ -36,21 +36,6 @@
 namespace grb {
 
 	template<
-		typename InputType, typename RIT, typename CIT, typename NIT
-	>
-	RC clear( Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 1 > destinations{ &A };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::CLEAR_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		// delegate
-		return clear( internal::getMatrix(A) );
-	}
-
-	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename RIT, typename CIT, typename NIT,
@@ -113,52 +98,6 @@ namespace grb {
 			internal::getMatrix( C ),
 			internal::getMatrix( A ), internal::getMatrix( B ),
 			mulOp, phase
-		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A
-	) {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 1 > destinations{ &C };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::SET_MATRIX_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return set< descr >( internal::getMatrix( C ), internal::getMatrix( A ) );
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, hyperdags, RIT, CIT, NIT > &A,
-		const InputType2 &val
-	) {
-		internal::hyperdags::generator.addSource(
-			internal::hyperdags::SCALAR,
-			&val
-		);
-		std::array< const void *, 2 > sources{ &A, &val };
-		std::array< const void *, 1 > destinations{ &C };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::SET_MATRIX_MATRIX_INPUT2,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return set< descr >(
-			internal::getMatrix( C ), internal::getMatrix( A ),
-			val
 		);
 	}
 
