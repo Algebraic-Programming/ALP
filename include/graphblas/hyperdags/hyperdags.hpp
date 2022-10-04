@@ -201,7 +201,7 @@ namespace grb {
 
 					/** \internal The type of the output */
 					enum OutputVertexType type;
-					
+
 					/** \internal The output vertex ID */
 					const size_t local_id;
 
@@ -211,7 +211,7 @@ namespace grb {
 
 				public:
 
-					/** 
+					/**
 					 * \internal Default constructor.
 					 *
 					 * @param[in] lid The ID within vertices of this type.
@@ -283,193 +283,193 @@ namespace grb {
 				SET_VECTOR_ELEMENT,
 
 				DOT,
-				
+
 				SET_USING_VALUE,
 
 				SET_USING_MASK_AND_VECTOR,
-				
+
 				SET_USING_MASK_AND_SCALAR,
-				
+
 				SET_FROM_VECTOR,
-				
+
 				ZIP,
 
 				E_WISE_APPLY_VECTOR_VECTOR_VECTOR_OP,
-				
+
 				FOLDR_VECTOR_SCALAR_MONOID,
 
 				FOLDR_VECTOR_MASK_SCALAR_MONOID,
-				
+
 				FOLDL_SCALAR_VECTOR_MONOID,
 
 				FOLDL_SCALAR_VECTOR_MASK_MONOID,
-				
+
 				EWISELAMBDA,
-				
+
 				BUILD_VECTOR,
-				
+
 				BUILD_VECTOR_WITH_VALUES,
-				
+
 				SIZE,
 
 				NROWS,
 
 				NCOLS,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR,
-				
+
 				EWISEAPPLY_VECTOR_BETA,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR_BETA,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP,
-				
+
 				EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP,
-				
+
 				EWISEAPPLY_VECTOR_SCALAR_MONOID,
-				
+
 				EWISEAPPLY_SCALAR_VECTOR_MONOID,
-				
+
 				EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID,
-				
+
 				EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID,
-				
+
 				EWISE_MUL_ADD,
-				
+
 				EWISE_MUL_ADD_FOUR_VECTOR,
-				
+
 				EWISE_MUL_ADD_THREE_VECTOR_ALPHA,
-				
+
 				EWISE_MUL_ADD_THREE_VECTOR_CHI,
-				
+
 				EWISE_MUL_ADD_FOUR_VECTOR_CHI,
-				
+
 				EWISE_MUL_ADD_FOUR_VECTOR_CHI_RING,
-				
+
 				EWISE_MUL_ADD_THREE_VECTOR_BETA,
-				
+
 				EWISE_MUL_ADD_THREE_VECTOR_ALPHA_GAMMA,
-				
+
 				EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA,
-				
+
 				EWISE_MUL_ADD_TWO_VECTOR_ALPHA_BETA_GAMMA,
-				
+
 				EWISEAPPLY_MATRIX_MATRIX_MATRIX_MULMONOID_PHASE,
-				
+
 				EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE,
-				
+
 				SET_MATRIX_MATRIX,
-				
+
 				SET_MATRIX_MATRIX_INPUT2,
-				
+
 				MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
-				
+
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,
-				
+
 				OUTER,
-				
+
 				UNZIP_VECTOR_VECTOR_VECTOR,
-				
+
 				ZIP_MATRIX_VECTOR_VECTOR_VECTOR,
 
 				ZIP_MATRIX_VECTOR_VECTOR,
-				
+
 				CLEAR_MATRIX,
-				
+
 				EWISEMULADD_VECTOR_VECTOR_VECTOR_GAMMA_RING,
-				
+
 				EWISEMULADD_VECTOR_VECTOR_BETA_GAMMA_RING,
-				
+
 				EWISEMULADD_VECTOR_ALPHA_VECTOR_GAMMA_RING,
-				
+
 				EWISEMULADD_VECTOR_ALPHA_BETA_VECTOR_RING,
-				
+
 				EWISEMULADD_VECTOR_ALPHA_BETA_GAMMA_RING,
-				
+
 				EWISEMULADD_VECTOR_VECTOR_VECTOR_VECTOR_RING,
-				
+
 				VXM_VECTOR_VECTOR_VECTOR_MATRIX,
-				
+
 				VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				
+
 				VXM_VECTOR_VECTOR_MATRIX_RING,
-				
+
 				MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING,
-				
+
 				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
-				
+
 				MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
-				
+
 				MXV_VECTOR_MATRIX_VECTOR_RING,
-				
+
 				MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
-				
+
 				BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
-				
+
 				CAPACITY_VECTOR,
-				
+
 				CAPACITY_MATRIX,
-				
+
 				RESIZE,
 
 				RESIZE_MATRIX,
-				
+
 				GETID_VECTOR,
-				
+
 				GETID_MATRIX,
-				
+
 				EWISELAMBDA_FUNC_MATRIX,
-				
+
 				VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				
+
 				VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				
+
 				VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
-				
+
 				FOLDL_VECTOR_BETA_OP,
-				
+
 				FOLDL_VECTOR_VECTOR_BETA_OP,
-				
+
 				FOLDL_VECTOR_BETA_MONOID,
-				
+
 				FOLDL_VECTOR_VECTOR_BETA_MONOID,
-				
+
 				FOLDL_VECTOR_VECTOR_MONOID,
-				
+
 				FOLDL_VECTOR_VECTOR_VECTOR_MONOID,
-				
+
 				FOLDL_VECTOR_VECTOR_VECTOR_OP,
-				
+
 				FOLDL_VECTOR_VECTOR_OP,
-				
+
 				FOLDR_APLHA_VECTOR_MONOID,
-				
+
 				FOLDR_APLHA_VECTOR_OPERATOR,
-				
+
 				FOLDR_VECTOR_VECTOR_OPERATOR,
-				
+
 				FOLDR_VECTOR_VECTOR_VECTOR_OPERATOR,
-				
+
 				FOLDR_VECTOR_VECTOR_MONOID,
-				
+
 				FOLDR_VECTOR_VECTOR_VECTOR_MONOID,
-				
+
 				EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING,
-				
+
 				EWISEMUL_VECTOR_ALPHA_VECTOR_RING,
-				
+
 				EWISEMUL_VECTOR_VECTOR_BETA_RING,
-				
+
 				EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING,
-				
+
 				EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING,
-				
+
 				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
-				
+
 				EWISELAMBDA_FUNC_VECTOR
 
 			};
@@ -681,20 +681,26 @@ namespace grb {
 
 			/**
 			 * \internal
-			 * 
-			 * Encodes any hypergraph that may yet grow.
+			 *
+			 * Encodes any directed hypergraph that may yet grow.
 			 *
 			 * \endinternal
 			 */
-			class Hypergraph {
+			class DHypergraph {
 
 				private:
 
 					/** \internal The total number of vertices in the hypergraph. */
 					size_t num_vertices;
 
-					/** \internal All hyperedges in the hypergraph. */
-					std::vector< std::set< size_t > > hyperedges;
+					/**
+					 * \internal
+					 *
+					 * All hyperedges in the hypergraph.
+					 *
+					 * \endinternal
+					 */
+					std::map< size_t, std::set< size_t > > hyperedges;
 
 					/** \internal The total number of pins in the hypergraph. */
 					size_t num_pins;
@@ -702,7 +708,7 @@ namespace grb {
 
 				public:
 
-					Hypergraph() noexcept;
+					DHypergraph() noexcept;
 
 					/**
 					 * \internal
@@ -720,21 +726,27 @@ namespace grb {
 					 * \endinternal
 					 */
 					template< typename FwdIt >
-					void createHyperedge( FwdIt start, const FwdIt &end ) {
+					void appendHyperedge(
+						const size_t source,
+						FwdIt start, const FwdIt &end
+					) {
 						static_assert( std::is_unsigned<
 							typename std::iterator_traits< FwdIt >::value_type
 						>::value, "Expected an iterator over positive integral values" );
 #ifdef _DEBUG
-						std::cerr << "in createHyperedge\n\t adding ( ";
+						std::cerr << "in appendHyperedge\n\t source " << source
+							<< "\n\t adds destinations ( ";
 						std::vector< size_t > warn;
 #endif
-						std::set< size_t > toAdd;
-						assert( start != end );
+						const auto it = hyperedges.find( source );
+						if( it == hyperedges.end() ) {
+							hyperedges[ source ] = std::set< size_t >();
+						}
+
+						std::set< size_t > &toAdd = hyperedges[ source ];
 						for( ; start != end; ++start ) {
 							assert( *start < num_vertices );
-							if( toAdd.find(
-								static_cast< size_t >( *start )
-							) == toAdd.end() ) {
+							if( toAdd.find( static_cast< size_t >( *start ) ) == toAdd.end() ) {
 								toAdd.insert( *start );
 								(void) ++num_pins;
 #ifdef _DEBUG
@@ -746,7 +758,6 @@ namespace grb {
 #endif
 							}
 						}
-						hyperedges.push_back( std::move(toAdd) );
 #ifdef _DEBUG
 						std::cerr << ")\n";
 						if( warn.size() > 0 ) {
@@ -801,7 +812,7 @@ namespace grb {
 				private:
 
 					/** \internal The underlying hypergraph. */
-					Hypergraph hypergraph;
+					DHypergraph hypergraph;
 
 					/** \internal The number of source vertices. */
 					size_t num_sources;
@@ -847,7 +858,7 @@ namespace grb {
 					 * @param[in] _outVec     Vector of output vertices.
 					 */
 					HyperDAG(
-						Hypergraph _hypergraph,
+						DHypergraph _hypergraph,
 						const std::vector< SourceVertex > &_srcVec,
 						const std::vector< OperationVertex > &_opVec,
 						const std::vector< OutputVertex > &_outVec
@@ -858,7 +869,7 @@ namespace grb {
 
 
 					/** @returns The hypergraph representation of the HyperDAG. */
-					Hypergraph get() const noexcept;
+					DHypergraph get() const noexcept;
 
 					/** @returns The number of source vertices. */
 					size_t numSources() const noexcept;
@@ -874,7 +885,13 @@ namespace grb {
 
 					/** @returns End iterator matching #sourcesBegin(). */
 					std::vector< SourceVertex >::const_iterator sourcesEnd() const;
-					
+
+					/** @returns A start iterator to the output vertices. */
+					std::vector< OperationVertex >::const_iterator operationsBegin() const;
+
+					/** @returns End iterator matching #outputsBegin. */
+					std::vector< OperationVertex >::const_iterator operationsEnd() const;
+
 					/** @returns A start iterator to the output vertices. */
 					std::vector< OutputVertex >::const_iterator outputsBegin() const;
 
@@ -889,7 +906,7 @@ namespace grb {
 				private:
 
 					/** \internal The hypergraph under construction. */
-					Hypergraph hypergraph;
+					DHypergraph hypergraph;
 
 					/**
 					 * \internal
@@ -1051,13 +1068,13 @@ namespace grb {
 #endif
 
 						// steps 1, 2, and 3
-						std::vector< std::vector< size_t > > hyperedges;
+						std::vector< std::pair< size_t, std::set< size_t > > > hyperedges;
 						for( ; src_start != src_end; ++src_start ) {
 #ifdef _DEBUG
 							std::cerr << "\t processing source " << *src_start << "\n";
 #endif
-							std::vector< size_t > toPush;
 							// step 1
+							size_t sourceID;
 							const auto &it = operationOrOutputVertices.find( *src_start );
 							const auto &it2 = operationVertices.find( *src_start );
 							if( it2 != operationVertices.end() ) {
@@ -1067,8 +1084,8 @@ namespace grb {
 #ifdef _DEBUG
 								std::cerr << "\t source was previously an operation\n";
 #endif
-								toPush.push_back( it2->second.getGlobalID() );
-							} else 	if( it == operationOrOutputVertices.end() ) {
+								sourceID = it2->second.getGlobalID();
+							} else if( it == operationOrOutputVertices.end() ) {
 								// step 2
 								const auto alreadySource = sourceVertices.find( *src_start );
 								if( alreadySource == sourceVertices.end() ) {
@@ -1078,12 +1095,12 @@ namespace grb {
 #endif
 									std::cerr << "Warning: unidentified source " << *src_start << ". "
 										<< "Adding it as a container.\n";
-									toPush.push_back( addAnySource( CONTAINER, *src_start ) );
+									sourceID = addAnySource( CONTAINER, *src_start );
 								} else {
 #ifdef _DEBUG
 									std::cerr << "\t found source in sourceVertices\n";
 #endif
-									toPush.push_back( alreadySource->second.getGlobalID() );
+									sourceID = alreadySource->second.getGlobalID();
 								}
 							} else {
 #ifdef _DEBUG
@@ -1107,11 +1124,10 @@ namespace grb {
 								operationVertices.insert( std::make_pair( it->first, operationVertex ) );
 								operationVec.push_back( operationVertex );
 								operationOrOutputVertices.erase( it );
-								toPush.push_back( global_id );
+								sourceID = global_id;
 							}
 							// step 3
-							assert( toPush.size() == 1 );
-							hyperedges.push_back( toPush );
+							hyperedges.push_back( std::make_pair( sourceID, std::set< size_t >() ) );
 						}
 
 						// step 4, 5, and 6
@@ -1166,7 +1182,7 @@ namespace grb {
 #endif
 							// step 6
 							for( auto &hyperedge : hyperedges ) {
-								hyperedge.push_back( global_id );
+								hyperedge.second.insert( global_id );
 							}
 						}
 
@@ -1176,7 +1192,10 @@ namespace grb {
 							std::cerr << "\t storing a hyperedge of size "
 								<< hyperedge.size() << "\n";
 #endif
-							hypergraph.createHyperedge( hyperedge.begin(), hyperedge.end() );
+							hypergraph.appendHyperedge(
+								hyperedge.first,
+								hyperedge.second.begin(), hyperedge.second.end()
+							);
 						}
 					}
 
