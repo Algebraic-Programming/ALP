@@ -41,7 +41,7 @@ namespace grb {
 			internal::hyperdags::ITERATOR,
 			&start
 		);
-		std::array< const void *, 2 > sources{ &start };
+		std::array< const void *, 2 > sources{ &start, &x };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::BUILD_VECTOR,
@@ -97,7 +97,7 @@ namespace grb {
 			internal::hyperdags::ITERATOR,
 			&start
 		);
-		std::array< const void *, 1 > sources{ &start };
+		std::array< const void *, 2 > sources{ &start, &A };
 		std::array< const void *, 1 > destinations{ &A };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::BUILDMATRIXUNIQUE_MATRIX_START_END_MODE,
@@ -196,7 +196,7 @@ namespace grb {
 			internal::hyperdags::SCALAR,
 			&val
 		);
-		std::array< const void *, 2 > sources{ &m, &val };
+		std::array< const void *, 3 > sources{ &x, &m, &val };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_USING_MASK_AND_SCALAR,
@@ -225,7 +225,7 @@ namespace grb {
 			!grb::is_object< InputType >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 2 > sources{ &mask, &y };
+		std::array< const void *, 3 > sources{ &mask, &y, &x };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_USING_MASK_AND_VECTOR,
@@ -248,7 +248,7 @@ namespace grb {
 		const Vector< InputType, hyperdags, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
-		std::array< const void *, 1 > sources{ &y };
+		std::array< const void *, 2 > sources{ &y, &x };
 		std::array< const void *, 1 > destinations{ &x };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_FROM_VECTOR,
@@ -268,7 +268,7 @@ namespace grb {
 		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		const Phase &phase = EXECUTE
 	) {
-		std::array< const void *, 1 > sources{ &A };
+		std::array< const void *, 2 > sources{ &A, &C };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_MATRIX_MATRIX,
@@ -295,7 +295,7 @@ namespace grb {
 			internal::hyperdags::SCALAR,
 			&val
 		);
-		std::array< const void *, 2 > sources{ &A, &val };
+		std::array< const void *, 3 > sources{ &A, &val, &C };
 		std::array< const void *, 1 > destinations{ &C };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::SET_MATRIX_MATRIX_INPUT2,
@@ -398,7 +398,7 @@ namespace grb {
 	template< typename DataType, typename Coords >
 	size_t nnz( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
 		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 0 > destinations;
+		std::array< const void *, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::NNZ_VECTOR,
 			sources.begin(), sources.end(),
