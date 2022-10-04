@@ -67,7 +67,7 @@ int data_fscanf( fileType& in, T * const out ) {
  * \internal This is the overload for reading complex data.
  */
 template< typename fileType, typename T >
-int data_fscanf( const fileType in, std::complex< T > * const out ) {
+int data_fscanf( fileType& in, std::complex< T > * const out ) {
 	T x, y;
 	if(in >> x >> y){
 		*out = std::complex< T >( x, y );
