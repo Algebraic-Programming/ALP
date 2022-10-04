@@ -1001,7 +1001,8 @@ namespace grb {
 					 *
 					 * This function proceeds as follows:
 					 *    1. for source pointers in #operationOrOutputVertices, a) upgrade them
-					 *       to #OperationVertex, and b) add them to #operationVertices.
+					 *       to #OperationVertex, and b) add them to #operationVertices. For
+					 *       source pointers in #operationVertices, do nothing.
 					 *    2. for remaining source pointers that are not in #sourceVertices,
 					 *       upgrade them to #SourceVertex and add them to #sourceVertices.
 					 *       Otherwise, if already a source, add it from #sourceVertices
@@ -1058,13 +1059,25 @@ namespace grb {
 							std::vector< size_t > toPush;
 							// step 1
 							const auto &it = operationOrOutputVertices.find( *src_start );
-							if( it == operationOrOutputVertices.end() ) {
+							const auto &it2 = operationVertices.find( *src_start );
+							if( it2 != operationVertices.end() ) {
+								// operation vertices are fine as a source -- no additional operations
+								// necessary
+								assert( it == operationOrOutputVertices.end() );
+#ifdef _DEBUG
+								std::cerr << "\t source was previously an operation\n";
+#endif
+								toPush.push_back( it2->second.getGlobalID() );
+							} else 	if( it == operationOrOutputVertices.end() ) {
 								// step 2
 								const auto alreadySource = sourceVertices.find( *src_start );
 								if( alreadySource == sourceVertices.end() ) {
-#ifdef _DEBUG
-									std::cerr << "\t creating new entry in sourceVertices\n";
+#ifndef NDEBUG
+									const bool all_sources_should_already_be_added = false;
+									assert( all_sources_should_already_be_added );
 #endif
+									std::cerr << "Warning: unidentified source " << *src_start << ". "
+										<< "Adding it as a container.\n";
 									toPush.push_back( addAnySource( CONTAINER, *src_start ) );
 								} else {
 #ifdef _DEBUG
@@ -1142,9 +1155,11 @@ namespace grb {
 							}
 							// step 5
 							const size_t global_id = hypergraph.createVertex();
-							operationOrOutputVertices.insert( std::make_pair( *dst_start,
-								std::make_pair( global_id, type )
-							) );
+							operationOrOutputVertices.insert(
+								std::make_pair( *dst_start,
+									std::make_pair( global_id, type )
+								)
+							);
 #ifdef _DEBUG
 							std::cerr << "\t created a new operation vertex with global ID "
 								<< global_id << "\n";
