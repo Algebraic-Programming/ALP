@@ -25,7 +25,7 @@
 #include <graphblas/algorithms/kcore_decomposition.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
-//#include <utils/output_verification.hpp>
+#include <utils/output_verification.hpp>
 
 using namespace grb;
 using namespace algorithms;
@@ -325,10 +325,7 @@ int main( int argc, char ** argv ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n";
 	} else {
-		std::cout << "Test OK\n";
-
-		//TODO: add verification for integers
-		/*if( verification ) {
+		if( verification ) {
 			out.error_code = vector_verification(
 				out.pinnedVector, truth_filename,
 				1e-5, 1e-6
@@ -343,7 +340,7 @@ int main( int argc, char ** argv ) {
 			}
 		} else {
 			std::cout << "Test OK\n";
-		}*/
+		}
 	}
 	std::cout << std::endl;
 

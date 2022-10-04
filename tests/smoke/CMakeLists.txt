@@ -159,6 +159,11 @@ add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
+add_grb_executables( kcore_decomposition kcore_decomposition.cpp
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	BACKENDS reference reference_omp
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"

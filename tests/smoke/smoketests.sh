@@ -198,6 +198,20 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+			echo "                                 EPA.mtx. The launcher is used in automatic"
+			echo "                                 mode and the IO mode is sequential in direct mode."
+			echo "                                 Launcher::exec is used with statically sized input and"
+			echo "                                 statically sized output."
+			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND}"
+			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+				$runner ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 &> ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+			else
+				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+			fi
+			echo " "
+
 			TESTNAME=rndHermit256
 			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
 				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
