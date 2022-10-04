@@ -83,22 +83,91 @@ namespace grb {
 
 		private:
 
+			/** \internal My own type */
+			typedef Matrix< T, hyperdags, RIT, CIT, NIT > SelfType;
+
 			/** \internal Simply use an underlying implementation */
 			typedef Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > MyMatrixType;
 
+			/** \internal Underlying matrix */
 			MyMatrixType matrix;
+
+			/** \internal Register this matrices */
+			void register_matrix() {
+#ifdef _DEBUG
+				std::cout << "\t registering matrix with pointer " << this << "\n";
+#endif
+				internal::hyperdags::generator.addSource(
+					internal::hyperdags::CONTAINER,
+					this
+				);
+			}
 
 
 		public:
 
+			/** \internal Base constructor, no capacity */
 			Matrix( const size_t rows, const size_t columns ) :
 				matrix( rows, columns )
-			{}
+			{
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) constructor\n";
+#endif
+				register_matrix();
+			}
 
+			/** \internal Base constructor with capacity */
 			Matrix( const size_t rows, const size_t columns, const size_t nz ) :
-				matrix(rows, columns, nz)
-			{}
+				matrix( rows, columns, nz )
+			{
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) capacity constructor\n";
+#endif
+				register_matrix();
+			}
 			
+			/** \internal Copy constructor */
+			Matrix( const SelfType &x ) : matrix( x.matrix ) {
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) copy constructor\n";
+#endif
+				register_matrix();
+			}
+
+			/** \internal Move constructor */
+			Matrix( SelfType &&x ) {
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) move constructor\n";
+#endif
+				matrix = std::move( x.matrix );
+				register_matrix();
+			}
+
+			~Matrix() {
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) destructor\n";
+#endif
+			}
+
+			/** \internal Copy-assignment */
+			SelfType& operator=( const SelfType &x ) {
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) copy assignment\n";
+#endif
+				matrix = x.matrix;
+				return *this;
+			}
+
+			/** \internal Move-assignment */
+			SelfType& operator=( SelfType &&x ) {
+#ifdef _DEBUG
+				std::cout << "Matrix (hyperdags) move assignment\n";
+#endif
+				matrix = std::move( x.matrix );
+				return *this;
+			}
+
+			/** \internal Start const-iterator */
 			template<
 				class ActiveDistribution = internal::Distribution<
 					_GRB_WITH_HYPERDAGS_USING
@@ -112,6 +181,7 @@ namespace grb {
 				return matrix.begin( mode, s, P );
 			}
 
+			/** \internal Matching end-iterator to begin */
 			template<
 				class ActiveDistribution = internal::Distribution<
 					_GRB_WITH_HYPERDAGS_USING
@@ -125,6 +195,7 @@ namespace grb {
 				return matrix.end(mode, s, P);
 			}
 
+			/** \internal Start const-iterator */
 			template<
 				class ActiveDistribution = internal::Distribution<
 					_GRB_WITH_HYPERDAGS_USING
@@ -138,6 +209,7 @@ namespace grb {
 				return matrix.cbegin(mode);
 			}
 
+			/** \internal Matching end iterator to cbegin */
 			template<
 				class ActiveDistribution = internal::Distribution<
 					_GRB_WITH_HYPERDAGS_USING
@@ -153,6 +225,7 @@ namespace grb {
 
 	};
 
+	/** \internal Basic type trait for matrices */
 	template< typename D, typename RIT, typename CIT, typename NIT >
 	struct is_container< Matrix< D, hyperdags, RIT, CIT, NIT > > {
 		/** A hyperdags matrix is an ALP container. */
