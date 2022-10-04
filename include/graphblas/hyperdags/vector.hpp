@@ -92,6 +92,7 @@ namespace grb {
 
 		private:
 
+			/** \internal My own type */
 			typedef Vector< T, hyperdags, internal::hyperdags::Coordinates > SelfType;
 			
 			/** \internal Simply use an underlying implementation */
@@ -100,40 +101,86 @@ namespace grb {
 				internal::hyperdags::Coordinates
 			> MyVectorType;
 
+			/** \internal Iterator type inherited from underlying backend */
 			template< Backend A >
 			using ConstIterator = typename MyVectorType::template ConstIterator< A >;
 
+			/** \internal Simply wrap around underlying backend */
 			MyVectorType vector;
+
+			/** \internal Registers this vector as a source container */
+			void register_vector() {
+#ifdef _DEBUG
+				std::cout << "\t registering vector with pointer " << this << "\n";
+#endif
+				internal::hyperdags::generator.addSource(
+					internal::hyperdags::CONTAINER,
+					this
+				);
+			}
 
 
 		public:
 
 			typedef typename MyVectorType::const_iterator const_iterator;
 
-			Vector( const size_t n ) : vector( n ) {}
-
-			Vector() : Vector( 0 ) {}
-			
-			Vector( const SelfType &x ) : vector( x.vector ) {}
-
-			Vector( SelfType &&x ) noexcept {
-				vector = std::move( x.vector );
+			Vector( const size_t n ) : vector( n ) {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) constructor\n";
+#endif
+				register_vector();
 			}
 
-			Vector( const size_t n, const size_t nz ) : vector( n, nz ) {}
+			Vector() : Vector( 0 ) {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) default constructor\n";
+#endif
+			}
+			
+			Vector( const SelfType &x ) : vector( x.vector ) {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) copy constructor\n";
+#endif
+				register_vector();
+			}
 
-			SelfType & operator=( const SelfType &x ) noexcept {
+			Vector( SelfType &&x ) noexcept {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) move constructor\n";
+#endif
+				vector = std::move( x.vector );
+				register_vector();
+			}
+
+			Vector( const size_t n, const size_t nz ) : vector( n, nz ) {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) capacity constructor\n";
+#endif
+				register_vector();
+			}
+
+			~Vector() {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) destructor\n";
+#endif
+			}
+
+			SelfType & operator=( const SelfType &x ) {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) copy assignment\n";
+#endif
 				vector = x.vector;
 				return *this;
 			}
 
 			SelfType & operator=( SelfType &&x ) noexcept {
+#ifdef _DEBUG
+				std::cout << "Vector (hyperdags) move assignment\n";
+#endif
 				vector = std::move( x.vector );
 				return *this;
 			}
 			
-			~Vector() {}
-
 			template< Backend spmd_backend = reference >
 			ConstIterator< spmd_backend > cbegin(
 				const size_t s = 0, const size_t P = 1
@@ -228,6 +275,7 @@ namespace grb {
 		};
 
 	}
+
 }
 
 #endif
