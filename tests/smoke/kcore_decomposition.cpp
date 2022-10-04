@@ -1,4 +1,20 @@
 
+/*
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <exception>
 #include <iostream>
 #include <vector>
@@ -295,9 +311,9 @@ int main( int argc, char ** argv ) {
 
 	const size_t n = out.pinnedVector.size();
 	std::cout << "Error code is " << out.error_code << ".\n";
-	std::cout << "Size of pr is " << n << ".\n";
+	std::cout << "Size of core is " << n << ".\n";
 	if( out.error_code == 0 && n > 0 ) {
-		std::cout << "First 10 nonzeroes of pr are: ( ";
+		std::cout << "First 10 nonzeroes of core are: ( ";
 		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
 			const auto &value = out.pinnedVector.getNonzeroValue( k );
 			std::cout << value << " ";
