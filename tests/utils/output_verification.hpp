@@ -36,7 +36,7 @@
 
 
 /**
- * Attempts to read in a double value from a given file into a given memory
+ * Attempts to read in a T value from a given file into a given memory
  * location.
  *
  * @param[in]  in  The input file
@@ -46,16 +46,11 @@
  *
  * If the function fails, \a out shall not be assigned.
  *
- * \internal This is the overload for reading double data.
+ * \internal This is the overload for reading T data.
  */
-template< typename fileType >
-int data_fscanf( const fileType in, double * const out ) {
-	const int rc = fscanf( in, "%lf", out );
-	if( rc == 1 ) {
-		return 0;
-	} else {
-		return 1;
-	}
+template< typename fileType, typename T >
+int data_fscanf( fileType& in, T * const out ) {
+	return !(in >> *out);
 };
 
 /**
@@ -73,12 +68,11 @@ int data_fscanf( const fileType in, double * const out ) {
  */
 template< typename fileType, typename T >
 int data_fscanf( const fileType in, std::complex< T > * const out ) {
-	double x, y;
-	const int rc = fscanf( in, "%lf%lf", &x, &y );
-	if( rc == 2 ) {
+	T x, y;
+	if(in >> x >> y){
 		*out = std::complex< T >( x, y );
 		return 0;
-	} else {
+	}else{
 		return 1;
 	}
 };
@@ -141,9 +135,10 @@ int vector_verification(
 	const constexpr T one = static_cast< T >( 1 );
 
 	// open verification file
-	FILE * const in = fopen( truth_filename, "r" );
+	std::ifstream in;
+	in.open( truth_filename);
 
-	if( in == nullptr ) {
+	if( !in.is_open() ) {
 		std::cerr << "Could not open the file \"" << truth_filename << "\"."
 			<< std::endl;
 		return 10;
@@ -168,9 +163,7 @@ int vector_verification(
 	}
 
 	// close verification file
-	if( fclose( in ) != 0 ) {
-		std::cerr << "I/O warning: closing verification file failed." << std::endl;
-	}
+	in.close();
 
 	// compute magnitudes
 	double magnitude2 = 0;
