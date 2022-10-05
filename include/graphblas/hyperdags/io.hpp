@@ -337,109 +337,46 @@ namespace grb {
 
 	template< typename DataType, typename Coords >
 	size_t size( const Vector< DataType, hyperdags, Coords > &x ) {
-		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 0 > destinations;
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::SIZE,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return size (internal::getVector(x));
 	}
 
 	template< typename InputType >
 	size_t nrows( const Matrix< InputType, hyperdags > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::NROWS,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return nrows(internal::getMatrix(A));
 	}
 
 	template< typename InputType >
 	size_t ncols( const Matrix< InputType, hyperdags > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::NCOLS,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return ncols(internal::getMatrix(A));
 	}
 
 	template< typename DataType, typename Coords >
 	size_t capacity( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
-		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::CAPACITY_VECTOR,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return capacity(internal::getVector( x ));
 	}
 
 	template< typename DataType >
 	size_t capacity( const Matrix< DataType, hyperdags > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::CAPACITY_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return capacity(internal::getMatrix( A ));
 	}
 
 	template< typename DataType, typename Coords >
 	size_t nnz( const Vector< DataType, hyperdags, Coords > &x ) noexcept {
-		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::NNZ_VECTOR,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return nnz( internal::getVector( x ) );
 	}
 
 	template< typename InputType >
 	size_t nnz( const Matrix< InputType, hyperdags > &A ) noexcept {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::NNZ_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return nnz(internal::getMatrix(A));
 	}
 
 	template< typename InputType, typename Coords >
 	uintptr_t getID( const Vector< InputType, hyperdags, Coords > &x ) {
-		std::array< const void *, 1 > sources{ &x };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::GETID_VECTOR,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return getID(internal::getVector( x ));
 	}
 
 	template< typename InputType >
 	uintptr_t getID( const Matrix< InputType, hyperdags > &A ) {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::GETID_MATRIX,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
 		return getID(internal::getMatrix( A ));
 	}
 
