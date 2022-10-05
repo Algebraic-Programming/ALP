@@ -30,17 +30,23 @@
 #include <limits>
 #include <cmath>
 #include <complex>
+#include <string>  
+#include <iostream> 
+#include <fstream> 
+#include <sstream> 
 
 #include <assert.h>
 
 
 
 /**
- * Attempts to read in a T value from a given file into a given memory
+ * Attempts to read in a value from a given file into a given memory
  * location.
+ * 
+ * @tparam T 		The datatype of the value
  *
- * @param[in]  in  The input file
- * @param[out] out Where to store the read value.
+ * @param[in]  in  	The input file
+ * @param[out] out 	Where to store the read value.
  *
  * @returns 0 on success and 1 on failure.
  *
@@ -48,14 +54,16 @@
  *
  * \internal This is the overload for reading T data.
  */
-template< typename fileType, typename T >
-int data_fscanf( fileType& in, T * const out ) {
+template< typename T >
+int data_fscanf( std::ifstream& in, T * const out ) {
 	return !(in >> *out);
 };
 
 /**
  * Attempts to read in a complex value from a given file into a given memory
  * location.
+ * 
+ * @tparam T	The data type to be used in the complex value
  *
  * @param[in]  in  The input file
  * @param[out] out Where to store the read value.
@@ -66,8 +74,8 @@ int data_fscanf( fileType& in, T * const out ) {
  *
  * \internal This is the overload for reading complex data.
  */
-template< typename fileType, typename T >
-int data_fscanf( fileType& in, std::complex< T > * const out ) {
+template< typename T >
+int data_fscanf( std::ifstream& in, std::complex< T > * const out ) {
 	T x, y;
 	if(in >> x >> y){
 		*out = std::complex< T >( x, y );
@@ -93,35 +101,35 @@ int data_fscanf( fileType& in, std::complex< T > * const out ) {
  *                           verification.
  *
  * @returns  0 if verification succeeded
- * @returns 10 if the ground truth file could not be opened
- * @returns 20 on memory allocation errors while reading the ground truth file
- * @returns 30 on I/O errors on the ground truth file
- * @returns 40 on memory allocation errors for verification buffers
- * @returns 50 if the \a output_vector was not dense
- * @returns 51 if inf-norm verification failed
- * @returns 52 if both 50 and 51 apply
- * @returns 53 if the computation of the inf-norm failed
- * @returns 54 if both 53 and 50 apply
- * @returns 55 if both 53 and 51 apply
- * @returns 56 if all of 53, 51, and 50 apply
- * @returns 57 if the computation of the 2-norm failed
- * @returns 58 if both 57 and 50 apply
- * @returns 59 if both 57 and 51 apply
- * @returns 60 if all of 57, 51, and 50 apply
- * @returns 61 if both 57 and 53 apply
- * @returns 62 if all of 57, 53, and 50 apply
- * @returns 63 if all of 57, 53, and 51 apply
- * @returns 64 if all of 57, 53, 51, and 50 apply
- * @returns 65 if 2-norm verification failed
+ * @returns  1 if the \a output_vector was not dense
+ * @returns  2 if inf-norm verification failed
+ * @returns  3 if both 1 and 2 apply
+ * @returns  4 if the computation of the inf-norm failed
+ * @returns  5 if both 4 and 1 apply
+ * @returns  6 if both 4 and 2 apply
+ * @returns  7 if all of 4, 2, and 1 apply
+ * @returns  8 if the computation of the 2-norm failed
+ * @returns  9 if both 8 and 1 apply
+ * @returns 10 if both 8 and 2 apply
+ * @returns 11 if all of 8, 2, and 1 apply
+ * @returns 12 if both 8 and 4 apply
+ * @returns 13 if all of 8, 4, and 1 apply
+ * @returns 14 if all of 8, 4, and 2 apply
+ * @returns 15 if all of 8, 4, 2, and 1 apply
+ * @returns 16 if 2-norm verification failed
  * ...
- * @returns 80 if all of 65, 57, 53, 51, and 50 apply
+ * @returns 31 if all of 16, 8, 4, 2, and 1 apply
  *
- * \note Please note that error codes 0, 10, 20, 30, 40, 50, 51, 53, 57, and 65
- *       correspond to individual errors this function can detect. Errors from
- *       number 50 (inclusive) onwards can be detected simultaneously, which
- *       leads to the other error codes that are not all exhaustively
- *       enumerated in the above. The mixed error codes are systematic by
+ * \note Please note that error codes 0, 1, 2, 4, 8, and 16
+ *       correspond to individual errors this function can detect. Errors can be
+ * 		 detected simultaneously, which leads to the other error codes that are
+ * 		 not all exhaustively enumerated in the above. The mixed error codes are systematic by
  *       power-of-two offsets.
+ *
+ * @throws  runtime_error if the ground truth file could not be opened
+ * @throws  bad_alloc on memory allocation errors while reading the ground truth file
+ * @throws  runtime_error on I/O errors on the ground truth file
+ * @throws  bad_alloc on memory allocation errors for verification buffers
  */
 template< typename T, enum grb::Backend B >
 int vector_verification(
@@ -139,9 +147,10 @@ int vector_verification(
 	in.open( truth_filename);
 
 	if( !in.is_open() ) {
-		std::cerr << "Could not open the file \"" << truth_filename << "\"."
+		std::stringstream error;
+		error << "Could not open the file \"" << truth_filename << "\"."
 			<< std::endl;
-		return 10;
+		throw std::runtime_error(error.str());
 	}
 
 	// read the truth output vector from the input verification file
@@ -149,16 +158,17 @@ int vector_verification(
 	T * const truth = new T[ n ];
 	if( truth == nullptr ) {
 		std::cerr << "Could not allocate necessary buffer" << std::endl;
-		return 20;
+		throw std::bad_alloc();
 	}
 
 	for( size_t i = 0; i < n; i++ ) {
 		const int rc = data_fscanf( in, truth + i );
 		if( rc != 0 ) {
-			std::cerr << "The verification file looks incomplete. " << "Line i = " << i
+			std::stringstream error;
+			error << "The verification file looks incomplete. " << "Line i = " << i
 				<< ", data = " << truth[ i ] << ", rc = " << rc << std::endl;
 			delete [] truth;
-			return 30;
+			throw std::runtime_error(error.str());
 		}
 	}
 
@@ -184,7 +194,7 @@ int vector_verification(
 	if( raw_output_vector == nullptr || written_to == nullptr ) {
 		std::cerr << "Could not allocate necessary buffers" << std::endl;
 		delete [] truth;
-		return 40;
+		throw std::bad_alloc();
 	}
 	for( size_t i = 0; i < n; i++ ) {
 		written_to[ i ] = false;
@@ -311,11 +321,6 @@ int vector_verification(
 		std::cerr << "Info: output vector passed inf-norm verification\n"
 			<< "\tinf-norm is " << norm_inf << " which is smaller or equal to the "
 			<< "effective relative tolerance of " << (c2 * magnitudeInf + eps) << "\n";
-	}
-
-	// apply error code offset (if there was an error)
-	if( ret > 0 ) {
-		ret += 49;
 	}
 
 	// done
