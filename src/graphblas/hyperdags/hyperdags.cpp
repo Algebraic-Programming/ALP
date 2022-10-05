@@ -666,8 +666,12 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 
 grb::internal::hyperdags::HyperDAG
 grb::internal::hyperdags::HyperDAGGenerator::finalize() const {
-	std::cout << "*** finalize called, "
-		<< operationOrOutputVertices.size() << "\n";
+#ifdef _DEBUG
+	std::cout << "HyperDAGGenerator::finalize called.\n"
+		<< "\t there are presently "
+		<< operationOrOutputVertices.size()
+		<< "output vertices\n";
+#endif
 	std::vector< grb::internal::hyperdags::OutputVertex > outputVec;
 
 	// generate outputVertices
