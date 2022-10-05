@@ -1190,7 +1190,7 @@ namespace grb {
 						for( const auto &hyperedge : hyperedges ) {
 #ifdef _DEBUG
 							std::cerr << "\t storing a hyperedge of size "
-								<< hyperedge.size() << "\n";
+								<< (hyperedge.second.size()+1) << "\n";
 #endif
 							hypergraph.appendHyperedge(
 								hyperedge.first,
