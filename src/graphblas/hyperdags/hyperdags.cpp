@@ -707,9 +707,13 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	}
 #ifdef _DEBUG
 	std::cerr << "\t\t Sizes of sourceVertices and sourceVec: "
-		<< sourceVertices.size() << ", resp., "
+		<< sourceVerticesP.size() << " + "
+		<< sourceVerticesC.size() << ", resp., "
 		<< sourceVec.size() << ".\n\t\t Contents of sourceVertices:\n";
-	for( const auto &pair : sourceVertices ) {
+	for( const auto &pair : sourceVerticesP ) {
+		std::cerr << "\t\t\t " << pair.first << "\n";
+	}
+	for( const auto &pair : sourceVerticesC ) {
 		std::cerr << "\t\t\t " << pair.first << "\n";
 	}
 #endif
