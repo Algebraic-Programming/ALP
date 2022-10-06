@@ -57,7 +57,6 @@ std::string grb::internal::hyperdags::toString(
 	return "unidentified output vertex type";
 }
 
-
 std::string grb::internal::hyperdags::toString(
 	const enum OperationVertexType type
 ) noexcept {

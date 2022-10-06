@@ -47,6 +47,23 @@ grb::RC grb::init< grb::hyperdags >(
 	return grb::init< grb::_GRB_WITH_HYPERDAGS_USING >( s, P, nullptr );
 }
 
+static size_t src2int( const grb::internal::hyperdags::SourceVertexType type ) {
+	return static_cast< size_t >( type );
+}
+
+static size_t op2int( const grb::internal::hyperdags::OperationVertexType type ) {
+	size_t ret = static_cast< size_t >( type );
+	ret += grb::internal::hyperdags::numSourceVertexTypes;
+	return ret;
+}
+
+static size_t out2int( const grb::internal::hyperdags::OutputVertexType type ) {
+	size_t ret = static_cast< size_t >( type );
+	ret += grb::internal::hyperdags::numSourceVertexTypes;
+	ret += grb::internal::hyperdags::numOperationVertexTypes;
+	return ret;
+}
+
 template<>
 grb::RC grb::finalize< grb::hyperdags >() {
 	std::cerr << "Info: grb::finalize (hyperdags) called.\n";
@@ -55,36 +72,88 @@ grb::RC grb::finalize< grb::hyperdags >() {
 		grb::internal::hyperdags::generator.finalize();
 	const grb::internal::hyperdags::DHypergraph &hypergraph =
 		hyperdag.get();
-	std::cout << "%%MatrixMarket matrix coordinate pattern general\n";
-	std::cout << "%\t Source vertices:\n";
-	for( auto it = hyperdag.sourcesBegin(); it != hyperdag.sourcesEnd(); ++it ) {
-		std::cout << "%\t\t " << it->getGlobalID() << ": "
-			<< grb::internal::hyperdags::toString( it->getType() ) << " "
-			<< "no. " << it->getLocalID()
-			<< "\n";
+	std::ostream &ostream = std::cout;
+	ostream << "%%MatrixMarket weighted-matrix coordinate pattern general\n";
+	// print source vertex types as comments
+	{
+		std::set< grb::internal::hyperdags::SourceVertexType > present;
+		for( auto it = hyperdag.sourcesBegin(); it != hyperdag.sourcesEnd(); ++it ) {
+			present.insert( it->getType() );
+		}
+		ostream << "%\t There are " << present.size() << " "
+			<< "unique source vertices present in this graph. "
+			<< "An index of source type ID and their description follows:\n";
+		for( const auto &type : present ) {
+			ostream << "%\t\t " << src2int( type ) << ": " << toString( type ) << "\n";
+		}
 	}
-	std::cout << "%\t Operation vertices:\n";
+	// print operation vertex types as comments
+	{
+		std::set< grb::internal::hyperdags::OperationVertexType > present;
+		for(
+			auto it = hyperdag.operationsBegin();
+			it != hyperdag.operationsEnd();
+			++it
+		) {
+			present.insert( it->getType() );
+		}
+		ostream << "%\t There are " << present.size() << " "
+			<< "unique operation vertices present in this graph. "
+			<< "An index of vertex type ID and their description follows:\n";
+		for( const auto &type : present ) {
+			ostream << "%\t\t " << op2int( type ) << ": " << toString( type ) << "\n";
+		}
+	}
+	// print output vertex types as comments
+	{
+		std::set< grb::internal::hyperdags::OutputVertexType > present;
+		for( auto it = hyperdag.outputsBegin(); it != hyperdag.outputsEnd(); ++it ) {
+			present.insert( it->getType() );
+		}
+		ostream << "%\t There are " << present.size() << " "
+			<< "unique output vertices present in this graph. "
+			<< "An index of output vertex type ID and their description follows:\n";
+		for( const auto &type : present ) {
+			ostream << "%\t\t " << out2int( type ) << ": " << toString( type ) << "\n";
+		}
+	}
+	// print HyperDAG size
+	const size_t numEdges = hypergraph.numHyperedges();
+	ostream << numEdges << " " << hypergraph.numVertices() << " "
+		<< hypergraph.numPins() << "\n";
+	// print all hyperedge IDs
+	for( size_t i = 0; i < numEdges; ++i ) {
+		ostream << i << " % no additional data on hyperedges at present\n";
+	}
+	// print all vertex IDs, their types, and their local IDs
+	for( auto it = hyperdag.sourcesBegin(); it != hyperdag.sourcesEnd(); ++it ) {
+		ostream << it->getGlobalID() << " " << src2int( it->getType() ) << " "
+			<< it->getLocalID() << " "
+			<< "% source vertex of type "
+			<< grb::internal::hyperdags::toString( it->getType() ) << " no. "
+			<< it->getLocalID() << "\n";
+	}
 	for(
 		auto it = hyperdag.operationsBegin();
 		it != hyperdag.operationsEnd();
 		++it
 	) {
-		std::cout << "%\t\t " << it->getGlobalID() << ": "
+		ostream << it->getGlobalID() << " " << op2int( it->getType() ) << " "
+			<< it->getLocalID() << " "
+			<< "% operation vertex of type "
 			<< grb::internal::hyperdags::toString( it->getType() ) << " "
-			<< "no. " << it->getLocalID()
-			<< "\n";
+			<< "no. " << it->getLocalID() << "\n";
 	}
-	std::cout << "%\t Output vertices:\n";
 	for( auto it = hyperdag.outputsBegin(); it != hyperdag.outputsEnd(); ++it ) {
-		std::cout << "%\t\t " << it->getGlobalID() << ": "
+		ostream << it->getGlobalID() << " " << out2int( it->getType() ) << " "
+			<< it->getLocalID() << " "
+			<< "% output vertex of type "
 			<< grb::internal::hyperdags::toString( it->getType() ) << " "
-			<< "no. " << it->getLocalID()
-			<< "\n";
+			<< "no. " << it->getLocalID() << "\n";
 	}
-	std::cout << hypergraph.numHyperedges() << " "
-		<< hypergraph.numVertices() << " "
-		<< hypergraph.numPins() << "\n";
-	hypergraph.render( std::cout );
+	// print HyperDAG structure
+	hypergraph.render( ostream );
+	// done
 	return grb::finalize< grb::_GRB_WITH_HYPERDAGS_USING >();
 }
 
