@@ -81,7 +81,7 @@ grb::RC grb::finalize< grb::hyperdags >() {
 			present.insert( it->getType() );
 		}
 		ostream << "%\t There are " << present.size() << " "
-			<< "unique source vertices present in this graph. "
+			<< "unique source vertex types present in this graph. "
 			<< "An index of source type ID and their description follows:\n";
 		for( const auto &type : present ) {
 			ostream << "%\t\t " << src2int( type ) << ": " << toString( type ) << "\n";
@@ -98,7 +98,7 @@ grb::RC grb::finalize< grb::hyperdags >() {
 			present.insert( it->getType() );
 		}
 		ostream << "%\t There are " << present.size() << " "
-			<< "unique operation vertices present in this graph. "
+			<< "unique operation vertex types present in this graph. "
 			<< "An index of vertex type ID and their description follows:\n";
 		for( const auto &type : present ) {
 			ostream << "%\t\t " << op2int( type ) << ": " << toString( type ) << "\n";
@@ -111,7 +111,7 @@ grb::RC grb::finalize< grb::hyperdags >() {
 			present.insert( it->getType() );
 		}
 		ostream << "%\t There are " << present.size() << " "
-			<< "unique output vertices present in this graph. "
+			<< "unique output vertex types present in this graph. "
 			<< "An index of output vertex type ID and their description follows:\n";
 		for( const auto &type : present ) {
 			ostream << "%\t\t " << out2int( type ) << ": " << toString( type ) << "\n";
