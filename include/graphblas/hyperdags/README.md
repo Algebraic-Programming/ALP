@@ -212,17 +212,20 @@ The source continues with registering the sources and destinations (outputs) of
 the dot-operation itself:
 
 ```
-	std::array< const void *, 3 > sources{ &z, &x, &y };
-	std::array< const void *, 1 > destinations{ &z };
+	std::array< const void *, 1 > sourcesP{ &z };
+	std::array< uintptr_t, 2 > sourcesC{ getID( x ), getID( y ) };
+	std::array< uintptr_t, 1 > destinations{ getID( z ) };
 	...
 ```
-
-With that done, we finally record the operation, as follows:
+Note that this records auxiliary scalars using pointers, while ALP/GraphBLAS
+containers are registered using its container ID. With that done, we finally
+record the operation, as follows:
 
 ```
 	internal::hyperdags::generator.addOperation(
 		internal::hyperdags::DOT,
-		sources.begin(), sources.end(),
+		sourcesP.begin(), sourcesP.end(),
+		sourcesC.begin(), sourcesC.end(),
 		destinations.begin(), destinations.end()
 	);
 	...
@@ -248,29 +251,35 @@ reference backend instead of reimplementing things all over again:
 Here, the `internal::getVector` wrapper function retrieves a reference backend
 version of the input vector, and passes that on to the reference backend.
 
+This quick description ignores phases and error codes -- please see some of the
+actual code snippets in the hyperdags backend for error-safe programming
+patterns.
+
 
 Registering new operation and source types
 ==========================================
 
-Following the above, one may want to register a new type of operation vertex or
-source vertex. For this, see `include/graphblas/hyperdags/hyperdags.hpp` and,
-in the case of source vertices, look for the following enum:
+One may want to register a new type of operation vertex or source vertex. For
+this, see `include/graphblas/hyperdags/hyperdags.hpp` and, in the case of source
+vertices, look for the following enum:
 
 ```
 enum SourceVertexType {
 	SCALAR,
 	CONTAINER,
-	SET
+	ITERATOR,
+	USER_INT
 };
 
-const constexpr size_t numSourceVertexTypes = 3;
+const constexpr size_t numSourceVertexTypes = 4;
 
 const constexpr enum SourceVertexType
 	allSourceVertexTypes[ numSourceVertexTypes ] =
 {
 	SCALAR,
 	CONTAINER,
-	SET
+	ITERATOR,
+	USER_INT
 };
 ```
 
@@ -280,25 +289,14 @@ A new type of source vertex should:
    documentation describing unambiguously where such a source vertex could
    come from / how and when they are generated;
 
-2. increment numSourceVertexTypes; and, finally
+2. increment numSourceVertexTypes;
 
-3. add the new enum entry to the allSourceVertexTypes array.
+3. add the new enum entry to the allSourceVertexTypes array; and, finally
 
-This is all that is required-- the implementation will, using these three
-structures, automatically generate the data structures required for each type
-when the hyperdags backend is initialised.
+4. the toString function in `src/graphblas/hyperdags/hyperdags.cpp` should be
+   updated.
 
 To add new operation vertex types, the same recipe should be followed, but then
 using the `OperationVertexType` enum and the `numOperationVertexTypes` counter
-and the `allOperationVertexTypes` array.
-
-
-TODOs
-=====
-
-1. Instead of building `std::array`s for `sources` and `destinations` by
-   recording pointers, use the new `grb::getID` function for ALP vectors and
-   matrices instead. For scalars `z`, indices of type `uintptr_t` must be
-   derived by converting them from pointers as follows:
-   `const uintptr_t z_id = reinterpret_cast< uintptr_t >( &z );`
+and the `allOperationVertexTypes` array; and similarly for output vertex types.
 
