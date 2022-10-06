@@ -34,10 +34,10 @@
 
 namespace grb {
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename Coords 
+		typename InputType3, typename Coords
 	>
 	RC vxm(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -81,11 +81,11 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename Coords 
+		typename InputType3, typename Coords
 	>
 	RC vxm(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -184,7 +184,7 @@ namespace grb {
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
-		typename Coords 
+		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -235,7 +235,7 @@ namespace grb {
 		bool input_may_be_masked = true,
 		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename InputType4, typename Coords 
+		typename InputType3, typename InputType4, typename Coords
 	>
 	RC mxv(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -290,7 +290,7 @@ namespace grb {
 		bool input_may_be_masked = true,
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename InputType4, typename Coords 
+		typename InputType3, typename InputType4, typename Coords
 	>
 	RC mxv(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -303,12 +303,12 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_monoid< AdditiveMonoid >::value &&
-			grb::is_operator< MultiplicativeOperator >::value && 
+			grb::is_operator< MultiplicativeOperator >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value && 
+			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
-			!grb::is_object< InputType4 >::value && 
+			!grb::is_object< InputType4 >::value &&
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
@@ -342,13 +342,13 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename Coords 
+		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -387,7 +387,7 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2, typename Coords
@@ -525,7 +525,7 @@ namespace grb {
 		bool input_may_be_masked = true,
 		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename InputType4, typename Coords 
+		typename InputType3, typename InputType4, typename Coords
 	>
 	RC vxm(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -575,7 +575,7 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
 		bool input_may_be_masked = true,
@@ -634,9 +634,9 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		class AdditiveMonoid, class MultiplicativeOperator, 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class AdditiveMonoid, class MultiplicativeOperator,
 		typename IOType, typename InputType1, typename InputType2, typename Coords
 	>
 	RC vxm(

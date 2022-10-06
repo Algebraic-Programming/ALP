@@ -58,8 +58,7 @@ namespace grb {
 			PinnedVector(
 				const Vector< IOType, hyperdags, internal::hyperdags::Coordinates > &x,
 				const IOMode mode
-			): pinned_vector( internal::getVector(x), mode ) {}; 
-			
+			): pinned_vector( internal::getVector(x), mode ) {};
 
 			// default destructor is allowed
 

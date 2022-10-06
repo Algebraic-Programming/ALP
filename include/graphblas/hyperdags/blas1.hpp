@@ -961,7 +961,7 @@ namespace grb {
 		);
 		return eWiseLambda( f, internal::getVector(x) );
 	}
-	
+
 	namespace internal {
 
 		/** \internal This is the end recursion */
@@ -1008,9 +1008,9 @@ namespace grb {
 		}
 
 	} // end namespace grb::internal
-	
+
 	template<
-		typename Func, 
+		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
 	>
@@ -2379,10 +2379,10 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename Coords 
+		typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -2421,10 +2421,10 @@ namespace grb {
 	}
 
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename Coords 
+		typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -2466,10 +2466,10 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename Coords 
+		typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -2514,7 +2514,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename MaskType, typename Coords 
+		typename MaskType, typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -2558,10 +2558,10 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename MaskType, typename Coords 
+		typename MaskType, typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,
@@ -2608,10 +2608,10 @@ namespace grb {
 		return ret;
 	}
 
-	template< 
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename MaskType, typename Coords 
+		typename MaskType, typename Coords
 	>
 	RC eWiseMul(
 		Vector< OutputType, hyperdags, Coords > &z,

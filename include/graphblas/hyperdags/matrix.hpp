@@ -39,7 +39,6 @@ namespace grb {
 		const Matrix< T, _GRB_WITH_HYPERDAGS_USING, RIT, CIT, NIT > & getMatrix(
 			const Matrix< T, grb::hyperdags, RIT, CIT, NIT > &x
 		);
-		
 
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline internal::Compressed_Storage<
@@ -124,7 +123,7 @@ namespace grb {
 #endif
 				register_matrix();
 			}
-			
+
 			/** \internal Copy constructor */
 			Matrix( const SelfType &x ) : matrix( x.matrix ) {
 #ifdef _DEBUG
@@ -246,8 +245,7 @@ namespace grb {
 		) {
 			return x.matrix;
 		}
-		
-		
+
 		template< typename T, typename RIT, typename CIT, typename NIT >
 		inline internal::Compressed_Storage<
 			T, RIT, NIT

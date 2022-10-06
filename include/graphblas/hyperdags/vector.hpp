@@ -51,8 +51,7 @@ namespace grb {
 		getVector(
 			const Vector< T, grb::hyperdags, typename hyperdags::Coordinates > &x
 		);
-		
-		
+
 		template< typename T>
 		inline const T * getRaw(
 			const Vector<
@@ -60,12 +59,12 @@ namespace grb {
 				typename internal::hyperdags::Coordinates
 			> &x
 		);
-		
+
 		template< typename T>
 		inline T * getRaw(
 			Vector< T, grb::hyperdags, typename internal::hyperdags::Coordinates > &x
 		);
-	
+
 	}
 
 	template< typename T >
@@ -94,7 +93,7 @@ namespace grb {
 
 			/** \internal My own type */
 			typedef Vector< T, hyperdags, internal::hyperdags::Coordinates > SelfType;
-			
+
 			/** \internal Simply use an underlying implementation */
 			typedef Vector<
 				T, grb::_GRB_WITH_HYPERDAGS_USING,
@@ -135,7 +134,7 @@ namespace grb {
 				std::cout << "Vector (hyperdags) default constructor\n";
 #endif
 			}
-			
+
 			Vector( const SelfType &x ) : vector( x.vector ) {
 #ifdef _DEBUG
 				std::cout << "Vector (hyperdags) copy constructor\n";
@@ -179,7 +178,7 @@ namespace grb {
 				vector = std::move( x.vector );
 				return *this;
 			}
-			
+
 			template< Backend spmd_backend = reference >
 			ConstIterator< spmd_backend > cbegin(
 				const size_t s = 0, const size_t P = 1
@@ -207,7 +206,7 @@ namespace grb {
 			) const {
 				return vector.end( s, P );
 			}
-			
+
 			T & operator[]( const size_t i ) {
 				return vector[ i ];
 			}
@@ -258,14 +257,14 @@ namespace grb {
 		) {
 			return x.vector;
 		}
-		
+
 		template< typename T>
 		inline const T * getRaw(
 			const Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x
 		) {
 			return getRaw(getVector<T>(x));
 		};
-		
+
 		template< typename T>
 		inline T * getRaw(
 			Vector< T, grb::hyperdags, internal::hyperdags::Coordinates > &x

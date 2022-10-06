@@ -283,7 +283,7 @@ namespace grb {
 			} else {
 				ret = ret ? ret : grb::dot< descr_dense >( sigma, r, r, ring );
 			}
-			
+
 			assert( ret == SUCCESS );
 
 			// bnorm = b' * b;

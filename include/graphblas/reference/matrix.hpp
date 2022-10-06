@@ -1635,7 +1635,7 @@ namespace grb {
 			}
 
 
-			/** 
+			/**
 			 * @see Matrix::buildMatrixUnique.
 			 *
 			 * This dispatcher calls the sequential or the parallel implementation based
