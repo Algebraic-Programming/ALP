@@ -113,10 +113,9 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t registering vector with pointer " << this << "\n";
 #endif
-				internal::hyperdags::generator.addSource(
-					internal::hyperdags::CONTAINER,
-					this
-				);
+				if( size( vector ) > 0 ) {
+					internal::hyperdags::generator.addContainer( getID( vector ) );
+				}
 			}
 
 

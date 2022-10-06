@@ -97,10 +97,9 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t registering matrix with pointer " << this << "\n";
 #endif
-				internal::hyperdags::generator.addSource(
-					internal::hyperdags::CONTAINER,
-					this
-				);
+				if( nrows( matrix ) > 0 && ncols( matrix ) > 0 ) {
+					internal::hyperdags::generator.addContainer( getID( matrix ) );
+				}
 			}
 
 

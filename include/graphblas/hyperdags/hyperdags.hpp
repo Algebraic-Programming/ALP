@@ -933,10 +933,13 @@ namespace grb {
 					std::vector< OperationVertex > operationVec;
 
 					/** \internal Map of pointers to source vertices. */
-					std::map< const void *, SourceVertex > sourceVertices;
+					std::map< const void *, SourceVertex > sourceVerticesP;
 
-					/** \internal Map of pointers to operation vertices. */
-					std::map< const void *, OperationVertex > operationVertices;
+					/** \internal Map of IDs to source vertices. */
+					std::map< uintptr_t, SourceVertex > sourceVerticesC;
+
+					/** \internal Map of IDs to operation vertices. */
+					std::map< uintptr_t, OperationVertex > operationVertices;
 
 					// note: there is no map of OutputVertices because only at the point we
 					//       finalize to generate the final HyperDAG do we know for sure what
@@ -952,7 +955,7 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					std::map< const void *,
+					std::map< uintptr_t,
 						std::pair< size_t, OperationVertexType >
 					> operationOrOutputVertices;
 
@@ -970,11 +973,16 @@ namespace grb {
 					 *
 					 * @param[in] type    The type of source vertex.
 					 * @param[in] pointer A unique identifier of the source.
+					 * @param[in] id      A unique identifier of the source.
+					 *
+					 * If the \a type corresponds to an ALP/GraphBLAS container, then
+					 * \a pointer is ignored; otherwise, \a id is ignored.
 					 * \endinternal
 					 */
 					size_t addAnySource(
 						const SourceVertexType type,
-						const void * const pointer
+						const void * const pointer,
+						const uintptr_t id
 					);
 
 
@@ -1006,6 +1014,15 @@ namespace grb {
 						const SourceVertexType type,
 						const void * const pointer
 					);
+
+					/**
+					 * \internal
+					 *
+					 * Registers a new source container with a given \a id.
+					 *
+					 * \endinternal
+					 */
+					void addContainer( const uintptr_t id );
 
 					/**
 					 * \internal
@@ -1044,39 +1061,75 @@ namespace grb {
 					 *
 					 * \endinternal
 					 */
-					template< typename SrcIt, typename DstIt >
+					template< typename SrcPIt, typename SrcCIt, typename DstIt >
 					void addOperation(
 						const OperationVertexType type,
-						SrcIt src_start, const DstIt &src_end,
+						SrcPIt src_p_start, const SrcPIt &src_p_end,
+						SrcCIt src_c_start, const SrcCIt &src_c_end,
 						DstIt dst_start, const DstIt &dst_end
 					) {
 						static_assert( std::is_same< const void *,
-								typename std::iterator_traits< SrcIt >::value_type
+								typename std::iterator_traits< SrcPIt >::value_type
 							>::value,
-							"Sources should be given as const void pointers"
+							"Source pointers should be given as const void pointers"
 						);
-						static_assert( std::is_same< const void *,
+						static_assert( std::is_same< uintptr_t,
 								typename std::iterator_traits< DstIt >::value_type
 							>::value,
-							"Destinations should be given as const void pointers"
+							"Destinations should be identified by their IDs"
 						);
+						static_assert( std::is_same< uintptr_t,
+								typename std::iterator_traits< SrcCIt >::value_type
+							>::value,
+							"Source containers should be identified by their IDs"
+						);
+
 #ifdef _DEBUG
 						std::cerr << "In HyperDAGGen::addOperation( "
 							<< toString( type ) << ", ... )\n"
-							<< "\t sourceVertices size: " << sourceVertices.size() << "\n"
+							<< "\t sourceVertices size: " << sourceVerticesP.size() << " pointers + "
+							<< sourceVerticesC.size() << " containers\n"
 							<< "\t sourceVec size: " << sourceVec.size() << "\n";
 #endif
 
 						// steps 1, 2, and 3
 						std::vector< std::pair< size_t, std::set< size_t > > > hyperedges;
-						for( ; src_start != src_end; ++src_start ) {
+						for( ; src_p_start != src_p_end; ++src_p_start ) {
 #ifdef _DEBUG
-							std::cerr << "\t processing source " << *src_start << "\n";
+							std::cerr << "\t processing source pointer " << *src_p_start << "\n";
+#endif
+							// source pointers (input scalars, not input containers) are simple--
+							// they will never appear as operation vertices, nor as output vertices.
+							// Therefore step 1 does not apply.
+
+							// step 2
+							size_t sourceID;
+							const auto alreadySource = sourceVerticesP.find( *src_p_start );
+							if( alreadySource == sourceVerticesP.end() ) {
+#ifndef NDEBUG
+								const bool all_sources_should_already_be_added = false;
+								assert( all_sources_should_already_be_added );
+#endif
+								std::cerr << "Warning: unidentified source " << *src_p_start << ". "
+									<< "Adding it as an input scalar.\n";
+								sourceID = addAnySource( SCALAR, *src_p_start, 0 );
+							} else {
+#ifdef _DEBUG
+								std::cerr << "\t found source in sourceVertices\n";
+#endif
+								sourceID = alreadySource->second.getGlobalID();
+							}
+							// step 3
+							hyperedges.push_back( std::make_pair( sourceID, std::set< size_t >() ) );
+						}
+						for( ; src_c_start != src_c_end; ++src_c_start ) {
+#ifdef _DEBUG
+							std::cerr << "\t processing source container " << *src_c_start << "\n";
 #endif
 							// step 1
 							size_t sourceID;
-							const auto &it = operationOrOutputVertices.find( *src_start );
-							const auto &it2 = operationVertices.find( *src_start );
+							const auto &it = operationOrOutputVertices.find( *src_c_start );
+							const auto &it2 = operationVertices.find( *src_c_start );
 							if( it2 != operationVertices.end() ) {
 								// operation vertices are fine as a source -- no additional operations
 								// necessary
@@ -1087,15 +1140,15 @@ namespace grb {
 								sourceID = it2->second.getGlobalID();
 							} else if( it == operationOrOutputVertices.end() ) {
 								// step 2
-								const auto alreadySource = sourceVertices.find( *src_start );
-								if( alreadySource == sourceVertices.end() ) {
+								const auto alreadySource = sourceVerticesC.find( *src_c_start );
+								if( alreadySource == sourceVerticesC.end() ) {
 #ifndef NDEBUG
 									const bool all_sources_should_already_be_added = false;
 									assert( all_sources_should_already_be_added );
 #endif
-									std::cerr << "Warning: unidentified source " << *src_start << ". "
+									std::cerr << "Warning: unidentified source " << *src_c_start << ". "
 										<< "Adding it as a container.\n";
-									sourceID = addAnySource( CONTAINER, *src_start );
+									sourceID = addAnySource( CONTAINER, nullptr, *src_c_start );
 								} else {
 #ifdef _DEBUG
 									std::cerr << "\t found source in sourceVertices\n";
@@ -1130,6 +1183,7 @@ namespace grb {
 							hyperedges.push_back( std::make_pair( sourceID, std::set< size_t >() ) );
 						}
 
+
 						// step 4, 5, and 6
 						for( ; dst_start != dst_end; ++dst_start ) {
 #ifdef _DEBUG
@@ -1137,13 +1191,13 @@ namespace grb {
 #endif
 							// step 4
 							{
-								const auto &it = sourceVertices.find( *dst_start );
-								if( it != sourceVertices.end() ) {
+								const auto &it = sourceVerticesC.find( *dst_start );
+								if( it != sourceVerticesC.end() ) {
 #ifdef _DEBUG
 									std::cerr << "\t destination found in sources-- "
 										<< "removing it from there\n";
 #endif
-									sourceVertices.erase( it );
+									sourceVerticesC.erase( it );
 								}
 							}
 							{

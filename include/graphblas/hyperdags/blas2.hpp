@@ -33,7 +33,7 @@
 
 
 namespace grb {
-		
+
 	template< 
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType, typename InputType1, typename InputType2,
@@ -54,20 +54,33 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 4 > sources{ &mask, &v, &A, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-				internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX,
-				sources.begin(), sources.end(),
-				destinations.begin(), destinations.end()
-		);
-		return vxm< descr >(
+		if( size( internal::getVector(mask) ) == 0 ) {
+			return vxm< descr >( u, v, A, ring, phase );
+		}
+		const RC ret = vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getMatrix(A),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getVector(mask) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
-	
+
 	template< 
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -92,19 +105,31 @@ namespace grb {
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 4 > sources{ &mask, &v, &A, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		
-		return vxm< descr >(
+		if( size( internal::getVector(mask) ) == 0 ) {
+			return vxm< descr >( u, v, A, add, mul, phase );
+		}
+		const RC ret = vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getMatrix(A),
 			add, mul, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getVector(mask) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template<
@@ -113,7 +138,7 @@ namespace grb {
 		typename IOType = typename Ring::D4,
 		typename InputType1 = typename Ring::D1,
 		typename InputType2 = typename Ring::D2,
-		typename Coords 	
+		typename Coords
 	>
 	RC vxm(
 		Vector< IOType, hyperdags, Coords > &u,
@@ -128,20 +153,30 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 3 > sources{ &v, &A, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_RING,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return vxm< descr >(
+		const RC ret = vxm< descr >(
 			internal::getVector(u),
 			internal::getVector(v), internal::getMatrix(A),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
-	
+
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -166,20 +201,34 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 4 > sources{ &mask, &A, &v, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return mxv< descr >(
+		if( size( internal::getVector(mask) ) == 0 ) {
+			return mxv< descr >( u, A, v, ring, phase );
+		}
+		const RC ret = mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getMatrix(A), internal::getVector(v),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getVector(mask) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
-	
+
 	template<
 		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
@@ -205,18 +254,34 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return mxv< descr >(
+		if( size( internal::getVector(v_mask) ) == 0 ) {
+			return mxv< descr >( u, mask, A, v, ring, phase );
+		}
+		const RC ret = mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getMatrix(A), internal::getVector(v), internal::getVector(v_mask),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		std::vector< uintptr_t > sourcesC{
+			getID( internal::getVector(v_mask) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getVector(u) )
+		};
+		if( size( internal::getVector(mask) ) > 0 ) {
+			sourcesC.push_back( getID( internal::getVector(mask) ) );
+		}
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template<
@@ -247,18 +312,34 @@ namespace grb {
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 5 > sources{ &mask, &A, &v, &v_mask, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return mxv< descr >(
+		if( size( internal::getVector(v_mask) ) == 0 ) {
+			return mxv< descr >( u, mask, A, v, add, mul, phase );
+		}
+		const RC ret = mxv< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getMatrix(A), internal::getVector(v), internal::getVector(v_mask),
 			add, mul, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::vector< uintptr_t > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getVector(v_mask) ),
+			getID( internal::getVector(u) )
+		};
+		if( size( internal::getVector(mask) ) > 0 ) {
+			sourcesC.push_back( getID( internal::getVector(mask) ) );
+		}
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_A,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template< 
@@ -282,19 +363,28 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		
-		std::array< const void *, 3 > sources{ &A, &v, &u };
-		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_RING,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return mxv< descr >(
+		const RC ret = mxv< descr >(
 			internal::getVector(u),
 			internal::getMatrix(A), internal::getVector(v),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template< 
@@ -318,18 +408,28 @@ namespace grb {
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
- 		std::array< const void *, 3 > sources{ &A, &v, &u };
- 		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return mxv< descr >(
+		const RC ret = mxv< descr >(
 			internal::getVector(u),
 			internal::getMatrix(A), internal::getVector(v),
 			add, mul, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MXV_VECTOR_MATRIX_VECTOR_ADD_MUL,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	/** \internal Uses a direct implementation. */
@@ -340,14 +440,19 @@ namespace grb {
 		const Func f,
 		const Matrix< DataType, hyperdags > &A
 	) {
-		std::array< const void *, 1 > sources{ &A };
-		std::array< const void *, 0 > destinations{};
+		const RC ret = eWiseLambda( f, internal::getMatrix(A) );
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISELAMBDA_FUNC_MATRIX,
-			sources.cbegin(), sources.cend(),
+			sourcesP.cbegin(), sourcesP.cend(),
+			sourcesC.cbegin(), sourcesC.cend(),
 			destinations.cbegin(), destinations.cend()
 		);
-		return eWiseLambda( f, internal::getMatrix(A) );
+		return ret;
 	}
 
 	namespace internal {
@@ -359,16 +464,21 @@ namespace grb {
 		RC hyperdag_ewisematrix(
 			const Func f,
 			const Matrix< DataType, grb::hyperdags > &A,
-			std::vector< const void * > &sources,
-			std::vector< const void * > &destinations
+			std::vector< uintptr_t > &sources,
+			std::vector< uintptr_t > &destinations
 		) {
-			sources.push_back( &A );
+			const RC ret = grb::eWiseLambda( f, internal::getMatrix(A) );
+			if( ret != SUCCESS ) { return ret; }
+			if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+			std::array< const void *, 0 > sourcesP{};
+			sources.push_back( getID( internal::getMatrix(A) ) );
 			internal::hyperdags::generator.addOperation(
 				internal::hyperdags::EWISELAMBDA_FUNC_MATRIX,
+				sourcesP.cbegin(), sourcesP.cend(),
 				sources.cbegin(), sources.cend(),
 				destinations.cbegin(), destinations.cend()
 			);
-			return grb::eWiseLambda( f, internal::getMatrix(A) );
+			return ret;
 		}
 
 		/** \internal This is the base recursion */
@@ -379,13 +489,13 @@ namespace grb {
 		RC hyperdag_ewisematrix(
 			const Func f,
 			const Matrix< DataType1, grb::hyperdags > &A,
-			std::vector< const void * > &sources,
-			std::vector< const void * > &destinations,
+			std::vector< uintptr_t > &sources,
+			std::vector< uintptr_t > &destinations,
 			const Vector< DataType2, grb::hyperdags, Coords > &x,
 			Args... args
 		) {
-			sources.push_back( &x );
-			destinations.push_back( &x );
+			sources.push_back( getID( internal::getVector(x) ) );
+			destinations.push_back( getID( internal::getVector(x) ) );
 			return hyperdag_ewisematrix( f, A, sources, destinations, args... );
 		}
 
@@ -403,7 +513,7 @@ namespace grb {
 		const Vector< DataType2, hyperdags, Coords > &x,
 		Args... args
 	) {
-		std::vector< const void * > sources, destinations;
+		std::vector< uintptr_t > sources, destinations;
 		return internal::hyperdag_ewisematrix(
 			f, A, sources, destinations, x, args...
 		);
@@ -434,18 +544,35 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 5 > sources{ &v, &A, &mask, &v_mask, &u };
- 		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return vxm< descr >(
+		if( size( internal::getVector(v_mask) ) == 0 ) {
+			return vxm< descr >( u, mask, v, A, ring, phase );
+		}
+		const RC ret = vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
 			ring, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::vector< uintptr_t > sourcesC{
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v_mask) ),
+			getID( internal::getVector(u) )
+		};
+		if( size( internal::getVector(mask) ) > 0 ) {
+			sourcesC.push_back( getID( internal::getVector(mask) ) );
+		}
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template< 
@@ -476,18 +603,35 @@ namespace grb {
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 4 > sources{ &v, &A, &mask, &v_mask, &u };
- 		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return vxm< descr >(
+		if( size( internal::getVector(v_mask) ) == 0 ) {
+			return vxm< descr >( u, mask, v, A, add, mul, phase );
+		}
+		const RC ret = vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
 			add, mul, phase
 		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::vector< uintptr_t > sourcesC{
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(v_mask) ),
+			getID( internal::getVector(u) )
+		};
+		if( size( internal::getVector(mask) ) == 0 ) {
+			sourcesC.push_back( getID( internal::getVector(mask) ) );
+		}
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
 	}
 
 	template< 
@@ -511,19 +655,29 @@ namespace grb {
 			!std::is_same< InputType2, void >::value,
 		void >::type * const = nullptr
 	) {
-		std::array< const void *, 3 > sources{ &v, &A, &u };
- 		std::array< const void *, 1 > destinations{ &u };
-		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
-			sources.begin(), sources.end(),
-			destinations.begin(), destinations.end()
-		);
-		return vxm< descr >(
+		const RC ret = vxm< descr >(
 			internal::getVector(u),
 			internal::getVector(v), internal::getMatrix(A),
 			add, mul, phase
 		);
-	}	
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(A) ),
+			getID( internal::getVector(u) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(u) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::VXM_VECTOR_VECTOR_MATRIX_ADD_MUL,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
 
 } // end namespace grb
 

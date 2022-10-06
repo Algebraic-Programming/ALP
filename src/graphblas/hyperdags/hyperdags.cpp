@@ -616,17 +616,28 @@ grb::internal::hyperdags::HyperDAG::outputsEnd() const {
 
 grb::internal::hyperdags::HyperDAGGenerator::HyperDAGGenerator() noexcept {}
 
+void grb::internal::hyperdags::HyperDAGGenerator::addContainer(
+	const uintptr_t id
+) {
+	(void) addAnySource(
+		grb::internal::hyperdags::SourceVertexType::CONTAINER,
+		nullptr,
+		id
+	);
+}
+
 void grb::internal::hyperdags::HyperDAGGenerator::addSource(
 	const enum grb::internal::hyperdags::SourceVertexType type,
 	const void * const pointer
 ) {
 	assert( type != grb::internal::hyperdags::SourceVertexType::CONTAINER );
-	(void) addAnySource( type, pointer );
+	(void) addAnySource( type, pointer, 0 );
 }
 
 size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	const enum grb::internal::hyperdags::SourceVertexType type,
-	const void * const pointer
+	const void * const pointer,
+	const uintptr_t id
 ) {
 #ifdef _DEBUG
 	std::cerr << "\t entering HyperDAGGen::addAnySource for " << pointer << " and "
@@ -635,24 +646,49 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 		std::cerr << "\t\t " << pair.first << "\n";
 	}
 #endif
-	const auto &find = sourceVertices.find( pointer );
-	if( find != sourceVertices.end() ) {
+	size_t global_id;
+	if( type == CONTAINER ) {
+		const auto &find = sourceVerticesC.find( id );
+		if( find != sourceVerticesC.end() ) {
 #ifdef _DEBUG
-		std::cerr << "\t\t entry already existed, removing it\n";
+			std::cerr << "\t\t entry already existed, removing it\n";
 #endif
+			sourceVerticesC.erase( find );
+		}
+		assert( sourceVerticesC.find( id ) == sourceVerticesC.end() );
+		global_id = hypergraph.createVertex();
+		const auto sourceVertex = sourceGen.create( type, global_id );
+#ifdef _DEBUG
+		std::cerr << "\t\t created a source vertex with global ID " << global_id
+			<< " and local ID " << sourceVertex.getLocalID()
+			<< " that will be associated to the unique identifier "
+			<< id << "\n";
+#endif
+		assert( sourceVertex.getGlobalID() == global_id );
+		sourceVerticesC.insert( std::make_pair( id, sourceVertex ) );
+		sourceVec.push_back( sourceVertex );
+	} else {
+		assert( type != CONTAINER );
+		const auto &find = sourceVerticesP.find( pointer );
+		if( find != sourceVerticesP.end() ) {
+#ifdef _DEBUG
+			std::cerr << "\t\t entry already existed, removing it\n";
+#endif
+			sourceVerticesP.erase( find );
+		}
+		assert( sourceVerticesP.find( pointer ) == sourceVerticesP.end() );
+		global_id = hypergraph.createVertex();
+		const auto sourceVertex = sourceGen.create( type, global_id );
+#ifdef _DEBUG
+		std::cerr << "\t\t created a source vertex with global ID " << global_id
+			<< " and local ID " << sourceVertex.getLocalID()
+			<< " that will be associated to the unique identifier "
+			<< pointer << "\n";
+#endif
+		assert( sourceVertex.getGlobalID() == global_id );
+		sourceVerticesP.insert( std::make_pair( pointer, sourceVertex ) );
+		sourceVec.push_back( sourceVertex );
 	}
-	assert( sourceVertices.find( pointer ) == sourceVertices.end() );
-	const size_t global_id = hypergraph.createVertex();
-	const auto sourceVertex = sourceGen.create( type, global_id );
-#ifdef _DEBUG
-	std::cerr << "\t\t created a source vertex with global ID " << global_id
-		<< " and local ID " << sourceVertex.getLocalID()
-		<< " that will be associated to the unique identifier "
-		<< pointer << "\n";
-#endif
-	assert( sourceVertex.getGlobalID() == global_id );
-	sourceVertices.insert( std::make_pair( pointer, sourceVertex ) );
-	sourceVec.push_back( sourceVertex );
 #ifdef _DEBUG
 	std::cerr << "\t\t Sizes of sourceVertices and sourceVec: "
 		<< sourceVertices.size() << ", resp., "
