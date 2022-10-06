@@ -79,7 +79,7 @@ namespace grb {
 				 * Whether prefetching is enabled.
 				 */
 				static constexpr bool enabled() {
-					return true;
+					return false;
 				}
 
 				/**
@@ -89,7 +89,7 @@ namespace grb {
 				 * <tt>false</tt>.
 				 */
 				static constexpr size_t distance() {
-					return 1;
+					return 128;
 				}
 
 		};
