@@ -638,15 +638,20 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 	const void * const pointer,
 	const uintptr_t id
 ) {
-#ifdef _DEBUG
-	std::cerr << "\t entering HyperDAGGen::addAnySource for " << pointer << " and "
-		<< "type " << toString( type ) << ". Current sources:\n";
-	for( const auto &pair : sourceVertices ) {
-		std::cerr << "\t\t " << pair.first << "\n";
-	}
-#endif
 	size_t global_id;
 	if( type == CONTAINER ) {
+#ifdef _DEBUG
+		std::cerr << "\t entering HyperDAGGen::addAnySource for container " << id
+			<< " and type " << toString( type ) << ". "
+			<< "Current source pointers:\n";
+		for( const auto &pair : sourceVerticesP ) {
+			std::cerr << "\t\t " << pair.first << "\n";
+		}
+		std::cerr << "Current source containers:\n";
+		for( const auto &pair : sourceVerticesC ) {
+			std::cerr << "\t\t " << pair.first << "\n";
+		}
+#endif
 		const auto &find = sourceVerticesC.find( id );
 		if( find != sourceVerticesC.end() ) {
 #ifdef _DEBUG
@@ -668,6 +673,18 @@ size_t grb::internal::hyperdags::HyperDAGGenerator::addAnySource(
 		sourceVec.push_back( sourceVertex );
 	} else {
 		assert( type != CONTAINER );
+#ifdef _DEBUG
+		std::cerr << "\t entering HyperDAGGen::addAnySource for auxiliary data at "
+			<< pointer << " of type " << toString( type ) << ". "
+			<< "Current source pointers:\n";
+		for( const auto &pair : sourceVerticesP ) {
+			std::cerr << "\t\t " << pair.first << "\n";
+		}
+		std::cerr << "Current source containers:\n";
+		for( const auto &pair : sourceVerticesC ) {
+			std::cerr << "\t\t " << pair.first << "\n";
+		}
+#endif
 		const auto &find = sourceVerticesP.find( pointer );
 		if( find != sourceVerticesP.end() ) {
 #ifdef _DEBUG
