@@ -258,7 +258,7 @@ std::string grb::internal::hyperdags::toString(
 			return "mxv( vector, matrix, vector, scalar, scalar )";
 
 		case EWISELAMBDA_FUNC_MATRIX:
-			return "eWiseLambda(function, matrix )";
+			return "eWiseLambda( function, matrix )";
 
 		case VXM_GENERIC_VECTOR_VECTOR_VECTOR_VECTOR_MATRIX_ADD_MUL:
 			return "vxm( vector, vector, vector, vector, matrix, scalar, scalar )";
@@ -330,7 +330,7 @@ std::string grb::internal::hyperdags::toString(
 			return "eWiseMul( vector, vector, vector, scalar, scalar )";
 
 		case EWISELAMBDA_FUNC_VECTOR:
-			return "eWiseLambda(function, vector )";
+			return "eWiseLambda( function, vector )";
 
 		case MXM_MATRIX_MATRIX_MATRIX_SEMIRING:
 			return "mxm( matrix, matrix, matrix, semiring, scalar )";
