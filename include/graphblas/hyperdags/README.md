@@ -18,6 +18,8 @@ possible HyperDAG representations:
     single ALP/GraphBLAS primitive. For example, a call to grb::vxm will emit
     two hyperedges for every nonzero in the sparse input matrix.
 
+Only the extraction of a coarse-grained representation is presently implemented.
+
 Usage
 =====
 
