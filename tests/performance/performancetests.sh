@@ -74,8 +74,7 @@ KNN4SOLS=(118 499 2805 1 64 1 1048907)
 KNN6SOLS=(357 547 5176 1 246 1 1453447)
 
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
-MULTIPLICATION_DATASETS=(gyro_m.mtx vanbody.mtx G2_circuit.mtx bundle_adj.mtx apache2.mtx Emilia_923.mtx ecology2.mtx Serena.mtx G3_circuit.mtx Queen_4147.mtx cavity17.mtx s3rmt3m3.mtx bcsstk17.mtx s3dkt3m2.mtx cage14.mtx cage15.mtx ldoor.mtx)
-MULTIPLICATION_DATASET_MODES=(direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct direct)
+MULTIPLICATION_DATASETS=(west0497.mtx fidap037.mtx cavity17.mtx s3rmt3m3.mtx bloweybq.mtx bcsstk17.mtx Pres_Poisson.mtx gyro_m.mtx memplus.mtx lhr34.mtx bcsstk32.mtx vanbody.mtx s3dkt3m2.mtx G2_circuit.mtx Stanford.mtx coPapersCiteseer.mtx bundle_adj.mtx Stanford_Berkeley.mtx apache2.mtx Emilia_923.mtx ldoor.mtx ecology2.mtx Serena.mtx cage14.mtx G3_circuit.mtx wikipedia-20051105.mtx wikipedia-20061104.mtx Freescale1.mtx wikipedia-20070206.mtx Queen_4147.mtx cage15.mtx adaptive.mtx rgg_n_2_24_s0.mtx uk-2002.mtx road_usa.mtx MOLIERE_2016.mtx europe_osm.mtx twitter.mtx com-Friendster.mtx)
 
 #which command to use to run a GraphBLAS program
 LPF=yes
@@ -475,8 +474,8 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# initialise parameters
 			DATASET=${MULTIPLICATION_DATASETS[i]}
-			PARSE_MODE=${MULTIPLICATION_DATASET_MODES[i]}
-
+			PARSE_MODE=direct
+			
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
 				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
