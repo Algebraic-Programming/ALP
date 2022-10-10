@@ -333,17 +333,20 @@ runMultiplicationKernels()
 		# spmspm
 		echo ">>>      [ ]           [x]       Testing spmspm using ${dataSet} dataset, $backend backend."
 		echo
-		$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
-		head -1 ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
-		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}; then
-			printf "Test OK\n\n"
+		if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+			echo "Test DISABLED: no sparse level-3 operations recommended for 1D distributions."
 		else
-			printf "Test FAILED\n\n"
+			$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+			head -1 ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+			if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}; then
+				printf "Test OK\n\n"
+			else
+				printf "Test FAILED\n\n"
+			fi
+			echo "$backend spmspm using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+			egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+			echo >> ${TEST_OUT_DIR}/benchmarks
 		fi
-		echo "$backend spmspm using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
-		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
-		echo >> ${TEST_OUT_DIR}/benchmarks
-
 	fi
 }
 
@@ -430,7 +433,8 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo ">>>      [x]           [x]       Scaling tests using ${dataSet} dataset, $backend backend."
+				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi
