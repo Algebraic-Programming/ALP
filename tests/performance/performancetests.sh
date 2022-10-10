@@ -433,7 +433,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo ">>>      [x]           [x]       Scaling tests using ${dataSet} dataset, $backend backend."
+				echo ">>>      [x]           [x]       Test algorithms using ${dataSet} dataset, $backend backend."
 				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
@@ -482,6 +482,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
+				echo ">>>      [ ]           [x]       Test kernels using ${dataSet} dataset, $backend backend."
 				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
