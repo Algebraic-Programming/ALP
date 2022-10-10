@@ -30,6 +30,9 @@
 #ifdef _GRB_WITH_REFERENCE
 #include <graphblas/reference/collectives.hpp>
 #endif
+#ifdef _GRB_WITH_HYPERDAGS
+#include <graphblas/hyperdags/collectives.hpp>
+#endif
 #ifdef _GRB_WITH_LPF
 #include <graphblas/bsp/collectives.hpp>
 #endif

@@ -135,10 +135,14 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
-			bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} &> ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
-			head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
-			grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			if [ "${GITHUB_ACTIONS}" = true ] && [ "${BACKEND}" = "hyperdags" ]; then
+				echo "Test DISABLED; GitHub runner does not have enough memory for this test"
+			else
+				echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
+				bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} 2>&1 | sed -e '1p' -e '/===/!d' > ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
+				head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			fi
 			echo " "
 
 			echo ">>>      [x]           [ ]       Tests an automatically launching version of the simple pagerank"

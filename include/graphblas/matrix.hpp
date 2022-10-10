@@ -30,6 +30,9 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/matrix.hpp>
 #endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/matrix.hpp>
+#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/matrix.hpp>
 #endif

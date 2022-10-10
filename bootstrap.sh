@@ -74,6 +74,10 @@ the location where LPF is installed"
 	echo "  --with-banshee=<path/>              - path to the the tools to compile the banshee backend"
 	echo "  --with-snitch=<path/>               - path to the tools for Snitch support within the banshee backend"
 	echo "  --no-reference                      - disables the reference and reference_omp backends"
+	echo "  --no-hyperdags                      - disables the hyperdags backend"
+	echo "  --with-hyperdags-using=<backend>    - uses the given backend reference for HyperDAG generation"
+	echo "                                        optional; default value is reference"
+	echo "                                        clashes with --no-hyperdags"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
@@ -90,6 +94,8 @@ the location where LPF is installed"
 }
 
 reference=yes
+hyperdags=yes
+hyperdags_using=reference
 banshee=no
 lpf=no
 show=no
@@ -146,6 +152,13 @@ or assume default paths (--with-lpf)"
 	--no-reference)
 			reference=no
 			;;
+	--no-hyperdags)
+			hyperdags=no
+			;;
+	--with-hyperdags-using=*)
+			hyperdags=yes
+			hyperdags_using="${arg#--with-hyperdags-using=}"
+			;;
 	--debug-build)
 			debug_build=yes
 			;;
@@ -200,6 +213,19 @@ fi
 
 if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]]; then
 	check_cc_cpp_comp
+fi
+
+if [[ "${hyperdags}" == "yes" ]]; then
+	if [[ "${hyperdags_using}" != "reference" ]]; then
+		printf "Hyperdags backend requested using the ${hyperdags_using} backend, "
+		printf "but only the reference backend is supported currently."
+		exit 255
+	fi
+	if [[ "${hyperdags_using}" == "reference" && "${reference}" == "no" ]]; then
+		printf "Hyperdags backend is selected using the reference backend, "
+		printf "but the reference backend was not selected."
+		exit 255
+	fi
 fi
 
 if [[ "${lpf}" == "yes" ]]; then
@@ -286,6 +312,12 @@ the current directory before invocation or confirm the deletion of its content w
 
 	if [[ "${reference}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_REFERENCE_BACKEND=OFF -DWITH_OMP_BACKEND=OFF"
+	fi
+	if [[ "${hyperdags}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_HYPERDAGS_BACKEND=OFF"
+	fi
+	if [[ "${hyperdags}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DWITH_HYPERDAGS_USING=${hyperdags_using}"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"

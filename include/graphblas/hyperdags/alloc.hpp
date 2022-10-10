@@ -16,36 +16,39 @@
  */
 
 /*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
+ * @author A. N. Yzelman
+ * @date 31st of January, 2022
  */
 
-#ifndef _H_GRB_EXEC
-#define _H_GRB_EXEC
+#ifndef _H_GRB_HYPERDAGS_ALLOC
+#define _H_GRB_HYPERDAGS_ALLOC
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
 
-// include template specialisations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/exec.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/exec.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/exec.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/exec.hpp"
-#endif
-
-#ifdef _GRB_BACKEND
 namespace grb {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_GRB_EXEC''
+	namespace utils {
+
+		namespace internal {
+
+			template<>
+			class Allocator< hyperdags > {
+
+				private:
+
+					/** Prevent initialisation. */
+					Allocator();
+
+				public:
+
+					/** Refer to the standard allocation mechanism. */
+					typedef AllocatorFunctions< _GRB_WITH_HYPERDAGS_USING > functions;
+			};
+
+		} // namespace internal
+
+	}     // namespace utils
+
+} // namespace grb
+
+#endif
 

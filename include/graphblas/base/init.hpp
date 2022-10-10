@@ -150,7 +150,7 @@ namespace grb {
 	 */
 	template< enum Backend backend = config::default_backend >
 	RC init() {
-		return grb::init< backend >( 0, 1, NULL );
+		return grb::init< backend >( 0, 1, nullptr );
 	}
 
 	/**

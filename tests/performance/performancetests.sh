@@ -201,7 +201,11 @@ function runScalingTest()
 {
 	local runner=$1
 	local backend=$2
-	local DATASETS=( 1000 1000000 10000000 )
+	if [ "${backend}" = "hyperdags" ]; then
+		local DATASETS=( 1000 )
+	else
+		local DATASETS=( 1000 1000000 10000000 )
+	fi
 	local TESTS=(1 2 3 4)
 
 	for ((d=0;d<${#DATASETS[@]};++d));
@@ -338,6 +342,11 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 		for ((i=0;i<${#DATASETS[@]};++i));
 		do
+			if [ "$BACKEND" = "hyperdags" ] && [ "$i" -gt "0" ]; then
+				echo "Info: hyperdags performance tests run only on the smallest dataset"
+				echo " "
+				break
+			fi
 			if [ ! -z "$DATASETTORUN" ] && [ "$DATASETTORUN" != "${DATASETS[i]}" ]; then
 				continue
 			fi
@@ -362,10 +371,14 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				# k-NN k=4
 				runKNNBenchMarkTests "$runner" "$BACKEND" 4 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN4SOL"
 
-				# ---------------------------------------------------------------------
-				# k-NN k=6
-				runKNNBenchMarkTests "$runner" "$BACKEND" 6 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN6SOL"
-
+				if [ "$BACKEND" = "hyperdags" ]; then
+					echo "Info: 6-NN is skipped for the hyperdags backend"
+					echo " "
+				else
+					# ---------------------------------------------------------------------
+					# k-NN k=6
+					runKNNBenchMarkTests "$runner" "$BACKEND" 6 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN6SOL"
+				fi
 			fi
 			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "LABEL" ]; then
 

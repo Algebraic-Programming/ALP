@@ -296,7 +296,7 @@ namespace sparseblas {
 						"capacity" );
 				}
 				const grb::RC rc = grb::buildVector(
-					*vector, 
+					*vector,
 					uc_inds.cbegin(), uc_inds.cend(),
 					uc_vals.cbegin(), uc_vals.cend(),
 					grb::SEQUENTIAL
