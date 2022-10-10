@@ -47,13 +47,13 @@ namespace grb {
 		 */
 		template< typename IterT1, typename... IterTs >
 		class common_iterator_tag {
-	
+
 			public:
-	
+
 				using iterator_category = typename std::iterator_traits< IterT1 >::iterator_category;
-	
+
 		};
-	
+
 		/**
 		 * Selects the common iterator tag from multiple STL-style iterators.
 		 *
@@ -67,22 +67,22 @@ namespace grb {
 		 */
 		template< typename IterT1, typename IterT2, typename... IterTs >
 		class common_iterator_tag< IterT1, IterT2, IterTs... > {
-	
+
 			private:
-	
+
 				using cat1 = typename std::iterator_traits< IterT1 >::iterator_category;
 				using cats =
 					typename common_iterator_tag< IterT2, IterTs... >::iterator_category;
-	
-	
+
+
 			public:
-	
+
 				// STL iterator tags are a hierarchy with std::forward_iterator_tag at the base
 				typedef typename std::conditional<
 						std::is_base_of< cat1, cats >::value,
 						cat1, cats
 					>::type iterator_category;
-	
+
 		};
 
 		/**

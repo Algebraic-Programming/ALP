@@ -16,36 +16,36 @@
  */
 
 /*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
+ * @author A. N. Yzelman
+ * @date 31st of January, 2022
  */
 
-#ifndef _H_GRB_EXEC
-#define _H_GRB_EXEC
+#ifndef _H_GRB_HYPERDAGS_INIT
+#define _H_GRB_HYPERDAGS_INIT
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
+#include <graphblas/hyperdags/hyperdags.hpp>
 
-// include template specialisations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/exec.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/exec.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/exec.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/exec.hpp"
-#endif
 
-#ifdef _GRB_BACKEND
 namespace grb {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_GRB_EXEC''
+	namespace internal {
+
+		namespace hyperdags {
+
+			/** Singleton generator instance. */
+			extern HyperDAGGenerator generator;
+
+		}
+
+	}
+
+	template<>
+	RC init< hyperdags >( const size_t, const size_t, void * const );
+
+	template<>
+	RC finalize< hyperdags >();
+
+} // end namespace grb
+
+#endif
 

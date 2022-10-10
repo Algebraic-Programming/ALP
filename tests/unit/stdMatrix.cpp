@@ -23,6 +23,7 @@
 
 using namespace grb;
 
+
 void grb_program( const size_t & n, grb::RC & rc ) {
 	std::vector< grb::Matrix< unsigned char > > matrices;
 	size_t * const I = new size_t[ n ];
@@ -93,21 +94,25 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 	for( size_t i = 0; i < 13; ++i ) {
 		if( grb::nnz( matrices[ i ] ) != n ) {
-			std::cerr << "\t unexpected number of nonzeroes at matrix " << i << ": " << grb::nnz( matrices[ i ] ) << ", expected " << n << "\n";
+			std::cerr << "\t unexpected number of nonzeroes at matrix " << i << ": "
+				<< grb::nnz( matrices[ i ] ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
 	}
 	for( size_t i = 0; i < 13; ++i ) {
 		for( const auto &nonzero : matrices[ i ] ) {
 			if( nonzero.first.first / 2 != nonzero.first.second ) {
-				std::cerr << "\t unexpected value at position ( " << nonzero.first.first << ", " << nonzero.first.second << " )\n";
+				std::cerr << "\t unexpected value at position ( " << nonzero.first.first
+					<< ", " << nonzero.first.second << " )\n";
 			}
 			const unsigned char chk = i % 2 == 0 ?
 				static_cast< unsigned char >( 2 * nonzero.first.first ) :
 				static_cast< unsigned char >( 2 * nonzero.first.first + i );
 			if( nonzero.second != chk ) {
-				std::cerr << "\t unexpected value at entry ( " << nonzero.first.first << ", " << nonzero.first.second << " ) = "
-					<< static_cast< size_t >( nonzero.second ) << " ) of matrix " << i << "; expected " << (2*nonzero.first.first+i)
+				std::cerr << "\t unexpected value at entry ( " << nonzero.first.first
+					<< ", " << nonzero.first.second << " ) = "
+					<< static_cast< size_t >( nonzero.second ) << " ) of matrix " << i << "; "
+					<< "expected " << (2*nonzero.first.first+i)
 					<< " as value\n";
 				rc = FAILED;
 			}

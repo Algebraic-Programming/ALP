@@ -1635,7 +1635,7 @@ namespace grb {
 			}
 
 
-			/** 
+			/**
 			 * @see Matrix::buildMatrixUnique.
 			 *
 			 * This dispatcher calls the sequential or the parallel implementation based
@@ -1957,7 +1957,8 @@ namespace grb {
 				Matrix( other.m, other.n, other.cap )
 			{
 #ifdef _DEBUG
-				std::cerr << "In grb::Matrix (reference) copy-constructor\n";
+				std::cerr << "In grb::Matrix (reference) copy-constructor\n"
+					<< "\t source matrix has " << other.nz << " nonzeroes\n";
 #endif
 				nz = other.nz;
 
@@ -1968,7 +1969,7 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
-					size_t range = CRS.copyFromRange( nz, n );
+					size_t range = CRS.copyFromRange( nz, m );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, range );
@@ -1976,14 +1977,14 @@ namespace grb {
 					const size_t start = 0;
 					size_t end = range;
 #endif
-					CRS.copyFrom( other.CRS, nz, n, start, end );
-					range = CCS.copyFromRange( nz, m );
+					CRS.copyFrom( other.CRS, nz, m, start, end );
+					range = CCS.copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, range );
 #else
 					end = range;
 #endif
-					CCS.copyFrom( other.CCS, nz, m, start, end );
+					CCS.copyFrom( other.CCS, nz, n, start, end );
 				}
 			}
 

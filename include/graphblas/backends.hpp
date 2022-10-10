@@ -50,6 +50,11 @@ namespace grb {
 		reference_omp,
 
 		/**
+		 * A backend that automatically extracts hyperdags from user computations.
+		 */
+		hyperdags,
+
+		/**
 		 * A shared-memory parallel distribution based on a row-wise 1D data
 		 * distribution using shared vector data.
 		 */

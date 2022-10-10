@@ -16,36 +16,22 @@
  */
 
 /*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
+ * @author A. N. Yzelman
+ * @date 21st of September, 2022
  */
 
-#ifndef _H_GRB_EXEC
-#define _H_GRB_EXEC
+#include <graphblas.hpp>
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
 
-// include template specialisations
-#ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/exec.hpp"
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include "graphblas/hyperdags/exec.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include "graphblas/bsp1d/exec.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include "graphblas/banshee/exec.hpp"
-#endif
-
-#ifdef _GRB_BACKEND
 namespace grb {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_GRB_EXEC''
+	/**
+	 * \internal This is a blocking implementation, so wait is a no-op.
+	 */
+	template<>
+	RC wait< hyperdags >() {
+		return SUCCESS;
+	}
+
+}
 

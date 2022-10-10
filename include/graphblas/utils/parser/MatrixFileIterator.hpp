@@ -558,7 +558,7 @@ namespace grb {
 										}
 										break;
 									} else {
-#ifdef _DEBUG	
+#ifdef _DEBUG
 										T temp = val;
 										converter( temp );
 										std::cout << "\t parsed line ``" << row << " " << col << " " << val << "'', "

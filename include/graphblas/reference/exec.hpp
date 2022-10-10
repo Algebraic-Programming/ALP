@@ -37,71 +37,84 @@ namespace grb {
 	template< EXEC_MODE mode >
 	class Launcher< mode, reference > {
 
-	public:
-		/** This implementation only accepts a single user process. It ignores \a hostname and \a port. */
-		Launcher( const size_t process_id = 0,        // user process ID
-			const size_t nprocs = 1,                  // total number of user processes
-			const std::string hostname = "localhost", // one of the user process hostnames
-			const std::string port = "0"              // a free port at hostname
-		) {
-			// ignore hostname and port
-			(void)hostname;
-			(void)port;
-			// sanity checks
-			if( nprocs != 1 ) {
-				throw std::invalid_argument( "Total number of user processes must be "
-					"exactly one when using the reference implementation."
-				);
-			}
-			if( process_id != 0 ) {
-				throw std::invalid_argument( "Process ID must always be zero in the "
-					"reference implementation."
-				);
-			}
-		}
+		public:
 
-		/** No implementation notes. */
-		~Launcher() {}
-
-		/** No implementation notes. */
-		template< typename U >
-		RC exec(
-			void ( *grb_program )( const void *, const size_t, U & ),
-			const void * data_in, const size_t in_size,
-			U &data_out, const bool broadcast = false
-		) const {
-			(void)broadcast; // value doesn't matter for a single user process
-			// intialise GraphBLAS
-			RC ret = grb::init();
-			// call graphBLAS algo
-			if( ret == SUCCESS ) {
-				( *grb_program )( data_in, in_size, data_out );
-				ret = grb::finalize();
+			/**
+			 * This implementation only accepts a single user process.
+			 * It ignores \a hostname and \a port.
+			 *
+			 * @param[in] process_id The ID of the calling process.
+			 * @param[in] nprocs     The number of calling processes.
+			 * @param[in] hostname   One of the user process host names.
+			 * @param[in] port       A free port at the given host name.
+			 */
+			Launcher(
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
+			) {
+				// ignore hostname and port
+				(void) hostname;
+				(void) port;
+				// sanity checks
+				if( nprocs != 1 ) {
+					throw std::invalid_argument( "Total number of user processes must be "
+						"exactly one when using the reference implementation."
+					);
+				}
+				if( process_id != 0 ) {
+					throw std::invalid_argument( "Process ID must always be zero in the "
+						"reference implementation."
+					);
+				}
 			}
-			// and done
-			return ret;
-		}
 
-		/** No implementation notes. */
-		template< typename T, typename U >
-		RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-			const T &data_in, U &data_out,            // input & output data
-			const bool broadcast = false
-		) {
-			(void)broadcast; // value doesn't matter for a single user process
-			// intialise GraphBLAS
-			RC ret = grb::init();
-			// call graphBLAS algo
-			if( ret == SUCCESS ) {
-				( *grb_program )( data_in, data_out );
-				ret = grb::finalize();
+			/** No implementation notes. */
+			~Launcher() {}
+
+			/** No implementation notes. */
+			template< typename U >
+			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+				const void * data_in, const size_t in_size,
+				U &data_out,
+				const bool broadcast = false
+			) const {
+				// value doesn't matter for a single user process
+				(void) broadcast;
+				// intialise GraphBLAS
+				RC ret = grb::init();
+				// call graphBLAS algo
+				if( ret == SUCCESS ) {
+					(*grb_program)( data_in, in_size, data_out );
+					ret = grb::finalize();
+				}
+				// and done
+				return ret;
 			}
-			// and done
-			return ret;
-		}
 
-		/** No implementation notes. */
-		grb::RC finalize() { return grb::SUCCESS; }
+			/** No implementation notes. */
+			template< typename T, typename U >
+			RC exec(
+				void ( *grb_program )( const T &, U & ), // user ALP/GraphBLAS program
+				const T &data_in, U &data_out,           // input & output data
+				const bool broadcast = false
+			) {
+				(void) broadcast; // value doesn't matter for a single user process
+				// intialise ALP/GraphBLAS
+				RC ret = grb::init();
+				// call graphBLAS algo
+				if( ret == SUCCESS ) {
+					(*grb_program)( data_in, data_out );
+					ret = grb::finalize();
+				}
+				// and done
+				return ret;
+			}
+
+			/** No implementation notes. */
+			grb::RC finalize() { return grb::SUCCESS; }
+
 	};
 
 } // namespace grb

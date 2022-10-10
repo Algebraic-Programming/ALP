@@ -120,14 +120,14 @@ write_basic_package_version_file(
 configure_file( ALPGraphBLASConfig.cmake.in ALPGraphBLASConfig.cmake @ONLY )
 
 #install modules for dependencies lookup
-install(FILES "${PROJECT_SOURCE_DIR}/cmake/FindNuma.cmake"
+install( FILES "${PROJECT_SOURCE_DIR}/cmake/FindNuma.cmake"
 		"${PROJECT_SOURCE_DIR}/cmake/FindLibM.cmake"
 		DESTINATION "${CMAKE_CONFIGS_INSTALL_DIR}/modules"
 )
 
 # install custom file and version file
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ALPGraphBLASVersion.cmake"
-			"${CMAKE_CURRENT_BINARY_DIR}/ALPGraphBLASConfig.cmake"
+install( FILES "${CMAKE_CURRENT_BINARY_DIR}/ALPGraphBLASVersion.cmake"
+		"${CMAKE_CURRENT_BINARY_DIR}/ALPGraphBLASConfig.cmake"
 		DESTINATION "${CMAKE_CONFIGS_INSTALL_DIR}"
 )
 

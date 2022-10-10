@@ -1494,6 +1494,7 @@ namespace grb {
 		const Vector< MaskType, reference, Coords > &mask,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
@@ -1501,6 +1502,7 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		(void) phase;
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, InputType >::value ), "grb::foldr",
@@ -1541,12 +1543,15 @@ namespace grb {
 		const Vector< InputType, reference, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		(void) phase;
+
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, InputType >::value ), "grb::foldr",
@@ -8373,7 +8378,8 @@ namespace grb {
 			typename OutputType, typename InputType1, typename InputType2,
 			typename Coords
 		>
-		RC dot_generic( OutputType &z,
+		RC dot_generic(
+			OutputType &z,
 			const Vector< InputType1, reference, Coords > &x,
 			const Vector< InputType2, reference, Coords > &y,
 			const AddMonoid &addMonoid,
@@ -8666,7 +8672,8 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC dot( OutputType &z,
+	RC dot(
+		OutputType &z,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
@@ -8798,7 +8805,8 @@ namespace grb {
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC dot( IOType &x,
+	RC dot(
+		IOType &x,
 		const Vector< InputType1, reference, Coords > &left,
 		const Vector< InputType2, reference, Coords > &right,
 		const Ring &ring = Ring(),
@@ -9004,12 +9012,14 @@ namespace grb {
 		const Vector< InputType, reference, Coords > &y,
 		const Vector< MaskType, reference, Coords > &mask,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		(void) phase;
 #ifdef _DEBUG
 		std::cout << "foldl: IOType <- [InputType] with a monoid called. "
 			<< "Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. "
@@ -9067,12 +9077,14 @@ namespace grb {
 		IOType &x,
 		const Vector< InputType, reference, Coords > &y,
 		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		(void) phase;
 #ifdef _DEBUG
 		std::cout << "foldl: IOType <- [InputType] with a monoid called. "
 			<< "Array has size " << size( y ) << " with " << nnz( y ) << " nonzeroes. "

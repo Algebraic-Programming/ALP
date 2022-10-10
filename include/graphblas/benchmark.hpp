@@ -30,6 +30,9 @@
 #ifdef _GRB_WITH_REFERENCE
 #include "graphblas/reference/benchmark.hpp"
 #endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include "graphblas/hyperdags/benchmark.hpp"
+#endif
 #ifdef _GRB_WITH_BANSHEE
 #include "graphblas/banshee/benchmark.hpp"
 #endif
