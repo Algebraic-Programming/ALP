@@ -79,17 +79,17 @@ add_grb_executables( driver_label ../smoke/label.cpp
 )
 
 add_grb_executables( driver_spmv spmv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( driver_spmspv spmspv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( driver_spmspm spmspm.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 

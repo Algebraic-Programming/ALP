@@ -476,6 +476,12 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				continue
 			fi
 
+			if [ "$BACKEND" = "hyperdags" ] && [ "$i" -gt "0" ]; then
+				echo "Info: hyperdags performance tests run only on the smallest dataset"
+				echo " "
+				break
+			fi
+
 			# initialise parameters
 			DATASET=${MULTIPLICATION_DATASETS[i]}
 			PARSE_MODE=direct
