@@ -482,8 +482,9 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo ">>>      [ ]           [x]       Test kernels using ${dataSet} dataset, $backend backend."
-				echo "Test DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo ">>>      [ ]           [x]       Test multiplication kernels using ${dataSet} dataset,"
+				echo "                                 $backend backend."
+				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi
