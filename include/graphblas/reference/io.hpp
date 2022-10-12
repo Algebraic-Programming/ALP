@@ -484,6 +484,11 @@ namespace grb {
 		const auto & m_coors = internal::getCoordinates( m );
 		auto m_p = internal::getRaw( m );
 
+		// make the vector empty unless the dense descriptor is provided
+		if( !( descr & descriptors::dense ) ) {
+			internal::getCoordinates( x ).clear();
+		}
+
 #ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel
 		{
@@ -658,6 +663,11 @@ namespace grb {
 		OutputType * __restrict__ const dst = internal::getRaw( x );
 		const InputType * __restrict__ const src = internal::getRaw( y );
 
+		// make the vector empty unless the dense descriptor is provided
+		if( !( descr & descriptors::dense ) ) {
+			internal::getCoordinates( x ).clear();
+		}
+
 		// get #nonzeroes
 		const size_t nz = internal::getCoordinates( y ).nonzeroes();
 #ifdef _DEBUG
@@ -812,6 +822,11 @@ namespace grb {
 		const auto &m_coors = internal::getCoordinates( mask );
 		const auto &y_coors = internal::getCoordinates( y );
 		auto &x_coors = internal::getCoordinates( x );
+
+		// make the vector empty unless the dense descriptor is provided
+		if( !( descr & descriptors::dense ) ) {
+			internal::getCoordinates( x ).clear();
+		}
 
 		// choose optimal loop size
 		const bool loop_over_y = (descr & descriptors::invert_mask) ||

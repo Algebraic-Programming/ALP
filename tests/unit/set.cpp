@@ -207,7 +207,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Sparse-mask set (re-entrance) FAILED with error code " << grb::toString( rc ) << "\n";
 	} else {
-		if( nnz( dst ) != 2 ) {
+		if( nnz( dst ) != 1 ) {
 			std::cerr << "\t (sparse-mask-set-reentrant) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
@@ -266,7 +266,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Sparse-mask set to scalar (re-entrant) FAILED with error code " << grb::toString( rc ) << "\n";
 	} else {
-		if( nnz( dst ) != 2 ) {
+		if( nnz( dst ) != 1 ) {
 			std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
