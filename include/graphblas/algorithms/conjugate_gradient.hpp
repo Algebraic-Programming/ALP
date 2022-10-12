@@ -384,7 +384,7 @@ namespace grb {
 
 				sigma = beta;
 
-			} while( iter++ < max_iterations && ret == SUCCESS );
+			} while( ++iter < max_iterations && ret == SUCCESS );
 
 			// output
 			iterations = iter;

@@ -78,6 +78,21 @@ add_grb_executables( driver_label ../smoke/label.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( driver_spmv spmv.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( driver_spmspv spmspv.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( driver_spmspm spmspm.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
 # targets to list and build the test for this category
 get_property( performance_tests_list GLOBAL PROPERTY tests_category_performance )
 add_custom_target( "list_tests_category_performance"
