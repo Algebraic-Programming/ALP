@@ -286,6 +286,7 @@ runMultiplicationKernels()
 	local backend=$2
 	local dataSet=$3
 	local parseMode=$4
+	local i=$5
 
 	# the check for the matrices existence is assumed to have already passed
 
@@ -335,6 +336,8 @@ runMultiplicationKernels()
 		echo
 		if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 			echo "Test DISABLED: no sparse level-3 operations recommended for 1D distributions."
+		elif [ "$i" -gt "16" ]; then
+			echo "Tests DISABLED: by default, long-running sparse matrix--sparse matrix multiplications are disabled (skipping dataset ${dataSet})."
 		else
 			$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
 			head -1 ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
@@ -433,7 +436,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo ">>>      [x]           [x]       Test algorithms using ${dataSet} dataset, $backend backend."
+				echo ">>>      [x]           [x]       Test algorithms using ${DATASET} dataset, $backend backend."
 				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
@@ -488,14 +491,14 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo ">>>      [ ]           [x]       Test multiplication kernels using ${dataSet} dataset,"
+				echo ">>>      [ ]           [x]       Test multiplication kernels using ${DATASET} dataset,"
 				echo "                                 $backend backend."
 				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi
 
-			runMultiplicationKernels "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE"
+			runMultiplicationKernels "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" "$i"
 
 		done
 
