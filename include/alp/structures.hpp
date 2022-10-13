@@ -663,6 +663,11 @@ namespace alp {
 			typedef structures::LowerTriangular type;
 		};
 
+		template< typename... Intervals >
+		struct apply_view< view::transpose, structures::Band< Intervals... > >{
+			typedef structures::tuple_to_band< typename alp::internal::transpose_interval_tuple< std::tuple< Intervals... > >::type > type;
+		};
+
 	} // namespace structures
 
 } // namespace alp
