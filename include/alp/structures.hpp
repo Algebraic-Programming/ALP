@@ -544,6 +544,14 @@ namespace alp {
 				>::type;
 		};
 
+		template<>
+		struct isInstantiable< SymmetricTridiagonal, SymmetricTridiagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
+		};
+
 		struct HermitianTridiagonal: BaseStructure {
 
 			private:
@@ -619,6 +627,14 @@ namespace alp {
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< Orthogonal >, NonSingular::inferred_structures, OrthogonalColumns::inferred_structures, OrthogonalRows::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< Orthogonal, Orthogonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
 		};
 
 		struct Constant: BaseStructure {

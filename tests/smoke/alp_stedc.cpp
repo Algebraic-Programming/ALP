@@ -47,13 +47,17 @@ using Orthogonal = structures::Orthogonal;
 // using HermitianOrSymmetric = structures::Hermitian;
 // #else
 using ScalarType = BaseScalarType;
+
+//temp
 using HermitianOrSymmetricTridiagonal = structures::SymmetricTridiagonal;
+//using HermitianOrSymmetricTridiagonal = structures::Square;
+
 //fully implemented structures
 using HermitianOrSymmetric = structures::Symmetric;
 // #endif
 
 constexpr BaseScalarType tol = 1.e-10;
-constexpr size_t RNDSEED = 1;
+constexpr size_t RNDSEED = 11235;
 
 //temp function untill Hermitian containter is implemented
 //** gnerate symmetric-hermitian matrix in a square container */
@@ -260,14 +264,15 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 		alp::identities::zero,
 		alp::identities::one
 	> ring;
+	const Scalar< ScalarType > zero_scalar( ring.template getZero< ScalarType >() );
 
 	// dimensions of sqare matrices H, Q and R
 	size_t N = unit;
 
 	alp::Matrix< ScalarType, Orthogonal > Q( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetricTridiagonal > T( N );
-	// Vector< ScalarType, structures::General, Dense > d( N );
 	Vector< ScalarType, structures::General, Dense > d( N );
+	rc = rc ? rc : set( d, zero_scalar );
 	{
 		auto matrix_data = generate_symmherm_tridiag_matrix_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( T, matrix_data.begin(), matrix_data.end() );
@@ -276,13 +281,18 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	print_matrix( " input matrix T ", T );
 #endif
 
-  	rc = rc ? rc : algorithms::symm_tridiag_eigensolver( T, Q, d );
+  	rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver(
+		T,
+		Q,
+		d,
+		ring
+	);
 
 
-// #ifdef DEBUG
-// 	print_matrix( " << Q >> ", Q );
-// 	print_matrix( " << T >> ", T );
-// #endif
+#ifdef DEBUG
+	print_matrix( " << Q >> ", Q );
+	print_matrix( " << T >> ", T );
+#endif
 
 // 	rc = check_overlap( Q );
 // 	if( rc != SUCCESS ) {

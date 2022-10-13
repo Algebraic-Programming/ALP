@@ -21,6 +21,9 @@
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../tests/utils/print_alp_containers.hpp"
 
+// TEMPDISABLE should be removed in the final version
+#define TEMPDISABLE
+
 namespace alp {
 
 	namespace algorithms {
@@ -47,183 +50,265 @@ namespace alp {
 			typename D,
 			typename SymmOrHermTridiagonalType,
 			typename OrthogonalType,
+			typename SymmHermTrdiViewType,
+			typename OrthViewType,
+			typename SymmHermTrdiImfR,
+			typename SymmHermTrdiImfC,
+			typename OrthViewImfR,
+			typename OrthViewImfC,
+			typename VecViewType,
+			typename VecImfR,
+			typename VecImfC,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >
 		>
-		RC symm_tridiag_eigensolver(
-			Matrix< D, SymmOrHermTridiagonalType, Dense > T,
-			Matrix< D, OrthogonalType, Dense > &Q,
-			Vector< D, structures::General, Dense > &d,
+		RC symm_tridiag_dac_eigensolver(
+			Matrix<
+				D,
+				SymmOrHermTridiagonalType,
+				Dense,
+				SymmHermTrdiViewType,
+				SymmHermTrdiImfR,
+				SymmHermTrdiImfC
+			> &T,
+			Matrix<
+				D,
+				OrthogonalType,
+				Dense,
+				OrthViewType,
+				OrthViewImfR,
+				OrthViewImfC
+			> &Q,
+			Vector<
+				D,
+				structures::General,
+				Dense,
+				VecViewType,
+				VecImfR,
+				VecImfC
+			> &d,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
-			const Divide & divide = Divide() ) {
+			const Divide & divide = Divide()
+		) {
+			(void)ring;
+			(void)minus;
+			(void)divide;
+
+			const Scalar< D > zero( ring.template getZero< D >() );
+			const Scalar< D > one( ring.template getOne< D >() );
 
 			RC rc = SUCCESS;
 
-// 			const Scalar< D > zero( ring.template getZero< D >() );
-// 			const Scalar< D > one( ring.template getOne< D >() );
-// 			const size_t n = nrows( H );
+			const size_t n = nrows( T );
+			const size_t m = n / 2;
 
-// 			// Q = identity( n )
-// 			rc = alp::set( Q, zero );
-// 			auto Qdiag = alp::get_view< alp::view::diagonal >( Q );
-// 			rc = rc ? rc : alp::set( Qdiag, one );
-// 			if( rc != SUCCESS ) {
-// 				std::cerr << " set( Q, I ) failed\n";
-// 				return rc;
-// 			}
+			if( n == 1 ) {
+				//d=T[0];
+				rc = rc ? rc : eWiseLambda(
+					[ &d ]( const size_t i, const size_t j, D &val ) {
+						(void) i;
+						(void) j;
+						alp::set( d, Scalar< D > ( val ) );
+					},
+					T
+				);
+				// Q=array([[1]]);
+				rc = rc ? rc : alp::set( Q, one );
 
-// 			// Out of place specification of the computation
-// 			Matrix< D, SymmOrHermType, Dense > RR( n );
-
-// 			rc = set( RR, H );
-// 			if( rc != SUCCESS ) {
-// 				std::cerr << " set( RR, H ) failed\n";
-// 				return rc;
-// 			}
-// #ifdef DEBUG
-// 			print_matrix( " << RR >> ", RR );
-// #endif
-
-// 			// a temporary for storing the mxm result
-// 			Matrix< D, OrthogonalType, Dense > Qtmp( n, n );
-
-// 			for( size_t k = 0; k < n - 2; ++k ) {
-// #ifdef DEBUG
-// 				std::string matname(" << RR(");
-// 				matname = matname + std::to_string(k);
-// 				matname = matname + std::string( ") >> ");
-// 				print_matrix( matname , RR );
-// #endif
-
-// 				const size_t m = n - k - 1;
-
-// 				// ===== Begin Computing v =====
-// 				// v = H[ k + 1 : , k ]
-// 				// alpha = norm( v ) * v[ 0 ] / norm( v[ 0 ] )
-// 				// v = v - alpha * e1
-// 				// v = v / norm ( v )
-
-// 				auto v_view = get_view( RR, k, utils::range( k + 1, n ) );
-// 				Vector< D, structures::General, Dense > v( n - ( k + 1 ) );
-// 				rc = set( v, v_view );
-// 				if( rc != SUCCESS ) {
-// 					std::cerr << " set( v, view ) failed\n";
-// 					return rc;
-// 				}
-
-// 				Scalar< D > alpha( zero );
-// 				rc = norm2( alpha, v, ring );
-// 				if( rc != SUCCESS ) {
-// 					std::cerr << " norm2( alpha, v, ring ) failed\n";
-// 					return rc;
-// 				}
-
-// 				rc = eWiseLambda(
-// 					[ &alpha, &ring, &divide, &minus ]( const size_t i, D &val ) {
-// 						if ( i == 0 ) {
-// 							Scalar< D > norm_v0( std::abs( val ) );
-// 							Scalar< D > val_scalar( val );
-// 							foldl( alpha, val_scalar, ring.getMultiplicativeOperator() );
-// 							foldl( alpha, norm_v0, divide );
-// 							foldl( val_scalar, alpha, minus );
-// 							val = *val_scalar;
-// 						}
-// 					},
-// 					v
-// 				);
-// 				if( rc != SUCCESS ) {
-// 					std::cerr << " eWiseLambda( lambda, v ) failed\n";
-// 					return rc;
-// 				}
-
-// 				Scalar< D > norm_v( zero );
-// 				rc = norm2( norm_v, v, ring );
-// 				if( rc != SUCCESS ) {
-// 					std::cerr << " norm2( norm_v, v, ring ) failed\n";
-// 					return rc;
-// 				}
-
-// 				rc = foldl(v, norm_v, divide );
-// #ifdef DEBUG
-// 				print_vector( " v = ", v );
-// #endif
-// 				// ===== End Computing v =====
-
-// 				// ===== Calculate reflector Qk =====
-// 				// Q_k = identity( n )
-// 				Matrix< D, SymmOrHermType, Dense > Qk( n );
-// 				rc = alp::set( Qk, zero );
-// 				auto Qk_diag = alp::get_view< alp::view::diagonal >( Qk );
-// 				rc = rc ? rc : alp::set( Qk_diag, one );
-
-// 				// this part can be rewriten without temp matrix using functors
-// 				Matrix< D, SymmOrHermType, Dense > vvt( m );
-
-// 				rc = rc ? rc : set( vvt, outer( v, ring.getMultiplicativeOperator() ) );
-// 				// vvt = 2 * vvt
-// 				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
+				return rc;
+			}
 
 
-// #ifdef DEBUG
-// 				print_matrix( " vvt ", vvt );
-// #endif
+			Vector< D, structures::General, Dense > v( n );
+			rc = rc ? rc : set( v, zero );
+			rc = rc ? rc : eWiseLambda(
+				[ &T, &m, &ring ]( const size_t i, D &val ) {
+					if( i ==  m - 1 ) {
+						val = ring.template getOne< D >();
+					}
+					if( i ==  m) {
+						val = internal::access( T, internal::getStorageIndex( T, m - 1, m ) );
+					}
+				},
+				v
+			);
+#ifdef DEBUG
+			print_vector( " v = ", v );
+#endif
+			Matrix< D, SymmOrHermTridiagonalType, Dense > Atmp( n );
+			rc = rc ? rc : alp::set( Atmp, T );
+			auto vvt =  alp::outer( v, ring.getMultiplicativeOperator() ) ;
 
-// 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
-// 				auto Qk_view = get_view< SymmOrHermType >( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
-// 				if ( grb::utils::is_complex< D >::value ) {
-// 					rc = rc ? rc : foldl( Qk_view, alp::get_view< alp::view::transpose >( vvt ), minus );
-// 				} else {
-// 					rc = rc ? rc : foldl( Qk_view, vvt, minus );
-// 				}
+#ifdef DEBUG
+			print_matrix( " Atmp(0) = ", Atmp );
+			print_matrix( " vvt = ", vvt );
+#endif
+			rc = rc ? rc : alp::foldl( Atmp, vvt, minus );
 
-// #ifdef DEBUG
-// 				print_matrix( " << Qk >> ", Qk );
-// #endif
-// 				// ===== End of Calculate reflector Qk ====
+#ifdef DEBUG
+			print_matrix( " Atmp(1) = ", Atmp );
+#endif
 
-// 				// ===== Update R =====
-// 				// Rk = Qk * Rk * Qk
+			auto Ttop = get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( 0, m ), utils::range( 0, m ) );
+			auto Tdown = get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( m, n ), utils::range( m, n ) );
 
-// 				// RRQk = RR * Qk
-// 				Matrix< D, structures::Square, Dense > RRQk( n );
-// 				rc = rc ? rc : set( RRQk, zero );
-// 				rc = rc ? rc : mxm( RRQk, RR, Qk, ring );
-// 				if( rc != SUCCESS ) {
-// 					std::cerr << " mxm( RRQk, RR, Qk, ring ); failed\n";
-// 					return rc;
-// 				}
-// #ifdef DEBUG
-// 				print_matrix( " << RR x Qk = >> ", RRQk );
-// #endif
-// 				// RR = Qk * RRQk
-// 				rc = rc ? rc : set( RR, zero );
-// 				rc = rc ? rc : mxm( RR, Qk, RRQk, ring );
+#ifdef DEBUG
+			print_matrix( " Ttop = ", Ttop );
+			print_matrix( " Tdown = ", Tdown );
+#endif
 
-// #ifdef DEBUG
-// 				print_matrix( " << RR( updated ) >> ", RR );
-// #endif
-// 				// ===== End of Update R =====
+			Vector< D, structures::General, Dense > dtmp( n );
+			rc = rc ? rc : alp::set( dtmp, zero );
+			auto dtop = get_view( dtmp, utils::range( 0, m ) );
+			auto ddown = get_view( dtmp, utils::range( m, n ) );
 
-// 				// ===== Update Q =====
-// 				// Q = Q * Qk
+#ifdef DEBUG
+			print_vector( " dtop = ", dtop );
+			print_vector( " ddown = ", ddown );
+#endif
 
-// 				// Qtmp = Q * Qk
-// 				rc = rc ? rc : set( Qtmp, zero );
-// 				rc = rc ? rc : mxm( Qtmp, Q, Qk, ring );
+			Matrix< D, OrthogonalType, Dense > U( n );
+			rc = rc ? rc : alp::set( U, zero );
+#ifdef DEBUG
+			print_matrix( " U = ", U );
+#endif
+			auto Utop = get_view< OrthogonalType >( U, utils::range( 0, m ), utils::range( 0, m ) );
 
-// 				// Q = Qtmp
-// 				rc = rc ? rc : set( Q, Qtmp );
-// #ifdef DEBUG
-// 				print_matrix( " << Q updated >> ", Q );
-// #endif
-// 				// ===== End of Update Q =====
-// 			}
+#ifdef DEBUG
+			print_matrix( " Utop = ", Utop );
+#endif
+			auto Udown = get_view< OrthogonalType >( U, utils::range( m, n ), utils::range( m, n ) );
 
-// 			// T = RR
+#ifdef DEBUG
+			print_matrix( " Udown = ", Udown );
+#endif
 
-// 			rc = rc ? rc : set( T, get_view< SymmOrHermTridiagonalType > ( RR ) );
+			rc = rc ? rc : symm_tridiag_dac_eigensolver( Ttop, Utop, dtop, ring );
+			rc = rc ? rc : symm_tridiag_dac_eigensolver( Tdown, Udown, ddown, ring );
+
+#ifdef DEBUG
+			std::cout << " after symm_tridiag_dac_eigensolver call:\n";
+			print_matrix( " Utop = ", Utop );
+			print_matrix( " Udown = ", Udown );
+			print_matrix( " U = ", U );
+#endif
+
+			Vector< D, structures::General, Dense > z( n );
+			rc = rc ? rc : alp::set( z, zero );
+
+#ifdef DEBUG
+			print_vector( "  v  ", v );
+			print_vector( "  z  ", z );
+#endif
+
+#ifdef TEMPDISABLE
+			// while mxv does not support vectors/view
+			// we cast vector->matrix and use mxm
+			auto z_mat_view = get_view< view::matrix >( z );
+			auto v_mat_view = get_view< view::matrix >( v );
+			rc = rc ? rc : mxm(
+				z_mat_view,
+				alp::get_view< alp::view::transpose >( U ),
+				v_mat_view,
+				ring
+			);
+#else
+			//z=U^T.dot(v)
+			rc = rc ? rc : mxv(
+				z,
+				alp::get_view< alp::view::transpose >( U ),
+				v,
+				ring
+			);
+#endif
+
+#ifdef DEBUG
+			print_vector( "  z  ", z );
+#endif
+
+			// permutations which sort dtmp
+			std::vector< size_t > isort_dtmp( n, 0 );
+			for( size_t i = 0 ; i < n ; ++i ) {
+				isort_dtmp[ i ] = i;
+			}
+			std::sort(
+				isort_dtmp.begin(),
+				isort_dtmp.end(),
+				[ &dtmp ]( const size_t &a, const size_t &b ) {
+					return ( dtmp[ a ] < dtmp[ b ] );
+				}
+			);
+#ifdef DEBUG
+			print_vector( "  dtmp  ", dtmp );
+			std::cout << " sort(dtmp) = \n";
+			std::cout << "    [ ";
+			for( size_t i = 0 ; i < n ; ++i ) {
+				std::cout << "\t" << dtmp[ isort_dtmp[ i ] ];
+			}
+			std::cout << " ]\n";
+#endif
+
+			// temp solution:
+			// dtmp2 and ztmp2 in the final version should be
+			// permutations views of dtmp and z, respectively
+			// instead, here we materialize permutations
+			Vector< D, structures::General, Dense > dtmp2( n );
+			Vector< D, structures::General, Dense > ztmp2( n );
+			rc = rc ? rc : alp::set( dtmp2, zero );
+			rc = rc ? rc : alp::set( ztmp2, zero );
+			for( size_t i = 0 ; i < n ; ++i ) {
+				dtmp2[ i ] = dtmp[ isort_dtmp[ i ] ];
+				ztmp2[ i ] = z[ isort_dtmp[ i ] ];
+			}
+#ifdef DEBUG
+			print_vector( "  dtmp2  ", dtmp2 );
+			print_vector( "  ztmp2  ", ztmp2 );
+#endif
+
+
+#ifdef TEMPDISABLE
+			// *********** diagDpOuter not implemented ***********
+			//nummerical wrong, missing diagDpOuter implementation
+			rc = rc ? rc : alp::set( d, dtmp2 );
+			//nummerical wrong, missing diagDpOuter implementation
+			Matrix< D, OrthogonalType, Dense > QdOuter( n );
+			rc = rc ? rc : alp::set( QdOuter, zero );
+			auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
+			rc = rc ? rc : alp::set( QdOuter_diag, one );
+			// ***************************************************
+#else
+			D,V= diagDpOuter( dtmp2, ztmp2 );
+#endif
+
+#ifdef DEBUG
+			print_matrix( "  QdOuter  ", QdOuter );
+#endif
+
+			// temp
+			// unpermute cols into QdOuterUnpermuted
+			Matrix< D, OrthogonalType, Dense > QdOuterUnpermuted( n );
+			rc = rc ? rc : alp::set( QdOuterUnpermuted, zero );
+			for( size_t i = 0 ; i < n ; ++i ) {
+				auto vin = get_view( QdOuter, utils::range( 0, n ), i );
+				auto vout = get_view( QdOuterUnpermuted, utils::range( 0, n ), isort_dtmp[ i ] );
+				rc = rc ? rc : alp::set( vout, vin );
+			}
+
+#ifdef DEBUG
+			print_matrix( "  QdOuterUnpermuted  ", QdOuterUnpermuted );
+#endif
+
+			// Q=U.dot((V[:,iiinv]).T)
+			rc = rc ? rc : alp::set( Q, zero );
+			rc = rc ? rc : mxm(
+				Q,
+				U,
+				alp::get_view< alp::view::transpose >( QdOuterUnpermuted ),
+				ring
+			);
+
 			return rc;
 		}
 	} // namespace algorithms
