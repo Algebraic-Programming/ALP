@@ -1150,6 +1150,9 @@ namespace alp {
 
 				(void)cap;
 
+				// This check should be performed in the class body rather than here.
+				// Allocation-requiring matrix with incompatible IMFs should not be instantiable at all.
+				// Here it is only forbidden to invoke this constructor for such a matrix.
 				static_assert(
 					std::is_same< ImfR, imf::Id >::value &&
 					( std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value ),
