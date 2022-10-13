@@ -1105,12 +1105,20 @@ namespace alp {
 
 			template < bool d >
 			struct view_type< view::gather, d > {
-				using type = Matrix< T, Structure, Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference >;
+				using type = Matrix<
+					T,
+					typename structures::apply_view< view::gather, Structure >::type,
+					Density::Dense, view::Gather< self_type >, imf::Strided, imf::Strided, reference
+				>;
 			};
 
 			template < bool d >
 			struct view_type< view::transpose, d > {
-				using type = Matrix< T, Structure, Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference >;
+				using type = Matrix<
+					T,
+					typename structures::apply_view< view::transpose, Structure >::type,
+					Density::Dense, view::Transpose< self_type >, imf::Id, imf::Id, reference
+				>;
 			};
 
 			template < bool d >
