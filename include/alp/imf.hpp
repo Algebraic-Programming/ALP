@@ -220,7 +220,7 @@ namespace alp {
 
 				Composed( const LeftImf &f, const RightImf &g ):
 					IMF( g.n, f.N ), f( f ), g( g ) {
-#ifdef _DEBUG
+#ifdef DEBUG
 						std::cout << "Creating composition of IMFs that cannot be composed into a"
 						             "single mapping function. Consider the effect on performance.\n";
 #endif
