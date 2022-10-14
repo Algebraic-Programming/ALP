@@ -41,7 +41,10 @@ using namespace grb;
 constexpr size_t MaxPrinting = 10;
 
 // forward declaration of the graph dataset parser
-bool readEdges( std::string filename, bool use_indirect, size_t * n, size_t * nz, size_t ** I, size_t ** J, double ** weights );
+bool readEdges(
+	std::string filename, bool use_indirect,
+	size_t * n, size_t * nz, size_t ** I, size_t ** J, double ** weights
+);
 
 struct input {
 	char filename[ 1024 ];
@@ -186,10 +189,9 @@ int main( int argc, char ** argv ) {
 
 	// sanity check
 	if( argc < 3 || argc > 5 ) {
-		std::cout << "Usage: " << argv[ 0 ]
-				  << " <dataset> <direct/indirect> (number of inner "
-					 "iterations) (number of outer iterations)"
-				  << std::endl;
+		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> "
+			<< "(number of inner iterations) (number of outer iterations)"
+			<< std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -200,7 +202,7 @@ int main( int argc, char ** argv ) {
 		std::cerr << "Could not parse filename: too long." << std::endl;
 		return 10;
 	}
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 	if( strncmp( argv[ 2 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
@@ -217,23 +219,24 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		inner = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument for number of inner "
-						 "repititions."
-					  << std::endl;
+			std::cerr << "Could not parse argument for number of inner repititions."
+				<< std::endl;
 			return 30;
 		}
 	}
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument for number of outer "
-						 "repititions."
-					  << std::endl;
+			std::cerr << "Could not parse argument for number of outer repititions."
+				<< std::endl;
 			return 40;
 		}
 	}
 
-	std::cout << "Executable called with parameters filename " << in.filename << ", direct = " << in.direct << ", and #vertices = " << in.n << std::endl;
+	std::cout << "Executable called with parameters "
+		<< "filename " << in.filename << ", "
+		<< "direct = " << in.direct << ", and "
+		<< "#vertices = " << in.n << std::endl;
 
 	// the output struct
 	struct output out;
@@ -242,7 +245,8 @@ int main( int argc, char ** argv ) {
 
 	enum grb::RC rc = launcher.exec( &grbProgram, in, out, inner, outer, true );
 	if( rc != SUCCESS ) {
-		std::cerr << "launcher.exec returns with non-SUCCESS error code " << (int)rc << std::endl;
+		std::cerr << "launcher.exec returns with non-SUCCESS error code "
+			<< toString(rc) << std::endl;
 		return 50;
 	}
 
@@ -250,9 +254,10 @@ int main( int argc, char ** argv ) {
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED.\n\n";
+		std::cout << "Test FAILED\n\n";
 		return 255;
 	}
-	std::cout << "Test OK.\n\n";
+	std::cout << "Test OK\n\n";
 	return 0;
 }
+
