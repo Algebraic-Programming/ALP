@@ -33,6 +33,9 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( alp_dynamic_views alp_dynamic_views.cpp
+	BACKENDS alp_reference
+)
 
 add_grb_executables( alp_views alp_views.cpp
 	BACKENDS alp_reference
