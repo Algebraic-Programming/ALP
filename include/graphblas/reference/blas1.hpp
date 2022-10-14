@@ -1058,9 +1058,6 @@ namespace grb {
 			if( !sparse && nnz( to_fold ) < n ) {
 				return ILLEGAL;
 			}
-			if( masked && !sparse && nnz( *m ) < n ) {
-				return ILLEGAL;
-			}
 			if( phase == RESIZE ) {
 				return SUCCESS;
 			}
