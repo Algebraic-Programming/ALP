@@ -177,6 +177,12 @@ namespace alp {
 					//}
 				}
 
+				Select( const Select &other ) : IMF( other.select.size(), other.N ), select( other.select ) {
+#ifdef _DEBUG
+					std::cout << "Select copy constructor\n";
+#endif
+				}
+
 				template< typename OtherIMF >
 				bool isSame( const OtherIMF &other ) const {
 					return IMF::isSame( other ) && select == static_cast< const Select & >( other ).select;
