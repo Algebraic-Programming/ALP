@@ -100,6 +100,8 @@ namespace alp {
 
 				Strided( const size_t n, const size_t N, const size_t b, const size_t s ): IMF( n, N ), b( b ), s( s ) { }
 
+				Strided( const Strided &other ) : IMF( other.n, other.N ), b( other.b ), s( other.s ) { }
+
 				template< typename OtherIMF >
 				bool isSame( const OtherIMF &other ) const {
 					return IMF::isSame( other ) &&
