@@ -208,8 +208,8 @@ namespace alp {
 		class Composed: public IMF {
 
 			public:
-				const LeftImf &f;
-				const RightImf &g;
+				const LeftImf f;
+				const RightImf g;
 
 				size_t map( const size_t i ) const {
 #ifdef _DEBUG
