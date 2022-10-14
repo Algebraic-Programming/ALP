@@ -657,6 +657,178 @@ namespace grb {
 		return ret;
 	}
 
+	/** \internal No implementation notes */
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename IOType, typename MaskType, typename InputType,
+		typename Coords
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< grb::is_operator< OP >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType >::value, void
+		>::type * = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename OP::D1, IOType >::value ),
+			"grb::foldl",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename OP::D2, InputType >::value ),
+			"grb::foldl",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename OP::D3, IOType >::value ),
+			"grb::foldl",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ),
+			"grb::foldl",
+			"called with a mask that does not have boolean entries " );
+
+		// catch empty mask
+		if( size( m ) == 0 ) {
+			return foldl< descr >( x, y, op, phase );
+		}
+
+		// dynamic sanity checks
+		const size_t n = size( x );
+		if( n != size( y ) || n != size( m ) ) {
+			return MISMATCH;
+		}
+
+		// handle trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = foldl< descr >(
+			internal::getLocal( x ), internal::getLocal( m ),
+			internal::getLocal( y ),
+			op, phase
+		);
+
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( x );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal No implementation notes */
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename Coords
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType, BSP1D, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< grb::is_monoid< Monoid >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType >::value, void
+		>::type * = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D1, IOType >::value ),
+			"grb::foldl",
+			"called with a vector x of a type that does not match the first domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D2, InputType >::value ),
+			"grb::foldl",
+			"called on a vector y of a type that does not match the second domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D3, IOType >::value ),
+			"grb::foldl",
+			"called on a vector x of a type that does not match the third domain "
+			"of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ),
+			"grb::foldl",
+			"called with a mask that does not have boolean entries" );
+
+		// catch empty mask
+		if( size( m ) == 0 ) {
+			return foldl< descr >( x, y, monoid, phase );
+		}
+
+		// dynamic sanity checks
+		const size_t n = size( x );
+		if( n != size( y ) || n != size( m ) ) {
+			return MISMATCH;
+		}
+
+		// handle trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = foldl< descr >(
+			internal::getLocal( x ), internal::getLocal( m ),
+			internal::getLocal( y ),
+			monoid, phase
+		);
+
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( x );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
 	/** \internal No communication necessary, output is guaranteed dense. */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -683,17 +855,17 @@ namespace grb {
 
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType1, typename Operator::D1 >::value ),
+				std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
 			"first domain of the given operator " );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< InputType2, typename Operator::D2 >::value ),
+				std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
 			"called with a right-hand input vector value type that does not match the second "
 			"domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< OutputType, typename Operator::D3 >::value ),
+				std::is_same< OutputType, typename Operator::D3 >::value ),
 			"grb::eWiseApply",
 			"called with an output value type that does not match the third domain of "
 			"the given operator" );
