@@ -642,6 +642,32 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Zero >, Constant::inferred_structures >::type;
 		};
 
+		/**
+		 * Exposes the structure obtained by applying a given view onto a given structure.
+		 *
+		 * By default, the exposed structure is equal to the input structure.
+		 * Cases where this is not true shall be specialized.
+		 */
+		template< enum view::Views view, typename Structure >
+		struct apply_view {
+			typedef Structure type;
+		};
+
+		template<>
+		struct apply_view< view::transpose, structures::LowerTriangular >{
+			typedef structures::UpperTriangular type;
+		};
+
+		template<>
+		struct apply_view< view::transpose, structures::UpperTriangular >{
+			typedef structures::LowerTriangular type;
+		};
+
+		template< typename... Intervals >
+		struct apply_view< view::transpose, structures::Band< Intervals... > >{
+			typedef structures::tuple_to_band< typename alp::internal::transpose_interval_tuple< std::tuple< Intervals... > >::type > type;
+		};
+
 	} // namespace structures
 
 } // namespace alp
