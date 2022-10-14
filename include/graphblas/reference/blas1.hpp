@@ -1849,6 +1849,12 @@ namespace grb {
 			return MISMATCH;
 		}
 
+		const size_t n = size( x );
+
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
+		}
+
 #ifdef _DEBUG
 		std::cout << "In foldr ([T]<-[T])\n";
 #endif
@@ -1915,6 +1921,10 @@ namespace grb {
 		const size_t n = size( x );
 		if( n != size( y ) || n != size( m ) ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( size( m ) > 0 && nnz( m ) != n ) { return ILLEGAL; }
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
 		}
 
 		if( nnz( x ) < n || nnz( y ) < n ) {
@@ -2033,6 +2043,9 @@ namespace grb {
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
+		}
 
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		if( nnz( x ) < n || nnz( y ) < n ) {
@@ -2097,6 +2110,10 @@ namespace grb {
 		const size_t n = size( x );
 		if( n != size( y ) || n != size( m ) ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( size( m ) > 0 && nnz( m ) != n ) { return ILLEGAL; }
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
 		}
 
 		if( nnz( x ) < n || nnz( y ) < n ) {
@@ -2577,6 +2594,9 @@ namespace grb {
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
+		}
 
 		// all OK, execute
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
@@ -2700,6 +2720,9 @@ namespace grb {
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
+		}
 
 		// all OK, execute
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
@@ -2768,6 +2791,10 @@ namespace grb {
 		if( n != size( y ) || n != size( m ) ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( size( m ) > 0 && nnz( m ) != n ) { return ILLEGAL; }
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
+		}
 
 		// all OK, execute
 		if( nnz( x ) < n || nnz( y ) < n ) {
@@ -2834,6 +2861,10 @@ namespace grb {
 		const size_t n = size( x );
 		if( n != size( y ) || n != size( m ) ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( size( m ) > 0 && nnz( m ) != n ) { return ILLEGAL; }
+			if( nnz( x ) != n || nnz( y ) != n ) { return ILLEGAL; }
 		}
 
 		// all OK, execute
