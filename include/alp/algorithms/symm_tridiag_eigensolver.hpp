@@ -29,6 +29,103 @@ namespace alp {
 	namespace algorithms {
 
 		/**
+		 * Calcualte eigendecomposition of system D + vvt
+		 *        \f$D = diag(d)$ is diagonal matrix and
+		 *        \a vvt outer product outer(v,v)
+		 *
+		 * @tparam D        Data element type
+		 * @tparam Ring     Type of the semiring used in the computation
+		 * @tparam Minus    Type minus operator used in the computation
+		 * @tparam Divide   Type of divide operator used in the computation
+		 * @param[out] Egvecs    output orthogonal matrix contaning eigenvectors
+		 * @param[out] egvals    output vector containg eigenvalues
+		 * @param[in]  ring A semiring for operations
+		 * @return RC       SUCCESS if the execution was correct
+		 *
+		 */
+		template<
+			typename D,
+			typename VecView1,
+			typename VecImfR1,
+			typename VecImfC1,
+			typename VecView2,
+			typename VecImfR2,
+			typename VecImfC2,
+			typename VecView3,
+			typename VecImfR3,
+			typename VecImfC3,
+			typename OrthogonalType,
+			typename OrthViewType,
+			typename OrthViewImfR,
+			typename OrthViewImfC,
+			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			class Minus = operators::subtract< D >,
+			class Divide = operators::divide< D >
+		>
+		RC eigensolveDiagPlusOuter(
+			Vector<	D, structures::General,	Dense, VecView1, VecImfR1, VecImfC1 > &egvals,
+			Matrix< D, OrthogonalType, Dense, OrthViewType, OrthViewImfR, OrthViewImfC > &Egvecs,
+			Vector<	D, structures::General, Dense, VecView2, VecImfR2, VecImfC2 > &d,
+			Vector< D, structures::General, Dense, VecView3, VecImfR3, VecImfC3 > &v,
+			const Ring & ring = Ring(),
+			const Minus & minus = Minus(),
+			const Divide & divide = Divide()
+		) {
+			RC rc = SUCCESS;
+
+			const size_t n = nrows( Egvecs );
+
+			const double eps = 1.e-7;
+			// if(min(abs(v))<eps):
+			//     ii=where(abs(v)<eps)[0]
+			//     for i in ii:
+			//         egvs[i]=d[i]
+			//         dvec=zeros(len(d))
+			//         dvec[i]=1
+			//         egvecs[i]=dvec
+			//     d=d[~(abs(v0)<eps)]
+			//     v=v[~(abs(v0)<eps)]
+			for( size_t i = 0; i < n; i++ ) {
+//				if( std::abs( v[ i ] ) < eps ) {
+					//simple egval formula ;
+					//set eigenvalue
+					egvals[ i ] = d[ i ];
+					//set eigenvector
+					//(could be done without temp vector by using eWiseLambda)
+					Vector< D, structures::General, Dense > dvec( n );
+					alp::set( dvec, Scalar< D > ( ring.template getZero< D >() ) );
+					dvec[ i ] = ring.template getOne< D >();
+					auto Egvecs_vec_view = get_view( Egvecs, utils::range( 0, n ), i );
+					rc = rc ? rc : alp::set( Egvecs_vec_view, dvec );
+//				} else {
+//					//complicated egval formula ;
+//				}
+			}
+
+
+			// for i in range(len(d)):
+			//     egval,lambdax,dvec = zerodandc(d,v,i)
+			//     dlam=dlam+[lambdax]
+			//     #egvecs=egvecs+[dvec]
+			//     dvec=v/dvec
+			//     dvec=dvec/norm(dvec)
+			//     egvecs_tmp=egvecs_tmp+[dvec]
+			//     egvs_tmp=egvs_tmp+[egval]
+			// egvecs_tmp=array(egvecs_tmp)
+			// egvs_tmp=array(egvs_tmp)
+
+			// egvecs_tmp=array(egvecs_tmp)
+			// egvs_tmp=array(egvs_tmp)
+			// egvs[~(abs(v0)<eps)]=egvs_tmp
+			// for j,i in enumerate(where(~(abs(v0)<eps))[0]):
+			//     egvecs[i,~(abs(v0)<eps)]=egvecs_tmp[j]
+
+
+			return rc;
+		}
+
+
+		/**
 		 * Calcualte eigendecomposition of symmetric tridiagonal matrix T
 		 *        \f$T = Qdiag(d)Q^T\f$ where
 		 *        \a T is real symmetric tridiagonal
@@ -269,15 +366,20 @@ namespace alp {
 
 
 #ifdef TEMPDISABLE
-			// *********** diagDpOuter not implemented ***********
-			//nummerical wrong, missing diagDpOuter implementation
-			rc = rc ? rc : alp::set( d, dtmp2 );
-			//nummerical wrong, missing diagDpOuter implementation
+			// // *********** diagDpOuter not implemented ***********
+			// //nummerical wrong, missing diagDpOuter implementation
+			// rc = rc ? rc : alp::set( d, dtmp2 );
+			// //nummerical wrong, missing diagDpOuter implementation
+			// Matrix< D, OrthogonalType, Dense > QdOuter( n );
+			// rc = rc ? rc : alp::set( QdOuter, zero );
+			// auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
+			// rc = rc ? rc : alp::set( QdOuter_diag, one );
+			// // ***************************************************
+
+			rc = rc ? rc : alp::set( d, zero );
 			Matrix< D, OrthogonalType, Dense > QdOuter( n );
 			rc = rc ? rc : alp::set( QdOuter, zero );
-			auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
-			rc = rc ? rc : alp::set( QdOuter_diag, one );
-			// ***************************************************
+			rc = rc ? rc : eigensolveDiagPlusOuter( d, QdOuter, dtmp2, ztmp2 );
 #else
 			D,V= diagDpOuter( dtmp2, ztmp2 );
 #endif
