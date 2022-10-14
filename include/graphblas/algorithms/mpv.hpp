@@ -144,7 +144,7 @@ namespace grb {
 				ret = mxv< descr >( temp, A, u, ring );
 				// check if this was the final multiplication
 				assert( iterate <= k );
-				if( iterate == k || ret != SUCCESS ) {
+				if( iterate + 1 == k || ret != SUCCESS ) {
 					break;
 				}
 				// multiply with output into u
