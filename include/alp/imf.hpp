@@ -282,7 +282,9 @@ namespace alp {
 		struct ComposedFactory {
 
 			template< typename LeftImf, typename RightImf >
-			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &, const RightImf & );
+			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &left_imf, const RightImf &right_imf ) {
+				return typename composed_type< LeftImf, RightImf >::type( left_imf, right_imf );
+			}
 
 		};
 
@@ -334,11 +336,6 @@ namespace alp {
 		Zero ComposedFactory::create( const Zero &f, const Id &g ) {
 			(void)f;
 			return Zero( g.n );
-		}
-
-		template<>
-		Composed< Strided, Select > ComposedFactory::create( const Strided &f1, const Select &f2 ) {
-			return Composed< Strided, Select >( f1, f2 );
 		}
 
 		template<>
