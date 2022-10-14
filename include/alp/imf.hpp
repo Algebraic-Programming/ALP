@@ -160,7 +160,7 @@ namespace alp {
 					return select.at( i );
 				}
 
-				Select( size_t N, std::vector< size_t > &select ): IMF( select.size(), N ), select( select ) {
+				Select( size_t N, const std::vector< size_t > &select ): IMF( select.size(), N ), select( select ) {
 					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
 					//	throw std::runtime_error("IMF Select beyond range.");
 					//}
@@ -331,6 +331,12 @@ namespace alp {
 		template<>
 		Composed< Strided, Select > ComposedFactory::create( const Strided &f1, const Select &f2 ) {
 			return Composed< Strided, Select >( f1, f2 );
+		}
+
+		template<>
+		typename composed_type< Id, Select >::type ComposedFactory::create( const Id &f1, const Select &f2 ) {
+			(void) f1;
+			return f2;
 		}
 
 	}; // namespace imf
