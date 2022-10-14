@@ -1880,7 +1880,7 @@ namespace alp {
 
 	/**
 	 *
-	 * @brief Generate an original view where the type is compliant with the source Matrix.
+	 * Generate an dynamic gather view where the type is compliant with the source Matrix.
 	 * Version where a selection of rows and columns expressed as vectors of positions
 	 * form a new view with specified target structure.
 	 *
@@ -1891,10 +1891,10 @@ namespace alp {
 	 * @tparam SelectVectorC   The type of the ALP vector defining permutation for columns
 	 *
 	 * @param source           The source ALP matrix
-	 * @param sel_r            A valid permutation vector of row indeces
-	 * @param sel_c            A valid permutation vector of column indeces
+	 * @param sel_r            A valid permutation vector of a subset of row indices
+	 * @param sel_c            A valid permutation vector of a subset ifcolumn indices
 	 *
-	 * @return A new original view over the source ALP matrix.
+	 * @return A new gather view over the source ALP matrix.
 	 *
 	 */
 	template<
