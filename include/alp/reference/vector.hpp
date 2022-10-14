@@ -714,6 +714,44 @@ namespace alp {
 		);
 	}
 
+	/**
+	 *
+	 * Generate an dynamic gather view where the type is compliant with the source Vector.
+	 * Version where a selection of indices expressed as a vector of positions
+	 * form a new view with specified target structure.
+	 *
+	 * @tparam TargetStructure The target structure of the new view. It should verify
+	 *                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
+	 * @tparam SourceVector    The type of the source ALP vector
+	 * @tparam SelectVector    The type of the ALP vector defining permutation for rows
+	 *
+	 * @param source           The source ALP matrix
+	 * @param sel              A valid permutation vector of a subset of indices
+	 *
+	 * @return A new gather view over the source ALP matrix.
+	 *
+	 */
+	template<
+		typename TargetStructure,
+		typename SourceVector,
+		typename SelectVector,
+		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
+	>
+	typename internal::new_container_type_from<
+		typename SourceVector::template view_type< view::gather >::type
+	>::template change_structure< TargetStructure >::_and_::
+	template change_imfr< imf::Select >::type
+	get_view(
+		SourceVector &source,
+		const SelectVector &sel
+	) {
+		return internal::get_view< TargetStructure >(
+			source,
+			imf::Select( getLength( source ), sel ),
+			imf::Id( 1 )
+		);
+	}
+
 } // end namespace ``alp''
 
 #endif // end ``_H_ALP_REFERENCE_VECTOR''
