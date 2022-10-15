@@ -275,11 +275,13 @@ namespace grb {
 					std::swap( out, f );
 					return SUCCESS;
 				}
-			} else {
-				std::cerr << "Info: label propagation exiting with " << toString(ret) << "\n";
 			}
 
 			// done
+			if( s == 0 ) {
+				std::cerr << "Warning: label propagation exiting with " << toString(ret)
+					<< "\n";
+			}
 			return ret;
 		}
 
