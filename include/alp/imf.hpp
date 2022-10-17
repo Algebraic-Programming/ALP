@@ -52,6 +52,17 @@
 
 namespace alp {
 
+	template<
+		typename T,
+		typename Structure,
+		enum Density density,
+		typename View,
+		typename ImfR,
+		typename ImfC,
+		enum Backend backend
+	>
+	class Vector;
+
 	namespace imf {
 
 		class IMF {
@@ -100,6 +111,8 @@ namespace alp {
 
 				Strided( const size_t n, const size_t N, const size_t b, const size_t s ): IMF( n, N ), b( b ), s( s ) { }
 
+				Strided( const Strided &other ) : IMF( other.n, other.N ), b( other.b ), s( other.s ) { }
+
 				template< typename OtherIMF >
 				bool isSame( const OtherIMF &other ) const {
 					return IMF::isSame( other ) &&
@@ -147,32 +160,43 @@ namespace alp {
 				explicit Zero( const size_t n ) : Strided( n, 1, 0, 0 ) {}
 		};
 
+
 		class Select: public IMF {
 
 			public:
 
+				/** \internal \todo Change to ALP vector */
 				std::vector< size_t > select;
 
 				size_t map( const size_t i ) const {
-#ifdef _DEBUG
-					std::cout << "Calling Select map.\n";
-#endif
 					return select.at( i );
 				}
 
-				Select( size_t N, std::vector< size_t > &select ): IMF( select.size(), N ), select( select ) {
-					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
-					//	throw std::runtime_error("IMF Select beyond range.");
-					//}
+				template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+				Select(
+					size_t N,
+					const alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &select
+				): IMF( getLength( select ), N ), select( getLength( select ) ) {
+
+					/** \internal \todo Use set when this->select becomes ALP vector */
+					//set( this->select, select );
+					for( size_t i = 0; i < getLength( select ); ++i ) {
+						this->select[ i ] = select[ i ];
+					}
+#ifdef DEBUG
+					// Check that select vector does not map outside of range [0,N)
+					for( size_t i = 0; i < getLength( select ); ++i ) {
+						if ( select[ i ] >= N ) {
+							throw std::runtime_error("Provided select vector mapping beyond the provided range.");
+						}
+					}
+#endif
 				}
 
-				Select( size_t N, std::vector< size_t > &&select ): IMF( select.size(), N ), select( select ) {
+				Select( const Select &other ) : IMF( other.select.size(), other.N ), select( other.select ) {
 #ifdef _DEBUG
-					std::cout << "Select move constructor\n";
+					std::cout << "Select copy constructor\n";
 #endif
-					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
-					//	throw std::runtime_error("IMF Select beyond range.");
-					//}
 				}
 
 				template< typename OtherIMF >
@@ -200,8 +224,8 @@ namespace alp {
 		class Composed: public IMF {
 
 			public:
-				const LeftImf &f;
-				const RightImf &g;
+				const LeftImf f;
+				const RightImf g;
 
 				size_t map( const size_t i ) const {
 #ifdef _DEBUG
@@ -212,7 +236,7 @@ namespace alp {
 
 				Composed( const LeftImf &f, const RightImf &g ):
 					IMF( g.n, f.N ), f( f ), g( g ) {
-#ifdef _DEBUG
+#ifdef DEBUG
 						std::cout << "Creating composition of IMFs that cannot be composed into a"
 						             "single mapping function. Consider the effect on performance.\n";
 #endif
@@ -274,7 +298,9 @@ namespace alp {
 		struct ComposedFactory {
 
 			template< typename LeftImf, typename RightImf >
-			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &, const RightImf & );
+			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &left_imf, const RightImf &right_imf ) {
+				return typename composed_type< LeftImf, RightImf >::type( left_imf, right_imf );
+			}
 
 		};
 
@@ -329,8 +355,9 @@ namespace alp {
 		}
 
 		template<>
-		Composed< Strided, Select > ComposedFactory::create( const Strided &f1, const Select &f2 ) {
-			return Composed< Strided, Select >( f1, f2 );
+		typename composed_type< Id, Select >::type ComposedFactory::create( const Id &f1, const Select &f2 ) {
+			(void) f1;
+			return f2;
 		}
 
 	}; // namespace imf
