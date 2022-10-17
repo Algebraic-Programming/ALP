@@ -52,6 +52,17 @@
 
 namespace alp {
 
+	template<
+		typename T,
+		typename Structure,
+		enum Density density,
+		typename View,
+		typename ImfR,
+		typename ImfC,
+		enum Backend backend
+	>
+	class Vector;
+
 	namespace imf {
 
 		class IMF {
@@ -162,20 +173,28 @@ namespace alp {
 					return select.at( i );
 				}
 
-				Select( size_t N, const std::vector< size_t > &select ): IMF( select.size(), N ), select( select ) {
+				template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+				Select(
+					size_t N,
+					const alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &select
+				): IMF( getLength( select ), N ), select( getLength( select ) ) {
+					//set( this->select, select );
+					for( size_t i = 0; i < getLength( select ); ++i ) {
+						this->select[ i ] = select[ i ];
+					}
 					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
 					//	throw std::runtime_error("IMF Select beyond range.");
 					//}
 				}
 
-				Select( size_t N, std::vector< size_t > &&select ): IMF( select.size(), N ), select( select ) {
-#ifdef _DEBUG
-					std::cout << "Select move constructor\n";
-#endif
-					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
-					//	throw std::runtime_error("IMF Select beyond range.");
-					//}
-				}
+//				Select( size_t N, std::vector< size_t > &&select ): IMF( select.size(), N ), select( select ) {
+//#ifdef _DEBUG
+//					std::cout << "Select move constructor\n";
+//#endif
+//					//if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
+//					//	throw std::runtime_error("IMF Select beyond range.");
+//					//}
+//				}
 
 				Select( const Select &other ) : IMF( other.select.size(), other.N ), select( other.select ) {
 #ifdef _DEBUG
