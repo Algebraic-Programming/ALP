@@ -18,9 +18,8 @@
 #include <sstream>
 #include <vector>
 
+//#define _COMPLEX
 #define DEBUG
-#define _COMPLEX
-
 #ifdef _COMPLEX
 #include <complex>
 #include <cmath>
@@ -104,6 +103,7 @@ template<
 	class Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >
 >
 RC check_overlap( alp::Matrix< T, Structure, alp::Density::Dense, ViewType > &Q, const Ring & ring = Ring() ) {
+	// more elegent would be check mxm(Q,conjugate(transpose(Q))) == identity
 	RC rc = SUCCESS;
 	const size_t n = nrows( Q );
 #ifdef DEBUG
@@ -145,102 +145,68 @@ RC check_overlap( alp::Matrix< T, Structure, alp::Density::Dense, ViewType > &Q,
 }
 
 
-// //** check solution by calculating H-QTQh */
-// template<
-// 	typename D,
-// 	typename StructureSymm,
-// 	typename StructureOrth,
-// 	typename StructureTrDg,
-// 	class Minus = operators::subtract< D >,
-// 	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
-// >
-// RC check_solution(
-// 	alp::Matrix< D, StructureSymm, alp::Density::Dense > &H,
-// 	alp::Matrix< D, StructureOrth, alp::Density::Dense > &Q,
-// 	alp::Matrix< D, StructureTrDg, alp::Density::Dense > &T,
-// 	const Ring &ring = Ring(),
-// 	const Minus &minus = Minus()
-// ) {
-// 	RC rc = SUCCESS;
-// 	const size_t n = nrows( Q );
+//** check solution by calculating H-QR */
+template<
+	typename D,
+	typename StructureGen,
+	typename StructureOrth,
+	class Minus = operators::subtract< D >,
+	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
+>
+RC check_solution(
+	alp::Matrix< D, StructureGen, alp::Density::Dense > &H,
+	alp::Matrix< D, StructureOrth, alp::Density::Dense > &Q,
+	alp::Matrix< D, StructureGen, alp::Density::Dense > &R,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
+) {
+	RC rc = SUCCESS;
+	const size_t n = nrows( H );
+	const size_t m = ncols( H );
 
-// #ifdef DEBUG
-// 	std::cout << " ** check_solution **\n";
-// 	std::cout << " input matrices:\n";
-// 	print_matrix( " << H >> ", H );
-// 	print_matrix( " << Q >> ", Q );
-// 	print_matrix( " << T >> ", T );
-// 	std::cout << " ********************\n";
-// #endif
+#ifdef DEBUG
+	std::cout << " ** check_solution **\n";
+	std::cout << " input matrices:\n";
+	print_matrix( " << H >> ", H );
+	print_matrix( " << Q >> ", Q );
+	print_matrix( " << R >> ", R );
+	std::cout << " ********************\n";
+#endif
 
-// 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQh( n );
-// 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQhmH( n );
-// 	const Scalar< D > zero( ring.template getZero< D >() );
+ 	alp::Matrix< D, StructureGen, alp::Density::Dense > QR( n, m );
+	// QR = Q * R
+	const Scalar< D > zero( ring.template getZero< D >() );
+	rc = rc ? rc : set( QR, zero );
+	rc = rc ? rc : mxm( QR, Q, R, ring );
+	// QR = QR - H
+	rc = foldl( QR, H, minus );
 
-// 	rc = rc ? rc : set( QTQh, zero );
-// 	rc = rc ? rc : mxm( QTQh, T, conjugate( alp::get_view< alp::view::transpose >( Q ) ), ring );
-// 	rc = rc ? rc : set( QTQhmH, zero );
-// 	rc = rc ? rc : mxm( QTQhmH, Q, QTQh, ring );
-// 	rc = rc ? rc : set( QTQh, QTQhmH );
-// #ifdef DEBUG
-// 	print_matrix( " << QTQhmH >> ", QTQhmH );
-// 	print_matrix( " << H >> ", H );
-// 	std::cout << "call foldl( mat, mat, minus )\n";
-// #endif
+#ifdef DEBUG
+	print_matrix( " << QR - H >> ", QR );
+#endif
 
-// #ifndef TEMPDISABLE
-// 	rc = foldl( QTQhmH, H, minus );
-// #else
-// 	rc = rc ? rc : alp::eWiseLambda(
-// 		[ &H, &minus, &zero ]( const size_t i, const size_t j, D &val ) {
-// 			if ( j >= i ) {
-// 				internal::foldl(
-// 					val,
-// 					internal::access( H, internal::getStorageIndex( H, i, j ) ),
-// 					minus
-// 				);
-// 			} else {
-// 				val = *zero;
-// 			}
-// 		},
-// 		QTQhmH
-// 	);
-// #endif
+	//Frobenius norm
+	D fnorm = ring.template getZero< D >();
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
+		},
+		QR
+	);
+	fnorm = std::sqrt( fnorm );
 
-// #ifdef DEBUG
-// 	print_matrix( " << QTQhmH >> ", QTQhmH );
-// 	print_matrix( " << H >> ", H );
-// #endif
+#ifdef DEBUG
+	std::cout << " FrobeniusNorm(H-QR) = " << std::abs( fnorm ) << "\n";
+#endif
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << "The Frobenius norm is too large.\n";
+		return FAILED;
+	}
 
-// 	//Frobenius norm
-// 	D fnorm = ring.template getZero< D >();
-// 	rc = rc ? rc : alp::eWiseLambda(
-// 		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
-// 			(void) i;
-// 			(void) j;
-// 			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
-// 		},
-// 		QTQhmH
-// 	);
-// 	fnorm = std::sqrt( fnorm );
-
-// #ifdef DEBUG
-// 	std::cout << " FrobeniusNorm(H-QTQh) = " << std::abs( fnorm ) << "\n";
-// #endif
-// 	if( tol < std::abs( fnorm ) ) {
-// #ifdef DEBUG
-// 		std::cout << " ----------------------\n";
-// 		std::cout << " compare matrices\n";
-// 		print_matrix( " << H >> ", H );
-// 		print_matrix( " << QTQh >> ", QTQh );
-// 		std::cout << " ----------------------\n";
-// #endif
-// 		std::cout << "The Frobenius norm is too large.\n";
-// 		return FAILED;
-// 	}
-
-// 	return rc;
-// }
+	return rc;
+}
 
 
 
@@ -269,24 +235,23 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	print_matrix( " input matrix H ", H );
 #endif
 
+	rc = rc ? rc : algorithms::householder_qr( H, Q, R, ring );
 
-   	rc = rc ? rc : algorithms::householder_qr( H, Q, R, ring );
 
+#ifdef DEBUG
+	print_matrix( " << Q >> ", Q );
+	print_matrix( " << R >> ", R );
+#endif
 
-// #ifdef DEBUG
-// 	print_matrix( " << Q >> ", Q );
-// 	print_matrix( " << R >> ", R );
-// #endif
+	rc = check_overlap( Q );
+	if( rc != SUCCESS ) {
+		std::cout << "Error: mratrix Q is not orthogonal\n";
+	}
 
-	// rc = check_overlap( Q );
-	// if( rc != SUCCESS ) {
-	// 	std::cout << "Error: mratrix Q is not orthogonal\n";
-	// }
-
-// 	rc = check_solution( H, Q, T );
-// 	if( rc != SUCCESS ) {
-// 		std::cout << "Error: solution numerically wrong\n";
-// 	}
+	rc = check_solution( H, Q, R );
+	if( rc != SUCCESS ) {
+		std::cout << "Error: solution numerically wrong\n";
+	}
 }
 
 int main( int argc, char ** argv ) {
