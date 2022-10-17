@@ -116,7 +116,8 @@ namespace grb {
 		 *     accelerating the PageRank computation', ACM Press, 2003.
 		 */
 		template< typename IOType >
-		RC label( Vector< IOType > &out,
+		RC label(
+			Vector< IOType > &out,
 			const Vector< IOType > &y, const Matrix< IOType > &W,
 			const size_t n, const size_t l,
 			const size_t MaxIterations = 1000
@@ -230,7 +231,12 @@ namespace grb {
 					<< "nnz( mask ) = " << nnz( mask ) << "\n";
 #endif
 				// clamps the first l labelled nodes
-				ret = ret ? ret : set( fNext, mask, f );
+				ret = ret ? ret : foldl(
+					fNext, mask,
+					f,
+					grb::operators::right_assign< IOType >()
+				);
+				assert( ret == SUCCESS );
 #ifdef _DEBUG
 				std::cerr << "\t post-set nnz( fNext ) = " << nnz( fNext ) << "\n";
 				printVector(
@@ -246,31 +252,36 @@ namespace grb {
 #ifdef _DEBUG
 				std::cerr << "\t pre-set  nnz(f) = " << nnz( f ) << "\n";
 #endif
-				ret = ret ? ret : set( f, fNext );
+				std::swap( f, fNext );
 #ifdef _DEBUG
 				std::cerr << "\t post-set nnz(f) = " << nnz( f ) << "\n";
 #endif
 				// go to next iteration
-				(void)++iter;
+				(void) ++iter;
 			}
 
 			if( ret == SUCCESS ) {
 				if( different ) {
 					if( s == 0 ) {
-						std::cout << "Warning: label propagation did not converge after "
+						std::cerr << "Info: label propagation did not converge after "
 							<< (iter-1) << " iterations\n";
 					}
 					return FAILED;
 				} else {
 					if( s == 0 ) {
-						std::cout << "Info: label propagation converged in "
+						std::cerr << "Info: label propagation converged in "
 							<< (iter-1) << " iterations\n";
 					}
-					return set( out, f );
+					std::swap( out, f );
+					return SUCCESS;
 				}
 			}
 
 			// done
+			if( s == 0 ) {
+				std::cerr << "Warning: label propagation exiting with " << toString(ret)
+					<< "\n";
+			}
 			return ret;
 		}
 

@@ -367,7 +367,8 @@ namespace grb {
 		typename Coords
 	>
 	RC set(
-		Vector< DataType, reference, Coords > &x, const T val,
+		Vector< DataType, reference, Coords > &x,
+		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
@@ -381,6 +382,12 @@ namespace grb {
 			"called with a value type that does not match that of the given vector"
 		);
 
+		// dynamic checks
+		const size_t n = size( x );
+		if( (descr & descriptors::dense) && nnz( x ) < n ) {
+			return ILLEGAL;
+		}
+
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
@@ -390,9 +397,10 @@ namespace grb {
 		const DataType toCopy = static_cast< DataType >( val );
 
 		// make vector dense if it was not already
-		internal::getCoordinates( x ).assignAll();
+		if( !(descr & descriptors::dense) ) {
+			internal::getCoordinates( x ).assignAll();
+		}
 		DataType * const raw = internal::getRaw( x );
-		const size_t n = internal::getCoordinates( x ).size();
 
 #ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel
@@ -460,29 +468,47 @@ namespace grb {
 			"vector"
 		);
 
+		// catch empty mask
+		if( size( m ) == 0 ) {
+			return set< descr >( x, val, phase );
+		}
+
+		// dynamic sanity checks
+		const size_t sizex = size( x );
+		if( sizex != size( m ) ) {
+			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) &&
+			(nnz( x ) < sizex || nnz( m ) < sizex)
+		) {
+			return ILLEGAL;
+		}
+
+		// handle trivial resize
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return set< descr >( x, val );
+		// make the vector empty unless the dense descriptor is provided
+		const bool mask_is_dense = (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) && (
+				(descr & descriptors::dense) ||
+				nnz( m ) == sizex
+			);
+		if( !((descr & descriptors::dense) && mask_is_dense) ) {
+			internal::getCoordinates( x ).clear();
+		} else if( mask_is_dense ) {
+			// dispatch to faster variant if mask is structurally dense
+			return set< descr >( x, val, phase );
 		}
 
-		// dynamic sanity checks
-		if( size( x ) != size( m ) ) {
-			return MISMATCH;
-		}
-
-		// pre-cast value to be copied
+		// pre-cast value to be copied and get coordinate handles
 		const DataType toCopy = static_cast< DataType >( val );
-
-		// make vector dense if it was not already
 		DataType * const raw = internal::getRaw( x );
-		auto & coors = internal::getCoordinates( x );
-		const auto & m_coors = internal::getCoordinates( m );
-		auto m_p = internal::getRaw( m );
+		auto &coors = internal::getCoordinates( x );
+		const auto &m_coors = internal::getCoordinates( m );
+		const MaskType * const m_p = internal::getRaw( m );
 
 #ifdef _H_GRB_REFERENCE_OMP_IO
 		#pragma omp parallel
@@ -515,18 +541,20 @@ namespace grb {
 				}
 #ifdef _H_GRB_REFERENCE_OMP_IO
 				if( !coors.asyncAssign( index, localUpdate ) ) {
-					(void)++asyncAssigns;
+					(void) ++asyncAssigns;
 				}
 				if( asyncAssigns == maxAsyncAssigns ) {
-					(void)coors.joinUpdate( localUpdate );
+					(void) coors.joinUpdate( localUpdate );
 					asyncAssigns = 0;
 				}
 #else
-				(void)coors.assign( index );
+				(void) coors.assign( index );
 #endif
-				raw[ index ] =
-					internal::ValueOrIndex< descr, DataType, DataType >::getFromScalar(
-						toCopy, index );
+				raw[ index ] = internal::ValueOrIndex<
+						descr, DataType, DataType
+					>::getFromScalar(
+						toCopy, index
+					);
 			}
 #ifdef _H_GRB_REFERENCE_OMP_IO
 			while( !coors.joinUpdate( localUpdate ) ) {}
@@ -565,21 +593,26 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< DataType, T >::value ), "grb::set (Vector, at index)",
+				std::is_same< DataType, T >::value ),
+			"grb::set (Vector, at index)",
 			"called with a value type that does not match that of the given "
-			"vector" );
+			"vector"
+		);
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
 		// dynamic sanity checks
-		if( i >= internal::getCoordinates( x ).size() ) {
+		if( i >= size( x ) ) {
 			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) && nnz( x ) < size( x ) ) {
+			return ILLEGAL;
 		}
 
 		// do set
-		(void)internal::getCoordinates( x ).assign( i );
+		(void) internal::getCoordinates( x ).assign( i );
 		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
 
 #ifdef _DEBUG
@@ -617,16 +650,16 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< OutputType, InputType >::value ),
+				std::is_same< OutputType, InputType >::value ),
 			"grb::copy (Vector)",
 			"called with vector parameters whose element data types do not match"
 		);
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
 		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( ! in_is_void || out_is_void,
+		static_assert( !in_is_void || out_is_void,
 			"grb::set (reference, vector <- vector, masked): "
 			"if input is void, then the output must be also" );
-		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
+		static_assert( !(descr & descriptors::use_index) || !out_is_void,
 			"grb::set (reference, vector <- vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
@@ -641,7 +674,7 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) ) {
+			if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
 				return ILLEGAL;
 			}
 		}
@@ -657,6 +690,11 @@ namespace grb {
 		// get raw value arrays
 		OutputType * __restrict__ const dst = internal::getRaw( x );
 		const InputType * __restrict__ const src = internal::getRaw( y );
+
+		// make the vector empty unless the dense descriptor is provided
+		if( !(descr & descriptors::dense) ) {
+			internal::getCoordinates( x ).clear();
+		}
 
 		// get #nonzeroes
 		const size_t nz = internal::getCoordinates( y ).nonzeroes();
@@ -784,7 +822,10 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < grb::size( y ) || nnz( mask ) < grb::size( mask ) ) {
+			if( nnz( x ) < grb::size( x ) ||
+				nnz( y ) < grb::size( y ) ||
+				nnz( mask ) < grb::size( mask )
+			) {
 				return ILLEGAL;
 			}
 		}
@@ -812,6 +853,16 @@ namespace grb {
 		const auto &m_coors = internal::getCoordinates( mask );
 		const auto &y_coors = internal::getCoordinates( y );
 		auto &x_coors = internal::getCoordinates( x );
+
+		// make the vector empty unless the dense descriptor is provided
+		const bool mask_is_dense = (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) && (
+				(descr && descriptors::dense) ||
+				nnz( mask ) == grb::size( mask )
+			);
+		if( !((descr & descriptors::dense) && mask_is_dense) ) {
+			internal::getCoordinates( x ).clear();
+		}
 
 		// choose optimal loop size
 		const bool loop_over_y = (descr & descriptors::invert_mask) ||
