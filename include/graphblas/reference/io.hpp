@@ -674,7 +674,7 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) ) {
+			if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
 				return ILLEGAL;
 			}
 		}
@@ -822,7 +822,10 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < grb::size( y ) || nnz( mask ) < grb::size( mask ) ) {
+			if( nnz( x ) < grb::size( x ) ||
+				nnz( y ) < grb::size( y ) ||
+				nnz( mask ) < grb::size( mask )
+			) {
 				return ILLEGAL;
 			}
 		}
