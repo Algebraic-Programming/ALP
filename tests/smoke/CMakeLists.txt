@@ -180,6 +180,11 @@ add_grb_executables( alp_zgeqrf alp_zgeqrf.cpp
         BACKENDS alp_reference
 )
 
+add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"

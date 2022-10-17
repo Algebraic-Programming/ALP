@@ -17,7 +17,6 @@
 #include <iostream>
 #include <sstream>
 
-#define DEBUG
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../tests/utils/print_alp_containers.hpp"
@@ -168,36 +167,15 @@ namespace alp {
 					structures::Symmetric
 				>::type SymmOrHerm;
 				Matrix<	D, SymmOrHerm, Dense > Qk( n );
-				//Matrix<	D, GeneralType, Dense > Qk( n, n );
 				rc = alp::set( Qk, zero );
 				auto Qk_diag = alp::get_view< alp::view::diagonal >( Qk );
 				rc = rc ? rc : alp::set( Qk_diag, one );
-#ifdef DEBUG
-				print_matrix( " << Qk(0) >> ", Qk );
-#endif
 
 				// this part can be rewriten without temp matrix using functors
 				Matrix<	D, SymmOrHerm, Dense > vvt( n - k );
-				//Matrix<	D, GeneralType, Dense > vvt( n - k, n - k );
 
 				rc = rc ? rc : set( vvt, outer( v, ring.getMultiplicativeOperator() ) );
-				// rc = rc ? rc : set( vvt, zero );
-				// rc = rc ? rc : alp::eWiseLambda(
-				// 	[ &v ]( const size_t i, const size_t j, D &val ) {
-				// 		//val = v[ i ] * std::conj( v[ j ] ) ;
-				// 		val = v[ i ] * v[ j ] ;
-				// 	},
-				// 	vvt
-				// );
-#ifdef DEBUG
-				print_matrix( " vvt(0) ", vvt );
-#endif
-				// vvt = 2 * vvt
 				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
-
-#ifdef DEBUG
-				print_matrix( " vvt(1) ", vvt );
-#endif
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
 				auto Qk_view = get_view< SymmOrHerm >(
@@ -207,31 +185,6 @@ namespace alp {
 					utils::range( k, n )
 				);
 				rc = rc ? rc : foldl( Qk_view, vvt, minus );
-
-#ifdef DEBUG
-				print_matrix( " << Qk(1) >> ", Qk );
-#endif
-
-// #ifdef TEMPDISABLE
-// 				// workaround untill foldl( Gen, Symm, op ); is resolved
-// 				// i.e. nonmatching structures reduction
-// 				if ( !grb::utils::is_complex< D >::value ) {
-// 					std::cout << "**** updating lover tringaular part ****\n";
-// 					rc = rc ? rc : alp::eWiseLambda(
-// 						[ &vvt, &minus ]( const size_t i, const size_t j, D &val ) {
-// 							if ( j < i ) {
-// 								internal::foldl(
-// 									val,
-// 									internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
-// 									minus
-// 								);
-// 							}
-// 						},
-// 						Qk_view
-// 					);
-// 				}
-// #endif
-
 
 #ifdef DEBUG
 				print_matrix( " << Qk >> ", Qk );
@@ -264,12 +217,16 @@ namespace alp {
 
 				// Qtmp = Q * conjugate(transpose(Qk))
 				rc = rc ? rc : set( Qtmp, zero );
- 				rc = rc ? rc : mxm(
-					Qtmp,
-					Q,
-					conjugate( alp::get_view< alp::view::transpose >( Qk ) ),
-					ring
-				);
+				if ( grb::utils::is_complex< D >::value ) {
+					rc = rc ? rc : mxm(
+						Qtmp,
+						Q,
+						conjugate( alp::get_view< alp::view::transpose >( Qk ) ),
+						ring
+					);
+				} else {
+					rc = rc ? rc : mxm( Qtmp, Q, Qk, ring );
+				}
 
 				// Q = Qtmp
 				rc = rc ? rc : set( Q, Qtmp );

@@ -18,8 +18,6 @@
 #include <sstream>
 #include <vector>
 
-//#define _COMPLEX
-#define DEBUG
 #ifdef _COMPLEX
 #include <complex>
 #include <cmath>
