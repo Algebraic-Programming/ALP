@@ -20,9 +20,299 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+static grb::RC dense_tests(
+	grb::Vector< double > &dst,
+	grb::Vector< double > &src
+) {
+	assert( size( dst ) == size( src ) );
+	grb::Vector< bool > full_mask( size( dst ) ), one_mask( size( dst ) );
+	grb::RC ret = grb::set( full_mask, false );
+	ret = ret ? ret : grb::setElement( one_mask, false, size( dst ) / 2 );
+	ret = ret ? ret : grb::clear( src );
+	ret = ret ? ret : grb::clear( dst );
+	if( ret != SUCCESS ) {
+		std::cerr << "\t initalisation of dense tests FAILED\n";
+		return ret;
+	}
+
+	std::cerr << "\t dense subtest 1:";
+	ret = grb::setElement< descriptors::dense >( src, 3.14, 0 );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 2:";
+	ret = grb::set< descriptors::dense >( dst, 1.0 );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 3:";
+	ret = grb::set< descriptors::dense >( dst, one_mask, 1.0 );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 4:";
+	ret = grb::set< descriptors::dense >( dst, full_mask, 1.0 );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 5:";
+	ret = grb::set< descriptors::dense >( dst, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 6:";
+	ret = grb::set< descriptors::dense >( dst, one_mask, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 7:";
+	ret = grb::set< descriptors::dense >( dst, full_mask, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 8:";
+	ret = grb::set( src, 3.14 );
+	ret = ret ? ret : grb::set< descriptors::dense >( dst, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 9:";
+	ret = grb::set< descriptors::dense >( dst, one_mask, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 10:";
+	ret = grb::set< descriptors::dense >( dst, full_mask, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		return FAILED;
+	}
+
+	std::cerr << "\b 11:";
+	ret = grb::set( dst, 0 );
+	ret = ret ? ret : grb::set< descriptors::dense >( dst, 1.0 );
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 1.0 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected 1\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 12:";
+	ret = grb::set( dst, 0 );
+	ret = ret ? ret : grb::set< descriptors::dense >( dst, one_mask, 1.0 );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	ret = SUCCESS;
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 0.0 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected 0\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 13:";
+	ret = grb::set< descriptors::dense >( dst, full_mask, 1.0 );
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		ret = FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 14:";
+	ret = grb::set( dst, 0 );
+	ret = ret ? ret : grb::set< descriptors::dense | descriptors::invert_mask >(
+		dst, full_mask, 1.0
+	);
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 1.0 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected entry with value 1\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 15:";
+	ret = grb::set< descriptors::dense >( dst, src );
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 3.14 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected 3.14\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 16:";
+	ret = grb::set( dst, 0 );
+	ret = ret ? ret : grb::set< descriptors::dense >( dst, one_mask, src );
+	if( ret != ILLEGAL ) {
+		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	ret = SUCCESS;
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 0 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected zero values\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 17:";
+	ret = grb::set< descriptors::dense >( dst, full_mask, src );
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != 0 ) {
+		std::cerr << " expected 0, got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		ret = FAILED;
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b 18:";
+	ret = grb::set( dst, 0 );
+	ret = ret ? ret : grb::set< descriptors::dense | descriptors::invert_mask >(
+		dst, full_mask, src
+	);
+	if( ret != SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << toString( ret ) << "\n";
+		return FAILED;
+	}
+	if( nnz( dst ) != size( dst ) ) {
+		std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
+		ret = FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != 3.14 ) {
+			std::cerr << "\t got ( " << pair.first << ", " << pair.second << " ), "
+				<< "expected 3.14\n";
+			ret = FAILED;
+		}
+	}
+	if( ret != SUCCESS ) { return ret; }
+
+	std::cerr << "\b OK\n";
+	return SUCCESS;
+}
+
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > dst( n ), src( n );
 
 	// test set
@@ -31,12 +321,15 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cerr << "\tset-to-value FAILED\n";
 	} else {
 		if( nnz( src ) != n ) {
-			std::cerr << "\t (set-to-value) unexpected number of nonzeroes " << nnz( src ) << ", expected " << n << "\n";
+			std::cerr << "\t (set-to-value) unexpected number of nonzeroes "
+				<< nnz( src ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : src ) {
+		for( const auto &pair : src ) {
 			if( pair.second != 1.5 ) {
-				std::cerr << "\t (set-to-value) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value 1.5.\n";
+				std::cerr << "\t (set-to-value) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5.\n";
 				rc = FAILED;
 			}
 		}
@@ -51,12 +344,15 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cerr << "\tset-to-index FAILED\n";
 	} else {
 		if( nnz( dst ) != n ) {
-			std::cerr << "\t (set-to-index) unexpected number of nonzeroes " << nnz( dst ) << ", expected " << n << "\n";
+			std::cerr << "\t (set-to-index) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.second != pair.first ) {
-				std::cerr << "\t (set-to-index) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << static_cast< double >( pair.first ) << ".\n";
+				std::cerr << "\t (set-to-index) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value " << static_cast< double >( pair.first ) << ".\n";
 				rc = FAILED;
 			}
 		}
@@ -68,15 +364,19 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// test set overwrite
 	rc = grb::set( dst, src );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Set-overwrite FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Set-overwrite FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != n ) {
-			std::cerr << "\t (set-overwrite) unexpected number of nonzeroes " << nnz( dst ) << ", expected " << n << "\n";
+			std::cerr << "\t (set-overwrite) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.second != 1.5 ) {
-				std::cerr << "\t (set-overwrite) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value 1.5\n";
+				std::cerr << "\t (set-overwrite) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5\n";
 				rc = FAILED;
 			}
 		}
@@ -91,15 +391,19 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::set( dst, src );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Set-into-cleared FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Set-into-cleared FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != n ) {
-			std::cerr << "\t (set-into-cleared) unexpected number of nonzeroes " << nnz( dst ) << ", expected " << n << "\n";
+			std::cerr << "\t (set-into-cleared) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.second != 1.5 ) {
-				std::cerr << "\t (set-into-cleared) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value 1.5\n";
+				std::cerr << "\t (set-into-cleared) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5\n";
 				rc = FAILED;
 			}
 		}
@@ -111,25 +415,28 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// test masked set
 	rc = grb::setElement( src, 0, n / 2 );
 	if( rc == SUCCESS ) {
-		rc = grb::clear( dst );
-	}
-	if( rc == SUCCESS ) {
 		rc = grb::set( dst, src, src );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Masked-set FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Masked-set FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != n - 1 ) {
-			std::cerr << "\t (masked-set) unexpected number of nonzeroes " << nnz( dst ) << ", expected " << ( n - 1 ) << "\n";
+			std::cerr << "\t (masked-set) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected " << ( n - 1 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.first != n / 2 && pair.second != 1.5 ) {
-				std::cerr << "\t (masked-set) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value 1.5\n";
+				std::cerr << "\t (masked-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5\n";
 				rc = FAILED;
 			}
 			if( pair.first == n / 2 ) {
-				std::cerr << "\t (masked-set) unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry at this position\n";
+				std::cerr << "\t (masked-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -139,26 +446,27 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	// test inverted-mask set
-	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::set< grb::descriptors::invert_mask >( dst, src, src );
-	}
+	rc = grb::set< grb::descriptors::invert_mask >( dst, src, src );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Inverted-mask set FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Inverted-mask set FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != 1 ) {
-			std::cerr << "\t (inverted-mask-set) unexpected number of "
-						 "nonzeroes "
-					  << nnz( dst ) << ", expected 1.\n";
+			std::cerr << "\t (inverted-mask-set) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.first == n / 2 && pair.second != 0 ) {
-				std::cerr << "\t (inverted-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << ": expected value 0\n";
+				std::cerr << "\t (inverted-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 0\n";
 				rc = FAILED;
 			}
 			if( pair.first != n / 2 ) {
-				std::cerr << "\t (inverted-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected no entry at this position\n";
+				std::cerr << "\t (inverted-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -168,10 +476,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	// test sparse mask set
-	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::clear( src );
-	}
+	rc = grb::clear( src );
 	if( rc == SUCCESS ) {
 		rc = grb::setElement( src, 1.5, n / 2 );
 	}
@@ -179,19 +484,25 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::set( dst, src, src );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse-mask set FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse-mask set FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != 1 ) {
-			std::cerr << "\t (sparse-mask-set) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
+			std::cerr << "\t (sparse-mask-set) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.first == n / 2 && pair.second != 1.5 ) {
-				std::cerr << "\t (sparse-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 1.5\n";
+				std::cerr << "\t (sparse-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5\n";
 				rc = FAILED;
 			}
 			if( pair.first != n / 2 ) {
-				std::cerr << "\t (sparse-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected no entry at this position\n";
+				std::cerr << "\t (sparse-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -205,19 +516,25 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	rc = rc ? rc : grb::setElement( src, 1.5, 0 );
 	rc = rc ? rc : grb::set( dst, src, src );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse-mask set (re-entrance) FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse-mask set (re-entrance) FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
-		if( nnz( dst ) != 2 ) {
-			std::cerr << "\t (sparse-mask-set-reentrant) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
+		if( nnz( dst ) != 1 ) {
+			std::cerr << "\t (sparse-mask-set-reentrant) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
 		for( const auto &pair : dst ) {
-			if( (pair.first == 0 || pair.first == n/2)  && pair.second != 1.5 ) {
-				std::cerr << "\t (sparse-mask-set-reentrant) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 1.5\n";
+			if( pair.first == 0 && pair.second != 1.5 ) {
+				std::cerr << "\t (sparse-mask-set-reentrant) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5\n";
 				rc = FAILED;
 			}
-			if( pair.first != 0 && pair.first != n/2 ) {
-				std::cerr << "\t (sparse-mask-set-reentrant) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected no entry at this position\n";
+			if( pair.first != 0 ) {
+				std::cerr << "\t (sparse-mask-set-reentrant) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -227,10 +544,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	// test sparse mask set to scalar
-	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::clear( src );
-	}
+	rc = grb::clear( src );
 	if( rc == SUCCESS ) {
 		rc = grb::setElement( src, 1.5, n / 2 );
 	}
@@ -238,19 +552,24 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::set( dst, src, 3.0 );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse-mask set to scalar FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse-mask set to scalar FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != 1 ) {
-			std::cerr << "\t (sparse-mask-set-scalar) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
+			std::cerr << "\t (sparse-mask-set-scalar) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.first == n / 2 && pair.second != 3.0 ) {
-				std::cerr << "\t (sparse-mask-set-to-scalar) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 3.0\n";
+				std::cerr << "\t (sparse-mask-set-to-scalar) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), expected value 3.0\n";
 				rc = FAILED;
 			}
 			if( pair.first != n / 2 ) {
-				std::cerr << "\t (sparse-mask-set-to-scalar) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected no entry at this position\n";
+				std::cerr << "\t (sparse-mask-set-to-scalar) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -264,19 +583,25 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	rc = rc ? rc : grb::setElement( src, 1.5, 0 );
 	rc = rc ? rc : grb::set( dst, src, 3.0 );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse-mask set to scalar (re-entrant) FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse-mask set to scalar (re-entrant) FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
-		if( nnz( dst ) != 2 ) {
-			std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected number of nonzeroes " << nnz( dst ) << ", expected 1.\n";
+		if( nnz( dst ) != 1 ) {
+			std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected number of "
+				<< "nonzeroes " << nnz( dst ) << ", expected 1.\n";
 			rc = FAILED;
 		}
 		for( const auto &pair : dst ) {
-			if( (pair.first == 0 || pair.first == n/2) && pair.second != 3.0 ) {
-				std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 3.0\n";
+			if( pair.first == 0 && pair.second != 3.0 ) {
+				std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 3.0\n";
 				rc = FAILED;
 			}
-			if( pair.first != 0 && pair.first != n/2 ) {
-				std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected no entry at this position\n";
+			if( pair.first != 0 ) {
+				std::cerr << "\t (sparse-mask-set-scalar-reentrant) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected no entry at this position\n";
 				rc = FAILED;
 			}
 		}
@@ -286,19 +611,14 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	// test sparse inverted mask set to empty
-	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::set< grb::descriptors::invert_mask >( dst, src, src );
-	}
+	rc = grb::set< grb::descriptors::invert_mask >( dst, src, src );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse-inverted-mask set to empty FAILED with error "
-					 "code "
-				  << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse-inverted-mask set to empty FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != 0 ) {
-			std::cerr << "\t (sparse-inverted-mask-set-empty) unexpected "
-						 "number of nonzeroes "
-					  << nnz( dst ) << ", expected 0.\n";
+			std::cerr << "\t (sparse-inverted-mask-set-empty) unexpected number of "
+				<< "nonzeroes " << nnz( dst ) << ", expected 0.\n";
 			rc = FAILED;
 		}
 	}
@@ -308,10 +628,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// test sparse inverted mask set
 	grb::Vector< bool > mask( n );
-	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::setElement( mask, true, n / 2 );
-	}
+	rc = grb::setElement( mask, true, n / 2 );
 	if( rc == SUCCESS ) {
 		rc = grb::set( src, 1.5 );
 	}
@@ -319,25 +636,75 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::set< grb::descriptors::invert_mask >( dst, mask, src );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Sparse inverted-mask set FAILED with error code " << grb::toString( rc ) << "\n";
+		std::cerr << "\t Sparse inverted-mask set FAILED with error code "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( nnz( dst ) != n - 1 ) {
-			std::cerr << "\t (sparse-inverted-mask-set) unexpected number of "
-						 "nonzeroes "
-					  << nnz( dst ) << ", expected " << ( n - 1 ) << ".\n";
+			std::cerr << "\t (sparse-inverted-mask-set) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected " << (n - 1) << ".\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : dst ) {
+		for( const auto &pair : dst ) {
 			if( pair.first == n / 2 ) {
-				std::cerr << "\t (sparse-inverted-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << " ): this position should have been empty\n";
+				std::cerr << "\t (sparse-inverted-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "this position should have been empty\n";
 				rc = FAILED;
 			} else if( pair.second != 1.5 ) {
-				std::cerr << "\t (sparse-inverted-mask-set) unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 1.5.\n";
+				std::cerr << "\t (sparse-inverted-mask-set) unexpected entry "
+					<< "( " << pair.first << ", " << pair.second << " ), "
+					<< "expected value 1.5.\n";
 				rc = FAILED;
 			}
 		}
 	}
-	// if( rc != SUCCESS ) { return; }
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	// test set-to-clear
+	rc = grb::clear( src );
+	if( rc == SUCCESS ) {
+		rc = grb::set( dst, src );
+	}
+	if( rc != SUCCESS ) {
+		std::cerr << "\t Set to empty vector FAILED with error code "
+			<< grb::toString( rc ) << "\n";
+	} else {
+		if( nnz( dst ) != 0 ) {
+			std::cerr << "\t (set-to-empty) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 0.\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : dst ) {
+			std::cerr << "\t (set-to-empty) unexpected entry "
+				<< "( " << pair.first << ", " << pair.second << " ), "
+				<< "this position should have been empty\n";
+			rc = FAILED;
+		}
+	}
+
+	// test double-set-to-clear
+	rc = grb::set( dst, src );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t Set to empty vector FAILED with error code "
+			<< grb::toString( rc ) << "\n";
+	} else {
+		if( nnz( dst ) != 0 ) {
+			std::cerr << "\t (set-to-empty) unexpected number of nonzeroes "
+				<< nnz( dst ) << ", expected 0.\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : dst ) {
+			std::cerr << "\t (set-to-empty) unexpected entry "
+				<< "( " << pair.first << ", " << pair.second << " ), "
+				<< "this position should have been empty\n";
+			rc = FAILED;
+		}
+	}
+
+	// test behaviour under dense descriptor
+	rc = dense_tests( dst, src );
 
 	// done
 	return;
@@ -371,8 +738,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, "
+			<< "the test size.\n";
 		return 1;
 	}
 
@@ -390,3 +757,4 @@ int main( int argc, char ** argv ) {
 	}
 	return 0;
 }
+

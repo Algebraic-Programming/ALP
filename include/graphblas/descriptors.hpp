@@ -117,11 +117,11 @@ namespace grb {
 		static constexpr Descriptor structural_complement = structural | invert_mask;
 
 		/**
-		 * Indicates that all input vectors to an ALP/GraphBLAS primitive are
-		 * structurally dense.
+		 * Indicates that all input and output vectors to an ALP/GraphBLAS primitive
+		 * are structurally dense.
 		 *
-		 * If a user passes this descriptor but one or more vectors input to the call
-		 * are \em not structurally dense, then #ILLEGAL shall be returned.
+		 * If a user passes this descriptor but one or more vectors to the call are
+		 * \em not structurally dense, then #ILLEGAL shall be returned.
 		 *
 		 * \warning <em>All vectors</em> includes any vectors that operate as masks.
 		 *          Thus if the primitive is to operate with structurally sparse masks
@@ -134,6 +134,10 @@ namespace grb {
 		 *          passing this descriptor to such primitive indicates that also the
 		 *          output vector is structurally dense.
 		 *
+		 * \warning For out-of-place operations with vector output(s), passing this
+		 *          descriptor also demands that the output vectors are already
+		 *          dense.
+		 *
 		 * \warning Vectors with explicit zeroes (under the semiring passed to the
 		 *          related primitive) will be computed with explicitly.
 		 *
@@ -141,6 +145,7 @@ namespace grb {
 		 *   1) less run-time overhead as code handling sparsity is disabled;
 		 *   2) smaller binary sizes as code handling structurally sparse vectors is
 		 *      not emitted (unless required elsewhere).
+		 *
 		 * The consistent use of this descriptor is hence strongly encouraged.
 		 */
 		static constexpr Descriptor dense = 16;

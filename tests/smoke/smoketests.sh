@@ -202,7 +202,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
 				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
 				m=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
-				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex  algorithm for the input"
+				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex algorithm for the input"
 				echo "                                 matrix (${n}x${m}) taken from ${TESTNAME}.mtx. This test"
 				echo "                                 verifies against a ground-truth solution vector. The test"
 				echo "                                 employs the grb::Launcher in automatic mode. It uses"
