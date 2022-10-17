@@ -716,8 +716,8 @@ namespace alp {
 
 	/**
 	 *
-	 * Generate an dynamic gather view where the type is compliant with the source Vector.
-	 * Version where a selection of indices expressed as a vector of positions
+	 * Generate a dynamic gather view where the type is compliant with the source Vector.
+	 * Version where a selection of indices, expressed as a vector of indices,
 	 * form a new view with specified target structure.
 	 *
 	 * @tparam TargetStructure The target structure of the new view. It should verify
@@ -735,7 +735,10 @@ namespace alp {
 		typename TargetStructure,
 		typename SourceVector,
 		typename SelectVector,
-		std::enable_if_t< is_vector< SourceVector >::value > * = nullptr
+		std::enable_if_t<
+			is_vector< SourceVector >::value &&
+			is_vector< SelectVector >::value
+		> * = nullptr
 	>
 	typename internal::new_container_type_from<
 		typename SourceVector::template view_type< view::gather >::type

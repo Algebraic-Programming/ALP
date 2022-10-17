@@ -1880,9 +1880,9 @@ namespace alp {
 
 	/**
 	 *
-	 * Generate an dynamic gather view where the type is compliant with the source Matrix.
-	 * Version where a selection of rows and columns expressed as vectors of positions
-	 * form a new view with specified target structure.
+	 * Generate a dynamic gather view where the type is compliant with the source Matrix.
+	 * Version where a selection of rows and columns, expressed as vectors of indices,
+	 * forms a new view with specified target structure.
 	 *
 	 * @tparam TargetStructure The target structure of the new view. It should verify
 	 *                         <code> alp::is_in<Structure, TargetStructure::inferred_structures> </code>.
@@ -1892,7 +1892,7 @@ namespace alp {
 	 *
 	 * @param source           The source ALP matrix
 	 * @param sel_r            A valid permutation vector of a subset of row indices
-	 * @param sel_c            A valid permutation vector of a subset ifcolumn indices
+	 * @param sel_c            A valid permutation vector of a subset of column indices
 	 *
 	 * @return A new gather view over the source ALP matrix.
 	 *
@@ -1901,7 +1901,11 @@ namespace alp {
 		typename TargetStructure,
 		typename SourceMatrix,
 		typename SelectVectorR, typename SelectVectorC,
-		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
+		std::enable_if_t<
+			is_matrix< SourceMatrix >::value &&
+			is_vector< SelectVectorR >::value &&
+			is_vector< SelectVectorC >::value
+		> * = nullptr
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
@@ -1915,8 +1919,8 @@ namespace alp {
 	) {
 		return internal::get_view< TargetStructure >(
 			source,
-			imf::Select( nrows(source), sel_r ),
-			imf::Select( ncols(source), sel_c )
+			imf::Select( nrows( source ), sel_r ),
+			imf::Select( ncols( source ), sel_c )
 		);
 	}
 
