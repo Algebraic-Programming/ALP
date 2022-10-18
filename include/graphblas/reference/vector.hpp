@@ -906,7 +906,15 @@ namespace grb {
 				x._raw = nullptr;
 			}
 
-			/** Copy-constructor. */
+			/**
+			 * Copy-constructor.
+			 *
+			 * \warning Relies on #grb::set. Any errors #grb::set would normally return,
+			 *          will, through this constructor, be thrown as standard C++
+			 *          exceptions instead.
+			 *
+			 * \internal Dispatches to #grb::set.
+			 */
 			Vector< D, reference, MyCoordinates > & operator=(
 				const Vector< D, reference, MyCoordinates > &x
 			) {
