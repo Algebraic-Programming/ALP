@@ -29,6 +29,86 @@ namespace alp {
 	namespace algorithms {
 
 		/**
+		 * find zero of secular equation in interval <a,b>
+		 * using bisection
+		 * this is not an optimal algorithm and there are many
+		 * more efficient implantation
+		 */
+		template<
+			typename D,
+			typename VecView1,
+			typename VecImfR1,
+			typename VecImfC1,
+			typename VecView2,
+			typename VecImfR2,
+			typename VecImfC2,
+			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			class Minus = operators::subtract< D >,
+			class Divide = operators::divide< D >
+		>
+		RC bisec_sec_eq(
+			Scalar< D > &lambda,
+			const Vector<	D, structures::General,	Dense, VecView1, VecImfR1, VecImfC1 > &d,
+			// Vector v should be const, but that would disable eWiseLambda, to be resolved in the future
+			Vector<	D, structures::General,	Dense, VecView2, VecImfR2, VecImfC2 > &v,
+			const Scalar< D > &a,
+			const Scalar< D > &b,
+			const D tol=1.e-12,
+			const Ring & ring = Ring(),
+			const Minus & minus = Minus(),
+			const Divide & divide = Divide()
+		) {
+			RC rc = SUCCESS;
+
+#ifdef DEBUG
+			std::cout << " a = " << *a << " ";
+			std::cout << " b = " << *b << " ";
+#endif
+
+			const Scalar< D > zero( ring.template getZero< D >() );
+			const Scalar< D > one( ring.template getOne< D >() );
+			Scalar< D > x0( ( *a + *b ) / ( 2 ) );
+
+			if( std::abs( *a - *b ) < tol ) {
+				alp::set( lambda, x0 );
+				return rc;
+			}
+
+			//fx0=1+sum(v**2/(d-x0))
+			Scalar< D > fx0( one );
+			rc = rc ? rc : eWiseLambda(
+				[ &d, &x0, &fx0, &ring, &minus, &divide ]( const size_t i, D &val ) {
+					Scalar< D > alpha( val );
+					Scalar< D > beta( d[ i ] );
+					foldl( alpha, Scalar< D > ( val ), ring.getMultiplicativeOperator() );
+					foldl( beta, x0, minus );
+					foldl( alpha, beta, divide );
+					foldl( fx0, alpha, ring.getAdditiveOperator() );
+				},
+				v
+			);
+
+#ifdef DEBUG
+			std::cout << " x0 = " << *x0 << " ";
+			std::cout << " fx0 = " << *fx0 << "\n";
+#endif
+
+			if( std::abs( *fx0 ) < tol ) {
+				alp::set( lambda, x0 );
+				return rc;
+			}
+
+			if( *fx0 < *zero ) {
+				rc = rc ? rc : bisec_sec_eq( lambda, d, v, x0, b, tol );
+			} else {
+				rc = rc ? rc : bisec_sec_eq( lambda, d, v, a, x0, tol );
+			}
+
+			return rc;
+		}
+
+
+		/**
 		 * Calcualte eigendecomposition of system D + vvt
 		 *        \f$D = diag(d)$ is diagonal matrix and
 		 *        \a vvt outer product outer(v,v)
@@ -73,53 +153,117 @@ namespace alp {
 		) {
 			RC rc = SUCCESS;
 
+			const Scalar< D > zero( ring.template getZero< D >() );
+			const Scalar< D > one( ring.template getOne< D >() );
 			const size_t n = nrows( Egvecs );
-
 			const double eps = 1.e-7;
-			// if(min(abs(v))<eps):
-			//     ii=where(abs(v)<eps)[0]
-			//     for i in ii:
-			//         egvs[i]=d[i]
-			//         dvec=zeros(len(d))
-			//         dvec[i]=1
-			//         egvecs[i]=dvec
-			//     d=d[~(abs(v0)<eps)]
-			//     v=v[~(abs(v0)<eps)]
+
+			size_t non_trivial_egvc_count = 0;
+			Vector< D, structures::General, Dense > d_nontrv( n );
+			Vector< D, structures::General, Dense > v_nontrv( n );
+			alp::set( d_nontrv, zero );
+			alp::set( v_nontrv, zero );
+
 			for( size_t i = 0; i < n; i++ ) {
-//				if( std::abs( v[ i ] ) < eps ) {
+				if( std::abs( v[ i ] ) < eps ) {
 					//simple egval formula ;
 					//set eigenvalue
 					egvals[ i ] = d[ i ];
 					//set eigenvector
 					//(could be done without temp vector by using eWiseLambda)
 					Vector< D, structures::General, Dense > dvec( n );
-					alp::set( dvec, Scalar< D > ( ring.template getZero< D >() ) );
-					dvec[ i ] = ring.template getOne< D >();
+					alp::set( dvec, zero );
+					dvec[ i ] = *one;
 					auto Egvecs_vec_view = get_view( Egvecs, utils::range( 0, n ), i );
 					rc = rc ? rc : alp::set( Egvecs_vec_view, dvec );
-//				} else {
-//					//complicated egval formula ;
-//				}
+				} else {
+					//complicated egval formula ;
+					d_nontrv[ non_trivial_egvc_count ] = d[ i ];
+					v_nontrv[ non_trivial_egvc_count ] = v[ i ];
+					++non_trivial_egvc_count;
+				}
 			}
 
+			auto d_nontrv_nnz_view = get_view( d_nontrv, utils::range( 0, non_trivial_egvc_count ) );
+			auto v_nontrv_nnz_view = get_view( v_nontrv, utils::range( 0, non_trivial_egvc_count ) );
 
-			// for i in range(len(d)):
-			//     egval,lambdax,dvec = zerodandc(d,v,i)
-			//     dlam=dlam+[lambdax]
-			//     #egvecs=egvecs+[dvec]
-			//     dvec=v/dvec
-			//     dvec=dvec/norm(dvec)
-			//     egvecs_tmp=egvecs_tmp+[dvec]
-			//     egvs_tmp=egvs_tmp+[egval]
-			// egvecs_tmp=array(egvecs_tmp)
-			// egvs_tmp=array(egvs_tmp)
+			Vector< D, structures::General, Dense > egvals_nontrv( non_trivial_egvc_count );
+			Matrix< D, OrthogonalType, Dense > Egvecs_nontrv( non_trivial_egvc_count );
+			rc = rc ? rc : alp::set( egvals_nontrv, zero );
+			rc = rc ? rc : alp::set( Egvecs_nontrv, zero );
 
-			// egvecs_tmp=array(egvecs_tmp)
-			// egvs_tmp=array(egvs_tmp)
-			// egvs[~(abs(v0)<eps)]=egvs_tmp
-			// for j,i in enumerate(where(~(abs(v0)<eps))[0]):
-			//     egvecs[i,~(abs(v0)<eps)]=egvecs_tmp[j]
+#ifdef DEBUG
+			print_vector( "eigensolveDiagPlusOuter: d ", d );
+			print_vector( "eigensolveDiagPlusOuter: v ", v );
+			print_vector( "eigensolveDiagPlusOuter: d_nontrv_nnz_view ", d_nontrv_nnz_view );
+			print_vector( "eigensolveDiagPlusOuter: v_nontrv_nnz_view ", v_nontrv_nnz_view );
 
+			for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
+				std::cout << " ============ i= " << i << "  ============\n";
+
+				std::cout << " d = array([";
+				for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
+					std::cout << d_nontrv_nnz_view[ i ] << ", ";
+				}
+				std::cout << " ])\n";
+				std::cout << " v = array([";
+				for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
+					std::cout << v_nontrv_nnz_view[ i ] << ", ";
+				}
+				std::cout << " ])\n";
+
+				Scalar< D > a( d_nontrv_nnz_view[ i ] );
+				Scalar< D > b( d_nontrv_nnz_view[ i ] );
+				std::cout << "0 a,b=" << *a << " " << *b << "\n";
+				if( i + 1 < non_trivial_egvc_count  ) {
+					std::cout << " alp::set b to <<" << d_nontrv_nnz_view[ i + 1 ] << ">> \n";
+					rc = alp::set( b, Scalar< D >( d_nontrv_nnz_view[ i + 1 ] ) );
+					if( rc != SUCCESS ) {
+						std::cout << " **** alp::set failed ***** \n";
+					}
+					std::cout << "1  a,b=" << *a << " " << *b << "\n";
+				} else {
+					Scalar< D > alpha( zero );
+					rc = rc ? rc : norm2( alpha, v, ring );
+					foldl( b, alpha, ring.getAdditiveOperator() );
+					std::cout << "2 a,b=" << *a << " " << *b << "\n";
+				}
+				Scalar< D > lambda( ( *a - *b ) / 2 );
+
+				std::cout << " a,lambda,b=" << *a << " " << *lambda << " " << *b << "\n";
+
+				rc = rc ? rc : bisec_sec_eq( lambda, d_nontrv_nnz_view, v_nontrv_nnz_view, a, b );
+				std::cout << " lambda (" << i << ") = " << *lambda << "\n";
+			}
+#endif
+
+
+#ifdef TEMPDISABLE
+			for( size_t i = 0; i < non_trivial_egvc_count; i++ ) {
+				egvals_nontrv[ i ] = d_nontrv[ i ];
+				Vector< D, structures::General, Dense > dvec( non_trivial_egvc_count );
+				alp::set( dvec, zero );
+				dvec[ i ] = *one;
+				auto Egvecs_nontrv_vec_view = get_view( Egvecs_nontrv, utils::range( 0, non_trivial_egvc_count ), i );
+				rc = rc ? rc : alp::set( Egvecs_nontrv_vec_view, dvec );
+			}
+#else
+			not implemented;
+#endif
+
+			//copy egvals_nontrv and Egvecs_nontrv into egvals and Egvecs
+			size_t k = 0;
+			for( size_t i = 0; i < n; i++ ) {
+				if( !( std::abs( v[ i ] ) < eps ) ) {
+					egvals[ i ] = egvals_nontrv[ k ];
+					//resolve this with select/permute view
+#ifdef TEMPDISABLE
+					auto Egvecs_nontrv_vec_view = get_view( Egvecs_nontrv, utils::range( 0, non_trivial_egvc_count ), k );
+					auto Egvecs_vec_view = get_view( Egvecs, utils::range( 0, non_trivial_egvc_count ), i ); // this is wrong
+					rc = rc ? rc : alp::set( Egvecs_vec_view, Egvecs_nontrv_vec_view );
+#endif
+				}
+			}
 
 			return rc;
 		}
@@ -261,26 +405,11 @@ namespace alp {
 			auto dtop = get_view( dtmp, utils::range( 0, m ) );
 			auto ddown = get_view( dtmp, utils::range( m, n ) );
 
-#ifdef DEBUG
-			print_vector( " dtop = ", dtop );
-			print_vector( " ddown = ", ddown );
-#endif
-
 			Matrix< D, OrthogonalType, Dense > U( n );
 			rc = rc ? rc : alp::set( U, zero );
-#ifdef DEBUG
-			print_matrix( " U = ", U );
-#endif
+
 			auto Utop = get_view< OrthogonalType >( U, utils::range( 0, m ), utils::range( 0, m ) );
-
-#ifdef DEBUG
-			print_matrix( " Utop = ", Utop );
-#endif
 			auto Udown = get_view< OrthogonalType >( U, utils::range( m, n ), utils::range( m, n ) );
-
-#ifdef DEBUG
-			print_matrix( " Udown = ", Udown );
-#endif
 
 			rc = rc ? rc : symm_tridiag_dac_eigensolver( Ttop, Utop, dtop, ring );
 			rc = rc ? rc : symm_tridiag_dac_eigensolver( Tdown, Udown, ddown, ring );
@@ -365,24 +494,10 @@ namespace alp {
 #endif
 
 
-#ifdef TEMPDISABLE
-			// // *********** diagDpOuter not implemented ***********
-			// //nummerical wrong, missing diagDpOuter implementation
-			// rc = rc ? rc : alp::set( d, dtmp2 );
-			// //nummerical wrong, missing diagDpOuter implementation
-			// Matrix< D, OrthogonalType, Dense > QdOuter( n );
-			// rc = rc ? rc : alp::set( QdOuter, zero );
-			// auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
-			// rc = rc ? rc : alp::set( QdOuter_diag, one );
-			// // ***************************************************
-
 			rc = rc ? rc : alp::set( d, zero );
 			Matrix< D, OrthogonalType, Dense > QdOuter( n );
 			rc = rc ? rc : alp::set( QdOuter, zero );
 			rc = rc ? rc : eigensolveDiagPlusOuter( d, QdOuter, dtmp2, ztmp2 );
-#else
-			D,V= diagDpOuter( dtmp2, ztmp2 );
-#endif
 
 #ifdef DEBUG
 			print_matrix( "  QdOuter  ", QdOuter );
