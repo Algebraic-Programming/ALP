@@ -21,6 +21,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -36,7 +37,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		a = b;
 		a = b;
 	}
-#if 0 // disable below only if operator= is defined for grb::Matrix
+#if 0 // enable if/when operator= is defined for grb::Matrix
 	if( n > 17 ) {
 		Matrix< void > A( n, n, 1 ), B( n, n, 1 );
 		size_t anInteger = 17;
@@ -66,10 +67,10 @@ int main( int argc, char ** argv ) {
 	if( argc == 2 ) {
 		size_t read;
 		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+		if( !(ss >> read) ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
+		} else if( !ss.eof() ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
 		} else {
@@ -79,8 +80,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, the test "
+			<< "size.\n";
 		return 1;
 	}
 
@@ -98,3 +99,4 @@ int main( int argc, char ** argv ) {
 	}
 	return 0;
 }
+
