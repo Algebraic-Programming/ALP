@@ -300,7 +300,7 @@ for MODE in debug ndebug; do
 
 				echo ">>>      [x]           [ ]       Testing double-assignment of ALP/GraphBLAS containers, i.e.,"
 				echo "                                 assigning one container another one (a=b), twice in a row."
-				$runner ${TEST_BIN_DIR}/doubleAssign_${MODE}_${SBACKEND} 1337 &> ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/doubleAssign_${MODE}_${BACKEND} 1337 &> ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
 				grep -i 'test ok' ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
