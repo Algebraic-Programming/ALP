@@ -298,6 +298,13 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing double-assignment of ALP/GraphBLAS containers, i.e.,"
+				echo "                                 assigning one container another one (a=b), twice in a row."
+				$runner ${TEST_BIN_DIR}/doubleAssign_${MODE}_${SBACKEND} 1337 &> ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
+				grep -i 'test ok' ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing copy and move constructors and assignment"
 				echo "                                 of the const_iterator of grb::Vector< double > of"
 				echo "                                 length 10 000 000."
@@ -305,7 +312,6 @@ for MODE in debug ndebug; do
 				head -1 ${TEST_OUT_DIR}/copyAndAssignVectorIterator_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/copyAndAssignVectorIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
-
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseMulAdd on a vector of"
 				echo "                                 doubles of size 7 000 000."
