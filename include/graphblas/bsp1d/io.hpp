@@ -504,6 +504,13 @@ namespace grb {
 	) noexcept {
 		const size_t n = size( x );
 		const size_t old_nnz = nnz( x );
+
+		// dynamic checks
+		if( (descr & descriptors::dense) && nnz( x ) < n ) {
+			return ILLEGAL;
+		}
+
+		// capacity check
 		if( capacity( x ) < n ) {
 			if( phase == RESIZE ) {
 				return resize( x, n );
@@ -517,16 +524,20 @@ namespace grb {
 			}
 		}
 
+		// handle trivial resize
 		assert( capacity( x ) == n );
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 
+		// dispatch
 		assert( phase == EXECUTE );
 		RC ret = internal::set_handle_use_index< descr >( x, old_nnz, val );
 		if( ret == SUCCESS ) {
 			internal::setDense( x );
 		}
+
+		// done
 		return ret;
 	}
 
@@ -622,7 +633,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) ) {
+			if( nnz( x ) < size( x ) || nnz( y ) < size( y ) ) {
 				return ILLEGAL;
 			}
 		}
@@ -699,7 +710,10 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) || nnz( mask ) < size( mask ) ) {
+			if( nnz( x ) < size( x ) ||
+				nnz( y ) < size( y ) ||
+				nnz( mask ) < size( mask )
+			) {
 				return ILLEGAL;
 			}
 		}
@@ -765,11 +779,21 @@ namespace grb {
 			return MISMATCH;
 		}
 
+		// dynamic checks
+		if( (descr & descriptors::dense) && nnz( x ) < size( x ) ) {
+			return ILLEGAL;
+		}
+		if( (descr & descriptors::dense) && nnz( mask ) < size( mask ) ) {
+			return ILLEGAL;
+		}
+
 		// on capacity pre-check, see above
 
 		// all OK, try to do assignment
-		RC ret = set< descr >( internal::getLocal( x ),
-			internal::getLocal( mask ), y, phase );
+		RC ret = set< descr >(
+			internal::getLocal( x ),
+			internal::getLocal( mask ), y, phase
+		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS

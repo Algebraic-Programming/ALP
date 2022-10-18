@@ -122,6 +122,10 @@ add_grb_executables( matrixIterator matrixIterator.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( doubleAssign doubleAssign.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+)
+
 add_grb_executables( matrixSet matrixSet.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
