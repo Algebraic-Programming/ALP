@@ -618,14 +618,15 @@ namespace grb {
 				const size_t bufferSize =
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) +
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
+				// allocate raw, assigned, and stack arrays
 				const RC rc = grb::utils::alloc(
 					"grb::Vector< T, BSP1D, C > (initialize)", sstream.str(),
-					_raw, cap_in, true, _raw_deleter,                      // allocate raw array
+					_raw, cap_in, true, _raw_deleter,
 					new_assigned,
 						internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
 						true,
-						_assigned_deleter,                             // allocate assigned array
-					_buffer, bufferSize, true, _buffer_deleter             // allocate (stack) buffer
+						_assigned_deleter,
+					_buffer, bufferSize, true, _buffer_deleter
 				);
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
@@ -2437,6 +2438,26 @@ namespace grb {
 			// deleters have been invalidated by std::move
 
 			// done
+		}
+
+		/**
+		 * Copy-assignment.
+		 *
+		 * Same performance semantics as #grb::set.
+		 *
+		 * \warning Errors will be thrown as standard C++ exceptions. Users who rather
+		 *          not deal with exceptions are encouraged to use #grb::set directly.
+		 *
+		 * \internal Dispatches to #grb::set.
+		 */
+		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &x ) {
+			const auto rc = set( *this, x );
+			if( rc != SUCCESS ) {
+				throw std::runtime_error( "grb::set inside copy-constructor: "
+					+ toString( rc )
+				);
+			}
+			return *this;
 		}
 
 		/**
