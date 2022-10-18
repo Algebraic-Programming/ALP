@@ -909,6 +909,9 @@ namespace grb {
 			/**
 			 * Copy-constructor.
 			 *
+			 * A call to this operator has the same performance semantics as a call to
+			 * #grb::set.
+			 *
 			 * \warning Relies on #grb::set. Any errors #grb::set would normally return,
 			 *          will, through this constructor, be thrown as standard C++
 			 *          exceptions instead.
@@ -932,7 +935,14 @@ namespace grb {
 				return *this;
 			}
 
-			/** Assign-from-temporary. */
+			/**
+			 * Assign-from-temporary.
+			 *
+			 * A call to this operator has \f$ \mathcal{O}(1) \f$ performance semantics
+			 * in work and intra-process data movement. It has no costs in inter-process
+			 * data movement nor in inter-process synchronisations. No system calls shall
+			 * be made.
+			 */
 			Vector< D, reference, MyCoordinates > & operator=(
 				Vector< D, reference, MyCoordinates > &&x
 			) noexcept {
