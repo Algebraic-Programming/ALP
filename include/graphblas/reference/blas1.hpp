@@ -4767,11 +4767,6 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator variant\n";
 #endif
-		// check if we can dispatch
-		if( getID( z ) == getID( y ) ) {
-			return foldr< descr >( alpha, z, op );
-		}
-
 		// dynamic sanity checks
 		const size_t n = internal::getCoordinates( z ).size();
 		if( internal::getCoordinates( y ).size() != n ) {
@@ -4780,6 +4775,16 @@ namespace grb {
 		if( descr & descriptors::dense ) {
 			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
 			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+		}
+
+		// check for trivial op
+		if( n == 0 ) {
+			return SUCCESS;
+		}
+
+		// check if we can dispatch
+		if( getID( z ) == getID( y ) ) {
+			return foldr< descr >( alpha, z, op );
 		}
 
 		if( phase == RESIZE ) {
@@ -5000,6 +5005,11 @@ namespace grb {
 			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
 			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
 			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+		}
+
+		// trivial dispatch
+		if( n == 0 ) {
+			return SUCCESS;
 		}
 
 		// check for possible shortcuts, after dynamic checks
