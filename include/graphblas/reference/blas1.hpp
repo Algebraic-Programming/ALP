@@ -3590,9 +3590,6 @@ namespace grb {
 				size_t_block_size :
 				op_block_size;
 
-			// whether we have a dense hint
-			constexpr bool dense = descr & descriptors::dense;
-
 			if( bigLoop ) {
 #ifdef _DEBUG
 				std::cerr << "\t in bigLoop variant\n";
@@ -3684,15 +3681,13 @@ namespace grb {
 							const size_t index = i + k;
 							assert( index < n );
 							if( mask_b[ k ] ) {
-								if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-									if( !z_coors.asyncAssign( index, update ) ) {
-										(void) ++asyncAssigns;
-									}
-#else
-									(void) z_coors.assign( index );
-#endif
+								if( !z_coors.asyncAssign( index, update ) ) {
+									(void) ++asyncAssigns;
 								}
+#else
+								(void) z_coors.assign( index );
+#endif
 								*( z_p + index ) = z_b[ k ];
 							}
 						}
@@ -3710,19 +3705,17 @@ namespace grb {
 					// scalar coda
 					for( size_t i = end * block_size; i < n; ++i ) {
 						if( mask_coors.template mask< descr >( i, mask_p ) ) {
-							if( !dense ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								if( !z_coors.asyncAssign( i, update ) ) {
-									(void) ++asyncAssigns;
-								}
-								if( asyncAssigns == maxAsyncAssigns ) {
-									(void) z_coors.joinUpdate( update );
-									asyncAssigns = 0;
-								}
-#else
-								(void) z_coors.assign( i );
-#endif
+							if( !z_coors.asyncAssign( i, update ) ) {
+								(void) ++asyncAssigns;
 							}
+							if( asyncAssigns == maxAsyncAssigns ) {
+								(void) z_coors.joinUpdate( update );
+								asyncAssigns = 0;
+							}
+#else
+							(void) z_coors.assign( i );
+#endif
 							const InputType1 * const x_e = left_scalar ?
 								x_p :
 								(
@@ -3840,19 +3833,17 @@ namespace grb {
 						}
 						for( size_t t = 0; t < block_size; ++t ) {
 							if( mask_b[ t ] ) {
-								if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-									(void) z_coors.assign( indices[ t ] );
+								(void) z_coors.assign( indices[ t ] );
 #else
-									if( !z_coors.asyncAssign( indices[ t ], update ) ) {
-										(void) ++asyncAssigns;
+								if( !z_coors.asyncAssign( indices[ t ], update ) ) {
+									(void) ++asyncAssigns;
 #ifdef _DEBUG
-										std::cout << "\t\t now made " << asyncAssigns << " calls to asyncAssign; "
-											<< "added index " << indices[ t ] << "\n";
-#endif
-									}
+									std::cout << "\t\t now made " << asyncAssigns << " calls to asyncAssign; "
+										<< "added index " << indices[ t ] << "\n";
 #endif
 								}
+#endif
 								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
 								*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
 								GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
@@ -3879,19 +3870,17 @@ namespace grb {
 									continue;
 								}
 							}
-							if( !dense ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-								(void) z_coors.assign( i );
+							(void) z_coors.assign( i );
 #else
-								if( !z_coors.asyncAssign( i, update ) ) {
-									(void) ++asyncAssigns;
-								}
-								if( asyncAssigns == maxAsyncAssigns ) {
-									(void) z_coors.joinUpdate( update );
-									asyncAssigns = 0;
-								}
-#endif
+							if( !z_coors.asyncAssign( i, update ) ) {
+								(void) ++asyncAssigns;
 							}
+							if( asyncAssigns == maxAsyncAssigns ) {
+								(void) z_coors.joinUpdate( update );
+								asyncAssigns = 0;
+							}
+#endif
 							const InputType1 * const x_e = left_scalar ?
 								x_p : (
 									(!left_sparse || left_coors->assigned( i )) ?
