@@ -47,7 +47,6 @@ int expect_mismatch(
 		error = true;
 	}
 
-
 	rc = foldr< descr >( v1, v0, alpha, mon );
 	if( rc != grb::MISMATCH ) {
 		std::cerr << "\t mismatched call to foldr ([T]->T, masked) "
@@ -499,13 +498,15 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// do similar happy path testing, but now for sparse inputs
 	{
-		grb::Vector< double > sparse( n ), empty( n ), single( n );
+		grb::Vector< double > sparse( n ), empty( n ), single( n ), singleFirst( n );
 		grb::Vector< bool > empty_mask( n ), odd_mask( n ), half_mask( n ), full( n );
 		grb::RC rc = grb::set( sparse, even_mask, 1.0 );
 		assert( rc == grb::SUCCESS );
 		rc = rc ? rc : grb::set( full, true );
 		assert( rc == grb::SUCCESS );
 		rc = rc ? rc : grb::setElement( single, 3.141, n/2 );
+		assert( rc == grb::SUCCESS );
+		rc = rc ? rc : grb::setElement( singleFirst, -1.7, 0 );
 		assert( rc == grb::SUCCESS );
 		rc = rc ? rc : grb::setElement( half_mask, true, n/2 );
 		assert( rc == grb::SUCCESS );
@@ -628,6 +629,25 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			return;
 		}
 
+		{
+			grb::Vector< bool > tmpMask( n );
+			rc = grb::setElement( tmpMask, true, 0 );
+			rc = rc ? rc : grb::setElement( tmpMask, false, n / 2 );
+			if( rc != grb::SUCCESS ) {
+				exit_status = 1401;
+				return;
+			}
+			exit_status = expect_sparse_success<
+				grb::descriptors::structural | grb::descriptors::invert_mask
+			>(
+				singleFirst, realm, 0, tmpMask, -1.7
+			);
+			if( exit_status != 0 ) {
+				exit_status += 1400;
+				return;
+			}
+		}
+
 		// warning: below set of two tests alter half_mask
 		{
 			double expect = (n/2) % 2 == 0
@@ -636,7 +656,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			exit_status = expect_sparse_success< grb::descriptors::structural >(
 				sparse, realm, expect, half_mask, grb::nnz(sparse) );
 			if( exit_status != 0 ) {
-				exit_status += 1400;
+				exit_status += 1500;
 				return;
 			}
 
@@ -650,12 +670,12 @@ void grbProgram( const size_t &P, int &exit_status ) {
 				exit_status = expect_sparse_success< grb::descriptors::no_operation >(
 					sparse, realm, expect, half_mask, grb::nnz(sparse) );
 			} else {
-				exit_status = 1532;
+				exit_status = 1632;
 				return;
 			}
 
 			if( exit_status != 0 ) {
-				exit_status += 1500;
+				exit_status += 1600;
 				return;
 			}
 		}
