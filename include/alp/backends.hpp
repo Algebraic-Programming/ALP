@@ -42,6 +42,11 @@ namespace alp {
 		 */
 		reference,
 
+		/*
+		 * The ALP dispatch backend.
+		 */
+		dispatch,
+
 		/**
 		 * The ALP OpenMP backend.
 		 */

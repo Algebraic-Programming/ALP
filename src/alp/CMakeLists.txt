@@ -40,3 +40,13 @@ endif()
 if( WITH_ALP_OMP_BACKEND )
 	add_subdirectory( omp )
 endif()
+
+set( backend_alp_dispatch_srcs
+	${CMAKE_CURRENT_SOURCE_DIR}/descriptors.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/dispatch/init.cpp
+)
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	add_subdirectory( dispatch )
+endif()

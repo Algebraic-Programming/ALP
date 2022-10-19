@@ -94,6 +94,7 @@ reference=yes
 banshee=no
 lpf=no
 alp_reference=yes
+alp_dispatch=no
 alp_omp=yes
 show=no
 FLAGS=$''
@@ -298,6 +299,10 @@ the current directory before invocation or confirm the deletion of its content w
 	else
 		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=ON"
 	fi
+	if [[ "${alp_dispatch}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=ON"
 	if [[ "${alp_omp}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=OFF"
 	else
