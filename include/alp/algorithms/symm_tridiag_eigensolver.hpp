@@ -60,10 +60,10 @@ namespace alp {
 		) {
 			RC rc = SUCCESS;
 
-#ifdef DEBUG
-			std::cout << " a = " << *a << " ";
-			std::cout << " b = " << *b << " ";
-#endif
+// #ifdef DEBUG
+// 			std::cout << " a = " << *a << " ";
+// 			std::cout << " b = " << *b << " ";
+// #endif
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -88,10 +88,10 @@ namespace alp {
 				v
 			);
 
-#ifdef DEBUG
-			std::cout << " x0 = " << *x0 << " ";
-			std::cout << " fx0 = " << *fx0 << "\n";
-#endif
+// #ifdef DEBUG
+// 			std::cout << " x0 = " << *x0 << " ";
+// 			std::cout << " fx0 = " << *fx0 << "\n";
+// #endif
 
 			if( std::abs( *fx0 ) < tol ) {
 				alp::set( lambda, x0 );
@@ -191,52 +191,33 @@ namespace alp {
 			auto egvals_direct = get_view< alp::structures::General >( egvals, select_direct );
 			auto egvals_non_direct = get_view< alp::structures::General >( egvals, select_non_direct );
 
-			auto Egvecs_direct = alp::get_view< alp::structures::Orthogonal >(
-				Egvecs, select_direct, select_direct
-			);
+			// not needed as Q is alrady set to identity
+			// auto Egvecs_direct = alp::get_view< alp::structures::Orthogonal >(
+			// 	Egvecs, select_direct, select_direct
+			// );
 			auto Egvecs_non_direct = alp::get_view< alp::structures::Orthogonal >(
 				Egvecs, select_non_direct, select_non_direct
 			);
 
+			// copy d -> egvals for direct part
+			rc = rc ? rc : alp::set(
+				egvals_direct,
+				get_view< alp::structures::General >( d, select_direct )
+			);
 
-			// Vector< D, structures::General, Dense > d_nontrv( n );
-			// Vector< D, structures::General, Dense > v_nontrv( n );
-			// alp::set( d_nontrv, zero );
-			// alp::set( v_nontrv, zero );
+			//rc = rc ? rc : alp::set( Egvecs_non_direct, one );
+			//rc = rc ? rc : alp::set( egvals_non_direct, one );
 
-			// for( size_t i = 0; i < n; i++ ) {
-			// 	if( std::abs( v[ i ] ) < eps ) {
-			// 		//simple egval formula ;
-			// 		//set eigenvalue
-			// 		egvals[ i ] = d[ i ];
-			// 		//set eigenvector
-			// 		//(could be done without temp vector by using eWiseLambda)
-			// 		Vector< D, structures::General, Dense > dvec( n );
-			// 		alp::set( dvec, zero );
-			// 		dvec[ i ] = *one;
-			// 		auto Egvecs_vec_view = get_view( Egvecs, utils::range( 0, n ), i );
-			// 		rc = rc ? rc : alp::set( Egvecs_vec_view, dvec );
-			// 	} else {
-			// 		//complicated egval formula ;
-			// 		d_nontrv[ non_trivial_egvc_count ] = d[ i ];
-			// 		v_nontrv[ non_trivial_egvc_count ] = v[ i ];
-			// 		++non_trivial_egvc_count;
-			// 	}
-			// }
+			auto d_view = get_view< alp::structures::General >( d, select_non_direct );
+			auto v_view = get_view< alp::structures::General >( v, select_non_direct );
 
-			// auto d_nontrv_nnz_view = get_view( d_nontrv, utils::range( 0, non_trivial_egvc_count ) );
-			// auto v_nontrv_nnz_view = get_view( v_nontrv, utils::range( 0, non_trivial_egvc_count ) );
+#ifdef DEBUG
+			print_vector( "eigensolveDiagPlusOuter: d ", d );
+			print_vector( "eigensolveDiagPlusOuter: v ", v );
+			print_vector( "eigensolveDiagPlusOuter: d_view ", d_view );
+			print_vector( "eigensolveDiagPlusOuter: v_view ", v_view );
 
-			// Vector< D, structures::General, Dense > egvals_nontrv( non_trivial_egvc_count );
-			// Matrix< D, OrthogonalType, Dense > Egvecs_nontrv( non_trivial_egvc_count );
-			// rc = rc ? rc : alp::set( egvals_nontrv, zero );
-			// rc = rc ? rc : alp::set( Egvecs_nontrv, zero );
 
-// #ifdef DEBUG
-// 			print_vector( "eigensolveDiagPlusOuter: d ", d );
-// 			print_vector( "eigensolveDiagPlusOuter: v ", v );
-// 			print_vector( "eigensolveDiagPlusOuter: d_nontrv_nnz_view ", d_nontrv_nnz_view );
-// 			print_vector( "eigensolveDiagPlusOuter: v_nontrv_nnz_view ", v_nontrv_nnz_view );
 
 // 			// for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
 // 			// 	std::cout << " ============ i= " << i << "  ============\n";
@@ -275,7 +256,76 @@ namespace alp {
 // 			// 	rc = rc ? rc : bisec_sec_eq( lambda, d_nontrv_nnz_view, v_nontrv_nnz_view, a, b );
 // 			// 	std::cout << " lambda (" << i << ") = " << *lambda << "\n";
 // 			}
-// #endif
+#endif
+
+			/////////////////// OK code //////////////////////////////
+
+			// vec_b = {d_view[1], d_view[2], ... , d_view[N-1], d_view[N]+dot(v,v) }
+			size_t nn = alp::getLength( d_view );
+			alp::Vector< D > vec_b( nn );
+			auto v1 = get_view( vec_b, utils::range( 0, nn - 1 ) );
+			auto v2 = get_view( d_view, utils::range( 1, nn ) );
+			rc = rc ? rc : alp::set( v1, v2 );
+			auto v3 = get_view( vec_b, utils::range( nn - 1, nn ) );
+			auto v4 = get_view( d_view, utils::range( nn - 1, nn ) );
+			rc = rc ? rc : alp::set( v3, v4 );
+			Scalar< D > alpha( zero );
+			rc = rc ? rc : dot( alpha, d_view, d_view, ring );
+			auto v5 = get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
+			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
+
+			alp::Vector< D > vec_temp_egvals( nn );
+			alp::Vector< D > vec_temp_d( nn );
+			alp::Vector< D > vec_temp_v( nn );
+
+			rc = rc ? rc : alp::set( vec_temp_egvals, zero );
+			rc = rc ? rc : alp::set( vec_temp_d, d_view );
+			rc = rc ? rc : alp::set( vec_temp_v, v_view );
+
+			rc = rc ? rc : eWiseLambda(
+				[ &d_view, &vec_temp_v, &vec_b ]( const size_t i, D &val ) {
+					Scalar< D > a( d_view[ i ] );
+					Scalar< D > b( vec_b[ i ] );
+					Scalar< D > w( ( *a + *b ) / 2 );
+					bisec_sec_eq( w, d_view, vec_temp_v, a, b );
+					val = *w;
+				},
+				vec_temp_egvals
+			);
+			rc = rc ? rc : alp::set( egvals_non_direct, vec_temp_egvals );
+
+			// until fold vec -> matrix (or scatter) is implemented
+			// we have to use this for loop
+			for( size_t i = 0; i < nn; i++ ) {
+				auto egvecs_view = get_view( Egvecs_non_direct, utils::range( 0, nn ), i );
+				alp::set( egvecs_view, vec_temp_v );
+#ifdef DEBUG
+			print_vector( "-----> egvecs_view(0) ", egvecs_view );
+#endif
+				alp::set( vec_temp_egvals, vec_temp_d );
+#ifdef DEBUG
+			print_vector( "-----> egvecs_view(1) ", vec_temp_egvals );
+#endif
+				Scalar< D > lambda_i( egvals_non_direct[ i ] );
+				rc = rc ? rc : alp::foldl( vec_temp_egvals, lambda_i, minus );
+#ifdef DEBUG
+			print_vector( "-----> egvecs_view(2) ", vec_temp_egvals );
+#endif
+				rc = rc ? rc : alp::foldl( egvecs_view, vec_temp_egvals , divide );
+#ifdef DEBUG
+			print_vector( "-----> egvecs_view(3) ", vec_temp_egvals );
+#endif
+				Scalar< D > norm1( zero );
+				rc = rc ? rc : norm2( norm1, egvecs_view, ring );
+				rc = rc ? rc : alp::foldl( egvecs_view, norm1 , divide );
+			}
+
+
+#ifdef DEBUG
+			print_vector( "-----> d_view ", d_view );
+			print_vector( "-----> vec_b  ", vec_b );
+#endif
+			//////////////////////////////////////////////////////////
 
 
 // #ifdef TEMPDISABLE
@@ -451,9 +501,9 @@ namespace alp {
 			auto Utop = get_view< OrthogonalType >( U, utils::range( 0, m ), utils::range( 0, m ) );
 			auto Udown = get_view< OrthogonalType >( U, utils::range( m, n ), utils::range( m, n ) );
 
-			// rc = rc ? rc : symm_tridiag_dac_eigensolver( Ttop, Utop, dtop, ring );
-			// rc = rc ? rc : symm_tridiag_dac_eigensolver( Tdown, Udown, ddown, ring );
-			std::cout << " --> ust one iteration\n";
+			rc = rc ? rc : symm_tridiag_dac_eigensolver( Ttop, Utop, dtop, ring );
+			rc = rc ? rc : symm_tridiag_dac_eigensolver( Tdown, Udown, ddown, ring );
+			//std::cout << " --> ust one iteration\n";
 
 #ifdef DEBUG
 			std::cout << " after symm_tridiag_dac_eigensolver call:\n";
@@ -492,8 +542,16 @@ namespace alp {
 #endif
 
 #ifdef DEBUG
+// 			//testis
+// 			std::vector< double > xdtmp{ 1, 4, 2, 10, -1, 3};
+// 			std::vector< double > xztmp{ 1, 2, 1, 1.e-12, -1, 1.e-12};
+// 			alp::buildVector( dtmp, xdtmp.begin(), xdtmp.end() );
+// 			alp::buildVector( z, xztmp.begin(), xztmp.end() );
+// //test
+
 			print_vector( "  z  ", z );
 #endif
+
 
 			// permutations which sort dtmp
 			std::vector< size_t > isort_dtmp( n, 0 );
@@ -537,16 +595,25 @@ namespace alp {
 			rc = rc ? rc : alp::set( d, zero );
 			Matrix< D, OrthogonalType, Dense > QdOuter( n );
 			rc = rc ? rc : alp::set( QdOuter, zero );
+			{
+				auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
+				rc = rc ? rc : alp::set(
+					QdOuter_diag,
+					one
+				);
+			}
+
 			auto QdOuter2 = alp::get_view< alp::structures::Orthogonal >(
 				QdOuter, permutation_vec, permutation_vec
 			);
-
 #ifdef DEBUG
 			print_matrix( "  QdOuter(in)  ", QdOuter );
+			print_vector( "  d(in)  ", d );
 #endif
 			rc = rc ? rc : eigensolveDiagPlusOuter( d, QdOuter2, dtmp2, ztmp2 );
 #ifdef DEBUG
 			print_matrix( "  QdOuter(out)  ", QdOuter );
+			print_vector( "  d(out)  ", d );
 #endif
 
 
