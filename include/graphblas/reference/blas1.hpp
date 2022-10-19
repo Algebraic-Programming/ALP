@@ -374,6 +374,9 @@ namespace grb {
 			const Vector< MaskType, reference, Coords > &mask,
 			const Monoid &monoid
 		) {
+#ifdef _DEBUG
+			std::cout << "Entered fold_from_vector_to_scalar_fullLoopSparse\n";
+#endif
 			const auto &to_fold_coors = internal::getCoordinates( to_fold );
 			const size_t n = to_fold_coors.size();
 			assert( n > 0 );
@@ -446,12 +449,12 @@ namespace grb {
 					monoid.template getIdentity< typename Monoid::D3 >();
 				if( end > 0 ) {
 					if( i < end ) {
+#ifdef _DEBUG
+						std::cout << "\t processing start index " << i << "\n";
+#endif
+
 						local = static_cast< typename Monoid::D3 >(
 								internal::getRaw( to_fold )[ i ]
-							);
-					} else {
-						local = static_cast< typename Monoid::D3 >(
-								internal::getRaw( to_fold )[ 0 ]
 							);
 					}
 				}
@@ -505,6 +508,10 @@ namespace grb {
 						if( i >= end ) {
 							break;
 						}
+
+#ifdef _DEBUG
+						std::cout << "\t processing index " << i << "\n";
+#endif
 
 						// store result of fold in local variable
 						RC local_rc;
