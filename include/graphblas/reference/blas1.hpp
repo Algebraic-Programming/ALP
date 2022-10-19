@@ -4008,6 +4008,10 @@ namespace grb {
 		if( internal::getCoordinates( x ).size() != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
@@ -4067,6 +4071,9 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), operator variant\n";
 #endif
+		if( (descr & descriptors::dense) && nnz( z ) < size( z ) ) {
+			return ILLEGAL;
+		}
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
@@ -4149,6 +4156,11 @@ namespace grb {
 		if( internal::getCoordinates( mask ).size() != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
+		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
@@ -4227,6 +4239,11 @@ namespace grb {
 		if( internal::getCoordinates( y ).size() != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
@@ -4294,6 +4311,10 @@ namespace grb {
 		if( internal::getCoordinates( y ).size() != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
@@ -4334,7 +4355,8 @@ namespace grb {
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, reference, Coords > &z,
+	RC eWiseApply(
+		Vector< OutputType, reference, Coords > &z,
 		const Vector< InputType1, reference, Coords > &x,
 		const InputType2 beta,
 		const Monoid &monoid = Monoid(),
@@ -4352,6 +4374,10 @@ namespace grb {
 		const size_t n = internal::getCoordinates( z ).size();
 		if( internal::getCoordinates( x ).size() != n ) {
 			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
@@ -4393,7 +4419,8 @@ namespace grb {
 		typename InputType1, typename InputType2,
 		typename Coords
 	>
-	RC eWiseApply( Vector< OutputType, reference, Coords > &z,
+	RC eWiseApply(
+		Vector< OutputType, reference, Coords > &z,
 		const Vector< MaskType, reference, Coords > &mask,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
@@ -4424,6 +4451,12 @@ namespace grb {
 		}
 		if( internal::getCoordinates( mask ).size() != n ) {
 			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
@@ -4533,6 +4566,11 @@ namespace grb {
 		if( internal::getCoordinates( mask ).size() != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
+		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
@@ -4606,6 +4644,11 @@ namespace grb {
 		}
 		if( internal::getCoordinates( mask ).size() != n ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
@@ -4723,23 +4766,25 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator variant\n";
 #endif
-		// sanity check
+		// check if we can dispatch
+		if( getID( z ) == getID( y ) ) {
+			return foldr< descr >( alpha, z, op );
+		}
+
+		// dynamic sanity checks
 		const size_t n = internal::getCoordinates( z ).size();
 		if( internal::getCoordinates( y ).size() != n ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
-
-		// check if we can dispatch
-		if( static_cast< const void * >( &z ) ==
-			static_cast< const void * >( &y )
-		) {
-			return foldr< descr >( alpha, z, op );
-		}
 
 		// check for dense variant
 		if( (descr & descriptors::dense) ||
@@ -4754,6 +4799,7 @@ namespace grb {
 		}
 
 		// we are in the sparse variant
+		internal::getCoordinates( z ).clear();
 		const bool * const null_mask = nullptr;
 		const Coords * const null_coors = nullptr;
 		return internal::sparse_apply_generic< false, false, true, false, descr >(
@@ -4798,21 +4844,8 @@ namespace grb {
 			return eWiseApply< descr >( z, alpha, y, op );
 		}
 
-		// sanity check
-		const size_t n = internal::getCoordinates( z ).size();
-		if( internal::getCoordinates( y ).size() != n ) {
-			return MISMATCH;
-		}
-		if( internal::getCoordinates( mask ).size() != n ) {
-			return MISMATCH;
-		}
-
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
 		// check delegate to unmasked
+		const size_t n = internal::getCoordinates( mask ).size();
 		const auto &mask_coors = internal::getCoordinates( mask );
 		if( (descr & descriptors::structural) &&
 			!(descr & descriptors::invert_mask) &&
@@ -4820,6 +4853,24 @@ namespace grb {
 		) {
 			return eWiseApply< descr >( z, alpha, y, op );
 		}
+
+		// sanity checks
+		if( internal::getCoordinates( y ).size() != n ) {
+			return MISMATCH;
+		}
+		if( internal::getCoordinates( z ).size() != n ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
+		}
+
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+		assert( phase == EXECUTE );
 
 		auto &z_coors = internal::getCoordinates( z );
 		OutputType * const z_p = internal::getRaw( z );
@@ -4933,7 +4984,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
 #endif
-		// sanity check
+		// dynamic sanity checks
 		auto &z_coors = internal::getCoordinates( z );
 		const size_t n = z_coors.size();
 		if( internal::getCoordinates( x ).size() != n ||
@@ -4944,17 +4995,20 @@ namespace grb {
 #endif
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+		}
 
-		// check for possible shortcuts
-		if( static_cast< const void * >( &x ) == static_cast< const void * >( &y ) &&
-			is_idempotent< OP >::value
-		) {
+		// check for possible shortcuts, after dynamic checks
+		if( getID( x ) == getID( y ) && is_idempotent< OP >::value ) {
 			return set< descr >( z, x, phase );
 		}
-		if( static_cast< const void * >( &x ) == static_cast< void * >( &z ) ) {
+		if( getID( x ) == getID( z ) ) {
 			return foldl< descr >( z, y, op, phase );
 		}
-		if( static_cast< const void * >( &y ) == static_cast< void * >( &z ) ) {
+		if( getID( y ) == getID( z ) ) {
 			return foldr< descr >( x, z, op, phase );
 		}
 
@@ -5048,18 +5102,33 @@ namespace grb {
 			return eWiseApply< descr >( z, x, y, op, phase );
 		}
 
+		// check if can delegate to unmasked variant
+		const auto &m_coors = internal::getCoordinates( mask );
+		const size_t n = m_coors.size();
+		if( m_coors.nonzeroes() == n &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask)
+		) {
+			return eWiseApply< descr >( z, x, y, op );
+		}
+
 		// other run-time checks
 		auto &z_coors = internal::getCoordinates( z );
 		const auto &mask_coors = internal::getCoordinates( mask );
-		const size_t n = z_coors.size();
 		if( internal::getCoordinates( x ).size() != n ) {
 			return MISMATCH;
 		}
 		if( internal::getCoordinates( y ).size() != n ) {
 			return MISMATCH;
 		}
-		if( mask_coors.size() != n ) {
+		if( z_coors.size() != n ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+			if( nnz( y ) < size( y ) ) { return ILLEGAL; }
+			if( nnz( mask ) < size( mask ) ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
@@ -5073,17 +5142,8 @@ namespace grb {
 		const InputType2 * const y_p = internal::getRaw( y );
 		const auto &x_coors = internal::getCoordinates( x );
 		const auto &y_coors = internal::getCoordinates( y );
-		const auto &m_coors = internal::getCoordinates( mask );
 		const size_t sparse_loop =
 			std::min( x_coors.nonzeroes(), y_coors.nonzeroes() );
-
-		// check if can delegate to unmasked variant
-		if( m_coors.nonzeroes() == n &&
-			(descr & descriptors::structural) &&
-			!(descr & descriptors::invert_mask)
-		) {
-			return eWiseApply< descr >( z, x, y, op );
-		}
 
 		// the output sparsity structure is unknown a priori
 		z_coors.clear();
