@@ -3214,17 +3214,19 @@ namespace grb {
 					// part that may or may not be vectorised (can we do something about this??)
 					for( size_t i = 0; i < block_size; ++i ) {
 						if( !masked || mask[ i ] ) {
+							if( y_m[ i ] || monoid ) {
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-							(void) z_coors.assign( offsets[ i ] );
+								(void) z_coors.assign( offsets[ i ] );
 #else
-							if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
-								(void) ++asyncAssigns;
+								if( !z_coors.asyncAssign( offsets[ i ], update ) ) {
+									(void) ++asyncAssigns;
 #ifdef _DEBUG
-								std::cout << "\t\t now made " << asyncAssigns
-									<< " calls to asyncAssign; " << "added index " << offsets[ i ] << "\n";
+									std::cout << "\t\t now made " << asyncAssigns << " calls to "
+										<< "asyncAssign; " << "added index " << offsets[ i ] << "\n";
+#endif
+								}
 #endif
 							}
-#endif
 						}
 					}
 					// perform scatter
