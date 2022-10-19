@@ -3705,6 +3705,11 @@ namespace grb {
 					// scalar coda
 					for( size_t i = end * block_size; i < n; ++i ) {
 						if( mask_coors.template mask< descr >( i, mask_p ) ) {
+							if( left_sparse && right_sparse ) {
+								if( !left_coors->assigned( i ) && !right_coors->assigned( i ) ) {
+									continue;
+								}
+							}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 							if( !z_coors.asyncAssign( i, update ) ) {
 								(void) ++asyncAssigns;
