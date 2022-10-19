@@ -3242,8 +3242,9 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 					if( asyncAssigns > maxAsyncAssigns - block_size ) {
 #ifdef _DEBUG
-						std::cout << "\t\t " << omp_get_thread_num() << ": clearing local update at block "
-							<< b << ". It locally holds " << asyncAssigns << " entries. "
+						std::cout << "\t\t " << omp_get_thread_num() << ": "
+							<< "clearing local update at block " << b << ". "
+							<< "It locally holds " << asyncAssigns << " entries. "
 							<< "Update is at " << ( (void *)update ) << "\n";
 #endif
 #ifndef NDEBUG
@@ -3514,13 +3515,18 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		/**
+		 * \internal Whenever this function is called, the z_coors is assumed to be
+		 *           cleared.
+		 */
 		template<
 			bool left_scalar, bool right_scalar, bool left_sparse, bool right_sparse,
 			Descriptor descr, class OP,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2
 		>
-		RC masked_apply_generic( OutputType * const z_p,
+		RC masked_apply_generic(
+			OutputType * const z_p,
 			Coordinates< reference > &z_coors,
 			const MaskType * const mask_p,
 			const Coordinates< reference > &mask_coors,
@@ -3549,6 +3555,7 @@ namespace grb {
 			assert( !left_sparse || left_identity != nullptr );
 			assert( !right_sparse || right_coors != nullptr );
 			assert( !right_sparse || right_identity != nullptr );
+			assert( z_coors.nonzeroes() == 0 );
 
 #ifdef _DEBUG
 			std::cout << "\tinternal::masked_apply_generic called with nnz(mask)="
@@ -3886,15 +3893,13 @@ namespace grb {
 #endif
 							}
 							const InputType1 * const x_e = left_scalar ?
-								x_p :
-								(
+								x_p : (
 									(!left_sparse || left_coors->assigned( i )) ?
 										x_p + i :
 										left_identity
-									);
+								);
 							const InputType2 * const y_e = right_scalar ?
-								y_p :
-								(
+								y_p : (
 									(!right_sparse || right_coors->assigned( i )) ?
 									y_p + i :
 									right_identity
