@@ -1005,7 +1005,7 @@ namespace alp {
 						assert( amf.getLogicalDimensions().first == amf.getLogicalDimensions().second );
 						return amf_type(
 							imf::Id( amf.getLogicalDimensions().first ),
-							imf::Zero( amf.getLogicalDimensions().second ),
+							imf::Zero( 1 ),
 							new_poly_type(
 								orig_p::Ax2 * amf.map_poly.ax2 + orig_p::Ay2 * amf.map_poly.ay2 + orig_p::Axy * amf.map_poly.axy, 0, 0,
 								orig_p::Ax * amf.map_poly.ax + orig_p::Ay * amf.map_poly.ay, 0,
