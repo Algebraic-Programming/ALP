@@ -374,7 +374,11 @@ namespace grb {
 			const Vector< MaskType, reference, Coords > &mask,
 			const Monoid &monoid
 		) {
-			const size_t n = internal::getCoordinates( to_fold ).size();
+#ifdef _DEBUG
+			std::cout << "Entered fold_from_vector_to_scalar_fullLoopSparse\n";
+#endif
+			const auto &to_fold_coors = internal::getCoordinates( to_fold );
+			const size_t n = to_fold_coors.size();
 			assert( n > 0 );
 			RC ret = SUCCESS;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
@@ -400,7 +404,7 @@ namespace grb {
 						internal::getCoordinates( mask ).assigned( i ),
 						internal::getRaw( mask ),
 						i
-					);
+					) && to_fold_coors.assigned( i );
 					// if not
 					while( !process_current_i ) {
 						// forward to next element
@@ -414,20 +418,26 @@ namespace grb {
 							internal::getCoordinates( mask ).assigned( i ),
 							internal::getRaw( mask ),
 							i
-						);
+						) && to_fold_coors.assigned( i );
+					}
+				}
+				if( !masked && i < end ) {
+					process_current_i = to_fold_coors.assigned( i );
+					while( !process_current_i ) {
+						(void) ++i;
+						if( i == end ) {
+							break;
+						}
+						process_current_i = to_fold_coors.assigned( i );
 					}
 				}
 
 				// whether we have any nonzeroes assigned at all
 				const bool empty = i >= end;
-
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
-				// in the sequential case, the empty case should have been handled earlier
-				assert( !empty );
- #ifdef NDEBUG
 				(void) empty;
- #endif
 #endif
+
 #ifndef NDEBUG
 				if( i < end ) {
 					assert( i < n );
@@ -439,12 +449,12 @@ namespace grb {
 					monoid.template getIdentity< typename Monoid::D3 >();
 				if( end > 0 ) {
 					if( i < end ) {
+#ifdef _DEBUG
+						std::cout << "\t processing start index " << i << "\n";
+#endif
+
 						local = static_cast< typename Monoid::D3 >(
 								internal::getRaw( to_fold )[ i ]
-							);
-					} else {
-						local = static_cast< typename Monoid::D3 >(
-								internal::getRaw( to_fold )[ 0 ]
 							);
 					}
 				}
@@ -465,24 +475,43 @@ namespace grb {
 								internal::getCoordinates( mask ).assigned( i ),
 								internal::getRaw( mask ),
 								i
-							);
-							while( !process_current_i && i + 1 < end ) {
+							) && to_fold_coors.assigned( i );
+							while( !process_current_i ) {
 								(void) ++i;
-								if( i < end ) {
-									assert( i < n );
-									process_current_i = utils::interpretMask< descr >(
-										internal::getCoordinates( mask ).assigned( i ),
-										internal::getRaw( mask ),
-										i
-									);
+								if( i == end ) {
+									break;
 								}
+								assert( i < end );
+								assert( i < n );
+								process_current_i = utils::interpretMask< descr >(
+									internal::getCoordinates( mask ).assigned( i ),
+									internal::getRaw( mask ),
+									i
+								) && to_fold_coors.assigned( i );
+							}
+						}
+						if( !masked && i < end ) {
+							assert( i < n );
+							process_current_i = to_fold_coors.assigned( i );
+							while( !process_current_i ) {
+								(void) ++i;
+								if( i == end ) {
+									break;
+								}
+								assert( i < end );
+								assert( i < n );
+								process_current_i = to_fold_coors.assigned( i );
 							}
 						}
 
 						// stop if past end
-						if( i >= end || !process_current_i ) {
+						if( i >= end ) {
 							break;
 						}
+
+#ifdef _DEBUG
+						std::cout << "\t processing index " << i << "\n";
+#endif
 
 						// store result of fold in local variable
 						RC local_rc;
