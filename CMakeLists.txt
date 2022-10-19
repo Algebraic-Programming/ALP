@@ -51,6 +51,7 @@ endif()
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" ON )
+option( WITH_ALP_DISPATCH_BACKEND "With Dispatch Dense backend" OFF )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_ALP_OMP_BACKEND "With OMP Dense backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
@@ -190,6 +191,7 @@ endif()
 # by default no headers are built
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_ALP_REFERENCE_BACKEND_HEADERS OFF )
+set( WITH_ALP_DISPATCH_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
 set( WITH_ALP_OMP_BACKEND_HEADERS OFF )
 
@@ -206,6 +208,10 @@ endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
 	set( WITH_ALP_REFERENCE_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	set( WITH_ALP_DISPATCH_BACKEND_HEADERS ON )
 endif()
 
 if( WITH_ALP_OMP_BACKEND )
