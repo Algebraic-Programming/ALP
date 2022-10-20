@@ -252,23 +252,41 @@ namespace alp {
 			);
 			rc = rc ? rc : alp::set( egvals_non_direct, vec_temp_egvals );
 
-			// until fold vec -> matrix (or scatter) is implemented
-			// we have to use this for loop
-			for( size_t i = 0; i < nn; i++ ) {
-				auto egvecs_view = get_view( Egvecs_non_direct, utils::range( 0, nn ), i );
-				// //test
-				// alp::set( egvecs_view, Scalar< D >( i + 1 ) );
-				// //test
+			Matrix< D, structures::General, Dense > tmp_egvecs( nn, nn );
+			Matrix< D, structures::General, Dense > tmp_denominator( nn, nn );
 
-				alp::set( egvecs_view, vec_temp_v );
-				alp::set( vec_temp_egvals, vec_temp_d );
-				Scalar< D > lambda_i( egvals_non_direct[ i ] );
-				rc = rc ? rc : alp::foldl( vec_temp_egvals, lambda_i , minus );
-				rc = rc ? rc : alp::foldl( egvecs_view, vec_temp_egvals , divide );
-				Scalar< D > norm1( zero );
-				rc = rc ? rc : norm2( norm1, egvecs_view, ring );
-				rc = rc ? rc : alp::foldl( egvecs_view, norm1 , divide );
-			}
+			alp::Vector< D > ones( nn );
+			rc = rc ? rc : alp::set( ones, one );
+			rc = rc ? rc : alp::set(
+				tmp_egvecs,
+				alp::outer( vec_temp_v, ones, ring.getMultiplicativeOperator() )
+			);
+
+			auto ddd = alp::outer( vec_temp_d, ones, ring.getMultiplicativeOperator() );
+			auto lll = alp::outer( ones, egvals_non_direct, ring.getMultiplicativeOperator() );
+			rc = rc ? rc : alp::set( tmp_denominator, ddd );
+			rc = rc ? rc : alp::foldl( tmp_denominator, lll, minus );
+			rc = rc ? rc : alp::foldl( tmp_egvecs, tmp_denominator, divide );
+
+			// while fold matrix -> vector would be a solution to
+			// normalize columns in tmp_egvecs,
+			// here we abuse syntax and use eWiseLambda.
+			// Once fold matrix -> vector implemented, the next section should be rewritten
+			rc = rc ? rc : eWiseLambda(
+				[ &tmp_egvecs, &nn, &ring, &divide, &zero ]( const size_t i, D &val ) {
+					(void)val;
+					auto egvec_i = get_view( tmp_egvecs, utils::range( 0, nn ), i );
+					Scalar< D > norm_i( zero );
+					(void)norm2( norm_i, egvec_i, ring );
+					alp::foldl( egvec_i, norm_i , divide );
+				},
+				ones
+			);
+
+			// update results
+			auto egvecs_view = get_view( Egvecs_non_direct, utils::range( 0, nn ), utils::range( 0, nn ) );
+			auto tmp_egvecs_orth_view = get_view< OrthogonalType  >( tmp_egvecs );
+			rc = rc ? rc : alp::set( egvecs_view, tmp_egvecs_orth_view );
 
 			return rc;
 		}
