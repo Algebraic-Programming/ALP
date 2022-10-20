@@ -444,20 +444,21 @@ namespace alp {
 
 	template< typename T, typename Structure, enum Density density, typename View,
 		typename ImfR, typename ImfC, enum Backend backend >
-	class Matrix {
+	class Matrix;
 
+		// These two comments are left here until a better place is found for them.
 		/**
 		 * The two following members define the \em logical layout of a structured matrix:
 		 * Its structure and access relations. This is enabled only if the structured matrix
 		 * does not define a View on another matrix.
 		 */
-		using structure = Structure;
+		//using structure = Structure;
 		/**
 		 * A pair of pointers to index mapping functions (see imf.hpp) that express the
 		 * logical access to the structured matrix.
 		 */
-		ImfR imf_r;
-		ImfC imf_c;
+		//ImfR imf_r;
+		//ImfC imf_c;
 
 		/**
 		 * When a structured matrix instanciate a \em container it defines a new \em physical
@@ -467,7 +468,7 @@ namespace alp {
 		 * identify a precise mapping between an element in the structured matrix and a position
 		 * wihtin one or more 1/2D-arrays that store it.
 		 */
-		internal::Matrix< T, reference > * _container;
+		//internal::Matrix< T, reference > * _container;
 
 		/**
 		 * A container's storage scheme. \a storage_scheme is not exposed to the user as an option
@@ -488,20 +489,18 @@ namespace alp {
 		 * When a structured matrix defines a View over another matrix, it contains a pointer
 		 * to the latter. Its type can be identified via the View parameter.
 		 */
-		using target_type = typename std::enable_if<! std::is_same<View, view::Original<void> >::value, typename View::applied_to>::type;
-		target_type * ref;
+		//using target_type = typename std::enable_if<! std::is_same<View, view::Original<void> >::value, typename View::applied_to>::type;
+		//target_type * ref;
 
-		public :
+		//public :
 
-			Matrix( const size_t m, const size_t n );
+			//Matrix( const size_t m, const size_t n );
 
-			Matrix( const Matrix< T, Structure, density, View, ImfR, ImfC, backend > & other );
+			//Matrix( const Matrix< T, Structure, density, View, ImfR, ImfC, backend > & other );
 
-			Matrix( Matrix< T, Structure, density, View, ImfR, ImfC, backend > && other );
+			//Matrix( Matrix< T, Structure, density, View, ImfR, ImfC, backend > && other );
 
-			~Matrix();
-
-	}; // class Matrix
+			//~Matrix();
 
 	/**
 	 * Check if type \a T is a Matrix.
