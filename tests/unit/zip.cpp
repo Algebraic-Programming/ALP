@@ -20,10 +20,14 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 void grb_program( const size_t & n, grb::RC & rc ) {
-	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
 	grb::Vector< double > left( n ), chk1( n );
 	grb::Vector< int > right( n ), chk2( n );
 	grb::Vector< std::pair< double, int > > out( n );
@@ -42,13 +46,16 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( nnz( out ) != n ) {
-		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( out ) << ", expected " << n << " )\n";
+		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( out )
+			<< ", expected " << n << " )\n";
 		rc = FAILED;
 	}
-	for( const auto & pair : out ) {
+	for( const auto &pair : out ) {
 		const std::pair< double, int > & out = pair.second;
 		if( out.first != 1.5 || out.second != 2 ) {
-			std::cerr << "\t unexpected output ( " << pair.first << ", < " << out.first << ", " << out.second << " > ), expected " << pair.first << ", < 1.5, 2 > )\n";
+			std::cerr << "\t unexpected output "
+				<< "( " << pair.first << ", < " << out.first << ", "
+				<< out.second << " > ), expected " << pair.first << ", < 1.5, 2 > )\n";
 			rc = FAILED;
 		}
 	}
@@ -62,22 +69,26 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		return;
 	}
 	if( nnz( chk1 ) != n ) {
-		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( chk1 ) << ", expected " << n << "\n";
+		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( chk1 ) << ", "
+			<< "expected " << n << "\n";
 		rc = FAILED;
 	}
 	if( nnz( chk2 ) != n ) {
-		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( chk2 ) << ", expected " << n << "\n";
+		std::cerr << "\t unexpected number of nonzeroes ( " << nnz( chk2 ) << ", "
+			<< "expected " << n << "\n";
 		rc = FAILED;
 	}
-	for( const auto & pair : chk1 ) {
+	for( const auto &pair : chk1 ) {
 		if( pair.second != 1.5 ) {
-			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second << " ), expected " << pair.first << ", 1.5 )\n";
+			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second
+				<< " ), expected " << pair.first << ", 1.5 )\n";
 			rc = FAILED;
 		}
 	}
 	for( const auto & pair : chk2 ) {
 		if( pair.second != 2 ) {
-			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second << " ), expected " << pair.first << ", 2 )\n";
+			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second
+				<< " ), expected " << pair.first << ", 2 )\n";
 			rc = FAILED;
 		}
 	}
