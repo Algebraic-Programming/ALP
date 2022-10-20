@@ -49,7 +49,10 @@
 namespace alp {
 
 	/** Identifies any backend's implementation of ALP matrix as an ALP matrix. */
-	template< typename T, typename Structure, enum Density density, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	template<
+		typename T, typename Structure, enum Density density,
+		typename View, typename ImfR, typename ImfC, enum Backend backend
+	>
 	struct is_matrix< Matrix< T, Structure, density, View, ImfR, ImfC, backend > > : std::true_type {};
 
 	// Matrix-related implementation
@@ -68,7 +71,7 @@ namespace alp {
 		class MatrixBase;
 
 		template< typename DerivedMatrix >
-		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > &A ) noexcept;
 
 		template<
 			typename MatrixType,
@@ -387,11 +390,11 @@ namespace alp {
 			******************** */
 
 			template< typename fwd_iterator >
-			friend RC buildMatrix( Matrix< T, Structure, Density::Dense, View, ImfR, ImfC, backend > & A,
+			friend RC buildMatrix( Matrix< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &A,
 				const fwd_iterator & start, const fwd_iterator & end );
 
 			template< typename fwd_iterator >
-			RC buildMatrixUnique( const fwd_iterator & start, const fwd_iterator & end ) {
+			RC buildMatrixUnique( const fwd_iterator &start, const fwd_iterator &end ) {
 				std::cout << "Building Matrix<>; calling buildMatrix( Matrix<> )\n";
 				return buildMatrix( *(this->_container), start, end );
 			}
@@ -412,7 +415,7 @@ namespace alp {
 			 */
 			typedef typename internal::matrix_base_class< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::type base_type;
 
-			template < view::Views view_tag, bool d=false >
+			template < view::Views view_tag, bool d = false >
 			struct view_type;
 
 			template < bool d >
@@ -465,7 +468,7 @@ namespace alp {
 					)
 				) {
 
-				(void)cap;
+				(void) cap;
 
 				// This check should be performed in the class body rather than here.
 				// Allocation-requiring matrix with incompatible IMFs should not be instantiable at all.
@@ -500,7 +503,7 @@ namespace alp {
 					)
 				) {
 
-				(void)cap;
+				(void) cap;
 
 				static_assert(
 					std::is_same< ImfR, imf::Id >::value &&
@@ -1162,14 +1165,16 @@ namespace alp {
 	/** Definitions of previously declared global methods that operate on ALP Matrix */
 	namespace internal {
 
-		template< typename MatrixType,
+		template<
+			typename MatrixType,
 			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		bool getInitialized( const MatrixType &A ) noexcept {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getInitialized();
 		}
 
-		template< typename MatrixType,
+		template<
+			typename MatrixType,
 			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
 		>
 		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
@@ -1177,7 +1182,7 @@ namespace alp {
 		}
 
 		template< typename DerivedMatrix >
-		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept {
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > &A ) noexcept {
 			return A.dims();
 		}
 
@@ -1269,17 +1274,17 @@ namespace alp {
 	} // namespace internal
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept {
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > &A ) noexcept {
 		return dims( A ).first;
 	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept {
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > &A ) noexcept {
 		return dims( A ).second;
 	}
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept {
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > &A ) noexcept {
 		return internal::dims( static_cast< const internal::MatrixBase<
 			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend >::base_type > & > ( A ) );
 	}
@@ -1290,7 +1295,7 @@ namespace alp {
 	>
 	size_t internal::getStorageDimensions( const MatrixType &A ) noexcept {
 		static_assert( is_storage_based< MatrixType >::value, "getStorageDimensions supported only for storage-based containers.");
-		return static_cast< const typename MatrixType::base_type& >( A ).getStorageDimensions();
+		return static_cast< const typename MatrixType::base_type & >( A ).getStorageDimensions();
 	}
 
 } // namespace alp
