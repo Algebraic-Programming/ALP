@@ -448,19 +448,6 @@ namespace alp {
 
 		// These two comments are left here until a better place is found for them.
 		/**
-		 * The two following members define the \em logical layout of a structured matrix:
-		 * Its structure and access relations. This is enabled only if the structured matrix
-		 * does not define a View on another matrix.
-		 */
-		//using structure = Structure;
-		/**
-		 * A pair of pointers to index mapping functions (see imf.hpp) that express the
-		 * logical access to the structured matrix.
-		 */
-		//ImfR imf_r;
-		//ImfC imf_c;
-
-		/**
 		 * When a structured matrix instanciate a \em container it defines a new \em physical
 		 * (concrete?) layout. This is characterized by an ALP container (aka an \a internal::Matrix) and a 
 		 * storage scheme that defines a unique interpretation of its content.
@@ -484,23 +471,6 @@ namespace alp {
 		 * implementing storage mapping functions requires a change of this spec.
 		 */
 		// Storage storage_scheme;
-
-		/**
-		 * When a structured matrix defines a View over another matrix, it contains a pointer
-		 * to the latter. Its type can be identified via the View parameter.
-		 */
-		//using target_type = typename std::enable_if<! std::is_same<View, view::Original<void> >::value, typename View::applied_to>::type;
-		//target_type * ref;
-
-		//public :
-
-			//Matrix( const size_t m, const size_t n );
-
-			//Matrix( const Matrix< T, Structure, density, View, ImfR, ImfC, backend > & other );
-
-			//Matrix( Matrix< T, Structure, density, View, ImfR, ImfC, backend > && other );
-
-			//~Matrix();
 
 	/**
 	 * Check if type \a T is a Matrix.
