@@ -633,7 +633,12 @@ namespace alp {
 		struct isInstantiable< Orthogonal, Orthogonal > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return imf_r.isSame(imf_c);
+				// This chek has to further improved.
+				// Orthogonal matrix in the current implemenation
+				// means full-rank square othogonal matrix.
+				// Rectangular matrix orthogonal only by rows (or columns)
+				// does not fit into the current Orthogonal structure.
+				return imf_r.n == imf_c.n ;
 			};
 		};
 

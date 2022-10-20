@@ -1,5 +1,5 @@
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@
 
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
+#ifdef DEBUG
 #include "../tests/utils/print_alp_containers.hpp"
+#endif
 
 // TEMPDISABLE should be removed in the final version
 #define TEMPDISABLE
@@ -53,17 +55,12 @@ namespace alp {
 			Vector<	D, structures::General,	Dense, VecView2, VecImfR2, VecImfC2 > &v,
 			const Scalar< D > &a,
 			const Scalar< D > &b,
-			const D tol=1.e-12,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide()
+			const D tol = 1.e-10,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
 		) {
 			RC rc = SUCCESS;
-
-// #ifdef DEBUG
-// 			std::cout << " a = " << *a << " ";
-// 			std::cout << " b = " << *b << " ";
-// #endif
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -87,11 +84,6 @@ namespace alp {
 				},
 				v
 			);
-
-// #ifdef DEBUG
-// 			std::cout << " x0 = " << *x0 << " ";
-// 			std::cout << " fx0 = " << *fx0 << "\n";
-// #endif
 
 			if( std::abs( *fx0 ) < tol ) {
 				alp::set( lambda, x0 );
@@ -147,10 +139,11 @@ namespace alp {
 			Matrix< D, OrthogonalType, Dense, OrthViewType, OrthViewImfR, OrthViewImfC > &Egvecs,
 			Vector<	D, structures::General, Dense, VecView2, VecImfR2, VecImfC2 > &d,
 			Vector< D, structures::General, Dense, VecView3, VecImfR3, VecImfC3 > &v,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide()
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
 		) {
+			(void)minus;
 			RC rc = SUCCESS;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
@@ -168,11 +161,14 @@ namespace alp {
 
 			for( size_t i = 0; i < n; i++ ) {
 				if( std::abs( v[ i ] ) < eps ) {
-					//simple egval formula ;
+					// in these cases equals are canonical vectors
+					// and eigenvalues are d[i]
 					direct_egvc_indx[ count_direct_egvc ] = i ;
 					++count_direct_egvc;
 				} else {
-					//complicated egval formula ;
+					// these cases require complicated egval formula
+					// and for cases where egval is close to the singular point
+					// different algorithm for eigenvectors needs to be implemented
 					non_direct_egvc_indx[ count_non_direct_egvc ] = i;
 					++count_non_direct_egvc;
 				}
@@ -185,8 +181,8 @@ namespace alp {
 			alp::buildVector( select_non_direct, non_direct_egvc_indx.begin(), non_direct_egvc_indx.end() );
 
 #ifdef DEBUG
-			std::cout << " count_direct_egvc = " << count_direct_egvc << "\n";
-			std::cout << " count_non_direct_egvc = " << count_non_direct_egvc << "\n";
+			std::cout << " ---->     count_direct_egvc = " << count_direct_egvc << "\n";
+			std::cout << " ----> count_non_direct_egvc = " << count_non_direct_egvc << "\n";
 #endif
 			auto egvals_direct = get_view< alp::structures::General >( egvals, select_direct );
 			auto egvals_non_direct = get_view< alp::structures::General >( egvals, select_non_direct );
@@ -205,9 +201,6 @@ namespace alp {
 				get_view< alp::structures::General >( d, select_direct )
 			);
 
-			//rc = rc ? rc : alp::set( Egvecs_non_direct, one );
-			//rc = rc ? rc : alp::set( egvals_non_direct, one );
-
 			auto d_view = get_view< alp::structures::General >( d, select_non_direct );
 			auto v_view = get_view< alp::structures::General >( v, select_non_direct );
 
@@ -216,49 +209,7 @@ namespace alp {
 			print_vector( "eigensolveDiagPlusOuter: v ", v );
 			print_vector( "eigensolveDiagPlusOuter: d_view ", d_view );
 			print_vector( "eigensolveDiagPlusOuter: v_view ", v_view );
-
-
-
-// 			// for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
-// 			// 	std::cout << " ============ i= " << i << "  ============\n";
-
-// 			// 	std::cout << " d = array([";
-// 			// 	for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
-// 			// 		std::cout << d_nontrv_nnz_view[ i ] << ", ";
-// 			// 	}
-// 			// 	std::cout << " ])\n";
-// 			// 	std::cout << " v = array([";
-// 			// 	for( size_t i = 0; i < non_trivial_egvc_count; ++i ) {
-// 			// 		std::cout << v_nontrv_nnz_view[ i ] << ", ";
-// 			// 	}
-// 			// 	std::cout << " ])\n";
-
-// 			// 	Scalar< D > a( d_nontrv_nnz_view[ i ] );
-// 			// 	Scalar< D > b( d_nontrv_nnz_view[ i ] );
-// 			// 	std::cout << "0 a,b=" << *a << " " << *b << "\n";
-// 			// 	if( i + 1 < non_trivial_egvc_count  ) {
-// 			// 		std::cout << " alp::set b to <<" << d_nontrv_nnz_view[ i + 1 ] << ">> \n";
-// 			// 		rc = alp::set( b, Scalar< D >( d_nontrv_nnz_view[ i + 1 ] ) );
-// 			// 		if( rc != SUCCESS ) {
-// 			// 			std::cout << " **** alp::set failed ***** \n";
-// 			// 		}
-// 			// 		std::cout << "1  a,b=" << *a << " " << *b << "\n";
-// 			// 	} else {
-// 			// 		Scalar< D > alpha( zero );
-// 			// 		rc = rc ? rc : norm2( alpha, v, ring );
-// 			// 		foldl( b, alpha, ring.getAdditiveOperator() );
-// 			// 		std::cout << "2 a,b=" << *a << " " << *b << "\n";
-// 			// 	}
-// 			// 	Scalar< D > lambda( ( *a - *b ) / 2 );
-
-// 			// 	std::cout << " a,lambda,b=" << *a << " " << *lambda << " " << *b << "\n";
-
-// 			// 	rc = rc ? rc : bisec_sec_eq( lambda, d_nontrv_nnz_view, v_nontrv_nnz_view, a, b );
-// 			// 	std::cout << " lambda (" << i << ") = " << *lambda << "\n";
-// 			}
 #endif
-
-			/////////////////// OK code //////////////////////////////
 
 			// vec_b = {d_view[1], d_view[2], ... , d_view[N-1], d_view[N]+dot(v,v) }
 			size_t nn = alp::getLength( d_view );
@@ -269,11 +220,10 @@ namespace alp {
 			auto v3 = get_view( vec_b, utils::range( nn - 1, nn ) );
 			auto v4 = get_view( d_view, utils::range( nn - 1, nn ) );
 			rc = rc ? rc : alp::set( v3, v4 );
-			Scalar< D > alpha( zero );
-			rc = rc ? rc : dot( alpha, d_view, d_view, ring );
-			auto v5 = get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
-			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
 
+			// eWiseLambda currently does not work with select view
+			// dot does not work with select view
+			// as a temp solutions we make temp vectors 
 			alp::Vector< D > vec_temp_egvals( nn );
 			alp::Vector< D > vec_temp_d( nn );
 			alp::Vector< D > vec_temp_v( nn );
@@ -281,6 +231,14 @@ namespace alp {
 			rc = rc ? rc : alp::set( vec_temp_egvals, zero );
 			rc = rc ? rc : alp::set( vec_temp_d, d_view );
 			rc = rc ? rc : alp::set( vec_temp_v, v_view );
+
+			Scalar< D > alpha( zero );
+			//rc = rc ? rc : dot( alpha, d_view, d_view, ring ); // bug!
+			rc = rc ? rc : dot( alpha, vec_temp_v, vec_temp_v, ring );
+
+			auto v5 = get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
+			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
+
 
 			rc = rc ? rc : eWiseLambda(
 				[ &d_view, &vec_temp_v, &vec_b ]( const size_t i, D &val ) {
@@ -298,62 +256,19 @@ namespace alp {
 			// we have to use this for loop
 			for( size_t i = 0; i < nn; i++ ) {
 				auto egvecs_view = get_view( Egvecs_non_direct, utils::range( 0, nn ), i );
+				// //test
+				// alp::set( egvecs_view, Scalar< D >( i + 1 ) );
+				// //test
+
 				alp::set( egvecs_view, vec_temp_v );
-#ifdef DEBUG
-			print_vector( "-----> egvecs_view(0) ", egvecs_view );
-#endif
 				alp::set( vec_temp_egvals, vec_temp_d );
-#ifdef DEBUG
-			print_vector( "-----> egvecs_view(1) ", vec_temp_egvals );
-#endif
 				Scalar< D > lambda_i( egvals_non_direct[ i ] );
-				rc = rc ? rc : alp::foldl( vec_temp_egvals, lambda_i, minus );
-#ifdef DEBUG
-			print_vector( "-----> egvecs_view(2) ", vec_temp_egvals );
-#endif
+				rc = rc ? rc : alp::foldl( vec_temp_egvals, lambda_i , minus );
 				rc = rc ? rc : alp::foldl( egvecs_view, vec_temp_egvals , divide );
-#ifdef DEBUG
-			print_vector( "-----> egvecs_view(3) ", vec_temp_egvals );
-#endif
 				Scalar< D > norm1( zero );
 				rc = rc ? rc : norm2( norm1, egvecs_view, ring );
 				rc = rc ? rc : alp::foldl( egvecs_view, norm1 , divide );
 			}
-
-
-#ifdef DEBUG
-			print_vector( "-----> d_view ", d_view );
-			print_vector( "-----> vec_b  ", vec_b );
-#endif
-			//////////////////////////////////////////////////////////
-
-
-// #ifdef TEMPDISABLE
-// 			for( size_t i = 0; i < non_trivial_egvc_count; i++ ) {
-// 				egvals_nontrv[ i ] = d_nontrv[ i ];
-// 				Vector< D, structures::General, Dense > dvec( non_trivial_egvc_count );
-// 				alp::set( dvec, zero );
-// 				dvec[ i ] = *one;
-// 				auto Egvecs_nontrv_vec_view = get_view( Egvecs_nontrv, utils::range( 0, non_trivial_egvc_count ), i );
-// 				rc = rc ? rc : alp::set( Egvecs_nontrv_vec_view, dvec );
-// 			}
-// #else
-// 			not implemented;
-// #endif
-
-// 			//copy egvals_nontrv and Egvecs_nontrv into egvals and Egvecs
-// 			size_t k = 0;
-// 			for( size_t i = 0; i < n; i++ ) {
-// 				if( !( std::abs( v[ i ] ) < eps ) ) {
-// 					egvals[ i ] = egvals_nontrv[ k ];
-// 					//resolve this with select/permute view
-// #ifdef TEMPDISABLE
-// 					auto Egvecs_nontrv_vec_view = get_view( Egvecs_nontrv, utils::range( 0, non_trivial_egvc_count ), k );
-// 					auto Egvecs_vec_view = get_view( Egvecs, utils::range( 0, non_trivial_egvc_count ), i ); // this is wrong
-// 					rc = rc ? rc : alp::set( Egvecs_vec_view, Egvecs_nontrv_vec_view );
-// #endif
-// 				}
-// 			}
 
 			return rc;
 		}
@@ -445,7 +360,7 @@ namespace alp {
 					},
 					T
 				);
-				// Q=array([[1]]);
+				// Q=[[1]]; a 1x1 matrix
 				rc = rc ? rc : alp::set( Q, one );
 
 				return rc;
@@ -473,13 +388,12 @@ namespace alp {
 			auto vvt =  alp::outer( v, ring.getMultiplicativeOperator() ) ;
 
 #ifdef DEBUG
-			print_matrix( " Atmp(0) = ", Atmp );
 			print_matrix( " vvt = ", vvt );
 #endif
 			rc = rc ? rc : alp::foldl( Atmp, vvt, minus );
 
 #ifdef DEBUG
-			print_matrix( " Atmp(1) = ", Atmp );
+			print_matrix( " Atmp(updated)  ", Atmp );
 #endif
 
 			auto Ttop = get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( 0, m ), utils::range( 0, m ) );
@@ -542,21 +456,16 @@ namespace alp {
 #endif
 
 #ifdef DEBUG
-// 			//testis
-// 			std::vector< double > xdtmp{ 1, 4, 2, 10, -1, 3};
-// 			std::vector< double > xztmp{ 1, 2, 1, 1.e-12, -1, 1.e-12};
-// 			alp::buildVector( dtmp, xdtmp.begin(), xdtmp.end() );
-// 			alp::buildVector( z, xztmp.begin(), xztmp.end() );
-// //test
-
+			print_vector( "  d  ", dtmp );
 			print_vector( "  z  ", z );
 #endif
 
-
 			// permutations which sort dtmp
 			std::vector< size_t > isort_dtmp( n, 0 );
+			std::vector< size_t > no_permute_data( n, 0 );
 			for( size_t i = 0 ; i < n ; ++i ) {
 				isort_dtmp[ i ] = i;
+				no_permute_data[ i ] = i;
 			}
 			std::sort(
 				isort_dtmp.begin(),
@@ -566,17 +475,9 @@ namespace alp {
 				}
 			);
 			alp::Vector< size_t > permutation_vec( n );
+			alp::Vector< size_t > no_permutation_vec( n );
 			alp::buildVector( permutation_vec, isort_dtmp.begin(), isort_dtmp.end() );
-
-#ifdef DEBUG
-			print_vector( "  dtmp  ", dtmp );
-			// std::cout << " sort(dtmp) = \n";
-			// std::cout << "    [ ";
-			// for( size_t i = 0 ; i < n ; ++i ) {
-			// 	std::cout << "\t" << dtmp[ isort_dtmp[ i ] ];
-			// }
-			// std::cout << " ]\n";
-#endif
+			alp::buildVector( no_permutation_vec, no_permute_data.begin(), no_permute_data.end() );
 
 			auto dtmp2 = alp::get_view< alp::structures::General >(
 				dtmp,
@@ -595,36 +496,29 @@ namespace alp {
 			rc = rc ? rc : alp::set( d, zero );
 			Matrix< D, OrthogonalType, Dense > QdOuter( n );
 			rc = rc ? rc : alp::set( QdOuter, zero );
-			{
-				auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
-				rc = rc ? rc : alp::set(
-					QdOuter_diag,
-					one
-				);
-			}
+			auto QdOuter_diag = alp::get_view< alp::view::diagonal >( QdOuter );
+			rc = rc ? rc : alp::set(
+				QdOuter_diag,
+				one
+			);
 
 			auto QdOuter2 = alp::get_view< alp::structures::Orthogonal >(
-				QdOuter, permutation_vec, permutation_vec
+				QdOuter, permutation_vec, no_permutation_vec
 			);
-#ifdef DEBUG
-			print_matrix( "  QdOuter(in)  ", QdOuter );
-			print_vector( "  d(in)  ", d );
-#endif
+
 			rc = rc ? rc : eigensolveDiagPlusOuter( d, QdOuter2, dtmp2, ztmp2 );
 #ifdef DEBUG
-			print_matrix( "  QdOuter(out)  ", QdOuter );
 			print_vector( "  d(out)  ", d );
+			print_matrix( "  QdOuter(out)  ", QdOuter );
+			print_matrix( "  U  ", U );
 #endif
 
-
-			// Q=U.dot((V[:,iiinv]).T)
 			rc = rc ? rc : alp::set( Q, zero );
-			rc = rc ? rc : mxm(
-				Q,
-				U,
-				alp::get_view< alp::view::transpose >( QdOuter ),
-				ring
-			);
+			rc = rc ? rc : mxm( Q, U, QdOuter, ring	);
+
+#ifdef DEBUG
+			print_matrix( "  Q = U x Q   ", Q );
+#endif
 
 			return rc;
 		}

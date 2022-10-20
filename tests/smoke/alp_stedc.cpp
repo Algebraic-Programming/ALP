@@ -1,5 +1,5 @@
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,49 +18,31 @@
 #include <sstream>
 #include <vector>
 
-// currently only real version
-// #ifdef _COMPLEX
-// #include <complex>
-// #include <cmath>
-// #include <iomanip>
-// #endif
-
-#define DEBUG
-
 #include <alp.hpp>
 #include <alp/algorithms/symm_tridiag_eigensolver.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
+#ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
-
-//once TEMPDISABLE is removed the code should be in the final version
-#define TEMPDISABLE
+#endif
 
 using namespace alp;
 
 using BaseScalarType = double;
 using Orthogonal = structures::Orthogonal;
 
-// #ifdef _COMPLEX
-// using ScalarType = std::complex< BaseScalarType >;
-// //not fully implemented structures
-// using HermitianOrSymmetricTridiagonal = structures::HermitianTridiagonal;
-// using HermitianOrSymmetric = structures::Hermitian;
-// #else
 using ScalarType = BaseScalarType;
 
-//temp
+// not fully implemented structures
 using HermitianOrSymmetricTridiagonal = structures::SymmetricTridiagonal;
-//using HermitianOrSymmetricTridiagonal = structures::Square;
 
 //fully implemented structures
 using HermitianOrSymmetric = structures::Symmetric;
-// #endif
 
-constexpr BaseScalarType tol = 1.e-10;
+constexpr BaseScalarType tol = 1.e-5;
 constexpr size_t RNDSEED = 11235;
 
-//temp function untill Hermitian containter is implemented
-//** gnerate symmetric-hermitian matrix in a square container */
+//temp function untill (tridiagonal)Hermitian containter is implemented
+//** gnerate tridiagonal-symmetric-hermitian matrix in a rectangular container */
 template<
 	typename T
 >
@@ -84,7 +66,7 @@ std::vector< T > generate_symmherm_tridiag_matrix_data(
 	return data;
 }
 
-//** generate upper/lower triangular part of a Symmetric matrix */
+//** generate_symmherm_tridiag_matrix_data: real numbers version*/
 template<
 	typename T
 >
@@ -107,151 +89,145 @@ std::vector< T >  generate_symmherm_tridiag_matrix_data(
 	return data;
 }
 
-// //** check if rows/columns or matrix Q are orthogonal */
-// template<
-// 	typename T,
-// 	typename Structure,
-// 	typename ViewType,
-// 	class Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >
-// >
-// RC check_overlap( alp::Matrix< T, Structure, alp::Density::Dense, ViewType > &Q, const Ring & ring = Ring() ) {
-// 	RC rc = SUCCESS;
-// 	const size_t n = nrows( Q );
-// #ifdef DEBUG
-// 	std::cout << "Overlap matrix for Q:\n";
-// #endif
-// 	for ( size_t i = 0; i < n; ++i ) {
-// 		auto vi = get_view( Q, i, utils::range( 0, n ) );
-// 		for ( size_t j = 0; j < n; ++j ) {
-// 			auto vj = get_view( Q, j, utils::range( 0, n ) );
-// 			Scalar< T > alpha( ring.template getZero< T >() );
-// 			rc = dot( alpha, vi, vj, ring );
-// 			if( rc != SUCCESS ) {
-// 				std::cerr << " dot( alpha, vi, vj, ring ) failed\n";
-// 				return PANIC;
-// 			}
-// 			if( i == j ) {
-// 				if( std::abs( *alpha - ring.template getOne< T >() ) > tol ) {
-// 					std::cerr << " vector " << i << " not normalized\n";
-// 					return PANIC;
-// 				}
-// 			} else {
-// 				if( std::abs( *alpha ) > tol ) {
-// 					std::cerr << " vector " << i << " and vctor " << j << " are note orthogonal\n";
-// 					return PANIC;
-// 				}
-// 			}
-// #ifdef DEBUG
-// 			std::cout << "\t" << std::abs( *alpha );
-// #endif
-// 		}
-// #ifdef DEBUG
-// 		std::cout << "\n";
-// #endif
-// 	}
-// #ifdef DEBUG
-// 	std::cout << "\n";
-// #endif
-// 	return rc;
-// }
+//** check if rows/columns or matrix Q are orthogonal */
+template<
+	typename T,
+	typename Structure,
+	typename ViewType,
+	class Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
+	class Minus = operators::subtract< T >
+>
+RC check_overlap(
+	alp::Matrix< T, Structure, alp::Density::Dense, ViewType > &Q,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
+) {
+	const Scalar< T > zero( ring.template getZero< T >() );
+	const Scalar< T > one( ring.template getOne< T >() );
+
+	RC rc = SUCCESS;
+	const size_t n = nrows( Q );
+
+	// check if QxQt == I
+	alp::Matrix< T, Structure, alp::Density::Dense, ViewType > Qtmp( n );
+	rc = rc ? rc : set( Qtmp, zero );
+	rc = rc ? rc : mxm(
+		Qtmp,
+		Q,
+		conjugate( alp::get_view< alp::view::transpose >( Q ) ),
+		ring
+	);
+	Matrix< T, Structure, Dense > Identity( n );
+	rc = rc ? rc : alp::set( Identity, zero );
+	auto id_diag = alp::get_view< alp::view::diagonal >( Identity );
+	rc = rc ? rc : alp::set( id_diag, one );
+	rc = rc ? rc : foldl( Qtmp, Identity, minus );
+
+	//Frobenius norm
+	T fnorm = ring.template getZero< T >();
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm, &ring ]( const size_t i, const size_t j, T &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
+		},
+		Qtmp
+	);
+	fnorm = std::sqrt( fnorm );
+
+#ifdef DEBUG
+	std::cout << " FrobeniusNorm(QQt - I) = " << std::abs( fnorm ) << "\n";
+#endif
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << "The Frobenius norm is too large: " << std::abs( fnorm ) << ".\n";
+		return FAILED;
+	}
+
+	return rc;
+}
 
 
-// //** check solution by calculating H-QTQh */
-// template<
-// 	typename D,
-// 	typename StructureSymm,
-// 	typename StructureOrth,
-// 	typename StructureTrDg,
-// 	class Minus = operators::subtract< D >,
-// 	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
-// >
-// RC check_solution(
-// 	alp::Matrix< D, StructureSymm, alp::Density::Dense > &H,
-// 	alp::Matrix< D, StructureOrth, alp::Density::Dense > &Q,
-// 	alp::Matrix< D, StructureTrDg, alp::Density::Dense > &T,
-// 	const Ring &ring = Ring(),
-// 	const Minus &minus = Minus()
-// ) {
-// 	RC rc = SUCCESS;
-// 	const size_t n = nrows( Q );
+//** check solution by calculating A x Q - Q x diag(d) */
+template<
+	typename D,
+	typename SymmOrHermTridiagonalType,
+	typename OrthogonalType,
+	typename SymmHermTrdiViewType,
+	typename OrthViewType,
+	typename SymmHermTrdiImfR,
+	typename SymmHermTrdiImfC,
+	typename OrthViewImfR,
+	typename OrthViewImfC,
+	typename VecViewType,
+	typename VecImfR,
+	typename VecImfC,
+	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	class Minus = operators::subtract< D >,
+	class Divide = operators::divide< D >
+>
+RC check_solution(
+	Matrix< D, SymmOrHermTridiagonalType, Dense, SymmHermTrdiViewType, SymmHermTrdiImfR, SymmHermTrdiImfC > &T,
+	Matrix<	D, OrthogonalType, Dense, OrthViewType, OrthViewImfR, OrthViewImfC > &Q,
+	Vector<	D, structures::General, Dense, VecViewType, VecImfR, VecImfC > &d,
+	const Ring & ring = Ring(),
+	const Minus & minus = Minus(),
+	const Divide & divide = Divide()
+) {
+	(void)ring;
+	(void)minus;
+	(void)divide;
+	RC rc = SUCCESS;
 
-// #ifdef DEBUG
-// 	std::cout << " ** check_solution **\n";
-// 	std::cout << " input matrices:\n";
-// 	print_matrix( " << H >> ", H );
-// 	print_matrix( " << Q >> ", Q );
-// 	print_matrix( " << T >> ", T );
-// 	std::cout << " ********************\n";
-// #endif
+ 	const size_t n = nrows( Q );
 
-// 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQh( n );
-// 	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > QTQhmH( n );
-// 	const Scalar< D > zero( ring.template getZero< D >() );
+#ifdef DEBUG
+	print_matrix( " T ", T  );
+	print_matrix( " Q ", Q  );
+	print_vector( " d ", d  );
+#endif
 
-// 	rc = rc ? rc : set( QTQh, zero );
-// 	rc = rc ? rc : mxm( QTQh, T, conjugate( alp::get_view< alp::view::transpose >( Q ) ), ring );
-// 	rc = rc ? rc : set( QTQhmH, zero );
-// 	rc = rc ? rc : mxm( QTQhmH, Q, QTQh, ring );
-// 	rc = rc ? rc : set( QTQh, QTQhmH );
-// #ifdef DEBUG
-// 	print_matrix( " << QTQhmH >> ", QTQhmH );
-// 	print_matrix( " << H >> ", H );
-// 	std::cout << "call foldl( mat, mat, minus )\n";
-// #endif
+	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > Left( n );
+	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > Right( n );
+	alp::Matrix< D, alp::structures::Square, alp::Density::Dense > Dmat( n );
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
 
-// #ifndef TEMPDISABLE
-// 	rc = foldl( QTQhmH, H, minus );
-// #else
-// 	rc = rc ? rc : alp::eWiseLambda(
-// 		[ &H, &minus, &zero ]( const size_t i, const size_t j, D &val ) {
-// 			if ( j >= i ) {
-// 				internal::foldl(
-// 					val,
-// 					internal::access( H, internal::getStorageIndex( H, i, j ) ),
-// 					minus
-// 				);
-// 			} else {
-// 				val = *zero;
-// 			}
-// 		},
-// 		QTQhmH
-// 	);
-// #endif
+	rc = rc ? rc : set( Left, zero );
+	rc = rc ? rc : mxm( Left, T, Q, ring );
 
-// #ifdef DEBUG
-// 	print_matrix( " << QTQhmH >> ", QTQhmH );
-// 	print_matrix( " << H >> ", H );
-// #endif
+	rc = rc ? rc : set( Dmat, zero );
+	auto D_diag = alp::get_view< alp::view::diagonal >( Dmat );
+	rc = rc ? rc : set( D_diag, d );
+	rc = rc ? rc : set( Right, zero );
+	rc = rc ? rc : mxm( Right, Q, Dmat, ring );
+#ifdef DEBUG
+	print_matrix( " TxQ ", Left  );
+	print_matrix( " QxD ", Right  ),
+#endif
+	rc = rc ? rc : foldl( Left, Right, minus );
 
-// 	//Frobenius norm
-// 	D fnorm = ring.template getZero< D >();
-// 	rc = rc ? rc : alp::eWiseLambda(
-// 		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
-// 			(void) i;
-// 			(void) j;
-// 			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
-// 		},
-// 		QTQhmH
-// 	);
-// 	fnorm = std::sqrt( fnorm );
+	//Frobenius norm
+	D fnorm = ring.template getZero< D >();
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
+		},
+		Left
+	);
+	fnorm = std::sqrt( fnorm );
 
-// #ifdef DEBUG
-// 	std::cout << " FrobeniusNorm(H-QTQh) = " << std::abs( fnorm ) << "\n";
-// #endif
-// 	if( tol < std::abs( fnorm ) ) {
-// #ifdef DEBUG
-// 		std::cout << " ----------------------\n";
-// 		std::cout << " compare matrices\n";
-// 		print_matrix( " << H >> ", H );
-// 		print_matrix( " << QTQh >> ", QTQh );
-// 		std::cout << " ----------------------\n";
-// #endif
-// 		std::cout << "The Frobenius norm is too large.\n";
-// 		return FAILED;
-// 	}
+#ifdef DEBUG
+	std::cout << " FrobeniusNorm(AQ-QD) = " << std::abs( fnorm ) << "\n";
+#endif
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << "The Frobenius norm is too large: " << std::abs( fnorm ) << ".\n";
+		return FAILED;
+	}
 
-// 	return rc;
-// }
+	return rc;
+}
 
 
 
@@ -281,12 +257,7 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	print_matrix( " input matrix T ", T );
 #endif
 
-  	rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver(
-		T,
-		Q,
-		d,
-		ring
-	);
+  	rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q, d, ring );
 
 
 #ifdef DEBUG
@@ -294,15 +265,20 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	print_matrix( " << T >> ", T );
 #endif
 
-// 	rc = check_overlap( Q );
-// 	if( rc != SUCCESS ) {
-// 		std::cout << "Error: mratrix Q is not orthogonal\n";
-// 	}
+	// the algorithm should return correct eigenvalues
+	// but for larger matrices (n>20) a more stable calculations
+	// of eigenvectors is needed
+	// therefore we disable numerical correctness check in this version
 
-// 	rc = check_solution( H, Q, T );
-// 	if( rc != SUCCESS ) {
-// 		std::cout << "Error: solution numerically wrong\n";
-// 	}
+	// rc = check_overlap( Q );
+	// if( rc != SUCCESS ) {
+	// 	std::cout << "Error: mratrix Q is not orthogonal\n";
+	// }
+
+	// rc = check_solution( T, Q, d );
+	// if( rc != SUCCESS ) {
+	// 	std::cout << "Error: solution numerically wrong\n";
+	// }
 }
 
 int main( int argc, char ** argv ) {
