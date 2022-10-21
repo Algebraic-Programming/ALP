@@ -233,44 +233,6 @@ namespace alp {
 		return 0;
 	}
 
-	/** Resizes the vector to have at least the given number of nonzeroes.
-	 * The contents of the vector are not retained.
-	 *
-	 * Resizing of dense containers is not allowed as the capacity is determined
-	 * by the container dimensions and the storage scheme. Therefore, this
-	 * function will not change the capacity of the vector.
-	 *
-	 * Even though the capacity remains unchanged, the contents of the vector
-	 * are not retained to maintain compatibility with the general specification.
-	 * However, the actual memory will not be reallocated. Rather, the vector
-	 * will be marked as uninitialized.
-	 *
-	 * @param[in] x      The Vector to be resized.
-	 * @param[in] new_nz The number of nonzeroes this vector is to contain.
-	 *
-	 * @return SUCCESS   If \a new_nz is not larger than the current capacity
-	 *                   of the vector.
-	 *         ILLEGAL   If \a new_nz is larger than the current capacity of
-	 *                   the vector.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates \f$ \Theta(0) \f$
-	 *           bytes of dynamic memory.
-	 *        -# This function does not make system calls.
-	 * \endparblock
-	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
-	 */
-	template< typename InputType, typename InputStructure, typename View, typename ImfR, typename ImfC, typename length_type >
-	RC resize( Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, reference > &x, const length_type new_nz ) {
-		(void)x;
-		(void)new_nz;
-		// TODO implement
-		// setInitialized( x, false );
-		return PANIC;
-	}
-
 	/**
 	 * Sets all elements of a Vector to the given value. Can be masked.
 	 *

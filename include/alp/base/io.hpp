@@ -72,6 +72,45 @@ namespace alp {
 	}
 
 	/**
+	 * Resizes the Scalar to have at least the given number of nonzeroes.
+	 * The contents of the scalar are not retained.
+	 */
+	template< typename InputType, typename InputStructure, typename length_type >
+	RC resize( Scalar< InputType, InputStructure, reference > &s, const length_type new_nz ) {
+		(void) s;
+		(void) new_nz;
+		return PANIC;
+	}
+
+	/**
+	 * Resizes the vector to have at least the given number of nonzeroes.
+	 * The contents of the vector are not retained.
+	 */
+	template< typename InputType, typename InputStructure, typename View, typename ImfR, typename ImfC, typename length_type >
+	RC resize(
+		Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		const length_type new_nz
+	) noexcept {
+		(void) x;
+		(void) new_nz;
+		return PANIC;
+	}
+
+	/**
+	 * Resizes the matrix to have at least the given number of nonzeroes.
+	 * The contents of the matrix are not retained.
+	 */
+	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
+	RC resize(
+		Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A,
+		const size_t new_nz
+	) noexcept {
+		(void) A;
+		(void) new_nz;
+		return PANIC;
+	}
+
+	/**
 	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
 	 * an accumulator, using alp::operators::right_assign (thus overwriting

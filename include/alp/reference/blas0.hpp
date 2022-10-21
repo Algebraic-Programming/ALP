@@ -185,46 +185,6 @@ namespace alp {
 	 * @{
 	 */
 
-	/** Resizes the Scalar to have at least the given number of nonzeroes.
-	 * The contents of the scalar are not retained.
-	 *
-	 * Resizing of dense containers is not allowed as the capacity is determined
-	 * by the container dimensions and the storage scheme. Therefore, this
-	 * function will not change the capacity of the container.
-	 * 
-	 * The resize function for Scalars exist to maintain compatibility with
-	 * other containers (i.e., vector and matrix).
-	 *
-	 * Even though the capacity remains unchanged, the contents of the scalar
-	 * are not retained to maintain compatibility with the general specification.
-	 * However, the actual memory will not be reallocated. Rather, the scalar
-	 * will be marked as uninitialized.
-	 * 
-	 * @param[in] x      The Scalar to be resized.
-	 * @param[in] new_nz The number of nonzeroes this vector is to contain.
-	 *
-	 * @return SUCCESS   If \a new_nz is not larger than 1.
-	 *         ILLEGAL   If \a new_nz is larger than 1.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates \f$ \Theta(0) \f$
-	 *           bytes of dynamic memory.
-	 *        -# This function does not make system calls.
-	 * \endparblock
-	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
-	 */
-	template< typename InputType, typename InputStructure, typename length_type >
-	RC resize( Scalar< InputType, InputStructure, reference > &s, const length_type new_nz ) {
-		if( new_nz <= 1 ) {
-			setInitialized( s, false );
-			return SUCCESS;
-		} else {
-			return ILLEGAL;
-		}
-	}
-
 	/**
 	 * @brief Reference implementation of \a apply.
 	 */

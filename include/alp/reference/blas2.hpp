@@ -83,44 +83,6 @@ namespace alp {
 		return A.nz;
 	}
 
-	/**
-	 * Resizes the matrix to have at least the given number of nonzeroes.
-	 * The contents of the matrix are not retained.
-	 *
-	 * Resizing of dense containers is not allowed as the capacity is determined
-	 * by the container dimensions and the storage scheme. Therefore, this
-	 * function will not change the capacity of the matrix.
-	 *
-	 * Even though the capacity remains unchanged, the contents of the matrix
-	 * are not retained to maintain compatibility with the general specification.
-	 * However, the actual memory will not be reallocated. Rather, the matrix
-	 * will be marked as uninitialized.
-	 *
-	 * @param[in] A         The matrix to be resized.
-	 * @param[in] nonzeroes The number of nonzeroes this matrix is to contain.
-	 *
-	 * @return SUCCESS   If \a new_nz is not larger than the current capacity
-	 *                   of the matrix.
-	 *         ILLEGAL   If \a new_nz is larger than the current capacity of
-	 *                   the matrix.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates \f$ \Theta(0) \f$
-	 *           bytes of dynamic memory.
-	 *        -# This function does not make system calls.
-	 * \endparblock
-	 */
-	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
-	RC resize( Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A, const size_t new_nz ) noexcept {
-		(void)A;
-		(void)new_nz;
-		// TODO implement
-		// setInitialized( A, false );
-		return PANIC;
-	}
-
 	/** \internal Delegates to fully masked variant */
 	template< Descriptor descr = descriptors::no_operation,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
