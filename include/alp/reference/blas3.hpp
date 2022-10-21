@@ -36,7 +36,6 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
-#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -59,7 +58,29 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
-#endif
+
+#define NO_CAST_OP_ASSERT( x, y, z )                                           \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the operator domains, as specified in the "            \
+		"documentation of the function " y ", supply an input argument of "    \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible operator where all domains "  \
+		"match those of the input parameters, as specified in the "            \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
 
 namespace alp {
 	namespace internal {
@@ -1658,6 +1679,7 @@ namespace alp {
 } // end namespace ``alp''
 
 #undef NO_CAST_ASSERT
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS3''
 

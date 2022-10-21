@@ -32,7 +32,6 @@
 #include <alp/type_traits.hpp>
 #include <alp/scalar.hpp>
 
-#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -49,7 +48,6 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
-#endif
 
 namespace alp {
 
@@ -372,6 +370,8 @@ namespace alp {
 	/** @} */
 	
 } // end namespace ``alp''
+
+#undef NO_CAST_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS0''
 

@@ -35,7 +35,6 @@
 #include "blas2.hpp"
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
-#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -52,7 +51,6 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
-#endif
 
 #define NO_CAST_OP_ASSERT( x, y, z )                                           \
 	static_assert( x,                                                          \
