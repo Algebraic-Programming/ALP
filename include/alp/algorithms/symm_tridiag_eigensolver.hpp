@@ -65,9 +65,16 @@ namespace alp {
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
-			Scalar< D > x0( ( *a + *b ) / ( 2 ) );
 
-			if( std::abs( *a - *b ) < tol ) {
+			Scalar< D > x0( a );
+			rc = rc ? rc : alp::foldl( x0, b, ring.getAdditiveOperator() );
+			rc = rc ? rc : alp::foldl( x0, Scalar< D >( 2 ), divide );
+
+			Scalar< D > delta( a );
+			rc = rc ? rc : alp::foldl( delta, b, minus );
+			*delta = std::abs( *delta );
+
+			if( *delta < tol ) {
 				alp::set( lambda, x0 );
 				return rc;
 			}
@@ -239,10 +246,12 @@ namespace alp {
 			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
 
 			rc = rc ? rc : alp::eWiseLambda(
-				[ &d_view, &vec_temp_v, &vec_b ]( const size_t i, D &val ) {
+				[ &d_view, &vec_temp_v, &vec_b, &ring, &divide ]( const size_t i, D &val ) {
 					Scalar< D > a( d_view[ i ] );
 					Scalar< D > b( vec_b[ i ] );
-					Scalar< D > w( ( *a + *b ) / 2 );
+					Scalar< D > w( a );
+					alp::foldl( w, b, ring.getAdditiveOperator() );
+					alp::foldl( w, Scalar< D >( 2 ), divide );
 					bisec_sec_eq( w, d_view, vec_temp_v, a, b );
 					val = *w;
 				},
@@ -385,17 +394,14 @@ namespace alp {
 
 			Vector< D, structures::General, Dense > v( n );
 			rc = rc ? rc : alp::set( v, zero );
-			rc = rc ? rc : alp::eWiseLambda(
-				[ &T, &m, &ring ]( const size_t i, D &val ) {
-					if( i == m - 1 ) {
-						val = ring.template getOne< D >();
-					}
-					if( i == m) {
-						val = internal::access( T, internal::getStorageIndex( T, m - 1, m ) );
-					}
-				},
-				v
-			);
+
+			auto v1 = alp::get_view( T, utils::range( m - 1, m ), m );
+			auto v2 = alp::get_view( v, utils::range( m , m + 1 ) );
+			rc = rc ? rc : alp::set( v2, v1 );
+
+			auto v3 = alp::get_view( v, utils::range( m - 1 , m ) );
+			rc = rc ? rc : alp::set( v3, one );
+
 #ifdef DEBUG
 			print_vector( " v = ", v );
 #endif
