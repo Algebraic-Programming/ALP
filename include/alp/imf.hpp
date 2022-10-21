@@ -244,121 +244,100 @@ namespace alp {
 
 		};
 
-		template< typename LeftImf, typename RightImf >
-		struct composed_type {
-			typedef Composed< LeftImf, RightImf > type;
-		};
+		namespace internal {
 
-		template<>
-		struct composed_type< Strided, Strided > {
-			typedef Strided type;
+			/**
+			 * Ensures that the range of the right IMF matches the domain of the left.
+			 * If the condition is not satisfied, throws an exception
+			 *
+			 * @tparam LeftImf   The type of the left IMF
+			 * @tparam RightImf  The type of the right IMF
+			 *
+			 * @param[in] left_imf   The left IMF
+			 * @param[in] right_imf  The right IMF
+			 *
+			 */
+			template< typename LeftImf, typename RightImf >
+			static void ensure_imfs_match( const LeftImf &left_imf, const RightImf &right_imf ) {
+				if( !( right_imf.N == left_imf.n ) ) {
+					throw std::runtime_error( "Cannot compose two IMFs with non-matching range and domain" );
+				}
+			}
+
+		} // namespace internal
+
+		/**
+		 * Exposes the type and creates the composed IMF from two provided input IMFs.
+		 *
+		 * For certain combinations of IMFs, the resulting composed IMF is
+		 * one of the fundamental types. In these cases, the factory is
+		 * specialized to produce the appropriate type and object.
+		 */
+		template< typename LeftImf, typename RightImf >
+		struct ComposedFactory {
+
+			typedef Composed< LeftImf, RightImf > type;
+
+			static type create( const LeftImf &f, const RightImf &g ) {
+				internal::ensure_imfs_match( f, g );
+				return type( f, g );
+			}
 		};
 
 		template< typename RightImf >
-		struct composed_type< Id, RightImf > {
+		struct ComposedFactory< Id, RightImf > {
+
 			typedef RightImf type;
+
+			static type create( const Id &f, const RightImf &g ) {
+				internal::ensure_imfs_match( f, g );
+				return RightImf( g );
+			}
 		};
 
 		template< typename LeftImf >
-		struct composed_type< LeftImf, Id > {
+		struct ComposedFactory< LeftImf, Id > {
+
 			typedef LeftImf type;
-		};
 
-		template<>
-		struct composed_type< Id, Id > {
-			typedef Id type;
-		};
-
-		template<>
-		struct composed_type< Zero, Id > {
-			typedef Zero type;
-		};
-
-		template<>
-		struct composed_type< Id, Constant > {
-			typedef Constant type;
-		};
-
-		template<>
-		struct composed_type< Strided, Constant > {
-			typedef Constant type;
-		};
-
-		template<>
-		struct composed_type< Id, Zero > {
-			typedef Zero type;
-		};
-
-		/**
-		 * Creates the composed IMF from two provided input IMFs.
-		 * Depending on the input IMF types, the factory may
-		 * specialize the returned IMF type.
-		 */
-
-		struct ComposedFactory {
-
-			template< typename LeftImf, typename RightImf >
-			static typename composed_type< LeftImf, RightImf >::type create( const LeftImf &left_imf, const RightImf &right_imf ) {
-				return typename composed_type< LeftImf, RightImf >::type( left_imf, right_imf );
+			static type create( const LeftImf &f, const Id &g ) {
+				internal::ensure_imfs_match( f, g );
+				return LeftImf( f );
 			}
-
 		};
 
 		template<>
-		Strided ComposedFactory::create( const Id &f, const Strided &g ) {
-			return Strided( g.n, f.N, g.b, g.s );
-		}
+		struct ComposedFactory< Id, Id > {
+
+			typedef Id type;
+
+			static type create( const Id &f, const Id &g ) {
+				internal::ensure_imfs_match( f, g );
+				return type( f.n );
+			}
+		};
 
 		template<>
-		Strided ComposedFactory::create( const Strided &f, const Strided &g ) {
-			return Strided( g.n, f.N, f.s * g.b + f.b, f.s * g.s );
-		}
+		struct ComposedFactory< Strided, Strided >{
+
+			typedef Strided type;
+
+			static type create( const Strided &f, const Strided &g ) {
+				internal::ensure_imfs_match( f, g );
+				return type( g.n, f.N, f.s * g.b + f.b, f.s * g.s );
+			}
+		};
 
 		template<>
-		Strided ComposedFactory::create( const Strided &f, const Id &g ) {
-			return Strided( g.n, f.N, f.b, f.s );
-		}
+		struct ComposedFactory< Strided, Constant > {
 
-		/** Composition of two Id IMFs is an Id Imf */
-		template<>
-		Id ComposedFactory::create( const Id &f, const Id &g ) {
-#ifdef NDEBUG
-			(void)f;
-#endif
-			// The first function's co-domain must be equal to the second function's domain.
-			assert( g.N == f.n );
-			return Id( g.n );
-		}
+			typedef Constant type;
 
-		template<>
-		Constant ComposedFactory::create( const Id &f, const Constant &g ) {
-			(void)f;
-			return Constant( g.n, f.N, g.b );
-		}
-
-		template<>
-		Constant ComposedFactory::create( const Strided &f, const Constant &g ) {
-			(void)f;
-			return Constant( g.n, f.N, f.b + f.s * g.b );
-		}
-
-		template<>
-		Zero ComposedFactory::create( const Id &f, const Zero &g ) {
-			(void)f;
-			return Zero( g.n );
-		}
-
-		template<>
-		Zero ComposedFactory::create( const Zero &f, const Id &g ) {
-			(void)f;
-			return Zero( g.n );
-		}
-
-		template<>
-		typename composed_type< Id, Select >::type ComposedFactory::create( const Id &f1, const Select &f2 ) {
-			(void) f1;
-			return f2;
-		}
+			static type create( const Strided &f, const Constant &g ) {
+				internal::ensure_imfs_match( f, g );
+				return type( g.n, f.N, f.b + f.s * g.b );
+			}
+		};
 
 	}; // namespace imf
 
