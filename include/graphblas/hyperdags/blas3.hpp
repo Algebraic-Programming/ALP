@@ -106,9 +106,10 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 2 > sourcesC{
+		std::array< uintptr_t, 3 > sourcesC{
 			getID( internal::getMatrix(A) ),
-			getID( internal::getMatrix(B) )
+			getID( internal::getMatrix(B) ),
+			getID( internal::getMatrix(C) ),
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getMatrix(C) ) };
 		internal::hyperdags::generator.addOperation(
