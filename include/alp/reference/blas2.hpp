@@ -25,14 +25,12 @@
 
 #include <cstddef>
 
-#include <alp/base/blas2.hpp>
 #include <alp/backends.hpp>
 #include <alp/blas3.hpp>
 #include <alp/config.hpp>
 #include <alp/matrix.hpp>
 #include <alp/vector.hpp>
 #include <alp/rc.hpp>
-#include <alp/matrix.hpp>
 #include <graphblas/utils/iscomplex.hpp>
 
 #define NO_CAST_OP_ASSERT( x, y, z )                                           \
