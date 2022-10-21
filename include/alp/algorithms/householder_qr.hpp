@@ -88,7 +88,7 @@ namespace alp {
 			}
 
 			// Out of place specification of the computation
-			Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > RR( n, m );
+			Matrix< D, GeneralType, alp::Dense > RR( n, m );
 
 			rc = alp::set( RR, H );
 			if( rc != SUCCESS ) {
@@ -100,7 +100,7 @@ namespace alp {
 #endif
 
 			// a temporary for storing the alp::mxm result
-			Matrix< D, OrthogonalType, alp::Dense, OrthogonalView, OrthogonalImfR, OrthogonalImfC > Qtmp( n, n );
+			Matrix< D, OrthogonalType, alp::Dense > Qtmp( n, n );
 
 			for( size_t k = 0; k < std::min( n-1, m ); ++k ) {
 #ifdef DEBUG
@@ -119,7 +119,7 @@ namespace alp {
 				// v = v / norm ( v )
 
 				auto v_view = alp::get_view( RR, utils::range( k, n ), k );
-				Vector< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > v( n - k );
+				Vector< D, GeneralType, alp::Dense > v( n - k );
 				rc = alp::set( v, v_view );
 				if( rc != SUCCESS ) {
 					std::cerr << " alp::set( v, view ) failed\n";
@@ -200,7 +200,7 @@ namespace alp {
 				// RR = Qk * RR
 
 				// QkRR = Qk * RR
-				Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > QkRR( n, m );
+				Matrix< D, GeneralType, alp::Dense > QkRR( n, m );
 				rc = rc ? rc : alp::set( QkRR, zero );
 				rc = rc ? rc : alp::mxm( QkRR, Qk, RR, ring );
 				if( rc != SUCCESS ) {
