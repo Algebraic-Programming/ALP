@@ -564,12 +564,188 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 
-	// TODOs:
-	// eWiseMul( out, vector, scalar )
-	// eWiseMul( out, scalar, vector )
-	// eWiseMul( out, scalar, scalar )
+	// test scalar on the right, sparse, unmasked
+	std::cout << "\b\b 20: ";
+	const double scalar = 2.0;
+	rc = clear( out );
+	rc = rc ? rc : clear( left );
+	rc = rc ? rc : setElement( left, 3.0, n / 2 );
+	rc = rc ? rc : eWiseMul( out, left, scalar, ring );
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != 1 ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected 1\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		if( pair.first != n / 2 && pair.second != 6 ) {
+			std::cerr << "primitive returns an entry ( "
+				<< pair.first << ", " << pair.second << " ), "
+				<< "expected a single entry with value 6 at position " << (n/2) << "\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// test scalar on the right, dense, unmasked
+	std::cout << "\b\b 21: ";
+	rc = set( right, 2.0 );
+	rc = rc ? rc : eWiseMul( out, right, scalar, ring );
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != n ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected " << n << "\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		if( pair.first == n / 2 ) {
+			if( pair.second != 10 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected value 10 at this position\n";
+				rc = FAILED;
+			}
+		} else if( pair.second != 4 ) {
+			std::cerr << "primitive returns an entry ( "
+				<< pair.first << ", " << pair.second << " ), "
+				<< "expected value 4 at this position\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// test scalar on the left, sparse, unmasked
+	std::cout << "\b\b 22: ";
+	rc = eWiseMul( out, scalar, left, ring );
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != n ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected " << n << "\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		if( pair.first == n / 2 ) {
+		       if( pair.second != 16 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected an entry with value 16 at this position\n";
+				rc = FAILED;
+		       }
+		} else if( pair.second != 4 ) {
+			std::cerr << "primitive returns an entry ( "
+				<< pair.first << ", " << pair.second << " ), "
+				<< "expected value 4 at this position\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// test scalar on the left, dense, unmasked
+	std::cout << "\b\b 23: ";
+	rc = eWiseMul( out, scalar, right, ring );
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != n ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected " << n << "\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		if( pair.first == n / 2 ) {
+			if( pair.second != 20 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected an entry with value 20 at this position\n";
+				rc = FAILED;
+			}
+		} else if( pair.second != 8 ) {
+			std::cerr << "primitive returns an entry ( "
+				<< pair.first << ", " << pair.second << " ), "
+				<< "expected value 8 at this position\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// test scalars on both sides, unmasked and masked
+	{
+		std::cout << "\b\b 24: ";
+		double anotherScalar = 3.0;
+		rc = clear( out );
+		rc = rc ? rc : eWiseMul( out, scalar, anotherScalar, ring );
+		if( rc != SUCCESS ) {
+			std::cerr << "primitive returns " << toString( rc ) << ", "
+				<< "expected SUCCESS\n";
+			rc = FAILED;
+			return;
+		}
+		if( nnz( out ) != n ) {
+			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+				<< "expected " << n << "\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.second != 6 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected an entry with value 6 only\n";
+				rc = FAILED;
+			}
+		}
+		if( rc != SUCCESS ) { return; }
+		std::cout << "\b\b 25: ";
+		rc = clear( out );
+		rc = rc ? rc : eWiseMul( out, odd_mask, scalar, anotherScalar, ring );
+		if( rc != SUCCESS ) {
+			std::cerr << "primitive returns " << toString( rc ) << ", "
+				<< "expected SUCCESS\n";
+			rc = FAILED;
+			return;
+		}
+		if( nnz( out ) != n/2 ) {
+			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+				<< "expected " << (n/2) << "\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.first % 2 == 0 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected entries at odd positions only\n";
+				rc = FAILED;
+			}
+			if( pair.first % 2 == 1 && pair.second != 6 ) {
+				std::cerr << "primitive returns an entry ( "
+					<< pair.first << ", " << pair.second << " ), "
+					<< "expected entries with value 6 only\n";
+				rc = FAILED;
+			}
+		}
+		if( rc != SUCCESS ) { return; }
+	}
+
+	// TODOs
 	// eWiseMul( out, mask, vector, scalar )
-	// eWiseMul( out, vector, mask, scalar )
+	// eWiseMul( out, mask, scalar, vector )
 
 	// done
 }
