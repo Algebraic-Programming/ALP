@@ -29,21 +29,21 @@
 
 #include <assert.h>
 
-#include <alp/rc.hpp>
 #include <alp/backends.hpp>
+#include <alp/base/vector.hpp>
+#include <alp/amf-based/vector.hpp>
 
 // #include <alp/utils/alloc.hpp>
 // #include <alp/utils/autodeleter.hpp>
 // #include <alp/reference/vectoriterator.hpp>
 
+#include <alp/rc.hpp>
 #include <alp/imf.hpp>
 #include <alp/matrix.hpp>
 #include <alp/density.hpp>
 #include <alp/storage.hpp>
 #include <alp/views.hpp>
 
-#include <alp/base/vector.hpp>
-#include <alp/amf-based/vector.hpp>
 
 
 namespace alp {
