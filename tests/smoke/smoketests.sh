@@ -554,6 +554,23 @@ for BACKEND in ${BACKENDS[@]}; do
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
+
+	NTEST_HOUSEHOLDER=20
+	echo ">>>      [x]           [ ]       Tests dgeqrf (Householder QR decomposition) on"
+	echo ">>>                               a real symmetric matrix (${NTEST_HOUSEHOLDER} x 2x${NTEST_HOUSEHOLDER})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=20
+	echo ">>>      [x]           [ ]       Tests zgeqrf (Householder QR decomposition) on"
+	echo ">>>                               a complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX} x 2x${NTEST_HOUSEHOLDER_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
 	
 done
 
