@@ -41,8 +41,8 @@ using HermitianOrSymmetric = structures::Symmetric;
 constexpr BaseScalarType tol = 1.e-5;
 constexpr size_t RNDSEED = 11235;
 
-//temp function untill (tridiagonal)Hermitian containter is implemented
-//** gnerate tridiagonal-symmetric-hermitian matrix in a rectangular container */
+//** temp function until (tridiagonal)Hermitian container is implemented */
+//** generate tridiagonal-symmetric-hermitian matrix in a rectangular container */
 template<
 	typename T
 >
@@ -54,8 +54,7 @@ std::vector< T > generate_symmherm_tridiag_matrix_data(
 	>::type * const = nullptr
 ) {
 	std::vector< T > data( N * N );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
-	std::srand( RNDSEED );
+	std::fill( data.begin(), data.end(), static_cast< T >( 0 ) );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; ( j < N ) && ( j <= i + 1 ); ++j ) {
 			T val( std::rand(), std::rand() );
@@ -78,7 +77,6 @@ std::vector< T >  generate_symmherm_tridiag_matrix_data(
 	>::type * const = nullptr
 ) {
 	std::vector< T > data( N * N );
-	std::srand( RNDSEED );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; ( j < N ) && ( j <= i + 1 ); ++j ) {
 			T val = static_cast< T >( std::rand() )  / RAND_MAX;
@@ -169,13 +167,13 @@ RC check_solution(
 	Matrix< D, SymmOrHermTridiagonalType, Dense, SymmHermTrdiViewType, SymmHermTrdiImfR, SymmHermTrdiImfC > &T,
 	Matrix<	D, OrthogonalType, Dense, OrthViewType, OrthViewImfR, OrthViewImfC > &Q,
 	Vector<	D, structures::General, Dense, VecViewType, VecImfR, VecImfC > &d,
-	const Ring & ring = Ring(),
-	const Minus & minus = Minus(),
-	const Divide & divide = Divide()
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus(),
+	const Divide &divide = Divide()
 ) {
-	(void)ring;
-	(void)minus;
-	(void)divide;
+	(void) ring;
+	(void) minus;
+	(void) divide;
 	RC rc = SUCCESS;
 
  	const size_t n = nrows( Q );
@@ -231,7 +229,7 @@ RC check_solution(
 
 
 
-void alp_program( const size_t & unit, alp::RC & rc ) {
+void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
 	alp::Semiring<
@@ -250,6 +248,7 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	Vector< ScalarType, structures::General, Dense > d( N );
 	rc = rc ? rc : set( d, zero_scalar );
 	{
+		std::srand( RNDSEED );
 		auto matrix_data = generate_symmherm_tridiag_matrix_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( T, matrix_data.begin(), matrix_data.end() );
 	}

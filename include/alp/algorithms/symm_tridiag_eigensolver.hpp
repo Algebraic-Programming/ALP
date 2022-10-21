@@ -34,7 +34,7 @@ namespace alp {
 		 * find zero of secular equation in interval <a,b>
 		 * using bisection
 		 * this is not an optimal algorithm and there are many
-		 * more efficient implantation
+		 * more efficient implementation
 		 */
 		template<
 			typename D,
@@ -78,10 +78,10 @@ namespace alp {
 				[ &d, &x0, &fx0, &ring, &minus, &divide ]( const size_t i, D &val ) {
 					Scalar< D > alpha( val );
 					Scalar< D > beta( d[ i ] );
-					foldl( alpha, Scalar< D > ( val ), ring.getMultiplicativeOperator() );
-					foldl( beta, x0, minus );
-					foldl( alpha, beta, divide );
-					foldl( fx0, alpha, ring.getAdditiveOperator() );
+					alp::foldl( alpha, Scalar< D > ( val ), ring.getMultiplicativeOperator() );
+					alp::foldl( beta, x0, minus );
+					alp::foldl( alpha, beta, divide );
+					alp::foldl( fx0, alpha, ring.getAdditiveOperator() );
 				},
 				v
 			);
@@ -102,13 +102,13 @@ namespace alp {
 
 
 		/**
-		 * Calcualte eigendecomposition of system D + vvt
+		 * Calculate eigendecomposition of system D + vvt
 		 *        \f$D = diag(d)$ is diagonal matrix and
 		 *        \a vvt outer product outer(v,v)
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
-		 * @tparam Minus    Type minus operator used in the computation
+		 * @tparam Minus    Type of minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
 		 * @param[out] Egvecs    output orthogonal matrix contaning eigenvectors
 		 * @param[out] egvals    output vector containg eigenvalues
@@ -144,7 +144,6 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
-			(void)minus;
 			RC rc = SUCCESS;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
@@ -187,8 +186,8 @@ namespace alp {
 			std::cout << " ---->     count_direct_egvc = " << count_direct_egvc << "\n";
 			std::cout << " ----> count_non_direct_egvc = " << count_non_direct_egvc << "\n";
 #endif
-			auto egvals_direct = get_view< alp::structures::General >( egvals, select_direct );
-			auto egvals_non_direct = get_view< alp::structures::General >( egvals, select_non_direct );
+			auto egvals_direct = alp::get_view< alp::structures::General >( egvals, select_direct );
+			auto egvals_non_direct = alp::get_view< alp::structures::General >( egvals, select_non_direct );
 
 			auto Egvecs_non_direct = alp::get_view< alp::structures::Orthogonal >(
 				Egvecs, select_non_direct, select_non_direct
@@ -200,8 +199,8 @@ namespace alp {
 				get_view< alp::structures::General >( d, select_direct )
 			);
 
-			auto d_view = get_view< alp::structures::General >( d, select_non_direct );
-			auto v_view = get_view< alp::structures::General >( v, select_non_direct );
+			auto d_view = alp::get_view< alp::structures::General >( d, select_non_direct );
+			auto v_view = alp::get_view< alp::structures::General >( v, select_non_direct );
 
 #ifdef DEBUG
 			print_vector( "eigensolveDiagPlusOuter: d ", d );
@@ -213,11 +212,11 @@ namespace alp {
 			// vec_b = {d_view[1], d_view[2], ... , d_view[N-1], d_view[N]+dot(v,v) }
 			size_t nn = alp::getLength( d_view );
 			alp::Vector< D > vec_b( nn );
-			auto v1 = get_view( vec_b, utils::range( 0, nn - 1 ) );
-			auto v2 = get_view( d_view, utils::range( 1, nn ) );
+			auto v1 = alp::get_view( vec_b, utils::range( 0, nn - 1 ) );
+			auto v2 = alp::get_view( d_view, utils::range( 1, nn ) );
 			rc = rc ? rc : alp::set( v1, v2 );
-			auto v3 = get_view( vec_b, utils::range( nn - 1, nn ) );
-			auto v4 = get_view( d_view, utils::range( nn - 1, nn ) );
+			auto v3 = alp::get_view( vec_b, utils::range( nn - 1, nn ) );
+			auto v4 = alp::get_view( d_view, utils::range( nn - 1, nn ) );
 			rc = rc ? rc : alp::set( v3, v4 );
 
 			// eWiseLambda currently does not work with select view
@@ -233,13 +232,13 @@ namespace alp {
 
 			Scalar< D > alpha( zero );
 			// there is a bug in dot() when called on select views
-			//rc = rc ? rc : dot( alpha, d_view, d_view, ring );
-			rc = rc ? rc : dot( alpha, vec_temp_v, vec_temp_v, ring );
+			//rc = rc ? rc : alp::dot( alpha, d_view, d_view, ring );
+			rc = rc ? rc : alp::dot( alpha, vec_temp_v, vec_temp_v, ring );
 
-			auto v5 = get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
+			auto v5 = alp::get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
 			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
 
-			rc = rc ? rc : eWiseLambda(
+			rc = rc ? rc : alp::eWiseLambda(
 				[ &d_view, &vec_temp_v, &vec_b ]( const size_t i, D &val ) {
 					Scalar< D > a( d_view[ i ] );
 					Scalar< D > b( vec_b[ i ] );
@@ -271,20 +270,20 @@ namespace alp {
 			// normalize columns in tmp_egvecs,
 			// here we abuse the syntax and use eWiseLambda.
 			// Once fold matrix -> vector implemented, the next section should be rewritten
-			rc = rc ? rc : eWiseLambda(
+			rc = rc ? rc : alp::eWiseLambda(
 				[ &tmp_egvecs, &nn, &ring, &divide, &zero ]( const size_t i, D &val ) {
-					(void)val;
+					(void) val;
 					auto egvec_i = get_view( tmp_egvecs, utils::range( 0, nn ), i );
 					Scalar< D > norm_i( zero );
-					(void)norm2( norm_i, egvec_i, ring );
+					alp::norm2( norm_i, egvec_i, ring );
 					alp::foldl( egvec_i, norm_i , divide );
 				},
 				ones
 			);
 
 			// update results
-			auto egvecs_view = get_view( Egvecs_non_direct, utils::range( 0, nn ), utils::range( 0, nn ) );
-			auto tmp_egvecs_orth_view = get_view< OrthogonalType  >( tmp_egvecs );
+			auto egvecs_view = alp::get_view( Egvecs_non_direct, utils::range( 0, nn ), utils::range( 0, nn ) );
+			auto tmp_egvecs_orth_view = alp::get_view< OrthogonalType >( tmp_egvecs );
 			rc = rc ? rc : alp::set( egvecs_view, tmp_egvecs_orth_view );
 
 			return rc;
@@ -292,7 +291,7 @@ namespace alp {
 
 
 		/**
-		 * Calcualte eigendecomposition of symmetric tridiagonal matrix T
+		 * Calculate eigendecomposition of symmetric tridiagonal matrix T
 		 *        \f$T = Qdiag(d)Q^T\f$ where
 		 *        \a T is real symmetric tridiagonal
 		 *        \a Q is orthogonal (columns are eigenvectors).
@@ -300,7 +299,7 @@ namespace alp {
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
-		 * @tparam Minus    Type minus operator used in the computation
+		 * @tparam Minus    Type of minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
 		 * @param[out] Q    output orthogonal matrix contaning eigenvectors
 		 * @param[out] d    output vector containg eigenvalues
@@ -351,13 +350,13 @@ namespace alp {
 				VecImfR,
 				VecImfC
 			> &d,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide()
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
 		) {
-			(void)ring;
-			(void)minus;
-			(void)divide;
+			(void) ring;
+			(void) minus;
+			(void) divide;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -369,7 +368,7 @@ namespace alp {
 
 			if( n == 1 ) {
 				//d=T[0];
-				rc = rc ? rc : eWiseLambda(
+				rc = rc ? rc : alp::eWiseLambda(
 					[ &d ]( const size_t i, const size_t j, D &val ) {
 						(void) i;
 						(void) j;
@@ -385,13 +384,13 @@ namespace alp {
 
 
 			Vector< D, structures::General, Dense > v( n );
-			rc = rc ? rc : set( v, zero );
-			rc = rc ? rc : eWiseLambda(
+			rc = rc ? rc : alp::set( v, zero );
+			rc = rc ? rc : alp::eWiseLambda(
 				[ &T, &m, &ring ]( const size_t i, D &val ) {
-					if( i ==  m - 1 ) {
+					if( i == m - 1 ) {
 						val = ring.template getOne< D >();
 					}
-					if( i ==  m) {
+					if( i == m) {
 						val = internal::access( T, internal::getStorageIndex( T, m - 1, m ) );
 					}
 				},
@@ -413,8 +412,8 @@ namespace alp {
 			print_matrix( " Atmp(updated)  ", Atmp );
 #endif
 
-			auto Ttop = get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( 0, m ), utils::range( 0, m ) );
-			auto Tdown = get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( m, n ), utils::range( m, n ) );
+			auto Ttop = alp::get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( 0, m ), utils::range( 0, m ) );
+			auto Tdown = alp::get_view< SymmOrHermTridiagonalType >( Atmp, utils::range( m, n ), utils::range( m, n ) );
 
 #ifdef DEBUG
 			print_matrix( " Ttop = ", Ttop );
@@ -423,14 +422,14 @@ namespace alp {
 
 			Vector< D, structures::General, Dense > dtmp( n );
 			rc = rc ? rc : alp::set( dtmp, zero );
-			auto dtop = get_view( dtmp, utils::range( 0, m ) );
-			auto ddown = get_view( dtmp, utils::range( m, n ) );
+			auto dtop = alp::get_view( dtmp, utils::range( 0, m ) );
+			auto ddown = alp::get_view( dtmp, utils::range( m, n ) );
 
 			Matrix< D, OrthogonalType, Dense > U( n );
 			rc = rc ? rc : alp::set( U, zero );
 
-			auto Utop = get_view< OrthogonalType >( U, utils::range( 0, m ), utils::range( 0, m ) );
-			auto Udown = get_view< OrthogonalType >( U, utils::range( m, n ), utils::range( m, n ) );
+			auto Utop = alp::get_view< OrthogonalType >( U, utils::range( 0, m ), utils::range( 0, m ) );
+			auto Udown = alp::get_view< OrthogonalType >( U, utils::range( m, n ), utils::range( m, n ) );
 
 			rc = rc ? rc : symm_tridiag_dac_eigensolver( Ttop, Utop, dtop, ring );
 			rc = rc ? rc : symm_tridiag_dac_eigensolver( Tdown, Udown, ddown, ring );
@@ -454,9 +453,9 @@ namespace alp {
 #ifdef TEMPDISABLE
 			// while mxv does not support vectors/view
 			// we cast vector->matrix and use mxm
-			auto z_mat_view = get_view< view::matrix >( z );
-			auto v_mat_view = get_view< view::matrix >( v );
-			rc = rc ? rc : mxm(
+			auto z_mat_view = alp::get_view< view::matrix >( z );
+			auto v_mat_view = alp::get_view< view::matrix >( v );
+			rc = rc ? rc : alp::mxm(
 				z_mat_view,
 				alp::get_view< alp::view::transpose >( U ),
 				v_mat_view,
@@ -464,7 +463,7 @@ namespace alp {
 			);
 #else
 			//z=U^T.dot(v)
-			rc = rc ? rc : mxv(
+			rc = rc ? rc : alp::mxv(
 				z,
 				alp::get_view< alp::view::transpose >( U ),
 				v,
@@ -480,7 +479,7 @@ namespace alp {
 			// permutations which sort dtmp
 			std::vector< size_t > isort_dtmp( n, 0 );
 			std::vector< size_t > no_permute_data( n, 0 );
-			for( size_t i = 0 ; i < n ; ++i ) {
+			for( size_t i = 0; i < n; ++i ) {
 				isort_dtmp[ i ] = i;
 				no_permute_data[ i ] = i;
 			}
@@ -531,7 +530,7 @@ namespace alp {
 #endif
 
 			rc = rc ? rc : alp::set( Q, zero );
-			rc = rc ? rc : mxm( Q, U, QdOuter, ring	);
+			rc = rc ? rc : alp::mxm( Q, U, QdOuter, ring	);
 
 #ifdef DEBUG
 			print_matrix( "  Q = U x Q   ", Q );
