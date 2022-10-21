@@ -22,7 +22,7 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > out( n ), left( n ), right( n );
 	grb::Vector< bool > mask( n );
 	grb::Vector< size_t > temp( n );
@@ -59,6 +59,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// test operator versions first, dense vectors only, without masks
 	rc = grb::eWiseApply( out, left, 0.25, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << " ), "
@@ -81,6 +82,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, 0.25, left, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -102,6 +104,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, left, left, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -124,6 +127,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// operator versions, dense vectors only, with masks
 	rc = grb::eWiseApply( out, mask, left, 0.25, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -150,7 +154,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	} else {
 		return;
 	}
+
 	rc = grb::eWiseApply( out, mask, 0.25, left, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -176,7 +182,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	} else {
 		return;
 	}
+
 	rc = grb::eWiseApply( out, mask, left, left, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -205,6 +213,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// monoid version, dense vectors, unmasked
 	rc = grb::eWiseApply( out, left, 0.25, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -226,6 +235,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, 0.25, left, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -247,6 +257,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, left, left, plusM.getOperator() );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out )
@@ -269,6 +280,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// monoid versions, dense vectors, with masks
 	rc = grb::eWiseApply( out, mask, left, 0.25, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -294,7 +306,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	} else {
 		return;
 	}
+
 	rc = grb::eWiseApply( out, mask, 0.25, left, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -320,7 +334,9 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	} else {
 		return;
 	}
+
 	rc = grb::eWiseApply( out, mask, left, left, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
@@ -349,6 +365,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// monoid version, sparse vectors, unmasked
 	rc = grb::eWiseApply( out, right, 0.25, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -378,6 +395,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, 0.25, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << " ), "
@@ -407,6 +425,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, left, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << " ), "
@@ -436,6 +455,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, right, left, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( right ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -465,6 +485,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, right, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != nnz( right ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -493,6 +514,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// monoid version, sparse vectors, with masks
 	rc = grb::eWiseApply( out, mask, right, 0.25, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -528,6 +550,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, mask, 0.25, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -563,6 +586,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, mask, left, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -598,6 +622,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, mask, right, left, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != size( right ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
@@ -633,6 +658,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	}
 
 	rc = grb::eWiseApply( out, mask, right, right, plusM );
+	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
 		if( nnz( out ) != nnz( right ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
