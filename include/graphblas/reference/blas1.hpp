@@ -2250,17 +2250,25 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D1, IOType >::value ), "grb::foldl",
+				std::is_same< typename Op::D1, IOType >::value ),
+			"grb::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D2, InputType >::value ), "grb::foldl",
+				std::is_same< typename Op::D2, InputType >::value ),
+			"grb::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D3, IOType >::value ), "grb::foldl",
+				std::is_same< typename Op::D3, IOType >::value ),
+			"grb::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
+
+		// dynamic checks
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) ) { return ILLEGAL; }
+		}
 
 		// if no monoid was given, then we can only handle dense vectors
 		auto null_coor = &( internal::getCoordinates( x ) );
@@ -2274,7 +2282,7 @@ namespace grb {
 				descr, true, false, false, false, void
 			>( x, nullptr, null_coor, beta, op, phase );
 		}
-}
+	}
 
 	/**
 	 * For all elements in an ALP/GraphBLAS vector \a x, fold the value
@@ -2304,24 +2312,45 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D1, IOType >::value ), "grb::foldl",
+				std::is_same< typename Op::D1, IOType >::value ),
+			"grb::foldl",
 			"called with a vector x of a type that does not match the first domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D2, InputType >::value ), "grb::foldl",
+				std::is_same< typename Op::D2, InputType >::value ),
+			"grb::foldl",
 			"called on a vector y of a type that does not match the second domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Op::D3, IOType >::value ), "grb::foldl",
+				std::is_same< typename Op::D3, IOType >::value ),
+			"grb::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given operator" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting ) ||
-			std::is_same< bool, MaskType >::value ),
+				std::is_same< bool, MaskType >::value ),
 			"grb::foldl (reference, vector <- scalar, masked)",
 			"provided mask does not have boolean entries" );
+
+		// check empty mask
 		if( size( m ) == 0 ) {
 			return foldl< descr >( x, beta, op, phase );
 		}
+
+		// dynamic checks
+		const size_t n = size( x );
+		if( size( m ) != n ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
+
+		// catch trivial phase
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
 		const auto m_coor = &( internal::getCoordinates( m ) );
 		const auto m_p = internal::getRaw( m );
 		if( nnz( x ) < size( x ) ) {
@@ -2497,8 +2526,18 @@ namespace grb {
 			std::is_same< bool, MaskType >::value ),
 			"grb::foldl (reference, vector <- scalar, masked, monoid)",
 			"provided mask does not have boolean entries" );
+
+		// check for empty mask
 		if( size( m ) == 0 ) {
 			return foldl< descr >( x, beta, monoid, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( x );
+		if( n != size( m ) ) { return MISMATCH; }
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
 		}
 
 		// delegate to generic case
@@ -6381,6 +6420,9 @@ namespace grb {
 			static_assert( !y_zero || y_scalar, "If y is zero, y_scalar must be true. "
 				"Triggering this assertion indicates an incorrect call to this "
 				"function; please submit a bug report" );
+#ifdef _DEBUG
+			std::cout << "\t in eWiseMulAdd_dispatch\n";
+#endif
 			const MaskType * __restrict__ m = nullptr;
 			const CoorsType * m_coors = nullptr;
 			assert( !masked || ( m_vector != nullptr ) );
@@ -6413,12 +6455,15 @@ namespace grb {
 				( z_nns > 0 && z_nns < n ) ||
 				( masked && !mask_is_dense );
 			assert( !(sparse && dense) );
-
+#ifdef _DEBUG
+			std::cout << "\t\t (sparse, dense)=(" << sparse << ", "
+				<< dense << ")\n";
+#endif
 			// pre-assign coors if output is dense but was previously totally empty
 			const bool assign_z = z_nns == 0 && !sparse;
 			if( assign_z ) {
 #ifdef _DEBUG
-				std::cout << "\teWiseMulAdd_dispatch: detected output will be dense while "
+				std::cout << "\t\t detected output will be dense while "
 					<< "the output vector presently is completely empty. We therefore "
 					<< "pre-assign all output coordinates\n";
 #endif
@@ -6432,7 +6477,9 @@ namespace grb {
 				const size_t mul_loop_size = ( 3 + mask_factor ) * std::min(
 						( a_scalar ? n : a_coors->nonzeroes() ),
 						( x_scalar ? n : x_coors->nonzeroes() )
-					) + ( 2 + mask_factor ) * ( y_scalar ? n : y_coors->nonzeroes() );
+					) + ( y_zero ? 0 :
+						(2 + mask_factor) * ( y_scalar ? n : y_coors->nonzeroes() )
+					);
 				/** See internal issue #42 (closed): this variant, in a worst-case analysis
 				 * is never preferred:
 				const size_t add_loop_size = (4 + mask_factor) *
@@ -6442,24 +6489,24 @@ namespace grb {
 				        (x_scalar ? n : x_coors->nonzeroes())
 				    ) // min is worst-case, best case is 0, realistic is some a priori unknown
 				      // problem-dependent overlap
-				std::cout << "\t\teWiseMulAdd_dispatch: add_loop_size = " << add_loop_size
+				std::cout << "\t\t add_loop_size = " << add_loop_size
 					<< "\n";
 				;*/
 #ifdef _DEBUG
-				std::cout << "\t\teWiseMulAdd_dispatch: mul_loop_size = " << mul_loop_size
+				std::cout << "\t\t mul_loop_size = " << mul_loop_size
 					<< "\n";
 #endif
 				if( masked ) {
-					const size_t mask_loop_size = 5 * m_coors->nonzeroes();
+					const size_t mask_loop_size = ( y_zero ? 4 : 5 ) * m_coors->nonzeroes();
 #ifdef _DEBUG
-					std::cout << "\t\teWiseMulAdd_dispatch: mask_loop_size= "
+					std::cout << "\t\t mask_loop_size= "
 						<< mask_loop_size << "\n";
 #endif
 					// internal issue #42 (closed):
 					// if( mask_loop_size < mul_loop_size && mask_loop_size < add_loop_size ) {
 					if( mask_loop_size < mul_loop_size ) {
 #ifdef _DEBUG
-						std::cout << "\teWiseMulAdd_dispatch: will be driven by output mask\n";
+						std::cout << "\t\t will be driven by output mask\n";
 #endif
 						return sparse_eWiseMulAdd_maskDriven<
 							descr, a_scalar, x_scalar, y_scalar, y_zero
@@ -6469,7 +6516,7 @@ namespace grb {
 				// internal issue #42 (closed), see also above:
 				// if( mul_loop_size < add_loop_size ) {
 #ifdef _DEBUG
-				std::cout << "\teWiseMulAdd_dispatch: will be driven by the multiplication a*x\n";
+				std::cout << "\t\t will be driven by the multiplication a*x\n";
 #endif
 				static_assert( !(a_scalar && x_scalar),
 					"The case of the multiplication being between two scalars should have"
@@ -6495,7 +6542,7 @@ namespace grb {
 				/* internal issue #42 (closed), see also above:
 				} else {
 #ifdef _DEBUG
-				    std::cout << "\teWiseMulAdd_dispatch: will be driven by the addition with y\n";
+				    std::cout << "\t\t will be driven by the addition with y\n";
 #endif
 				    if( assign_z ) {
 				        return twoPhase_sparse_eWiseMulAdd_addPhase1<
@@ -6530,7 +6577,7 @@ namespace grb {
 			assert( ! masked || mask_is_dense );
 			assert( internal::getCoordinates( z_vector ).nonzeroes() == n );
 #ifdef _DEBUG
-			std::cout << "\teWiseMulAdd_dispatch: will perform a dense eWiseMulAdd\n";
+			std::cout << "\t\t will perform a dense eWiseMulAdd\n";
 #endif
 			if( assign_z ) {
 				return dense_eWiseMulAdd<
@@ -7897,7 +7944,11 @@ namespace grb {
 
 		// catch trivial dispatch
 		const InputType2 zeroIT2 = ring.template getZero< InputType2 >();
-		if( nnz( a ) || zeroIT2 == beta ) {
+		if( nnz( a ) == 0 || zeroIT2 == beta ) {
+#ifdef _DEBUG
+			std::cout << "eWiseMulAdd (reference, masked, vector<-vector<-scalar<-"
+				<< "scalar) dispatches to foldl\n";
+#endif
 			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
 
@@ -8021,6 +8072,10 @@ namespace grb {
 		// catch trivial dispatch
 		const InputType1 zeroIT1 = ring.template getZero< InputType1 >();
 		if( nnz( x ) == 0 || alpha == zeroIT1 ) {
+#ifdef _DEBUG
+			std::cout << "eWiseMulAdd (reference, masked, vector<-scalar<-scalar<-"
+				<< "scalar) dispatches to foldl\n";
+#endif
 			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
 
@@ -8879,8 +8934,7 @@ namespace grb {
 		return eWiseMulAdd< descr, true >(
 			z, m, x, beta,
 			ring.template getZero< typename Ring::D4 >(),
-			ring.getMultiplicativeOperator(),
-			phase
+			ring, phase
 		);
 	}
 
