@@ -111,6 +111,91 @@ namespace alp {
 	}
 
 	/**
+	 * Sets all elements of a Vector to the given value.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure,
+		Backend backend
+	>
+	RC set(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
+		const Scalar< T, ValStructure, reference > val,
+		const typename std::enable_if<
+			!alp::is_object< DataType >::value &&
+			!alp::is_object< T >::value,
+		void >::type * const = NULL
+	) {
+		return PANIC;
+	}
+
+	/**
+	 * Sets the element of a given Vector at a given position to a given value.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC, typename ValStructure,
+		typename T
+	>
+	RC setElement(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		const Scalar< T, ValStructure, reference > val,
+		const size_t i,
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
+	) {
+		return PANIC;
+	}
+
+	/** C++ scalar variant */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC,
+		typename T
+	>
+	RC setElement(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		const T val,
+		const size_t i,
+		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
+	) {
+		return PANIC;
+	}
+
+	/**
+	 * Sets all elements of the output matrix to the values of the input matrix.
+	 * C = A
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &A
+	) noexcept {
+		return PANIC;
+	}
+
+	/**
+	 * Sets all elements of the given matrix to the value of the given scalar.
+	 * C = val
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType, typename InputStructure,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Scalar< InputType, InputStructure, backend > &val
+	) noexcept {
+		return PANIC;
+	}
+
+	/**
 	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
 	 * an accumulator, using alp::operators::right_assign (thus overwriting
