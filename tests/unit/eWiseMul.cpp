@@ -45,6 +45,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	rc = rc ? rc : set( even_mask, temp, true );
 	rc = rc ? rc : set< descriptors::invert_mask >(
 		odd_mask, even_mask, true );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "\t initialisation of masks FAILED\n";
 		return;
@@ -56,6 +57,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	rc = rc ? rc : set( left, 1 );
 	rc = rc ? rc : set( right, 2 );
 	rc = rc ? rc : eWiseMul( out, left, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -79,6 +81,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// test in-place behaviour of eWiseMul
 	std::cout << "\b\b 2: ";
 	rc = eWiseMul( out, left, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -102,6 +105,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// test in-place with dense descriptor
 	std::cout << "\b\b 3: ";
 	rc = eWiseMul< descriptors::dense >( out, left, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -484,6 +488,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	rc = grb::set( left, 3.0 );
 	rc = rc ? rc : grb::set( right, 2.0 );
 	rc = rc ? rc : eWiseMul( out, odd_mask, left, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -537,6 +542,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// now use complementary mask to generate a dense vector
 	std::cout << "\b\b 19: ";
 	rc = eWiseMul( out, even_mask, left, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -571,6 +577,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	rc = rc ? rc : clear( left );
 	rc = rc ? rc : setElement( left, 3.0, n / 2 );
 	rc = rc ? rc : eWiseMul( out, left, scalar, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -596,6 +603,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	std::cout << "\b\b 21: ";
 	rc = set( right, 2.0 );
 	rc = rc ? rc : eWiseMul( out, right, scalar, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -627,6 +635,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// test scalar on the left, sparse, unmasked
 	std::cout << "\b\b 22: ";
 	rc = eWiseMul( out, scalar, left, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -658,6 +667,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	// test scalar on the left, dense, unmasked
 	std::cout << "\b\b 23: ";
 	rc = eWiseMul( out, scalar, right, ring );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "primitive returns " << toString( rc ) << ", "
 			<< "expected SUCCESS\n";
@@ -692,6 +702,7 @@ void grb_program( const size_t &n, RC &rc ) {
 		double anotherScalar = 3.0;
 		rc = clear( out );
 		rc = rc ? rc : eWiseMul( out, scalar, anotherScalar, ring );
+		rc = rc ? rc : wait();
 		if( rc != SUCCESS ) {
 			std::cerr << "primitive returns " << toString( rc ) << ", "
 				<< "expected SUCCESS\n";
@@ -715,6 +726,7 @@ void grb_program( const size_t &n, RC &rc ) {
 		std::cout << "\b\b 25: ";
 		rc = clear( out );
 		rc = rc ? rc : eWiseMul( out, odd_mask, scalar, anotherScalar, ring );
+		rc = rc ? rc : wait();
 		if( rc != SUCCESS ) {
 			std::cerr << "primitive returns " << toString( rc ) << ", "
 				<< "expected SUCCESS\n";
