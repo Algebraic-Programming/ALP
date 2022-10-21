@@ -22,9 +22,6 @@
 #ifdef DEBUG
 #include "../tests/utils/print_alp_containers.hpp"
 #endif
-// TEMPDISABLE enables workarounds for non-implemented features
-// should be removed in the final version
-#define TEMPDISABLE
 
 namespace alp {
 
