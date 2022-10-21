@@ -2572,7 +2572,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < n && nnz( z ) < n ) {
+			if( nnz( y ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -2633,7 +2633,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n && nnz( z ) < n ) {
+			if( nnz( x ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
