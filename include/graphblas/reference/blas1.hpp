@@ -8437,15 +8437,18 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 
@@ -8496,15 +8499,18 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 
@@ -8548,15 +8554,18 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 
@@ -8692,6 +8701,29 @@ namespace grb {
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
 			"called with a mask vector with a non-bool element type" );
+
+		// check for empty mask
+		if( size( m ) == 0 ) {
+			return eWiseMul< descr >( z, x, y, ring, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( size( m ) != n || size( x ) != n || size( y ) != n ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+		}
+
+		// check trivial phase
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
 #ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- vector x vector, masked) "
 			<< "dispatches to eWiseMulAdd (vector <- vector x vector + 0, masked)\n";
@@ -8732,19 +8764,23 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// check for empty mask
