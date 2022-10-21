@@ -55,6 +55,23 @@ namespace alp {
 	 */
 
 	/**
+	 * Clears all elements from the given vector \a x.
+	 *
+	 * At the end of this operation, the number of nonzero elements in this vector
+	 * will be zero. The size of the vector remains unchanged.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	RC clear(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
+	) noexcept {
+		(void) x;
+		return PANIC;
+	}
+
+	/**
 	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
 	 * an accumulator, using alp::operators::right_assign (thus overwriting

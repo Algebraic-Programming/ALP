@@ -24,9 +24,12 @@
 
 #include <alp/backends.hpp>
 #include <alp/phase.hpp>
+#include <alp/identities.hpp>
+#include <alp/monoid.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
+#include "io.hpp"
 
 namespace alp {
 

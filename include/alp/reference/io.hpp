@@ -29,6 +29,38 @@
 namespace alp {
 
 	/**
+	 * Clears all elements from the given vector \a x.
+	 *
+	 * At the end of this operation, the number of nonzero elements in this vector
+	 * will be zero. The size of the vector remains unchanged.
+	 *
+	 * @return alp::SUCCESS When the vector is successfully cleared.
+	 *
+	 * \note This function cannot fail.
+	 *
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      This function
+	//  *        -# contains \f$ \mathcal{O}(n) \f$ work,
+	//  *        -# will not allocate new dynamic memory,
+	//  *        -# will take at most \f$ \Theta(1) \f$ memory beyond the memory
+	//  *           already used by the application before the call to this
+	//  *           function.
+	//  *        -# will move at most \f$ \mathit{sizeof}(\mathit{bool}) +
+	//  *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
+	//  * \endparblock
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC
+	>
+	RC clear(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x
+	) noexcept {
+		throw std::runtime_error( "Needs an implementation" );
+		return SUCCESS;
+	}
+
+	/**
 	 * Assigns elements to a matrix from an iterator.
 	 *
 	 * @tparam InputType      The matrix's element type.
