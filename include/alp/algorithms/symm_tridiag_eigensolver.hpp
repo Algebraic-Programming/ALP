@@ -51,7 +51,8 @@ namespace alp {
 		RC bisec_sec_eq(
 			Scalar< D > &lambda,
 			const Vector<	D, structures::General,	Dense, VecView1, VecImfR1, VecImfC1 > &d,
-			// Vector v should be const, but that would disable eWiseLambda, to be resolved in the future
+			// Vector v should be const, but that would disable eWiseLambda,
+			// to be resolved in the future
 			Vector<	D, structures::General,	Dense, VecView2, VecImfR2, VecImfC2 > &v,
 			const Scalar< D > &a,
 			const Scalar< D > &b,
@@ -158,7 +159,9 @@ namespace alp {
 
 			std::vector< size_t > direct_egvc_indx( n, 0 );
 			std::vector< size_t > non_direct_egvc_indx( n, 0 );
-
+			// the following loop should be replaced by ALP primitives
+			// since v is not sorted it seems that another sort is needed
+			// currently there is no simple way to impement this in ALP
 			for( size_t i = 0; i < n; i++ ) {
 				if( std::abs( v[ i ] ) < eps ) {
 					// in these cases equals are canonical vectors
@@ -187,10 +190,6 @@ namespace alp {
 			auto egvals_direct = get_view< alp::structures::General >( egvals, select_direct );
 			auto egvals_non_direct = get_view< alp::structures::General >( egvals, select_non_direct );
 
-			// not needed as Q is alrady set to identity
-			// auto Egvecs_direct = alp::get_view< alp::structures::Orthogonal >(
-			// 	Egvecs, select_direct, select_direct
-			// );
 			auto Egvecs_non_direct = alp::get_view< alp::structures::Orthogonal >(
 				Egvecs, select_non_direct, select_non_direct
 			);
@@ -222,8 +221,8 @@ namespace alp {
 			rc = rc ? rc : alp::set( v3, v4 );
 
 			// eWiseLambda currently does not work with select view
-			// dot does not work with select view
-			// as a temp solutions we make temp vectors 
+			// dot() does not work with select view
+			// as a (temp) solution we use temp vectors
 			alp::Vector< D > vec_temp_egvals( nn );
 			alp::Vector< D > vec_temp_d( nn );
 			alp::Vector< D > vec_temp_v( nn );
@@ -233,12 +232,12 @@ namespace alp {
 			rc = rc ? rc : alp::set( vec_temp_v, v_view );
 
 			Scalar< D > alpha( zero );
-			//rc = rc ? rc : dot( alpha, d_view, d_view, ring ); // bug!
+			// there is a bug in dot() when called on select views
+			//rc = rc ? rc : dot( alpha, d_view, d_view, ring );
 			rc = rc ? rc : dot( alpha, vec_temp_v, vec_temp_v, ring );
 
 			auto v5 = get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
 			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
-
 
 			rc = rc ? rc : eWiseLambda(
 				[ &d_view, &vec_temp_v, &vec_b ]( const size_t i, D &val ) {
@@ -270,7 +269,7 @@ namespace alp {
 
 			// while fold matrix -> vector would be a solution to
 			// normalize columns in tmp_egvecs,
-			// here we abuse syntax and use eWiseLambda.
+			// here we abuse the syntax and use eWiseLambda.
 			// Once fold matrix -> vector implemented, the next section should be rewritten
 			rc = rc ? rc : eWiseLambda(
 				[ &tmp_egvecs, &nn, &ring, &divide, &zero ]( const size_t i, D &val ) {
