@@ -313,6 +313,20 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/copyAndAssignVectorIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::eWiseMul on a vector of"
+				echo "                                 doubles of size 100."
+				$runner ${TEST_BIN_DIR}/eWiseMul_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseMul on a vector of"
+				echo "                                 doubles of size 100002."
+				$runner ${TEST_BIN_DIR}/eWiseMul_${MODE}_${BACKEND} 100002 &> ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::eWiseMulAdd on a vector of"
 				echo "                                 doubles of size 7 000 000."
 				$runner ${TEST_BIN_DIR}/masked_muladd_${MODE}_${BACKEND} 7000000 &> ${TEST_OUT_DIR}/masked_muladd_large_${MODE}_${BACKEND}_${P}_${T}

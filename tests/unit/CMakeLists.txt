@@ -142,6 +142,10 @@ add_grb_executables( mul15m mul15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( eWiseMul eWiseMul.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
