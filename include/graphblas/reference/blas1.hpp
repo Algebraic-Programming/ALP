@@ -5678,7 +5678,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar,
+			bool a_scalar, bool x_scalar, bool y_scalar, bool y_zero,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -5702,6 +5702,8 @@ namespace grb {
 			static_assert( !a_scalar || !x_scalar,
 				"If both a and x are scalars, this is operation is a simple eWiseApply "
 				"with the additive operator if the semiring." );
+			static_assert( !y_zero || y_scalar,
+				"If y_zero is given, then y_scalar must be given also." );
 			OutputType * __restrict__ z = internal::getRaw( z_vector );
 			auto &z_coors = internal::getCoordinates( z_vector );
 			assert( z != a );
@@ -5934,7 +5936,7 @@ namespace grb {
 				for( ; k < end; ++k ) {
 					const size_t index = m_coors->index( k );
 					assert( index < n );
-					if( ! ( m_coors->template mask< descr >( index, m ) ) ) {
+					if( !( m_coors->template mask< descr >( index, m )) ) {
 						continue;
 					}
 					typename Ring::D3 t = ring.template getZero< typename Ring::D3 >();
@@ -5944,7 +5946,7 @@ namespace grb {
 						const InputType1 * const a_p = a + ( a_scalar ? 0 : index );
 						const InputType2 * const x_p = x + ( x_scalar ? 0 : index );
 						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
-						if( y_scalar || y_coors->assigned( index ) ) {
+						if( !y_zero && (y_scalar || y_coors->assigned( index )) ) {
 							const InputType3 * const y_p = y + ( y_scalar ? 0 : index );
 							typename Ring::D4 b;
 							(void) apply( b, t, *y_p, ring.getAdditiveOperator() );
@@ -5974,7 +5976,7 @@ namespace grb {
 #endif
 							z[ index ] = static_cast< OutputType >( t );
 						}
-					} else if( y_coors->assigned( index ) ) {
+					} else if( !y_zero && (y_scalar || y_coors->assigned( index )) ) {
 						if( z_coors.assigned( index ) ) {
 							typename Ring::D4 out = static_cast< typename Ring::D4 >( z[ index ] );
 							(void) foldr( y[ index ], out, ring.getAdditiveOperator() );
@@ -6016,7 +6018,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr,
-			bool masked, bool a_scalar, bool x_scalar, bool y_scalar,
+			bool masked, bool x_scalar, bool y_scalar, bool y_zero, bool mulSwitched,
 			typename OutputType, typename MaskType,
 			typename InputType1, typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -6025,28 +6027,19 @@ namespace grb {
 			Vector< OutputType, reference, CoorsType > &z_vector,
 			const Vector< MaskType, reference, CoorsType > * const m_vector,
 			const InputType1 * __restrict__ a,
-			const CoorsType * const a_coors,
+			const CoorsType &it_coors,
 			const InputType2 * __restrict__ x,
-			const CoorsType * const x_coors,
+			const CoorsType * const ck_coors,
 			const Vector< InputType3, reference, CoorsType > * const y_vector,
 			const InputType3 * __restrict__ y,
 			const size_t n,
 			const Ring &ring = Ring()
 		) {
-			static_assert( !a_scalar || !x_scalar, "If both a and x are scalars, this "
-				"operation is a simple eWiseApply with the additive operator of the "
-				"semiring." );
 			InputType3 * __restrict__ z = internal::getRaw( z_vector );
 			auto &z_coors = internal::getCoordinates( z_vector );
 			assert( z != a );
 			assert( z != x );
 			assert( a != x );
-
-			const size_t a_loop_size = a_scalar ? n : a_coors->nonzeroes();
-			const size_t x_loop_size = x_scalar ? n : x_coors->nonzeroes();
-			assert( a_loop_size < n || x_loop_size < n );
-			const auto &it_coors = a_loop_size < x_loop_size ? *a_coors : *x_coors;
-			const auto &ck_coors = a_loop_size < x_loop_size ? *x_coors : *a_coors;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			#pragma omp parallel
@@ -6068,18 +6061,22 @@ namespace grb {
 							continue;
 						}
 					}
-					if( ck_coors.assigned( index ) ) {
+					if( x_scalar || ck_coors->assigned( index ) ) {
 						typename Ring::D3 t;
-						const InputType1 * const a_p = a_scalar ? a : a + index;
+						const InputType1 * const a_p = a + index;
 						const InputType2 * const x_p = x_scalar ? x : x + index;
-						(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						if( mulSwitched ) {
+							(void) apply( t, *x_p, *a_p, ring.getMultiplicativeOperator() );
+						} else {
+							(void) apply( t, *a_p, *x_p, ring.getMultiplicativeOperator() );
+						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( z_coors.asyncAssign( index, localUpdate ) ) {
 #else
 							if( z_coors.assign( index ) ) {
 #endif
 								typename Ring::D4 b = static_cast< typename Ring::D4 >( z[ index ] );
-								(void)foldr( t, b, ring.getAdditiveOperator() );
+								(void) foldr( t, b, ring.getAdditiveOperator() );
 								z[ index ] = static_cast< OutputType >( b );
 							} else {
 								z[ index ] = static_cast< OutputType >(
@@ -6101,20 +6098,25 @@ namespace grb {
 #endif
 
 			// now handle addition
-			if( masked ) {
-				if( y_scalar ) {
-					return foldl< descr >( z_vector, *m_vector, *y, ring.getAdditiveMonoid() );
+			if( !y_zero ) {
+				if( masked ) {
+					if( y_scalar ) {
+						return foldl< descr >( z_vector, *m_vector, *y, ring.getAdditiveMonoid() );
+					} else {
+						return foldl< descr >( z_vector, *m_vector, *y_vector,
+							ring.getAdditiveMonoid() );
+					}
 				} else {
-					return foldl< descr >( z_vector, *m_vector, *y_vector,
-						ring.getAdditiveMonoid() );
-				}
-			} else {
-				if( y_scalar ) {
-					return foldl< descr >( z_vector, *y, ring.getAdditiveMonoid() );
-				} else {
-					return foldl< descr >( z_vector, *y_vector, ring.getAdditiveMonoid() );
+					if( y_scalar ) {
+						return foldl< descr >( z_vector, *y, ring.getAdditiveMonoid() );
+					} else {
+						return foldl< descr >( z_vector, *y_vector, ring.getAdditiveMonoid() );
+					}
 				}
 			}
+
+			// done
+			return SUCCESS;
 		}
 
 		/**
@@ -6132,7 +6134,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr,
-			bool a_scalar, bool x_scalar, bool y_scalar, bool assign_z,
+			bool a_scalar, bool x_scalar, bool y_scalar, bool y_zero, bool assign_z,
 			typename OutputType, typename InputType1,
 			typename InputType2, typename InputType3,
 			typename CoorsType, class Ring
@@ -6190,8 +6192,14 @@ namespace grb {
 					}
 				}
 				if( y_scalar ) {
-					for( size_t b = 0; b < Ring::blocksize; ++b ) {
-						yy[ b ] = *y;
+					if( y_zero ) {
+						for( size_t b = 0; b < Ring::blocksize; ++b ) {
+							yy[ b ] = ring.template getZero< typename Ring::D4 >();
+						}
+					} else {
+						for( size_t b = 0; b < Ring::blocksize; ++b ) {
+							yy[ b ] = *y;
+						}
 					}
 				}
 
@@ -6228,9 +6236,16 @@ namespace grb {
 					}
 
 					// operate
-					for( size_t b = 0; b < Ring::blocksize; ++b ) {
-						apply( tt[ b ], aa[ b ], xx[ b ], ring.getMultiplicativeOperator() );
-						apply( bb[ b ], tt[ b ], yy[ b ], ring.getAdditiveOperator() );
+					if( !y_zero ) {
+						for( size_t b = 0; b < Ring::blocksize; ++b ) {
+							apply( tt[ b ], aa[ b ], xx[ b ], ring.getMultiplicativeOperator() );
+							apply( bb[ b ], tt[ b ], yy[ b ], ring.getAdditiveOperator() );
+						}
+					} else {
+						assert( y_scalar );
+						for( size_t b = 0; b < Ring::blocksize; ++b ) {
+							apply( bb[ b ], aa[ b ], xx[ b ], ring.getMultiplicativeOperator() );
+						}
 					}
 					if( !assign_z ) {
 						for( size_t b = 0; b < Ring::blocksize; ++b ) {
@@ -6263,26 +6278,35 @@ namespace grb {
 				z += i;
 				for( ; i < end; ++i ) {
 					// do multiply
-					const typename Ring::D1 & as = static_cast< typename Ring::D1 >( *a );
-					const typename Ring::D2 & xs = static_cast< typename Ring::D2 >( *x );
+					const typename Ring::D1 &as = static_cast< typename Ring::D1 >( *a );
+					const typename Ring::D2 &xs = static_cast< typename Ring::D2 >( *x );
 					typename Ring::D4 ys = static_cast< typename Ring::D4 >( *y );
 					typename Ring::D3 ts;
-#ifndef NDEBUG
-					const RC always_succeeds =
-#else
-					(void)
+					if( !y_zero ) {
+						RC always_succeeds = apply( ts, as, xs, ring.getMultiplicativeOperator() );
+						assert( always_succeeds == SUCCESS );
+						always_succeeds = foldr( ts, ys, ring.getAdditiveOperator() );
+						assert( always_succeeds == SUCCESS );
+#ifdef NDEBUG
+						(void) always_succeeds;
 #endif
-						apply( ts, as, xs, ring.getMultiplicativeOperator() );
-					assert( always_succeeds == SUCCESS );
-
-					// do add
-					foldr( ts, ys, ring.getAdditiveOperator() );
+					} else {
+						RC always_succeeds = apply( ys, as, xs, ring.getMultiplicativeOperator() );
+						assert( always_succeeds == SUCCESS );
+#ifdef NDEBUG
+						(void) always_succeeds;
+#endif
+					}
 
 					// write out
 					if( assign_z ) {
 						*z = static_cast< OutputType >( ys );
 					} else {
-						foldr( ys, *z, ring.getAdditiveOperator() );
+						RC always_succeeds = foldr( ys, *z, ring.getAdditiveOperator() );
+						assert( always_succeeds == SUCCESS );
+#ifdef NDEBUG
+						(void) always_succeeds;
+#endif
 					}
 
 					// move pointers
@@ -6328,7 +6352,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr,
-			bool masked, bool a_scalar, bool x_scalar, bool y_scalar,
+			bool masked, bool a_scalar, bool x_scalar, bool y_scalar, bool y_zero,
 			typename MaskType, class Ring,
 			typename InputType1, typename InputType2,
 			typename InputType3, typename OutputType,
@@ -6347,6 +6371,9 @@ namespace grb {
 			const size_t n,
 			const Ring &ring
 		) {
+			static_assert( !y_zero || y_scalar, "If y is zero, y_scalar must be true. "
+				"Triggering this assertion indicates an incorrect call to this "
+				"function; please submit a bug report" );
 			const MaskType * __restrict__ m = nullptr;
 			const CoorsType * m_coors = nullptr;
 			assert( !masked || ( m_vector != nullptr ) );
@@ -6378,12 +6405,7 @@ namespace grb {
 				( y_scalar ? false : ( y_coors->nonzeroes() < n ) ) ||
 				( z_nns > 0 && z_nns < n ) ||
 				( masked && ! mask_is_dense );
-			if( dense && sparse ) {
-				std::cerr << "Warning: call to grb::eWiseMulAdd (reference) with a "
-					"dense descriptor but sparse input arguments. "
-					"Returning ILLEGAL\n";
-				return ILLEGAL;
-			}
+			assert( !(dense && sparse) );
 
 			// pre-assign coors if output is dense but was previously totally empty
 			const bool assign_z = z_nns == 0 && !sparse;
@@ -6433,7 +6455,7 @@ namespace grb {
 						std::cout << "\teWiseMulAdd_dispatch: will be driven by output mask\n";
 #endif
 						return sparse_eWiseMulAdd_maskDriven<
-							descr, a_scalar, x_scalar, y_scalar
+							descr, a_scalar, x_scalar, y_scalar, y_zero
 						>( z_vector, m, m_coors, a, a_coors, x, x_coors, y, y_coors, n, ring );
 					}
 				}
@@ -6442,9 +6464,27 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\teWiseMulAdd_dispatch: will be driven by the multiplication a*x\n";
 #endif
-				return twoPhase_sparse_eWiseMulAdd_mulDriven<
-					descr, masked, a_scalar, x_scalar, y_scalar
-				>( z_vector, m_vector, a, a_coors, x, x_coors, y_vector, y, n, ring );
+				static_assert( !(a_scalar && x_scalar),
+					"The case of the multiplication being between two scalars should have"
+					"been caught earlier. Please submit a bug report." );
+				if( a_scalar ) {
+					return twoPhase_sparse_eWiseMulAdd_mulDriven<
+						descr, masked, a_scalar, y_scalar, y_zero, true
+					>( z_vector, m_vector, x, *x_coors, a, a_coors, y_vector, y, n, ring );
+				} else if( x_scalar ) {
+					return twoPhase_sparse_eWiseMulAdd_mulDriven<
+						descr, masked, x_scalar, y_scalar, y_zero, false
+					>( z_vector, m_vector, a, *a_coors, x, x_coors, y_vector, y, n, ring );
+				} else if( a_coors->nonzeroes() <= x_coors->nonzeroes() ) {
+					return twoPhase_sparse_eWiseMulAdd_mulDriven<
+						descr, masked, x_scalar, y_scalar, y_zero, false
+					>( z_vector, m_vector, a, *a_coors, x, x_coors, y_vector, y, n, ring );
+				} else {
+					assert( x_coors->nonzeroes() < a_coors->nonzeroes() );
+					return twoPhase_sparse_eWiseMulAdd_mulDriven<
+						descr, masked, a_scalar, y_scalar, y_zero, true
+					>( z_vector, m_vector, x, *x_coors, a, a_coors, y_vector, y, n, ring );
+				}
 				/* internal issue #42 (closed), see also above:
 				} else {
 #ifdef _DEBUG
@@ -6487,11 +6527,11 @@ namespace grb {
 #endif
 			if( assign_z ) {
 				return dense_eWiseMulAdd<
-					descr, a_scalar, x_scalar, y_scalar, true
+					descr, a_scalar, x_scalar, y_scalar, y_zero, true
 				>( z_vector, a, x, y, n, ring );
 			} else {
 				return dense_eWiseMulAdd<
-					descr, a_scalar, x_scalar, y_scalar, false
+					descr, a_scalar, x_scalar, y_scalar, y_zero, false
 				>( z_vector, a, x, y, n, ring );
 			}
 		}
@@ -6508,16 +6548,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
+		Vector< OutputType, reference, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, reference, Coords > &_x,
-		const Vector< InputType3, reference, Coords > &_y,
+		const Vector< InputType2, reference, Coords > &x,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -6529,70 +6570,83 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n ||
-			internal::getCoordinates( _y ).size() != n
-		) {
+		const size_t n = size( z );
+		if( size( x ) != n || size( y ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( z ) < n ) { return ILLEGAL; }
+		}
+
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
-		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
+		assert( phase == EXECUTE );
 		const InputType1 zeroIT1 = ring.template getZero< InputType1 >();
-		if( alpha == zeroIT1 || internal::getCoordinates( _x ).nonzeroes() == 0 ) {
-			return foldl< descr >( _z, _y, ring.getAdditiveMonoid() );
+		if( alpha == zeroIT1 || nnz( x ) == 0 ) {
+			return foldl< descr >( z, y, ring.getAdditiveMonoid() );
 		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
+		if( nnz( y ) == 0 ) {
 			return eWiseMulAdd< descr >(
-				_z, alpha, _x, ring.template getZero< typename Ring::D4 >(), ring );
+				z, alpha, x,
+				ring.template getZero< typename Ring::D4 >(),
+				ring
+			);
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
-		auto null_coors = &( internal::getCoordinates( _x ) );
+		auto null_coors = &( internal::getCoordinates( x ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _x ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n ) {
+			if( nnz( x ) == n && nnz( y ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, true, false, false
+					descr | descriptors::dense, false, true, false, false, false
 				>(
-					_z, null_mask, &alpha, null_coors,
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					z, null_mask, &alpha, null_coors,
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
 
 		// sparse or dense case
-		return internal::eWiseMulAdd_dispatch< descr, false, true, false, false >(
-			_z, null_mask, &alpha, null_coors,
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, true, false, false, false
+		>(
+			z, null_mask, &alpha, null_coors,
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -6608,16 +6662,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< InputType1, reference, Coords > &_a,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< InputType1, reference, Coords > &a,
 		const InputType2 chi,
-		const Vector< InputType3, reference, Coords > &_y,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -6629,71 +6684,85 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n || internal::getCoordinates( _y ).size() != n ) {
+		const size_t n = size( z );
+		if( size( a ) != n || size( y ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( z ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType1 zeroIT2 = ring.template getZero< InputType2 >();
-		if( chi == zeroIT2 || internal::getCoordinates( _a ).nonzeroes() == 0 ) {
-			return foldl< descr >( _z, _y, ring.getAdditiveMonoid() );
+		if( chi == zeroIT2 || nnz( a ) == 0 ) {
+			return foldl< descr >( z, y, ring.getAdditiveMonoid() );
 		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, chi,
-				ring.template getZero< typename Ring::D4 >(), ring );
+		if( nnz( y ) == 0 ) {
+			return eWiseMulAdd< descr >(
+				z, a, chi,
+				ring.template getZero< typename Ring::D4 >(),
+				ring
+			);
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n ) {
+			if( nnz( a ) == n && nnz( y ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, true, false
+					descr | descriptors::dense, false, false, true, false, false
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 					&chi, null_coors,
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
 
 		// sparse or dense case
-		return internal::eWiseMulAdd_dispatch< descr, false, false, true, false >(
-			_z, null_mask,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, false, true, false, false
+		>(
+			z, null_mask,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 			&chi, null_coors,
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -6708,15 +6777,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< InputType1, reference, Coords > &_a,
-		const Vector< InputType2, reference, Coords > &_x,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< InputType1, reference, Coords > &a,
+		const Vector< InputType2, reference, Coords > &x,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
@@ -6729,73 +6800,81 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n ||
-			internal::getCoordinates( _x ).size() != n
-		) {
+		const size_t n = size( z );
+		if( size( a ) != n || size( x ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( z ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 ||
-			internal::getCoordinates( _x ).nonzeroes() == 0 ) {
-			return foldl< descr >( _z, gamma, ring.getAdditiveMonoid() );
-		}
-		if( gamma == zeroIT3 ) {
-			return eWiseMulAdd< descr >( _z, _a, _x,
-				ring.template getZero< typename Ring::D4 >(), ring );
+		if( nnz( a ) == 0 || nnz( x ) == 0 ) {
+			if( gamma == zeroIT3 ) {
+				return SUCCESS;
+			} else {
+				return foldl< descr >( z, gamma, ring.getAdditiveMonoid() );
+			}
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		const Vector< InputType3, reference, Coords > * const null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n &&
-				internal::getCoordinates( _x ).nonzeroes() == n ) {
+			if( nnz( a ) == n && nnz( x ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, false, true
+					descr | descriptors::dense, false, false, false, true, y_zero
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 					null_y, &gamma, null_coors, n, ring
 				);
 			}
 		}
 
 		// sparse or dense case
-		return internal::eWiseMulAdd_dispatch< descr, false, false, false, true >(
-			_z, null_mask,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, false, false, true, y_zero
+		>(
+			z, null_mask,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 			null_y, &gamma, null_coors, n, ring
 		);
 	}
@@ -6810,14 +6889,16 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero = false,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< InputType1, reference, Coords > &_a,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< InputType1, reference, Coords > &a,
 		const InputType2 beta,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
@@ -6831,26 +6912,34 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n ) {
+		const size_t n = size( z );
+		if( size( a ) != n ) {
 			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
 		}
 
 		if( phase == RESIZE ) {
@@ -6858,43 +6947,39 @@ namespace grb {
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType2 zeroIT2 = ring.template getZero< InputType2 >();
 		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 || zeroIT2 ) {
-			return foldl< descr >( _z, gamma, ring.getAdditiveMonoid() );
-		}
-		if( gamma == zeroIT3 ) {
-			return eWiseMulAdd< descr >(
-				_z, _a, beta,
-				ring.template getZero< typename Ring::D4 >(),
-				ring );
+		if( nnz( a ) == 0 || beta == zeroIT2 ) {
+			return foldl< descr >( z, gamma, ring.getAdditiveMonoid() );
 		}
 
 		// check for density
 		Vector< bool, reference, Coords > * const null_mask = nullptr;
 		Vector< InputType3, reference, Coords > * const null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n ) {
+			if( nnz( a ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, true, true
+					descr | descriptors::dense, false, false, true, true, y_zero
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 					&beta, null_coors, null_y, &gamma, null_coors, n, ring
 				);
 			}
 		}
 
 		// sparse or dense case
-		return internal::eWiseMulAdd_dispatch< descr, false, false, true, true >(
-			_z, null_mask,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, false, true, true, y_zero
+		>(
+			z, null_mask,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 			&beta, null_coors, null_y, &gamma, null_coors, n, ring
 		);
 	}
@@ -6909,15 +6994,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
+		Vector< OutputType, reference, Coords > &z,
 		const InputType1 alpha,
-		const Vector< InputType2, reference, Coords > &_x,
+		const Vector< InputType2, reference, Coords > &x,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
@@ -6930,63 +7017,74 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n ) {
+		const size_t n = size( z );
+		if( size( x ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType1 zeroIT1 = ring.template getZero< InputType1 >();
-		if( internal::getCoordinates( _x ).nonzeroes() == 0 || alpha == zeroIT1 ) {
-			return foldl< descr >( _z, gamma, ring.getAdditiveMonoid() );
+		if( nnz( x ) == 0 || alpha == zeroIT1 ) {
+			return foldl< descr >( z, gamma, ring.getAdditiveMonoid() );
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * null_mask = nullptr;
 		const Vector< InputType3, reference, Coords > * null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _x ) );
+		auto null_coors = &( internal::getCoordinates( x ) );
 		null_coors = nullptr;
-		constexpr bool maybe_sparse = ! (descr & descriptors::dense);
+		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _x ).nonzeroes() == n ) {
+			if( nnz( x ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, true, false, true
+					descr | descriptors::dense, false, true, false, true, y_zero
 				>(
-					_z, null_mask, &alpha, null_coors,
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+					z, null_mask, &alpha, null_coors,
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 					null_y, &gamma, null_coors, n, ring
 				);
 			}
 		}
 
 		// sparse or dense case
-		return internal::eWiseMulAdd_dispatch< descr, false, true, false, true >(
-			_z, null_mask, &alpha, null_coors,
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, true, false, true, y_zero
+		>(
+			z, null_mask, &alpha, null_coors,
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 			null_y, &gamma, null_coors, n, ring
 		);
 	}
@@ -7023,19 +7121,19 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ),
+				std::is_same< typename Ring::D1, InputType1 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ),
+				std::is_same< typename Ring::D2, InputType2 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ),
+				std::is_same< typename Ring::D4, InputType3 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ),
+				std::is_same< typename Ring::D4, OutputType >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
 #ifdef _DEBUG
@@ -7043,14 +7141,25 @@ namespace grb {
 			<< "precomputes scalar multiply and dispatches to eWiseAdd (reference, "
 			<< "vector <- scalar + vector)\n";
 #endif
+		// dynamic checks
+		const size_t n = size( z );
+		if( size( y ) != n ) { return MISMATCH; }
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+		}
 		typename Ring::D3 mul_result;
-		RC rc = grb::apply( mul_result, alpha, beta, ring.getMultiplicativeOperator() );
+		RC rc = grb::apply(
+			mul_result,
+			alpha, beta,
+			ring.getMultiplicativeOperator()
+		);
 #ifdef NDEBUG
 		(void) rc;
 #else
 		assert( rc == SUCCESS );
 #endif
-		return grb::eWiseAdd( z, mul_result, y, ring, phase );
+		return eWiseAdd< descr >( z, mul_result, y, ring, phase );
 	}
 
 	/**
@@ -7104,6 +7213,11 @@ namespace grb {
 		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + scalar) "
 			<< "precomputes scalar operations and dispatches to set (reference)\n";
 #endif
+		// dynamic sanity checks
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < size( z ) ) { return ILLEGAL; }
+		}
+
 		typename Ring::D3 mul_result;
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
@@ -7118,7 +7232,7 @@ namespace grb {
 		(void) rc;
 #endif
 		assert( rc == SUCCESS );
-		return grb::set( z, add_result, phase );
+		return grb::foldl< descr >( z, add_result, phase );
 	}
 
 	/**
@@ -7205,16 +7319,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< InputType1, reference, Coords > &_a,
-		const Vector< InputType2, reference, Coords > &_x,
-		const Vector< InputType3, reference, Coords > &_y,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< InputType1, reference, Coords > &a,
+		const Vector< InputType2, reference, Coords > &x,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -7227,73 +7342,81 @@ namespace grb {
 		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand vector _a with an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 
-		// catch trivial cases
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 ) {
-			return foldr< descr >( _y, _z, ring.getAdditiveMonoid(), phase );
-		}
-		if( internal::getCoordinates( _x ).nonzeroes() == 0 ) {
-			return foldr< descr >( _y, _z, ring.getAdditiveMonoid(), phase );
-		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, _x,
-				ring.template getZero< typename Ring::D4 >(), ring, phase );
-		}
-
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n ||
-			internal::getCoordinates( _y ).size() != n ||
-			internal::getCoordinates( _a ).size() != n
-		) {
+		const size_t n = size( z );
+		if( size( x ) != n || size( y ) != n || size( a ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
+
+		// catch trivial dispatches
+		if( nnz( a ) == 0 || nnz( x ) == 0 ) {
+			return foldr< descr >( y, z, ring.getAdditiveMonoid(), phase );
+		}
+		if( nnz( y ) == 0 ) {
+			return eWiseMulAdd< descr >(
+				z, a, x,
+				ring.template getZero< typename Ring::D4 >(),
+				ring, phase
+			);
+		}
+
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check for dense variant
-			if( internal::getCoordinates( _x ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n &&
-				internal::getCoordinates( _a ).nonzeroes() == n
-			) {
+			if( nnz( x ) == n && nnz( y ) == n && nnz( a ) == n ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, false, false
+					descr | descriptors::dense, false, false, false, false, false
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
-		return internal::eWiseMulAdd_dispatch< descr, false, false, false, false >(
-			_z, null_mask,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, false, false, false, false, false
+		>(
+			z, null_mask,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -7308,17 +7431,18 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
 		const InputType1 alpha,
-		const Vector< InputType2, reference, Coords > &_x,
-		const Vector< InputType3, reference, Coords > &_y,
+		const Vector< InputType2, reference, Coords > &x,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -7331,86 +7455,97 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, alpha, _x, _y, ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr >( z, alpha, x, y, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n ||
-			internal::getCoordinates( _y ).size() != n ||
-			m != n
-		) {
+		const size_t n = size( z );
+		if( size( x ) != n || size( y ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType1 zeroIT1 = ring.template getZero< InputType1 >();
-		if( alpha == zeroIT1 || internal::getCoordinates( _x ).nonzeroes() == 0 ) {
-			return foldl< descr >( _z, _m, _y, ring.getAdditiveMonoid() );
+		if( alpha == zeroIT1 || nnz( x ) == 0 ) {
+			return foldl< descr >( z, m, y, ring.getAdditiveMonoid() );
 		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
-			return eWiseMulAdd< descr >( _z, _m, alpha, _x,
-				ring.template getZero< typename Ring::D4 >(), ring );
+		if( nnz( y ) == 0 ) {
+			return eWiseMulAdd< descr >(
+				z, m, alpha, x,
+				ring.template getZero< typename Ring::D4 >(),
+				ring
+			);
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
-		auto null_coors = &( internal::getCoordinates( _x ) );
+		auto null_coors = &( internal::getCoordinates( x ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _x ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( x ) == n && nnz( y ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, true, false, false
+					descr | descriptors::dense, false, true, false, false, false
 				>(
-					_z, null_mask, &alpha, null_coors,
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					z, null_mask, &alpha, null_coors,
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
 
 		// sparse case
-		return internal::eWiseMulAdd_dispatch< descr, true, true, false, false >(
-			_z, &_m, &alpha, null_coors,
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, true, false, false, false
+		>(
+			z, &m, &alpha, null_coors,
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -7426,17 +7561,18 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
-		const Vector< InputType1, reference, Coords > &_a,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
+		const Vector< InputType1, reference, Coords > &a,
 		const InputType2 chi,
-		const Vector< InputType3, reference, Coords > &_y,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -7450,88 +7586,99 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, chi, _y, ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr >( z, a, chi, y, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n ||
-			internal::getCoordinates( _y ).size() != n ||
-			m != n
-		) {
+		const size_t n = size( z );
+		if( size( a ) != n || size( y ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial case
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType1 zeroIT2 = ring.template getZero< InputType2 >();
-		if( chi == zeroIT2 || internal::getCoordinates( _a ).nonzeroes() == 0 ) {
-			return foldl< descr >( _z, _m, _y, ring.getAdditiveMonoid() );
+		if( chi == zeroIT2 || nnz( a ) == 0 ) {
+			return foldl< descr >( z, m, y, ring.getAdditiveMonoid() );
 		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
-			return eWiseMulAdd< descr >( _z, _m, _a, chi,
-				ring.template getZero< typename Ring::D4 >(), ring );
+		if( nnz( y ) == 0 ) {
+			return eWiseMulAdd< descr >(
+				z, m, a, chi,
+				ring.template getZero< typename Ring::D4 >(),
+				ring
+			);
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( a ) == n && nnz( y ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, true, false
+					descr | descriptors::dense, false, false, true, false, false
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 					&chi, null_coors,
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
 
 		// sparse case
-		return internal::eWiseMulAdd_dispatch< descr, true, false, true, false >(
-			_z, &_m,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, false, true, false, false
+		>(
+			z, &m,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 			&chi, null_coors,
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -7546,16 +7693,18 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero = false,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
-		const Vector< InputType1, reference, Coords > &_a,
-		const Vector< InputType2, reference, Coords > &_x,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
+		const Vector< InputType1, reference, Coords > &a,
+		const Vector< InputType2, reference, Coords > &x,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
@@ -7569,76 +7718,79 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, _x, gamma, ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr, y_zero >( z, a, x, gamma, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n || internal::getCoordinates( _x ).size() != n || m != n ) {
+		const size_t n = size( z );
+		if( size( a ) != n || size( x ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatches
 		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 ||
-			internal::getCoordinates( _x ).nonzeroes() == 0
-		) {
-			return foldl< descr >( _z, _m, gamma, ring.getAdditiveMonoid() );
-		}
-		if( gamma == zeroIT3 ) {
-			return eWiseMulAdd< descr >( _z, _m, _a, _x,
-				ring.template getZero< typename Ring::D4 >(), ring );
+		if( nnz( a ) == 0 || nnz( x ) == 0 ) {
+			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		const Vector< InputType3, reference, Coords > * const null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n &&
-				internal::getCoordinates( _x ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( a ) == n && nnz( x ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, false, true
+					descr | descriptors::dense, false, false, false, true, y_zero
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 					null_y, &gamma, null_coors,
 					n, ring
 				);
@@ -7646,10 +7798,12 @@ namespace grb {
 		}
 
 		// sparse case
-		return internal::eWiseMulAdd_dispatch< descr, true, false, false, true >(
-			_z, &_m,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, false, false, true, y_zero
+		>(
+			z, &m,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 			null_y, &gamma, null_coors,
 			n, ring
 		);
@@ -7665,15 +7819,17 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero = false,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
-		const Vector< InputType1, reference, Coords > &_a,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
+		const Vector< InputType1, reference, Coords > &a,
 		const InputType2 beta,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
@@ -7688,76 +7844,77 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, beta, gamma, ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr, y_zero >( z, a, beta, gamma, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _a ).size() != n || m != n ) {
+		const size_t n = size( z );
+		if( size( a ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatch
 		const InputType2 zeroIT2 = ring.template getZero< InputType2 >();
-		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 || zeroIT2 ) {
-			return foldl< descr >( _z, _m, gamma, ring.getAdditiveMonoid() );
-		}
-		if( gamma == zeroIT3 ) {
-			return eWiseMulAdd< descr >(
-				_z, _m, _a, beta,
-				ring.template getZero< typename Ring::D4 >(),
-				ring
-			);
+		if( nnz( a ) || zeroIT2 == beta ) {
+			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * null_mask = nullptr;
 		const Vector< InputType3, reference, Coords > * null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _a ) );
+		auto null_coors = &( internal::getCoordinates( a ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _a ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( a ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, true, true
+					descr | descriptors::dense, false, false, true, true, y_zero
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 					&beta, null_coors, null_y, &gamma, null_coors,
 					n, ring
 				);
@@ -7765,9 +7922,11 @@ namespace grb {
 		}
 
 		// sparse case
-		return internal::eWiseMulAdd_dispatch< descr, true, false, true, true >(
-			_z, &_m,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, false, true, true, y_zero
+		>(
+			z, &m,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
 			&beta, null_coors, null_y, &gamma, null_coors,
 			n, ring
 		);
@@ -7783,16 +7942,18 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		bool y_zero = false,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
 		const InputType1 alpha,
-		const Vector< InputType2, reference, Coords > &_x,
+		const Vector< InputType2, reference, Coords > &x,
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
@@ -7806,68 +7967,77 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand scalar alpha of an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, alpha, _x, gamma, ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr, y_zero >( z, alpha, x, gamma, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n || m != n ) {
+		const size_t n = size( z );
+		if( size( x ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
-		// catch trivial cases
+		// catch trivial dispatch
 		const InputType1 zeroIT1 = ring.template getZero< InputType1 >();
-		if( internal::getCoordinates( _x ).nonzeroes() == 0 || alpha == zeroIT1 ) {
-			return foldl< descr >( _z, _m, gamma, ring.getAdditiveMonoid() );
+		if( nnz( x ) == 0 || alpha == zeroIT1 ) {
+			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
 
 		// check for density
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		const Vector< InputType3, reference, Coords > * const null_y = nullptr;
-		auto null_coors = &( internal::getCoordinates( _x ) );
+		auto null_coors = &( internal::getCoordinates( x ) );
 		null_coors = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check whether all inputs are actually dense
-			if( internal::getCoordinates( _x ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( x ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, true, false, true
+					descr | descriptors::dense, false, true, false, true, y_zero
 				>(
-					_z, null_mask, &alpha, null_coors,
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+					z, null_mask, &alpha, null_coors,
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 					null_y, &gamma, null_coors,
 					n, ring
 				);
@@ -7875,9 +8045,11 @@ namespace grb {
 		}
 
 		// sparse case
-		return internal::eWiseMulAdd_dispatch< descr, true, true, false, true >(
-			_z, &_m, &alpha, null_coors,
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, true, false, true, y_zero
+		>(
+			z, &m, &alpha, null_coors,
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
 			null_y, &gamma, null_coors,
 			n, ring
 		);
@@ -7893,17 +8065,18 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
 	>
 	RC eWiseMulAdd(
-		Vector< OutputType, reference, Coords > &_z,
-		const Vector< MaskType, reference, Coords > &_m,
-		const Vector< InputType1, reference, Coords > &_a,
-		const Vector< InputType2, reference, Coords > &_x,
-		const Vector< InputType3, reference, Coords > &_y,
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &m,
+		const Vector< InputType1, reference, Coords > &a,
+		const Vector< InputType2, reference, Coords > &x,
+		const Vector< InputType3, reference, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -7914,90 +8087,98 @@ namespace grb {
 			!grb::is_object< MaskType >::value, void
 		>::type * const = nullptr
 	) {
-		(void) ring;
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a left-hand vector _a with an element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMulAdd",
 			"called with a right-hand vector _x with an element type that does not "
 			"match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, InputType3 >::value ),
+			"grb::eWiseMulAdd",
 			"called with an additive vector _y with an element type that does not "
 			"match the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseMulAdd",
+				std::is_same< typename Ring::D4, OutputType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a result vector _z with an element type that does not match "
 			"the fourth domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
 		// catch empty mask
-		const size_t m = internal::getCoordinates( _m ).size();
-		if( m == 0 ) {
-			return eWiseMulAdd< descr >( _z, _a, _x, _y, ring, phase );
-		}
-
-		// catch trivial cases
-		if( internal::getCoordinates( _a ).nonzeroes() == 0 ) {
-			return foldr< descr >( _y, _m, _z, ring.getAdditiveMonoid(), phase );
-		}
-		if( internal::getCoordinates( _x ).nonzeroes() == 0 ) {
-			return foldr< descr >( _y, _m, _z, ring.getAdditiveMonoid(), phase );
-		}
-		if( internal::getCoordinates( _y ).nonzeroes() == 0 ) {
-			return eWiseMulAdd< descr >( _z, _m, _a, _x,
-				ring.template getZero< typename Ring::D4 >(), ring, phase );
+		if( size( m ) == 0 ) {
+			return eWiseMulAdd< descr >( z, a, x, y, ring, phase );
 		}
 
 		// dynamic sanity checks
-		const size_t n = internal::getCoordinates( _z ).size();
-		if( internal::getCoordinates( _x ).size() != n ||
-			internal::getCoordinates( _y ).size() != n ||
-			internal::getCoordinates( _a ).size() != n ||
-			m != n
-		) {
+		const size_t n = size( z );
+		if( size( x ) != n || size( y ) != n || size( a ) != n || size( m ) != n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+			if( nnz( a ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
 
+		// catch trivial phase
 		if( phase == RESIZE ) {
 			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 
+		// catch trivial dispatches
+		if( nnz( a ) == 0 || nnz( x ) == 0 ) {
+			return foldr< descr >( y, m, z, ring.getAdditiveMonoid(), phase );
+		}
+		if( nnz( y ) == 0 ) {
+			return eWiseMulAdd< descr >(
+				z, m, a, x,
+				ring.template getZero< typename Ring::D4 >(),
+				ring, phase
+			);
+		}
+
 		const Vector< bool, reference, Coords > * const null_mask = nullptr;
 		constexpr bool maybe_sparse = !(descr & descriptors::dense);
 		if( maybe_sparse ) {
 			// check for dense variant
-			if( internal::getCoordinates( _x ).nonzeroes() == n &&
-				internal::getCoordinates( _y ).nonzeroes() == n &&
-				internal::getCoordinates( _a ).nonzeroes() == n && (
-					internal::getCoordinates( _m ).nonzeroes() == n &&
-					(descr & descriptors::structural) &&
-					!(descr & descriptors::invert_mask)
-				)
-			) {
+			if( nnz( x ) == n && nnz( y ) == n && nnz( a ) == n && (
+				nnz( m ) == n &&
+				(descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask)
+			) ) {
 				// yes, dispatch to version with dense descriptor set
 				return internal::eWiseMulAdd_dispatch<
-					descr | descriptors::dense, false, false, false, false
+					descr | descriptors::dense, false, false, false, false, false
 				>(
-					_z, null_mask,
-					internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-					internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-					&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+					z, null_mask,
+					internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+					internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+					&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 					n, ring
 				);
 			}
 		}
-		return internal::eWiseMulAdd_dispatch< descr, true, false, false, false >(
-			_z, &_m,
-			internal::getRaw( _a ), &( internal::getCoordinates( _a ) ),
-			internal::getRaw( _x ), &( internal::getCoordinates( _x ) ),
-			&_y, internal::getRaw( _y ), &( internal::getCoordinates( _y ) ),
+
+		// sparse or dense variant
+		return internal::eWiseMulAdd_dispatch<
+			descr, true, false, false, false, false
+		>(
+			z, &m,
+			internal::getRaw( a ), &( internal::getCoordinates( a ) ),
+			internal::getRaw( x ), &( internal::getCoordinates( x ) ),
+			&y, internal::getRaw( y ), &( internal::getCoordinates( y ) ),
 			n, ring
 		);
 	}
@@ -8036,29 +8217,41 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ),
+				std::is_same< typename Ring::D1, InputType1 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ),
+				std::is_same< typename Ring::D2, InputType2 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ),
+				std::is_same< typename Ring::D4, InputType3 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ),
+				std::is_same< typename Ring::D4, OutputType >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector with a non-bool element type" );
 #ifdef _DEBUG
 		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + vector, "
 			<< "masked) precomputes scalar multiply and dispatches to eWiseAdd "
 			<< "(reference, vector <- scalar + vector, masked)\n";
 #endif
+		// dynamic checks
+		const size_t n = size( z );
+		if( size( m ) != n || size( y ) != n ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+			if( nnz( y ) < n ) { return ILLEGAL; }
+		}
+
 		typename Ring::D3 mul_result;
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
@@ -8067,7 +8260,7 @@ namespace grb {
 #else
 		assert( rc == SUCCESS );
 #endif
-		return grb::eWiseAdd( z, m, mul_result, y, ring, phase );
+		return grb::eWiseAdd< descr >( z, m, mul_result, y, ring, phase );
 	}
 
 	/**
@@ -8103,29 +8296,38 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ),
+				std::is_same< typename Ring::D1, InputType1 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"First domain of semiring does not match first input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ),
+				std::is_same< typename Ring::D2, InputType2 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Second domain of semiring does not match second input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, InputType3 >::value ),
+				std::is_same< typename Ring::D4, InputType3 >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match third input type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D4, OutputType >::value ),
+				std::is_same< typename Ring::D4, OutputType >::value ),
 			"grb::eWiseMulAdd(vector,scalar,scalar,scalar)",
 			"Fourth domain of semiring does not match output type" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector with a non-bool element type" );
 #ifdef _DEBUG
 		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + scalar, "
 			<< "masked) precomputes scalar operations and dispatches to set "
 			<< "(reference, masked)\n";
 #endif
+		// dynamic checks
+		const size_t n = size( z );
+		if( size( m ) != n ) { return MISMATCH; }
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
+
 		typename Ring::D3 mul_result;
 		RC rc = grb::apply( mul_result, alpha, beta,
 			ring.getMultiplicativeOperator() );
@@ -8139,7 +8341,7 @@ namespace grb {
 		(void) rc;
 #endif
 		assert( rc == SUCCESS );
-		return grb::set( z, m, add_result, phase );
+		return grb::foldl( z, m, add_result, ring.getAdditiveOperator(), phase );
 	}
 
 	/**
@@ -8245,8 +8447,11 @@ namespace grb {
 		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches "
 			<< "to eWiseMulAdd (vector <- vector x vector + 0)\n";
 #endif
-		return eWiseMulAdd< descr >( z, x, y, ring.template getZero< Ring::D4 >(),
-			ring, phase );
+		return eWiseMulAdd< descr, true >(
+			z, x, y,
+			ring.template getZero< typename Ring::D4 >(),
+			ring, phase
+		);
 	}
 
 	/**
@@ -8288,7 +8493,7 @@ namespace grb {
 		std::cout << "eWiseMul (reference, vector <- scalar x vector) dispatches to "
 			<< "eWiseMulAdd (vector <- scalar x vector + 0)\n";
 #endif
-		return eWiseMulAdd< descr >( z, alpha, y,
+		return eWiseMulAdd< descr, true >( z, alpha, y,
 			ring.template getZero< typename Ring::D4 >(), ring, phase );
 	}
 
@@ -8330,7 +8535,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "eWiseMul (reference) dispatches to eWiseMulAdd with 0.0 as additive scalar\n";
 #endif
-		return eWiseMulAdd< descr >(
+		return eWiseMulAdd< descr, true >(
 			z, x, beta,
 			ring.template getZero< typename Ring::D4 >(),
 			ring.getMultiplicativeOperator(),
@@ -8387,8 +8592,11 @@ namespace grb {
 		std::cout << "eWiseMul (reference, vector <- vector x vector, masked) "
 			<< "dispatches to eWiseMulAdd (vector <- vector x vector + 0, masked)\n";
 #endif
-		return eWiseMulAdd< descr >( z, m, x, y,
-			ring.template getZero< Ring::D4 >(), ring, phase );
+		return eWiseMulAdd< descr, true >(
+			z, m, x, y,
+			ring.template getZero< typename Ring::D4 >(),
+			ring, phase
+		);
 	}
 
 	/**
@@ -8438,7 +8646,7 @@ namespace grb {
 		std::cout << "eWiseMul (reference, vector <- scalar x vector, masked) "
 			<< "dispatches to eWiseMulAdd (vector <- scalar x vector + 0, masked)\n";
 #endif
-		return eWiseMulAdd< descr >( z, m, alpha, y,
+		return eWiseMulAdd< descr, true >( z, m, alpha, y,
 			ring.template getZero< typename Ring::D4 >(), ring, phase );
 	}
 
@@ -8488,7 +8696,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "eWiseMul (reference, masked) dispatches to masked eWiseMulAdd with 0.0 as additive scalar\n";
 #endif
-		return eWiseMulAdd< descr >(
+		return eWiseMulAdd< descr, true >(
 			z, m, x, beta,
 			ring.template getZero< typename Ring::D4 >(),
 			ring.getMultiplicativeOperator(),
