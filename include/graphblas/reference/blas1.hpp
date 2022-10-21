@@ -6040,6 +6040,13 @@ namespace grb {
 			assert( z != a );
 			assert( z != x );
 			assert( a != x );
+			assert( n == z_coors.size() );
+			assert( n == it_coors.size() );
+			assert( x_scalar || ck_coors->size() == n );
+			assert( y_scalar || (size(*y_vector) == n) );
+#ifdef NDEBUG
+			(void) n;
+#endif
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 			#pragma omp parallel
@@ -6778,7 +6785,7 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		bool y_zero,
+		bool y_zero = false,
 		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
@@ -6949,7 +6956,6 @@ namespace grb {
 
 		// catch trivial dispatches
 		const InputType2 zeroIT2 = ring.template getZero< InputType2 >();
-		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
 		if( nnz( a ) == 0 || beta == zeroIT2 ) {
 			return foldl< descr >( z, gamma, ring.getAdditiveMonoid() );
 		}
@@ -6995,7 +7001,7 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		bool y_zero,
+		bool y_zero = false,
 		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
@@ -7232,7 +7238,7 @@ namespace grb {
 		(void) rc;
 #endif
 		assert( rc == SUCCESS );
-		return grb::foldl< descr >( z, add_result, phase );
+		return grb::foldl< descr >( z, add_result, ring.getAdditiveMonoid(), phase );
 	}
 
 	/**
@@ -7766,7 +7772,6 @@ namespace grb {
 		assert( phase == EXECUTE );
 
 		// catch trivial dispatches
-		const InputType3 zeroIT3 = ring.template getZero< InputType3 >();
 		if( nnz( a ) == 0 || nnz( x ) == 0 ) {
 			return foldl< descr >( z, m, gamma, ring.getAdditiveMonoid() );
 		}
