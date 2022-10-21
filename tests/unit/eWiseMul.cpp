@@ -869,10 +869,18 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = FAILED;
 		return;
 	}
-	if( nnz( out ) != n/2 ) {
-		std::cerr << "primitives returns " << nnz( out ) << " nonzeroes, "
-			<< "expected " << (n/2) << "\n";
-		rc = FAILED;
+	if( halfLengthIsOdd ) {
+		if( nnz( out ) != n/2+1 ) {
+			std::cerr << "primitives returns " << nnz( out ) << " nonzeroes, "
+				<< "expected " << (n/2+1) << "\n";
+			rc = FAILED;
+		}
+	} else {
+		if( nnz( out ) != n/2 ) {
+			std::cerr << "primitives returns " << nnz( out ) << " nonzeroes, "
+				<< "expected " << (n/2) << "\n";
+			rc = FAILED;
+		}
 	}
 	for( const auto &pair : out ) {
 		if( pair.first == n / 2 ) {
