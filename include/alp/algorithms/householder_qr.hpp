@@ -19,7 +19,9 @@
 
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
+#ifdef DEBUG
 #include "../tests/utils/print_alp_containers.hpp"
+#endif
 // TEMPDISABLE enables workarounds for non-implemented features
 // should be removed in the final version
 #define TEMPDISABLE
@@ -49,15 +51,21 @@ namespace alp {
 		template<
 			typename D,
 			typename GeneralType,
+			typename GenView,
+			typename GenImfR,
+			typename GenImfC,
 			typename OrthogonalType,
+			typename OrthogonalView,
+			typename OrthogonalImfR,
+			typename OrthogonalImfC,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >
 		>
 		RC householder_qr(
-			Matrix< D, GeneralType, Dense > &H,
-			Matrix< D, OrthogonalType, Dense > &Q,
-			Matrix< D, GeneralType, Dense > &R,
+			Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &H,
+			Matrix< D, OrthogonalType, alp::Dense, OrthogonalView, OrthogonalImfR, OrthogonalImfC > &Q,
+			Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &R,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -78,31 +86,31 @@ namespace alp {
 			auto Qdiag = alp::get_view< alp::view::diagonal >( Q );
 			rc = rc ? rc : alp::set( Qdiag, one );
 			if( rc != SUCCESS ) {
-				std::cerr << " set( Q, I ) failed\n";
+				std::cerr << " alp::set( Q, I ) failed\n";
 				return rc;
 			}
 
 			// Out of place specification of the computation
-			Matrix< D, GeneralType, Dense > RR( n, m );
+			Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > RR( n, m );
 
-			rc = set( RR, H );
+			rc = alp::set( RR, H );
 			if( rc != SUCCESS ) {
-				std::cerr << " set( RR, H ) failed\n";
+				std::cerr << " alp::set( RR, H ) failed\n";
 				return rc;
 			}
 #ifdef DEBUG
 			print_matrix( " << RR >> ", RR );
 #endif
 
-			// a temporary for storing the mxm result
-			Matrix< D, OrthogonalType, Dense > Qtmp( n, n );
+			// a temporary for storing the alp::mxm result
+			Matrix< D, OrthogonalType, alp::Dense, OrthogonalView, OrthogonalImfR, OrthogonalImfC > Qtmp( n, n );
 
 			for( size_t k = 0; k < std::min( n-1, m ); ++k ) {
 #ifdef DEBUG
-				std::string matname(" << RR(");
-				matname = matname + std::to_string(k);
-				matname = matname + std::string( ") >> ");
-				print_matrix( matname , RR );
+				std::string matname( " << RR(" );
+				matname = matname + std::to_string( k );
+				matname = matname + std::string( ") >> " );
+				print_matrix( matname, RR );
 #endif
 
  				//const size_t m = n - k - 1;
@@ -113,47 +121,47 @@ namespace alp {
 				// v = v - alpha * e1
 				// v = v / norm ( v )
 
-				auto v_view = get_view( RR, utils::range( k, n ), k );
-				Vector< D, GeneralType, Dense > v( n - k );
-				rc = set( v, v_view );
+				auto v_view = alp::get_view( RR, utils::range( k, n ), k );
+				Vector< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > v( n - k );
+				rc = alp::set( v, v_view );
 				if( rc != SUCCESS ) {
-					std::cerr << " set( v, view ) failed\n";
+					std::cerr << " alp::set( v, view ) failed\n";
 					return rc;
 				}
 
 				Scalar< D > alpha( zero );
-				rc = norm2( alpha, v, ring );
+				rc = alp::norm2( alpha, v, ring );
 				if( rc != SUCCESS ) {
-					std::cerr << " norm2( alpha, v, ring ) failed\n";
+					std::cerr << " alp::norm2( alpha, v, ring ) failed\n";
 					return rc;
 				}
 
-				rc = eWiseLambda(
+				rc = alp::eWiseLambda(
 					[ &alpha, &ring, &divide, &minus ]( const size_t i, D &val ) {
 						if ( i == 0 ) {
 							Scalar< D > norm_v0( std::abs( val ) );
 							Scalar< D > val_scalar( val );
-							foldl( alpha, val_scalar, ring.getMultiplicativeOperator() );
-							foldl( alpha, norm_v0, divide );
-							foldl( val_scalar, alpha, minus );
+							alp::foldl( alpha, val_scalar, ring.getMultiplicativeOperator() );
+							alp::foldl( alpha, norm_v0, divide );
+							alp::foldl( val_scalar, alpha, minus );
 							val = *val_scalar;
 						}
 					},
 					v
 				);
 				if( rc != SUCCESS ) {
-					std::cerr << " eWiseLambda( lambda, v ) failed\n";
+					std::cerr << " alp::eWiseLambda( lambda, v ) failed\n";
 					return rc;
 				}
 
 				Scalar< D > norm_v( zero );
-				rc = norm2( norm_v, v, ring );
+				rc = alp::norm2( norm_v, v, ring );
 				if( rc != SUCCESS ) {
-					std::cerr << " norm2( norm_v, v, ring ) failed\n";
+					std::cerr << " alp::norm2( norm_v, v, ring ) failed\n";
 					return rc;
 				}
 
-				rc = foldl(v, norm_v, divide );
+				rc = alp::foldl( v, norm_v, divide );
 #ifdef DEBUG
 				print_vector( " v = ", v );
 #endif
@@ -166,25 +174,25 @@ namespace alp {
 					structures::Hermitian,
 					structures::Symmetric
 				>::type SymmOrHerm;
-				Matrix<	D, SymmOrHerm, Dense > Qk( n );
+				Matrix<	D, SymmOrHerm, alp::Dense > Qk( n );
 				rc = alp::set( Qk, zero );
 				auto Qk_diag = alp::get_view< alp::view::diagonal >( Qk );
 				rc = rc ? rc : alp::set( Qk_diag, one );
 
 				// this part can be rewriten without temp matrix using functors
-				Matrix<	D, SymmOrHerm, Dense > vvt( n - k );
+				Matrix<	D, SymmOrHerm, alp::Dense > vvt( n - k );
 
-				rc = rc ? rc : set( vvt, outer( v, ring.getMultiplicativeOperator() ) );
-				rc = rc ? rc : foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
+				rc = rc ? rc : alp::set( vvt, alp::outer( v, ring.getMultiplicativeOperator() ) );
+				rc = rc ? rc : alp::foldr( Scalar< D >( 2 ), vvt, ring.getMultiplicativeOperator() );
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
-				auto Qk_view = get_view< SymmOrHerm >(
-					//auto Qk_view = get_view< GeneralType >(
+				auto Qk_view = alp::get_view< SymmOrHerm >(
+					//auto Qk_view = alp::get_view< GeneralType >(
 					Qk,
 					utils::range( k, n ),
 					utils::range( k, n )
 				);
-				rc = rc ? rc : foldl( Qk_view, vvt, minus );
+				rc = rc ? rc : alp::foldl( Qk_view, vvt, minus );
 
 #ifdef DEBUG
 				print_matrix( " << Qk >> ", Qk );
@@ -195,17 +203,17 @@ namespace alp {
 				// RR = Qk * RR
 
 				// QkRR = Qk * RR
-				Matrix< D, GeneralType, Dense > QkRR( n, m );
-				rc = rc ? rc : set( QkRR, zero );
-				rc = rc ? rc : mxm( QkRR, Qk, RR, ring );
+				Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > QkRR( n, m );
+				rc = rc ? rc : alp::set( QkRR, zero );
+				rc = rc ? rc : alp::mxm( QkRR, Qk, RR, ring );
 				if( rc != SUCCESS ) {
-					std::cerr << " mxm( QkRR, Qk, RR, ring ); failed\n";
+					std::cerr << " alp::mxm( QkRR, Qk, RR, ring ); failed\n";
 					return rc;
 				}
 #ifdef DEBUG
 				print_matrix( " << Qk x RR  >> ", QkRR );
 #endif
-				rc = rc ? rc : set( RR, QkRR );
+				rc = rc ? rc : alp::set( RR, QkRR );
 
 #ifdef DEBUG
 				print_matrix( " << RR( updated ) >> ", RR );
@@ -216,20 +224,20 @@ namespace alp {
 				// Q = Q * conjugate(transpose(Qk))
 
 				// Qtmp = Q * conjugate(transpose(Qk))
-				rc = rc ? rc : set( Qtmp, zero );
-				if ( grb::utils::is_complex< D >::value ) {
-					rc = rc ? rc : mxm(
+				rc = rc ? rc : alp::set( Qtmp, zero );
+				if( grb::utils::is_complex< D >::value ) {
+					rc = rc ? rc : alp::mxm(
 						Qtmp,
 						Q,
-						conjugate( alp::get_view< alp::view::transpose >( Qk ) ),
+						alp::conjugate( alp::get_view< alp::view::transpose >( Qk ) ),
 						ring
 					);
 				} else {
-					rc = rc ? rc : mxm( Qtmp, Q, Qk, ring );
+					rc = rc ? rc : alp::mxm( Qtmp, Q, Qk, ring );
 				}
 
 				// Q = Qtmp
-				rc = rc ? rc : set( Q, Qtmp );
+				rc = rc ? rc : alp::set( Q, Qtmp );
 #ifdef DEBUG
 				print_matrix( " << Q updated >> ", Q );
 #endif
@@ -237,7 +245,7 @@ namespace alp {
 			}
 
 			// R = RR
-			rc = rc ? rc : set( R, RR );
+			rc = rc ? rc : alp::set( R, RR );
 			return rc;
 		}
 	} // namespace algorithms
