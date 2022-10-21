@@ -148,21 +148,6 @@ namespace alp {
 		return PANIC;
 	}
 
-	/** C++ scalar variant */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC,
-		typename T
-	>
-	RC setElement(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
-		const T val,
-		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
-	) {
-		return PANIC;
-	}
-
 	/**
 	 * Sets all elements of the output matrix to the values of the input matrix.
 	 * C = A

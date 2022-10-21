@@ -331,27 +331,6 @@ namespace alp {
 		return SUCCESS;
 	}
 
-	/** C++ scalar variant */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC,
-		typename T
-	>
-	RC setElement(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
-		const T val,
-		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
-			"called with a value type that does not match that of the given "
-			"Vector" );
-
-		// delegate
-		return setElement( x, Scalar< T >( val ), i );
-	}
-
 	/**
 	 * Sets the content of a given vector \a x to be equal to that of
 	 * another given vector \a y. Can be masked.
