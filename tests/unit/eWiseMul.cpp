@@ -341,8 +341,8 @@ void grb_program( const size_t &n, RC &rc ) {
 		if( nnz( out ) != 0 ) { 
 			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
 				<< "expected 0\n";
+			rc = FAILED;
 		}
-		rc = FAILED;
 	} else {
 		if( nnz( out ) != 1 ) {
 			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
