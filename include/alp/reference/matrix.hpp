@@ -705,50 +705,50 @@ namespace alp {
 		};
 
 		/** Specialization for square matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::Square, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::Square, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
 		/** Specialization for orthogonal matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::Orthogonal, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::Orthogonal, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
 		/** Specialization for upper-triangular matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for lower-triangular matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::LowerTriangular, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::LowerTriangular, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::PackedFactory< storage::LOWER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for symmetric matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
 		};
 
 		/** Specialization for hermitian matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::Hermitian, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::Hermitian, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
 		/** Specialization for symmetric tridiagonal matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::SymmetricTridiagonal, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::SymmetricTridiagonal, imf::Id, imf::Id, reference > {
 
 			private:
 				using interval = std::tuple_element< 0, structures::SymmetricTridiagonal::band_intervals >::type;
@@ -759,8 +759,8 @@ namespace alp {
 		};
 
 		/** Specialization for hermitian tridiagonal matrix */
-		template< enum Backend backend >
-		struct determine_poly_factory< structures::HermitianTridiagonal, imf::Id, imf::Id, backend > {
+		template<>
+		struct determine_poly_factory< structures::HermitianTridiagonal, imf::Id, imf::Id, reference > {
 
 			private:
 				// This will be used in the commented line below once band storage is added.
@@ -773,8 +773,8 @@ namespace alp {
 		};
 
 		/** Specialization for vectors */
-		template< typename Structure, enum Backend backend >
-		struct determine_poly_factory< Structure, imf::Id, imf::Zero, backend > {
+		template< typename Structure >
+		struct determine_poly_factory< Structure, imf::Id, imf::Zero, reference > {
 
 			typedef storage::polynomials::ArrayFactory factory_type;
 		};
