@@ -106,6 +106,17 @@ void alpProgram( const size_t &n, alp::RC &rc ) {
 	auto v_view = alp::get_view< alp::structures::General >( v, sel_r );
 	print_vector( "v_view", v_view );
 
+	// select view over select view
+	std::vector< size_t > sel2_v_data{ 2, 0, 1 };
+	alp::Vector< size_t > sel2_v( sel2_v_data.size() );
+	alp::buildVector( sel2_v, sel2_v_data.begin(), sel2_v_data.end() );
+	auto v_view_2 = alp::get_view< alp::structures::General >( v_view, sel2_v );
+	print_vector( "v_view_2", v_view_2 );
+
+	// matrix view over select x select view
+	auto v_mat = alp::get_view< alp::view::matrix >( v_view_2 );
+	print_matrix( "v_mat", v_mat );
+
 	rc = alp::SUCCESS;
 
 }
