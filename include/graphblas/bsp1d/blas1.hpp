@@ -1477,7 +1477,9 @@ namespace grb {
 
 		// check if can delegate to dense variant
 		const size_t n = size( z );
-		if( (descr & descriptors::dense) || nnz( x ) == n ) {
+		if( (descr & descriptors::dense) || (
+			nnz( x ) == n && nnz( z ) == n
+		) ) {
 			return eWiseApply< descr | descriptors::dense >(
 				z, x, beta, monoid.getOperator(), phase
 			);
@@ -1488,7 +1490,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n ) {
+			if( nnz( x ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -1566,7 +1568,9 @@ namespace grb {
 
 		// check if can delegate to dense variant
 		const size_t n = size( z );
-		if( (descr & descriptors::dense) || nnz( y ) == n ) {
+		if( (descr & descriptors::dense) || (
+			nnz( y ) == n && nnz( z ) == n
+		) ) {
 			return eWiseApply< descr | descriptors::dense >(
 				z, alpha, y, monoid.getOperator(), phase
 			);
@@ -1577,7 +1581,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < n ) {
+			if( nnz( y ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -1657,7 +1661,9 @@ namespace grb {
 
 		// check if we can delegate to dense variant
 		const size_t n = size( z );
-		if( (descr & descriptors::dense) || (nnz( x ) == n && nnz( y ) == n) ) {
+		if( (descr & descriptors::dense) || (
+			nnz( x ) == n && nnz( y ) == n && nnz( z ) == n
+		) ) {
 			return eWiseApply< descr | descriptors::dense >(
 				z, x, y, monoid.getOperator(), phase
 			);
@@ -1773,7 +1779,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < n || nnz( mask ) < n ) {
+			if( nnz( y ) < n || nnz( mask ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -1879,6 +1885,9 @@ namespace grb {
 			if( nnz( x ) < n ) {
 				return ILLEGAL;
 			}
+			if( nnz ( z ) < n ) {
+				return ILLEGAL;
+			}
 		}
 
 		// handle trivial resize phase
@@ -1979,7 +1988,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n || nnz( y ) < n ) {
+			if( nnz( x ) < n || nnz( y ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 			if( nnz( mask ) < n ) {
@@ -2499,7 +2508,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n || nnz( y ) < n ) {
+			if( nnz( x ) < n || nnz( y ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -2563,7 +2572,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < n ) {
+			if( nnz( y ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -2624,7 +2633,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n ) {
+			if( nnz( x ) < n || nnz( z ) < n ) {
 				return ILLEGAL;
 			}
 		}
