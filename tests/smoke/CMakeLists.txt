@@ -185,7 +185,7 @@ add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
 	COMPILE_DEFINITIONS _COMPLEX
 )
 
-add_grb_executables( alp_stedc alp_stedc.cpp
+add_grb_executables( alp_dstedc alp_stedc.cpp
         BACKENDS alp_reference
 )
 
