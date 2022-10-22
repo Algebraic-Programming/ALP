@@ -2412,7 +2412,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING,
+			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -2550,7 +2550,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_BETA_RING,
+			internal::hyperdags::EWISEMUL_VECTOR_ALPHA_BETA_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -2750,7 +2750,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 			internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
+			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_ALPHA_BETA_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
