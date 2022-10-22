@@ -5324,10 +5324,11 @@ namespace grb {
 			"not match the fourth domain of the given semiring" );
 #ifdef _DEBUG
 		std::cout << "eWiseAdd (reference, vector <- vector + vector) dispatches to "
-			<< "eWiseApply( reference, vector <- vector . vector ) using an "
-			<< "additive monoid\n";
+			<< "two folds using the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, x, y, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, x, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, y, ring.getAdditiveMonoid(), phase );
+		return ret;
 	}
 
 	/**
@@ -5374,9 +5375,11 @@ namespace grb {
 			"third domain of the given semiring" );
 #ifdef _DEBUG
 		std::cout << "eWiseAdd (reference, vector <- scalar + vector) dispatches to "
-			<< "eWiseApply with additive monoid\n";
+			<< "two folds with the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, alpha, y, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, alpha, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, y, ring.getAdditiveMonoid(), phase );
+		return ret;
 	}
 
 	/**
@@ -5422,9 +5425,12 @@ namespace grb {
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 #ifdef _DEBUG
-		std::cout << "eWiseAdd (reference, vector <- vector + scalar) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + scalar) dispatches to "
+			<< "two folds with the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, x, beta, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, x, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, beta, ring.getAdditiveMonoid(), phase );
+		return ret;
 	}
 
 	/**
@@ -5529,10 +5535,11 @@ namespace grb {
 			"called with non-bool mask element types" );
 #ifdef _DEBUG
 		std::cout << "eWiseAdd (reference, vector <- vector + vector, masked) "
-			<< "dispatches to eWiseApply( reference, vector <- vector . vector ) using "
-			<< "an additive monoid\n";
+			<< "dispatches to two folds using the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, m, x, y, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, m, x, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, m, y, ring.getAdditiveMonoid(), phase );
+		return ret;
 	}
 
 	/**
@@ -5585,9 +5592,12 @@ namespace grb {
 			"grb::eWiseAdd (vector <- scalar + vector, masked)",
 			"called with non-bool mask element types" );
 #ifdef _DEBUG
-		std::cout << "eWiseAdd (reference, vector <- scalar + vector, masked) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- scalar + vector, masked) "
+			<< "dispatches to two folds using the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, m, alpha, y, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, m, alpha, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, m, y, ring.getAdditiveMonoid(), phase );
+		return ret;
 	}
 
 	/**
@@ -5640,9 +5650,13 @@ namespace grb {
 			"grb::eWiseAdd (vector <- vector + scalar, masked)",
 			"called with non-bool mask element types" );
 #ifdef _DEBUG
-		std::cout << "eWiseAdd (reference, vector <- vector + scalar, masked) dispatches to eWiseApply with additive monoid\n";
+		std::cout << "eWiseAdd (reference, vector <- vector + scalar, masked) "
+			<< "dispatches to eWiseApply using the additive monoid\n";
 #endif
-		return eWiseApply< descr >( z, m, x, beta, ring.getAdditiveMonoid(), phase );
+		RC ret = foldl< descr >( z, m, x, ring.getAdditiveMonoid(), phase );
+		ret = ret ? ret : foldl< descr >( z, m, beta, ring.getAdditiveMonoid(),
+			phase );
+		return ret;
 	}
 
 	/**
@@ -8377,7 +8391,7 @@ namespace grb {
 			"called with a mask vector with a non-bool element type" );
 #ifdef _DEBUG
 		std::cout << "eWiseMulAdd (reference, vector <- scalar x scalar + scalar, "
-			<< "masked) precomputes scalar operations and dispatches to set "
+			<< "masked) precomputes scalar operations and dispatches to foldl "
 			<< "(reference, masked)\n";
 #endif
 		// dynamic checks
