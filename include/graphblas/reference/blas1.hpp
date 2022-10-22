@@ -8532,6 +8532,16 @@ namespace grb {
 		// check trivial phase
 		if( phase == RESIZE ) { return SUCCESS; }
 
+		// check if trivial
+		if( nnz( x ) == 0 || nnz( y ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "eWiseMul (reference, vector <- vector x vector "
+				<< "has at least one empty input vector, which results "
+				<< "in a no-op\n";
+#endif
+			return SUCCESS;
+		}
+
 #ifdef _DEBUG
 		std::cout << "eWiseMul (reference, vector <- vector x vector) dispatches "
 			<< "to eWiseMulAdd (vector <- vector x vector + 0)\n";
@@ -8588,6 +8598,17 @@ namespace grb {
 		if( descr & descriptors::dense ) {
 			if( nnz( z ) < n ) { return ILLEGAL; }
 			if( nnz( y ) < n ) { return ILLEGAL; }
+		}
+
+		// check for trivial phase
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		// check trivial
+		if( nnz( y ) == 0 ) { return SUCCESS; }
+		if( alpha == ring.template getZero< typename Ring::D1 >() ) {
+			return SUCCESS;
 		}
 
 #ifdef _DEBUG
@@ -8647,6 +8668,12 @@ namespace grb {
 
 		// catch trivial phase
 		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		// check trivial
+		if( nnz( x ) == 0 ) { return SUCCESS; }
+		if( beta == ring.template getZero< typename Ring::D2 >() ) {
 			return SUCCESS;
 		}
 
@@ -8711,8 +8738,17 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		// check trivial
+		if( alpha == ring.template getZero< typename Ring::D1 >() ) {
+			return SUCCESS;
+		}
+		if( beta == ring.template getZero< typename Ring::D2 >() ) {
+			return SUCCESS;
+		}
+
 #ifdef _DEBUG
-		std::cout << "eWiseMul (reference) dispatches to eWiseMulAdd with 0.0 as additive scalar\n";
+		std::cout << "eWiseMul (reference) dispatches to eWiseMulAdd with 0.0 as "
+			<< "additive scalar\n";
 #endif
 		typename Ring::D3 temp;
 		RC always_success = apply( temp, alpha, beta,
@@ -8755,19 +8791,23 @@ namespace grb {
 	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
 			"match the first domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
 			"called with a right-hand side input vector with element type that does "
 			"not match the second domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
 			"called with an output vector with element type that does not match the "
 			"third domain of the given semiring" );
 		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
 			"called with a mask vector with a non-bool element type" );
 
 		// check for empty mask
@@ -8789,6 +8829,17 @@ namespace grb {
 
 		// check trivial phase
 		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		// check trivial
+		if( nnz( x ) == 0 || nnz( y ) == 0 ) {
+			return SUCCESS;
+		}
+		if( (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) &&
+			nnz( m ) == 0
+		) {
 			return SUCCESS;
 		}
 
@@ -8863,6 +8914,25 @@ namespace grb {
 			if( nnz( z ) < n ) { return ILLEGAL; }
 			if( nnz( y ) < n ) { return ILLEGAL; }
 			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
+
+		// check for trivial phase
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		// check trivial
+		if( alpha == ring.template getZero< typename Ring::D1 >() ) {
+			return SUCCESS;
+		}
+		if( nnz( y ) == 0 ) {
+			return SUCCESS;
+		}
+		if( (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) &&
+			nnz( m ) == 0
+		) {
+			return SUCCESS;
 		}
 
 #ifdef _DEBUG
@@ -8940,6 +9010,18 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		// check trivial
+		if( nnz( x ) == 0 ) { return SUCCESS; }
+		if( beta == ring.template getZero< typename Ring::D2 >() ) {
+			return SUCCESS;
+		}
+		if( (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) &&
+			nnz( m ) == 0
+		) {
+			return SUCCESS;
+		}
+
 #ifdef _DEBUG
 		std::cout << "eWiseMul (reference, masked) dispatches to masked eWiseMulAdd "
 			<< "with 0.0 as additive scalar\n";
@@ -9013,6 +9095,20 @@ namespace grb {
 
 		// check for trivial phase
 		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+
+		// check trivial
+		if( alpha == ring.template getZero< typename Ring::D1 >() ) {
+			return SUCCESS;
+		}
+		if( beta == ring.template getZero< typename Ring::D2 >() ) {
+			return SUCCESS;
+		}
+		if( (descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask) &&
+			nnz( m ) == 0
+		) {
 			return SUCCESS;
 		}
 

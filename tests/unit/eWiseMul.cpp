@@ -948,6 +948,99 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 
+	// check masked with empty vector
+	std::cout << "\b\b 30: ";
+	rc = clear( out );
+	rc = rc ? rc : clear( left );
+	rc = rc ? rc : eWiseMul( out, even_mask, left, right, ring );
+	rc = rc ? rc : wait();
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != 0 ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected 0\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		std::cerr << "primitive returns an entry ( "
+			<< pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		rc = FAILED;
+	}
+	if( rc != SUCCESS ) { return; }
+	std::cout << "\b\b 31: ";
+	std::swap( left, right );
+	rc = eWiseMul( out, odd_mask, left, right, ring );
+	rc = rc ? rc : wait();
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != 0 ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected 0\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		std::cerr << "primitive returns an entry ( "
+			<< pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		rc = FAILED;
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// the same without masks
+	std::cout << "\b\b 32: ";
+	std::swap( left, right );
+	rc = eWiseMul( out, left, right, ring );
+	rc = rc ? rc : wait();
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != 0 ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected 0\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		std::cerr << "primitive returns an entry ( "
+			<< pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		rc = FAILED;
+	}
+	if( rc != SUCCESS ) { return; }
+	std::cout << "\b\b 33: ";
+	std::swap( left, right );
+	rc = eWiseMul( out, left, right, ring );
+	rc = rc ? rc : wait();
+	if( rc != SUCCESS ) {
+		std::cerr << "primitive returns " << toString( rc ) << ", "
+			<< "expected SUCCESS\n";
+		rc = FAILED;
+		return;
+	}
+	if( nnz( out ) != 0 ) {
+		std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
+			<< "expected 0\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : out ) {
+		std::cerr << "primitive returns an entry ( "
+			<< pair.first << ", " << pair.second << " ), "
+			<< "expected no entries\n";
+		rc = FAILED;
+	}
+	if( rc != SUCCESS ) { return; }
+
 	// done
 	std::cout << "\b\b OK\n";
 }
