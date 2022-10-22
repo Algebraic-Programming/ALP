@@ -3142,14 +3142,16 @@ namespace grb {
 		// handle try and execute phases
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
-				internal::setDense( z );
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = FAILED; }
 			}
 		}
 
 		// done
 		return ret;
 	}
-
 
 	/**
 	 * \internal Requires communication to sync global nonzero count.
