@@ -1150,7 +1150,7 @@ namespace grb {
 					if( left ) {
 #ifdef _DEBUG
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
-							<< "foldl, using to_fold's sparsity\n";
+							<< "foldl, using the mask's sparsity structure\n";
 #endif
 						return eWiseLambda(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
@@ -1165,7 +1165,7 @@ namespace grb {
 					} else {
 #ifdef _DEBUG
 						std::cout << "fold_from_vector_to_vector_generic: using eWiseLambda, "
-							<< "foldl, using to_fold's sparsity\n";
+							<< "foldr, using the mask's sparsity structure\n";
 #endif
 						return eWiseLambda(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
@@ -1285,11 +1285,10 @@ namespace grb {
 					}*/
 				} else {
 #ifdef _DEBUG
-					std::cout << "fold_from_vector_to_vector_generic (non-monoid): using "
-						<< "specialised code to merge two sparse vectors and/or to "
-						<< "handle output masks\n";
+					std::cout << "fold_from_vector_to_vector_generic: using specialised "
+						<< "code to merge two sparse vectors and, potentially, "
+						<< "output masks\n";
 #endif
-					assert( !monoid );
 					const IType * __restrict__ const tf_raw = internal::getRaw( to_fold );
 					IOType * __restrict__ const fi_raw = internal::getRaw( fold_into );
 					auto &fi = internal::getCoordinates( fold_into );
