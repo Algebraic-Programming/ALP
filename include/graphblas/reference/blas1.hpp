@@ -782,7 +782,7 @@ namespace grb {
 				// significant imbalance
 				#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
-				for( size_t i = 0; i < n; ++i ) {
+				for( size_t i = 0; i < coors.nonzeroes(); ++i ) {
 					const size_t index = coors.index( i );
 					if( !( m_coors->template mask< descr >( index, m ) ) ) {
 						continue;
@@ -798,7 +798,7 @@ namespace grb {
 				#pragma omp parallel
 				{
 					size_t start, end;
-					config::OMP::localRange( start, end, 0, n );
+					config::OMP::localRange( start, end, 0, coors.nonzeroes() );
 #else
 					const size_t start = 0;
 					const size_t end = n;
@@ -8401,7 +8401,7 @@ namespace grb {
 #ifdef NDEBUG
 		(void) rc;
 #endif
-		return grb::foldl( z, m, add_result, ring.getAdditiveOperator(), phase );
+		return grb::foldl( z, m, add_result, ring.getAdditiveMonoid(), phase );
 	}
 
 	/**
