@@ -311,23 +311,29 @@ std::string grb::internal::hyperdags::toString(
 		case FOLDR_VECTOR_VECTOR_VECTOR_MONOID:
 			return "foldr( vector, vector, vector, monoid)";
 
-		case EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING:
-			return "eWiseMulAdd( vector, vector, vector, vector, scalar )";
+		case EWISEMUL_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseMul( vector, vector, vector )";
 
 		case EWISEMUL_VECTOR_ALPHA_VECTOR_RING:
-			return "eWiseMul( vector, scalar, vector, scalar )";
+			return "eWiseMul( vector, scalar, vector )";
 
 		case EWISEMUL_VECTOR_VECTOR_BETA_RING:
-			return "eWiseMul( vector, vector, scalar, scalar )";
+			return "eWiseMul( vector, vector, scalar )";
+
+		case EWISEMUL_VECTOR_ALPHA_BETA_RING:
+			return "eWiseMul( vector, scalar, scalar )";
 
 		case EWISEMUL_VECTOR_VECTOR_VECTOR_VECTOR_RING:
-			return "eWiseMul( vector, vector, vector, vector, scalar )";
+			return "eWiseMul( vector, vector, vector, vector )";
 
 		case EWISEMUL_VECTOR_VECTOR_ALPHA_VECTOR_RING:
-			return "eWiseMul( vector, vector, scalar, vector, scalar )";
+			return "eWiseMul( vector, vector, scalar, vector )";
 
 		case EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING:
-			return "eWiseMul( vector, vector, vector, scalar, scalar )";
+			return "eWiseMul( vector, vector, vector, scalar )";
+
+		case EWISEMUL_VECTOR_VECTOR_ALPHA_BETA_RING:
+			return "eWiseMul( vector, vector, scalar, scalar )";
 
 		case EWISELAMBDA_FUNC_VECTOR:
 			return "eWiseLambda( function, vector )";

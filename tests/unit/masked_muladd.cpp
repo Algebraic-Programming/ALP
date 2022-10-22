@@ -20,9 +20,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	const double alpha = 1.5;
 	const double beta = 3.14;
 	const double gamma = 2.718;
@@ -61,19 +62,23 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// Test 1: vector-vector-vector-vector
 	rc = grb::eWiseMulAdd( z, m, a, x, y, ring );
 	if( rc != SUCCESS ) {
-		std::cerr << "Call to grb::eWiseMulAdd, test I, failed: " << grb::toString( rc ) << "\n";
+		std::cerr << "Call to grb::eWiseMulAdd, test I, failed: "
+			<< grb::toString( rc ) << "\n";
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z )
+				<< ", expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != alpha * beta + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( alpha * beta + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( alpha * beta + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -91,15 +96,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z )
+				<< ", expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != alpha * beta + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( alpha * beta + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( alpha * beta + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -117,15 +125,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", "
+				<< "expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != beta * alpha + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( beta * alpha + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( beta * alpha + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -143,15 +154,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", "
+				<< "expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != beta * alpha + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( beta * alpha + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( beta * alpha + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -169,15 +183,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", "
+				<< "expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != beta * alpha + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( beta * alpha + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( beta * alpha + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -195,15 +212,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z )
+				<< ", expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != beta * alpha + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( beta * alpha + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( beta * alpha + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -217,19 +237,23 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	// Test 7: vector-scalar-scalar-vector
 	rc = grb::eWiseMulAdd( z, m, alpha, beta, y, ring );
 	if( rc != SUCCESS ) {
-		std::cerr << "Call to grb::eWiseMulAdd, test VII, failed: " << grb::toString( rc ) << "\n";
+		std::cerr << "Call to grb::eWiseMulAdd, test VII, failed: "
+			<< grb::toString( rc ) << "\n";
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z )
+				<< ", expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != alpha * beta + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( alpha * beta + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( alpha * beta + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -247,15 +271,18 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = FAILED;
 	} else {
 		if( grb::nnz( z ) != n / 2 ) {
-			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", expected " << ( n / 2 ) << "\n";
+			std::cerr << "Unexpected number of nonzeroes: " << grb::nnz( z ) << ", "
+				<< "expected " << ( n / 2 ) << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : z ) {
+		for( const auto &pair : z ) {
 			if( pair.first % 2 == 1 ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected no entry here\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected no entry here\n";
 				rc = FAILED;
 			} else if( pair.second != alpha * beta + gamma ) {
-				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second << " ), expected value " << ( alpha * beta + gamma ) << "\n";
+				std::cerr << "Unexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected value " << ( alpha * beta + gamma ) << "\n";
 				rc = FAILED;
 			}
 		}
@@ -297,8 +324,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, the test "
+			<< "size.\n";
 		return 1;
 	}
 
@@ -310,9 +337,11 @@ int main( int argc, char ** argv ) {
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}
 	return 0;
 }
+

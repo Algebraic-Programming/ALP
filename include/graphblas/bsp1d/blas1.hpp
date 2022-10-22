@@ -347,7 +347,7 @@ namespace grb {
 				ret == FAILED
 			) {
 				const RC subrc = internal::updateNnz( y );
-				if( subrc != SUCCESS ) { ret = FAILED; }
+				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
 
@@ -2499,6 +2499,23 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+
 		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
@@ -2508,7 +2525,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n || nnz( y ) < n || nnz( z ) < n ) {
+			if( nnz( z ) < n || nnz( x ) < n || nnz( y ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -2566,13 +2583,30 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+
 		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( y ) < n || nnz( z ) < n ) {
+			if( nnz( z ) < n || nnz( y ) < n ) {
 				return ILLEGAL;
 			}
 		}
@@ -2627,15 +2661,31 @@ namespace grb {
 			grb::is_semiring< Ring >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+
 		// dynamic checks
 		const size_t n = grb::size( z );
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
 		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n || nnz( z ) < n ) {
-				return ILLEGAL;
-			}
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
 		}
 
 		// handle trivial resize
@@ -2648,6 +2698,439 @@ namespace grb {
 		// delegate
 		RC ret = eWiseMul< descr >( internal::getLocal( z ),
 			internal::getLocal( x ), beta, ring, phase );
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = FAILED; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal no implementation details */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+
+		// dynamic checks
+		const size_t n = grb::size( z );
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = eWiseMul< descr >( internal::getLocal( z ),
+			alpha, beta, ring, phase );
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				internal::setDense( z );
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires syncing of output nonzero count. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename MaskType,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Ring::D1, InputType1 >::value ), "grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Ring::D2, InputType2 >::value ), "grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Ring::D3, OutputType >::value ), "grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseMulAdd",
+			"called with a mask vector with a non-bool element type" );
+
+		// dynamic checks
+		const size_t n = grb::size( z );
+		if( n != grb::size( m ) ) {
+			return MISMATCH;
+		}
+		if( n != grb::size( x ) ) {
+			return MISMATCH;
+		}
+		if( n != grb::size( y ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n || nnz( m ) < n || nnz( x ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( x ), internal::getLocal( y ),
+			ring, phase
+		);
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires syncing of output nonzero count. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename MaskType,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const InputType1 alpha,
+		const Vector< InputType2, BSP1D, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
+			"called with a mask vector _m with a non-bool element type" );
+
+		// check empty mask
+		if( size( m ) == 0 ) {
+			return eWiseMul< descr >( z, alpha, y, ring, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( n != size( m ) || n != size( y ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n || nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, internal::getLocal( y ),
+			ring, phase
+		);
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle execute and try phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires syncing of output nonzero count. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename MaskType,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const Vector< InputType1, BSP1D, Coords > &x,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
+			"called with a mask vector _m with a non-bool element type" );
+
+		// check empty mask
+		if( size( m ) == 0 ) {
+			return eWiseMul< descr >( z, x, beta, ring, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( n != size( m ) || n != size( x ) ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+			if( nnz( x ) < n ) { return ILLEGAL; }
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			internal::getLocal( x ), beta,
+			ring, phase
+		);
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute phases
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( z );
+			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( z );
+				if( subrc != SUCCESS ) { ret = FAILED; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** \internal Requires syncing of output nonzero count. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, typename MaskType,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &m,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D1, InputType1 >::value ),
+			"grb::eWiseMul",
+			"called with a left-hand side input vector with element type that does not "
+			"match the first domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D2, InputType2 >::value ),
+			"grb::eWiseMul",
+			"called with a right-hand side input vector with element type that does "
+			"not match the second domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Ring::D3, OutputType >::value ),
+			"grb::eWiseMul",
+			"called with an output vector with element type that does not match the "
+			"third domain of the given semiring" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ),
+			"grb::eWiseMulAdd",
+			"called with a mask vector _m with a non-bool element type" );
+
+		// check empty mask
+		if( size( m ) == 0 ) {
+			return eWiseMul< descr >( z, alpha, beta, ring, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( n != size( m ) ) { return MISMATCH; }
+		if( descr & descriptors::dense ) {
+			if( nnz( z ) < n ) { return ILLEGAL; }
+			if( nnz( m ) < n ) { return ILLEGAL; }
+		}
+
+		// handle trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, beta,
+			ring, phase
+		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()

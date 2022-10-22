@@ -2412,7 +2412,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEMUL_ADD_VECTOR_VECTOR_VECTOR_RING,
+			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -2504,6 +2504,53 @@ namespace grb {
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
+	) {
+		const RC ret = eWiseMul< descr >(
+			internal::getVector(z),
+			alpha, beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMUL_VECTOR_ALPHA_BETA_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -2651,6 +2698,59 @@ namespace grb {
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 			internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename MaskType, typename Coords
+	>
+	RC eWiseMul(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
+	) {
+		if( size( internal::getVector(m) ) == 0 ) {
+			return eWiseMul< descr >( z, alpha, beta, ring, phase );
+		}
+		const RC ret = eWiseMul< descr >(
+			internal::getVector(z), internal::getVector(m),
+			alpha, beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(m) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+			internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEMUL_VECTOR_VECTOR_ALPHA_BETA_RING,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
