@@ -3105,7 +3105,6 @@ namespace grb {
 			"grb::eWiseMulAdd",
 			"called with a mask vector _m with a non-bool element type" );
 
-
 		// check empty mask
 		if( size( m ) == 0 ) {
 			return eWiseMul< descr >( z, alpha, beta, ring, phase );
@@ -3127,8 +3126,11 @@ namespace grb {
 		}
 
 		// delegate
-		RC ret = eWiseMul< descr >( internal::getLocal( z ),
-			alpha, beta, ring, phase );
+		RC ret = eWiseMul< descr >(
+			internal::getLocal( z ), internal::getLocal( m ),
+			alpha, beta,
+			ring, phase
+		);
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
