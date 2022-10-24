@@ -75,8 +75,11 @@ namespace alp {
 	 * Resizes the Scalar to have at least the given number of nonzeroes.
 	 * The contents of the scalar are not retained.
 	 */
-	template< typename InputType, typename InputStructure, typename length_type >
-	RC resize( Scalar< InputType, InputStructure, reference > &s, const length_type new_nz ) {
+	template<
+		typename InputType, typename InputStructure,
+		typename length_type, Backend backend
+	>
+	RC resize( Scalar< InputType, InputStructure, backend > &s, const length_type new_nz ) {
 		(void) s;
 		(void) new_nz;
 		return PANIC;
@@ -86,9 +89,13 @@ namespace alp {
 	 * Resizes the vector to have at least the given number of nonzeroes.
 	 * The contents of the vector are not retained.
 	 */
-	template< typename InputType, typename InputStructure, typename View, typename ImfR, typename ImfC, typename length_type >
+	template<
+		typename InputType, typename InputStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename length_type, Backend backend
+	>
 	RC resize(
-		Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
 		const length_type new_nz
 	) noexcept {
 		(void) x;
@@ -100,9 +107,12 @@ namespace alp {
 	 * Resizes the matrix to have at least the given number of nonzeroes.
 	 * The contents of the matrix are not retained.
 	 */
-	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
+	template<
+		typename InputType, typename InputStructure, typename InputView,
+		typename InputImfR, typename InputImfC, Backend backend
+	>
 	RC resize(
-		Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A,
+		Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &A,
 		const size_t new_nz
 	) noexcept {
 		(void) A;
@@ -122,7 +132,7 @@ namespace alp {
 	>
 	RC set(
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
-		const Scalar< T, ValStructure, reference > val,
+		const Scalar< T, ValStructure, backend > val,
 		const typename std::enable_if<
 			!alp::is_object< DataType >::value &&
 			!alp::is_object< T >::value,
@@ -136,12 +146,14 @@ namespace alp {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC, typename ValStructure,
-		typename T
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure,
+		Backend backend
 	>
 	RC setElement(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
-		const Scalar< T, ValStructure, reference > val,
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
+		const Scalar< T, ValStructure, backend > val,
 		const size_t i,
 		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
 	) {
@@ -152,9 +164,12 @@ namespace alp {
 	 * Sets all elements of the output matrix to the values of the input matrix.
 	 * C = A
 	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename OutputImfR, typename OutputImfC,
+		typename InputType, typename InputStructure, typename InputView,
+		typename InputImfR, typename InputImfC,
 		Backend backend
 	>
 	RC set(
@@ -168,8 +183,10 @@ namespace alp {
 	 * Sets all elements of the given matrix to the value of the given scalar.
 	 * C = val
 	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename OutputImfR, typename OutputImfC,
 		typename InputType, typename InputStructure,
 		Backend backend
 	>
@@ -207,16 +224,18 @@ namespace alp {
 	 * Any existing values in \a x that overlap with newer values will hence
 	 * be overwritten.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		class Merger = operators::right_assign< InputType >,
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVector( internal::Vector< InputType, backend > & x,
+	RC buildVector(
+		internal::Vector< InputType, backend > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
-		const IOMode mode, const Merger & merger = Merger()
+		const IOMode mode, const Merger &merger = Merger()
 	) {
 		operators::right_assign< InputType > accum;
 		return buildVector< descr >( x, accum, ind_start, ind_end, val_start, val_end, mode, merger );
@@ -277,13 +296,15 @@ namespace alp {
 	 * @returns alp::ILLEGAL When a nonzero has an index larger than alp::size(x).
 	 * @returns alp::PANIC   If an unmitigable error has occured during ingestion.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		class Merger = operators::right_assign< InputType >,
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVectorUnique( internal::Vector< InputType, backend > & x,
+	RC buildVectorUnique(
+		internal::Vector< InputType, backend > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode
@@ -352,7 +373,7 @@ namespace alp {
 	 *           \em once; the three input iterators \a I, \a J, and \a V thus
 	 *           may have exactly one copyeach, meaning that all input may be
 	 *           traversed only once.
-	 *        -# Each of the at most three iterator copies will be incremented
+	 *  base/blas1.hpp      -# Each of the at most three iterator copies will be incremented
 	 *           at most \f$ \mathit{nz} \f$ times.
 	 *        -# Each position of the each of the at most three iterator copies
 	 *           will be dereferenced exactly once.
@@ -375,15 +396,17 @@ namespace alp {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique(
-		internal::Matrix< InputType, implementation > & A,
+		internal::Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator1 I_end,
 		fwd_iterator2 J, fwd_iterator2 J_end,
 		fwd_iterator3 V, fwd_iterator3 V_end,
@@ -401,13 +424,15 @@ namespace alp {
 	 * Alias that transforms a set of pointers and an array length to the
 	 * buildMatrixUnique variant based on iterators.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique( internal::Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
@@ -421,13 +446,19 @@ namespace alp {
 	}
 
 	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A, fwd_iterator1 I, fwd_iterator2 J, const length_type nz, const IOMode mode ) {
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		internal::Matrix< InputType, implementation > &A,
+		fwd_iterator1 I, fwd_iterator2 J,
+		const length_type nz, const IOMode mode
+	) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
 		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
@@ -480,7 +511,8 @@ namespace alp {
 		typename InputType, typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
-	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A,
+	RC buildMatrixUnique(
+		internal::Matrix< InputType, implementation > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
