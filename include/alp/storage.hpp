@@ -175,7 +175,7 @@ namespace alp {
 				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
 
 				static poly_type Create( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 					(void) rows;
 #endif
@@ -184,7 +184,7 @@ namespace alp {
 				}
 
 				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 #endif
 					assert( rows == cols );
@@ -199,7 +199,7 @@ namespace alp {
 				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
 
 				static poly_type Create( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 					(void) rows;
 #endif
@@ -208,7 +208,7 @@ namespace alp {
 				}
 
 				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 #endif
 					assert( rows == cols );
@@ -223,7 +223,7 @@ namespace alp {
 				typedef BivariateQuadratic< 1, 0, 0, 1, 2, 0, 2 > poly_type;
 
 				static poly_type Create( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 					(void) rows;
 #endif
@@ -232,7 +232,7 @@ namespace alp {
 				}
 
 				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 #endif
 					assert( rows == cols );
@@ -247,7 +247,7 @@ namespace alp {
 				typedef BivariateQuadratic< 0, 1, 0, 2, 1, 0, 2 > poly_type;
 
 				static poly_type Create( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) rows;
 					(void) cols;
 #endif
@@ -256,7 +256,7 @@ namespace alp {
 				}
 
 				static size_t GetStorageDimensions( const size_t rows, const size_t cols ) {
-#ifndef DEBUG
+#ifdef NDEBUG
 					(void) cols;
 #endif
 					assert( rows == cols );
