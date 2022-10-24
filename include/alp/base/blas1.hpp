@@ -32,9 +32,6 @@
 #include <alp/descriptors.hpp>
 #include <alp/internalops.hpp>
 
-#include <assert.h>
-
-
 namespace alp {
 
 	/**
