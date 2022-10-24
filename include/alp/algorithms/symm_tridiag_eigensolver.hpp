@@ -38,22 +38,22 @@ namespace alp {
 		 */
 		template<
 			typename D,
-			typename VecView1,
-			typename VecImfR1,
-			typename VecImfC1,
-			typename VecView2,
-			typename VecImfR2,
-			typename VecImfC2,
+			typename VectorD,
+			typename VectorV,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
-			class Divide = operators::divide< D >
+			class Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_vector< VectorD >::value &&
+				is_vector< VectorV >::value
+			> * = nullptr
 		>
 		RC bisec_sec_eq(
 			Scalar< D > &lambda,
-			const Vector<	D, structures::General,	Dense, VecView1, VecImfR1, VecImfC1 > &d,
+			const VectorD &d,
 			// Vector v should be const, but that would disable eWiseLambda,
 			// to be resolved in the future
-			Vector<	D, structures::General,	Dense, VecView2, VecImfR2, VecImfC2 > &v,
+			VectorV &v,
 			const Scalar< D > &a,
 			const Scalar< D > &b,
 			const D tol = 1.e-10,
@@ -124,29 +124,25 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D,
-			typename VecView1,
-			typename VecImfR1,
-			typename VecImfC1,
-			typename VecView2,
-			typename VecImfR2,
-			typename VecImfC2,
-			typename VecView3,
-			typename VecImfR3,
-			typename VecImfC3,
-			typename OrthogonalType,
-			typename OrthViewType,
-			typename OrthViewImfR,
-			typename OrthViewImfC,
-			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			typename Vec1,
+			typename Vec2,
+			typename Vec3,
+			typename OrthogonalMat,
+			typename D = typename OrthogonalMat::value_type,
+			class Ring = Semiring<
+				operators::add< D >,
+				operators::mul< D >,
+				identities::zero,
+				identities::one
+			>,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >
 		>
 		RC eigensolveDiagPlusOuter(
-			Vector<	D, structures::General,	Dense, VecView1, VecImfR1, VecImfC1 > &egvals,
-			Matrix< D, OrthogonalType, Dense, OrthViewType, OrthViewImfR, OrthViewImfC > &Egvecs,
-			Vector<	D, structures::General, Dense, VecView2, VecImfR2, VecImfC2 > &d,
-			Vector< D, structures::General, Dense, VecView3, VecImfR3, VecImfC3 > &v,
+			Vec1 &egvals,
+			OrthogonalMat &Egvecs,
+			Vec2 &d,
+			Vec3 &v,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -292,7 +288,7 @@ namespace alp {
 
 			// update results
 			auto egvecs_view = alp::get_view( Egvecs_non_direct, utils::range( 0, nn ), utils::range( 0, nn ) );
-			auto tmp_egvecs_orth_view = alp::get_view< OrthogonalType >( tmp_egvecs );
+			auto tmp_egvecs_orth_view = alp::get_view< typename OrthogonalMat::structure >( tmp_egvecs );
 			rc = rc ? rc : alp::set( egvecs_view, tmp_egvecs_orth_view );
 
 			return rc;
