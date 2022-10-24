@@ -783,27 +783,23 @@ namespace alp {
 
 	namespace structures {
 
-		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		template<
+			size_t band,
+			typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR
+		>
 		std::ptrdiff_t get_lower_limit(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
-			const std::ptrdiff_t m = nrows( A );
-			constexpr std::ptrdiff_t cl_a = std::tuple_element< band, typename Structure::band_intervals >::type::left;
-
-			const std::ptrdiff_t l_a = ( cl_a < -m + 1 ) ? -m + 1 : cl_a ;
-
-			return l_a;
+			return structures::get_lower_limit< band, Structure >( nrows( A ) );
 
 		}
 
-		template<size_t band, typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR >
+		template<
+			size_t band,
+			typename T, typename Structure, enum Density density, typename View, typename ImfL, typename ImfR
+		>
 		std::ptrdiff_t get_upper_limit(const alp::Matrix< T, Structure, density, View, ImfL, ImfR, reference > &A) {
 
-			const std::ptrdiff_t n = ncols( A );
-			constexpr std::ptrdiff_t cu_a = std::tuple_element< band, typename Structure::band_intervals >::type::right;
-
-			const std::ptrdiff_t u_a = ( cu_a > n ) ? n : cu_a ;
-
-			return u_a;
+			return structures::get_upper_limit< band, Structure >( ncols( A ) );
 
 		}
 
