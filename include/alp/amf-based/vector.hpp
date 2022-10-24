@@ -133,12 +133,12 @@ namespace alp {
 			/** @see Vector::lambda_reference */
 			typedef typename std::conditional<
 				internal::is_storage_based< self_type >::value,
-				T&,
+				T &,
 				T
 			>::type lambda_reference;
 			typedef typename std::conditional<
 				internal::is_storage_based< self_type >::value,
-				const T&,
+				const T &,
 				const T
 			>::type const_lambda_reference;
 

@@ -89,11 +89,7 @@ namespace alp {
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
-	} // namespace internal
-
-	namespace internal {
-
-		// Forward declarations
+		/** Forward declarations for access functions */
 		template<
 			typename MatrixType,
 			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
