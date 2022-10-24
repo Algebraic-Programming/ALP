@@ -1412,6 +1412,76 @@ namespace alp {
 		}
 
 	} // namespace structures
+
+	namespace structures {
+		namespace constant {
+
+			/** Returns a constant reference to an Identity matrix of the provided size */
+			template< typename T, Backend backend >
+			const Matrix<
+				T, structures::Identity, Density::Dense,
+				view::Functor< std::function< const T( const size_t, const size_t ) > >,
+				imf::Id, imf::Id, backend
+			>
+			I( const size_t n ) {
+
+				return Matrix<
+					T, structures::Identity, Density::Dense,
+					view::Functor< std::function< const T( const size_t, const size_t ) > >,
+					imf::Id, imf::Id, backend
+				>(
+					[]( const size_t i, const size_t j ) {
+						return ( i == j ) ? 1 : 0;
+					},
+					n,
+					n
+				);
+			}
+
+			/** Returns a constant reference to a Zero matrix of the provided size */
+			template< typename T, Backend backend >
+			const Matrix<
+				T, structures::Zero, Density::Dense,
+				view::Functor< std::function< const T( const size_t, const size_t ) > >,
+				imf::Id, imf::Id, reference
+			>
+			Zero( const size_t rows, const size_t cols ) {
+				return Matrix<
+					T, structures::Zero, Density::Dense,
+					view::Functor< std::function< const T( const size_t, const size_t ) > >,
+					imf::Id, imf::Id, reference
+				> (
+					[]( const size_t, const size_t ) {
+						return 0;
+					},
+					rows,
+					cols
+				);
+			}
+
+			namespace internal {
+
+				/** Returns a constant reference to a matrix representing Givens rotation
+				 * of the provided size n and parameters i, j, s and c, where
+				 * s = sin( theta ) and c = cos( theta )
+				 */
+				template< typename T, Backend backend >
+				const Matrix<
+					T, structures::Square, Density::Dense,
+					view::Original< void >, imf::Id, imf::Id, backend
+				> &
+				Givens( const size_t n, const size_t i, const size_t j, const T s, const T c ) {
+					using return_type = const Matrix<
+						T, structures::Square, Density::Dense, view::Original< void >, imf::Id, imf::Id, backend
+					>;
+					return_type * ret = new return_type( n );
+					// TODO: initialize matrix values according to the provided parameters
+					return * ret;
+				}
+
+			} // namespace internal
+		} // namespace constant
+	} // namespace structures
 } // namespace alp
 
 #endif // end ``_H_ALP_AMF_BASED_MATRIX''
