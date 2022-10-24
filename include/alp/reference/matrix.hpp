@@ -491,15 +491,15 @@ namespace alp {
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
 
+			protected:
+				typedef StorageBasedMatrix< T, AmfType, requires_allocation > self_type;
+				friend MatrixBase< self_type >;
+
 				typedef typename std::conditional<
 					requires_allocation,
 					Vector< T, reference >,
 					Vector< T, reference > &
 				>::type container_type;
-
-			protected:
-				typedef StorageBasedMatrix< T, AmfType, requires_allocation > self_type;
-				friend MatrixBase< self_type >;
 
 				/** A container-type view is characterized by its association with a physical container */
 				container_type container;
