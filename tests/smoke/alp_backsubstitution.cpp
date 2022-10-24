@@ -93,6 +93,44 @@ std::vector<T> generate_upd_matrix( size_t N  ) {
 	return ( data );
 }
 
+//** check if rows/columns or matrix Q are orthogonal */
+template<
+	typename D = double,
+	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< D >,
+	typename Divide = operators::divide< D > >
+RC check_solution(
+	Matrix< D, structures::UpperTriangular, Dense > &A,
+	Vector< D > &x,
+	Vector< D > &b,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus(),
+	const Divide &divide = Divide()
+) {
+	(void) divide;
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
+
+	RC rc = SUCCESS;
+
+	const size_t n = nrows( A );
+
+	alp::Vector< D > lhs( n );
+	rc = rc ? rc : alp::set( lhs, zero );
+	auto lhs_matview =  get_view< alp::view::matrix >( lhs );
+	rc = rc ? rc : alp::mxm( lhs_matview, A, x, ring );
+	rc = rc ? rc : alp::foldl( lhs_matview, b, minus );
+
+	D alpha = ring.template getZero< D >();
+	rc = rc ? rc : alp::norm2( alpha, lhs, ring );
+	if(  alpha > tol ) {
+		std::cout << "Numerical error too large: |Ax-b| = " << alpha << ".\n";
+		return FAILED;
+	}
+
+	return rc;
+}
+
 
 void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = SUCCESS;
@@ -128,6 +166,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 #ifdef DEBUG
 	print_vector( " output vector x ", x );
 #endif
+	rc = rc ? rc : check_solution( A, x, b );
 
 }
 

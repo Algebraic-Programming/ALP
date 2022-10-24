@@ -54,7 +54,8 @@ namespace alp {
 			Vector< D > &b,
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
-			const Divide & divide = Divide() ) {
+			const Divide & divide = Divide()
+		) {
 
 			RC rc = SUCCESS;
 
