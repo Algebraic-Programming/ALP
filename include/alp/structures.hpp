@@ -689,6 +689,30 @@ namespace alp {
 			typedef structures::tuple_to_band< typename alp::internal::transpose_interval_tuple< std::tuple< Intervals... > >::type > type;
 		};
 
+		template< size_t band, typename Structure >
+		std::ptrdiff_t get_lower_limit( const size_t rows ) {
+
+			const std::ptrdiff_t m = static_cast< std::ptrdiff_t >( rows );
+			constexpr std::ptrdiff_t cl_a = std::tuple_element< band, typename Structure::band_intervals >::type::left;
+
+			const std::ptrdiff_t l_a = ( cl_a < -m + 1 ) ? -m + 1 : cl_a ;
+
+			return l_a;
+
+		}
+
+		template< size_t band, typename Structure >
+		std::ptrdiff_t get_upper_limit( const size_t cols ) {
+
+			const std::ptrdiff_t n = static_cast< std::ptrdiff_t >( cols );
+			constexpr std::ptrdiff_t cu_a = std::tuple_element< band, typename Structure::band_intervals >::type::right;
+
+			const std::ptrdiff_t u_a = ( cu_a > n ) ? n : cu_a ;
+
+			return u_a;
+
+		}
+
 	} // namespace structures
 
 } // namespace alp

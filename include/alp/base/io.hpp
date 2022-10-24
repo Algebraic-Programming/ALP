@@ -54,6 +54,15 @@ namespace alp {
 	 * @{
 	 */
 
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	size_t nrows( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept;
+
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	size_t ncols( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept;
+
+	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept;
+
 	/**
 	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
