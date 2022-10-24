@@ -884,7 +884,7 @@ namespace alp {
 		typename ImfC,
 		enum Backend backend
 	>
-	class Vector { };
+	class Vector;
 
 }
 
