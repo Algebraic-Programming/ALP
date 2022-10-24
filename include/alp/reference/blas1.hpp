@@ -882,46 +882,6 @@ namespace alp {
 	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
-	 * Masked operator variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType, typename InputStructure,
-		class Op
-	>
-	RC foldl(
-		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const Scalar< InputType, InputStructure, reference > &beta,
-		const Op & op = Op(),
-		const std::enable_if_t<
-			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
-		> * = nullptr
-	) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked)", "provided mask does not have boolean entries" );
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, beta, op );
-		}
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
-	 * into each element.
-	 *
 	 * The original value of \f$ \beta \f$ is used as the right-hand side input
 	 * of the operator \a op. The left-hand side inputs for \a op are retrieved
 	 * from the input vector \a x. The result of the operation is stored in
@@ -1013,46 +973,6 @@ namespace alp {
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given monoid" );
-
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
-	 * into each element.
-	 *
-	 * Masked monoid variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType,
-		class Monoid
-	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const InputType & beta,
-		const Monoid & monoid = Monoid(),
-		const std::enable_if_t<
-			!alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
-		> * = nullptr
-		) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked, monoid)", "provided mask does not have boolean entries" );
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, beta, monoid );
-		}
 
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -1430,37 +1350,6 @@ namespace alp {
 	/**
 	 * Computes \f$ z = x \odot y \f$, out of place.
 	 *
-	 * Specialisation for scalar \a y, masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Scalar< InputType2, InputStructure2, reference > &beta,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using operator)\n";
-	#endif
-		// check for empty mask
-		if( size( mask ) == 0 ) {
-			return eWiseApply< descr >( z, x, beta, op );
-		}
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
 	 * Monoid version.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
@@ -1525,87 +1414,6 @@ namespace alp {
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a x. Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a y. Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Scalar< InputType2, InputStructure2, reference > &beta,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
 	#endif
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -1699,33 +1507,6 @@ namespace alp {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a x. Masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], operator variant)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
 	 * Calculates the element-wise operation on elements of two vectors,
 	 * \f$ z = x .* y \f$, using the given operator. The vectors must be
 	 * of equal length.
@@ -1813,33 +1594,6 @@ namespace alp {
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using operator)\n";
 	#endif
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
