@@ -356,8 +356,8 @@ namespace alp {
 	 * Structured matrices defined as views on other matrices do not instantiate a
 	 * new container but refer to the one used by their targets.
 	 * See the two specializations
-	 * \a Matrix<T, structures::General, Density::Dense, View, reference >
-	 * and \a Matrix<T, structures::General, Density::Dense, view::Indentity<void>, reference >
+	 * \a Matrix<T, structures::General, Density::Dense, View, backend >
+	 * and \a Matrix<T, structures::General, Density::Dense, view::Indentity<void>, backend >
 	 * as examples of structured matrix types without and with physical container, respectively.
 	 *
 	 *

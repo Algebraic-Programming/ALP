@@ -74,7 +74,7 @@ namespace alp {
 	 * Views can be used to create logical \em perspectives on top of a container.
 	 * For example, one may decide to refer to the part of the vector or
 	 * to reference a diagonal of a matrix as a vector.
-	 * See specialization \a Vector< T, Structure, Density::Dense, view::Diagonal< MatrixT >, reference >
+	 * See specialization \a Vector< T, Structure, Density::Dense, view::Diagonal< MatrixT >, backend >
 	 * as an example of such usage.
 	 *
 	 * Vector View defined as views on other vectors do not instantiate a
