@@ -124,9 +124,9 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename Vec1,
-			typename Vec2,
-			typename Vec3,
+			typename VectorEgVals,
+			typename VectorD,
+			typename VectorV,
 			typename OrthogonalMat,
 			typename D = typename OrthogonalMat::value_type,
 			class Ring = Semiring<
@@ -139,10 +139,10 @@ namespace alp {
 			class Divide = operators::divide< D >
 		>
 		RC eigensolveDiagPlusOuter(
-			Vec1 &egvals,
+			VectorEgVals &egvals,
 			OrthogonalMat &Egvecs,
-			Vec2 &d,
-			Vec3 &v,
+			VectorD &d,
+			VectorV &v,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
