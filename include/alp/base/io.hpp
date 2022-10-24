@@ -68,7 +68,7 @@ namespace alp {
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
 	) noexcept {
 		(void) x;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -82,7 +82,7 @@ namespace alp {
 	RC resize( Scalar< InputType, InputStructure, backend > &s, const length_type new_nz ) {
 		(void) s;
 		(void) new_nz;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -100,7 +100,7 @@ namespace alp {
 	) noexcept {
 		(void) x;
 		(void) new_nz;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -117,7 +117,7 @@ namespace alp {
 	) noexcept {
 		(void) A;
 		(void) new_nz;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -133,12 +133,14 @@ namespace alp {
 	RC set(
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
 		const Scalar< T, ValStructure, backend > val,
-		const typename std::enable_if<
+		const typename std::enable_if_t<
 			!alp::is_object< DataType >::value &&
-			!alp::is_object< T >::value,
-		void >::type * const = NULL
+			!alp::is_object< T >::value
+		> * const = nullptr
 	) {
-		return PANIC;
+		(void) x;
+		(void) val;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -155,9 +157,15 @@ namespace alp {
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
 		const Scalar< T, ValStructure, backend > val,
 		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
+		const typename std::enable_if_t<
+			!alp::is_object< DataType >::value &&
+			!alp::is_object< T >::value
+		> * const = nullptr
 	) {
-		return PANIC;
+		(void) x;
+		(void) val;
+		(void) i;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -176,7 +184,9 @@ namespace alp {
 		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
 		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &A
 	) noexcept {
-		return PANIC;
+		(void) C;
+		(void) A;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -194,7 +204,9 @@ namespace alp {
 		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
 		const Scalar< InputType, InputStructure, backend > &val
 	) noexcept {
-		return PANIC;
+		(void) C;
+		(void) val;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -520,7 +532,7 @@ namespace alp {
 		(void)start;
 		(void)end;
 		(void)mode;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/** @} */

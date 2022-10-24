@@ -71,7 +71,7 @@ namespace alp {
 		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC
 	>
 	RC clear(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x
 	) noexcept {
 		throw std::runtime_error( "Needs an implementation" );
 		return SUCCESS;
@@ -261,7 +261,7 @@ namespace alp {
 		typename T, typename ValStructure
 	>
 	RC set(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
 		const Scalar< T, ValStructure, reference > val,
 		const typename std::enable_if<
 			!alp::is_object< DataType >::value &&
@@ -269,11 +269,11 @@ namespace alp {
 		void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given "
 			"vector" );
 
-		if( ! internal::getInitialized( val ) ) {
+		if( !internal::getInitialized( val ) ) {
 			internal::setInitialized( x, false );
 			return SUCCESS;
 		}
@@ -332,13 +332,13 @@ namespace alp {
 		typename T
 	>
 	RC setElement(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
 		const Scalar< T, ValStructure, reference > val,
 		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL
+		const typename std::enable_if< !alp::is_object< DataType >::value && !alp::is_object< T >::value, void >::type * const = NULL
 	) {
 		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
 			"called with a value type that does not match that of the given "
 			"Vector" );
 
@@ -414,13 +414,13 @@ namespace alp {
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
+			( !( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
 		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( ! in_is_void || out_is_void,
+		static_assert( !in_is_void || out_is_void,
 			"alp::set (reference, Vector <- Vector, masked): "
 			"if input is void, then the output must be also" );
-		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
+		static_assert( !( descr & descriptors::use_index ) || !out_is_void,
 			"alp::set (reference, Vector <- Vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
@@ -606,7 +606,7 @@ namespace alp {
 	 *
 	 */
 	template< typename InputType, typename fwd_iterator >
-	RC buildMatrixUnique( internal::Matrix< InputType, reference > & A, fwd_iterator start, const fwd_iterator end ) {
+	RC buildMatrixUnique( internal::Matrix< InputType, reference > &A, fwd_iterator start, const fwd_iterator end ) {
 		return A.template buildMatrixUnique( start, end );
 	}
 
@@ -617,7 +617,7 @@ namespace alp {
 	 * @see alp::buildMatrix
 	 */
 	template< typename InputType, typename fwd_iterator >
-	RC buildMatrix( internal::Matrix< InputType, reference > & A, fwd_iterator start, const fwd_iterator end ) {
+	RC buildMatrix( internal::Matrix< InputType, reference > &A, fwd_iterator start, const fwd_iterator end ) {
 		return A.template buildMatrixUnique( start, end );
 	}
 
@@ -670,7 +670,7 @@ namespace alp {
 	 *
 	 */
 	template< typename MatrixT, typename fwd_iterator >
-	RC buildMatrixUnique( MatrixT & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
+	RC buildMatrixUnique( MatrixT &A, const fwd_iterator &start, const fwd_iterator &end ) noexcept {
 		(void)A;
 		(void)start;
 		(void)end;
@@ -687,8 +687,8 @@ namespace alp {
 	template< typename InputType, typename Structure, typename View, typename ImfR, typename ImfC, typename fwd_iterator >
 	RC buildMatrix(
 		Matrix< InputType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A,
-		const fwd_iterator & start,
-		const fwd_iterator & end
+		const fwd_iterator &start,
+		const fwd_iterator &end
 	) noexcept {
 		(void)A;
 		(void)start;
