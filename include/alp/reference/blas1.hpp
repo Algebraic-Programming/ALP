@@ -178,62 +178,6 @@ namespace alp {
 	 */
 
 	/**
-	 * Request the size (dimension) of a given Vector.
-	 *
-	 * The dimension is set at construction of the given Vector and cannot
-	 * be changed. A call to this function shall always succeed.
-	 *
-	 * @tparam DataType      The type of elements contained in the vector \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 *
-	 * @param[in] x The Vector of which to retrieve the size.
-	 *
-	 * @return The size of the Vector \a x.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *  -# consists of \f$ \Theta(1) \f$ work;
-	//  *  -# moves \f$ \Theta(1) \f$ bytes of memory;
-	//  *  -# does not allocate any dynamic memory;
-	//  *  -# shall not make any system calls.
-	//  * \endparblock
-	 */
-	template< typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC >
-	size_t size( const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x ) noexcept {
-		return getLength( x );
-	}
-
-	/**
-	 * Request the number of nonzeroes in a given Vector.
-	 *
-	 * A call to this function always succeeds.
-	 *
-	 * @tparam DataType      The type of elements contained in the vector \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 *
-	 * @param[in] x The Vector of which to retrieve the number of nonzeroes.
-	 *
-	 * @return The number of nonzeroes in \a x.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta(1) \f$ work;
-	//  *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * \endparblock
-	 */
-	template< typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC >
-	size_t nnz( const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x ) noexcept {
-		throw std::runtime_error( "Needs an implementation." );
-		return 0;
-	}
-
-	/**
 	 * Folds all elements in a ALP Vector \a x into a single value \a beta.
 	 *
 	 * The original value of \a beta is used as the right-hand side input of the

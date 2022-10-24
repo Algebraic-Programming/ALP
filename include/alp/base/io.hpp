@@ -55,6 +55,33 @@ namespace alp {
 	 */
 
 	/**
+	 * Request the size (dimension) of a given Vector.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t size(
+		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
+	) noexcept {
+		(void) x;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Request the number of nonzeroes in a given Vector.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t nnz(
+		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x
+	) noexcept {
+		(void) x;
+		return SIZE_MAX;
+	}
+	/**
 	 * Clears all elements from the given vector \a x.
 	 *
 	 * At the end of this operation, the number of nonzero elements in this vector
