@@ -571,6 +571,13 @@ for BACKEND in ${BACKENDS[@]}; do
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
+	NTEST_DIVCON=100
+	echo ">>>      [x]           [ ]       Tests dstedc (Divide and conquer tridiagonal eigensolver) on"
+	echo ">>>                               a tridiagonal real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_dstedc_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || echo "Test FAILED"
+	echo " "
 	
 done
 
