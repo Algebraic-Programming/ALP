@@ -136,7 +136,13 @@ namespace alp {
 				identities::one
 			>,
 			class Minus = operators::subtract< D >,
-			class Divide = operators::divide< D >
+			class Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_vector< VectorD >::value &&
+				is_vector< VectorV >::value &&
+				is_matrix< OrthogonalMat >::value &&
+				alp::structures::is_a< typename OrthogonalMat::structure, alp::structures::Orthogonal >::value
+			> * = nullptr
 		>
 		RC eigensolveDiagPlusOuter(
 			VectorEgVals &egvals,
