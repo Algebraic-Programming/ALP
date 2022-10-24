@@ -1298,6 +1298,120 @@ namespace alp {
 		return static_cast< const typename MatrixType::base_type & >( A ).getStorageDimensions();
 	}
 
+	namespace structures {
+
+		template<
+			size_t band,
+			typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
+		>
+		std::ptrdiff_t get_lower_limit( const MatrixType &A ) {
+
+			return structures::get_lower_limit< band, typename MatrixType::structure >( nrows( A ) );
+
+		}
+
+		template<
+			size_t band,
+			typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
+		>
+		std::ptrdiff_t get_upper_limit( const MatrixType &A ) {
+
+			return structures::get_upper_limit< band, typename MatrixType::structure >( ncols( A ) );
+
+		}
+
+		/**
+		 * Specialization for reference backend.
+		 * @see alp::structures::calculate_row_coordinate_limits
+		 */
+		template<
+			size_t band_index, typename MatrixType,
+			std::enable_if_t<
+				is_matrix< MatrixType >::value
+			> * = nullptr
+		>
+		std::pair< size_t, size_t > calculate_row_coordinate_limits( const MatrixType &A ) {
+
+			using Structure = typename MatrixType::structure;
+
+			static_assert(
+				band_index < std::tuple_size< typename Structure::band_intervals >::value,
+				"Provided band index is out of bounds."
+			);
+
+			// cast matrix dimensions to signed integer to allow for comparison with negative numbers
+			const std::ptrdiff_t M = static_cast< std::ptrdiff_t >( nrows( A ) );
+			const std::ptrdiff_t N = static_cast< std::ptrdiff_t >( ncols( A ) );
+
+			// band limits are negated and inverted due to different orientation
+			// of coordinate system of band and matrix dimensions.
+			const std::ptrdiff_t l = -structures::get_upper_limit< band_index >( A );
+			const std::ptrdiff_t u = N - structures::get_lower_limit< band_index >( A );
+
+			// fit the limits within the matrix dimensions
+			const size_t lower_limit = static_cast< size_t >( std::max( std::min( l, M ), static_cast< std::ptrdiff_t >( 0 ) ) );
+			const size_t upper_limit = static_cast< size_t >( std::max( std::min( u, M ), static_cast< std::ptrdiff_t >( 0 ) ) );
+
+			assert( lower_limit <= upper_limit );
+
+			return std::make_pair( lower_limit, upper_limit );
+		}
+
+		/**
+		 * Specialization for reference backend.
+		 * @see alp::structures::calculate_column_coordinate_limits
+		 */
+		template<
+			size_t band_index, typename MatrixType,
+			std::enable_if_t<
+				is_matrix< MatrixType >::value
+			> * = nullptr
+		>
+		std::pair< size_t, size_t > calculate_column_coordinate_limits( const MatrixType &A, const size_t row ) {
+
+			using Structure = typename MatrixType::structure;
+
+			// Declaring this to avoid static casts to std::ptrdiff_t in std::min and std::max calls
+			const std::ptrdiff_t signed_zero = 0;
+
+			static_assert(
+				band_index < std::tuple_size< typename Structure::band_intervals >::value,
+				"Provided band index is out of bounds."
+			);
+
+			assert( row < nrows( A ) );
+
+			// cast matrix dimensions to signed integer to allow for comparison with negative numbers
+			const std::ptrdiff_t N = static_cast< std::ptrdiff_t >( ncols( A ) );
+
+			constexpr bool is_sym = structures::is_a< Structure, structures::Symmetric >::value;
+			// Temporary until adding multiple symmetry directions
+			constexpr bool sym_up = is_sym;
+
+			// Band limits
+			const std::ptrdiff_t l = structures::get_lower_limit< band_index >( A );
+			const std::ptrdiff_t u = structures::get_upper_limit< band_index >( A );
+
+			// Band limits taking into account symmetry
+			const std::ptrdiff_t sym_l = is_sym && sym_up ? std::max( signed_zero, l ) : l;
+			const std::ptrdiff_t sym_u = is_sym && !sym_up ? std::min( signed_zero, u ) : u;
+
+			// column coordinate lower and upper limits considering the provided row coordinate
+			const std::ptrdiff_t sym_l_row = static_cast< std::ptrdiff_t >( row ) + sym_l;
+			const std::ptrdiff_t sym_u_row = sym_l_row + ( sym_u - sym_l );
+
+			// fit the limits within the matrix dimensions
+			const size_t lower_limit = static_cast< size_t >( std::max( std::min( sym_l_row, N ), signed_zero ) );
+			const size_t upper_limit = static_cast< size_t >( std::max( std::min( sym_u_row, N ), signed_zero ) );
+
+			assert( lower_limit <= upper_limit );
+
+			return std::make_pair( lower_limit, upper_limit );
+		}
+
+	} // namespace structures
 } // namespace alp
 
 #endif // end ``_H_ALP_AMF_BASED_MATRIX''
