@@ -20,6 +20,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -659,10 +660,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	rc = grb::eWiseApply( out, mask, right, right, plusM );
 	assert( rc == SUCCESS );
+	const bool halfIsOdd = ((n / 2) % 2) == 1;
 	if( rc == SUCCESS ) {
-		if( nnz( out ) != nnz( right ) / 2 ) {
+		const size_t expected = nnz( right ) / 2 + (halfIsOdd ? 1 : 0);
+		if( nnz( out ) != expected ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
-				<< "expected " << nnz( right ) / 2 << " ) at subtest 22\n";
+				<< "expected " << expected << " ) at subtest 22\n";
 			rc = FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -670,17 +673,95 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != static_cast< double >( .5 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 0.5 ) at subtest 22\n";
+							<< " ), expected ( " << pair.first << ", 0.5 ) at subtest 22\n";
 						rc = FAILED;
 					}
 				} else {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected nothing at this entry) at subtest 22\n";
+						<< " ), expected nothing at this entry at subtest 22\n";
 					rc = FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this index) at subtest 22\n";
+					<< " ), expected nothing at this index at subtest 22\n";
+				rc = FAILED;
+			}
+		}
+		if( rc == FAILED ) {
+			return;
+		}
+	} else {
+		return;
+	}
+
+	rc = clear( right );
+	rc = rc ? rc : clear( left );
+	rc = rc ? rc : setElement( right, 2.17, 0 );
+	rc = rc ? rc : setElement( right, 2.0, n/2 );
+	rc = rc ? rc : setElement( right, 3.14, n-1 );
+	rc = rc ? rc : setElement( left,  1.0, n-1 );
+	rc = rc ? rc : setElement( left, -1.0, 0 );
+	rc = eWiseApply( out, mask, left, right, plusM );
+	assert( n % 2 == 0 );
+	assert( rc == SUCCESS );
+	if( rc == SUCCESS ) {
+		const size_t expect = 1;
+		if( nnz( out ) != expect ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
+				<< "), expected " << expect << " ) at subtest 23\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.first == 0 ) {
+				if( pair.second != 1.17 ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest 23\n";
+					rc = FAILED;
+				}
+			} else {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< " ), expected ( " << pair.first << ", " << (n/2) << " ) "
+					<< "at subtest 23\n";
+				rc = FAILED;
+			}
+		}
+		if( rc == FAILED ) {
+			return;
+		}
+	} else {
+		return;
+	}
+
+	rc = grb::eWiseApply( out, left, right, plusM );
+	assert( rc == SUCCESS );
+	if( rc == SUCCESS ) {
+		if( nnz( out ) != 3 ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
+				<< "expected " << 3 << " ) at subtest 24\n";
+			rc = FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.first == 0 ) {
+				if( pair.second != 1.17 ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest 24\n";
+					rc = FAILED;
+				}
+			} else if( pair.first == n / 2 ) {
+				if( pair.second != 2.0 ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< " ), expected ( " << pair.first << ", 2.0 ) at subtest 24\n";
+					rc = FAILED;
+				}
+			} else if( pair.first == n - 1 ) {
+				if( !utils::equals( pair.second, 4.14, 1 ) ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< " ), expected ( " << pair.first << ", 4.14 ) at subtest 24\n";
+					rc = FAILED;
+				}
+			} else {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< ", expected nothing at this index at subtest 24\n";
 				rc = FAILED;
 			}
 		}

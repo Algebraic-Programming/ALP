@@ -3306,7 +3306,7 @@ namespace grb {
 #endif
 					for( ; k < loop_coors.nonzeroes(); ++k ) {
 						const size_t index = loop_coors.index( k );
-						if( masked && mask_coors->template mask< descr >( index, mask_p ) ) {
+						if( masked && !mask_coors->template mask< descr >( index, mask_p ) ) {
 							continue;
 						}
 						RC rc = SUCCESS;
@@ -3518,7 +3518,7 @@ namespace grb {
 							if( loop_coors.assigned( index ) ) {
 								continue;
 							}
-							if( masked && mask_coors->template mask< descr >( index, mask_p ) ) {
+							if( masked && !mask_coors->template mask< descr >( index, mask_p ) ) {
 								continue;
 							}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
@@ -6132,25 +6132,25 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 						if( z_coors.asyncAssign( index, localUpdate ) ) {
 #else
-							if( z_coors.assign( index ) ) {
+						if( z_coors.assign( index ) ) {
 #endif
-								typename Ring::D4 b = static_cast< typename Ring::D4 >( z[ index ] );
-								(void) foldr( t, b, ring.getAdditiveOperator() );
-								z[ index ] = static_cast< OutputType >( b );
-							} else {
-								z[ index ] = static_cast< OutputType >(
-									static_cast< typename Ring::D4 >( t )
-								);
+							typename Ring::D4 b = static_cast< typename Ring::D4 >( z[ index ] );
+							(void) foldr( t, b, ring.getAdditiveOperator() );
+							z[ index ] = static_cast< OutputType >( b );
+						} else {
+							z[ index ] = static_cast< OutputType >(
+								static_cast< typename Ring::D4 >( t )
+							);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-								(void) ++asyncAssigns;
-								if( asyncAssigns == maxAsyncAssigns ) {
-									(void) z_coors.joinUpdate( localUpdate );
-									asyncAssigns = 0;
-								}
-#endif
+							(void) ++asyncAssigns;
+							if( asyncAssigns == maxAsyncAssigns ) {
+								(void) z_coors.joinUpdate( localUpdate );
+								asyncAssigns = 0;
 							}
+#endif
 						}
 					}
+				}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 				while( !z_coors.joinUpdate( localUpdate ) ) {}
 			}

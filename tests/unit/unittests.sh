@@ -195,16 +195,17 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
+				echo "                                 of doubles of size 14."
+				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 14 &> ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
 				echo "                                 of doubles of size 100."
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
-				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
@@ -212,6 +213,12 @@ for MODE in debug ndebug; do
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
+				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
