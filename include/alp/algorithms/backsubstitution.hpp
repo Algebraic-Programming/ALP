@@ -45,16 +45,18 @@ namespace alp {
 		 */
 		template<
 			typename D = double,
+			typename Vecx,
+			typename Vecb,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D > >
 		RC backsubstitution(
 			Matrix< D, structures::UpperTriangular, Dense > &A,
-			Vector< D > &x,
-			Vector< D > &b,
-			const Ring & ring = Ring(),
-			const Minus & minus = Minus(),
-			const Divide & divide = Divide()
+			Vecx &x,
+			Vecb &b,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
 		) {
 
 			RC rc = SUCCESS;
@@ -76,6 +78,34 @@ namespace alp {
  				rc = rc ? rc : alp::set( alpha, Scalar< D >( ring.template getZero< D >() ) );
  				rc = rc ? rc : alp::foldl( alpha, A_ii, ring.getAdditiveMonoid() );
  				rc = rc ? rc : alp::foldl( x_i, alpha, divide );
+			}
+
+			assert( rc == SUCCESS );
+			return rc;
+		}
+
+		template<
+			typename D = double,
+			typename StructX,
+			typename StructB,
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			typename Minus = operators::subtract< D >,
+			typename Divide = operators::divide< D > >
+		RC backsubstitution(
+			Matrix< D, structures::UpperTriangular, Dense > &A,
+			Matrix< D, StructX, Dense > &X,
+			Matrix< D, StructB, Dense > &B,
+			const Ring &ring = Ring()
+		) {
+
+			RC rc = SUCCESS;
+
+			const size_t n = nrows( A );
+
+			for( size_t i = 0; i < n ; ++i ) {
+				auto x  = get_view( X, utils::range( i, n ), i );
+				auto b  = get_view( B, utils::range( i, n ), i );
+				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring );
 			}
 
 			assert( rc == SUCCESS );
