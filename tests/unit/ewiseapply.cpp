@@ -660,10 +660,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::eWiseApply( out, mask, right, right, plusM );
 	assert( rc == SUCCESS );
 	if( rc == SUCCESS ) {
-		if( nnz( out ) != nnz( right ) / 2 ) {
+		const bool halfIsOdd = ((n / 2) % 2) == 1;
+		if( nnz( out ) != nnz( right ) / 2 + (halfIsOdd ? 1 : 0) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << nnz( out ) << ", "
 				<< "expected " << nnz( right ) / 2 << " ) at subtest 22\n";
 			rc = FAILED;
+			assert( false ); // DBG
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
