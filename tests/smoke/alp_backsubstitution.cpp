@@ -34,8 +34,6 @@
 using namespace alp;
 
 using BaseScalarType = double;
-using Orthogonal = structures::Orthogonal;
-using General = structures::General;
 
 #ifdef _COMPLEX
 using ScalarType = std::complex< BaseScalarType >;
@@ -103,7 +101,7 @@ std::vector<T> generate_upd_matrix( size_t N  ) {
 	return ( data );
 }
 
-//** check if rows/columns or matrix Q are orthogonal */
+//** check if Ax == b */
 template<
 	typename D = double,
 	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
@@ -141,6 +139,53 @@ RC check_solution(
 	return rc;
 }
 
+//** check if AX == B */
+template<
+	typename D = double,
+	typename StructX,
+	typename StructB,
+	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< D >,
+	typename Divide = operators::divide< D > >
+RC check_solution(
+	Matrix< D, structures::UpperTriangular, Dense > &A,
+	Matrix< D, StructX, Dense > &X,
+	Matrix< D, StructB, Dense > &B,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus(),
+	const Divide &divide = Divide()
+) {
+	(void) divide;
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
+
+	RC rc = SUCCESS;
+
+	const size_t n = nrows( A );
+
+	alp::Matrix< D, StructB > LHS( n );
+	rc = rc ? rc : alp::set( LHS, zero );
+	rc = rc ? rc : alp::mxm( LHS, A, X, ring );
+	rc = rc ? rc : alp::foldl( LHS, B, minus );
+
+	//Frobenius norm
+	D fnorm = 0;
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm ]( const size_t i, const size_t j, D &val ) {
+			(void)i;
+			(void)j;
+			fnorm += val * val;
+		},
+		LHS
+	);
+	fnorm = std::sqrt( fnorm );
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << " FrobeniusNorm(AX-B) = " << fnorm << " is too large\n";
+		return FAILED;
+	}
+
+	return rc;
+}
 
 void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = SUCCESS;
@@ -190,6 +235,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	print_vector( " input matrix B ", B );
 #endif
 	rc = rc ? rc : algorithms::backsubstitution( A, X, B, ring );
+	rc = rc ? rc : check_solution( A, X, B );
 
 }
 
