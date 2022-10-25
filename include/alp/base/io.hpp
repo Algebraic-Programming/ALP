@@ -64,6 +64,11 @@ namespace alp {
 	size_t size(
 		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
 	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_size_for_vector = false;
+		assert( selected_backend_does_not_support_size_for_vector );
+#endif
 		(void) x;
 		return SIZE_MAX;
 	}
@@ -78,6 +83,11 @@ namespace alp {
 	size_t nnz(
 		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x
 	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_nnz_for_vector = false;
+		assert( selected_backend_does_not_support_nnz_for_vector );
+#endif
 		(void) x;
 		return SIZE_MAX;
 	}
@@ -105,6 +115,11 @@ namespace alp {
 	size_t nnz(
 		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
 	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_nnz_for_matrix = false;
+		assert( selected_backend_does_not_support_nnz_for_matrix );
+#endif
 		(void) A;
 		return SIZE_MAX;
 	}
