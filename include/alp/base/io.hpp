@@ -81,6 +81,34 @@ namespace alp {
 		(void) x;
 		return SIZE_MAX;
 	}
+
+	/**
+	 * Retrieve the number of nonzeroes contained in this matrix.
+	 *
+	 * @returns The number of nonzeroes the current matrix contains.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
+	 *        -# This function allocates no additional dynamic memory.
+	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
+	 *           beyond that which was already used at function entry.
+	 *        -# This function will move
+	 *             \f$ \mathit{sizeof}( size\_t ) \f$
+	 *           bytes of memory.
+	 * \endparblock
+	 */
+	template<
+		typename DataType, typename Structure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t nnz(
+		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+	) noexcept {
+		(void) A;
+		return SIZE_MAX;
+	}
+
 	/**
 	 * Clears all elements from the given vector \a x.
 	 *

@@ -61,27 +61,6 @@ namespace alp {
 	 * @{
 	 */
 
-	/**
-	 * Retrieve the number of nonzeroes contained in this matrix.
-	 *
-	 * @returns The number of nonzeroes the current matrix contains.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates no additional dynamic memory.
-	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
-	 *           beyond that which was already used at function entry.
-	 *        -# This function will move
-	 *             \f$ \mathit{sizeof}( size\_t ) \f$
-	 *           bytes of memory.
-	 * \endparblock
-	 */
-	template< typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC >
-	size_t nnz( const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & A ) noexcept {
-		return A.nz;
-	}
-
 	/** \internal Delegates to fully masked variant */
 	template< Descriptor descr = descriptors::no_operation,
 		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
