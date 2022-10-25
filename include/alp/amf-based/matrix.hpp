@@ -688,23 +688,6 @@ namespace alp {
 	namespace structures {
 
 		/**
-		 * @brief Checks if TestedStructure is a \a Structure according to the ALP's structure classification.
-		 *
-		 * @tparam TestedStructure   The structure to be tested.
-		 * @tparam Structure 		 The structure that should be implied by \a TestedStructure.
-		 */
-		template< typename TestedStructure, typename Structure >
-		struct is_a {
-
-			static_assert( std::is_base_of< structures::BaseStructure, TestedStructure >::value );
-
-			/**
-			 * \a value is true iff \a Structure is implied by \a TestedStructure.
-			 */
-			static constexpr bool value = is_in< Structure, typename TestedStructure::inferred_structures >::value;
-		};
-
-		/**
 		 * Calculates the iteration space for row-dimension for the given matrix and band index.
 		 *
 		 * @tparam MatrixType The type of ALP matrix
