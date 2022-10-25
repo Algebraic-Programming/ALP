@@ -152,12 +152,12 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, implementation > &x,
 		const Scalar< InputType2, InputStructure2, implementation > &y,
 		const OP &op = OP(),
-		const typename std::enable_if<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
-			!alp::is_object< OutputType >::value,
-		void >::type * = NULL
+			!alp::is_object< OutputType >::value
+		> * = nullptr
 	) {
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement alp::apply (scalar)\n";
@@ -167,10 +167,10 @@ namespace alp {
 		assert( backend_does_not_support_scalar_apply );
 #endif
 
-		(void)out;
-		(void)x;
-		(void)y;
-		(void)op;
+		(void) out;
+		(void) x;
+		(void) y;
+		(void) op;
 
 		return UNSUPPORTED;
 	}
@@ -248,11 +248,18 @@ namespace alp {
 		class OP, 
 		typename InputType, typename InputStructure, 
 		typename IOType, typename IOStructure,
-		enum Backend implementation = config::default_backend >
-	RC foldr( const Scalar< InputType, InputStructure, implementation > &x,
+		enum Backend implementation = config::default_backend
+	>
+	RC foldr(
+		const Scalar< InputType, InputStructure, implementation > &x,
 		Scalar< IOType, IOStructure, implementation > &y,
 		const OP & op = OP(),
-		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
+		const std::enable_if_t<
+			alp::is_operator< OP >::value &&
+			! alp::is_object< InputType >::value &&
+			! alp::is_object< IOType >::value
+		> * = nullptr
+	) {
 
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement alp::foldr (scalar)\n";
@@ -262,9 +269,9 @@ namespace alp {
 		assert( backend_does_not_support_scalar_foldr );
 #endif
 		
-		(void)x;
-		(void)y;
-		(void)op;
+		(void) x;
+		(void) y;
+		(void) op;
 
 		return UNSUPPORTED;
 	}
@@ -342,11 +349,18 @@ namespace alp {
 		class OP, 
 		typename InputType, typename InputStructure, 
 		typename IOType, typename IOStructure,
-		enum Backend implementation = config::default_backend >
-	RC foldl( Scalar< IOType, IOStructure, implementation > &x,
+		enum Backend implementation = config::default_backend
+	>
+	RC foldl(
+		Scalar< IOType, IOStructure, implementation > &x,
 		const Scalar< InputType, InputStructure, implementation > &y,
 		const OP & op = OP(),
-		const typename std::enable_if< alp::is_operator< OP >::value && ! alp::is_object< InputType >::value && ! alp::is_object< IOType >::value, void >::type * = NULL ) {
+		const std::enable_if_t<
+			alp::is_operator< OP >::value &&
+			! alp::is_object< InputType >::value &&
+			! alp::is_object< IOType >::value
+		> * = nullptr
+	) {
 
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement alp::foldl (scalar)\n";
@@ -356,9 +370,9 @@ namespace alp {
 		assert( backend_does_not_support_scalar_foldl );
 #endif
 
-		(void)x;
-		(void)y;
-		(void)op;
+		(void) x;
+		(void) y;
+		(void) op;
 
 		return UNSUPPORTED;
 	}

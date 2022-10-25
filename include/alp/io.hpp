@@ -17,22 +17,18 @@
 
 /*
  * @author A. N. Yzelman
- * @date 29th of March 2017
+ * @date 21st of February, 2017
  */
 
-#ifndef _H_ALP_BLAS1
-#define _H_ALP_BLAS1
+#ifndef _H_ALP_IO
+#define _H_ALP_IO
 
-#include <alp/backends.hpp>
-#include <alp/config.hpp>
-#include <alp/rc.hpp>
-#include <alp/type_traits.hpp>
+#include "base/io.hpp"
 
-#include "base/vector.hpp"
-
+// now include all specialisations contained in the backend directories:
 #ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/blas1.hpp>
+ #include <alp/reference/io.hpp>
 #endif
 
-#endif // end ``_H_ALP_BLAS1''
+#endif // end ``_H_ALP_IO''
 
