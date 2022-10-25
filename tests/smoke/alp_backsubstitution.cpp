@@ -123,7 +123,7 @@ RC check_solution(
 
 	D alpha = ring.template getZero< D >();
 	rc = rc ? rc : alp::norm2( alpha, lhs, ring );
-	if(  alpha > tol ) {
+	if(  std::abs( alpha ) > tol ) {
 		std::cout << "Numerical error too large: |Ax-b| = " << alpha << ".\n";
 		return FAILED;
 	}
