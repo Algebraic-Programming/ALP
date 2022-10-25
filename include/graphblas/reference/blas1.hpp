@@ -3306,7 +3306,7 @@ namespace grb {
 #endif
 					for( ; k < loop_coors.nonzeroes(); ++k ) {
 						const size_t index = loop_coors.index( k );
-						if( masked && mask_coors->template mask< descr >( index, mask_p ) ) {
+						if( masked && !mask_coors->template mask< descr >( index, mask_p ) ) {
 							continue;
 						}
 						RC rc = SUCCESS;
@@ -3518,7 +3518,7 @@ namespace grb {
 							if( loop_coors.assigned( index ) ) {
 								continue;
 							}
-							if( masked && mask_coors->template mask< descr >( index, mask_p ) ) {
+							if( masked && !mask_coors->template mask< descr >( index, mask_p ) ) {
 								continue;
 							}
 #ifndef _H_GRB_REFERENCE_OMP_BLAS1
