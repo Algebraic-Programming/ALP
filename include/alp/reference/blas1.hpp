@@ -2943,6 +2943,62 @@ namespace alp {
 		return SUCCESS;
 	}
 
+	/**
+	 * Returns a view over the input vector returning conjugate of the accessed element.
+	 * This avoids materializing the resulting container.
+	 * The elements are calculated lazily on access.
+	 *
+	 * @tparam descr      	    The descriptor to be used (descriptors::no_operation
+	 *                    	    if left unspecified).
+	 * @tparam InputType  	    The value type of the input vector.
+	 * @tparam InputStructure   The Structure type applied to the input vector.
+	 * @tparam InputView        The view type applied to the input vector.
+	 *
+	 * @param x      The input vector
+	 *
+	 * @return Vector view over a lambda function defined in this function.
+	 *
+	 *
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC
+	>
+	Vector<
+		DataType, Structure, Density::Dense,
+		view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		reference
+	>
+	conjugate(
+		const Vector< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value
+		> * const = nullptr
+	) {
+
+		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
+			[ &x ]( DataType &result, const size_t i, const size_t j ) {
+				(void) j;
+				result = grb::utils::is_complex< DataType >::conjugate( x[ i ] );
+			};
+
+		std::function< bool() > init_lambda =
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
+			};
+
+		return Vector<
+			DataType,
+			Structure,
+			Density::Dense,
+			view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+		>( init_lambda,	getLength( x ),	data_lambda );
+
+	}
+
 } // end namespace ``alp''
 
 #undef NO_CAST_ASSERT

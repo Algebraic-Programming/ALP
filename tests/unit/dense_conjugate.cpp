@@ -66,6 +66,18 @@ void init_matrix( MatrixType &M ) {
 	}
 }
 
+template< typename T >
+std::vector< T > generate_random_data(
+	size_t N
+) {
+	std::vector< T > data( N );
+	for( size_t i = 0; i < N; ++i ) {
+		const T val = random_value< T >();
+		data[ i ] = val;
+	}
+	return data;
+}
+
 template<
 	typename MatrixType1,
 	typename MatrixType2,
@@ -115,7 +127,7 @@ template<
 		alp::structures::Square
 	>::type
 >
-alp::RC test_conjugate( const size_t n ) {
+alp::RC test_conjugate_matrix( const size_t n ) {
 
 	const alp::Semiring< alp::operators::add< T >, alp::operators::mul< T >, alp::identities::zero, alp::identities::one > ring;
 
@@ -138,12 +150,40 @@ alp::RC test_conjugate( const size_t n ) {
 	return rc;
 }
 
+template<
+	typename T
+>
+alp::RC test_conjugate_vector( const size_t n ) {
+
+	const alp::Semiring< alp::operators::add< T >, alp::operators::mul< T >, alp::identities::zero, alp::identities::one > ring;
+
+	alp::RC rc = alp::SUCCESS;
+
+	std::srand( 1 );
+	auto randdata = generate_random_data< T >( n );
+	alp::Vector< T > x( n );
+	rc = rc ? rc : alp::buildVector( x, randdata.begin(), randdata.end() );
+
+	auto x_conj = conjugate( x );
+
+	print_vector( " x ", x );
+	print_vector( " x* ", x_conj );
+
+
+	// // check if conjugated and transposed matrix are the same
+	// rc = rc ? rc : check_if_same( H_conj, H_T, ring );
+
+	return rc;
+}
+
 void alp_program( const size_t &n, alp::RC &rc ) {
 
 	rc = alp::SUCCESS;
 
-	rc = rc ? rc : test_conjugate< std::complex< BaseScalarType > >( n );
-	rc = rc ? rc : test_conjugate< BaseScalarType >( n );
+	rc = rc ? rc : test_conjugate_matrix< std::complex< BaseScalarType > >( n );
+	rc = rc ? rc : test_conjugate_matrix< BaseScalarType >( n );
+	rc = rc ? rc : test_conjugate_vector< std::complex< BaseScalarType > >( n );
+	rc = rc ? rc : test_conjugate_vector< BaseScalarType >( n );
 
 }
 
