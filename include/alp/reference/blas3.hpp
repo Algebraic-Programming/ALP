@@ -541,7 +541,7 @@ namespace alp {
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
 			class Operator,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -582,7 +582,7 @@ namespace alp {
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
 			class Operator,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -931,7 +931,7 @@ namespace alp {
 			typename InputTypeScalar1, typename InputStructureScalar1,
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -969,7 +969,7 @@ namespace alp {
 			typename InputTypeScalar1, typename InputStructureScalar1,
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>

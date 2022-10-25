@@ -72,7 +72,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &v,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &A,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t< alp::is_semiring< Ring >::value > * const = nullptr
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = nullptr
 	) {
 		(void) u;
 		(void) v;
@@ -97,7 +97,7 @@ namespace alp {
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &A,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_monoid< AdditiveMonoid >::value &&
 			alp::is_operator< MultiplicativeOperator >::value &&
 			!alp::is_object< IOType >::value &&
@@ -130,7 +130,7 @@ namespace alp {
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &v,
 		const Ring &ring,
-		const typename std::enable_if_t< alp::is_semiring< Ring >::value > * const = nullptr
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = nullptr
 	) {
 		(void) u;
 		(void) A;
@@ -156,7 +156,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &v,
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_monoid< AdditiveMonoid >::value &&
 			alp::is_operator< MultiplicativeOperator >::value &&
 			!alp::is_object< IOType >::value &&

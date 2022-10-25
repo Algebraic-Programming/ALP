@@ -267,7 +267,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR, InputImfC, backend > &x,
 		const Scalar< InputType2, InputStructure2, backend > &beta,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -299,7 +299,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend> &alpha,
 		const Scalar< InputType2, InputStructure2, backend> &beta,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -331,7 +331,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend> &alpha,
 		const Scalar< InputType2, InputStructure2, backend> &beta,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -363,7 +363,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			! alp::is_object< OutputType >::value &&
 			! alp::is_object< InputType1 >::value &&
 			! alp::is_object< InputType2 >::value &&
@@ -395,7 +395,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend> &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -458,7 +458,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend > &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -489,7 +489,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -521,10 +521,10 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
-			! alp::is_object< OutputType >::value &&
-			! alp::is_object< InputType1 >::value &&
-			! alp::is_object< InputType2 >::value &&
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
 			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
@@ -553,10 +553,10 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend > &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
-			! alp::is_object< OutputType >::value &&
-			! alp::is_object< InputType1 >::value &&
-			! alp::is_object< InputType2 >::value &&
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
 			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
@@ -584,7 +584,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
 		const Scalar< InputType2, InputStructure2, backend > &beta,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -615,7 +615,7 @@ namespace alp {
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -645,7 +645,7 @@ namespace alp {
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -674,7 +674,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &left,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &right,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
@@ -701,7 +701,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &left,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &right,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
@@ -785,7 +785,7 @@ namespace alp {
 		Scalar< IOType, IOStructure, backend > &alpha,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {
@@ -829,7 +829,7 @@ namespace alp {
 		Scalar< OutputType, OutputStructure, backend > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
 		> * const = nullptr
 	) {
@@ -851,7 +851,7 @@ namespace alp {
 		OutputType &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
 		> * const = nullptr
 	) {

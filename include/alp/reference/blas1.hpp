@@ -1838,7 +1838,7 @@ namespace alp {
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if_t< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
@@ -2175,7 +2175,7 @@ namespace alp {
 		Scalar< IOType, IOStructure, reference > &alpha,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {

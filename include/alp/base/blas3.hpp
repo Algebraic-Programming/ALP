@@ -58,7 +58,7 @@ namespace alp {
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
 		const MulMonoid &mulmono,
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -91,7 +91,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, backend > &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
 		const MulMonoid &mulmono,
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -123,7 +123,7 @@ namespace alp {
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
 		const Scalar< InputType2, InputStructure2, backend > &beta,
 		const MulMonoid &mulmono,
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -242,7 +242,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &u,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &v,
 		const Operator &mul = Operator(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< Operator >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -315,7 +315,7 @@ namespace alp {
 	outer(
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &x,
 		const Operator &mul = Operator(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< Operator >::value &&
 			!alp::is_object< InputType >::value
 		> * const = nullptr

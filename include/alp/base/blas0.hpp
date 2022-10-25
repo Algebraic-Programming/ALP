@@ -152,7 +152,7 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, implementation > &x,
 		const Scalar< InputType2, InputStructure2, implementation > &y,
 		const OP &op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
@@ -254,7 +254,7 @@ namespace alp {
 		const Scalar< InputType, InputStructure, implementation > &x,
 		Scalar< IOType, IOStructure, implementation > &y,
 		const OP & op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value &&
 			! alp::is_object< InputType >::value &&
 			! alp::is_object< IOType >::value
@@ -355,7 +355,7 @@ namespace alp {
 		Scalar< IOType, IOStructure, implementation > &x,
 		const Scalar< InputType, InputStructure, implementation > &y,
 		const OP & op = OP(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			alp::is_operator< OP >::value &&
 			! alp::is_object< InputType >::value &&
 			! alp::is_object< IOType >::value

@@ -306,7 +306,7 @@ namespace alp {
 		template<
 			size_t BandIndex, typename Func,
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
 			> * = nullptr
 		>
@@ -319,7 +319,7 @@ namespace alp {
 		template<
 			size_t BandIndex, typename Func,
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
 			> * = nullptr
 		>
@@ -341,7 +341,7 @@ namespace alp {
 		template<
 			size_t band_index, typename Func,
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename Structure::band_intervals >::value
 			> * = nullptr
 		>
@@ -435,7 +435,7 @@ namespace alp {
 			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename InputTypeScalar, typename InputStructureScalar,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index >= std::tuple_size< typename IOStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -467,7 +467,7 @@ namespace alp {
 			typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
 			typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
 			typename InputTypeScalar, typename InputStructureScalar,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename IOStructure::band_intervals >::value
 			> * = nullptr
 		>

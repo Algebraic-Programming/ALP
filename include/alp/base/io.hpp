@@ -188,7 +188,7 @@ namespace alp {
 	RC set(
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
 		const Scalar< T, ValStructure, backend > val,
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< DataType >::value &&
 			!alp::is_object< T >::value
 		> * const = nullptr
@@ -212,7 +212,7 @@ namespace alp {
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
 		const Scalar< T, ValStructure, backend > val,
 		const size_t i,
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			!alp::is_object< DataType >::value &&
 			!alp::is_object< T >::value
 		> * const = nullptr
