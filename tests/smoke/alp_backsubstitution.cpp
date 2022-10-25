@@ -44,12 +44,28 @@ using ScalarType = BaseScalarType;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
+template< typename T >
+T random_value();
+
+template<>
+BaseScalarType random_value< BaseScalarType >() {
+	return static_cast< BaseScalarType >( rand() ) / RAND_MAX;
+}
+
+template<>
+std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() {
+	const BaseScalarType re = random_value< BaseScalarType >();
+	const BaseScalarType im = random_value< BaseScalarType >();
+	return std::complex< BaseScalarType >( re, im );
+}
+
+
 //** generate data */
 template< typename T >
 std::vector< T > generate_data( size_t N ) {
 	std::vector< T > data( N );
 	for( size_t i = 0; i < N; ++i ) {
-		data[ i ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+		data[ i ] = random_value< T >();
 	}
 	return( data );
 }
@@ -62,12 +78,12 @@ template<
 		void
 	>::type * const = nullptr
 >
-std::vector<T> generate_upd_matrix( size_t N ) {
-	std::vector<T> data( ( N * ( N + 1 ) ) / 2 );
+std::vector< T > generate_upd_matrix( size_t N ) {
+	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			data[ k ] = random_value< T >();
 			if( i == j ) {
 				data[ k ] = data[ k ] + static_cast< T >( N );
 			}
@@ -85,13 +101,12 @@ template<
 		void
 	>::type * const = nullptr
 >
-std::vector<T> generate_upd_matrix( size_t N  ) {
-	std::vector<T> data( ( N * ( N + 1 ) ) / 2 );
+std::vector< T > generate_upd_matrix( size_t N  ) {
+	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			T val( std::rand(), std::rand() );
-			data[ k ] = val / std::abs( val );
+			data[ k ] = random_value< T >();
 			if( i == j ) {
 				data[ k ] = data[ k ] + static_cast< T >( N );
 			}
