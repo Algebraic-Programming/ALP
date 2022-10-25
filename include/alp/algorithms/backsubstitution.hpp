@@ -103,8 +103,8 @@ namespace alp {
 			const size_t n = nrows( A );
 
 			for( size_t i = 0; i < n ; ++i ) {
-				auto x  = get_view( X, utils::range( i, n ), i );
-				auto b  = get_view( B, utils::range( i, n ), i );
+				auto x  = get_view( X, utils::range( 0, n ), i );
+				auto b  = get_view( B, utils::range( 0, n ), i );
 				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring );
 			}
 

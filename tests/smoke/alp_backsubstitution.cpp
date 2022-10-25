@@ -46,6 +46,16 @@ using ScalarType = BaseScalarType;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
+//** generate data */
+template< typename T >
+std::vector< T > generate_data( size_t N ) {
+	std::vector< T > data( N );
+	for( size_t i = 0; i < N; ++i ) {
+		data[ i ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+	}
+	return( data );
+}
+
 //** generate real upper triangular positive definite matrix data */
 template<
 	typename T,
@@ -167,6 +177,19 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	print_vector( " output vector x ", x );
 #endif
 	rc = rc ? rc : check_solution( A, x, b );
+
+	// version with matrices
+	alp::Matrix< ScalarType, structures::Square > X( N );
+	alp::Matrix< ScalarType, structures::Square > B( N );
+	rc = rc ? rc : alp::set( X, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
+	{
+		auto matrix_data = generate_data< ScalarType >( N * N );
+		rc = rc ? rc : alp::buildMatrix( B, matrix_data.begin(), matrix_data.end() );
+	}
+#ifdef DEBUG
+	print_vector( " input matrix B ", B );
+#endif
+	rc = rc ? rc : algorithms::backsubstitution( A, X, B, ring );
 
 }
 
