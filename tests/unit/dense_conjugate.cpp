@@ -165,13 +165,29 @@ alp::RC test_conjugate_vector( const size_t n ) {
 	rc = rc ? rc : alp::buildVector( x, randdata.begin(), randdata.end() );
 
 	auto x_conj = conjugate( x );
+	auto x_conj_conj = conjugate( x_conj );
 
-	print_vector( " x ", x );
-	print_vector( " x* ", x_conj );
+	alp::Scalar< T > alpha( ring.template getZero< T >() );
+	alp::Vector< T > tmp_vec( n );
 
+	rc = rc ? rc : alp::set( tmp_vec, x );
+	rc = rc ? rc : alp::foldl( tmp_vec, x_conj, ring.getAdditiveOperator() );
+	rc = rc ? rc : alp::foldl( alpha, tmp_vec, ring.getAdditiveMonoid() );
+	if( std::imag( *alpha ) > tol ) {
+		std::cout << " Solution is numerically wrong: imag( sum( x + conjugate( x ) ) ) = "
+			  << std::imag( *alpha ) << "\n";
+		return alp::FAILED;
+	}
 
-	// // check if conjugated and transposed matrix are the same
-	// rc = rc ? rc : check_if_same( H_conj, H_T, ring );
+	rc = rc ? rc : alp::set( alpha, alp::Scalar< T >( ring.template getZero< T >() ) );
+	rc = rc ? rc : alp::set( tmp_vec, x );
+	rc = rc ? rc : alp::foldl( tmp_vec, x_conj_conj, alp::operators::subtract< T >() );
+	rc = rc ? rc : alp::foldl( alpha, tmp_vec, ring.getAdditiveMonoid() );
+	if( std::abs( *alpha ) > tol ) {
+		std::cout << " Solution is numerical wrong: abs( sum( x - conjugate( conjugate( x ) ) ) ) = "
+			  << std::imag( *alpha ) << "\n";
+		return alp::FAILED;
+	}
 
 	return rc;
 }
