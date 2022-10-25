@@ -70,7 +70,7 @@ namespace alp {
 				auto x_i  = get_view( x, utils::range( i, i + 1 ) );
 				auto b_i  = get_view( b, utils::range( i, i + 1 ) );
 				auto x_i_n  = get_view( x, utils::range( i, n ) );
-				rc = rc ? rc : alp::dot( alpha, A_i, conjugate( x_i_n ), ring ); // conjugate does not work for vectors
+				rc = rc ? rc : alp::dot( alpha, A_i, alp::conjugate( x_i_n ), ring );
 				rc = rc ? rc : alp::set( x_i, b_i );
 				rc = rc ? rc : alp::foldl( x_i, alpha, minus );
  				rc = rc ? rc : alp::set( alpha, Scalar< D >( ring.template getZero< D >() ) );
