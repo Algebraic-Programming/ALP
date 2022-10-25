@@ -64,6 +64,231 @@ namespace alp {
 	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > & A ) noexcept;
 
 	/**
+	 * Request the size (dimension) of a given Vector.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t size(
+		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
+	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_size_for_vector = false;
+		assert( selected_backend_does_not_support_size_for_vector );
+#endif
+		(void) x;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Request the number of nonzeroes in a given Vector.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t nnz(
+		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x
+	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_nnz_for_vector = false;
+		assert( selected_backend_does_not_support_nnz_for_vector );
+#endif
+		(void) x;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Retrieve the number of nonzeroes contained in this matrix.
+	 *
+	 * @returns The number of nonzeroes the current matrix contains.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *        -# This function consitutes \f$ \Theta(1) \f$ work.
+	 *        -# This function allocates no additional dynamic memory.
+	 *        -# This function uses \f$ \mathcal{O}(1) \f$ memory
+	 *           beyond that which was already used at function entry.
+	 *        -# This function will move
+	 *             \f$ \mathit{sizeof}( size\_t ) \f$
+	 *           bytes of memory.
+	 * \endparblock
+	 */
+	template<
+		typename DataType, typename Structure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	size_t nnz(
+		const Matrix< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &A
+	) noexcept {
+
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_nnz_for_matrix = false;
+		assert( selected_backend_does_not_support_nnz_for_matrix );
+#endif
+		(void) A;
+		return SIZE_MAX;
+	}
+
+	/**
+	 * Clears all elements from the given vector \a x.
+	 *
+	 * At the end of this operation, the number of nonzero elements in this vector
+	 * will be zero. The size of the vector remains unchanged.
+	 */
+	template<
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC, Backend backend
+	>
+	RC clear(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x
+	) noexcept {
+		(void) x;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Resizes the Scalar to have at least the given number of nonzeroes.
+	 * The contents of the scalar are not retained.
+	 */
+	template<
+		typename InputType, typename InputStructure,
+		typename length_type, Backend backend
+	>
+	RC resize( Scalar< InputType, InputStructure, backend > &s, const length_type new_nz ) {
+		(void) s;
+		(void) new_nz;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Resizes the vector to have at least the given number of nonzeroes.
+	 * The contents of the vector are not retained.
+	 */
+	template<
+		typename InputType, typename InputStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename length_type, Backend backend
+	>
+	RC resize(
+		Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
+		const length_type new_nz
+	) noexcept {
+		(void) x;
+		(void) new_nz;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Resizes the matrix to have at least the given number of nonzeroes.
+	 * The contents of the matrix are not retained.
+	 */
+	template<
+		typename InputType, typename InputStructure, typename InputView,
+		typename InputImfR, typename InputImfC, Backend backend
+	>
+	RC resize(
+		Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &A,
+		const size_t new_nz
+	) noexcept {
+		(void) A;
+		(void) new_nz;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all elements of a Vector to the given value.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure,
+		Backend backend
+	>
+	RC set(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
+		const Scalar< T, ValStructure, backend > val,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value &&
+			!alp::is_object< T >::value
+		> * const = nullptr
+	) {
+		(void) x;
+		(void) val;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets the element of a given Vector at a given position to a given value.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename DataStructure, typename View,
+		typename ImfR, typename ImfC,
+		typename T, typename ValStructure,
+		Backend backend
+	>
+	RC setElement(
+		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, backend > &x,
+		const Scalar< T, ValStructure, backend > val,
+		const size_t i,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value &&
+			!alp::is_object< T >::value
+		> * const = nullptr
+	) {
+		(void) x;
+		(void) val;
+		(void) i;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all elements of the output matrix to the values of the input matrix.
+	 * C = A
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename OutputImfR, typename OutputImfC,
+		typename InputType, typename InputStructure, typename InputView,
+		typename InputImfR, typename InputImfC,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &A
+	) noexcept {
+		(void) C;
+		(void) A;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all elements of the given matrix to the value of the given scalar.
+	 * C = val
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView,
+		typename OutputImfR, typename OutputImfC,
+		typename InputType, typename InputStructure,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Scalar< InputType, InputStructure, backend > &val
+	) noexcept {
+		(void) C;
+		(void) val;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Constructs a dense vector from a container of exactly alp::size(x)
 	 * elements. This function aliases to the buildVector routine that takes
 	 * an accumulator, using alp::operators::right_assign (thus overwriting
@@ -90,16 +315,18 @@ namespace alp {
 	 * Any existing values in \a x that overlap with newer values will hence
 	 * be overwritten.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		class Merger = operators::right_assign< InputType >,
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVector( internal::Vector< InputType, backend > & x,
+	RC buildVector(
+		internal::Vector< InputType, backend > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
-		const IOMode mode, const Merger & merger = Merger()
+		const IOMode mode, const Merger &merger = Merger()
 	) {
 		operators::right_assign< InputType > accum;
 		return buildVector< descr >( x, accum, ind_start, ind_end, val_start, val_end, mode, merger );
@@ -160,13 +387,15 @@ namespace alp {
 	 * @returns alp::ILLEGAL When a nonzero has an index larger than alp::size(x).
 	 * @returns alp::PANIC   If an unmitigable error has occured during ingestion.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		class Merger = operators::right_assign< InputType >,
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVectorUnique( internal::Vector< InputType, backend > & x,
+	RC buildVectorUnique(
+		internal::Vector< InputType, backend > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode
@@ -235,7 +464,7 @@ namespace alp {
 	 *           \em once; the three input iterators \a I, \a J, and \a V thus
 	 *           may have exactly one copyeach, meaning that all input may be
 	 *           traversed only once.
-	 *        -# Each of the at most three iterator copies will be incremented
+	 *  base/blas1.hpp      -# Each of the at most three iterator copies will be incremented
 	 *           at most \f$ \mathit{nz} \f$ times.
 	 *        -# Each position of the each of the at most three iterator copies
 	 *           will be dereferenced exactly once.
@@ -258,15 +487,17 @@ namespace alp {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique(
-		internal::Matrix< InputType, implementation > & A,
+		internal::Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator1 I_end,
 		fwd_iterator2 J, fwd_iterator2 J_end,
 		fwd_iterator3 V, fwd_iterator3 V_end,
@@ -284,13 +515,15 @@ namespace alp {
 	 * Alias that transforms a set of pointers and an array length to the
 	 * buildMatrixUnique variant based on iterators.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
+		Backend implementation = config::default_backend
+	>
 	RC buildMatrixUnique( internal::Matrix< InputType, implementation > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
@@ -304,13 +537,19 @@ namespace alp {
 	}
 
 	/** Version of the above #buildMatrixUnique that handles \a NULL value pointers. */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename length_type = size_t,
-		Backend implementation = config::default_backend >
-	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A, fwd_iterator1 I, fwd_iterator2 J, const length_type nz, const IOMode mode ) {
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		internal::Matrix< InputType, implementation > &A,
+		fwd_iterator1 I, fwd_iterator2 J,
+		const length_type nz, const IOMode mode
+	) {
 		// derive synchronized iterator
 		auto start = utils::makeSynchronized( I, J, I + nz, J + nz );
 		const auto end = utils::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
@@ -363,7 +602,8 @@ namespace alp {
 		typename InputType, typename fwd_iterator,
 		Backend implementation = config::default_backend
 	>
-	RC buildMatrixUnique( internal::Matrix< InputType, implementation > & A,
+	RC buildMatrixUnique(
+		internal::Matrix< InputType, implementation > &A,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode
 	) {
@@ -371,7 +611,7 @@ namespace alp {
 		(void)start;
 		(void)end;
 		(void)mode;
-		return PANIC;
+		return UNSUPPORTED;
 	}
 
 	/** @} */

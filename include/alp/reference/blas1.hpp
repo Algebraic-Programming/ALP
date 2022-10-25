@@ -35,7 +35,6 @@
 #include "blas2.hpp"
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
-#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -52,7 +51,6 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
-#endif
 
 #define NO_CAST_OP_ASSERT( x, y, z )                                           \
 	static_assert( x,                                                          \
@@ -178,388 +176,6 @@ namespace alp {
 	 *
 	 * @{
 	 */
-
-	/**
-	 * Clears all elements from the given vector \a x.
-	 *
-	 * At the end of this operation, the number of nonzero elements in this vector
-	 * will be zero. The size of the vector remains unchanged.
-	 *
-	 * @return alp::SUCCESS When the vector is successfully cleared.
-	 *
-	 * \note This function cannot fail.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  *      This function
-	//  *        -# contains \f$ \mathcal{O}(n) \f$ work,
-	//  *        -# will not allocate new dynamic memory,
-	//  *        -# will take at most \f$ \Theta(1) \f$ memory beyond the memory
-	//  *           already used by the application before the call to this
-	//  *           function.
-	//  *        -# will move at most \f$ \mathit{sizeof}(\mathit{bool}) +
-	//  *           \mathit{sizeof}(\mathit{size\_t}) \f$ bytes of data.
-	//  * \endparblock
-	 */
-	template<
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC
-	>
-	RC clear(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x
-	) noexcept {
-		throw std::runtime_error( "Needs an implementation" );
-		return SUCCESS;
-	}
-
-	/**
-	 * Request the size (dimension) of a given Vector.
-	 *
-	 * The dimension is set at construction of the given Vector and cannot
-	 * be changed. A call to this function shall always succeed.
-	 *
-	 * @tparam DataType      The type of elements contained in the vector \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 *
-	 * @param[in] x The Vector of which to retrieve the size.
-	 *
-	 * @return The size of the Vector \a x.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *  -# consists of \f$ \Theta(1) \f$ work;
-	//  *  -# moves \f$ \Theta(1) \f$ bytes of memory;
-	//  *  -# does not allocate any dynamic memory;
-	//  *  -# shall not make any system calls.
-	//  * \endparblock
-	 */
-	template< typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC >
-	size_t size( const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x ) noexcept {
-		return getLength( x );
-	}
-
-	/**
-	 * Request the number of nonzeroes in a given Vector.
-	 *
-	 * A call to this function always succeeds.
-	 *
-	 * @tparam DataType      The type of elements contained in the vector \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 *
-	 * @param[in] x The Vector of which to retrieve the number of nonzeroes.
-	 *
-	 * @return The number of nonzeroes in \a x.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta(1) \f$ work;
-	//  *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * \endparblock
-	 */
-	template< typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC >
-	size_t nnz( const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x ) noexcept {
-		throw std::runtime_error( "Needs an implementation." );
-		return 0;
-	}
-
-	/** Resizes the vector to have at least the given number of nonzeroes.
-	 * The contents of the vector are not retained.
-	 *
-	 * Resizing of dense containers is not allowed as the capacity is determined
-	 * by the container dimensions and the storage scheme. Therefore, this
-	 * function will not change the capacity of the vector.
-	 *
-	 * Even though the capacity remains unchanged, the contents of the vector
-	 * are not retained to maintain compatibility with the general specification.
-	 * However, the actual memory will not be reallocated. Rather, the vector
-	 * will be marked as uninitialized.
-	 *
-	 * @param[in] x      The Vector to be resized.
-	 * @param[in] new_nz The number of nonzeroes this vector is to contain.
-	 *
-	 * @return SUCCESS   If \a new_nz is not larger than the current capacity
-	 *                   of the vector.
-	 *         ILLEGAL   If \a new_nz is larger than the current capacity of
-	 *                   the vector.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *        -$ This function consitutes \f$ \Theta(1) \f$ work.
-	 *        -# This function allocates \f$ \Theta(0) \f$
-	 *           bytes of dynamic memory.
-	 *        -# This function does not make system calls.
-	 * \endparblock
-	 * \todo add documentation. In particular, think about the meaning with \a P > 1.
-	 */
-	template< typename InputType, typename InputStructure, typename View, typename ImfR, typename ImfC, typename length_type >
-	RC resize( Vector< InputType, InputStructure, Density::Dense, View, ImfR, ImfC, reference > &x, const length_type new_nz ) {
-		(void)x;
-		(void)new_nz;
-		// TODO implement
-		// setInitialized( x, false );
-		return PANIC;
-	}
-
-	/**
-	 * Sets all elements of a Vector to the given value. Can be masked.
-	 *
-	 * This function is functionally equivalent to
-	 * \code
-	 * alp::operators::right_assign< DataType > op;
-	 * return foldl< descr >( x, val, op );
-	 * \endcode,
-	 * \code
-	 * alp::operators::left_assign< DataType > op;
-	 * return foldr< descr >( val, x, op );
-	 * \endcode, and the following pseudocode
-	 * \code
-	 * for( size_t i = 0; i < size(x); ++i ) {
-	 *     if( mask(i) ) { setElement( x, i, val ); }
-	 * \endcode.
-	 *
-	 * @tparam descr         The descriptor used for this operation.
-	 * @tparam DataType      The type of each element in the vector \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 * @tparam T             The type of the given value.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# alp::descriptors::no_operation
-	 *   -# alp::descriptors::no_casting
-	 * \endparblock
-	 *
-	 * @param[in,out] x The Vector of which every element is to be set to equal
-	 *                  \a val.
-	 * @param[in]   val The value to set each element of \a x equal to.
-	 *
-	 * @returns SUCCESS       When the call completes successfully.
-	 *
-	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
-	 * match \a DataType, the code shall not compile.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta(n) \f$ work;
-	//  *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * \endparblock
-	 *
-	 * @see alp::foldl.
-	 * @see alp::foldr.
-	 * @see alp::operators::left_assign.
-	 * @see alp::operators::right_assign.
-	 * @see alp::setElement.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View,
-		typename ImfR, typename ImfC,
-		typename T, typename ValStructure
-	>
-	RC set(
-		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
-		const Scalar< T, ValStructure, reference > val,
-		const typename std::enable_if<
-			!alp::is_object< DataType >::value &&
-			!alp::is_object< T >::value,
-		void >::type * const = NULL
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
-			"called with a value type that does not match that of the given "
-			"vector" );
-
-		if( ! internal::getInitialized( val ) ) {
-			internal::setInitialized( x, false );
-			return SUCCESS;
-		}
-
-		// foldl requires left-hand side to be initialized prior to the call
-		internal::setInitialized( x, true );
-		return foldl( x, val, alp::operators::right_assign< DataType >() );
-	}
-
-	/**
-	 * Sets the element of a given Vector at a given position to a given value.
-	 *
-	 * If the input Vector \a x already has an element \f$ x_i \f$, that element
-	 * is overwritten to the given value \a val. If no such element existed, it
-	 * is added and set equal to \a val. The number of nonzeroes in \a x may thus
-	 * be increased by one due to a call to this function.
-	 *
-	 * The parameter \a i may not be greater or equal than the size of \a x.
-	 *
-	 * @tparam descr         The descriptor to be used during evaluation of this
-	 *                       function.
-	 * @tparam DataType      The type of the elements of \a x.
-	 * @tparam DataStructure The structure of the vector \a x.
-	 * @tparam View          The view type applied to the vector \a x.
-	 * @tparam T             The type of the value to be set.
-	 *
-	 * @param[in,out] x The vector to be modified.
-	 * @param[in]   val The value \f$ x_i \f$ should read after function exit.
-	 * @param[in]     i The index of the element of \a x to set.
-	 *
-	 * @return alp::SUCCESS   Upon successful execution of this operation.
-	 * @return alp::MISMATCH  If \a i is greater or equal than the dimension of
-	 *                        \a x.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# alp::descriptors::no_operation
-	 *   -# alp::descriptors::no_casting
-	 * \endparblock
-	 *
-	 * When \a descr includes alp::descriptors::no_casting and if \a T does not
-	 * match \a DataType, the code shall not compile.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta(1) \f$ work;
-	//  *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * \endparblock
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC, typename ValStructure,
-		typename T
-	>
-	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
-		const Scalar< T, ValStructure, reference > val,
-		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
-			"called with a value type that does not match that of the given "
-			"Vector" );
-
-		throw std::runtime_error( "Needs an implementation." );
-
-		// done
-		return SUCCESS;
-	}
-
-	/** C++ scalar variant */
-	template< Descriptor descr = descriptors::no_operation,
-		typename DataType, typename DataStructure, typename View, typename ImfR, typename ImfC,
-		typename T
-	>
-	RC setElement( Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > & x,
-		const T val,
-		const size_t i,
-		const typename std::enable_if< ! alp::is_object< DataType >::value && ! alp::is_object< T >::value, void >::type * const = NULL ) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
-			"called with a value type that does not match that of the given "
-			"Vector" );
-
-		// delegate
-		return setElement( x, Scalar< T >( val ), i );
-	}
-
-	/**
-	 * Sets the content of a given vector \a x to be equal to that of
-	 * another given vector \a y. Can be masked.
-	 *
-	 * This operation is functionally equivalent to
-	 * \code
-	 * alp::operators::right_assign< T > op;
-	 * alp::foldl( x, y, op );
-	 * \endcode,
-	 * \code
-	 * alp::operators::left_assign < T > op;
-	 * alp::foldr( y, x, op );
-	 * \endcode, as well as the following pseudocode
-	 * \code
-	 * for( each nonzero in y ) {
-	 *    setElement( x, nonzero.index, nonzero.value );
-	 * }
-	 * \endcode.
-	 *
-	 * The vector \a x may not equal \a y.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# alp::descriptors::no_operation
-	 *   -# alp::descriptors::no_casting
-	 * \endparblock
-	 *
-	 * @tparam descr           The descriptor of the operation.
-	 * @tparam OutputType      The type of each element in the output vector.
-	 * @tparam InputType       The type of each element in the input vector.
-	 * @tparam OutputStructure The structure of the ouput vector.
-	 * @tparam InputStructure  The structure of the input vector.
-	 * @tparam OuputView       The view applied to the output vector.
-	 * @tparam InputView       The view applied to the input vector.
-	 *
-	 * @param[in,out] x The vector to be set.
-	 * @param[in]     y The source vector.
-	 *
-	 * When \a descr includes alp::descriptors::no_casting and if \a InputType
-	 * does not match \a OutputType, the code shall not compile.
-	 *
-	//  * \parblock
-	//  * \par Performance semantics
-	//  * A call to this function
-	//  *   -# consists of \f$ \Theta(n) \f$ work;
-	//  *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	//  *   -# does not allocate nor free any dynamic memory;
-	//  *   -# shall not make any system calls.
-	//  * \endparblock
-	 *
-	 * @see alp::foldl.
-	 * @see alp::foldr.
-	 * @see alp::operators::left_assign.
-	 * @see alp::operators::right_assign.
-	 * @see alp::setElement.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
-	>
-	RC set(
-		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > & y
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType >::value ), "alp::copy (Vector)", "called with vector parameters whose element data types do not match" );
-		constexpr bool out_is_void = std::is_void< OutputType >::value;
-		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( ! in_is_void || out_is_void,
-			"alp::set (reference, Vector <- Vector, masked): "
-			"if input is void, then the output must be also" );
-		static_assert( ! ( descr & descriptors::use_index ) || ! out_is_void,
-			"alp::set (reference, Vector <- Vector, masked): "
-			"use_index descriptor cannot be set if output vector is void" );
-
-		// check contract
-		if( reinterpret_cast< void * >( &x ) == reinterpret_cast< const void * >( &y ) ) {
-			return ILLEGAL;
-		}
-
-		if( getLength( x ) != getLength( y ) ) {
-			return MISMATCH;
-		}
-
-		if( !internal::getInitialized( y ) ) {
-			setInitialized( x, false );
-			return SUCCESS;
-		}
-
-		internal::setInitialized( x, true );
-		return foldl( x, y, alp::operators::right_assign< OutputType >() );
-	}
 
 	/**
 	 * Folds all elements in a ALP Vector \a x into a single value \a beta.
@@ -1210,46 +826,6 @@ namespace alp {
 	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
 	 * into each element.
 	 *
-	 * Masked operator variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType, typename InputStructure,
-		class Op
-	>
-	RC foldl(
-		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const Scalar< InputType, InputStructure, reference > &beta,
-		const Op & op = Op(),
-		const std::enable_if_t<
-			!alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_operator< Op >::value
-		> * = nullptr
-	) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Op::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given operator" );
-		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked)", "provided mask does not have boolean entries" );
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, beta, op );
-		}
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
-	 * into each element.
-	 *
 	 * The original value of \f$ \beta \f$ is used as the right-hand side input
 	 * of the operator \a op. The left-hand side inputs for \a op are retrieved
 	 * from the input vector \a x. The result of the operation is stored in
@@ -1341,46 +917,6 @@ namespace alp {
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
 			"called on a vector x of a type that does not match the third domain "
 			"of the given monoid" );
-
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * For all elements in a ALP Vector \a x, fold the value \f$ \beta \f$
-	 * into each element.
-	 *
-	 * Masked monoid variant.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename IOType, typename IOStructure, typename IOView, typename IOImfR, typename IOImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType,
-		class Monoid
-	>
-	RC foldl( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & x,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & m,
-		const InputType & beta,
-		const Monoid & monoid = Monoid(),
-		const std::enable_if_t<
-			!alp::is_object< IOType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
-		> * = nullptr
-		) {
-		// static sanity checks
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ), "alp::foldl",
-			"called with a vector x of a type that does not match the first domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D2, InputType >::value ), "alp::foldl",
-			"called on a vector y of a type that does not match the second domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D3, IOType >::value ), "alp::foldl",
-			"called on a vector x of a type that does not match the third domain "
-			"of the given monoid" );
-		NO_CAST_OP_ASSERT(
-			( ! ( descr & descriptors::no_casting ) || std::is_same< bool, MaskType >::value ), "alp::foldl (reference, vector <- scalar, masked, monoid)", "provided mask does not have boolean entries" );
-		if( size( m ) == 0 ) {
-			return foldl< descr >( x, beta, monoid );
-		}
 
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -1758,37 +1294,6 @@ namespace alp {
 	/**
 	 * Computes \f$ z = x \odot y \f$, out of place.
 	 *
-	 * Specialisation for scalar \a y, masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Scalar< InputType2, InputStructure2, reference > &beta,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using operator)\n";
-	#endif
-		// check for empty mask
-		if( size( mask ) == 0 ) {
-			return eWiseApply< descr >( z, x, beta, op );
-		}
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
 	 * Monoid version.
 	 */
 	template< Descriptor descr = descriptors::no_operation,
@@ -1853,87 +1358,6 @@ namespace alp {
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a x. Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a y. Masked monoid version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2,
-		class Monoid
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Scalar< InputType2, InputStructure2, reference > &beta,
-		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
 	#endif
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -2027,33 +1451,6 @@ namespace alp {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Specialisation for scalar \a x. Masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Scalar< InputType1, InputStructure1, reference> &alpha,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], operator variant)\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
 	 * Calculates the element-wise operation on elements of two vectors,
 	 * \f$ z = x .* y \f$, using the given operator. The vectors must be
 	 * of equal length.
@@ -2141,33 +1538,6 @@ namespace alp {
 			void >::type * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
-	#endif
-		throw std::runtime_error( "Needs an implementation." );
-		return SUCCESS;
-	}
-
-	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
-	 *
-	 * Masked operator version.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename MaskType, typename MaskStructure, typename MaskView, typename MaskImfR, typename MaskImfC,
-		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class OP
-	>
-	RC eWiseApply( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
-		const Vector< MaskType, MaskStructure, Density::Dense, MaskView, MaskImfR, MaskImfC, reference > & mask,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
-		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< MaskType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value &&
-				alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
-	#ifdef _DEBUG
-		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using operator)\n";
 	#endif
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -2468,7 +1838,7 @@ namespace alp {
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if_t< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< !alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
@@ -2805,7 +2175,7 @@ namespace alp {
 		Scalar< IOType, IOStructure, reference > &alpha,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if_t<
+		const std::enable_if_t<
 			! alp::is_object< IOType >::value && ! alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {

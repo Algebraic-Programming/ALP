@@ -36,7 +36,6 @@
 #include "matrix.hpp"
 #include "vector.hpp"
 
-#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -59,7 +58,29 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
-#endif
+
+#define NO_CAST_OP_ASSERT( x, y, z )                                           \
+	static_assert( x,                                                          \
+		"\n\n"                                                                 \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"*     ERROR      | " y " " z ".\n"                                    \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n"                                     \
+		"* Possible fix 1 | Remove no_casting from the template parameters "   \
+		"in this call to " y ".\n"                                             \
+		"* Possible fix 2 | For all mismatches in the domains of input "       \
+		"parameters and the operator domains, as specified in the "            \
+		"documentation of the function " y ", supply an input argument of "    \
+		"the expected type instead.\n"                                         \
+		"* Possible fix 3 | Provide a compatible operator where all domains "  \
+		"match those of the input parameters, as specified in the "            \
+		"documentation of the function " y ".\n"                               \
+		"********************************************************************" \
+		"********************************************************************" \
+		"******************************\n" );
 
 namespace alp {
 	namespace internal {
@@ -520,7 +541,7 @@ namespace alp {
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
 			class Operator,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -561,7 +582,7 @@ namespace alp {
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
 			class Operator,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -910,7 +931,7 @@ namespace alp {
 			typename InputTypeScalar1, typename InputStructureScalar1,
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index >= std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -948,7 +969,7 @@ namespace alp {
 			typename InputTypeScalar1, typename InputStructureScalar1,
 			typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 			typename InputTypeScalar2, typename InputStructureScalar2,
-			typename std::enable_if_t<
+			std::enable_if_t<
 				band_index < std::tuple_size< typename OutputStructure::band_intervals >::value
 			> * = nullptr
 		>
@@ -1539,125 +1560,10 @@ namespace alp {
 
 	}
 
-	/**
-	 * Sets all elements of the output matrix to the values of the input matrix.
-	 * C = A
-	 * 
-	 * @tparam descr
-	 * @tparam OutputType      Data type of the output matrix C
-	 * @tparam OutputStructure Structure of the matrix C
-	 * @tparam OutputView      View type applied to the matrix C
-	 * @tparam InputType       Data type of the scalar a
-	 *
-	 * @param C    Matrix whose values are to be set
-	 * @param A    The input matrix
-	 *
-	 * @return RC  SUCCESS on the successful execution of the set
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC
-	>
-	RC set(
-		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-		const Matrix< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &A
-	) noexcept {
-		static_assert(
-			!std::is_same< OutputType, void >::value,
-			"alp::set (set to value): cannot have a pattern matrix as output"
-		);
-#ifdef _DEBUG
-		std::cout << "Called alp::set (matrix-to-matrix, reference)" << std::endl;
-#endif
-		// static checks
-		NO_CAST_ASSERT(
-			( !( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ),
-			"alp::set", "called with non-matching value types"
-		);
-
-		static_assert(
-			!internal::is_functor_based<
-				Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference >
-			>::value,
-			"alp::set cannot be called with a functor-based matrix as a destination."
-		);
-
-		// TODO: Improve this check to account for non-zero structrue (i.e., bands)
-		//       and algebraic properties (e.g., symmetry)
-		static_assert(
-			std::is_same< OutputStructure, InputStructure >::value,
-			"alp::set cannot be called for containers with different structures."
-		);
-
-		if( ( nrows( C ) != nrows( A ) ) || ( ncols( C ) != ncols( A ) ) ) {
-			return MISMATCH;
-		}
-
-		if( !internal::getInitialized( A ) ) {
-			internal::setInitialized( C, false );
-			return SUCCESS;
-		}
-
-		internal::setInitialized( C, true );
-		return foldl( C, A, alp::operators::right_assign< OutputType >() );
-	}
-
-	/**
-	 * Sets all elements of the given matrix to the value of the given scalar.
-	 * C = val
-	 * 
-	 * @tparam descr
-	 * @tparam OutputType      Data type of the output matrix C
-	 * @tparam OutputStructure Structure of the matrix C
-	 * @tparam OutputView      View type applied to the matrix C
-	 * @tparam InputType       Data type of the scalar a
-	 *
-	 * @param C    Matrix whose values are to be set
-	 * @param val  The value to set the elements of the matrix C
-	 *
-	 * @return RC  SUCCESS on the successful execution of the set
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
-		typename InputType, typename InputStructure
-	>
-	RC set(
-		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
-		const Scalar< InputType, InputStructure, reference > &val
-	) noexcept {
-
-		static_assert(
-			!std::is_same< OutputType, void >::value,
-			"alp::set (set to matrix): cannot have a pattern matrix as output"
-		);
-#ifdef _DEBUG
-		std::cout << "Called alp::set (matrix-to-value, reference)" << std::endl;
-#endif
-		// static checks
-		NO_CAST_ASSERT(
-			( !( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ),
-			"alp::set", "called with non-matching value types"
-		);
-
-		static_assert(
-			!internal::is_functor_based<
-				Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference >
-			>::value,
-			"alp::set cannot be called with a functor-based matrix as a destination."
-		);
-
-		if( !internal::getInitialized( val ) ) {
-			internal::setInitialized( C, false );
-			return SUCCESS;
-		}
-
-		internal::setInitialized( C, true );
-		return foldl( C, val, alp::operators::right_assign< OutputType >() );
-	}
-
 } // end namespace ``alp''
 
 #undef NO_CAST_ASSERT
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS3''
 

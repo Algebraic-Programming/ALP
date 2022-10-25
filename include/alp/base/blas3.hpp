@@ -24,9 +24,12 @@
 
 #include <alp/backends.hpp>
 #include <alp/phase.hpp>
+#include <alp/identities.hpp>
+#include <alp/monoid.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
+#include "io.hpp"
 
 namespace alp {
 
@@ -40,124 +43,287 @@ namespace alp {
 	 */
 
 	/**
-	 * Unmaked sparse matrix--sparse matrix multiplication (SpMSpM).
-	 *
-	 * @tparam descr      The descriptors under which to perform the computation.
-	 * @tparam OutputType The type of elements in the output matrix.
-	 * @tparam InputType1 The type of elements in the left-hand side input
-	 *                    matrix.
-	 * @tparam InputType2 The type of elements in the right-hand side input
-	 *                    matrix.
-	 * @tparam Semiring   The semiring under which to perform the
-	 *                    multiplication.
-	 * @tparam Backend    The backend that should perform the computation.
-	 *
-	 * @returns SUCCESS If the computation completed as intended.
-	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  #alp::resize( C, A, B ); \em and the current capacity of
-	 *                  \a C was insufficient to store the multiplication of \a A
-	 *                  and \a B. The contents of \a C shall be undefined (which
-	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
-	 *                  error has side effects).
-	 *
-	 * @param[out] C The output matrix \f$ C = AB \f$ when the function returns
-	 *               #SUCCESS.
-	 * @param[in]  A The left-hand side input matrix \f$ A \f$.
-	 * @param[in]  B The left-hand side input matrix \f$ B \f$.
-	 *
-	 * @param[in] ring (Optional.) The semiring under which the computation should
-	 *                             proceed.
+	 * @brief Computes \f$ C = A . B \f$ for a given monoid.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2,
-		class Semiring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class MulMonoid,
 		Backend backend
 	>
-	RC mxm( internal::Matrix< OutputType, backend > &C,
-		const internal::Matrix< InputType1, backend > &A, const internal::Matrix< InputType2, backend > &B,
-		const Semiring &ring = Semiring(),
-		const PHASE &phase = NUMERICAL
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
+		const MulMonoid &mulmono,
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value
+		> * const = nullptr
 	) {
-#ifdef _DEBUG
- #ifndef _ALP_NO_STDIO
-		std::cerr << "Selected backend does not implement alp::mxm (semiring version)\n";
- #endif
-#endif
-		(void)C;
-		(void)A;
-		(void)B;
-		(void)ring;
-		(void)phase;
-		// this is the generic stub implementation
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) mulmono;
+		return UNSUPPORTED;
+	}
+
+
+	/**
+	 * Computes \f$ C = alpha . B \f$ for a given monoid.
+	 *
+	 * Case where \a A is a scalar.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class MulMonoid,
+		Backend backend
+	>
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Scalar< InputType1, InputStructure1, backend > &alpha,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
+		const MulMonoid &mulmono,
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value
+		> * const = nullptr
+	) {
+		(void) C;
+		(void) alpha;
+		(void) B;
+		(void) mulmono;
 		return UNSUPPORTED;
 	}
 
 	/**
-	 * Interprets three vectors x, y, and z as a series of row coordinates,
-	 * column coordinates, and nonzeroes, respectively, and stores the thus
-	 * defined nonzeroes in a given output matrix A.
+	 * Computes \f$ C = A . beta \f$ for a given monoid.
 	 *
-	 * If this function does not return SUCCESS, A will have been cleared.
-	 *
-	 * A must have been pre-allocated to store the nonzero pattern the three
-	 * given vectors x, y, and z encode, or ILLEGAL shall be returned.
-	 *
-	 * \note A call to this function hence must be preceded by a successful
-	 *       call to alp::resize( matrix, nnz );
-	 *
-	 * @param[out] A The output matrix
-	 * @param[in]  x A vector of row indices.
-	 * @param[in]  y A vector of column indices.
-	 * @param[in]  z A vector of nonzero values.
-	 *
-	 * If x, y, and z are sparse, they must have the exact same sparsity
-	 * structure.
-	 *
-	 * \par Descriptors
-	 *
-	 * None allowed.
-	 *
-	 * @returns SUCCESS  If A was constructed successfully.
-	 * @returns MISMATCH If y or z does not match the size of x.
-	 * @returns ILLEGAL  If y or z do not have the same number of nonzeroes
-	 *                   as x.
-	 * @returns ILLEGAL  If y or z has a different sparsity pattern from x.
-	 * @returns ILLEGAL  If the capacity of A was insufficient to store the
-	 *                   given sparsity pattern.
-	 *
-	 * @see alp::resize
+	 * Case where \a B is a scalar.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, typename InputType3, Backend backend >
-	RC zip( internal::Matrix< OutputType, backend > & A, const internal::Vector< InputType1, backend > & x, const internal::Vector< InputType2, backend > & y, const internal::Vector< InputType3, backend > & z ) {
-		(void)x;
-		(void)y;
-		(void)z;
-#ifdef _DEBUG
- #ifndef _ALP_NO_STDIO
-		std::cerr << "Selected backend does not implement alp::zip (vectors into matrices, non-void)\n";
- #endif
-#endif
-		const RC ret = alp::clear( A );
-		return ret == SUCCESS ? UNSUPPORTED : ret;
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2,
+		class MulMonoid,
+		Backend backend
+	>
+	RC eWiseApply(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
+		const Scalar< InputType2, InputStructure2, backend > &beta,
+		const MulMonoid &mulmono,
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_monoid< MulMonoid >::value
+		> * const = nullptr
+	) {
+		(void) C;
+		(void) A;
+		(void) beta;
+		(void) mulmono;
+		return UNSUPPORTED;
 	}
 
 	/**
-	 * Specialisation of alp::zip for void output matrices.
+	 * Calculates the element-wise multiplication of two matrices,
+	 *     \f$ C = C + A .* B \f$,
+	 * under a given semiring.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename InputType3, Backend backend >
-	RC zip( internal::Matrix< void, backend > & A, const internal::Vector< InputType1, backend > & x, const internal::Vector< InputType2, backend > & y ) {
-		(void)x;
-		(void)y;
-#ifdef _DEBUG
- #ifndef _ALP_NO_STDIO
-		std::cerr << "Selected backend does not implement alp::zip (vectors into matrices, void)\n";
- #endif
-#endif
-		const RC ret = alp::clear( A );
-		return ret == SUCCESS ? UNSUPPORTED : ret;
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		Backend backend
+	>
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) ring;
+		return UNSUPPORTED;
 	}
 
+	/**
+	 * eWiseMul, version where A is a scalar.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		Backend backend
+	>
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Scalar< InputType1, InputStructure1, backend > &alpha,
+		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &B,
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		(void) C;
+		(void) alpha;
+		(void) B;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * eWiseMul, version where B is a scalar.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation, class Ring,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2,
+		Backend backend
+	>
+	RC eWiseMul(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &C,
+		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &A,
+		const Scalar< InputType2, InputStructure2, backend > &beta,
+		const Ring &ring = Ring(),
+		const std::enable_if_t<
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Ring >::value
+		> * const = nullptr
+	) {
+		(void) C;
+		(void) A;
+		(void) beta;
+		(void) ring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * @brief  Outer product of two vectors. The result matrix \a A will contain \f$ uv^T \f$.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class Operator,
+		Backend backend
+	>
+	RC outer(
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &A,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &u,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &v,
+		const Operator &mul = Operator(),
+		const std::enable_if_t<
+			alp::is_operator< Operator >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			!alp::is_object< OutputType >::value
+		> * const = nullptr
+	) {
+		(void) A;
+		(void) u;
+		(void) v;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Returns a view over the general rank-1 matrix computed with the outer product.
+	 * This avoids creating the resulting container. The elements are calculated lazily on access.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
+		class Operator,
+		Backend backend
+	>
+	Matrix<
+		typename Operator::D3, structures::General, Density::Dense,
+		view::Functor< std::function< void( InputType1 &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		backend
+	>
+	outer(
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &y,
+		const Operator &mul = Operator(),
+		const typename std::enable_if<
+			alp::is_operator< Operator >::value &&
+			! alp::is_object< InputType1 >::value &&
+			! alp::is_object< InputType2 >::value
+		> * const = nullptr
+	) {
+		(void) x;
+		(void) y;
+		(void) mul;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Returns a view over the general rank-1 matrix computed with the outer product.
+	 * Version for the case when input vectors are the same vector,
+	 * which results in a symmetric matrix.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
+		class Operator,
+		Backend backend
+	>
+	Matrix<
+		typename Operator::D3,
+		typename std::conditional<
+			grb::utils::is_complex< typename Operator::D3 >::value,
+			alp::structures::Hermitian,
+			alp::structures::Symmetric
+		>::type,
+		Density::Dense,
+		view::Functor< std::function< void( typename Operator::D3 &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		backend
+	>
+	outer(
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &x,
+		const Operator &mul = Operator(),
+		const std::enable_if_t<
+			alp::is_operator< Operator >::value &&
+			!alp::is_object< InputType >::value
+		> * const = nullptr
+	) {
+		(void) x;
+		(void) mul;
+		return UNSUPPORTED;
+	}
 	/**
 	 * @}
 	 */
