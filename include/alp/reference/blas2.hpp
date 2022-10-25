@@ -1167,6 +1167,80 @@ namespace alp {
 			);
 
 	}
+
+#ifdef NOT_ENABLED
+	/** Specialization for vectors */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename Structure, typename View, typename ImfR, typename ImfC
+	>
+	Vector<
+		DataType, Structure, Density::Dense,
+		view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+		imf::Id, imf::Id,
+		reference
+	>
+	conjugate(
+		const Vector< DataType, Structure, Density::Dense, View, ImfR, ImfC, reference > &x,
+		const std::enable_if_t<
+			!alp::is_object< DataType >::value
+		> * const = nullptr
+	) {
+
+		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
+			[ &x, &y, &anyOp ]( DataType &result, const size_t i ) {
+				
+				internal::apply(
+					result, x[ i ],
+					grb::utils::is_complex< DataType >::conjugate( y[ i ] ),
+					anyOp
+				);
+			};
+
+		std::function< bool() > init_lambda =
+			[ &x ]() -> bool {
+				return internal::getInitialized( x );
+			};
+
+		Vector<
+			DataType,
+			structures::General,
+			Density::Dense,
+			view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+			imf::Id, imf::Id,
+			reference
+		> temp(
+			init_lambda,
+			getLength( x ),
+			data_lambda
+		);
+
+		// std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
+		// 	[ &A ]( DataType &result, const size_t i, const size_t j ) {
+		// 		result = grb::utils::is_complex< DataType >::conjugate(
+		// 			internal::access( A, internal::getStorageIndex( A, i, j ) )
+		// 		);
+		// 	};
+		// std::function< bool() > init_lambda =
+		// 	[ &A ]() -> bool {
+		// 		return internal::getInitialized( A );
+		// 	};
+
+		// return Matrix<
+		// 	DataType,
+		// 	Structure,
+		// 	Density::Dense,
+		// 	view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
+		// 	imf::Id, imf::Id,
+		// 	reference
+		// 	>(
+		// 		init_lambda,
+		// 		nrows( A ),
+		// 		data_lambda
+		// 	);
+
+	}
+#endif
 	/** @} */
 
 } // end namespace ``alp''
