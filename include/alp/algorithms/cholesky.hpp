@@ -19,7 +19,7 @@
 #include <iomanip>
 
 #include <alp.hpp>
-
+#include <alp/algorithms/backsubstitution.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
 
 namespace alp {
@@ -184,12 +184,18 @@ namespace alp {
 		 */
 		template<
 			typename D,
+			typename ViewL,
+			typename ImfRL,
+			typename ImfCL,
+			typename ViewH,
+			typename ImfRH,
+			typename ImfCH,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D > >
 		RC cholesky_uptr_blk(
-			Matrix< D, structures::UpperTriangular, Dense > &L,
-			const Matrix< D, structures::Symmetric, Dense > &H,
+			Matrix< D, structures::UpperTriangular, Dense, ViewL, ImfRL, ImfCL > &L,
+			const Matrix< D, structures::Symmetric, Dense, ViewH, ImfRH, ImfCH > &H,
 			const size_t &bs,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -200,13 +206,14 @@ namespace alp {
 			const size_t n = nrows( L );
 
 			Matrix< D, structures::Symmetric, Dense > LL( n, n );
-			rc = set( LL, H );
+			rc = rc ? rc : set( LL, H );
 
 			//nb: number of blocks of (max) size bz
 			size_t nb = n / bs ;
 			if( n % bs != 0 ){
 				nb = nb + 1 ;
 			}
+
 
 			for( size_t i = 0; i < nb ; ++i ) {
 				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
@@ -216,11 +223,13 @@ namespace alp {
 					utils::range( i * bs, std::min( ( i+1 ) * bs, n ) )
 				);
 				//A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
-				auto A21 = get_view(
+				// for complex we should conjugate A21
+				auto A21 = get_view< structures::General >(
 					LL,
 					utils::range( i * bs, n ),
 					utils::range( i * bs, std::min( ( i+1 ) * bs, n ) )
 				);
+return rc;
 				//A22=L[(i+1)*bs:,(i+1)*bs:]
 				auto A22 = get_view(
 					LL,
@@ -234,16 +243,34 @@ namespace alp {
 					utils::range( i * bs, std::min( ( i+1 ) * bs, n ) ),
 					utils::range( i * bs, std::min( ( i+1 ) * bs, n ) )
 				);
-				rc = cholesky_uptr( A11_out, A11, ring );
+				rc = rc ? rc : cholesky_uptr( A11_out, A11, ring );
+//#ifdef DEBUG
+				print_matrix( " L(update 0) ", L );
+//#endif
 
 				//A21=TRSM(A11,conjugate(A21).T)
 				//auto A21ct = get_view<view::conjugate_transpose>( A21 );
 				//rc = trsm( A11, conjugate( A21 ) );
+				auto A21_out = get_view< structures::General >(
+					L,
+					utils::range( i * bs, n ),
+					utils::range( i * bs, std::min( ( i+1 ) * bs, n ) )
+				);
 
-				//A22=A22-A21.dot(conjugate(A21).T)
-				//auto A21A21H = kronecker( A21 );
-				Matrix< D, structures::Symmetric, Dense > A21A21H( ncols( A21 ) );
-				rc = foldl( A22, A21A21H, minus );
+//#ifdef DEBUG
+				print_matrix( " L(update 1) ", L );
+//#endif
+
+				// view on functor not tested // only real version will work 
+				//auto A21_conj = conjugate( A21 );
+				rc = rc ? rc : algorithms::backsubstitution( A11_out, A21_out, A21, ring );
+
+				Matrix< D, structures::Symmetric, Dense > Reflector( nrows(A21), nrows(A21) );
+				rc = rc ? rc : mxm( Reflector, A21, get_view< alp::view::transpose >( A21 ), ring );
+				// //A22=A22-A21.dot(conjugate(A21).T)
+				// //auto A21A21H = kronecker( A21 );
+				// Matrix< D, structures::Symmetric, Dense > A21A21H( ncols( A21 ) );
+				rc = rc ? rc : foldl( A22, Reflector, minus );
 
 			}
 

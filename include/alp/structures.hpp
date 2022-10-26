@@ -442,6 +442,16 @@ namespace alp {
 		};
 
 		template<>
+		struct isInstantiable< Symmetric, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				//return ( ( imf_r.n == imf_c.n ) && ( imf_r.s == imf_c.s ) && ( imf_r.b == imf_c.b ) );
+				// implement properly
+				return true;
+			};
+		};
+
+		template<>
 		struct isInstantiable< Symmetric, Symmetric > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
