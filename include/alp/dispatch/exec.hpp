@@ -16,33 +16,24 @@
  */
 
 /*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
+ * @author A. N. Yzelman
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_EXEC
-#define _H_ALP_EXEC
+#ifndef _H_ALP_DISPATCH_EXEC
+#define _H_ALP_DISPATCH_EXEC
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
+#include <alp/backends.hpp>
+#include <alp/base/exec.hpp>
+#include <alp/reference/exec.hpp> // dispatch launcher is using reference launcher
+#include "init.hpp"
 
-// include template specialisations
-#ifdef _ALP_WITH_REFERENCE
- #include "alp/reference/exec.hpp"
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include "alp/dispatch/exec.hpp"
-#endif
-#ifdef _ALP_WITH_OMP
- #include "alp/omp/exec.hpp"
-#endif
-
-#ifdef _ALP_BACKEND
 namespace alp {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_ALP_EXEC''
+	template< EXEC_MODE mode >
+	class Launcher< mode, dispatch > : public Launcher< mode, reference > {};
+
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_DISPATCH_EXEC''
 

@@ -27,6 +27,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/scalar.hpp>
 #endif
+#ifdef _ALP_WITH_DISPATCH
+ #include <alp/dispatch/scalar.hpp>
+#endif
 #ifdef _ALP_WITH_OMP
  #include <alp/omp/scalar.hpp>
 #endif

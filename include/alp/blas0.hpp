@@ -30,6 +30,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/blas0.hpp>
 #endif
+#ifdef _ALP_WITH_DISPATCH
+ #include <alp/dispatch/blas0.hpp>
+#endif
 
 
 namespace alp {

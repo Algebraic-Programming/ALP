@@ -16,33 +16,26 @@
  */
 
 /*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
+ * @author A. N. Yzelman
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_EXEC
-#define _H_ALP_EXEC
+#ifndef _H_ALP_DISPATCH_INIT
+#define _H_ALP_DISPATCH_INIT
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
+#include <alp/base/init.hpp>
 
-// include template specialisations
-#ifdef _ALP_WITH_REFERENCE
- #include "alp/reference/exec.hpp"
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include "alp/dispatch/exec.hpp"
-#endif
-#ifdef _ALP_WITH_OMP
- #include "alp/omp/exec.hpp"
-#endif
-
-#ifdef _ALP_BACKEND
 namespace alp {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_ALP_EXEC''
+	/** \internal No-op init */
+	template<>
+	RC init< dispatch >( const size_t, const size_t, void * const );
+
+	/** \internal No-op init */
+	template<>
+	RC finalize< dispatch >();
+
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_DISPATCH_INIT''
 
