@@ -117,7 +117,9 @@ namespace alp {
 			Matrix< D, structures::UpperTriangular, Dense, ViewA, ImfRA, ImfCA > &A,
 			Matrix< D, StructX, Dense, ViewX, ImfRX, ImfCX > &X,
 			Matrix< D, StructB, Dense, ViewB, ImfRB, ImfCB > &B,
-			const Ring &ring = Ring()
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
 		) {
 
 			RC rc = SUCCESS;
@@ -137,7 +139,7 @@ namespace alp {
 			for( size_t i = 0; i < n ; ++i ) {
 				auto x = get_view( X, utils::range( 0, m ), i );
 				auto b = get_view( B, utils::range( 0, m ), i );
-				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring );
+				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring, minus, divide );
 			}
 
 			assert( rc == SUCCESS );
