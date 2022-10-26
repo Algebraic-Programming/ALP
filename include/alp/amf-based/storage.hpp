@@ -27,7 +27,9 @@
 #define _H_ALP_AMF_BASED_STORAGE
 
 #include <memory>
+#include <alp/imf.hpp>
 #include <alp/structures.hpp>
+#include <alp/views.hpp>
 
 namespace alp {
 
@@ -1046,6 +1048,125 @@ namespace alp {
 		}; // class AMFFactory
 
 	}; // namespace storage
+
+	namespace internal {
+
+		/**
+		 * Determines the mapping polynomial type and exposes a factory method
+		 * to create instances of that polynomial.
+		 *
+		 * All specializations of this type trait should define the factory
+		 * method following the same signature. The factory method shall
+		 * return an object of the type exposed as \a type.
+		 *
+		 * @tparam Structure  Matrix structure
+		 * @tparam ImfR       Row IMF type
+		 * @tparam ImfC       Column IMF type
+		 * @tparam backend    The backend
+		 *
+		 */
+		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
+		struct determine_poly_factory {};
+
+		/**
+		 * Determines the AMF type for a matrix having the provided static properties.
+		 *
+		 * For a matrix that requires allocation, the new AMF consists of two Id IMFs
+		 * and the pre-defined mapping polynomial.
+		 * For a view over another matrix, the new AMF is created from the AMF of the
+		 * target matrix in one of the following ways:
+		 *  - When applying gather view using IMFs, the IMFs are applied to the AMF of
+		 *    the target matrix.
+		 *  - When applying a different view type (e.g. transpose or diagonal), the AMF
+		 *    of the target matrix is transformed according to the provided view type.
+		 *
+		 * @tparam View     View type
+		 * @tparam ImfR     Row IMF type
+		 * @tparam ImfC     Column IMF type
+		 * @tparam backend  The backend
+		 *
+		 * The valid combinations of the input parameters are as follows:
+		 *  - original view on void with Id IMFs.
+		 *  - original view on ALP matrix with any type of IMFs
+		 *  - other type of views (e.g. transposed, diagonal) with only Id IMFs.
+		 * Invocation using incompatible parameters may result in an undefined behavior.
+		 * The first parameter combination is handled by a specialization of this trait.
+		 *
+		 */
+		template<
+			typename Structure, typename View, typename ImfR, typename ImfC,
+			enum Backend backend
+		>
+		struct determine_amf_type {
+
+			/** Ensure that the view is not on a void type */
+			static_assert(
+				!std::is_same< typename View::applied_to, void >::value,
+				"Cannot handle views over void type by this determine_amf_type specialization."
+			);
+
+			/** Ensure that if the view is original, the IMFs are Id */
+			static_assert(
+				View::type_id != view::original ||
+				( View::type_id == view::original && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Original view with non-ID Index Mapping Functions is not supported."
+			);
+
+			/** Ensure that if the view is transposed, the IMFs are Id */
+			static_assert(
+				View::type_id != view::transpose ||
+				( View::type_id == view::transpose && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Id, ImfC >::value ),
+				"Transposed view with non-ID Index Mapping Functions is not supported."
+			);
+
+			/** Ensure that if the view is diagonal, the row and column IMFs are Id and Zero, respectively */
+			static_assert(
+				View::type_id != view::diagonal ||
+				( View::type_id == view::diagonal && std::is_same< imf::Id, ImfR >::value && std::is_same< imf::Zero, ImfC >::value ),
+				"Diagonal view with non-Id Row and non-Zero Column Index Mapping Functions is not supported."
+			);
+
+			typedef typename std::conditional<
+				View::type_id == view::gather,
+				typename storage::AMFFactory::Compose<
+					ImfR, ImfC, typename View::applied_to::amf_type
+				>::amf_type,
+				typename storage::AMFFactory::Reshape<
+					View::type_id,
+					typename View::applied_to::amf_type
+				>::amf_type
+			>::type type;
+
+		};
+
+		/** Specialization for containers that allocate storage */
+		template< typename Structure, typename ImfC, enum Backend backend >
+		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC, backend > {
+
+			static_assert(
+				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
+				"Incompatible combination of parameters provided to determine_amf_type."
+			);
+
+			typedef typename storage::AMFFactory::FromPolynomial<
+				typename determine_poly_factory< Structure, imf::Id, ImfC, backend >::factory_type
+			>::amf_type type;
+		};
+
+		/** Specialization for containers that allocate storage */
+		template< typename Structure, typename ImfC, enum Backend backend, typename Lambda >
+		struct determine_amf_type< Structure, view::Functor< Lambda >, imf::Id, ImfC, backend > {
+
+			static_assert(
+				std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value,
+				"Incompatible combination of parameters provided to determine_amf_type."
+			);
+
+			typedef typename storage::AMFFactory::FromPolynomial<
+				storage::polynomials::NoneFactory
+			>::amf_type type;
+		};
+	} // namespace internal
 
 } // namespace alp
 
