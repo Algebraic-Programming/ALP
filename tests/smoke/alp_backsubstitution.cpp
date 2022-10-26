@@ -60,7 +60,7 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
 }
 
 
-//** generate data */
+/** generate data */
 template< typename T >
 std::vector< T > generate_data( size_t N ) {
 	std::vector< T > data( N );
@@ -70,7 +70,7 @@ std::vector< T > generate_data( size_t N ) {
 	return( data );
 }
 
-//** generate real upper triangular positive definite matrix data */
+/** generate real upper triangular positive definite matrix data */
 template<
 	typename T,
 	const typename std::enable_if<
@@ -93,7 +93,7 @@ std::vector< T > generate_upd_matrix( size_t N ) {
 	return( data );
 }
 
-//** generate complex upper triangular positive definite matrix data */
+/** generate complex upper triangular positive definite matrix data */
 template<
 	typename T,
 	const typename std::enable_if<
@@ -116,21 +116,19 @@ std::vector< T > generate_upd_matrix( size_t N  ) {
 	return ( data );
 }
 
-//** check if Ax == b */
+/** check if Ax == b */
 template<
 	typename D = double,
 	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
-	typename Minus = operators::subtract< D >,
-	typename Divide = operators::divide< D > >
+	typename Minus = operators::subtract< D >
+>
 RC check_solution(
 	Matrix< D, structures::UpperTriangular, Dense > &A,
 	Vector< D > &x,
 	Vector< D > &b,
 	const Ring &ring = Ring(),
-	const Minus &minus = Minus(),
-	const Divide &divide = Divide()
+	const Minus &minus = Minus()
 ) {
-	(void) divide;
 	const Scalar< D > zero( ring.template getZero< D >() );
 	const Scalar< D > one( ring.template getOne< D >() );
 
@@ -146,7 +144,7 @@ RC check_solution(
 
 	D alpha = ring.template getZero< D >();
 	rc = rc ? rc : alp::norm2( alpha, lhs, ring );
-	if(  std::abs( alpha ) > tol ) {
+	if( std::abs( alpha ) > tol ) {
 		std::cout << "Numerical error too large: |Ax-b| = " << alpha << ".\n";
 		return FAILED;
 	}
@@ -154,14 +152,15 @@ RC check_solution(
 	return rc;
 }
 
-//** check if AX == B */
+/** check if AX == B */
 template<
 	typename D = double,
 	typename StructX,
 	typename StructB,
 	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 	typename Minus = operators::subtract< D >,
-	typename Divide = operators::divide< D > >
+	typename Divide = operators::divide< D >
+>
 RC check_solution(
 	Matrix< D, structures::UpperTriangular, Dense > &A,
 	Matrix< D, StructX, Dense > &X,
@@ -193,8 +192,8 @@ RC check_solution(
 	D fnorm = 0;
 	rc = rc ? rc : alp::eWiseLambda(
 		[ &fnorm ]( const size_t i, const size_t j, D &val ) {
-			(void)i;
-			(void)j;
+			(void) i;
+			(void) j;
 			fnorm += val * val;
 		},
 		LHS

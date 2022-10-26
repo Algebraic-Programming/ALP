@@ -191,7 +191,6 @@ add_grb_executables( alp_dstedc alp_stedc.cpp
 
 add_grb_executables( alp_backsubstitution alp_backsubstitution.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS
 )
 
 add_grb_executables( alp_backsubstitution_complex alp_backsubstitution.cpp

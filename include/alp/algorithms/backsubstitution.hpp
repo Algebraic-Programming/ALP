@@ -28,7 +28,7 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * @brief Solves linear system Ax=b
+		 *        Solves linear system Ax=b
 		 *        where A is UpperTriangular matrix, b is given RHS vector
 		 *        and x is the solution.
 		 *
@@ -45,13 +45,21 @@ namespace alp {
 		 */
 		template<
 			typename D = double,
+			typename View,
+			typename ImfR,
+			typename ImfC,
 			typename Vecx,
 			typename Vecb,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D > >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_vector< Vecx >::value &&
+				is_vector< Vecb >::value
+			> * = nullptr
+		>
 		RC backsubstitution(
-			Matrix< D, structures::UpperTriangular, Dense > &A,
+			Matrix< D, structures::UpperTriangular, Dense, View, ImfR, ImfC > &A,
 			Vecx &x,
 			Vecb &b,
 			const Ring &ring = Ring(),
@@ -62,7 +70,7 @@ namespace alp {
 			RC rc = SUCCESS;
 
 			if( ( nrows( A ) != size( x ) ) || ( size( b ) != size( x ) ) ) {
-				std::cerr << "Incompatible structures in trsv.\n";
+				std::cerr << "Incompatible sizes in trsv.\n";
 				return FAILED;
 			}
 
@@ -72,11 +80,11 @@ namespace alp {
 				Scalar< D > alpha( ring.template getZero< D >() );
 				const size_t i = n - k - 1;
 				//x[i]=(b[i]-A[i,i:].dot(x[i:]))/A[i,i]
- 				auto A_i  = get_view( A, i, utils::range( i, n ) );
-				auto A_ii  = get_view( A, i, utils::range( i, i + 1 ) );
-				auto x_i  = get_view( x, utils::range( i, i + 1 ) );
-				auto b_i  = get_view( b, utils::range( i, i + 1 ) );
-				auto x_i_n  = get_view( x, utils::range( i, n ) );
+ 				auto A_i = get_view( A, i, utils::range( i, n ) );
+				auto A_ii = get_view( A, i, utils::range( i, i + 1 ) );
+				auto x_i = get_view( x, utils::range( i, i + 1 ) );
+				auto b_i = get_view( b, utils::range( i, i + 1 ) );
+				auto x_i_n = get_view( x, utils::range( i, n ) );
 				rc = rc ? rc : alp::dot( alpha, A_i, alp::conjugate( x_i_n ), ring );
 				rc = rc ? rc : alp::set( x_i, b_i );
 				rc = rc ? rc : alp::foldl( x_i, alpha, minus );
@@ -85,21 +93,30 @@ namespace alp {
  				rc = rc ? rc : alp::foldl( x_i, alpha, divide );
 			}
 
-			assert( rc == SUCCESS );
 			return rc;
 		}
 
 		template<
 			typename D = double,
+			typename ViewA,
+			typename ImfRA,
+			typename ImfCA,
 			typename StructX,
+			typename ViewX,
+			typename ImfRX,
+			typename ImfCX,
 			typename StructB,
+			typename ViewB,
+			typename ImfRB,
+			typename ImfCB,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D > >
+			typename Divide = operators::divide< D >
+		>
 		RC backsubstitution(
-			Matrix< D, structures::UpperTriangular, Dense > &A,
-			Matrix< D, StructX, Dense > &X,
-			Matrix< D, StructB, Dense > &B,
+			Matrix< D, structures::UpperTriangular, Dense, ViewA, ImfRA, ImfCA > &A,
+			Matrix< D, StructX, Dense, ViewX, ImfRX, ImfCX > &X,
+			Matrix< D, StructB, Dense, ViewB, ImfRB, ImfCB > &B,
 			const Ring &ring = Ring()
 		) {
 
@@ -110,7 +127,7 @@ namespace alp {
 				( ncols( X ) != ncols( B ) ) ||
 				( ncols( A ) != nrows( X ) )
 			) {
-				std::cerr << "Incompatible structures in trsm.\n";
+				std::cerr << "Incompatible sizes in trsm.\n";
 				return FAILED;
 			}
 
@@ -118,8 +135,8 @@ namespace alp {
 			const size_t n = ncols( X );
 
 			for( size_t i = 0; i < n ; ++i ) {
-				auto x  = get_view( X, utils::range( 0, m ), i );
-				auto b  = get_view( B, utils::range( 0, m ), i );
+				auto x = get_view( X, utils::range( 0, m ), i );
+				auto b = get_view( B, utils::range( 0, m ), i );
 				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring );
 			}
 
