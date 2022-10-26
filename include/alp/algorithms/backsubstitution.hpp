@@ -61,6 +61,11 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
+			if( ( nrows( A ) != size( x ) ) || ( size( b ) != size( x ) ) ) {
+				std::cerr << "Incompatible structures in trsv.\n";
+				return FAILED;
+			}
+
 			const size_t n = nrows( A );
 
 			for( size_t k = 0; k < n ; ++k ) {
@@ -100,11 +105,21 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
-			const size_t n = nrows( A );
+			if (
+				( nrows( X ) != nrows( B ) ) ||
+				( ncols( X ) != ncols( B ) ) ||
+				( ncols( A ) != nrows( X ) )
+			) {
+				std::cerr << "Incompatible structures in trsm.\n";
+				return FAILED;
+			}
+
+			const size_t m = nrows( X );
+			const size_t n = ncols( X );
 
 			for( size_t i = 0; i < n ; ++i ) {
-				auto x  = get_view( X, utils::range( 0, n ), i );
-				auto b  = get_view( B, utils::range( 0, n ), i );
+				auto x  = get_view( X, utils::range( 0, m ), i );
+				auto b  = get_view( B, utils::range( 0, m ), i );
 				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring );
 			}
 

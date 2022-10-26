@@ -581,7 +581,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using backsubstitution ) on"
-	echo ">>>                               a upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	echo ">>>                               an upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log || echo "Test FAILED"
@@ -589,7 +589,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using backsubstitution ) on"
-	echo ">>>                               a upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	echo ">>>                               an upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_complex_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log || echo "Test FAILED"

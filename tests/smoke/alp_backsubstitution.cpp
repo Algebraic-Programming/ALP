@@ -176,9 +176,15 @@ RC check_solution(
 
 	RC rc = SUCCESS;
 
-	const size_t n = nrows( A );
+	if( ncols( A ) != nrows( X ) ){
+		std::cerr << "Asked to check incompatible structures.\n";
+		return FAILED;
+	}
 
-	alp::Matrix< D, StructB > LHS( n );
+	const size_t n = nrows( A );
+	const size_t m = ncols( X );
+
+	alp::Matrix< D, StructB > LHS( n, m );
 	rc = rc ? rc : alp::set( LHS, zero );
 	rc = rc ? rc : alp::mxm( LHS, A, X, ring );
 	rc = rc ? rc : alp::foldl( LHS, B, minus );
@@ -238,16 +244,17 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 #endif
 	rc = rc ? rc : check_solution( A, x, b );
 
+	const size_t M = N / 2;
 	// version with matrices
-	alp::Matrix< ScalarType, structures::Square > X( N );
-	alp::Matrix< ScalarType, structures::Square > B( N );
+	alp::Matrix< ScalarType, structures::General > X( N, M );
+	alp::Matrix< ScalarType, structures::General > B( N, M );
 	rc = rc ? rc : alp::set( X, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
 	{
-		auto matrix_data = generate_data< ScalarType >( N * N );
+		auto matrix_data = generate_data< ScalarType >( N * M );
 		rc = rc ? rc : alp::buildMatrix( B, matrix_data.begin(), matrix_data.end() );
 	}
 #ifdef DEBUG
-	print_vector( " input matrix B ", B );
+	print_matrix( " input matrix B ", B );
 #endif
 	rc = rc ? rc : algorithms::backsubstitution( A, X, B, ring );
 	rc = rc ? rc : check_solution( A, X, B );
