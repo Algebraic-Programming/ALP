@@ -87,7 +87,7 @@ namespace alp {
 
 			friend void internal::setInitialized< T >( Vector< T, reference > & , bool ) noexcept;
 
-			private:
+			protected:
 
 				/** The length of the vector. */
 				size_t n;

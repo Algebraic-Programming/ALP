@@ -17,18 +17,25 @@
 
 /*
  * @author A. N. Yzelman
- * @date 29th of March 2017
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_BLAS1
-#define _H_ALP_BLAS1
+#ifndef _H_ALP_DISPATCH_INIT
+#define _H_ALP_DISPATCH_INIT
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/blas1.hpp>
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include <alp/dispatch/blas1.hpp>
-#endif
+#include <alp/base/init.hpp>
 
-#endif // end ``_H_ALP_BLAS1''
+namespace alp {
+
+	/** \internal No-op init */
+	template<>
+	RC init< dispatch >( const size_t, const size_t, void * const );
+
+	/** \internal No-op init */
+	template<>
+	RC finalize< dispatch >();
+
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_DISPATCH_INIT''
 

@@ -15,20 +15,19 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 29th of March 2017
- */
+#ifndef _H_ALP_DISPATCH_MATRIX
+#define _H_ALP_DISPATCH_MATRIX
 
-#ifndef _H_ALP_BLAS1
-#define _H_ALP_BLAS1
+#include <alp/backends.hpp>
+#include <alp/base/matrix.hpp>
+#include <alp/amf-based/matrix.hpp>
+#include <alp/config.hpp>
+#include <alp/storage.hpp>
+#include <alp/structures.hpp>
+#include <alp/imf.hpp>
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/blas1.hpp>
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include <alp/dispatch/blas1.hpp>
-#endif
+namespace alp {
 
-#endif // end ``_H_ALP_BLAS1''
+} // namespace alp
 
+#endif // end ``_H_ALP_DISPATCH_MATRIX''
