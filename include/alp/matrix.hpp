@@ -31,6 +31,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/matrix.hpp>
 #endif
+#ifdef _ALP_WITH_DISPATCH
+ #include <alp/dispatch/matrix.hpp>
+#endif
 #ifdef _ALP_WITH_OMP
  #include <alp/omp/matrix.hpp>
 #endif

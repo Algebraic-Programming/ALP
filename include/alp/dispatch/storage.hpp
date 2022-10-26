@@ -23,18 +23,31 @@
  *
  */
 
-#ifndef _H_ALP_STORAGE
-#define _H_ALP_STORAGE
+#ifndef _H_ALP_REFERENCE_STORAGE
+#define _H_ALP_REFERENCE_STORAGE
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/storage.hpp>
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include <alp/dispatch/storage.hpp>
-#endif
+#include <alp/amf-based/storage.hpp>
 
-#ifdef _ALP_WITH_OMP
- #include <alp/omp/storage.hpp>
-#endif
+namespace alp {
 
-#endif // _H_ALP_STORAGE
+	namespace internal {
+
+		/** Specialization for any matrix in dispatch backend */
+		template< typename Structure >
+		struct determine_poly_factory< Structure, imf::Id, imf::Id, dispatch > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for vectors */
+		template< typename Structure >
+		struct determine_poly_factory< Structure, imf::Id, imf::Zero, dispatch > {
+
+			typedef storage::polynomials::ArrayFactory factory_type;
+		};
+
+	} // namespace internal
+
+} // namespace alp
+
+#endif // _H_ALP_REFERENCE_STORAGE

@@ -30,6 +30,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/vector.hpp>
 #endif
+#ifdef _ALP_WITH_DISPATCH
+ #include <alp/dispatch/vector.hpp>
+#endif
 #ifdef _ALP_WITH_OMP
  #include <alp/omp/vector.hpp>
 #endif
