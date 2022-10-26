@@ -181,6 +181,11 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	print_matrix( std::string(" << L >> "), L );
 #endif
 	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
+
+
+	size_t bs = 3;
+	rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+
 }
 
 int main( int argc, char ** argv ) {
