@@ -15,34 +15,19 @@
  * limitations under the License.
  */
 
-/*
- * @author: A. N. Yzelman
- * @date 17th of April, 2017
- */
+#ifndef _H_ALP_DISPATCH_MATRIX
+#define _H_ALP_DISPATCH_MATRIX
 
-#ifndef _H_ALP_EXEC
-#define _H_ALP_EXEC
+#include <alp/backends.hpp>
+#include <alp/base/matrix.hpp>
+#include <alp/amf-based/matrix.hpp>
+#include <alp/config.hpp>
+#include <alp/storage.hpp>
+#include <alp/structures.hpp>
+#include <alp/imf.hpp>
 
-#include "base/config.hpp"
-#include "base/exec.hpp"
-
-// include template specialisations
-#ifdef _ALP_WITH_REFERENCE
- #include "alp/reference/exec.hpp"
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include "alp/dispatch/exec.hpp"
-#endif
-#ifdef _ALP_WITH_OMP
- #include "alp/omp/exec.hpp"
-#endif
-
-#ifdef _ALP_BACKEND
 namespace alp {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
-	class Launcher;
-}
-#endif
 
-#endif // end ``_H_ALP_EXEC''
+} // namespace alp
 
+#endif // end ``_H_ALP_DISPATCH_MATRIX''

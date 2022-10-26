@@ -29,6 +29,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/io.hpp>
 #endif
+#ifdef _ALP_WITH_DISPATCH
+ #include <alp/dispatch/io.hpp>
+#endif
 #ifdef _ALP_WITH_OMP
  #include <alp/omp/io.hpp>
 #endif
