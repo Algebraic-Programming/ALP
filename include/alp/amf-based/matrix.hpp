@@ -58,13 +58,6 @@ namespace alp {
 	// Matrix-related implementation
 
 	namespace internal {
-		/** Forward declaration */
-		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
-		class StorageBasedMatrix;
-
-		/** Forward declaration */
-		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
-		class FunctorBasedMatrix;
 
 		/** Forward declaration */
 		template< typename DerivedMatrix >
@@ -108,6 +101,54 @@ namespace alp {
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
+		/** Forward declaration */
+		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
+		class StorageBasedMatrix;
+
+		/** Forward declaration */
+		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
+		class FunctorBasedMatrix;
+
+		/** Container reference getters used by friend functions of specialized Matrix */
+		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
+		const Vector< T, backend > & getContainer( const StorageBasedMatrix< T, AmfType, requires_allocation, backend > & A );
+
+		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
+		Vector< T, backend > & getContainer( StorageBasedMatrix< T, AmfType, requires_allocation, backend > & A );
+
+		/** Container reference getters. Defer the call to base class friend function */
+		template<
+			typename T, typename Structure, enum Density density, typename View,
+			typename ImfR, typename ImfC,
+			Backend backend
+		>
+		const Vector< T, backend > & getContainer( const alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > & A ) {
+			return getContainer( static_cast<
+				const StorageBasedMatrix<
+					T,
+					typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type,
+					alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >::requires_allocation,
+					backend
+				> &
+			>( A ) );
+		}
+
+		template<
+			typename T, typename Structure, enum Density density, typename View,
+			typename ImfR, typename ImfC,
+			Backend backend
+		>
+		Vector< T, backend > & getContainer( alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend > & A ) {
+			return getContainer( static_cast<
+				StorageBasedMatrix<
+					T,
+					typename alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >::amf_type,
+					alp::Matrix< T, Structure, density, View, ImfR, ImfC, backend >::requires_allocation,
+					backend
+				> &
+			>( A ) );
+		}
+
 		/** Returns the reference to the AMF of a storage-based matrix */
 		template<
 			typename MatrixType,
@@ -115,6 +156,52 @@ namespace alp {
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
+		/** Functor reference getter used by friend functions of specialized Matrix */
+		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
+		const typename FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType >::functor_type &getFunctor( const FunctorBasedMatrix< T, ImfR, ImfC, DataLambdaType > &A );
+
+		/**
+		 * Getter for the functor of a functor-based matrix.
+		 *
+		 * @tparam MatrixType  The type of input matrix.
+		 *
+		 * @param[in] A        Input matrix.
+		 *
+		 * @returns A constant reference to a functor object within the
+		 *          provided functor-based matrix.
+		 */
+		template<
+			typename MatrixType,
+			std::enable_if_t<
+				internal::is_functor_based< MatrixType >::value
+			> * = nullptr
+		>
+		const typename MatrixType::functor_type &getFunctor( const MatrixType &A ) {
+			return static_cast< const typename MatrixType::base_type & >( A ).getFunctor();
+		}
+
+		/** Forward declaration */
+		template< typename DerivedMatrix >
+		class MatrixBase;
+
+		template< typename DerivedMatrix >
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
+
+		template<
+			typename MatrixType,
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+		>
+		size_t getStorageDimensions( const MatrixType &A ) noexcept;
+
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+		>
+		bool getInitialized( const MatrixType &A ) noexcept;
+
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+		>
+		void setInitialized( MatrixType &, const bool ) noexcept;
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
