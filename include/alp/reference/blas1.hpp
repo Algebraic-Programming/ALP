@@ -2373,6 +2373,7 @@ namespace alp {
 } // end namespace ``alp''
 
 #undef NO_CAST_ASSERT
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS1''
 
