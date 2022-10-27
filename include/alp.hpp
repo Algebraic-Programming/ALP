@@ -134,7 +134,7 @@
 // clang-format re-ordering
 #if 1
 // load active configuration
-// #include <alp/config.hpp> //defines _ALP_BACKEND and _WITH_BSP
+ #include <alp/config.hpp> //defines _ALP_BACKEND
 #endif
 
 // #pragma message "Included ALP.hpp"
@@ -148,11 +148,11 @@
 // #include <alp/collectives.hpp>
 #include <alp/exec.hpp>
 #include <alp/init.hpp>
-// #include <alp/io.hpp>
-// #include <alp/ops.hpp>
+#include <alp/io.hpp>
+#include <alp/ops.hpp>
 // #include <alp/pinnedvector.hpp>
 // #include <alp/properties.hpp>
-// #include <alp/semiring.hpp>
+#include <alp/semiring.hpp>
 // #include <alp/spmd.hpp>
 
 #ifdef _ALP_BACKEND
@@ -162,6 +162,7 @@
 // contain the relevant definitions (without defaults)
  #include <alp/matrix.hpp>
  #include <alp/vector.hpp>
+ #include <alp/scalar.hpp>
 #endif
 
 #endif // end ``_H_ALP''
