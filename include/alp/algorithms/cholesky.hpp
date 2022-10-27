@@ -19,7 +19,7 @@
 #include <iomanip>
 
 #include <alp.hpp>
-#include <alp/algorithms/backsubstitution.hpp>
+#include <alp/algorithms/forwardsubstitution.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
 
 namespace alp {
@@ -58,7 +58,6 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
-
 			RC rc = SUCCESS;
 
 			const size_t n = nrows( H );
@@ -202,6 +201,7 @@ namespace alp {
 			const Divide &divide = Divide()
 		) {
 			(void) divide;
+			const alp::Scalar< D > zero( 0 );
 
 			RC rc = SUCCESS;
 
@@ -244,12 +244,12 @@ namespace alp {
  				print_matrix( " A21 ", A21 );
 //#endif
 
-				//A22=L[(i+1)*bs:,(i+1)*bs:]
-				auto A22 = get_view( LL, range2, range2 );
+				// //A22=L[(i+1)*bs:,(i+1)*bs:]
+				// auto A22 = get_view( LL, range2, range2 );
 
-//#ifdef DEBUG
- 				print_matrix( " A22 ", A22 );
-//#endif
+// //#ifdef DEBUG
+//  				print_matrix( " A22 ", A22 );
+// //#endif
 
 				//A11=cholesky(A11)
 				auto A11_out = get_view( L, range1, range1 );
@@ -275,21 +275,25 @@ namespace alp {
 
 				// view on functor not tested // only real version will work
 				//auto A21_conj = conjugate( A21 );
+				auto A11_out_T = get_view< alp::view::transpose >( A11_out );
 				auto A21_out_T = get_view< alp::view::transpose >( A21_out );
 				auto A21_T = get_view< alp::view::transpose >( A21 );
 
 //#ifdef DEBUG
 				print_matrix( " A21_out ", A21_out );
+				std::cout << " ----> A11_out_T = " << nrows(A11_out_T) << " x "<< ncols(A11_out_T) << "\n";
+				std::cout << " ----> A21_out_T = " << nrows(A21_out_T) << " x "<< ncols(A21_out_T) << "\n";
+				std::cout << " ----> A21_T = " << nrows(A21_T) << " x "<< ncols(A21_T) << "\n";
 //#endif
 
-				rc = rc ? rc : algorithms::backsubstitution(
-					A11_out,
+				rc = rc ? rc : algorithms::forwardsubstitution(
+					A11_out_T,
 					A21_out,
 					A21,
 					ring
 				);
 				if( rc != SUCCESS ) {
-					std::cout << "Backsubstitution failed\n";
+					std::cout << "Forwardsubstitution failed\n";
 					return rc;
 				}
 //#ifdef DEBUG
@@ -299,18 +303,25 @@ namespace alp {
 
 
 				Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21_out), ncols(A21_out) );
+				rc = rc ? rc : set( Reflector, zero );
 				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21_out ), A21_out, ring );
+//#ifdef DEBUG
+				print_matrix( " Reflector ", Reflector );
+//#endif
+
 				// //A22=A22-A21.dot(conjugate(A21).T)
 				// //auto A21A21H = kronecker( A21 );
 				// Matrix< D, structures::Symmetric, Dense > A21A21H( ncols( A21 ) );
 //#ifdef DEBUG
 				std::cout << " ----> A21 = " << nrows(A21) << " x "<< ncols(A21) << "\n";
-				std::cout << " ----> A22 = " << nrows(A22) << " x "<< ncols(A22) << "\n";
+				// std::cout << " ----> A22 = " << nrows(A22) << " x "<< ncols(A22) << "\n";
 //#endif
+				auto A22 = get_view( LL, range2, range2 );
 				rc = rc ? rc : foldl( A22, Reflector, minus );
 
 //#ifdef DEBUG
 				print_matrix( " L(update 2) ", L );
+				print_matrix( " LL ", LL );
 //#endif
 
 			}
@@ -322,6 +333,8 @@ namespace alp {
 			// 	auto vLL = get_view( LL , utils::range( k, n) , k );
 			// 	rc = set( vL, vLL );
 			// }
+
+			print_matrix( " L(final) ", L );
 
 			return rc;
 		}
