@@ -37,8 +37,28 @@ struct inpdata {
 
 //** gnerate upper/lower triangular part of a SPD matrix */
 template< typename T >
+void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
+	for( size_t i = 0; i < N; ++i ) {
+		for( size_t j = 0; j < N; ++j ) {
+			size_t k = i * N + j;
+			if( i <= j ) {
+				data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			}
+			if( i == j ) {
+				data[ k ] = data[ k ] + static_cast< T >( N );
+			}
+			if( i > j ) {
+				data[ i * N + j ] = data[ j * N + i ];
+			}
+
+		}
+	}
+}
+
+
+//** gnerate upper/lower triangular part of a SPD matrix */
+template< typename T >
 void generate_spd_matrix( size_t N, std::vector<T> &data ) {
-	std::srand( RNDSEED );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
@@ -53,16 +73,22 @@ void generate_spd_matrix( size_t N, std::vector<T> &data ) {
 
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) */
-template< typename T, typename RingType, typename ZeroType >
+template<
+	typename T,
+	typename MatSymmType,
+	typename MatUpTriangType,
+	typename RingType,
+	typename ZeroType
+>
 alp::RC check_cholesky_solution(
-	const alp::Matrix< T, structures::Symmetric, Dense > &H,
-	alp::Matrix< T, structures::UpperTriangular, Dense > &L,
+	const alp::Matrix< T, MatSymmType, Dense > &H,
+	alp::Matrix< T, MatUpTriangType, Dense > &L,
 	const ZeroType &zero_scalar,
 	const RingType &ring
 ) {
 	alp::RC rc = SUCCESS;
 	const size_t N = nrows( H );
-	alp::Matrix< T, alp::structures::Symmetric > LLT( N, N );
+	alp::Matrix< T, MatSymmType > LLT( N, N );
 	rc = rc ? rc : alp::set( LLT, zero_scalar );
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
@@ -74,7 +100,7 @@ alp::RC check_cholesky_solution(
 	print_matrix( " << LLT >> ", LLT );
 #endif
 
-	alp::Matrix< T, alp::structures::Symmetric > HminsLLt( N, N );
+	alp::Matrix< T, MatSymmType > HminsLLt( N, N );
 	rc = rc ? rc : alp::set( HminsLLt, zero_scalar );
 
 	// LLT = -LLT
@@ -144,6 +170,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		std::srand( RNDSEED );
 		generate_spd_matrix( N, matrix_data );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
@@ -183,10 +210,29 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
 
 
+	// test blocked version
 	rc = rc ? rc : alp::set( L, zero_scalar	);
 	size_t bs = 3;
 	rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
 	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
+
+
+	// test blocked-inplace version
+	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
+	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
+	std::vector< ScalarType > matrix_data( N * N );
+	std::srand( RNDSEED );
+	generate_spd_matrix_full( N, matrix_data );
+	rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
+	rc = rc ? rc : alp::set( LL_original, LL );
+#ifdef DEBUG
+	print_matrix( " LL(input) ", LL );
+#endif
+	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
+#ifdef DEBUG
+	print_matrix( " LL(output)  ", LL );
+#endif
+	rc = rc ? rc : check_cholesky_solution( LL_original, LL, zero_scalar, ring );
 
 }
 

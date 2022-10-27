@@ -64,13 +64,13 @@ namespace alp {
 
 			// Out of place specification of the operation
 			Matrix< D, structures::Symmetric, Dense > LL( n, n );
-			rc = set( LL, H );
+			rc = rc ? rc : set( LL, H );
 
+#ifdef DEBUG
 			if( rc != SUCCESS ) {
 				std::cerr << " set( LL, H ) failed\n";
 				return rc;
 			}
-#ifdef DEBUG
 			print_matrix( " -- LL --  " , LL );
 #endif
 
@@ -86,7 +86,7 @@ namespace alp {
 
 				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
 				Scalar< D > alpha;
-				rc = eWiseLambda(
+				rc = rc ? rc : eWiseLambda(
 					[ &alpha, &ring ]( const size_t i, D &val ) {
 						if ( i == 0 ) {
 							(void)set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
@@ -109,7 +109,7 @@ namespace alp {
 				print_vector( " -- v --  " , v );
 #endif
 				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
-				rc = foldl( v, alpha, divide );
+				rc = rc ? rc : foldl( v, alpha, divide );
 
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -119,25 +119,14 @@ namespace alp {
 #endif
 
 				// LL[ k+1: , k+1: ] -= v*v^T
-				auto LLprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
+				auto Lprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
 				auto vvt = outer( v, ring.getMultiplicativeOperator() );
 #ifdef DEBUG
 				print_vector( " -- v --  " , v );
 				print_matrix( " vvt ", vvt );
 #endif
-
-				// this eWiseLambda should be replaced by foldl on matrices
-				rc = alp::eWiseLambda(
-					[ &vvt, &minus ]( const size_t i, const size_t j, D &val ) {
-						internal::foldl(
-							val,
-							internal::access( vvt, internal::getStorageIndex( vvt, i, j ) ),
-							minus
-						);
-					},
-					LLprim
-				);
+				rc = rc ? rc : foldl( Lprim, vvt, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cerr << " eWiseLambda( lambda, view ) (2) failed\n";
@@ -162,7 +151,6 @@ namespace alp {
 #endif
 			}
 
-			assert( rc == SUCCESS );
 			return rc;
 		}
 
@@ -269,6 +257,94 @@ namespace alp {
 
 			return rc;
 		}
+
+		// inplace versions
+		template<
+			typename D = double,
+			typename ViewL,
+			typename ImfRL,
+			typename ImfCL,
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			typename Minus = operators::subtract< D >,
+			typename Divide = operators::divide< D >
+		>
+		RC cholesky_uptr(
+			Matrix< D, structures::Square, Dense, ViewL, ImfRL, ImfCL > &L,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
+			const Scalar< D > zero( ring.template getZero< D >() );
+
+			RC rc = SUCCESS;
+
+			const size_t n = nrows( L );
+
+			for( size_t k = 0; k < n ; ++k ) {
+#ifdef DEBUG
+				std::cout << "============ Iteration " << k << " ============" << std::endl;
+#endif
+
+				auto a = get_view( L, k, utils::range( k, n ) );
+
+				// L[ k, k ] = alpha = sqrt( LL[ k, k ] )
+				Scalar< D > alpha;
+				rc = rc ? rc : eWiseLambda(
+					[ &alpha, &ring ]( const size_t i, D &val ) {
+						if ( i == 0 ) {
+							(void)set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
+							val = *alpha;
+						}
+					},
+					a
+				);
+
+#ifdef DEBUG
+				std::cout << "alpha " << *alpha << std::endl;
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (0) failed\n";
+					return rc;
+				}
+#endif
+
+				auto v = get_view( L, k, utils::range( k + 1, n ) );
+#ifdef DEBUG
+				print_vector( " -- v --  " , v );
+#endif
+				// LL[ k + 1: , k ] = LL[ k + 1: , k ] / alpha
+				rc = rc ? rc : foldl( v, alpha, divide );
+
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (1) failed\n";
+					return rc;
+				}
+#endif
+
+				// LL[ k+1: , k+1: ] -= v*v^T
+				auto Lprim = get_view( L, utils::range( k + 1, n ), utils::range( k + 1, n ) );
+
+				auto vvt = outer( v, ring.getMultiplicativeOperator() );
+#ifdef DEBUG
+				print_vector( " -- v --  " , v );
+				print_matrix( " vvt ", vvt );
+#endif
+
+				rc = rc ? rc : foldl( Lprim, vvt, minus );
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cerr << " eWiseLambda( lambda, view ) (2) failed\n";
+					return rc;
+				}
+#endif
+				auto vcol = get_view( L, utils::range( k + 1, n ), k );
+				set( vcol, zero );
+
+			}
+
+			return rc;
+		}
+
 
 	} // namespace algorithms
 } // namespace alp
