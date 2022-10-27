@@ -29,7 +29,7 @@ namespace alp {
 
 		/**
 		 *        Solves linear system Ax=b
-		 *        where A is UpperTriangular matrix, b is given RHS vector
+		 *        where A is LowerTriangular matrix, b is given RHS vector
 		 *        and x is the solution.
 		 *
 		 * @tparam D        Data element type
@@ -58,8 +58,8 @@ namespace alp {
 				is_vector< Vecb >::value
 			> * = nullptr
 		>
-		RC backsubstitution(
-			Matrix< D, structures::UpperTriangular, Dense, View, ImfR, ImfC > &A,
+		RC forwardsubstitution(
+			Matrix< D, structures::LowerTriangular, Dense, View, ImfR, ImfC > &A,
 			Vecx &x,
 			Vecb &b,
 			const Ring &ring = Ring(),
@@ -76,16 +76,14 @@ namespace alp {
 
 			const size_t n = nrows( A );
 
-			for( size_t k = 0; k < n ; ++k ) {
+			for( size_t i = 0; i < n ; ++i ) {
 				Scalar< D > alpha( ring.template getZero< D >() );
-				const size_t i = n - k - 1;
-				//x[i]=(b[i]-A[i,i:].dot(x[i:]))/A[i,i]
- 				auto A_i = get_view( A, i, utils::range( i, n ) );
+				auto A_i = get_view( A, i, utils::range( 0, i ) );
 				auto A_ii = get_view( A, i, utils::range( i, i + 1 ) );
 				auto x_i = get_view( x, utils::range( i, i + 1 ) );
 				auto b_i = get_view( b, utils::range( i, i + 1 ) );
-				auto x_i_n = get_view( x, utils::range( i, n ) );
-				rc = rc ? rc : alp::dot( alpha, A_i, alp::conjugate( x_i_n ), ring );
+				auto x_0_i = get_view( x, utils::range( 0, i ) );
+				rc = rc ? rc : alp::dot( alpha, A_i, alp::conjugate( x_0_i ), ring );
 				rc = rc ? rc : alp::set( x_i, b_i );
 				rc = rc ? rc : alp::foldl( x_i, alpha, minus );
  				rc = rc ? rc : alp::set( alpha, Scalar< D >( ring.template getZero< D >() ) );
@@ -113,8 +111,8 @@ namespace alp {
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D >
 		>
-		RC backsubstitution(
-			Matrix< D, structures::UpperTriangular, Dense, ViewA, ImfRA, ImfCA > &A,
+		RC forwardsubstitution(
+			Matrix< D, structures::LowerTriangular, Dense, ViewA, ImfRA, ImfCA > &A,
 			Matrix< D, StructX, Dense, ViewX, ImfRX, ImfCX > &X,
 			Matrix< D, StructB, Dense, ViewB, ImfRB, ImfCB > &B,
 			const Ring &ring = Ring(),
@@ -139,7 +137,7 @@ namespace alp {
 			for( size_t i = 0; i < n ; ++i ) {
 				auto x = get_view( X, utils::range( 0, m ), i );
 				auto b = get_view( B, utils::range( 0, m ), i );
-				rc = rc ? rc : algorithms::backsubstitution( A, x, b, ring, minus, divide );
+				rc = rc ? rc : algorithms::forwardsubstitution( A, x, b, ring, minus, divide );
 			}
 
 			assert( rc == SUCCESS );
