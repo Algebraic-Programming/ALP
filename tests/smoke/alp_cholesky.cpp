@@ -186,6 +186,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = rc ? rc : alp::set( L, zero_scalar	);
 	size_t bs = 3;
 	rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
 
 }
 
