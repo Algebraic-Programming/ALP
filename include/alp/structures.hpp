@@ -664,6 +664,23 @@ namespace alp {
 		};
 
 		/**
+		 * @brief Checks if TestedStructure is a \a Structure according to the ALP's structure classification.
+		 *
+		 * @tparam TestedStructure   The structure to be tested.
+		 * @tparam Structure 		 The structure that should be implied by \a TestedStructure.
+		 */
+		template< typename TestedStructure, typename Structure >
+		struct is_a {
+
+			static_assert( std::is_base_of< structures::BaseStructure, TestedStructure >::value );
+
+			/**
+			 * \a value is true iff \a Structure is implied by \a TestedStructure.
+			 */
+			static constexpr bool value = is_in< Structure, typename TestedStructure::inferred_structures >::value;
+		};
+
+		/**
 		 * Exposes the structure obtained by applying a given view onto a given structure.
 		 *
 		 * By default, the exposed structure is equal to the input structure.

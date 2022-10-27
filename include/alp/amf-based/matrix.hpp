@@ -45,6 +45,8 @@
 #include <alp/density.hpp>
 #include <alp/views.hpp>
 #include <alp/imf.hpp>
+#include "functorbasedmatrix.hpp"
+#include "storagebasedmatrix.hpp"
 
 namespace alp {
 
@@ -58,13 +60,6 @@ namespace alp {
 	// Matrix-related implementation
 
 	namespace internal {
-		/** Forward declaration */
-		template< typename T, typename AmfType, bool requires_allocation >
-		class StorageBasedMatrix;
-
-		/** Forward declaration */
-		template< typename T, typename ImfR, typename ImfC, typename DataLambdaType >
-		class FunctorBasedMatrix;
 
 		/** Forward declaration */
 		template< typename DerivedMatrix >
@@ -108,13 +103,24 @@ namespace alp {
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
-		/** Returns the reference to the AMF of a storage-based matrix */
+		template< typename DerivedMatrix >
+		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
+
 		template<
 			typename MatrixType,
-			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
+		size_t getStorageDimensions( const MatrixType &A ) noexcept;
 
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+		>
+		bool getInitialized( const MatrixType &A ) noexcept;
+
+		template< typename MatrixType,
+			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+		>
+		void setInitialized( MatrixType &, const bool ) noexcept;
 		/**
 		 * Base Matrix class containing attributes common to all Matrix specialization
 		 */
@@ -314,7 +320,8 @@ namespace alp {
 				internal::FunctorBasedMatrix< T, ImfR, ImfC, typename View::applied_to >,
 				internal::StorageBasedMatrix< T,
 					typename internal::determine_amf_type< Structure, View, ImfR, ImfC, backend >::type,
-					internal::requires_allocation< View >::value
+					internal::requires_allocation< View >::value,
+					backend
 				>
 			>::type type;
 		};
@@ -686,23 +693,6 @@ namespace alp {
 	}; // ALP Matrix
 
 	namespace structures {
-
-		/**
-		 * @brief Checks if TestedStructure is a \a Structure according to the ALP's structure classification.
-		 *
-		 * @tparam TestedStructure   The structure to be tested.
-		 * @tparam Structure 		 The structure that should be implied by \a TestedStructure.
-		 */
-		template< typename TestedStructure, typename Structure >
-		struct is_a {
-
-			static_assert( std::is_base_of< structures::BaseStructure, TestedStructure >::value );
-
-			/**
-			 * \a value is true iff \a Structure is implied by \a TestedStructure.
-			 */
-			static constexpr bool value = is_in< Structure, typename TestedStructure::inferred_structures >::value;
-		};
 
 		/**
 		 * Calculates the iteration space for row-dimension for the given matrix and band index.
@@ -1258,15 +1248,6 @@ namespace alp {
 		template< typename MatrixType >
 		std::pair< size_t, size_t > getCoords( const MatrixType &A, const size_t storageIndex, const size_t s, const size_t P );
 
-		/** Get the reference to the AMF of a storage-based matrix */
-		template<
-			typename MatrixType,
-			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
-		>
-		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept {
-			return A.getAmf();
-		}
-
 	} // namespace internal
 
 	template< typename D, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
@@ -1283,15 +1264,6 @@ namespace alp {
 	std::pair< size_t, size_t > dims( const Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend > &A ) noexcept {
 		return internal::dims( static_cast< const internal::MatrixBase<
 			typename Matrix< D, Structure, Density::Dense, View, ImfR, ImfC, backend >::base_type > & > ( A ) );
-	}
-
-	template<
-		typename MatrixType,
-		std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
-	>
-	size_t internal::getStorageDimensions( const MatrixType &A ) noexcept {
-		static_assert( is_storage_based< MatrixType >::value, "getStorageDimensions supported only for storage-based containers.");
-		return static_cast< const typename MatrixType::base_type & >( A ).getStorageDimensions();
 	}
 
 	namespace structures {

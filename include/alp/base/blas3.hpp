@@ -26,6 +26,7 @@
 #include <alp/phase.hpp>
 #include <alp/identities.hpp>
 #include <alp/monoid.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #include "matrix.hpp"
 #include "vector.hpp"
