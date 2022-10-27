@@ -103,13 +103,6 @@ namespace alp {
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
-		/** Container reference getters used by friend functions of specialized Matrix */
-		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
-		const Vector< T, backend > & getContainer( const StorageBasedMatrix< T, AmfType, requires_allocation, backend > & A );
-
-		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
-		Vector< T, backend > & getContainer( StorageBasedMatrix< T, AmfType, requires_allocation, backend > & A );
-
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
