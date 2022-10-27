@@ -28,6 +28,7 @@
 #define _H_ALP_BLAS2_BASE
 
 #include <assert.h>
+#include <functional>
 
 #include <alp/backends.hpp>
 #include <alp/blas1.hpp>
