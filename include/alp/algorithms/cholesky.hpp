@@ -197,10 +197,12 @@ namespace alp {
 
 			Matrix< D, structures::Symmetric, Dense > LL( n, n );
 			rc = rc ? rc : set( LL, H );
+#ifdef DEBUG
 			if( rc != SUCCESS ) {
 				std::cout << "set failed\n";
 				return rc;
 			}
+#endif
 
 			//nb: number of blocks of (max) size bz
 			size_t nb = n / bs ;
@@ -228,10 +230,12 @@ namespace alp {
 				auto A11_out = get_view( L, range1, range1 );
 
 				rc = rc ? rc : cholesky_uptr( A11_out, A11, ring );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "cholesky_uptr failed\n";
 					return rc;
 				}
+#endif
 
 				auto A21_out = get_view< structures::General >(	L, range1, range2 );
 				auto A11_out_T = get_view< alp::view::transpose >( A11_out );
@@ -242,10 +246,12 @@ namespace alp {
 					A21,
 					ring
 				);
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "Forwardsubstitution failed\n";
 					return rc;
 				}
+#endif
 
 				Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21_out), ncols(A21_out) );
 				rc = rc ? rc : set( Reflector, zero );
@@ -387,25 +393,26 @@ namespace alp {
 				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
 				auto A11 = get_view< structures::Square >( L, range1, range1 );
 
-
 				//A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
 				// for complex we should conjugate A21
 				auto A21 = get_view< structures::General >( L, range1, range2 );
 
-
 				Matrix< D, structures::General > A21_tmp( nrows(A21), ncols(A21) );
 				rc = rc ? rc : set( A21_tmp, A21 );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "set failed\n";
 					return rc;
 				}
-
+#endif
 
 				rc = rc ? rc : cholesky_uptr( A11, ring );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "cholesky_uptr failed\n";
 					return rc;
 				}
+#endif
 
 				// this view cannot be used in the current foldl
 				// i.e. foldl(Square,UpperTriangular) will update
@@ -421,31 +428,39 @@ namespace alp {
 					A21_tmp,
 					ring
 				);
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "Forwardsubstitution failed\n";
 					return rc;
 				}
+#endif
 
 				//Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21), ncols(A21) );
 				Matrix< D, structures::Square, Dense > Reflector( ncols(A21), ncols(A21) );
 				rc = rc ? rc : set( Reflector, zero );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "set(2) failed\n";
 					return rc;
 				}
+#endif
 				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21 ), A21, ring );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "mxm failed\n";
 					return rc;
 				}
+#endif
 
 				auto A22 = get_view< structures::Square >( L, range2, range2 );
 
 				rc = rc ? rc : foldl( A22, Reflector, minus );
+#ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "foldl failed\n";
 					return rc;
 				}
+#endif
 
 				auto A12 = get_view< structures::General >( L, range2, range1 );
 				rc = rc ? rc : set( A12, zero );

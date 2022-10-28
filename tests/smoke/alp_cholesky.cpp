@@ -136,7 +136,9 @@ alp::RC check_cholesky_solution(
 		HminsLLt
 	);
 	fnorm = std::sqrt( fnorm );
+#ifdef DEBUG
 	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
+#endif
 	if( tol < fnorm ) {
 		std::cout << "The Frobenius norm is too large. "
 			"Make sure that you have used SPD matrix as input.\n";
@@ -182,9 +184,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		alp::identities::one
 	> ring;
 	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
-
-	std::cout << "\tTesting ALP cholesky\n"
-		"\tH = L * L^T\n";
 
 	if( !internal::getInitialized( H ) ) {
 		std::cout << " Matrix H is not initialized\n";
