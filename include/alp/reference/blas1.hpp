@@ -31,6 +31,7 @@
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
+#include "io.hpp"
 #include "blas0.hpp"
 #include "blas2.hpp"
 #include <graphblas/utils/iscomplex.hpp> // use from grb
@@ -2372,6 +2373,7 @@ namespace alp {
 } // end namespace ``alp''
 
 #undef NO_CAST_ASSERT
+#undef NO_CAST_OP_ASSERT
 
 #endif // end ``_H_ALP_REFERENCE_BLAS1''
 
