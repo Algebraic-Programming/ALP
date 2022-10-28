@@ -51,7 +51,10 @@ namespace alp {
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename  MatL::structure, structures::UpperTriangular >::value &&
-				structures::is_a< typename  MatH::structure, structures::Symmetric >::value
+				structures::is_a< typename  MatH::structure, structures::Symmetric >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
 			> * = nullptr
 		>
 		RC cholesky_uptr(
@@ -181,19 +184,25 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D,
-			typename ViewL,
-			typename ImfRL,
-			typename ImfCL,
-			typename ViewH,
-			typename ImfRH,
-			typename ImfCH,
+			typename MatL,
+			typename MatH,
+			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D > >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatL >::value &&
+				is_matrix< MatH >::value &&
+				structures::is_a< typename  MatL::structure, structures::UpperTriangular >::value &&
+				structures::is_a< typename  MatH::structure, structures::Symmetric >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
+		>
 		RC cholesky_uptr_blk(
-			Matrix< D, structures::UpperTriangular, Dense, ViewL, ImfRL, ImfCL > &L,
-			const Matrix< D, structures::Symmetric, Dense, ViewH, ImfRH, ImfCH > &H,
+			MatL &L,
+			const MatH &H,
 			const size_t &bs,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -206,7 +215,7 @@ namespace alp {
 
 			const size_t n = nrows( L );
 
-			Matrix< D, structures::Symmetric, Dense > LL( n, n );
+			Matrix< D, typename MatH::structure > LL( n );
 			rc = rc ? rc : set( LL, H );
 #ifdef DEBUG
 			if( rc != SUCCESS ) {
@@ -264,7 +273,7 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21_out), ncols(A21_out) );
+				Matrix< D, typename MatH::structure > Reflector( ncols(A21_out) );
 				rc = rc ? rc : set( Reflector, zero );
 				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21_out ), A21_out, ring );
 
@@ -277,16 +286,21 @@ namespace alp {
 
 		// inplace non-blocked versions
 		template<
-			typename D = double,
-			typename ViewL,
-			typename ImfRL,
-			typename ImfCL,
+			typename MatL,
+			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatL >::value &&
+				structures::is_a< typename  MatL::structure, structures::Square >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
 		>
 		RC cholesky_uptr(
-			Matrix< D, structures::Square, Dense, ViewL, ImfRL, ImfCL > &L,
+			MatL &L,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -365,15 +379,21 @@ namespace alp {
 
 		// inplace blocked version
 		template<
-			typename D,
-			typename ViewL,
-			typename ImfRL,
-			typename ImfCL,
+			typename MatL,
+			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D > >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatL >::value &&
+				structures::is_a< typename  MatL::structure, structures::Square >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
+		>
 		RC cholesky_uptr_blk(
-			Matrix< D, structures::Square, Dense, ViewL, ImfRL, ImfCL > &L,
+			MatL &L,
 			const size_t &bs,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
