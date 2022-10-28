@@ -354,6 +354,30 @@ namespace alp {
 		};
 
 		template<>
+		struct isInstantiable< Square, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				// rewrite this condition
+				//return (imf_r.n == imf_c.n);
+				return (true);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Square, UpperTriangular > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				// rewrite this condition
+				//return (imf_r.n == imf_c.n);
+				return (true);
+			};
+		};
+
+		template<>
 		struct isInstantiable< Square, Square > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {

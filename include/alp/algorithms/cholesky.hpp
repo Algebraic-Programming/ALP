@@ -214,8 +214,8 @@ namespace alp {
 				size_t b = std::min( ( i + 1 ) * bs, n );
 				size_t c = n;
 
- 				auto range1 = utils::range( a, b );
- 				auto range2 = utils::range( b, c );
+				auto range1 = utils::range( a, b );
+				auto range2 = utils::range( b, c );
 
 				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
 				auto A11 = get_view( LL, range1, range1 );
@@ -258,7 +258,7 @@ namespace alp {
 			return rc;
 		}
 
-		// inplace versions
+		// inplace non-blocked versions
 		template<
 			typename D = double,
 			typename ViewL,
@@ -339,6 +339,116 @@ namespace alp {
 #endif
 				auto vcol = get_view( L, utils::range( k + 1, n ), k );
 				set( vcol, zero );
+
+			}
+
+			return rc;
+		}
+
+
+		// inplace blocked version
+		template<
+			typename D,
+			typename ViewL,
+			typename ImfRL,
+			typename ImfCL,
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			typename Minus = operators::subtract< D >,
+			typename Divide = operators::divide< D > >
+		RC cholesky_uptr_blk(
+			Matrix< D, structures::Square, Dense, ViewL, ImfRL, ImfCL > &L,
+			const size_t &bs,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
+			(void) divide;
+			const Scalar< D > zero( ring.template getZero< D >() );
+
+			RC rc = SUCCESS;
+
+			const size_t n = nrows( L );
+
+			//nb: number of blocks of (max) size bz
+			size_t nb = n / bs ;
+			if( n % bs != 0 ){
+				nb = nb + 1 ;
+			}
+
+
+			for( size_t i = 0; i < nb ; ++i ) {
+				size_t a = std::min( i * bs, n );
+				size_t b = std::min( ( i + 1 ) * bs, n );
+				size_t c = n;
+
+				auto range1 = utils::range( a, b );
+				auto range2 = utils::range( b, c );
+
+				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
+				auto A11 = get_view< structures::Square >( L, range1, range1 );
+
+
+				//A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
+				// for complex we should conjugate A21
+				auto A21 = get_view< structures::General >( L, range1, range2 );
+
+
+				Matrix< D, structures::General > A21_tmp( nrows(A21), ncols(A21) );
+				rc = rc ? rc : set( A21_tmp, A21 );
+				if( rc != SUCCESS ) {
+					std::cout << "set failed\n";
+					return rc;
+				}
+
+
+				rc = rc ? rc : cholesky_uptr( A11, ring );
+				if( rc != SUCCESS ) {
+					std::cout << "cholesky_uptr failed\n";
+					return rc;
+				}
+
+				// this view cannot be used in the current foldl
+				// i.e. foldl(Square,UpperTriangular) will update
+				// only UpperTriangular of Square
+				//auto A11_T = get_view< alp::view::transpose >( A11 );
+				auto A11UT = get_view< structures::UpperTriangular >( L, range1, range1 );
+
+				auto A11UT_T = get_view< alp::view::transpose >( A11UT );
+
+				rc = rc ? rc : algorithms::forwardsubstitution(
+					A11UT_T,
+					A21,
+					A21_tmp,
+					ring
+				);
+				if( rc != SUCCESS ) {
+					std::cout << "Forwardsubstitution failed\n";
+					return rc;
+				}
+
+				//Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21), ncols(A21) );
+				Matrix< D, structures::Square, Dense > Reflector( ncols(A21), ncols(A21) );
+				rc = rc ? rc : set( Reflector, zero );
+				if( rc != SUCCESS ) {
+					std::cout << "set(2) failed\n";
+					return rc;
+				}
+				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21 ), A21, ring );
+				if( rc != SUCCESS ) {
+					std::cout << "mxm failed\n";
+					return rc;
+				}
+
+				auto A22 = get_view< structures::Square >( L, range2, range2 );
+
+				rc = rc ? rc : foldl( A22, Reflector, minus );
+				if( rc != SUCCESS ) {
+					std::cout << "foldl failed\n";
+					return rc;
+				}
+
+				auto A12 = get_view< structures::General >( L, range2, range1 );
+				rc = rc ? rc : set( A12, zero );
 
 			}
 

@@ -230,7 +230,17 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 #endif
 	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
 #ifdef DEBUG
-	print_matrix( " LL(output)  ", LL );
+	print_matrix( " LL(output) ", LL );
+#endif
+	rc = rc ? rc : check_cholesky_solution( LL_original, LL, zero_scalar, ring );
+
+	rc = rc ? rc : alp::set( LL, LL_original );
+#ifdef DEBUG
+	print_matrix( " blocked LL(input) ", LL );
+#endif
+	rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
+#ifdef DEBUG
+	print_matrix( " blocked LL(output) ", LL );
 #endif
 	rc = rc ? rc : check_cholesky_solution( LL_original, LL, zero_scalar, ring );
 
