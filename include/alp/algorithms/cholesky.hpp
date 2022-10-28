@@ -41,29 +41,40 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D = double,
-			typename ViewL,
-			typename ImfRL,
-			typename ImfCL,
-			typename ViewH,
-			typename ImfRH,
-			typename ImfCH,
+			typename MatL,
+			typename MatH,
+			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D > >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatL >::value &&
+				is_matrix< MatH >::value &&
+				structures::is_a< typename  MatL::structure, structures::UpperTriangular >::value &&
+				structures::is_a< typename  MatH::structure, structures::Symmetric >::value
+			> * = nullptr
+		>
 		RC cholesky_uptr(
-			Matrix< D, structures::UpperTriangular, Dense, ViewL, ImfRL, ImfCL > &L,
-			const Matrix< D, structures::Symmetric, Dense, ViewH, ImfRH, ImfCH > &H,
+			MatL &L,
+			const MatH &H,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
 			RC rc = SUCCESS;
 
+			if (
+				( nrows( L ) != nrows( H ) ) ||
+				( ncols( L ) != ncols( H ) )
+			) {
+				std::cerr << "Incompatible sizes in trsm.\n";
+				return FAILED;
+			}
+
 			const size_t n = nrows( H );
 
 			// Out of place specification of the operation
-			Matrix< D, structures::Symmetric, Dense > LL( n, n );
+			Matrix< D, typename MatH::structure > LL( n );
 			rc = rc ? rc : set( LL, H );
 
 #ifdef DEBUG
