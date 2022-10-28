@@ -90,9 +90,9 @@ namespace ROPTLIB
 
         double summandEvalNum(const size_t l) const
         {
-            //grb::Matrix<double> Wuu(n, n);
-            //grb::resize(Wuu, grb::nnz(W));
-            //grb::Vector<double> vec(n);
+            grb::Matrix<double> Wuu(n, n);
+            grb::resize(Wuu, grb::nnz(W));
+            grb::Vector<double> vec(n);
             double s = 0;
 
             grb::set( Wuu, W );

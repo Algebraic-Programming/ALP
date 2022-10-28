@@ -341,12 +341,12 @@ int main(int argc, char **argv)
 	std::cout << " @@@@@@@@@@@@@@@@@@@@ " << std::endl;
 	std::cout << "Exit with error code" << out.error_code << std::endl;
 	std::cout << " @@@@@@@@@@@@@@@@@@@@ " << std::endl;
-	std::cout << "Size of x is " << out.pinnedVector.length() << std::endl;
+	std::cout << "Size of x is " << out.pinnedVector.size() << std::endl;
 	std::cout << " @@@@@@@@@@@@@@@@@@@@ " << std::endl;
 	std::cout << "Writing partition vector to file " << out.filename << std::endl;
-	for (size_t i = 0; i < out.pinnedVector.length(); ++i)
+	for (size_t i = 0; i < out.pinnedVector.size(); ++i)
 	{
-		outfile << out.pinnedVector[i] << std::endl;
+		outfile << out.pinnedVector.getNonzeroValue(i)<< std::endl;
 	}
 	outfile.close();
 
