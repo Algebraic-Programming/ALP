@@ -594,7 +594,23 @@ for BACKEND in ${BACKENDS[@]}; do
 	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
-	
+
+	NTEST_FORWARDSUB=100
+	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using forwardsubstitution ) on"
+	echo ">>>                               an lower tridiagonal real matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_FORWARDSUB=100
+	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using forwardsubstitution ) on"
+	echo ">>>                               an lower tridiagonal complex matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_complex_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
 done
 
 echo "*****************************************************************************************"

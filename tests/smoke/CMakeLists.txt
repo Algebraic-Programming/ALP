@@ -196,7 +196,16 @@ add_grb_executables( alp_backsubstitution alp_backsubstitution.cpp
 add_grb_executables( alp_backsubstitution_complex alp_backsubstitution.cpp
         BACKENDS alp_reference
 	COMPILE_DEFINITIONS _COMPLEX
-)      
+)
+
+add_grb_executables( alp_forwardsubstitution alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_forwardsubstitution_complex alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
 
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
