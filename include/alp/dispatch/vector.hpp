@@ -109,6 +109,60 @@ namespace alp {
 		void setInitialized( Vector< T, dispatch > & v, bool initialized ) noexcept {
 			v.initialized = initialized;
 		}
+
+		/**
+		 * Returns the pointer to the element corresponding to element (0,0)
+		 * of the provided vector.
+		 *
+		 * @tparam MatrixType  Type of the given ALP vector
+		 *
+		 * @param[in] A        The ALP vector
+		 *
+		 * @returns Pointer of type VectorType::value_type (a.k.a T)
+		 *
+		 */
+		template<
+			typename VectorType,
+			std::enable_if_t< alp::is_vector< VectorType >::value > * = nullptr
+		>
+		typename VectorType::value_type *getRawPointerToFirstElement( VectorType &v ) {
+			return &( v[ 0 ] );
+		}
+
+		/** const variant */
+		template<
+			typename VectorType,
+			std::enable_if_t< alp::is_vector< VectorType >::value > * = nullptr
+		>
+		const typename VectorType::value_type *getRawPointerToFirstElement( const VectorType &v ) {
+			return &( v[ 0 ] );
+		}
+
+		/**
+		 * Returns the increment between two consecutive elements in the
+		 * internal container of the given ALP vector.
+		 *
+		 * @tparam VectorType  Type of the given ALP vector
+		 *
+		 * @param[in] v        The ALP vector
+		 *
+		 * @returns The increment of type std::ptrdiff_t
+		 *
+		 */
+		template<
+			typename VectorType,
+			std::enable_if_t< alp::is_vector< VectorType >::value > * = nullptr
+		>
+		std::ptrdiff_t getIncrement( const VectorType &v ) {
+			const typename VectorType::value_type *first_elem_ptr = &( v[ 0 ] );
+			const typename VectorType::value_type *second_elem_ptr = &( v[ 1 ] );
+			std::ptrdiff_t inc = second_elem_ptr - first_elem_ptr;
+			if( inc < 0 ) {
+				std::cerr << "Warning: getIncrement: increment is negative.\n";
+			}
+			return inc;
+		}
+
 	} // end namespace ``alp::internal''
 } // namespace alp
 
