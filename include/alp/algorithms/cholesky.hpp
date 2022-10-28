@@ -70,7 +70,7 @@ namespace alp {
 				( nrows( L ) != nrows( H ) ) ||
 				( ncols( L ) != ncols( H ) )
 			) {
-				std::cerr << "Incompatible sizes in trsm.\n";
+				std::cerr << "Incompatible sizes in cholesky_uptr.\n";
 				return FAILED;
 			}
 
@@ -210,6 +210,14 @@ namespace alp {
 		) {
 			(void) divide;
 			const Scalar< D > zero( ring.template getZero< D >() );
+
+			if (
+				( nrows( L ) != nrows( H ) ) ||
+				( ncols( L ) != ncols( H ) )
+			) {
+				std::cerr << "Incompatible sizes in cholesky_uptr_blk.\n";
+				return FAILED;
+			}
 
 			RC rc = SUCCESS;
 
