@@ -445,9 +445,6 @@ namespace alp {
 				}
 #endif
 
-				// this view cannot be used in the current foldl
-				// i.e. foldl(Square,UpperTriangular) will update
-				// only UpperTriangular of Square
 				//auto A11_T = get_view< alp::view::transpose >( A11 );
 				auto A11UT = get_view< structures::UpperTriangular >( L, range1, range1 );
 
@@ -466,8 +463,7 @@ namespace alp {
 				}
 #endif
 
-				//Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21), ncols(A21) );
-				Matrix< D, structures::Square, Dense > Reflector( ncols(A21), ncols(A21) );
+				Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21) );
 				rc = rc ? rc : set( Reflector, zero );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -483,7 +479,7 @@ namespace alp {
 				}
 #endif
 
-				auto A22 = get_view< structures::Square >( L, range2, range2 );
+				auto A22 = get_view< structures::UpperTriangular >( L, range2, range2 );
 
 				rc = rc ? rc : foldl( A22, Reflector, minus );
 #ifdef DEBUG
@@ -492,10 +488,28 @@ namespace alp {
 					return rc;
 				}
 #endif
+				auto A22_below_diag = get_view< structures::LowerTriangular >(
+					L,
+					utils::range( b, c - 1 ),
+					utils::range( b, c - 1 )
+				);
+
+				rc = rc ? rc : set( A22_below_diag, zero );
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cout << "set(3) failed\n";
+					return rc;
+				}
+#endif
 
 				auto A12 = get_view< structures::General >( L, range2, range1 );
 				rc = rc ? rc : set( A12, zero );
-
+#ifdef DEBUG
+				if( rc != SUCCESS ) {
+					std::cout << "set(4) failed\n";
+					return rc;
+				}
+#endif
 			}
 
 			return rc;
