@@ -28,9 +28,9 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 *        Solves linear system Ax=b
-		 *        where A is LowerTriangular matrix, b is given RHS vector
-		 *        and x is the solution.
+		 * Solves linear system Ax=b
+		 * where A is LowerTriangular matrix, b is given RHS vector
+		 * and x is the solution.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -44,22 +44,22 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D = double,
-			typename View,
-			typename ImfR,
-			typename ImfC,
+			typename MatA,
 			typename Vecx,
 			typename Vecb,
+			typename D = typename MatA::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
 			typename Divide = operators::divide< D >,
 			std::enable_if_t<
 				is_vector< Vecx >::value &&
-				is_vector< Vecb >::value
+				is_vector< Vecb >::value &&
+				is_matrix< MatA >::value &&
+				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value
 			> * = nullptr
 		>
 		RC forwardsubstitution(
-			Matrix< D, structures::LowerTriangular, Dense, View, ImfR, ImfC > &A,
+			MatA &A,
 			Vecx &x,
 			Vecb &b,
 			const Ring &ring = Ring(),
@@ -95,26 +95,25 @@ namespace alp {
 		}
 
 		template<
-			typename D = double,
-			typename ViewA,
-			typename ImfRA,
-			typename ImfCA,
-			typename StructX,
-			typename ViewX,
-			typename ImfRX,
-			typename ImfCX,
-			typename StructB,
-			typename ViewB,
-			typename ImfRB,
-			typename ImfCB,
+			typename MatA,
+			typename MatX,
+			typename MatB,
+			typename D = typename MatA::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D >
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatA >::value &&
+				is_matrix< MatX >::value &&
+				is_matrix< MatB >::value &&
+				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value &&
+				structures::is_a< typename  MatX::structure, typename MatB::structure >::value
+			> * = nullptr
 		>
 		RC forwardsubstitution(
-			Matrix< D, structures::LowerTriangular, Dense, ViewA, ImfRA, ImfCA > &A,
-			Matrix< D, StructX, Dense, ViewX, ImfRX, ImfCX > &X,
-			Matrix< D, StructB, Dense, ViewB, ImfRB, ImfCB > &B,
+			MatA &A,
+			MatX &X,
+			MatB &B,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -140,7 +139,6 @@ namespace alp {
 				rc = rc ? rc : algorithms::forwardsubstitution( A, x, b, ring, minus, divide );
 			}
 
-			assert( rc == SUCCESS );
 			return rc;
 		}
 
