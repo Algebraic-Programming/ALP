@@ -293,6 +293,10 @@ add_grb_executables( dense_spmv dense_spmv.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
 
+add_grb_executables( dispatch_access dispatch_access.cpp
+	BACKENDS alp_dispatch
+)
+
 add_grb_executables( moveMatrix moveMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid
 )
