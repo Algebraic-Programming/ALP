@@ -244,7 +244,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = rc ? rc : check_solution( A, x, b );
 
 	const size_t M = N / 2;
-	// version with matrices
+	// matrix version
 	alp::Matrix< ScalarType, structures::General > X( N, M );
 	alp::Matrix< ScalarType, structures::General > B( N, M );
 	rc = rc ? rc : alp::set( X, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
@@ -256,6 +256,16 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	print_matrix( " input matrix B ", B );
 #endif
 	rc = rc ? rc : algorithms::forwardsubstitution( A, X, B, ring );
+	rc = rc ? rc : check_solution( A, X, B );
+
+	//inplace version
+	rc = rc ? rc : alp::set( x, b );
+	rc = rc ? rc : algorithms::forwardsubstitution( A, x, ring );
+	rc = rc ? rc : check_solution( A, x, b );
+
+	//inplace matrix version
+	rc = rc ? rc : alp::set( X, B );
+	rc = rc ? rc : algorithms::forwardsubstitution( A, X, ring );
 	rc = rc ? rc : check_solution( A, X, B );
 
 }
