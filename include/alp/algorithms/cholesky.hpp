@@ -27,8 +27,8 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * @brief Computes the Cholesky decomposition LL^T = H of a real symmetric
-		 *        positive definite (SPD) matrix H where \a L is lower triangular.
+		 * Computes the Cholesky decomposition LL^T = H of a real symmetric
+		 * positive definite (SPD) matrix H where \a L is lower triangular.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -50,8 +50,8 @@ namespace alp {
 			std::enable_if_t<
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
-				structures::is_a< typename  MatL::structure, structures::UpperTriangular >::value &&
-				structures::is_a< typename  MatH::structure, structures::Symmetric >::value &&
+				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
+				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -169,9 +169,9 @@ namespace alp {
 		}
 
 		/**
-		 * @brief Computes the blocked version Cholesky decomposition LL^H = H of a real symmetric
-		 *        or complex hermitian positive definite (SPD) matrix H where \a L is lower triangular.
-		 *        L^H  is equvalent to cojugate(transpose(L))
+		 * Computes the blocked version Cholesky decomposition LL^H = H of a real symmetric
+		 * or complex hermitian positive definite (SPD) matrix H where \a L is lower triangular.
+		 * L^H  is equvalent to cojugate(transpose(L))
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -193,8 +193,8 @@ namespace alp {
 			std::enable_if_t<
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
-				structures::is_a< typename  MatL::structure, structures::UpperTriangular >::value &&
-				structures::is_a< typename  MatH::structure, structures::Symmetric >::value &&
+				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
+				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
