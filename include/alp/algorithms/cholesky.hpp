@@ -436,15 +436,6 @@ namespace alp {
 				// for complex we should conjugate A21
 				auto A21 = get_view< structures::General >( L, range1, range2 );
 
-				Matrix< D, structures::General > A21_tmp( nrows(A21), ncols(A21) );
-				rc = rc ? rc : set( A21_tmp, A21 );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "set failed\n";
-					return rc;
-				}
-#endif
-
 				rc = rc ? rc : cholesky_uptr( A11, ring );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -458,12 +449,7 @@ namespace alp {
 
 				auto A11UT_T = get_view< alp::view::transpose >( A11UT );
 
-				rc = rc ? rc : algorithms::forwardsubstitution(
-					A11UT_T,
-					A21,
-					A21_tmp,
-					ring
-				);
+				rc = rc ? rc : algorithms::forwardsubstitution(	A11UT_T, A21, ring );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "Forwardsubstitution failed\n";
