@@ -290,7 +290,7 @@ namespace alp {
 			return rc;
 		}
 
-		// inplace non-blocked versions
+		// inplace non-blocked versions, part below diagonal is not modified
 		template<
 			typename MatL,
 			typename D = typename MatL::value_type,
@@ -374,8 +374,6 @@ namespace alp {
 					return rc;
 				}
 #endif
-				auto vcol = get_view( L, utils::range( k + 1, n ), k );
-				set( vcol, zero );
 
 			}
 
@@ -383,7 +381,7 @@ namespace alp {
 		}
 
 
-		// inplace blocked version
+		// inplace blocked version, part below diagonal is not modified
 		template<
 			typename MatL,
 			typename D = typename MatL::value_type,
@@ -454,7 +452,7 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::Symmetric, Dense > Reflector( ncols( A12 ) );
+				Matrix< D, structures::Square, Dense > Reflector( ncols( A12 ) );
 				rc = rc ? rc : set( Reflector, zero );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -470,9 +468,10 @@ namespace alp {
 				}
 #endif
 
-				auto A22 = get_view< structures::UpperTriangular >( L, range2, range2 );
+				auto A22UT = get_view< structures::UpperTriangular >( L, range2, range2 );
+				auto ReflectorUT = get_view< structures::UpperTriangular >( Reflector );
 
-				rc = rc ? rc : foldl( A22, Reflector, minus );
+				rc = rc ? rc : foldl( A22UT, ReflectorUT, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "foldl failed\n";

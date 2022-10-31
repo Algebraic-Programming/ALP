@@ -74,22 +74,21 @@ void generate_spd_matrix( size_t N, std::vector<T> &data ) {
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) */
 template<
-	typename T,
 	typename MatSymmType,
 	typename MatUpTriangType,
-	typename RingType,
-	typename ZeroType
+	typename T = typename MatSymmType::value_type,
+	typename RingType
 >
 alp::RC check_cholesky_solution(
-	const alp::Matrix< T, MatSymmType, Dense > &H,
-	alp::Matrix< T, MatUpTriangType, Dense > &L,
-	const ZeroType &zero_scalar,
+	const MatSymmType &H,
+	MatUpTriangType &L,
 	const RingType &ring
 ) {
 	alp::RC rc = SUCCESS;
+	const Scalar< T > zero( ring.template getZero< T >() );
 	const size_t N = nrows( H );
-	alp::Matrix< T, MatSymmType > LLT( N, N );
-	rc = rc ? rc : alp::set( LLT, zero_scalar );
+	MatSymmType LLT( N, N );
+	rc = rc ? rc : alp::set( LLT, zero );
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
 	print_matrix( " << LLT >> ", LLT );
@@ -100,8 +99,8 @@ alp::RC check_cholesky_solution(
 	print_matrix( " << LLT >> ", LLT );
 #endif
 
-	alp::Matrix< T, MatSymmType > HminsLLt( N, N );
-	rc = rc ? rc : alp::set( HminsLLt, zero_scalar );
+	MatSymmType HminsLLt( N, N );
+	rc = rc ? rc : alp::set( HminsLLt, zero );
 
 	// LLT = -LLT
 	rc = rc ? rc : alp::eWiseLambda(
@@ -151,6 +150,14 @@ alp::RC check_cholesky_solution(
 void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
+	alp::Semiring<
+		alp::operators::add< ScalarType >,
+		alp::operators::mul< ScalarType >,
+		alp::identities::zero,
+		alp::identities::one
+	> ring;
+	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
+
 	size_t N = 0;
 	if( !unit.fname.empty() ) {
 		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
@@ -177,14 +184,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
-	alp::Semiring<
-		alp::operators::add< ScalarType >,
-		alp::operators::mul< ScalarType >,
-		alp::identities::zero,
-		alp::identities::one
-	> ring;
-	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
-
 	if( !internal::getInitialized( H ) ) {
 		std::cout << " Matrix H is not initialized\n";
 		return;
@@ -206,17 +205,20 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 #ifdef DEBUG
 	print_matrix( std::string(" << L >> "), L );
 #endif
-	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
+	rc = rc ? rc : check_cholesky_solution( H, L, ring );
 
-
-	// test blocked version
 	rc = rc ? rc : alp::set( L, zero_scalar	);
-	size_t bs = 3;
-	rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
-	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
+	// test blocked version, for bs = 1, N / 2 and N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs + N / 2, N ) ) {
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( H, L, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
 
 
-	// test blocked-inplace version
+	// test non-blocked inplace version
 	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
 	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
 	std::vector< ScalarType > matrix_data( N * N );
@@ -231,18 +233,19 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 #ifdef DEBUG
 	print_matrix( " LL(output) ", LL );
 #endif
-	rc = rc ? rc : check_cholesky_solution( LL_original, LL, zero_scalar, ring );
+	auto LLUT = get_view< structures::UpperTriangular >( LL );
+	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
 
-	rc = rc ? rc : alp::set( LL, LL_original );
-#ifdef DEBUG
-	print_matrix( " blocked LL(input) ", LL );
-#endif
-	rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
-#ifdef DEBUG
-	print_matrix( " blocked LL(output) ", LL );
-#endif
-	rc = rc ? rc : check_cholesky_solution( LL_original, LL, zero_scalar, ring );
 
+	// test non-blocked inplace version, for bs = 1, N / 2 and N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs + N / 2, N ) ) {
+		rc = rc ? rc : alp::set( LL, LL_original );
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
 }
 
 int main( int argc, char ** argv ) {
