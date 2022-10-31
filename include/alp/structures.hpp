@@ -478,6 +478,14 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< Square, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
 		struct SymmetricPositiveDefinite: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;

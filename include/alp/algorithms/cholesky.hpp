@@ -452,7 +452,7 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::Square, Dense > Reflector( ncols( A12 ) );
+				Matrix< D, structures::Symmetric, Dense > Reflector( ncols( A12 ) );
 				rc = rc ? rc : set( Reflector, zero );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -467,11 +467,9 @@ namespace alp {
 					return rc;
 				}
 #endif
+				auto A22UT = get_view< structures::Symmetric >( L, range2, range2 );
 
-				auto A22UT = get_view< structures::UpperTriangular >( L, range2, range2 );
-				auto ReflectorUT = get_view< structures::UpperTriangular >( Reflector );
-
-				rc = rc ? rc : foldl( A22UT, ReflectorUT, minus );
+				rc = rc ? rc : foldl( A22UT, Reflector, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "foldl failed\n";
