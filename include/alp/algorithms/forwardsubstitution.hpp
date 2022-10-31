@@ -55,7 +55,10 @@ namespace alp {
 				is_vector< Vecx >::value &&
 				is_vector< Vecb >::value &&
 				is_matrix< MatA >::value &&
-				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value &&
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value
 			> * = nullptr
 		>
 		RC forwardsubstitution(
@@ -94,7 +97,7 @@ namespace alp {
 			return rc;
 		}
 
-		/** matrix version*/
+		/** matrix version */
 		template<
 			typename MatA,
 			typename MatX,
@@ -107,8 +110,11 @@ namespace alp {
 				is_matrix< MatA >::value &&
 				is_matrix< MatX >::value &&
 				is_matrix< MatB >::value &&
-				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value &&
-				structures::is_a< typename  MatX::structure, typename MatB::structure >::value
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value &&
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value &&
+				structures::is_a< typename MatX::structure, typename MatB::structure >::value
 			> * = nullptr
 		>
 		RC forwardsubstitution(
@@ -143,7 +149,7 @@ namespace alp {
 			return rc;
 		}
 
-		/** inplace versions*/
+		/** inplace versions */
 		template<
 			typename MatA,
 			typename Vecx,
@@ -154,7 +160,10 @@ namespace alp {
 			std::enable_if_t<
 				is_vector< Vecx >::value &&
 				is_matrix< MatA >::value &&
-				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value &&
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value
 			> * = nullptr
 		>
 		RC forwardsubstitution(
@@ -201,7 +210,10 @@ namespace alp {
 			std::enable_if_t<
 				is_matrix< MatA >::value &&
 				is_matrix< MatX >::value &&
-				structures::is_a< typename  MatA::structure, structures::LowerTriangular >::value
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value &&
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value
 			> * = nullptr
 		>
 		RC forwardsubstitution(
@@ -214,9 +226,7 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
-			if (
-				( ncols( A ) != nrows( X ) )
-			) {
+			if ( ncols( A ) != nrows( X ) ) {
 				std::cerr << "Incompatible sizes in trsm.\n";
 				return FAILED;
 			}

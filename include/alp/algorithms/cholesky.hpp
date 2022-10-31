@@ -244,8 +244,8 @@ namespace alp {
 				const size_t b = std::min( ( i + 1 ) * bs, n );
 				const size_t c = n;
 
-				const utils::range range1 = utils::range( a, b );
-				const utils::range range2 = utils::range( b, c );
+				const utils::range range1( a, b );
+				const utils::range range2( b, c );
 
 				auto A11 = get_view( LL, range1, range1 );
 
@@ -290,7 +290,7 @@ namespace alp {
 			return rc;
 		}
 
-		// inplace non-blocked versions, part below diagonal is not modified
+		/** inplace non-blocked versions, part below diagonal is not modified */
 		template<
 			typename MatL,
 			typename D = typename MatL::value_type,
@@ -381,7 +381,7 @@ namespace alp {
 		}
 
 
-		// inplace blocked version, part below diagonal is not modified
+		/** inplace blocked version, part below diagonal is not modified */
 		template<
 			typename MatL,
 			typename D = typename MatL::value_type,
@@ -423,8 +423,8 @@ namespace alp {
 				const size_t b = std::min( ( i + 1 ) * bs, n );
 				const size_t c = n;
 
-				const utils::range range1 = utils::range( a, b );
-				const utils::range range2 = utils::range( b, c );
+				const utils::range range1( a, b );
+				const utils::range range2( b, c );
 
 				auto A11 = get_view< structures::Square >( L, range1, range1 );
 

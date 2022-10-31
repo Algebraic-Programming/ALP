@@ -77,15 +77,18 @@ template<
 	typename MatSymmType,
 	typename MatUpTriangType,
 	typename T = typename MatSymmType::value_type,
-	typename RingType
+	typename Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< T >
 >
 alp::RC check_cholesky_solution(
 	const MatSymmType &H,
 	MatUpTriangType &L,
-	const RingType &ring
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
 ) {
 	alp::RC rc = SUCCESS;
 	const Scalar< T > zero( ring.template getZero< T >() );
+	const Scalar< T > one( ring.template getOne< T >() );
 	const size_t N = nrows( H );
 	MatSymmType LLT( N, N );
 	rc = rc ? rc : alp::set( LLT, zero );
@@ -103,14 +106,10 @@ alp::RC check_cholesky_solution(
 	rc = rc ? rc : alp::set( HminsLLt, zero );
 
 	// LLT = -LLT
-	rc = rc ? rc : alp::eWiseLambda(
-		[ ]( const size_t i, const size_t j, T &val ) {
-			(void)i;
-			(void)j;
-			val = -val;
-		},
-		LLT
-	);
+	Scalar< T > alpha( *zero );
+	rc = rc ? rc : foldl( alpha, one, minus );
+	rc = rc ? rc : foldl( LLT, alpha, ring.getMultiplicativeOperator() );
+
 #ifdef DEBUG
 	print_matrix( " << -LLT  >> ", LLT );
 #endif
@@ -128,8 +127,8 @@ alp::RC check_cholesky_solution(
 	T fnorm = 0;
 	rc = rc ? rc : alp::eWiseLambda(
 		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
-			(void)i;
-			(void)j;
+			(void) i;
+			(void) j;
 			fnorm += val * val;
 		},
 		HminsLLt
@@ -217,7 +216,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		}
 	}
 
-
 	// test non-blocked inplace version
 	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
 	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
@@ -235,7 +233,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 #endif
 	auto LLUT = get_view< structures::UpperTriangular >( LL );
 	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
-
 
 	// test non-blocked inplace version, for bs = 1, N / 2 and N
 	for( size_t bs = 1; bs <= N; bs = std::min( bs + N / 2, N ) ) {
