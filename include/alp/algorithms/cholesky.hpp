@@ -1,5 +1,5 @@
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ namespace alp {
 		) {
 			RC rc = SUCCESS;
 
-			if (
+			if(
 				( nrows( L ) != nrows( H ) ) ||
 				( ncols( L ) != ncols( H ) )
 			) {
@@ -88,7 +88,7 @@ namespace alp {
 			print_matrix( " -- LL --  " , LL );
 #endif
 
-			for( size_t k = 0; k < n ; ++k ) {
+			for( size_t k = 0; k < n; ++k ) {
 #ifdef DEBUG
 				std::cout << "============ Iteration " << k << " ============" << std::endl;
 #endif
@@ -102,8 +102,8 @@ namespace alp {
 				Scalar< D > alpha;
 				rc = rc ? rc : eWiseLambda(
 					[ &alpha, &ring ]( const size_t i, D &val ) {
-						if ( i == 0 ) {
-							(void)set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
+						if( i == 0 ) {
+							(void) set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
 							val = *alpha;
 						}
 					},
@@ -150,7 +150,7 @@ namespace alp {
 			}
 
 			// Finally collect output into L matrix and return
-			for( size_t k = 0; k < n ; ++k ) {
+			for( size_t k = 0; k < n; ++k ) {
 
 				// L[ k: , k ] = LL[ k: , k ]
 				auto vL  = get_view( L, k, utils::range( k, n )  );
@@ -176,7 +176,6 @@ namespace alp {
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
-		 * @tparam Divide   Type of divide operator used in the computation
 		 * @param[out] L    output upper triangular matrix
 		 * @param[in]  H    input real symmetric (or complex hermitian) positive definite matrix
 		 * @param[in]  ring The semiring used in the computation
@@ -189,15 +188,13 @@ namespace alp {
 			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D >,
 			std::enable_if_t<
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
 				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
 				is_semiring< Ring >::value &&
-				is_operator< Minus >::value &&
-				is_operator< Divide >::value
+				is_operator< Minus >::value
 			> * = nullptr
 		>
 		RC cholesky_uptr_blk(
@@ -205,13 +202,11 @@ namespace alp {
 			const MatH &H,
 			const size_t &bs,
 			const Ring &ring = Ring(),
-			const Minus &minus = Minus(),
-			const Divide &divide = Divide()
+			const Minus &minus = Minus()
 		) {
-			(void) divide;
 			const Scalar< D > zero( ring.template getZero< D >() );
 
-			if (
+			if(
 				( nrows( L ) != nrows( H ) ) ||
 				( ncols( L ) != ncols( H ) )
 			) {
@@ -233,26 +228,29 @@ namespace alp {
 #endif
 
 			//nb: number of blocks of (max) size bz
-			size_t nb = n / bs ;
+			if( ( bs == 0 ) || ( bs > n ) ) {
+				std::cerr << "Block size has illegal value, bs =   " << bs << " .\n";
+				std::cerr << "It should be from interval < 0,  " << n << "] .\n";
+				return FAILED;
+			}
+			size_t nb = n / bs;
 			if( n % bs != 0 ){
-				nb = nb + 1 ;
+				nb = nb + 1;
 			}
 
 
-			for( size_t i = 0; i < nb ; ++i ) {
-				size_t a = std::min( i * bs, n );
-				size_t b = std::min( ( i + 1 ) * bs, n );
-				size_t c = n;
+			for( size_t i = 0; i < nb; ++i ) {
+				const size_t a = std::min( i * bs, n );
+				const size_t b = std::min( ( i + 1 ) * bs, n );
+				const size_t c = n;
 
-				auto range1 = utils::range( a, b );
-				auto range2 = utils::range( b, c );
+				const utils::range range1 = utils::range( a, b );
+				const utils::range range2 = utils::range( b, c );
 
-				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
 				auto A11 = get_view( LL, range1, range1 );
 
-				//A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
-				// for complex we should conjugate A21
-				auto A21 = get_view< structures::General >( LL, range1, range2 );
+				// for complex we should conjugate A12
+				auto A12 = get_view< structures::General >( LL, range1, range2 );
 
 				//A11=cholesky(A11)
 				auto A11_out = get_view( L, range1, range1 );
@@ -265,13 +263,13 @@ namespace alp {
 				}
 #endif
 
-				auto A21_out = get_view< structures::General >(	L, range1, range2 );
+				auto A12_out = get_view< structures::General >(	L, range1, range2 );
 				auto A11_out_T = get_view< alp::view::transpose >( A11_out );
 
 				rc = rc ? rc : algorithms::forwardsubstitution(
 					A11_out_T,
-					A21_out,
-					A21,
+					A12_out,
+					A12,
 					ring
 				);
 #ifdef DEBUG
@@ -281,9 +279,9 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, typename MatH::structure > Reflector( ncols(A21_out) );
+				Matrix< D, typename MatH::structure > Reflector( ncols( A12_out ) );
 				rc = rc ? rc : set( Reflector, zero );
-				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21_out ), A21_out, ring );
+				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A12_out ), A12_out, ring );
 
 				auto A22 = get_view( LL, range2, range2 );
 				rc = rc ? rc : foldl( A22, Reflector, minus );
@@ -301,7 +299,7 @@ namespace alp {
 			typename Divide = operators::divide< D >,
 			std::enable_if_t<
 				is_matrix< MatL >::value &&
-				structures::is_a< typename  MatL::structure, structures::Square >::value &&
+				structures::is_a< typename MatL::structure, structures::Square >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -319,7 +317,7 @@ namespace alp {
 
 			const size_t n = nrows( L );
 
-			for( size_t k = 0; k < n ; ++k ) {
+			for( size_t k = 0; k < n; ++k ) {
 #ifdef DEBUG
 				std::cout << "============ Iteration " << k << " ============" << std::endl;
 #endif
@@ -330,8 +328,8 @@ namespace alp {
 				Scalar< D > alpha;
 				rc = rc ? rc : eWiseLambda(
 					[ &alpha, &ring ]( const size_t i, D &val ) {
-						if ( i == 0 ) {
-							(void)set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
+						if( i == 0 ) {
+							(void) set( alpha, alp::Scalar< D >( std::sqrt( val ) ) );
 							val = *alpha;
 						}
 					},
@@ -391,23 +389,19 @@ namespace alp {
 			typename D = typename MatL::value_type,
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			typename Minus = operators::subtract< D >,
-			typename Divide = operators::divide< D >,
 			std::enable_if_t<
 				is_matrix< MatL >::value &&
-				structures::is_a< typename  MatL::structure, structures::Square >::value &&
+				structures::is_a< typename MatL::structure, structures::Square >::value &&
 				is_semiring< Ring >::value &&
-				is_operator< Minus >::value &&
-				is_operator< Divide >::value
+				is_operator< Minus >::value
 			> * = nullptr
 		>
 		RC cholesky_uptr_blk(
 			MatL &L,
 			const size_t &bs,
 			const Ring &ring = Ring(),
-			const Minus &minus = Minus(),
-			const Divide &divide = Divide()
+			const Minus &minus = Minus()
 		) {
-			(void) divide;
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			RC rc = SUCCESS;
@@ -415,26 +409,29 @@ namespace alp {
 			const size_t n = nrows( L );
 
 			//nb: number of blocks of (max) size bz
-			size_t nb = n / bs ;
+			if( ( bs == 0 ) || ( bs > n ) ) {
+				std::cerr << "Block size has illegal value, bs =   " << bs << " .\n";
+				std::cerr << "It should be from interval < 0,  " << n << "] .\n";
+				return FAILED;
+			}
+			size_t nb = n / bs;
 			if( n % bs != 0 ){
-				nb = nb + 1 ;
+				nb = nb + 1;
 			}
 
 
-			for( size_t i = 0; i < nb ; ++i ) {
-				size_t a = std::min( i * bs, n );
-				size_t b = std::min( ( i + 1 ) * bs, n );
-				size_t c = n;
+			for( size_t i = 0; i < nb; ++i ) {
+				const size_t a = std::min( i * bs, n );
+				const size_t b = std::min( ( i + 1 ) * bs, n );
+				const size_t c = n;
 
-				auto range1 = utils::range( a, b );
-				auto range2 = utils::range( b, c );
+				const utils::range range1 = utils::range( a, b );
+				const utils::range range2 = utils::range( b, c );
 
-				//A11=L[i*bs:(i+1)*bs,i*bs:(i+1)*bs]
 				auto A11 = get_view< structures::Square >( L, range1, range1 );
 
-				//A21=L[(i+1)*bs:,i*bs:(i+1)*bs]
-				// for complex we should conjugate A21
-				auto A21 = get_view< structures::General >( L, range1, range2 );
+				// for complex we should conjugate A12
+				auto A12 = get_view< structures::General >( L, range1, range2 );
 
 				rc = rc ? rc : cholesky_uptr( A11, ring );
 #ifdef DEBUG
@@ -449,7 +446,7 @@ namespace alp {
 
 				auto A11UT_T = get_view< alp::view::transpose >( A11UT );
 
-				rc = rc ? rc : algorithms::forwardsubstitution(	A11UT_T, A21, ring );
+				rc = rc ? rc : algorithms::forwardsubstitution(	A11UT_T, A12, ring );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "Forwardsubstitution failed\n";
@@ -457,7 +454,7 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::Symmetric, Dense > Reflector( ncols(A21) );
+				Matrix< D, structures::Symmetric, Dense > Reflector( ncols( A12 ) );
 				rc = rc ? rc : set( Reflector, zero );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -465,7 +462,7 @@ namespace alp {
 					return rc;
 				}
 #endif
-				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A21 ), A21, ring );
+				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A12 ), A12, ring );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "mxm failed\n";
@@ -479,28 +476,6 @@ namespace alp {
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
 					std::cout << "foldl failed\n";
-					return rc;
-				}
-#endif
-				auto A22_below_diag = get_view< structures::LowerTriangular >(
-					L,
-					utils::range( b, c - 1 ),
-					utils::range( b, c - 1 )
-				);
-
-				rc = rc ? rc : set( A22_below_diag, zero );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "set(3) failed\n";
-					return rc;
-				}
-#endif
-
-				auto A12 = get_view< structures::General >( L, range2, range1 );
-				rc = rc ? rc : set( A12, zero );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "set(4) failed\n";
 					return rc;
 				}
 #endif
