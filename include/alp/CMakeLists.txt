@@ -97,6 +97,7 @@ if( WITH_ALP_DISPATCH_BACKEND_HEADERS )
 	add_library( backend_alp_dispatch_headers INTERFACE )
 	target_link_libraries( backend_alp_dispatch_headers INTERFACE backend_headers_nodefs )
 	target_compile_definitions( backend_alp_dispatch_headers INTERFACE "${ALP_DISPATCH_INCLUDE_DEFS}" )
+	target_link_libraries( backend_alp_dispatch_headers INTERFACE ${BLAS_LIBRARIES} )
 
 	install( TARGETS backend_alp_dispatch_headers EXPORT GraphBLASTargets )
 endif()
