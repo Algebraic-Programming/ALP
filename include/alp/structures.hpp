@@ -354,6 +354,24 @@ namespace alp {
 		};
 
 		template<>
+		struct isInstantiable< Square, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return (true);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Square, UpperTriangular > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
+		template<>
 		struct isInstantiable< Square, Square > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
@@ -437,7 +455,18 @@ namespace alp {
 		struct isInstantiable< General, Symmetric > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return ( ( imf_r.n == imf_c.n ) && ( imf_r.s == imf_c.s ) && ( imf_r.b == imf_c.b ) );
+				return ( imf_r.n == imf_c.n );
+			};
+		};
+
+		template<>
+		struct isInstantiable< Symmetric, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (
+					( imf_r.map( imf_r.n - 1 ) <= imf_c.map( 0 ) ) ||
+					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
+				);
 			};
 		};
 
@@ -446,6 +475,14 @@ namespace alp {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				return imf_r.isSame(imf_c);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Square, Symmetric > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
 			};
 		};
 
@@ -493,6 +530,14 @@ namespace alp {
 			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< LowerTriangular >, Triangular::inferred_structures, LowerTrapezoidal::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< Square, LowerTriangular > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
 		};
 
 		struct UpperTrapezoidal: BaseStructure {
