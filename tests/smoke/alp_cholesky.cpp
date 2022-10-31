@@ -37,8 +37,28 @@ struct inpdata {
 
 //** gnerate upper/lower triangular part of a SPD matrix */
 template< typename T >
+void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
+	for( size_t i = 0; i < N; ++i ) {
+		for( size_t j = 0; j < N; ++j ) {
+			size_t k = i * N + j;
+			if( i <= j ) {
+				data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			}
+			if( i == j ) {
+				data[ k ] = data[ k ] + static_cast< T >( N );
+			}
+			if( i > j ) {
+				data[ i * N + j ] = data[ j * N + i ];
+			}
+
+		}
+	}
+}
+
+
+//** gnerate upper/lower triangular part of a SPD matrix */
+template< typename T >
 void generate_spd_matrix( size_t N, std::vector<T> &data ) {
-	std::srand( RNDSEED );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
@@ -53,17 +73,25 @@ void generate_spd_matrix( size_t N, std::vector<T> &data ) {
 
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) */
-template< typename T, typename RingType, typename ZeroType >
+template<
+	typename MatSymmType,
+	typename MatUpTriangType,
+	typename T = typename MatSymmType::value_type,
+	typename Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< T >
+>
 alp::RC check_cholesky_solution(
-	const alp::Matrix< T, structures::Symmetric, Dense > &H,
-	alp::Matrix< T, structures::UpperTriangular, Dense > &L,
-	const ZeroType &zero_scalar,
-	const RingType &ring
+	const MatSymmType &H,
+	MatUpTriangType &L,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
 ) {
 	alp::RC rc = SUCCESS;
+	const Scalar< T > zero( ring.template getZero< T >() );
+	const Scalar< T > one( ring.template getOne< T >() );
 	const size_t N = nrows( H );
-	alp::Matrix< T, alp::structures::Symmetric > LLT( N, N );
-	rc = rc ? rc : alp::set( LLT, zero_scalar );
+	MatSymmType LLT( N, N );
+	rc = rc ? rc : alp::set( LLT, zero );
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
 	print_matrix( " << LLT >> ", LLT );
@@ -74,18 +102,14 @@ alp::RC check_cholesky_solution(
 	print_matrix( " << LLT >> ", LLT );
 #endif
 
-	alp::Matrix< T, alp::structures::Symmetric > HminsLLt( N, N );
-	rc = rc ? rc : alp::set( HminsLLt, zero_scalar );
+	MatSymmType HminsLLt( N, N );
+	rc = rc ? rc : alp::set( HminsLLt, zero );
 
 	// LLT = -LLT
-	rc = rc ? rc : alp::eWiseLambda(
-		[ ]( const size_t i, const size_t j, T &val ) {
-			(void)i;
-			(void)j;
-			val = -val;
-		},
-		LLT
-	);
+	Scalar< T > alpha( zero );
+	rc = rc ? rc : foldl( alpha, one, minus );
+	rc = rc ? rc : foldl( LLT, alpha, ring.getMultiplicativeOperator() );
+
 #ifdef DEBUG
 	print_matrix( " << -LLT  >> ", LLT );
 #endif
@@ -103,14 +127,16 @@ alp::RC check_cholesky_solution(
 	T fnorm = 0;
 	rc = rc ? rc : alp::eWiseLambda(
 		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
-			(void)i;
-			(void)j;
+			(void) i;
+			(void) j;
 			fnorm += val * val;
 		},
 		HminsLLt
 	);
 	fnorm = std::sqrt( fnorm );
+#ifdef DEBUG
 	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
+#endif
 	if( tol < fnorm ) {
 		std::cout << "The Frobenius norm is too large. "
 			"Make sure that you have used SPD matrix as input.\n";
@@ -122,6 +148,14 @@ alp::RC check_cholesky_solution(
 
 void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
+
+	alp::Semiring<
+		alp::operators::add< ScalarType >,
+		alp::operators::mul< ScalarType >,
+		alp::identities::zero,
+		alp::identities::one
+	> ring;
+	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
 
 	size_t N = 0;
 	if( !unit.fname.empty() ) {
@@ -144,20 +178,10 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		std::srand( RNDSEED );
 		generate_spd_matrix( N, matrix_data );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
-
-	alp::Semiring<
-		alp::operators::add< ScalarType >,
-		alp::operators::mul< ScalarType >,
-		alp::identities::zero,
-		alp::identities::one
-	> ring;
-	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
-
-	std::cout << "\tTesting ALP cholesky\n"
-		"\tH = L * L^T\n";
 
 	if( !internal::getInitialized( H ) ) {
 		std::cout << " Matrix H is not initialized\n";
@@ -180,7 +204,45 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 #ifdef DEBUG
 	print_matrix( std::string(" << L >> "), L );
 #endif
-	rc = rc ? rc : check_cholesky_solution( H, L, zero_scalar, ring );
+	rc = rc ? rc : check_cholesky_solution( H, L, ring );
+
+	rc = rc ? rc : alp::set( L, zero_scalar	);
+	// test blocked version, for bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( H, L, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
+
+	// test non-blocked inplace version
+	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
+	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
+	std::vector< ScalarType > matrix_data( N * N );
+	std::srand( RNDSEED );
+	generate_spd_matrix_full( N, matrix_data );
+	rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
+	rc = rc ? rc : alp::set( LL_original, LL );
+#ifdef DEBUG
+	print_matrix( " LL(input) ", LL );
+#endif
+	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
+#ifdef DEBUG
+	print_matrix( " LL(output) ", LL );
+#endif
+	auto LLUT = get_view< structures::UpperTriangular >( LL );
+	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+
+	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+		rc = rc ? rc : alp::set( LL, LL_original );
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
 }
 
 int main( int argc, char ** argv ) {
