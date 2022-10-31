@@ -321,7 +321,7 @@ namespace grb {
 			// compute outer product of column norms with m_ones
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
-				operators::left_assign_if< IOType, bool, IOType >(), SYMBOLIC
+				operators::left_assign_if< IOType, bool, IOType >(), RESIZE
 			);	
 			ret = ret ? ret : grb::outer(
 				colnorms_outer_m_ones, m_ones, colnorms,
@@ -397,7 +397,7 @@ namespace grb {
 
 			ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
 			
-			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, SYMBOLIC );
+			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, RESIZE );
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
 			
 			if ( ret != SUCCESS ) {

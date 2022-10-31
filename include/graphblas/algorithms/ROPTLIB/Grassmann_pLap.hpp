@@ -71,20 +71,12 @@ namespace ROPTLIB {
 			}
 		}
 
-<<<<<<< HEAD
         double summandEvalNum(const size_t l) const
         {
             grb::Matrix<double> Wuu(n, n);
             grb::resize(Wuu, grb::nnz(W));
             grb::Vector<double> vec(n);
             double s = 0;
-=======
-		// function that evaluates the sum in the numerator ...
->>>>>>> fe148c2b (Update graphBLAS and made some minor changes for ease of use)
-
-		double summandEvalNum( const size_t l ) const {
-
-			double s = 0;
 
 			grb::set( Wuu, W );
 			// grb::clear( vec );
@@ -95,9 +87,7 @@ namespace ROPTLIB {
 				},
 				this->Wuu );
 
-			// for( const auto &triplet : Wuu ) {
 
-			// }
 			grb::vxm( vec_aux, ones, Wuu, reals_ring );
 			grb::dot( s, vec_aux, ones, reals_ring );
 
