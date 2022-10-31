@@ -27,8 +27,8 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * Computes the Cholesky decomposition LL^T = H of a real symmetric
-		 * positive definite (SPD) matrix H where \a L is lower triangular.
+		 * Computes the Cholesky decomposition U^TU = H of a real symmetric
+		 * positive definite (SPD) matrix H where \a U is upper triangular.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -51,6 +51,7 @@ namespace alp {
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
+				// TODO: structures::Symmetric should be replced with structures::SymmetricPositiveDefinite
 				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
@@ -169,15 +170,15 @@ namespace alp {
 		}
 
 		/**
-		 * Computes the blocked version Cholesky decomposition LL^H = H of a real symmetric
-		 * or complex hermitian positive definite (SPD) matrix H where \a L is lower triangular.
-		 * L^H  is equvalent to cojugate(transpose(L))
+		 * Computes the blocked version Cholesky decomposition U^TU = H of a real symmetric
+		 * positive definite (SPD) matrix H where \a U is lower triangular.
+		 * U^T  is equvalent to transpose(U)
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
 		 * @param[out] L    output upper triangular matrix
-		 * @param[in]  H    input real symmetric (or complex hermitian) positive definite matrix
+		 * @param[in]  H    input real symmetric positive definite matrix
 		 * @param[in]  ring The semiring used in the computation
 		 * @return RC        SUCCESS if the execution was correct
 		 *

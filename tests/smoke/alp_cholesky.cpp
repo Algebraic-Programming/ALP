@@ -106,7 +106,7 @@ alp::RC check_cholesky_solution(
 	rc = rc ? rc : alp::set( HminsLLt, zero );
 
 	// LLT = -LLT
-	Scalar< T > alpha( *zero );
+	Scalar< T > alpha( zero );
 	rc = rc ? rc : foldl( alpha, one, minus );
 	rc = rc ? rc : foldl( LLT, alpha, ring.getMultiplicativeOperator() );
 
