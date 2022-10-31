@@ -207,8 +207,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = rc ? rc : check_cholesky_solution( H, L, ring );
 
 	rc = rc ? rc : alp::set( L, zero_scalar	);
-	// test blocked version, for bs = 1, N / 2 and N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs + N / 2, N ) ) {
+	// test blocked version, for bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
 		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
 		rc = rc ? rc : check_cholesky_solution( H, L, ring );
 		if( bs == N ) {
@@ -234,8 +234,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	auto LLUT = get_view< structures::UpperTriangular >( LL );
 	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
 
-	// test non-blocked inplace version, for bs = 1, N / 2 and N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs + N / 2, N ) ) {
+	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
 		rc = rc ? rc : alp::set( LL, LL_original );
 		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
 		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
