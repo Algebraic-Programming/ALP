@@ -30,6 +30,11 @@ using namespace arma;
 using namespace grb;
 using namespace algorithms;
 
+#ifdef DETERMINISTIC
+    #pragma message("Random numbers are now set to same seed, making it deterministic")
+#endif
+
+
 namespace grb
 {
 
@@ -221,7 +226,7 @@ namespace grb
             // Define the Grassmann manifold
             ROPTLIB::Stiefel Domain(n, k);
 
-            // ARMA eigenvecs for initial guess (debug only)
+            //ARMA eigenvecs for initial guess (debug only)
             // double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
             // std::cout << "-------------" << std::endl;
             // std::cout << "|The ARMA eigenvecs|" << std::endl;
@@ -235,11 +240,11 @@ namespace grb
             // }
             // std::cout << "ARMA Initial Guess" << std::endl;
             // std::cout << "-------------" << std::endl;
-            // std::cout << GrassInit << std::endl;
+            // //std::cout << GrassInit << std::endl;
             // std::cin.get();
 
-            // generate sparse matrix
-            // sp_mat A = sprandu<sp_mat>(100, 100, 0.1);
+            // //generate sparse matrix
+            // sp_mat A = sprandu<sp_mat>(1024, 1024, 0.1);
             // sp_mat B = A.t()*A;
 
             // B.brief_print("input matrix A");
@@ -257,13 +262,17 @@ namespace grb
             // std::cout << eigval << std::endl;
 
             // Random initial guess for the eigenvectors on the Grassmann manifold
-            genrandseed(time(NULL));
+#ifndef DETERMINISTIC
+			genrandseed(time(NULL));
+#else
+            genrandseed(1234);
+#endif
             ROPTLIB::Variable GrassInit = Domain.RandominManifold(); // Random initial guess for the
             std::cout << "----------------------" << std::endl;
             std::cout << "Random Initial Guess on Manifold" << std::endl;
-            std::cout << GrassInit << std::endl;
+            //std::cout << GrassInit << std::endl;
             std::cout << "----------------------" << std::endl;
-            // std::cin.get();
+            //std::cin.get();
 
             // ROPTLIB variable for the solution vector
             ROPTLIB::Variable Optimizer;
@@ -360,9 +369,9 @@ namespace grb
             std::cout << "-------------" << std::endl;
             std::cout << "The final solution" << std::endl;
             std::cout << "-------------" << std::endl;
-            std::cout << Optimizer << std::endl;
+            //std::cout << Optimizer << std::endl;
             std::cout << "-------------" << std::endl;
-            std::cin.get();
+            //std::cin.get();
 
             // Print the first 10 pointer values (Debug only)
             // std::cout << "Print the pointer values" << std::endl;
@@ -437,7 +446,7 @@ namespace grb
                 double rcut = 0;
                 grb::Vector<size_t> x_temp(n);
                 for (const auto &pair : clusters_and_distances)
-                {
+                {   
                     grb::setElement(x_temp, pair.second.first, pair.first);
                 }
 

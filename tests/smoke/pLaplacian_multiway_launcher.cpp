@@ -11,6 +11,7 @@
 #include <time.h>
 #include <inttypes.h>
 
+
 using namespace arma;
 using namespace grb;
 using namespace algorithms;
@@ -32,6 +33,9 @@ struct output
 	grb::utils::TimerResults times;
 	PinnedVector<size_t> pinnedVector;
 };
+
+                
+
 
 // Read the data as an Armadillo matrix Mat of type T, if there is no data the matrix will be empty
 template <typename T>
@@ -122,41 +126,61 @@ void grbProgram(const struct input &data_in, struct output &out)
 		std::cout << "Info: nonzero check skipped as the number of nonzeroes cannot be derived from the matrix file header. The grb::Matrix reports " << nnz(W) << " nonzeroes.\n";
 	}
 
-	//if the input is unweighted, the weights of W need to be set to 1
+	/* if the input is unweighted, the weights of W need to be set to 1 */
 	if (data_in.unweighted)
 	{
 		grb::set(W, W, 1.0);
 	}
 
-	//labels vector
+	/* labels vector */
 	Vector<size_t> x(n);
 	grb::set(x, 0); //make x dense
 
 	out.times.preamble = timer.time();
 
-	//by default, copy input requested repetitions to output repetitions performed
+	/* by default, copy input requested repetitions to output repetitions performed */
 	//out.rep = data_in.rep;
 
-	//time a single call
+	/* time a single call */
 	RC rc = SUCCESS;
 	timer.reset();
 
-	// Initialize parameters for the partitioner
-	int kmeans_iters = 30;	   // kmeans iterations
-	float final_p = 1.1;	   // final value of p
-	float factor_reduce = 0.9; // reduction factor for the value of p
+	/* Initialize parameters for the partitioner */
+	int kmeans_iters = 30;	      // kmeans iterations
+	float final_p = 1.1;	      // final value of p
+	float factor_reduce = 0.9;    // reduction factor for the value of p
+	const double print_eigen = 0; // print eigenvectors and input matrices
 
-	// Load the arma-eigenvecs from a txt file (Debug file)
-	// std::ifstream file("datasets/V_Rect_5pt_4.txt");
-	// arma::Mat<double> V = load_mat<double>(file, "V");
-	// file.close();
 
-	// Call the Multiway p-spectral partitioner
-	// 1. Debugging Call: Initialize the problem with the arma eigenvectors found by Matlab 
-	// rc = grb::algorithms::pLaplacian_multi(x, W, V, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
-	// 2. Normal Call: Random Initial guess, and computation of the eigenvecs at p = 2 with grb+ROPTLIB
-	rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	/* Load the arma-eigenvecs from a txt file (Debug file)
+	std::ifstream file("/home/pasadakis/datasets/V_Rect_5pt_4.txt");
+	arma::Mat<double> V = load_mat<double>(file, "V");
+	file.close(); */
+
+
+	/* Read the adjacency from an .mtx file. Diagonal has to be full */
+	// std::cout << data_in.filename << endl;
+	arma::mat Adj;
+	Adj.load("/home/anderhan/projectArea/datasets/delaunay_n10_Nodiag.mtx", coord_ascii);
+	std::cout << "N,M: " << Adj.n_rows << Adj.n_cols << std::endl;
+	Adj = Adj.tail_rows(Adj.n_rows-1);
+	Adj = Adj.tail_cols(Adj.n_cols-1);
+	// make symmetric base on lower triangular
+	Adj = arma::symmatl(Adj);
+	if (print_eigen == 1){
+		std::cout << "Symmetric Adjacency:" << Adj.is_symmetric() << endl;	
+		Adj.brief_print("Loaded adjacency");
+		std::cin.get();
+	}
 	
+	/* Call the Multiway p-spectral partitioner */
+	/* 1. Debugging Call: Initialize the problem with the arma eigenvectors found by Matlab */
+	// rc = grb::algorithms::pLaplacian_multi(x, W, V, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	/* 2. Normal Call: Random Initial guess, and computation of the eigenvecs at p = 2 with grb+ROPTLIB */
+	// rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
+	/* 3. Arma initial guess Call: Arma Initial guess, and computation of the eigenvecs at p < 2 with grb+ROPTLIB */
+	rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters, kmeans_iters);
+
 
 	double single_time = timer.time();
 

@@ -119,7 +119,11 @@ namespace grb {
 			{
 				const size_t seed_uniform =
 					std::chrono::system_clock::now().time_since_epoch().count();
-				std::default_random_engine random_generator( seed_uniform );
+#ifndef DETERMINISTIC
+			std::default_random_engine random_generator( seed_uniform );
+#else
+			std::default_random_engine random_generator( 1234 );
+#endif
 				std::uniform_int_distribution< size_t > uniform( 0, n - 1 );
 				i = uniform( random_generator );
 			}
@@ -148,7 +152,12 @@ namespace grb {
 				double sample = -1;
 				if( ret == SUCCESS ) {
 					const size_t seed = std::chrono::system_clock::now().time_since_epoch().count();
-					std::default_random_engine generator( seed );
+#ifndef DETERMINISTIC
+			
+					std::default_random_engine generator( seed_uniform );
+#else
+					std::default_random_engine generator( 1234 );
+#endif					
 					std::uniform_real_distribution< double > uniform( 0, 1 );
 					sample = uniform( generator );
 					ret = grb::collectives<>::broadcast( sample, 0 );
@@ -258,7 +267,6 @@ namespace grb {
 			// std::cout << ret << "No 1" << std::endl;
 			ret = ret ? ret : grb::set( m_ones, true );
 			ret = ret ? ret : grb::set( k_ones, true );
-			
 
 			// X with normalised columns
 			Matrix< IOType > X_norm( m, n );
@@ -309,8 +317,6 @@ namespace grb {
 			ret = ret ? ret : grb::eWiseLambda( [&colnorms]( const size_t i ){
 				colnorms[i] = std::sqrt( colnorms[i] );
 			}, colnorms );
-			
-
 
 			// compute outer product of column norms with m_ones
 			ret = ret ? ret : grb::outer(
@@ -333,7 +339,11 @@ namespace grb {
 			// generate first centroid by selecting a column of X uniformly at random
 
 			size_t seed_uniform = std::chrono::system_clock::now().time_since_epoch().count();
-  			std::default_random_engine random_generator( seed_uniform );
+#ifndef DETERMINISTIC
+			std::default_random_engine random_generator( seed_uniform );
+#else
+			std::default_random_engine random_generator( 1234 );
+#endif
 			std::uniform_int_distribution< size_t > uniform( 0, n-1 );
 
 			size_t i = uniform( random_generator );
@@ -363,14 +373,12 @@ namespace grb {
 
 				// update maximum inner products of all points to the already selected ones
 				ret = ret ? ret : grb::foldl( max_innerprods, selected_innerprods, max_monoid );
-			
 
 				// find the minimum entry of max_innerprods and select the next index
 				ret = ret ? ret : grb::dot(
 					selected_index, labels, max_innerprods, argmin_monoid,
 					operators::zip< size_t, IOType >()
 				);
-			
 
 				i = selected_index.first;
 			}
@@ -554,4 +562,3 @@ namespace grb {
 
 #endif // end _H_GRB_KMEANS
 
-#endif //end _H_GRB_KMEANS
