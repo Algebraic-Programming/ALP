@@ -76,6 +76,9 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_uptr out-of-place non-blocked version.\n";
+#endif
 			RC rc = SUCCESS;
 
 			if(
@@ -217,6 +220,9 @@ namespace alp {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr out-of-place blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			if(
@@ -324,6 +330,9 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr in-place non-blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			RC rc = SUCCESS;
@@ -413,6 +422,9 @@ namespace alp {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr in-place blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			RC rc = SUCCESS;
