@@ -21,6 +21,7 @@
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/forwardsubstitution.hpp>
+#include <alp/algorithms/fused_mxm_foldl.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
 
 namespace alp {
@@ -477,27 +478,12 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::SymmetricPositiveDefinite, Dense > Reflector( ncols( A12 ) );
-				rc = rc ? rc : set( Reflector, zero );
+				auto A22UT = get_view< structures::Symmetric >( L, range2, range2 );
+				auto A12T = get_view< view::transpose >( A12 );
+				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A22UT, A12T, ring, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
-					std::cout << "set(2) failed\n";
-					return rc;
-				}
-#endif
-				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A12 ), A12, ring );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "mxm failed\n";
-					return rc;
-				}
-#endif
-				auto A22UT = get_view< structures::SymmetricPositiveDefinite >( U, range2, range2 );
-
-				rc = rc ? rc : foldl( A22UT, Reflector, minus );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "foldl failed\n";
+					std::cout << "algorithms::fused_symm_mxm_foldl failed\n";
 					return rc;
 				}
 #endif
