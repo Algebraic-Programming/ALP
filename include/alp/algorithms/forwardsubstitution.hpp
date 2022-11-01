@@ -213,7 +213,8 @@ namespace alp {
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value &&
-				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value &&
+				config::default_backend != Backend::dispatch
 			> * = nullptr
 		>
 		RC forwardsubstitution(
@@ -238,6 +239,60 @@ namespace alp {
 				auto x = get_view( X, utils::range( 0, m ), i );
 				rc = rc ? rc : algorithms::forwardsubstitution( A, x, ring, minus, divide );
 			}
+
+			return rc;
+		}
+
+		/** inplace matrix version */
+		template<
+			typename MatA,
+			typename MatX,
+			typename D = typename MatA::value_type,
+			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			typename Minus = operators::subtract< D >,
+			typename Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatA >::value &&
+				is_matrix< MatX >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value &&
+				structures::is_a< typename MatA::structure, structures::LowerTriangular >::value &&
+				config::default_backend == Backend::dispatch
+			> * = nullptr
+		>
+		RC forwardsubstitution(
+			MatA &A,
+			MatX &X,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
+#ifdef DEBUG
+			std::cout << "Entered TRSM in-place matrix version (offloads to blas_trsm).\n";
+#endif
+			(void) ring;
+			(void) minus;
+			(void) divide;
+			RC rc = SUCCESS;
+
+			if ( ncols( A ) != nrows( X ) ) {
+				std::cerr << "Incompatible sizes in trsm.\n";
+				return FAILED;
+			}
+
+			const size_t m = nrows( X );
+			const size_t n = ncols( X );
+
+#ifdef _ALP_WITH_DISPATCH
+			cblas_dtrsm(
+				CblasRowMajor, CblasLeft, CblasUpper, CblasTrans, CblasNonUnit,
+				m, n,
+				1,
+				internal::getRawPointerToFirstElement( A ), internal::getLeadingDimension( A ),
+				internal::getRawPointerToFirstElement( X ), internal::getLeadingDimension( X )
+			);
+#endif
 
 			return rc;
 		}
