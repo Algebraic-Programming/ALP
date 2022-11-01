@@ -114,7 +114,8 @@ namespace alp {
 			(void) op;
 
 			// Verify that the C is of dimensions nrows(A) x nrows(A)
-			const size_t m = nrows( A );
+			const size_t k = nrows( A );
+			const size_t m = ncols( A );
 			if( ( nrows( C ) != m ) || ( ncols( C ) != m ) ) {
 				return MISMATCH;
 			}
@@ -124,11 +125,14 @@ namespace alp {
 #ifdef _ALP_WITH_DISPATCH
 			cblas_dsyrk(
 				CblasRowMajor, CblasUpper, CblasTrans,
-				m, ncols( A ),
+				m,
+				k,
 				-1,
-				internal::getRawPointerToFirstElement( A ), internal::getLeadingDimension( A ),
+				internal::getRawPointerToFirstElement( A ),
+				internal::getLeadingDimension( A ),
 				1,
-				internal::getRawPointerToFirstElement( C ), internal::getLeadingDimension( C )
+				internal::getRawPointerToFirstElement( C ),
+				internal::getLeadingDimension( C )
 			);
 #endif
 
