@@ -71,17 +71,6 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
 endif()
 
-if( WITH_ALP_REFERENCE_BACKEND )
-	add_library( backend_alp_reference_headers INTERFACE )
-	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
-	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/alp_reference"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
-endif()
-
 if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/reference/"
 		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/reference"

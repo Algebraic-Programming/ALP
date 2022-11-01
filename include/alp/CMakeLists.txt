@@ -62,14 +62,10 @@ if( WITH_ALP_REFERENCE_BACKEND_HEADERS )
 	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
 	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
 
-	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
+	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
 endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
-	add_library( backend_alp_reference_headers INTERFACE )
-	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
-	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
 		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_reference"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
@@ -78,11 +74,11 @@ endif()
 
 # this target lists the algorithms implemented on top of the generic functionalities,
 # hence it depends only on backend_headers_nodefs
-add_library( algorithms INTERFACE )
-target_link_libraries( algorithms INTERFACE backend_headers_nodefs )
+add_library( alp_algorithms INTERFACE )
+target_link_libraries( alp_algorithms INTERFACE backend_headers_nodefs )
 
 target_include_directories(
-	algorithms INTERFACE
+	alp_algorithms INTERFACE
 
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/alp/algorithms>
 	$<INSTALL_INTERFACE:alp/algorithms>
@@ -93,4 +89,4 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
-install( TARGETS algorithms EXPORT GraphBLASTargets )
+install( TARGETS alp_algorithms EXPORT GraphBLASTargets )
