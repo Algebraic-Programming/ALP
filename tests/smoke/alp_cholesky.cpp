@@ -73,11 +73,10 @@ struct inpdata {
  *   positive definite matrix for in-place tests
  */
 template< typename T >
-void generate_symmherm_pos_def_mat_data_full(
-	size_t N,
-	std::vector< T > &mat_data
-) {
-	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
+void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
+	if( data.size() != N * N ) {
+		std::cout << "Error: generate_spd_matrix_full: Provided container does not have adequate size\n";
+	}
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			mat_data[ i * N + j ] = random_value< T >();
@@ -241,13 +240,15 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data2( ( N * ( N + 1 ) ) / 2 );
-		// Hermitian is currently using full storage
-		if( grb::utils::is_complex< ScalarType >::value ) {
-			matrix_data2.resize( N * N );
-		}
-		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data2 );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data2.begin(), matrix_data2.end() );
+#ifdef _ALP_WITH_REFERENCE
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		generate_spd_matrix( N, matrix_data );
+#endif
+#ifdef _ALP_WITH_DISPATCH
+		std::vector< ScalarType > matrix_data( N * N );
+		generate_spd_matrix_full( N, matrix_data );
+#endif
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
 	if( !internal::getInitialized( H ) ) {
