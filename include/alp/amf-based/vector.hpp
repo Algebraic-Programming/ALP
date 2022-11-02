@@ -481,7 +481,7 @@ namespace alp {
 	) {
 		return internal::get_view< TargetStructure >(
 			source,
-			imf::Select( getLength( source ), sel ),
+			imf::Select( size( source ), sel ),
 			imf::Id( 1 )
 		);
 	}

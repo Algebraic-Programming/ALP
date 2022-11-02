@@ -273,7 +273,7 @@ namespace alp {
 	) {
 
 #ifdef _DEBUG
-		std::cout << "foldr(Vector,Scalar,Monoid) called. Vector has size " << getLength( x ) << " .\n";
+		std::cout << "foldr(Vector,Scalar,Monoid) called. Vector has size " << size( x ) << " .\n";
 #endif
 
 		internal::setInitialized(
@@ -285,7 +285,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( x );
+		const size_t n = size( x );
 		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldr( x[ i ], *beta, monoid.getOperator() );
 		}
@@ -405,7 +405,7 @@ namespace alp {
 			"of the given operator" );
 
 #ifdef _DEBUG
-		std::cout << "foldr(Scalar,Vector,Monoid) called. Vector has size " << getLength( y ) << " .\n";
+		std::cout << "foldr(Scalar,Vector,Monoid) called. Vector has size " << size( y ) << " .\n";
 #endif
 		internal::setInitialized(
 			y,
@@ -416,7 +416,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( y );
+		const size_t n = size( y );
 		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldr( *alpha, y[ i ], monoid.getOperator() );
 		}
@@ -453,7 +453,7 @@ namespace alp {
 			"of the given operator" );
 
 #ifdef _DEBUG
-		std::cout << "foldr(Scalar,Vector,OP) called. Vector has size " << getLength( y ) << " .\n";
+		std::cout << "foldr(Scalar,Vector,OP) called. Vector has size " << size( y ) << " .\n";
 #endif
 
 		internal::setInitialized(
@@ -465,7 +465,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( y );
+		const size_t n = size( y );
 		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldr( *alpha, y[ i ], op );
 		}
@@ -571,8 +571,8 @@ namespace alp {
 
 #ifdef _DEBUG
 		std::cout << "foldr(Vector,Vector,OP) called. ";
-		std::cout << "Vector 1 has size " << getLength( x ) << " . ";
-		std::cout << "Vector 2 has size " << getLength( y ) << " .\n";
+		std::cout << "Vector 1 has size " << size( x ) << " . ";
+		std::cout << "Vector 2 has size " << size( y ) << " .\n";
 #endif
 		internal::setInitialized(
 			y,
@@ -583,9 +583,9 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( y );
+		const size_t n = size( y );
 
-		if( getLength( x ) != n ) {
+		if( size( x ) != n ) {
 			return MISMATCH;
 		}
 
@@ -804,7 +804,7 @@ namespace alp {
 		);
 
 #ifdef _DEBUG
-		std::cout << "foldl(Vector,Scalar,Op) called. Vector has size " << getLength( x ) << " .\n";
+		std::cout << "foldl(Vector,Scalar,Op) called. Vector has size " << size( x ) << " .\n";
 #endif
 
 		internal::setInitialized(
@@ -816,7 +816,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( x );
+		const size_t n = size( x );
 		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldl( x[ i ], *beta, op );
 		}
@@ -1901,7 +1901,7 @@ namespace alp {
 			reference
 		> temp(
 			init_lambda,
-			getLength( x ),
+			size( x ),
 			data_lambda
 		);
 		RC rc = foldl( z, temp, addMonoid );
@@ -2054,7 +2054,7 @@ namespace alp {
 		Args const &... args
 	) {
 		// catch mismatch
-		if( getLength( x ) != getLength( y ) ) {
+		if( size( x ) != size( y ) ) {
 			return MISMATCH;
 		}
 		// continue
@@ -2198,7 +2198,7 @@ namespace alp {
 			"the given monoid" );
 
 #ifdef _DEBUG
-		std::cout << "foldl(Scalar,Vector,Monoid) called. Vector has size " << getLength( y ) << " .\n";
+		std::cout << "foldl(Scalar,Vector,Monoid) called. Vector has size " << size( y ) << " .\n";
 #endif
 
 		internal::setInitialized(
@@ -2210,7 +2210,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const size_t n = getLength( y );
+		const size_t n = size( y );
 		for ( size_t i = 0; i < n; ++i ) {
 			(void) internal::foldl( *alpha, y[ i ], monoid.getOperator() );
 		}
@@ -2366,7 +2366,7 @@ namespace alp {
 			view::Functor< std::function< void( DataType &, const size_t, const size_t ) > >,
 			imf::Id, imf::Id,
 			reference
-		>( init_lambda,	getLength( x ),	data_lambda );
+		>( init_lambda,	size( x ),	data_lambda );
 
 	}
 

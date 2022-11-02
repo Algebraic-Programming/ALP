@@ -600,7 +600,7 @@ namespace alp {
 			return ILLEGAL;
 		}
 
-		if( getLength( x ) != getLength( y ) ) {
+		if( size( x ) != size( y ) ) {
 			return MISMATCH;
 		}
 
