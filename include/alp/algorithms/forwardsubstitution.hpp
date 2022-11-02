@@ -72,7 +72,7 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
-			if( ( nrows( A ) != size( x ) ) || ( size( b ) != size( x ) ) ) {
+			if( ( ncols( A ) != size( x ) ) || ( size( b ) != size( x ) ) ) {
 				std::cerr << "Incompatible sizes in trsv.\n";
 				return FAILED;
 			}
