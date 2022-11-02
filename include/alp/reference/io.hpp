@@ -74,7 +74,7 @@ namespace alp {
 	size_t size(
 		const Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x
 	) noexcept {
-		return getLength( x );
+		return internal::getLength( x );
 	}
 
 	/**

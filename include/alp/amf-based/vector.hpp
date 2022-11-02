@@ -43,12 +43,13 @@
 
 namespace alp {
 
-	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	size_t getLength( const Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v ) noexcept {
-		return v._length();
-	}
-
 	namespace internal {
+
+		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
+		size_t getLength( const alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v ) noexcept {
+			return v._length();
+		}
+
 		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
 		bool getInitialized( const alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v ) noexcept {
 			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::base_type & >( v ) );
@@ -115,7 +116,7 @@ namespace alp {
 				Storage info friends
 			******************** */
 
-			friend size_t getLength<>( const self_type & ) noexcept;
+			friend size_t internal::getLength<>( const Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > &v ) noexcept;
 
 			/** Returns the length of the vector */
 			size_t _length() const {
