@@ -24,7 +24,7 @@
 assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS LPF_INCLUDE_DEFS
 	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
 )
-assert_valid_variables( INCLUDE_INSTALL_DIR )
+assert_valid_variables( INCLUDE_INSTALL_DIR HEADERS_REGEX )
 
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "../graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
@@ -39,7 +39,8 @@ set( root_files
 	"phase.hpp" "pinnedvector.hpp" "properties.hpp"
 	"rc.hpp" "semiring.hpp" "spmd.hpp"
 	"tags.hpp" "type_traits.hpp" "utils.hpp"
-	"vector.hpp"
+	"vector.hpp" "SynchronizedNonzeroIterator.hpp"
+	"NonzeroStorage.hpp"
 )
 set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")
 install( FILES ${root_files} DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" )
