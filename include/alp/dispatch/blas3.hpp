@@ -25,7 +25,7 @@
 
 #include <algorithm>   // for std::min/max
 #include <type_traits> // for std::enable_if
-#include <cblas.h> // for gemm
+#include <blas.h> // for gemm
 
 #include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
