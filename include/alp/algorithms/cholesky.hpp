@@ -479,7 +479,6 @@ namespace alp {
 #endif
 
 				auto A22UT = get_view< structures::Symmetric >( U, range2, range2 );
-				//auto A12T = get_view< view::transpose >( A12 );
 				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A22UT, A12, ring, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -491,104 +490,6 @@ namespace alp {
 
 			return rc;
 		}
-
-// 		/** inplace blocked version, part below diagonal is not modified */
-// 		template<
-// 			typename MatL,
-// 			typename D = typename MatL::value_type,
-// 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
-// 			typename Minus = operators::subtract< D >,
-// 			std::enable_if_t<
-// 				is_matrix< MatL >::value &&
-// 				structures::is_a< typename MatL::structure, structures::Square >::value &&
-// 				is_semiring< Ring >::value &&
-// 				is_operator< Minus >::value
-// 			> * = nullptr
-// 		>
-// 		RC cholesky_uptr_blk_v3(
-// 			MatL &L,
-// 			const size_t &bs,
-// 			const Ring &ring = Ring(),
-// 			const Minus &minus = Minus()
-// 		) {
-// #ifdef DEBUG
-// 			std::cout << "Entered cholesky_upr in-place blocked version.\n";
-// #endif
-// 			const Scalar< D > zero( ring.template getZero< D >() );
-
-// 			RC rc = SUCCESS;
-
-// 			const size_t n = nrows( L );
-
-// 			//nb: number of blocks of (max) size bz
-// 			if( ( bs == 0 ) || ( bs > n ) ) {
-// 				std::cerr << "Block size has illegal value, bs =   " << bs << " .\n";
-// 				std::cerr << "It should be from interval < 0,  " << n << "] .\n";
-// 				return FAILED;
-// 			}
-// 			size_t nb = n / bs;
-// 			if( n % bs != 0 ){
-// 				nb = nb + 1;
-// 			}
-
-
-// 			for( size_t i = 0; i < nb; ++i ) {
-// 				const size_t a = 0;
-// 				const size_t b = std::min( i * bs, n );
-// 				const size_t c = std::min( ( i + 1 ) * bs, n );
-// 				const size_t d = n;
-
-// 				const utils::range range0( a, b );
-// 				const utils::range range1( b, c );
-// 				const utils::range range2( c, d );
-
-// 				//auto A00 = get_view< structures::Square >( L, range0, range0 );
-// 				auto A01 = get_view< structures::General >( L, range0, range1 );
-// 				auto A02 = get_view< structures::General >( L, range0, range2 );
-// 				auto A11 = get_view< structures::Square >( L, range1, range1 );
-// 				auto A12 = get_view< structures::General >( L, range1, range2 );
-
-// 				auto A01_T = get_view< alp::view::transpose >( A01 );
-// 				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A11, A01, ring, minus );
-// ////##################
-// 				// for complex we should conjugate A12
-// 				auto A12 = get_view< structures::General >( L, range1, range2 );
-
-// 				rc = rc ? rc : cholesky_uptr( A11, ring );
-// #ifdef DEBUG
-// 				if( rc != SUCCESS ) {
-// 					std::cout << "cholesky_uptr failed\n";
-// 					return rc;
-// 				}
-// #endif
-
-// 				//auto A11_T = get_view< alp::view::transpose >( A11 );
-// 				auto A11UT = get_view< structures::UpperTriangular >( L, range1, range1 );
-
-// 				auto A11UT_T = get_view< alp::view::transpose >( A11UT );
-
-// 				rc = rc ? rc : algorithms::forwardsubstitution(	A11UT_T, A12, ring );
-// #ifdef DEBUG
-// 				if( rc != SUCCESS ) {
-// 					std::cout << "Forwardsubstitution failed\n";
-// 					return rc;
-// 				}
-// #endif
-
-// 				auto A22UT = get_view< structures::Symmetric >( L, range2, range2 );
-// 				auto A12T = get_view< view::transpose >( A12 );
-// 				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A22UT, A12T, ring, minus );
-// #ifdef DEBUG
-// 				if( rc != SUCCESS ) {
-// 					std::cout << "algorithms::fused_symm_mxm_foldl failed\n";
-// 					return rc;
-// 				}
-// #endif
-// 			}
-
-// 			return rc;
-// 		}
-
 
 	} // namespace algorithms
 } // namespace alp
