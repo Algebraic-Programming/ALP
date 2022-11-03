@@ -162,11 +162,6 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	find_package( LPF REQUIRED )
 endif( )
 
-if( WITH_ALP_DISPATCH_BACKEND )
-	include( Blas )
-endif( )
-
-
 ### SETTINGS FOR COMPILATION
 
 set( TEST_CATEGORIES "unit" "smoke" "performance" )
@@ -181,6 +176,11 @@ include( AddGRBVars )
 
 # here, add information for wrappers generated during installation
 include( AddGRBInstall )
+
+if( WITH_ALP_DISPATCH_BACKEND )
+        include( Blas )
+endif( )
+
 
 # compilation flags for all targets
 include( CompileFlags )
