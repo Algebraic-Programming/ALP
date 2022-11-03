@@ -61,7 +61,7 @@ namespace alp {
 		) {
 
 			// Verify that the C is of dimensions nrows(A) x nrows(A)
-			const size_t m = nrows( A );
+			const size_t m = ncols( A );
 			if( ( nrows( C ) != m ) || ( ncols( C ) != m ) ) {
 				return MISMATCH;
 			}
@@ -77,7 +77,7 @@ namespace alp {
 			assert( rc == SUCCESS );
 
 			// AAT += A * AT
-			rc = rc ? rc : mxm( AAT, A, AT, ring );
+			rc = rc ? rc : mxm( AAT, AT, A, ring );
 			assert( rc == SUCCESS );
 
 			// C += AAT

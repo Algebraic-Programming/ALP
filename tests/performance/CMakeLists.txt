@@ -78,6 +78,15 @@ add_grb_executables( driver_label ../smoke/label.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( alp_cholesky_perf alp_cholesky.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_cholesky_perf_netliblapack alp_cholesky.cpp
+	BACKENDS alp_reference alp_dispatch
+	ADDITIONAL_LINK_LIBRARIES lapack kblas gfortran kmlheaders 
+)
+
 # targets to list and build the test for this category
 get_property( performance_tests_list GLOBAL PROPERTY tests_category_performance )
 add_custom_target( "list_tests_category_performance"
