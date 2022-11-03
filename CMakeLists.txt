@@ -162,9 +162,10 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	find_package( LPF REQUIRED )
 endif( )
 
-# if( WITH_ALP_DISPATCH_BACKEND )
-# 	find_package( BLAS REQUIRED )
-# endif( )
+if( WITH_ALP_DISPATCH_BACKEND )
+	include( Blas )
+endif( )
+
 
 ### SETTINGS FOR COMPILATION
 
