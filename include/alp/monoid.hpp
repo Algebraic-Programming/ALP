@@ -36,6 +36,7 @@
 #include <alp/identities.hpp>
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
+#include <graphblas/monoid.hpp>
 
 /**
  * The main Sparse Library namespace.
@@ -46,92 +47,11 @@
 namespace alp {
 
 	/**
-	 * A generalised monoid.
-	 *
-	 * @tparam _OP The monoid operator.
-	 * @tparam _ID The monoid identity (the `0').
+	 * @see grb::Monoid
 	 */
 	template< class _OP, template< typename > class _ID >
-	class Monoid {
-
-		static_assert( alp::is_operator< _OP >::value, "First template argument to Monoid must be a GraphBLAS operator" );
-
-		static_assert( alp::is_associative< _OP >::value,
-			"Cannot form a monoid using the given operator since it is not "
-			"associative" );
-
-		static_assert( std::is_same< typename _OP::D1, typename _OP::D3 >::value || std::is_same< typename _OP::D2, typename _OP::D3 >::value,
-			"Cannot form a monoid when the output domain does not match at least "
-			"one of its input domains" );
-
-	public:
-		/** The left-hand side input domain. */
-		typedef typename _OP::D1 D1;
-
-		/** The right-hand side input domain. */
-		typedef typename _OP::D2 D2;
-
-		/** The output domain. */
-		typedef typename _OP::D3 D3;
-
-		/** The type of the underlying operator. */
-		typedef _OP Operator;
-
-		/** The underlying identity. */
-		template< typename IdentityType >
-		using Identity = _ID< IdentityType >;
-
-	private:
-		/**
-		 * The underlying binary operator.
-		 *
-		 * For stateless operators, this field corresponds to empty storage.
-		 */
-		Operator op;
-
-	public:
-		/**
-		 * Constructor that infers a default operator, given the operator type.
-		 * Useful for stateless operators.
-		 */
-		Monoid() : op() {}
-
-		/**
-		 * Retrieves the identity corresponding to this monoid. The identity value
-		 * will be cast to the requested domain.
-		 *
-		 * @tparam D The requested domain of the identity.
-		 *
-		 * @returns The identity corresponding to this monoid, cast to the requested
-		 *          domain.
-		 */
-		template< typename D >
-		constexpr D getIdentity() const {
-			return Identity< D >::value();
-		}
-
-		/**
-		 * Retrieves the underlying operator.
-		 *
-		 * @return The underlying operator. Any state is copied.
-		 */
-		Operator getOperator() const {
-			return op;
-		}
-	};
-
+	using Monoid = grb::Monoid< _OP, _ID >;
 	// type traits
-	template< class _OP, template< typename > class _ID >
-	struct is_monoid< Monoid< _OP, _ID > > {
-		/** This is a GraphBLAS monoid. */
-		static const constexpr bool value = true;
-	};
-
-	template< class OP, template< typename > class ID >
-	struct has_immutable_nonzeroes< Monoid< OP, ID > > {
-		static const constexpr bool value = alp::is_monoid< Monoid< OP, ID > >::value &&
-			std::is_same< OP, typename alp::operators::logical_or< typename OP::D1, typename OP::D2, typename OP::D3 > >::value;
-	};
 
 } // namespace alp
 

@@ -28,6 +28,7 @@
 #include <alp/density.hpp>
 #include <alp/views.hpp>
 #include <alp/storage.hpp>
+#include <graphblas/type_traits.hpp>
 
 namespace alp {
 
@@ -97,37 +98,22 @@ namespace alp {
 	} // namespace internal
 
 	/**
-	 * Used to inspect whether a given type is an ALP semiring.
-	 *
-	 * @tparam T The type to inspect.
+	 * @see grb::is_semiring
 	 */
 	template< typename T >
-	struct is_semiring {
-		/** Base case: an arbitrary type is not a semiring. */
-		static const constexpr bool value = false;
-	};
+	using is_semiring = grb::is_semiring< T >;
 
 	/**
-	 * Used to inspect whether a given type is an ALP monoid.
-	 *
-	 * @tparam T The type to inspect.
+	 * @see grb::is_monoid
 	 */
 	template< typename T >
-	struct is_monoid {
-		/** Base case: an arbitrary type is not a monoid. */
-		static const constexpr bool value = false;
-	};
+	using is_monoid = grb::is_monoid< T >;
 
 	/**
-	 * Used to inspect whether a given type is an ALP operator.
-	 *
-	 * @tparam T The type to inspect.
+	 * @see grb::is_operator
 	 */
 	template< typename T >
-	struct is_operator {
-		/** Base case: an arbitrary type is not an operator. */
-		static const constexpr bool value = false;
-	};
+	using is_operator = grb::is_operator< T >;
 
 	/**
 	 * Used to inspect whether a given type is an ALP object.
@@ -152,55 +138,24 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given operator is idempotent.
-	 *
-	 * @tparam T The operator to inspect.
-	 *
-	 * An example of an idempotent operator is the logical OR,
-	 * #alp::operators::logical_or.
+	 * @see grb::is_idempotent
 	 */
 	template< typename T >
-	struct is_idempotent {
-		static_assert( is_operator< T >::value, "Template argument to alp::is_idempotent must be an operator!" );
-		static const constexpr bool value = false;
-	};
+	using is_idempotent = grb::is_idempotent< T >;
 
 	/**
-	 * Used to inspect whether a given semiring has immutable nonzeroes under
-	 * addition.
-	 *
-	 * @tparam T The semiring to inspect.
-	 *
-	 * An example of a monoid with an immutable identity is the logical OR,
-	 * #alp::operators::logical_or.
+	 * @see grb::has_immutable_nonzeroes
 	 */
 	template< typename T >
-	struct has_immutable_nonzeroes {
-		static_assert( is_semiring< T >::value,
-			"Template argument to alp::has_immutable_nonzeroes must be a "
-			"semiring!" );
-		static const constexpr bool value = false;
-	};
+	using has_immutable_nonzeroes = grb::has_immutable_nonzeroes< T >;
 
 	namespace internal {
 
 		/**
-		 * Whether or not a given operator could translate to a no-op;
-		 * i.e., leave its outputs unmodified. This can be relevant
-		 * because it indicates situations where alp::apply could leave
-		 * the output uninitialised, which may well not be as intended.
-		 *
-		 * An example of an operator that non-trivially may result in a
-		 * no-op is alp::operators::left_assign_if. Such operators must
-		 * overload this internal type trait.
+		 * @see grb::internal::maybe_noop
 		 */
 		template< typename OP >
-		struct maybe_noop {
-			static_assert( is_operator< OP >::value,
-				"Argument to internal::maybe_noop must be an operator."
-			);
-			static const constexpr bool value = false;
-		};
+		using maybe_noop = grb::internal::maybe_noop< OP >;
 
 	} // end namespace alp::internal
 

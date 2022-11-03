@@ -25,6 +25,7 @@
 
 #include "internalops.hpp"
 #include "type_traits.hpp"
+#include <graphblas/ops.hpp>
 
 namespace alp {
 
@@ -34,487 +35,101 @@ namespace alp {
 	 */
 	namespace operators {
 
-		/**
-		 * This operator discards all right-hand side input and simply copies the
-		 * left-hand side input to the output variable. It exposes the complete
-		 * interface detailed in alp::operators::internal::Operator. This operator
-		 * can be passed to any GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 */
+		/** @see grb::operators::left_assign */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class left_assign : public internal::Operator< internal::left_assign< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = left_assign< A, B, C, D >;
-			left_assign() {}
-		};
+		using left_assign = grb::operators::left_assign< D1, D2, D3, grb::Backend::reference >;
 
-		/** TODO documentation. */
+		/** @see grb::operators::left_assign_if */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class left_assign_if : public internal::Operator< internal::left_assign_if< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = left_assign_if< A, B, C, D >;
-			left_assign_if() {}
-		};
+		using left_assign_if = grb::operators::left_assign_if< D1, D2, D3, grb::Backend::reference >;
 
-		/**
-		 * This operator discards all left-hand side input and simply copies the
-		 * right-hand side input to the output variable. It exposes the complete
-		 * interface detailed in alp::operators::internal::Operator. This operator
-		 * can be passed to any GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \odot(x,y)\ \to\ y \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 */
+		/** @see grb::operators::right_assign */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class right_assign : public internal::Operator< internal::right_assign< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = right_assign< A, B, C, D >;
-			right_assign() {}
-		};
+		using right_assign = grb::operators::right_assign< D1, D2, D3, grb::Backend::reference >;
 
-		/** TODO documentation. */
+		/** @see grb::operators::right_assign_if */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class right_assign_if : public internal::Operator< internal::right_assign_if< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = right_assign_if< A, B, C, D >;
-			right_assign_if() {}
-		};
+		using right_assign_if = grb::operators::right_assign_if< D1, D2, D3, grb::Backend::reference >;
 
-		/**
-		 * This operator takes the sum of the two input parameters and writes it to
-		 * the output variable. It exposes the complete interface detailed in
-		 * alp::operators::internal::Operator. This operator can be passed to any
-		 * GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x + y \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 *
-		 * \warning This operator expects numerical types for \a D1, \a D2, and
-		 *          \a D3, or types that have the appropriate operator+-functions
-		 *          available.
-		 */
+		/** @see grb::operators::add */
 		// [Operator Wrapping]
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class add : public internal::Operator< internal::add< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = add< A, B, C, D >;
-			add() {}
-		};
+		using add = grb::operators::add< D1, D2, D3, grb::Backend::reference >;
 		// [Operator Wrapping]
 
-		/**
-		 * This operator multiplies the two input parameters and writes the result to
-		 * the output variable. It exposes the complete interface detailed in
-		 * alp::operators::internal::Operator. This operator can be passed to any
-		 * GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \cdot y \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 *
-		 * \warning This operator expects numerical types for \a D1, \a D2, and
-		 *          \a D3, or types that have the appropriate operator*-functions
-		 *          available.
-		 */
+		/** @see grb::operators::mul */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class mul : public internal::Operator< internal::mul< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = mul< A, B, C, D >;
-			mul() {}
-		};
+		using mul = grb::operators::mul< D1, D2, D3, grb::Backend::reference >;
 
-		/**
-		 * This operator takes the maximum of the two input parameters and writes
-		 * the result to the output variable. It exposes the complete interface
-		 * detailed in alp::operators::internal::Operator. This operator can be
-		 * passed to any GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \max(x,y)\ \to\ \begin{cases}
-		 *    x \text{ if } x > y \\
-		 *    y \text{ otherwise} \end{cases} \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 *
-		 * \warning This operator expects objects with a partial ordering defined on
-		 *          and between elements of types \a D1, \a D2, and \a D3.
-		 */
+		/** @see grb::operators::max */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class max : public internal::Operator< internal::max< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = max< A, B, C, D >;
-			max() {}
-		};
+		using max = grb::operators::max< D1, D2, D3, grb::Backend::reference >;
 
-		/**
-		 * This operator takes the minimum of the two input parameters and writes
-		 * the result to the output variable. It exposes the complete interface
-		 * detailed in alp::operators::internal::Operator. This operator can be
-		 * passed to any GraphBLAS function or object constructor.
-		 *
-		 * Mathematical notation: \f$ \max(x,y)\ \to\ \begin{cases}
-		 *    x \text{ if } x < y \\
-		 *    y \text{ otherwise} \end{cases} \f$.
-		 *
-		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
-		 *       GraphBLAS functions.
-		 *
-		 * @tparam D1 The left-hand side input domain.
-		 * @tparam D2 The right-hand side input domain.
-		 * @tparam D3 The output domain.
-		 *
-		 * \warning This operator expects objects with a partial ordering defined on
-		 *          and between elements of types \a D1, \a D2, and \a D3.
-		 */
+		/** @see grb::operators::min */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class min : public internal::Operator< internal::min< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = min< A, B, C, D >;
-			min() {}
-		};
+		using min = grb::operators::min< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::subtract */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class subtract : public internal::Operator< internal::substract< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = subtract< A, B, C, D >;
-			subtract() {}
-		};
+		using subtract = grb::operators::subtract< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::divide */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class divide : public internal::Operator< internal::divide< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = divide< A, B, C, D >;
-			divide() {}
-		};
+		using divide = grb::operators::divide< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::divide_reverse */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class divide_reverse : public internal::Operator< internal::divide_reverse< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = divide_reverse< A, B, C, D >;
-			divide_reverse() {}
-		};
+		using divide_reverse = grb::operators::divide_reverse< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::equal */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class equal : public internal::Operator< internal::equal< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = equal< A, B, C, D >;
-			equal() {}
-		};
+		using equal = grb::operators::equal< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::not_equal */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class not_equal : public internal::Operator< internal::not_equal< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = not_equal< A, B, C, D >;
-			not_equal() {}
-		};
+		using not_equal = grb::operators::not_equal< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::any_or */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class any_or : public internal::Operator< internal::any_or< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = any_or< A, B, C, D >;
-			any_or() {}
-		};
+		using any_or = grb::operators::any_or< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::logical_or */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class logical_or : public internal::Operator< internal::logical_or< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = logical_or< A, B, C, D >;
-			logical_or() {}
-		};
+		using logical_or = grb::operators::logical_or< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::logical_and */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class logical_and : public internal::Operator< internal::logical_and< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = logical_and< A, B, C, D >;
-			logical_and() {}
-		};
+		using logical_and = grb::operators::logical_and< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::relu */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class relu : public internal::Operator< internal::relu< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = relu< A, B, C, D >;
-			relu() {}
-		};
+		using relu = grb::operators::relu< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::abs_diff */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class abs_diff : public internal::Operator< internal::abs_diff< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = abs_diff< A, B, C, D >;
-			abs_diff() {}
-		};
+		using abs_diff = grb::operators::abs_diff< D1, D2, D3, grb::Backend::reference >;
 
-		/** TODO documentation. */
+		/** @see grb::operators::argmin */
 		template< typename IType, typename VType >
-		class argmin : public internal::Operator< internal::argmin< IType, VType > > {
-		public:
-			argmin() {}
-		};
+		using argmin = grb::operators::argmin< IType, VType >;
 
-		/** TODO documentation. */
+		/** @see grb::operators::argmax */
 		template< typename IType, typename VType >
-		class argmax : public internal::Operator< internal::argmax< IType, VType > > {
-		public:
-			argmax() {}
-		};
+		using argmax = grb::operators::argmax< IType, VType >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::square_diff */
 		template< typename D1, typename D2, typename D3, enum Backend implementation = config::default_backend >
-		class square_diff : public internal::Operator< internal::square_diff< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = square_diff< A, B, C, D >;
-			square_diff() {}
-		};
+		using square_diff = grb::operators::square_diff< D1, D2, D3, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::zip */
 		template< typename IN1, typename IN2, enum Backend implementation = config::default_backend >
-		class zip : public internal::Operator< internal::zip< IN1, IN2, implementation > > {
-		public:
-			template< typename A, typename B, enum Backend D >
-			using GenericOperator = zip< A, B, D >;
-			zip() {}
-		};
+		using zip = grb::operators::zip< IN1, IN2, grb::Backend::reference >;
 
-		/** \todo add documentation */
+		/** @see grb::operators::equal_first */
 		template< typename D1, typename D2 = D1, typename D3 = D2, enum Backend implementation = config::default_backend >
-		class equal_first : public internal::Operator< internal::equal_first< D1, D2, D3, implementation > > {
-		public:
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = equal_first< A, B, C, D >;
-			equal_first() {}
-		};
+		using equal_first = grb::operators::equal_first< D1, D2, D3, grb::Backend::reference >;
 
 	} // namespace operators
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::left_assign_if< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::right_assign_if< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::left_assign< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::right_assign< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	// [Operator Type Traits]
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::add< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-	// [Operator Type Traits]
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::mul< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::max< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::min< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::subtract< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::divide< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::divide_reverse< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::equal< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::not_equal< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::any_or< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::logical_or< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::logical_and< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::abs_diff< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::relu< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename IType, typename VType >
-	struct is_operator< operators::argmin< IType, VType > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename IType, typename VType >
-	struct is_operator< operators::argmax< IType, VType > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::square_diff< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename IN1, typename IN2, enum Backend implementation >
-	struct is_operator< operators::zip< IN1, IN2, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::equal_first< D1, D2, D3, implementation > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::min< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::max< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::any_or< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::logical_or< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::logical_and< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::relu< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::left_assign_if< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::right_assign_if< D1, D2, D3 > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename IType, typename VType >
-	struct is_idempotent< operators::argmin< IType, VType > > {
-		static const constexpr bool value = true;
-	};
-
-	template< typename IType, typename VType >
-	struct is_idempotent< operators::argmax< IType, VType > > {
-		static const constexpr bool value = true;
-	};
 
 	template< typename OP >
 	struct is_associative {
@@ -525,22 +140,6 @@ namespace alp {
 	struct is_commutative {
 		static constexpr const bool value = is_operator< OP >::value && OP::is_commutative();
 	};
-
-	// internal type traits follow
-
-	namespace internal {
-
-		template< typename D1, typename D2, typename D3, enum Backend implementation >
-		struct maybe_noop< operators::left_assign_if< D1, D2, D3, implementation > > {
-			static const constexpr bool value = true;
-		};
-
-		template< typename D1, typename D2, typename D3, enum Backend implementation >
-		struct maybe_noop< operators::right_assign_if< D1, D2, D3, implementation > > {
-			static const constexpr bool value = true;
-		};
-
-	} // namespace alp::internal
 
 } // namespace alp
 
