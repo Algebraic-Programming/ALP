@@ -188,6 +188,7 @@ endif()
 
 # by default no headers are built
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
+set( WITH_ALP_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
@@ -199,6 +200,10 @@ endif()
 if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 	# both reference_omp and hynrid backends need reference headers
 	set( WITH_OMP_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_REFERENCE_BACKEND )
+	set( WITH_ALP_REFERENCE_BACKEND_HEADERS ON )
 endif()
 
 add_subdirectory( include )
