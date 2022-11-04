@@ -1380,8 +1380,8 @@ namespace alp {
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
 
-		const size_t nrows = getLength( u );
-		const size_t ncols = getLength( v );
+		const size_t nrows = size( u );
+		const size_t ncols = size( v );
 
 		if( nrows != alp::nrows( A ) ) {
 			return MISMATCH;
@@ -1484,8 +1484,8 @@ namespace alp {
 			reference
 		>(
 			init_lambda,
-			getLength( x ),
-			getLength( y ),
+			size( x ),
+			size( y ),
 			data_lambda
 		);
 
@@ -1554,7 +1554,7 @@ namespace alp {
 			reference
 		>(
 			init_lambda,
-			getLength( x ),
+			size( x ),
 			data_lambda
 		);
 

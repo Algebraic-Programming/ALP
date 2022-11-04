@@ -72,7 +72,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			rc = FAILED;
 			return;
 		}
-		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
+		for( size_t i = 0; i < alp::size( x_l ); ++i ) {
 			if( x_l[ i ] !=  testval1 * testval2 ) {
 				std::cerr << "\t test 1 ( foldl( vector, scalar, mul_op )): unexpected output "
 					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
@@ -84,7 +84,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::size( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
 			} else if( i == 10 ) {
 				std::cout << " ...  ";
@@ -110,7 +110,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 		std::cout << "x_r = ";
 #endif
-		for( size_t i = 0; i < alp::getLength( x_r ); ++i ) {
+		for( size_t i = 0; i < alp::size( x_r ); ++i ) {
 			if( x_r[ i ] !=  testval1 * testval2 ) {
 				std::cerr << "\t test 1 ( foldr( scalar, vector, mul_op )): unexpected output "
 					  << "vector [" <<  i << " ] ( " << x_r[ i ] << ", expected "
@@ -122,7 +122,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_r[ i ] << " ";
-			} else if( i + 10 > alp::getLength( x_r ) ) {
+			} else if( i + 10 > alp::size( x_r ) ) {
 				std::cout << x_r[ i ] << " ";
 			} else if( i == 10 ) {
 				std::cout << " ...  ";
@@ -197,7 +197,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 		std::cout << "x_l = ";
 #endif
-		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
+		for( size_t i = 0; i < alp::size( x_l ); ++i ) {
 			if( x_l[ i ] !=  testval2 ) {
 				std::cerr << "\t test 2 ( foldl/r): unexpected output, vector x_l should not be modified "
 					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
@@ -209,7 +209,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::size( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
 			} else if( i == 10 ) {
 				std::cout << " ...  ";
@@ -260,7 +260,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 		std::cout << "x_l = ";
 #endif
-		for( size_t i = 0; i < alp::getLength( x_l ); ++i ) {
+		for( size_t i = 0; i < alp::size( x_l ); ++i ) {
 			if( x_l[ i ] !=  testval2 ) {
 				std::cerr << "\t test 3 ( foldl/r): unexpected output, vector x_l should not be modified "
 					  << "vector [" <<  i << " ] ( " << x_l[ i ] << ", expected "
@@ -272,7 +272,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 #ifdef DEBUG
 			if( i < 10 ) {
 				std::cout << x_l[ i ] << " ";
-			} else if( i + 10 > alp::getLength( x_l ) ) {
+			} else if( i + 10 > alp::size( x_l ) ) {
 				std::cout << x_l[ i ] << " ";
 			} else if( i == 10 ) {
 				std::cout << " ...  ";
@@ -313,7 +313,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			return;
 		}
 
-		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
+		for( size_t i = 0; i < alp::size( x ); ++i ) {
 			if( x[ i ] !=  testval2 +  testval3 ) {
 				std::cerr << "\t test 4 ( foldl): unexpected output "
 					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "
@@ -340,7 +340,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 			return;
 		}
 
-		for( size_t i = 0; i < alp::getLength( x ); ++i ) {
+		for( size_t i = 0; i < alp::size( x ); ++i ) {
 			if( x[ i ] !=  testval2 +  testval3 ) {
 				std::cerr << "\t test 4 ( foldr): unexpected output, vector x should not be modified "
 					  << "vector [" <<  i << " ] ( " << x[ i ] << ", expected "

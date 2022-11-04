@@ -211,7 +211,7 @@ namespace alp {
 		Args const &... args
 	) {
 		// do size checking
-		if( !( getLength( x ) == nrows( A ) || getLength( x ) == ncols( A ) ) ) {
+		if( !( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
 			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
 				<< " has nothing to do with either matrix dimension (" << nrows( A ) << " nor " << ncols( A ) << ").\n";
 			return MISMATCH;

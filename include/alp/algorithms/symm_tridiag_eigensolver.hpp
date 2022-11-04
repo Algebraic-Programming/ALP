@@ -219,7 +219,7 @@ namespace alp {
 #endif
 
 			// vec_b = {d_view[1], d_view[2], ... , d_view[N-1], d_view[N]+dot(v,v) }
-			size_t nn = alp::getLength( d_view );
+			size_t nn = alp::size( d_view );
 			alp::Vector< D > vec_b( nn );
 			auto v1 = alp::get_view( vec_b, utils::range( 0, nn - 1 ) );
 			auto v2 = alp::get_view( d_view, utils::range( 1, nn ) );
@@ -244,7 +244,7 @@ namespace alp {
 			//rc = rc ? rc : alp::dot( alpha, d_view, d_view, ring );
 			rc = rc ? rc : alp::dot( alpha, vec_temp_v, vec_temp_v, ring );
 
-			auto v5 = alp::get_view( vec_b, utils::range( alp::getLength( vec_b ) - 1, alp::getLength( vec_b ) ) );
+			auto v5 = alp::get_view( vec_b, utils::range( alp::size( vec_b ) - 1, alp::size( vec_b ) ) );
 			rc = rc ? rc : alp::foldl( v5, alpha, ring.getAdditiveOperator() );
 
 			rc = rc ? rc : alp::eWiseLambda(

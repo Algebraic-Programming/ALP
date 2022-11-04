@@ -176,16 +176,16 @@ namespace alp {
 				Select(
 					size_t N,
 					const alp::Vector< T, Structure, density, View, ImfR, ImfC, backend > &select
-				): IMF( getLength( select ), N ), select( getLength( select ) ) {
+				): IMF( size( select ), N ), select( size( select ) ) {
 
 					/** \internal \todo Use set when this->select becomes ALP vector */
 					//set( this->select, select );
-					for( size_t i = 0; i < getLength( select ); ++i ) {
+					for( size_t i = 0; i < size( select ); ++i ) {
 						this->select[ i ] = select[ i ];
 					}
 #ifdef DEBUG
 					// Check that select vector does not map outside of range [0,N)
-					for( size_t i = 0; i < getLength( select ); ++i ) {
+					for( size_t i = 0; i < size( select ); ++i ) {
 						if ( select[ i ] >= N ) {
 							throw std::runtime_error("Provided select vector mapping beyond the provided range.");
 						}
