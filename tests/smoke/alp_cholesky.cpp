@@ -19,6 +19,12 @@
 #include <sstream>
 #include <vector>
 
+#ifdef _COMPLEX
+#include <complex>
+#include <cmath>
+#include <iomanip>
+#endif
+
 #include <alp.hpp>
 #include <alp/algorithms/cholesky.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
@@ -26,9 +32,31 @@
 
 using namespace alp;
 
-typedef double ScalarType;
-constexpr ScalarType tol = 1.e-10;
+using BaseScalarType = double;
+
+#ifdef _COMPLEX
+using ScalarType = std::complex< BaseScalarType >;
+#else
+using ScalarType = BaseScalarType;
+#endif
+constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
+
+template< typename T >
+T random_value();
+
+template<>
+BaseScalarType random_value< BaseScalarType >() {
+	return static_cast< BaseScalarType >( rand() ) / RAND_MAX;
+}
+
+template<>
+std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() {
+	const BaseScalarType re = random_value< BaseScalarType >();
+	const BaseScalarType im = random_value< BaseScalarType >();
+	return std::complex< BaseScalarType >( re, im );
+}
+
 
 struct inpdata {
 	std::string fname="";
@@ -42,7 +70,7 @@ void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
 		for( size_t j = 0; j < N; ++j ) {
 			size_t k = i * N + j;
 			if( i <= j ) {
-				data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+				data[ k ] = random_value< T >();
 			}
 			if( i == j ) {
 				data[ k ] = data[ k ] + static_cast< T >( N );
@@ -62,7 +90,7 @@ void generate_spd_matrix( size_t N, std::vector<T> &data ) {
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+			data[ k ] = random_value< T >();
 			if( i == j ) {
 				data[ k ] = data[ k ] + static_cast< T >( N );
 			}
@@ -137,7 +165,7 @@ alp::RC check_cholesky_solution(
 #ifdef DEBUG
 	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
 #endif
-	if( tol < fnorm ) {
+	if( tol < std::abs( fnorm ) ) {
 		std::cout << "The Frobenius norm is too large. "
 			"Make sure that you have used SPD matrix as input.\n";
 		return FAILED;
