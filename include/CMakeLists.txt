@@ -35,34 +35,6 @@ target_include_directories( backend_headers_nodefs INTERFACE
 # (e.g., .gitignore, *.md or possible compilation garbage)
 set( HEADERS_REGEX ".+\.(hpp|h|hxx|hh|h\\+\\+)$" )
 
-# to avoid flaky acrobatics with regex or glob expressions, copy main files directly
-install( FILES "graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
-set( root_files
-	"graphblas.hpp" "graphblas/backends.hpp" "graphblas/benchmark.hpp"
-	"graphblas/blas0.hpp" "graphblas/blas1.hpp" "graphblas/blas2.hpp"
-	"graphblas/blas3.hpp" "graphblas/collectives.hpp" "graphblas/config.hpp"
-	"graphblas/coordinates.hpp" "graphblas/descriptors.hpp" "graphblas/distribution.hpp"
-	"graphblas/exec.hpp" "graphblas/identities.hpp" "graphblas/init.hpp"
-	"graphblas/internalops.hpp" "graphblas/io.hpp" "graphblas/iomode.hpp"
-	"graphblas/matrix.hpp" "graphblas/monoid.hpp" "graphblas/ops.hpp"
-	"graphblas/phase.hpp" "graphblas/pinnedvector.hpp" "graphblas/properties.hpp"
-	"graphblas/rc.hpp" "graphblas/semiring.hpp" "graphblas/spmd.hpp"
-	"graphblas/tags.hpp" "graphblas/type_traits.hpp" "graphblas/utils.hpp"
-	"graphblas/vector.hpp" "graphblas/SynchronizedNonzeroIterator.hpp"
-	"graphblas/NonzeroStorage.hpp"
-)
-set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")
-install( FILES ${root_files} DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" )
-
-# copy base headers and all its subdirectories (if any)
-# note: leave the slash "/" at the end of the DIRECTORY path,
-# othwerise CMake will create a "graphblas/base" directory inside DESTINATION !!!
-# https://cmake.org/cmake/help/latest/command/install.html#installing-directories
-install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/base/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/base"
-	FILES_MATCHING REGEX "${HEADERS_REGEX}"
-)
-
 # ALP utils headers, which are independent from ALP/GraphBLAS itself;
 # note that the include root is the same as of ALP/GraphBLAS for compatibility
 # with existing code (they contain "#include <graphblas/utils/<header>.hpp>"),
@@ -99,7 +71,11 @@ if( WITH_ALP_REFERENCE_BACKEND_HEADERS )
 	add_subdirectory( alp )
 endif()
 
-if( WITH_REFERENCE_BACKEND_HEADERS )
+if( WITH_REFERENCE_BACKEND_HEADERS OR
+	WITH_OMP_BACKEND_HEADERS OR
+	WITH_BSP1D_BACKEND OR
+	WITH_HYBRID_BACKEND
+)
 	add_subdirectory( graphblas )
 endif()
 
@@ -114,7 +90,7 @@ target_include_directories(
 )
 
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition/"
+	DESTINATION "${INCLUDE_INSTALL_DIR}/transition/"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 

@@ -24,7 +24,7 @@
 assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS LPF_INCLUDE_DEFS
 	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
 )
-assert_valid_variables( INCLUDE_INSTALL_DIR )
+assert_valid_variables( INCLUDE_INSTALL_DIR HEADERS_REGEX )
 
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "../graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
@@ -39,7 +39,8 @@ set( root_files
 	"phase.hpp" "pinnedvector.hpp" "properties.hpp"
 	"rc.hpp" "semiring.hpp" "spmd.hpp"
 	"tags.hpp" "type_traits.hpp" "utils.hpp"
-	"vector.hpp"
+	"vector.hpp" "SynchronizedNonzeroIterator.hpp"
+	"NonzeroStorage.hpp"
 )
 set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")
 install( FILES ${root_files} DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" )
@@ -69,17 +70,6 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	target_link_libraries( backend_reference_headers INTERFACE OpenMP::OpenMP_CXX )
 
 	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
-endif()
-
-if( WITH_ALP_REFERENCE_BACKEND )
-	add_library( backend_alp_reference_headers INTERFACE )
-	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
-	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/alp_reference"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
 endif()
 
 if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )

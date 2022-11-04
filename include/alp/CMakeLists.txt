@@ -27,17 +27,35 @@ assert_valid_variables( INCLUDE_INSTALL_DIR )
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "../alp.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
 set( root_files
-	"../alp.hpp" "backends.hpp" "benchmark.hpp"
-	"blas0.hpp" "blas1.hpp" "blas2.hpp"
-	"blas3.hpp" "collectives.hpp" "config.hpp"
-	"descriptors.hpp" "distribution.hpp"
-	"exec.hpp" "identities.hpp" "init.hpp"
-	"internalops.hpp" "io.hpp" "iomode.hpp"
-	"matrix.hpp" "monoid.hpp" "ops.hpp"
-	"phase.hpp" "pinnedvector.hpp" "properties.hpp"
-	"rc.hpp" "semiring.hpp" "spmd.hpp"
-	"tags.hpp" "type_traits.hpp" "utils.hpp"
+	"../alp.hpp"
+	"backends.hpp"
+	"blas0.hpp"
+	"blas1.hpp"
+	"blas2.hpp"
+	"blas3.hpp"
+	"config.hpp"
+	"density.hpp"
+	"descriptors.hpp"
+	"exec.hpp"
+	"identities.hpp"
+	"imf.hpp"
+	"init.hpp"
+	"internalops.hpp"
+	"io.hpp"
+	"iomode.hpp"
+	"matrix.hpp"
+	"monoid.hpp"
+	"ops.hpp"
+	"phase.hpp"
+	"rc.hpp"
+	"scalar.hpp"
+	"semiring.hpp"
+	"storage.hpp"
+	"structures.hpp"
+	"type_traits.hpp"
+	"utils.hpp"
 	"vector.hpp"
+	"views.hpp"
 )
 set( ALP_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/alp")
 install( FILES ${root_files} DESTINATION "${ALP_INCLUDE_INSTALL_DIR}" )
@@ -62,14 +80,10 @@ if( WITH_ALP_REFERENCE_BACKEND_HEADERS )
 	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
 	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
 
-	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
+	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
 endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
-	add_library( backend_alp_reference_headers INTERFACE )
-	target_link_libraries( backend_alp_reference_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_alp_reference_headers INTERFACE "${ALP_REFERENCE_INCLUDE_DEFS}" )
-	install( TARGETS backend_alp_reference_headers EXPORT GraphBLASTargets )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
 		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_reference"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
@@ -78,11 +92,11 @@ endif()
 
 # this target lists the algorithms implemented on top of the generic functionalities,
 # hence it depends only on backend_headers_nodefs
-add_library( algorithms INTERFACE )
-target_link_libraries( algorithms INTERFACE backend_headers_nodefs )
+add_library( alp_algorithms INTERFACE )
+target_link_libraries( alp_algorithms INTERFACE backend_headers_nodefs )
 
 target_include_directories(
-	algorithms INTERFACE
+	alp_algorithms INTERFACE
 
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/alp/algorithms>
 	$<INSTALL_INTERFACE:alp/algorithms>
@@ -93,4 +107,4 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
-install( TARGETS algorithms EXPORT GraphBLASTargets )
+install( TARGETS alp_algorithms EXPORT GraphBLASTargets )
