@@ -1,3 +1,4 @@
+
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -14,24 +15,22 @@
  * limitations under the License.
  */
 
-/**
- *
- * @file
- *
- * This file registers mechanisms for coordinate mapping between
- * logical and physical iteration spaces.
- *
+/*
+ * @author A. N. Yzelman
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_STORAGE
-#define _H_ALP_STORAGE
+#ifndef _H_ALP_OMP_MATRIX
+#define _H_ALP_OMP_MATRIX
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/storage.hpp>
-#endif
+#include <alp/backends.hpp>
+#include <alp/base/matrix.hpp>
+#include <alp/amf-based/matrix.hpp>
 
-#ifdef _ALP_WITH_OMP
- #include <alp/omp/storage.hpp>
-#endif
+namespace alp {
 
-#endif // _H_ALP_STORAGE
+	// Currently no backend specific implementation
+
+} // namespace alp
+
+#endif // end ``_H_ALP_OMP_MATRIX''
