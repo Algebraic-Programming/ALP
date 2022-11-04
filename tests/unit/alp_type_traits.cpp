@@ -78,9 +78,9 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	auto v_diag = alp::get_view< alp::view::diagonal >( M );
 	auto v_view1 = alp::get_view( v_diag );
 	auto v_view2 = alp::get_view( v_diag, alp::utils::range(1,2) );
-	std::cout << "v_diag( " << alp::getLength( v_diag ) << " )" << std::endl;
-	std::cout << "v_view1( " << alp::getLength( v_view1 ) << " )" << std::endl;
-	std::cout << "v_view2( " << alp::getLength( v_view2 ) << " )" << std::endl;
+	std::cout << "v_diag( " << alp::size( v_diag ) << " )" << std::endl;
+	std::cout << "v_view1( " << alp::size( v_view1 ) << " )" << std::endl;
+	std::cout << "v_view2( " << alp::size( v_view2 ) << " )" << std::endl;
 
 	ask_questions( v_diag, "v_diag" );
 	ask_questions( v_view1, "v_view1" );
