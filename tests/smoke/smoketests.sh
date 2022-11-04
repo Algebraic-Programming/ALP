@@ -526,12 +526,20 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_CHOLESKY=30
 	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
-	echo "                                 symmetric matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
+	echo "                                 symmetric positive definite matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_${BACKEND}  -n ${NTEST_CHOLESKY} &> ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
+	NTEST_CHOLESKY_COMPLEX=30
+	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
+	echo "                                 hermitian positive definite matrix (${NTEST_CHOLESKY_COMPLEX}x${NTEST_CHOLESKY_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_complex_${BACKEND}  -n ${NTEST_CHOLESKY_COMPLEX} &> ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+	
 	NTEST_GEMM=100
 	echo ">>>      [x]           [ ]       Tests Gemm on matrix (${NTEST_GEMM}x${NTEST_GEMM}x${NTEST_GEMM})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_gemm_${BACKEND} ${NTEST_GEMM} &> ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log"
