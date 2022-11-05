@@ -19,6 +19,7 @@
 #include <iomanip>
 
 #include <alp.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/forwardsubstitution.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
 
@@ -51,8 +52,16 @@ namespace alp {
 				is_matrix< MatL >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
-				// TODO: structures::Symmetric should be replced with structures::SymmetricPositiveDefinite
-				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
+				// TODO: structures::Symmetric should be replced
+				//       rewith structures::SymmetricPositiveDefinite
+				( (
+					!grb::utils::is_complex< D >::value &&
+					structures::is_a< typename MatH::structure, structures::Symmetric >::value
+				) ||
+				(
+					grb::utils::is_complex< D >::value &&
+					structures::is_a< typename MatH::structure, structures::Hermitian >::value
+				) ) &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -136,7 +145,8 @@ namespace alp {
 				// LL[ k+1: , k+1: ] -= v*v^T
 				auto Lprim = get_view( LL, utils::range( k + 1, n ), utils::range( k + 1, n ) );
 
-				auto vvt = outer( v, ring.getMultiplicativeOperator() );
+				auto vstar = conjugate( v );
+				auto vvt = outer( vstar, ring.getMultiplicativeOperator() );
 #ifdef DEBUG
 				print_vector( " -- v --  " , v );
 				print_matrix( " vvt ", vvt );

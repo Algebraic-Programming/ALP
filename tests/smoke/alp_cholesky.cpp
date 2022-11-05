@@ -26,6 +26,7 @@
 #endif
 
 #include <alp.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/cholesky.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
 #include "../utils/print_alp_containers.hpp"
@@ -36,8 +37,12 @@ using BaseScalarType = double;
 
 #ifdef _COMPLEX
 using ScalarType = std::complex< BaseScalarType >;
+//not fully implemented structures
+using HermitianOrSymmetric = structures::Hermitian;
 #else
 using ScalarType = BaseScalarType;
+//fully implemented structures
+using HermitianOrSymmetric = structures::Symmetric;
 #endif
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
@@ -62,43 +67,60 @@ struct inpdata {
 	std::string fname="";
 	size_t N=0;
 };
-
-//** gnerate upper/lower triangular part of a SPD matrix */
-template< typename T >
-void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
+//TO DO: rename to SYM(HERM)PD
+//temp function untill Hermitian containter is implemented
+//** gnerate symmetric-hermitian matrix in a square container */
+template<
+	typename T
+>
+std::vector< T > generate_symmherm_matrix_data(
+	size_t N,
+	const typename std::enable_if<
+		grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
+) {
+	std::vector< T > data( N * N );
+	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
 	for( size_t i = 0; i < N; ++i ) {
-		for( size_t j = 0; j < N; ++j ) {
-			size_t k = i * N + j;
-			if( i <= j ) {
-				data[ k ] = random_value< T >();
-			}
+		for( size_t j = i; j < N; ++j ) {
+			data[ i * N + j ] = random_value< T >();
+			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			if( i == j ) {
-				data[ k ] = data[ k ] + static_cast< T >( N );
+				data[ j * N + i ] += static_cast< T >( N );
 			}
-			if( i > j ) {
-				data[ i * N + j ] = data[ j * N + i ];
-			}
-
 		}
 	}
+	return data;
 }
 
-
-//** gnerate upper/lower triangular part of a SPD matrix */
-template< typename T >
-void generate_spd_matrix( size_t N, std::vector<T> &data ) {
+//** generate upper/lower triangular part of a Symmetric matrix */
+template<
+	typename T
+>
+std::vector< T >  generate_symmherm_matrix_data(
+	size_t N,
+	const typename std::enable_if<
+		!grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
+) {
+	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
+	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
+			//data[ k ] = static_cast< T >( i + j*j ); // easily reproducible
 			data[ k ] = random_value< T >();
 			if( i == j ) {
-				data[ k ] = data[ k ] + static_cast< T >( N );
+				data[ k ] += grb::utils::is_complex< T >::conjugate( data[ k ] );
+				data[ k ] += static_cast< T >( N );
 			}
 			++k;
 		}
 	}
+	return data;
 }
-
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) */
 template<
@@ -125,7 +147,8 @@ alp::RC check_cholesky_solution(
 	print_matrix( " << LLT >> ", LLT );
 	print_matrix( " << LT >>  ", LT );
 #endif
-	rc = rc ? rc : alp::mxm( LLT, LT, L, ring );
+	auto LTstar = alp::conjugate( LT );
+	rc = rc ? rc : alp::mxm( LLT, LTstar, L, ring );
 #ifdef DEBUG
 	print_matrix( " << LLT >> ", LLT );
 #endif
@@ -199,15 +222,14 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	}
 
 	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N, N );
-	alp::Matrix< ScalarType, structures::Symmetric, Dense > H( N, N );
+	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > H( N, N );
 
 	if( !unit.fname.empty() ) {
 		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
-		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
 		std::srand( RNDSEED );
-		generate_spd_matrix( N, matrix_data );
+		std::vector< ScalarType > matrix_data = generate_symmherm_matrix_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
@@ -227,50 +249,50 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		std::cout << " Matrix L is not initialized\n";
 		return;
 	}
-
-	rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
+//TODO enable herm structure
+ 	rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
 #ifdef DEBUG
-	print_matrix( std::string(" << L >> "), L );
+ 	print_matrix( std::string(" << L >> "), L );
 #endif
-	rc = rc ? rc : check_cholesky_solution( H, L, ring );
+ 	rc = rc ? rc : check_cholesky_solution( H, L, ring );
 
-	rc = rc ? rc : alp::set( L, zero_scalar	);
-	// test blocked version, for bs = 1, 2, 4, 8 ... N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
-		rc = rc ? rc : check_cholesky_solution( H, L, ring );
-		if( bs == N ) {
-			break;
-		}
-	}
+// 	rc = rc ? rc : alp::set( L, zero_scalar	);
+// 	// test blocked version, for bs = 1, 2, 4, 8 ... N
+// 	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+// 		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+// 		rc = rc ? rc : check_cholesky_solution( H, L, ring );
+// 		if( bs == N ) {
+// 			break;
+// 		}
+// 	}
 
-	// test non-blocked inplace version
-	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
-	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
-	std::vector< ScalarType > matrix_data( N * N );
-	std::srand( RNDSEED );
-	generate_spd_matrix_full( N, matrix_data );
-	rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
-	rc = rc ? rc : alp::set( LL_original, LL );
-#ifdef DEBUG
-	print_matrix( " LL(input) ", LL );
-#endif
-	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
-#ifdef DEBUG
-	print_matrix( " LL(output) ", LL );
-#endif
-	auto LLUT = get_view< structures::UpperTriangular >( LL );
-	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+// 	// test non-blocked inplace version
+// 	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
+// 	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
+// 	std::vector< ScalarType > matrix_data( N * N );
+// 	std::srand( RNDSEED );
+// 	generate_spd_matrix_full( N, matrix_data );
+// 	rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
+// 	rc = rc ? rc : alp::set( LL_original, LL );
+// #ifdef DEBUG
+// 	print_matrix( " LL(input) ", LL );
+// #endif
+// 	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
+// #ifdef DEBUG
+// 	print_matrix( " LL(output) ", LL );
+// #endif
+// 	auto LLUT = get_view< structures::UpperTriangular >( LL );
+// 	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
 
-	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-		rc = rc ? rc : alp::set( LL, LL_original );
-		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
-		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
-		if( bs == N ) {
-			break;
-		}
-	}
+// 	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
+// 	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+// 		rc = rc ? rc : alp::set( LL, LL_original );
+// 		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
+// 		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+// 		if( bs == N ) {
+// 			break;
+// 		}
+// 	}
 }
 
 int main( int argc, char ** argv ) {
