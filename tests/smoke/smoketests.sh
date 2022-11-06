@@ -532,13 +532,14 @@ for BACKEND in ${BACKENDS[@]}; do
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
-	NTEST_CHOLESKY_COMPLEX=30
-	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
-	echo "                                 hermitian positive definite matrix (${NTEST_CHOLESKY_COMPLEX}x${NTEST_CHOLESKY_COMPLEX})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_complex_${BACKEND}  -n ${NTEST_CHOLESKY_COMPLEX} &> ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log || echo "Test FAILED"
-	echo " "
+	# disabled until all versions are implemented
+	# NTEST_CHOLESKY_COMPLEX=30
+	# echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
+	# echo "                                 hermitian positive definite matrix (${NTEST_CHOLESKY_COMPLEX}x${NTEST_CHOLESKY_COMPLEX})."
+	# bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_complex_${BACKEND}  -n ${NTEST_CHOLESKY_COMPLEX} &> ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log"
+	# head -1 ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log
+	# grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log || echo "Test FAILED"
+	# echo " "
 	
 	NTEST_GEMM=100
 	echo ">>>      [x]           [ ]       Tests Gemm on matrix (${NTEST_GEMM}x${NTEST_GEMM}x${NTEST_GEMM})."

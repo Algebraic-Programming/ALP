@@ -67,18 +67,14 @@ struct inpdata {
 	std::string fname="";
 	size_t N=0;
 };
-//TO DO: rename to SYM(HERM)PD
-//temp function untill Hermitian containter is implemented
-//** gnerate symmetric-hermitian matrix in a square container */
+
+
+//** generate full storage Symmetric or Hermitian positive definite matrix for in-place tests */
 template<
 	typename T
 >
-std::vector< T > generate_symmherm_matrix_data(
-	size_t N,
-	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
-		void
-	>::type * const = nullptr
+std::vector< T >  generate_symmherm_pos_def_mat_data_full(
+	size_t N
 ) {
 	std::vector< T > data( N * N );
 	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
@@ -94,11 +90,25 @@ std::vector< T > generate_symmherm_matrix_data(
 	return data;
 }
 
-//** generate upper/lower triangular part of a Symmetric matrix */
+/** gnerate symmetric-hermitian positive definite matrix in a square container */
 template<
 	typename T
 >
-std::vector< T >  generate_symmherm_matrix_data(
+std::vector< T > generate_symmherm_pos_def_mat_data(
+	size_t N,
+	const typename std::enable_if<
+		grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
+) {
+	return( generate_symmherm_pos_def_mat_data_full< T >( N ) );
+}
+
+//** generate upper/lower triangular part of a Symmetric positive definite matrix */
+template<
+	typename T
+>
+std::vector< T >  generate_symmherm_pos_def_mat_data(
 	size_t N,
 	const typename std::enable_if<
 		!grb::utils::is_complex< T >::value,
@@ -121,6 +131,7 @@ std::vector< T >  generate_symmherm_matrix_data(
 	}
 	return data;
 }
+
 
 //** check the solution by calculating the Frobenius norm of (H-LL^T) */
 template<
@@ -145,6 +156,7 @@ alp::RC check_cholesky_solution(
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
 	print_matrix( " << LLT >> ", LLT );
+	print_matrix( " << L >>  ", L );
 	print_matrix( " << LT >>  ", LT );
 #endif
 	auto LTstar = alp::conjugate( LT );
@@ -229,7 +241,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data = generate_symmherm_matrix_data< ScalarType >( N );
+		std::vector< ScalarType > matrix_data = generate_symmherm_pos_def_mat_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
@@ -249,50 +261,55 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		std::cout << " Matrix L is not initialized\n";
 		return;
 	}
-//TODO enable herm structure
+
  	rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
 #ifdef DEBUG
  	print_matrix( std::string(" << L >> "), L );
 #endif
  	rc = rc ? rc : check_cholesky_solution( H, L, ring );
 
-// 	rc = rc ? rc : alp::set( L, zero_scalar	);
-// 	// test blocked version, for bs = 1, 2, 4, 8 ... N
-// 	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-// 		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
-// 		rc = rc ? rc : check_cholesky_solution( H, L, ring );
-// 		if( bs == N ) {
-// 			break;
-// 		}
-// 	}
+	// TODO
+	// rest of cholesky algorithms are not implemented for complex version
+	// they require vector views on conjugate()
 
-// 	// test non-blocked inplace version
-// 	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
-// 	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
-// 	std::vector< ScalarType > matrix_data( N * N );
-// 	std::srand( RNDSEED );
-// 	generate_spd_matrix_full( N, matrix_data );
-// 	rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
-// 	rc = rc ? rc : alp::set( LL_original, LL );
-// #ifdef DEBUG
-// 	print_matrix( " LL(input) ", LL );
-// #endif
-// 	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
-// #ifdef DEBUG
-// 	print_matrix( " LL(output) ", LL );
-// #endif
-// 	auto LLUT = get_view< structures::UpperTriangular >( LL );
-// 	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+	rc = rc ? rc : alp::set( L, zero_scalar	);
+	// test blocked version, for bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( L, H, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( H, L, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
 
-// 	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
-// 	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-// 		rc = rc ? rc : alp::set( LL, LL_original );
-// 		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
-// 		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
-// 		if( bs == N ) {
-// 			break;
-// 		}
-// 	}
+	// test non-blocked inplace version
+	alp::Matrix< ScalarType, structures::Square, Dense > LL_original( N );
+	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
+	std::srand( RNDSEED );
+	{
+		std::vector< ScalarType > matrix_data = generate_symmherm_pos_def_mat_data_full< ScalarType >( N );
+		rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
+	}
+	rc = rc ? rc : alp::set( LL_original, LL );
+#ifdef DEBUG
+	print_matrix( " LL(input) ", LL );
+#endif
+	rc = rc ? rc : algorithms::cholesky_uptr( LL, ring );
+#ifdef DEBUG
+	print_matrix( " LL(output) ", LL );
+#endif
+	auto LLUT = get_view< structures::UpperTriangular >( LL );
+	rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+
+	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
+	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
+		rc = rc ? rc : alp::set( LL, LL_original );
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( LL, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( LL_original, LLUT, ring );
+		if( bs == N ) {
+			break;
+		}
+	}
 }
 
 int main( int argc, char ** argv ) {

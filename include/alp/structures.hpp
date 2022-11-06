@@ -508,6 +508,25 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< Square, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Hermitian, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (
+					( imf_r.map( imf_r.n - 1 ) <= imf_c.map( 0 ) ) ||
+					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
+				);
+			};
+		};
+
 		struct Trapezoidal: BaseStructure {
 
 			using inferred_structures = tuple_cat< std::tuple< Trapezoidal >, Band< OpenInterval >::inferred_structures >::type;
