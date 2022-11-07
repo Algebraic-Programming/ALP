@@ -40,11 +40,11 @@ using BaseScalarType = double;
 #ifdef _COMPLEX
 using ScalarType = std::complex< BaseScalarType >;
 //not fully implemented structures
-using HermitianOrSymmetric = structures::Hermitian;
+using HermitianOrSymmetricPD = structures::HermitianPositiveDefinite;
 #else
 using ScalarType = BaseScalarType;
 //fully implemented structures
-using HermitianOrSymmetric = structures::Symmetric;
+using HermitianOrSymmetricPD = structures::SymmetricPositiveDefinite;
 #endif
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
@@ -225,8 +225,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		N = unit.N;
 	}
 
-	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > H( N );
-	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > Hinv( N );
+	alp::Matrix< ScalarType, HermitianOrSymmetricPD, Dense > H( N );
+	alp::Matrix< ScalarType, HermitianOrSymmetricPD, Dense > Hinv( N );
 
 	if( !unit.fname.empty() ) {
 		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );

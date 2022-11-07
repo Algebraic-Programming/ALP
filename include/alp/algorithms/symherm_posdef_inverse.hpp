@@ -21,13 +21,16 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * Computes the Cholesky decomposition U^TU = H of a real symmetric
-		 * positive definite (SPD) matrix H where \a U is upper triangular.
+		 * Computes the Cholesky decomposition U^HU = H of a real symmetric
+		 * positive definite (SPD) (or complex Hermitian positive definite)
+		 * matrix H where \a U is upper triangular, and ^H is transpose in
+		 * the real case and transpose + complex conjugate in the complex case.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @param[out] L    output lower triangular matrix
 		 * @param[in]  H    input real symmetric positive definite matrix
+		 *                  or complex hermitian positive definite matrix
 		 * @param[in]  ring The semiring used in the computation
 		 * @return RC        SUCCESS if the execution was correct
 		 *
@@ -38,15 +41,13 @@ namespace alp {
 			typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			std::enable_if_t<
 				is_matrix< MatH >::value &&
-				// TODO: structures::Symmetric should be replced
-				//       rewith structures::SymmetricPositiveDefinite
 				(
 					(
 						!grb::utils::is_complex< D >::value &&
-						structures::is_a< typename MatH::structure, structures::Symmetric >::value
+						structures::is_a< typename MatH::structure, structures::SymmetricPositiveDefinite >::value
 					) || (
 						grb::utils::is_complex< D >::value &&
-						structures::is_a< typename MatH::structure, structures::Hermitian >::value
+						structures::is_a< typename MatH::structure, structures::HermitianPositiveDefinite >::value
 					)
 				) &&
 				is_semiring< Ring >::value
