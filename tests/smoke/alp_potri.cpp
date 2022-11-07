@@ -75,7 +75,7 @@ struct inpdata {
  *   positive definite matrix for in-place tests
  */
 template< typename T >
-void  generate_symmherm_pos_def_mat_data_full(
+void generate_symmherm_pos_def_mat_data_full(
 	size_t N,
 	std::vector< T > &mat_data
 ) {
@@ -110,7 +110,7 @@ void generate_symmherm_pos_def_mat_data(
  *  Symmetric positive definite matrix
  */
 template< typename T >
-void  generate_symmherm_pos_def_mat_data(
+void generate_symmherm_pos_def_mat_data(
 	size_t N,
 	std::vector< T > &mat_data,
 	const typename std::enable_if<
