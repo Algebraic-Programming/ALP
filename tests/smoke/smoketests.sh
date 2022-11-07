@@ -579,6 +579,14 @@ for BACKEND in ${BACKENDS[@]}; do
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
+	NTEST_DIVCON=100
+	echo ">>>      [x]           [ ]       Tests syevd (Divide and conquer symmetric eigensolver) on"
+	echo ">>>                               a real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_syevd_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using backsubstitution ) on"
 	echo ">>>                               an upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
