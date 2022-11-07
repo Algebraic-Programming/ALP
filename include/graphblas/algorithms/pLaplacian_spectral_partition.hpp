@@ -12,7 +12,11 @@
 #include <graphblas/algorithms/spec_part_utils.hpp>
 #include "Solvers/RNewton.h"
 #include "Others/randgen.h"
-#include <graphblas/algorithms/ROPTLIB/Grassmann_pLap.hpp>
+#ifndef PLOLD
+    #include <graphblas/algorithms/ROPTLIB/Grassmann_pLap.hpp>
+#else    
+    #include <graphblas/algorithms/ROPTLIB/Grassmann_pLap_old.hpp>
+#endif
 #include <graphblas/algorithms/kmeans.hpp>
 
 // Add the dkm (kmeans) library as header only

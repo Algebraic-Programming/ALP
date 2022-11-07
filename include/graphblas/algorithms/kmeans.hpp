@@ -151,7 +151,7 @@ namespace grb {
 
 				double sample = -1;
 				if( ret == SUCCESS ) {
-					const size_t seed = std::chrono::system_clock::now().time_since_epoch().count();
+					const size_t seed_uniform = std::chrono::system_clock::now().time_since_epoch().count();
 #ifndef DETERMINISTIC
 			
 					std::default_random_engine generator( seed_uniform );
