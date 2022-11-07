@@ -17,22 +17,25 @@
 
 /*
  * @author A. N. Yzelman
- * @date 24th of January, 2017
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_INIT
-#define _H_ALP_INIT
+#ifndef _H_ALP_OMP_INIT
+#define _H_ALP_OMP_INIT
 
-#include "backends.hpp"
-#include "base/init.hpp"
+#include <alp/base/init.hpp>
 
-// include all implementations
-#ifdef _ALP_WITH_REFERENCE
- #include "alp/reference/init.hpp"
-#endif
-#ifdef _ALP_WITH_OMP
- #include "alp/omp/init.hpp"
-#endif
+namespace alp {
 
-#endif // end ``_H_ALP_INIT''
+	/** \internal No-op init */
+	template<>
+	RC init< omp >( const size_t, const size_t, void * const );
+
+	/** \internal No-op init */
+	template<>
+	RC finalize< omp >();
+
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_OMP_INIT''
 

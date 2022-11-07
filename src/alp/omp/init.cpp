@@ -22,6 +22,7 @@
 
 #include <alp/reference/init.hpp>
 #include <alp/omp/config.hpp>
+#include <alp/rc.hpp>
 
 #ifndef _GRB_NO_LIBNUMA
  #include <numa.h> //numa_set_localalloc
@@ -31,20 +32,29 @@
 
 template<>
 alp::RC alp::init< alp::omp >( const size_t s, const size_t P, void * const data ) {
+	(void) data;
 	RC rc = alp::SUCCESS;
 	// print output
 	const auto T = config::OMP::threads();
-	std::cerr << "Info: alp::init (alp_omp) called. OpenMP is set to utilise " << T << " threads.\n";
+	std::cerr << "Info: alp::init (omp) called. OpenMP is set to utilise " << T << " threads.\n";
 
-	// use same initialisation procedure as sequential implementation
-	rc = alp::init< alp::reference >( s, P, data );
+	// sanity checks
+	if( P > 1 ) {
+		return alp::UNSUPPORTED;
+	}
+	if( s > 0 ) {
+		return alp::PANIC;
+	}
+#ifndef _GRB_NO_LIBNUMA
+	// set memory policy
+	numa_set_localalloc();
+#endif
 	return rc;
 }
 
 template<>
 alp::RC alp::finalize< alp::omp >() {
-	std::cerr << "Info: alp::finalize (alp_omp) called.\n";
-	// use same finalization procedure as sequential implementation
-	return alp::finalize< alp::reference >();
+	std::cerr << "Info: alp::finalize (omp) called.\n";
+	return alp::SUCCESS;
 }
 
