@@ -29,9 +29,6 @@
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../utils/print_alp_containers.hpp"
 
-//once TEMPDISABLE is removed the code should be in the final version
-#define TEMPDISABLE
-
 using namespace alp;
 
 using BaseScalarType = double;
@@ -52,11 +49,8 @@ using HermitianOrSymmetric = structures::Symmetric;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
-//temp function untill Hermitian containter is implemented
-//** gnerate symmetric-hermitian matrix in a square container */
-template<
-	typename T
->
+/** Generate symmetric-hermitian matrix in a full storage container */
+template< typename T >
 std::vector< T > generate_symmherm_matrix_data(
 	size_t N,
 	const typename std::enable_if<
@@ -65,8 +59,7 @@ std::vector< T > generate_symmherm_matrix_data(
 	>::type * const = nullptr
 ) {
 	std::vector< T > data( N * N );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
-	std::srand( RNDSEED );
+	std::fill( data.begin(), data.end(), static_cast< T >( 0 ) );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			T val( std::rand(), std::rand() );
@@ -77,10 +70,8 @@ std::vector< T > generate_symmherm_matrix_data(
 	return data;
 }
 
-//** generate upper/lower triangular part of a Symmetric matrix */
-template<
-	typename T
->
+/** Generate upper/lower triangular part of a Symmetric matrix */
+template< typename T >
 std::vector< T >  generate_symmherm_matrix_data(
 	size_t N,
 	const typename std::enable_if<
@@ -101,11 +92,14 @@ std::vector< T >  generate_symmherm_matrix_data(
 	return data;
 }
 
-//** check if rows/columns or matrix Q are orthogonal */
+/** Check if rows/columns or matrix Q are orthogonal */
 template<
 	typename T,
 	typename Structure,
 	typename ViewType,
+	std::enable_if_t<
+		structures::is_a< Structure, structures::Orthogonal >::value
+	> * = nullptr,
 	class Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
 	class Minus = operators::subtract< T >
 >
@@ -129,6 +123,8 @@ RC check_overlap(
 		conjugate( alp::get_view< alp::view::transpose >( Q ) ),
 		ring
 	);
+	// For Identity we use Structure (Orthogonal structure),
+	// as later we use fold with Qtmp (Orthogonal matrix)
 	Matrix< T, Structure, Dense > Identity( n );
 	rc = rc ? rc : alp::set( Identity, zero );
 	auto id_diag = alp::get_view< alp::view::diagonal >( Identity );
@@ -159,7 +155,7 @@ RC check_overlap(
 }
 
 
-//** check solution by calculating A x Q - Q x diag(d) */
+/** Check the solution by calculating A x Q - Q x diag(d) */
 template<
 	typename D,
 	typename SymmOrHermTridiagonalType,
@@ -241,10 +237,7 @@ RC check_solution(
 	return rc;
 }
 
-
-
-
-void alp_program( const size_t & unit, alp::RC & rc ) {
+void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
 	alp::Semiring<
@@ -265,6 +258,7 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	alp::Matrix< ScalarType, HermitianOrSymmetric > H( N ); //input matrix
 	Vector< ScalarType, structures::General, Dense > d( N ); //output eigenvalues
 	{
+		std::srand( RNDSEED );
 		auto matrix_data = generate_symmherm_matrix_data< ScalarType >( N );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
@@ -303,7 +297,7 @@ void alp_program( const size_t & unit, alp::RC & rc ) {
 	// }
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	size_t in = 5;
