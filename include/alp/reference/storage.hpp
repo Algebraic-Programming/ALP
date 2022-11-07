@@ -81,6 +81,20 @@ namespace alp {
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
+		/** Specialization for symmetric positive definite matrix */
+		template<>
+		struct determine_poly_factory< structures::SymmetricPositiveDefinite, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
+		};
+
+		/** Specialization for hermitian positive definite matrix */
+		template<>
+		struct determine_poly_factory< structures::HermitianPositiveDefinite, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for symmetric tridiagonal matrix */
 		template<>
 		struct determine_poly_factory< structures::SymmetricTridiagonal, imf::Id, imf::Id, reference > {
