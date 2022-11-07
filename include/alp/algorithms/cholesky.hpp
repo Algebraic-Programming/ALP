@@ -165,7 +165,7 @@ namespace alp {
 			// Finally collect output into U matrix and return
 			for( size_t k = 0; k < n; ++k ) {
 
-				// U[ k: , k ] = UU[ k: , k ]
+				// U[ k, k: ] = UU[ k, k: ]
 				auto vU  = get_view( U, k, utils::range( k, n )  );
 				auto vUU = get_view( UU, k, utils::range( k, n )  );
 
@@ -361,7 +361,7 @@ namespace alp {
 #ifdef DEBUG
 				print_vector( " -- v --  " , v );
 #endif
-				// UU[ k + 1: , k ] = UU[ k + 1: , k ] / alpha
+				// UU[ k, k + 1: ] = UU[ k, k + 1: ] / alpha
 				rc = rc ? rc : foldl( v, alpha, divide );
 
 #ifdef DEBUG

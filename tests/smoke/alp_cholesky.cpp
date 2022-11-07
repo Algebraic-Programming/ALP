@@ -151,39 +151,39 @@ alp::RC check_cholesky_solution(
 	const Scalar< T > zero( ring.template getZero< T >() );
 	const Scalar< T > one( ring.template getOne< T >() );
 	const size_t N = nrows( H );
-	MatSymmType UUT( N );
-	rc = rc ? rc : alp::set( UUT, zero );
+	MatSymmType UTU( N );
+	rc = rc ? rc : alp::set( UTU, zero );
 	auto UT = alp::get_view< alp::view::transpose >( U );
 #ifdef DEBUG
-	print_matrix( "  UUT  ", UUT );
+	print_matrix( "  UTU  ", UTU );
 	print_matrix( "  U   ", U );
 	print_matrix( "  UT   ", UT );
 #endif
 	auto UTstar = alp::conjugate( UT );
-	rc = rc ? rc : alp::mxm( UUT, UTstar, U, ring );
+	rc = rc ? rc : alp::mxm( UTU, UTstar, U, ring );
 #ifdef DEBUG
-	print_matrix( " << UUT >> ", UUT );
+	print_matrix( " << UTU >> ", UTU );
 #endif
 
 	MatSymmType HminsUUt( N );
 	rc = rc ? rc : alp::set( HminsUUt, zero );
 
-	// UUT = -UUT
+	// UTU = -UTU
 	Scalar< T > alpha( zero );
 	rc = rc ? rc : foldl( alpha, one, minus );
-	rc = rc ? rc : foldl( UUT, alpha, ring.getMultiplicativeOperator() );
+	rc = rc ? rc : foldl( UTU, alpha, ring.getMultiplicativeOperator() );
 
 #ifdef DEBUG
-	print_matrix( "  -UUT  ", UUT );
+	print_matrix( "  -UTU  ", UTU );
 #endif
 
-	// HminsUUt = H - UUT
+	// HminsUUt = H - UTU
 	rc = rc ? rc : alp::eWiseApply(
-		HminsUUt, H, UUT,
+		HminsUUt, H, UTU,
 		ring.getAdditiveMonoid()
 	);
 #ifdef DEBUG
-	print_matrix( " << H - UUT  >> ", HminsUUt );
+	print_matrix( " << H - UTU  >> ", HminsUUt );
 #endif
 
 	//Frobenius norm
@@ -288,37 +288,37 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	}
 
 	// test non-blocked inplace version
-	alp::Matrix< ScalarType, structures::Square, Dense > UU_original( N );
-	alp::Matrix< ScalarType, structures::Square, Dense > UU( N );
+	alp::Matrix< ScalarType, structures::Square, Dense > Uip_original( N );
+	alp::Matrix< ScalarType, structures::Square, Dense > Uip( N );
 	std::srand( RNDSEED );
 	{
 		std::vector< ScalarType > matrix_data( N * N );
 		generate_symmherm_pos_def_mat_data_full< ScalarType >( N, matrix_data );
-		rc = rc ? rc : alp::buildMatrix( UU, matrix_data.begin(), matrix_data.end() );
+		rc = rc ? rc : alp::buildMatrix( Uip, matrix_data.begin(), matrix_data.end() );
 	}
-	rc = rc ? rc : alp::set( UU_original, UU );
+	rc = rc ? rc : alp::set( Uip_original, Uip );
 #ifdef DEBUG
-	print_matrix( " UU(input) ", UU );
+	print_matrix( " Uip(input) ", Uip );
 #endif
-	rc = rc ? rc : algorithms::cholesky_uptr( UU, ring );
+	rc = rc ? rc : algorithms::cholesky_uptr( Uip, ring );
 #ifdef DEBUG
-	print_matrix( " UU(output) ", UU );
+	print_matrix( " Uip(output) ", Uip );
 #endif
-	auto UUUT = get_view< structures::UpperTriangular >( UU );
-	rc = rc ? rc : check_cholesky_solution( UU_original, UUUT, ring );
+	auto UipUpTr = get_view< structures::UpperTriangular >( Uip );
+	rc = rc ? rc : check_cholesky_solution( Uip_original, UipUpTr, ring );
 
 	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
 	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-		rc = rc ? rc : alp::set( UU, UU_original );
-		rc = rc ? rc : algorithms::cholesky_uptr_blk( UU, bs, ring );
-		rc = rc ? rc : check_cholesky_solution( UU_original, UUUT, ring );
+		rc = rc ? rc : alp::set( Uip, Uip_original );
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( Uip, bs, ring );
+		rc = rc ? rc : check_cholesky_solution( Uip_original, UipUpTr, ring );
 		if( bs == N ) {
 			break;
 		}
 	}
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	inpdata in;
