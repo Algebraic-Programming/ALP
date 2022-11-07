@@ -69,71 +69,71 @@ struct inpdata {
 };
 
 
-//** generate full storage Symmetric or Hermitian positive definite matrix for in-place tests */
-template<
-	typename T
->
-std::vector< T >  generate_symmherm_pos_def_mat_data_full(
-	size_t N
+/** Generate full storage Symmetric or Hermitian
+ *   positive definite matrix for in-place tests
+ */
+template< typename T >
+void  generate_symmherm_pos_def_mat_data_full(
+	size_t N,
+	std::vector< T > &mat_data
 ) {
-	std::vector< T > data( N * N );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
+	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ i * N + j ] = random_value< T >();
-			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
+			mat_data[ i * N + j ] = random_value< T >();
+			mat_data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
 			if( i == j ) {
-				data[ j * N + i ] += static_cast< T >( N );
+				mat_data[ j * N + i ] += static_cast< T >( N );
 			}
 		}
 	}
-	return data;
 }
 
-/** gnerate symmetric-hermitian positive definite matrix in a square container */
-template<
-	typename T
->
-std::vector< T > generate_symmherm_pos_def_mat_data(
+/** Generate symmetric-hermitian positive
+ *  definite matrix in a full-storage container
+ */
+template< typename T >
+void generate_symmherm_pos_def_mat_data(
 	size_t N,
+	std::vector< T > &mat_data,
 	const typename std::enable_if<
 		grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
-	return( generate_symmherm_pos_def_mat_data_full< T >( N ) );
+	generate_symmherm_pos_def_mat_data_full< T >( N, mat_data );
 }
 
-//** generate upper/lower triangular part of a Symmetric positive definite matrix */
-template<
-	typename T
->
-std::vector< T >  generate_symmherm_pos_def_mat_data(
+/** Generate upper/lower triangular part of a
+ *  Symmetric positive definite matrix
+ */
+template< typename T >
+void  generate_symmherm_pos_def_mat_data(
 	size_t N,
+	std::vector< T > &mat_data,
 	const typename std::enable_if<
 		!grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
-	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
+	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			//data[ k ] = static_cast< T >( i + j*j ); // easily reproducible
-			data[ k ] = random_value< T >();
+			mat_data[ k ] = random_value< T >();
 			if( i == j ) {
-				data[ k ] += grb::utils::is_complex< T >::conjugate( data[ k ] );
-				data[ k ] += static_cast< T >( N );
+				mat_data[ k ] += grb::utils::is_complex< T >::conjugate( mat_data[ k ] );
+				mat_data[ k ] += static_cast< T >( N );
 			}
 			++k;
 		}
 	}
-	return data;
 }
 
 
-//** check the solution by calculating the Frobenius norm of (H-LL^T) */
+/** Check the solution by calculating the
+ *  Frobenius norm of (H-LL^T)
+ */
 template<
 	typename MatSymmType,
 	typename MatUpTriangType,
@@ -151,7 +151,7 @@ alp::RC check_cholesky_solution(
 	const Scalar< T > zero( ring.template getZero< T >() );
 	const Scalar< T > one( ring.template getOne< T >() );
 	const size_t N = nrows( H );
-	MatSymmType LLT( N, N );
+	MatSymmType LLT( N );
 	rc = rc ? rc : alp::set( LLT, zero );
 	auto LT = alp::get_view< alp::view::transpose >( L );
 #ifdef DEBUG
@@ -165,7 +165,7 @@ alp::RC check_cholesky_solution(
 	print_matrix( " << LLT >> ", LLT );
 #endif
 
-	MatSymmType HminsLLt( N, N );
+	MatSymmType HminsLLt( N );
 	rc = rc ? rc : alp::set( HminsLLt, zero );
 
 	// LLT = -LLT
@@ -233,16 +233,21 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		N = unit.N;
 	}
 
-	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N, N );
-	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > H( N, N );
+	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N );
+	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > H( N );
 
 	if( !unit.fname.empty() ) {
 		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data = generate_symmherm_pos_def_mat_data< ScalarType >( N );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
+		std::vector< ScalarType > matrix_data2( ( N * ( N + 1 ) ) / 2 );
+		// Hermitian is currently using full storage
+		if( grb::utils::is_complex< ScalarType >::value ) {
+			matrix_data2.resize( N * N );
+		}
+		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data2 );
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data2.begin(), matrix_data2.end() );
 	}
 
 	if( !internal::getInitialized( H ) ) {
@@ -287,7 +292,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	alp::Matrix< ScalarType, structures::Square, Dense > LL( N );
 	std::srand( RNDSEED );
 	{
-		std::vector< ScalarType > matrix_data = generate_symmherm_pos_def_mat_data_full< ScalarType >( N );
+		std::vector< ScalarType > matrix_data( N * N );
+		generate_symmherm_pos_def_mat_data_full< ScalarType >( N, matrix_data );
 		rc = rc ? rc : alp::buildMatrix( LL, matrix_data.begin(), matrix_data.end() );
 	}
 	rc = rc ? rc : alp::set( LL_original, LL );

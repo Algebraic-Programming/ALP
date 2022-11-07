@@ -53,15 +53,16 @@ namespace alp {
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatL::structure, structures::UpperTriangular >::value &&
 				// TODO: structures::Symmetric should be replced
-				//       rewith structures::SymmetricPositiveDefinite
-				( (
-					!grb::utils::is_complex< D >::value &&
-					structures::is_a< typename MatH::structure, structures::Symmetric >::value
-				) ||
+				//       with structures::SymmetricPositiveDefinite
 				(
-					grb::utils::is_complex< D >::value &&
-					structures::is_a< typename MatH::structure, structures::Hermitian >::value
-				) ) &&
+					(
+						!grb::utils::is_complex< D >::value &&
+						structures::is_a< typename MatH::structure, structures::Symmetric >::value
+					) || (
+						grb::utils::is_complex< D >::value &&
+						structures::is_a< typename MatH::structure, structures::Hermitian >::value
+					)
+				) &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value

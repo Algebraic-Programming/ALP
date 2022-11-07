@@ -169,7 +169,7 @@ add_grb_executables( alp_cholesky alp_cholesky.cpp
 
 # add_grb_executables( alp_cholesky_complex alp_cholesky.cpp
 # 	BACKENDS alp_reference
-# 	COMPILE_DEFINITIONS _COMPLEX DEBUG #remove in the final vesrion
+# 	COMPILE_DEFINITIONS _COMPLEX
 # )
 
 add_grb_executables( alp_zhetrd alp_zhetrd.cpp

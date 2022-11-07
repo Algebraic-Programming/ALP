@@ -512,7 +512,7 @@ namespace alp {
 		struct isInstantiable< Square, Hermitian > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return (imf_r.n == imf_c.n);
+				return ( imf_r.n == imf_c.n );
 			};
 		};
 
