@@ -27,10 +27,11 @@
 
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
-#include <alp/algorithms/cholesky.hpp>
-//#include <alp/algorithms/forwardsubstitution.hpp>
+#include <alp/algorithms/symherm_posdef_inverse.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
+#ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
+#endif
 
 using namespace alp;
 
@@ -70,136 +71,125 @@ struct inpdata {
 };
 
 
-//** generate full storage Symmetric or Hermitian positive definite matrix for in-place tests */
-template<
-	typename T
->
-std::vector< T >  generate_symmherm_pos_def_mat_data_full(
-	size_t N
+/** Generate full storage Symmetric or Hermitian
+ *   positive definite matrix for in-place tests
+ */
+template< typename T >
+void  generate_symmherm_pos_def_mat_data_full(
+	size_t N,
+	std::vector< T > &mat_data
 ) {
-	std::vector< T > data( N * N );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
+	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			data[ i * N + j ] = random_value< T >();
-			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
+			mat_data[ i * N + j ] = random_value< T >();
+			mat_data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
 			if( i == j ) {
-				data[ j * N + i ] += static_cast< T >( N );
+				mat_data[ j * N + i ] += static_cast< T >( N );
 			}
 		}
 	}
-	return data;
 }
 
-/** gnerate symmetric-hermitian positive definite matrix in a square container */
-template<
-	typename T
->
-std::vector< T > generate_symmherm_pos_def_mat_data(
+/** Generate symmetric-hermitian positive
+ *  definite matrix in a full-storage container
+ */
+template< typename T >
+void generate_symmherm_pos_def_mat_data(
 	size_t N,
+	std::vector< T > &mat_data,
 	const typename std::enable_if<
 		grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
-	return( generate_symmherm_pos_def_mat_data_full< T >( N ) );
+	generate_symmherm_pos_def_mat_data_full< T >( N, mat_data );
 }
 
-//** generate upper/lower triangular part of a Symmetric positive definite matrix */
-template<
-	typename T
->
-std::vector< T >  generate_symmherm_pos_def_mat_data(
+/** Generate upper/lower triangular part of a
+ *  Symmetric positive definite matrix
+ */
+template< typename T >
+void  generate_symmherm_pos_def_mat_data(
 	size_t N,
+	std::vector< T > &mat_data,
 	const typename std::enable_if<
 		!grb::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
-	std::vector< T > data( ( N * ( N + 1 ) ) / 2 );
-	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
+	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
 	size_t k = 0;
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			//data[ k ] = static_cast< T >( i + j*j ); // easily reproducible
-			data[ k ] = random_value< T >();
+			mat_data[ k ] = random_value< T >();
 			if( i == j ) {
-				data[ k ] += grb::utils::is_complex< T >::conjugate( data[ k ] );
-				data[ k ] += static_cast< T >( N );
+				mat_data[ k ] += grb::utils::is_complex< T >::conjugate( mat_data[ k ] );
+				mat_data[ k ] += static_cast< T >( N );
 			}
 			++k;
 		}
 	}
-	return data;
 }
 
 
-//** check the solution by calculating the Frobenius norm of (H-LL^T) */
+//** check the solution by calculating the Frobenius norm of (I - H^-1 x H) */
 template<
-	typename MatSymmType,
-	typename MatUpTriangType,
-	typename T = typename MatSymmType::value_type,
-	typename Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
-	typename Minus = operators::subtract< T >
+	typename MatH,
+	typename D = typename MatH::value_type,
+	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< D >,
+	std::enable_if_t<
+		is_matrix< MatH >::value &&
+		// TODO: structures::Symmetric should be replced
+		//       rewith structures::SymmetricPositiveDefinite
+		(
+			(
+				!grb::utils::is_complex< D >::value &&
+				structures::is_a< typename MatH::structure, structures::Symmetric >::value
+			) || (
+				grb::utils::is_complex< D >::value &&
+				structures::is_a< typename MatH::structure, structures::Hermitian >::value
+			)
+		) &&
+		is_semiring< Ring >::value &&
+		is_operator< Minus >::value
+	> * = nullptr
 >
-alp::RC check_cholesky_solution(
-	const MatSymmType &H,
-	MatUpTriangType &L,
+alp::RC check_inverse_solution(
+	const MatH &Hinv,
+	const MatH &H,
 	const Ring &ring = Ring(),
 	const Minus &minus = Minus()
 ) {
 	alp::RC rc = SUCCESS;
-	const Scalar< T > zero( ring.template getZero< T >() );
-	const Scalar< T > one( ring.template getOne< T >() );
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
 	const size_t N = nrows( H );
-	MatSymmType LLT( N, N );
-	rc = rc ? rc : alp::set( LLT, zero );
-	auto LT = alp::get_view< alp::view::transpose >( L );
+
+	alp::Matrix< D, structures::Square, Dense > HxHinv( N );
+	rc = rc ? rc : alp::set( HxHinv, zero );
+	rc = rc ? rc : alp::mxm( HxHinv, H, Hinv, ring );
 #ifdef DEBUG
-	print_matrix( " << LLT >> ", LLT );
-	print_matrix( " << L >>  ", L );
-	print_matrix( " << LT >>  ", LT );
-#endif
-	auto LTstar = alp::conjugate( LT );
-	rc = rc ? rc : alp::mxm( LLT, LTstar, L, ring );
-#ifdef DEBUG
-	print_matrix( " << LLT >> ", LLT );
+	print_matrix( std::string("  HxHinv  "), HxHinv );
 #endif
 
-	MatSymmType HminsLLt( N, N );
-	rc = rc ? rc : alp::set( HminsLLt, zero );
-
-	// LLT = -LLT
-	Scalar< T > alpha( zero );
-	rc = rc ? rc : foldl( alpha, one, minus );
-	rc = rc ? rc : foldl( LLT, alpha, ring.getMultiplicativeOperator() );
-
-#ifdef DEBUG
-	print_matrix( " << -LLT  >> ", LLT );
-#endif
-
-	// HminsLLt = H - LLT
-	rc = rc ? rc : alp::eWiseApply(
-		HminsLLt, H, LLT,
-		ring.getAdditiveMonoid()
-	);
-#ifdef DEBUG
-	print_matrix( " << H - LLT  >> ", HminsLLt );
-#endif
+	auto HxHinvdiag = alp::get_view< alp::view::diagonal >( HxHinv );
+	rc = rc ? rc : foldl( HxHinvdiag, one, minus );
 
 	//Frobenius norm
-	T fnorm = 0;
+	D fnorm = 0;
 	rc = rc ? rc : alp::eWiseLambda(
-		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
+		[ &fnorm ]( const size_t i, const size_t j, D &val ) {
 			(void) i;
 			(void) j;
 			fnorm += val * val;
 		},
-		HminsLLt
+		HxHinv
 	);
 	fnorm = std::sqrt( fnorm );
 #ifdef DEBUG
-	std::cout << " FrobeniusNorm(H-LL^T) = " << fnorm << "\n";
+	std::cout << " FrobeniusNorm(I - H^-1 x H) = " << fnorm << "\n";
 #endif
 	if( tol < std::abs( fnorm ) ) {
 		std::cout << "The Frobenius norm is too large. "
@@ -235,7 +225,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		N = unit.N;
 	}
 
-	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > L( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > H( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetric, Dense > Hinv( N );
 
@@ -244,7 +233,12 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data = generate_symmherm_pos_def_mat_data< ScalarType >( N );
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		// Hermitian is currently using full storage
+		if( grb::utils::is_complex< ScalarType >::value ) {
+			matrix_data.resize( N * N );
+		}
+		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
@@ -255,58 +249,13 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 
 #ifdef DEBUG
 	print_matrix( std::string(" << H >> "), H );
-	print_matrix( std::string(" << L >> "), L );
 #endif
 
-	rc = rc ? rc : alp::set( L, zero_scalar	);
-
-	if( !internal::getInitialized( L ) ) {
-		std::cout << " Matrix L is not initialized\n";
-		return;
-	}
-
- 	rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
-#ifdef DEBUG
- 	print_matrix( std::string(" << L >> "), L );
-#endif
- 	rc = rc ? rc : check_cholesky_solution( H, L, ring );
-
-
-	// H = L^H L
-	// H^-1 = L^-1 L^H-1
-	// norm((conjugate(Ltinv)).dot(Ltinv.T)-inv(A)) = 0
-
-	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > Linv( N );
-	rc = rc ? rc : alp::set( Linv, zero_scalar );
-	auto Linvdiag = alp::get_view< alp::view::diagonal >( Linv );
-	auto LinvT = alp::get_view< alp::view::transpose >( Linv );
-	rc = rc ? rc : alp::set( Linvdiag, one_scalar );
-	auto LT = alp::get_view< alp::view::transpose >( L );
-	for( size_t i = 0; i < N; ++i ){
-		auto x = alp::get_view( LinvT, utils::range( i, N ), i );
-		auto LT_submatview = alp::get_view( LT, utils::range( i, N ), utils::range( i, N ) );
-		rc = rc ? rc : alp::algorithms::forwardsubstitution( LT_submatview, x, ring );
-	}
-#ifdef DEBUG
- 	print_matrix( std::string("  Linv  "), Linv );
-#endif
-	rc = rc ? rc : alp::set( Hinv, zero_scalar );
-	// conjugate(linv.T).dot(linv)
-	auto LinvTvstar = conjugate( LinvT );
-	rc = rc ? rc : alp::mxm( Hinv, Linv, LinvTvstar, ring );
-#ifdef DEBUG
- 	print_matrix( std::string("  Hinv  "), Hinv );
-#endif
-
-	alp::Matrix< ScalarType, structures::Square, Dense > HxHinv( N );
-	rc = rc ? rc : alp::set( HxHinv, zero_scalar );
-	rc = rc ? rc : alp::mxm( HxHinv, H, Hinv, ring );
-#ifdef DEBUG
- 	print_matrix( std::string("  HxHinv  "), HxHinv );
-#endif
+	rc = rc ? rc : algorithms::symherm_posdef_inverse( Hinv, H, ring );
+ 	rc = rc ? rc : check_inverse_solution( Hinv, H, ring );
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	inpdata in;

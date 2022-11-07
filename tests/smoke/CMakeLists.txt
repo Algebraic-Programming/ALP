@@ -218,12 +218,11 @@ add_grb_executables( alp_syevd alp_zheevd.cpp
 
 add_grb_executables( alp_potri alp_potri.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS DEBUG #remove at the end
 )
 
 add_grb_executables( alp_potri_complex alp_potri.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS _COMPLEX DEBUG #remove at the end
+	COMPILE_DEFINITIONS _COMPLEX
 )      
 
 # targets to list and build the test for this category
