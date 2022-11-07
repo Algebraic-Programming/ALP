@@ -438,7 +438,7 @@ namespace alp {
 			// Can create Band only out of tuple of intervals
 			static_assert( sizeof(IntervalTuple *) == 0, "Non-tuple type provided." ); 
 		};
-		
+
 		template < typename... Intervals >
 		struct tuple_to_band< std::tuple< Intervals... > > {
 			typedef Band< Intervals... > type;
@@ -493,6 +493,22 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
 		};
 
+		template<>
+		struct isInstantiable< General, SymmetricPositiveDefinite > : public isInstantiable< General, Symmetric > {
+		};
+
+		template<>
+		struct isInstantiable< SymmetricPositiveDefinite, General > : public isInstantiable< Symmetric, General > {
+		};
+
+		template<>
+		struct isInstantiable< SymmetricPositiveDefinite, SymmetricPositiveDefinite > : public isInstantiable< Symmetric, Symmetric > {
+		};
+
+		template<>
+		struct isInstantiable< Square, SymmetricPositiveDefinite > : public isInstantiable< Square, Symmetric > {
+		};
+
 		struct Hermitian: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
@@ -526,6 +542,38 @@ namespace alp {
 				);
 			};
 		};
+
+		template<>
+		struct isInstantiable< General, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( imf_r.n == imf_c.n );
+			};
+		};
+
+		struct HermitianPositiveDefinite: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< HermitianPositiveDefinite >, Hermitian::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< General, HermitianPositiveDefinite > : public isInstantiable< General, Hermitian > {
+		};
+
+		template<>
+		struct isInstantiable< HermitianPositiveDefinite, General > : public isInstantiable< Hermitian, General > {
+		};
+
+		template<>
+		struct isInstantiable< HermitianPositiveDefinite, HermitianPositiveDefinite > : public isInstantiable< Hermitian, Hermitian > {
+		};
+
+		template<>
+		struct isInstantiable< Square, HermitianPositiveDefinite > : public isInstantiable< Square, Hermitian > {
+		};
+
 
 		struct Trapezoidal: BaseStructure {
 

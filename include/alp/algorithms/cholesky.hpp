@@ -29,7 +29,8 @@ namespace alp {
 
 		/**
 		 * Computes the Cholesky decomposition U^TU = H of a real symmetric
-		 * positive definite (SPD) matrix H where \a U is upper triangular.
+		 * positive definite (SPD) (or complex Hermitian positive definite)
+		 * matrix H where \a U is upper triangular.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -52,15 +53,15 @@ namespace alp {
 				is_matrix< MatU >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatU::structure, structures::UpperTriangular >::value &&
-				// TODO: structures::Symmetric should be replced
-				//       with structures::SymmetricPositiveDefinite
+				// TODO: structures::SymmetricPositiveDefinite should be replced
+				//       with structures::SymmetricPositiveDefinitePositiveDefinite
 				(
 					(
 						!grb::utils::is_complex< D >::value &&
-						structures::is_a< typename MatH::structure, structures::Symmetric >::value
+						structures::is_a< typename MatH::structure, structures::SymmetricPositiveDefinite >::value
 					) || (
 						grb::utils::is_complex< D >::value &&
-						structures::is_a< typename MatH::structure, structures::Hermitian >::value
+						structures::is_a< typename MatH::structure, structures::HermitianPositiveDefinite >::value
 					)
 				) &&
 				is_semiring< Ring >::value &&
@@ -204,7 +205,7 @@ namespace alp {
 				is_matrix< MatU >::value &&
 				is_matrix< MatH >::value &&
 				structures::is_a< typename MatU::structure, structures::UpperTriangular >::value &&
-				structures::is_a< typename MatH::structure, structures::Symmetric >::value &&
+				structures::is_a< typename MatH::structure, structures::SymmetricPositiveDefinite >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value
 			> * = nullptr
@@ -464,7 +465,7 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::Symmetric, Dense > Reflector( ncols( A12 ) );
+				Matrix< D, structures::SymmetricPositiveDefinite, Dense > Reflector( ncols( A12 ) );
 				rc = rc ? rc : set( Reflector, zero );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
@@ -479,7 +480,7 @@ namespace alp {
 					return rc;
 				}
 #endif
-				auto A22UT = get_view< structures::Symmetric >( U, range2, range2 );
+				auto A22UT = get_view< structures::SymmetricPositiveDefinite >( U, range2, range2 );
 
 				rc = rc ? rc : foldl( A22UT, Reflector, minus );
 #ifdef DEBUG
