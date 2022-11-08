@@ -61,15 +61,9 @@ namespace alp {
 				std::cerr << "Entering exec().\n";
 				// intialise GraphBLAS
 				RC ret = init();
-				if( ret != SUCCESS ){
-					std::cerr << "call to init failed.\n";
-				}
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
 					( *alp_program )( data_in, in_size, data_out );
-				}
-				if( ret != SUCCESS ){
-					std::cerr << "call to alp_program failed.\n";
 				}
 				// finalise the GraphBLAS
 				if( ret == SUCCESS ) {
@@ -90,15 +84,9 @@ namespace alp {
 				std::cerr << "Entering exec().\n";
 				// intialise GraphBLAS
 				RC ret = init();
-				if( ret != SUCCESS ){
-					std::cerr << "call to init failed.\n";
-				}
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
 					( *alp_program )( data_in, data_out );
-				}
-				if( ret != SUCCESS ){
-					std::cerr << "call to alp_program failed.\n";
 				}
 				// finalise the GraphBLAS
 				if( ret == SUCCESS ) {
