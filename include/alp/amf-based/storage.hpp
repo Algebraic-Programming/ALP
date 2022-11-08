@@ -33,6 +33,27 @@
 
 namespace alp {
 
+	namespace internal {
+
+		/**
+		 * Determines the mapping polynomial type and exposes a factory method
+		 * to create instances of that polynomial.
+		 *
+		 * All specializations of this type trait should define the factory
+		 * method following the same signature. The factory method shall
+		 * return an object of the type exposed as \a type.
+		 *
+		 * @tparam Structure  Matrix structure
+		 * @tparam ImfR       Row IMF type
+		 * @tparam ImfC       Column IMF type
+		 * @tparam backend    The backend
+		 *
+		 */
+		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
+		struct determine_poly_factory {};
+
+	} // namespace internal
+
 	namespace storage {
 
 		enum StorageOrientation {
@@ -578,6 +599,10 @@ namespace alp {
 
 		}; // namespace polynomials
 
+		/** Forward declaration */
+		template< enum Backend backend >
+		class AMFFactory;
+
 		/**
 		 * Access Mapping Function (AMF) maps logical matrix coordinates (i, j)
 		 * to the corresponding matrix element's location in the physical container.
@@ -596,10 +621,13 @@ namespace alp {
 		 * All AMF specializations shall expose the effective types of the IMFs
 		 * and the mapping polynomial, since these may change after the fusion.
 		 */
-		template< typename ImfR, typename ImfC, typename MappingPolynomial >
+		template<
+			typename ImfR, typename ImfC, typename MappingPolynomial,
+			enum Backend backend
+		>
 		class AMF {
 
-			friend class AMFFactory;
+			friend class AMFFactory< backend >;
 
 			public:
 
@@ -744,8 +772,9 @@ namespace alp {
 		}; // class AMF
 
 		/**
-		 * @brief Collects AMF factory classes
+		 * Collects AMF factory classes.
 		 */
+		template< enum Backend backend = config::default_backend >
 		struct AMFFactory {
 
 			/**
@@ -808,9 +837,9 @@ namespace alp {
 
 				public:
 
-					typedef AMF< final_imf_r_type, final_imf_c_type, final_polynomial_type > amf_type;
+					typedef AMF< final_imf_r_type, final_imf_c_type, final_polynomial_type, backend > amf_type;
 
-					static amf_type Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly > &amf ) {
+					static amf_type Create( ViewImfR imf_r, ViewImfC imf_c, const AMF< SourceImfR, SourceImfC, SourcePoly, backend > &amf ) {
 						composed_imf_r_type composed_imf_r = imf::ComposedFactory< SourceImfR, ViewImfR >::create( amf.imf_r, imf_r );
 						composed_imf_c_type composed_imf_c = imf::ComposedFactory< SourceImfC, ViewImfC >::create( amf.imf_c, imf_c );
 						return amf_type(
@@ -838,10 +867,21 @@ namespace alp {
 			 * @tparam PolyType  Type of the mapping polynomial.
 			 *
 			 */
-			template< typename PolyFactory >
+			template< typename Structure, typename ImfR, typename ImfC >
 			struct FromPolynomial {
 
-				typedef AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > amf_type;
+				// Ensure compatibility of IMF types.
+				// Original Matrix has imf::Id as both IMFs.
+				// Original Vector has ImfR = imf::Id and ImfC = imf::Zero.
+				static_assert(
+					std::is_same< ImfR, imf::Id >::value &&
+					( std::is_same< ImfC, imf::Id >::value || std::is_same< ImfC, imf::Zero >::value ),
+					"AMF factory FromPolynomial can only be used for an original container."
+				);
+
+				typedef typename internal::determine_poly_factory< Structure, ImfR, ImfC, backend >::factory_type PolyFactory;
+
+				typedef AMF< imf::Id, imf::Id, typename PolyFactory::poly_type, backend > amf_type;
 
 				/**
 				 * Factory method used by 2D containers.
@@ -887,13 +927,13 @@ namespace alp {
 					static_assert(
 						std::is_same<
 							amf_type,
-							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::amf_type
+							typename Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type, backend > >::amf_type
 						>::value,
 						"The factory method returns the object of different type than declared. This is a bug."
 					);
-					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type > >::Create(
+					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type, backend > >::Create(
 						imf_r, imf_c,
-						FromPolynomial< PolyFactory >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
+						FromPolynomial< structures::General, imf::Id, imf::Zero >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
 					);
 				}
 
@@ -947,7 +987,8 @@ namespace alp {
 					typename polynomials::apply_view<
 						view::transpose,
 						typename SourceAMF::mapping_polynomial_type
-					>::type
+					>::type,
+					backend
 				> amf_type;
 
 				static amf_type Create( const SourceAMF &amf ) {
@@ -955,7 +996,8 @@ namespace alp {
 					return AMF<
 						typename SourceAMF::imf_c_type,
 						typename SourceAMF::imf_r_type,
-						new_mapping_polynomial_type
+						new_mapping_polynomial_type,
+						backend
 					>(
 						amf.imf_c,
 						amf.imf_r,
@@ -1001,7 +1043,7 @@ namespace alp {
 
 				public:
 
-					typedef AMF< imf::Id, imf::Zero, new_poly_type > amf_type;
+					typedef AMF< imf::Id, imf::Zero, new_poly_type, backend > amf_type;
 
 					static amf_type Create( const SourceAMF &amf ) {
 						assert( amf.getLogicalDimensions().first == amf.getLogicalDimensions().second );
@@ -1031,10 +1073,10 @@ namespace alp {
 			template< typename SourceAMF >
 			struct Reshape< view::matrix, SourceAMF > {
 
-				typedef typename AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::amf_type amf_type;
+				typedef typename Compose< imf::Id, imf::Id, SourceAMF >::amf_type amf_type;
 
 				static amf_type Create( const SourceAMF &amf ) {
-					return storage::AMFFactory::Compose< imf::Id, imf::Id, SourceAMF >::Create(
+					return Compose< imf::Id, imf::Id, SourceAMF >::Create(
 						imf::Id( amf.getLogicalDimensions().first ),
 						imf::Id( amf.getLogicalDimensions().second ),
 						amf
@@ -1050,23 +1092,6 @@ namespace alp {
 	}; // namespace storage
 
 	namespace internal {
-
-		/**
-		 * Determines the mapping polynomial type and exposes a factory method
-		 * to create instances of that polynomial.
-		 *
-		 * All specializations of this type trait should define the factory
-		 * method following the same signature. The factory method shall
-		 * return an object of the type exposed as \a type.
-		 *
-		 * @tparam Structure  Matrix structure
-		 * @tparam ImfR       Row IMF type
-		 * @tparam ImfC       Column IMF type
-		 * @tparam backend    The backend
-		 *
-		 */
-		template< typename Structure, typename ImfR, typename ImfC, enum Backend backend >
-		struct determine_poly_factory {};
 
 		/**
 		 * Determines the AMF type for a matrix having the provided static properties.
@@ -1128,10 +1153,10 @@ namespace alp {
 
 			typedef typename std::conditional<
 				View::type_id == view::gather,
-				typename storage::AMFFactory::Compose<
+				typename storage::AMFFactory< backend >::template Compose<
 					ImfR, ImfC, typename View::applied_to::amf_type
 				>::amf_type,
-				typename storage::AMFFactory::Reshape<
+				typename storage::AMFFactory< backend >::template Reshape<
 					View::type_id,
 					typename View::applied_to::amf_type
 				>::amf_type
@@ -1139,7 +1164,7 @@ namespace alp {
 
 		};
 
-		/** Specialization for containers that allocate storage */
+		/** Specialization for storage-based containers that allocate storage */
 		template< typename Structure, typename ImfC, enum Backend backend >
 		struct determine_amf_type< Structure, view::Original< void >, imf::Id, ImfC, backend > {
 
@@ -1148,12 +1173,12 @@ namespace alp {
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
-			typedef typename storage::AMFFactory::FromPolynomial<
-				typename determine_poly_factory< Structure, imf::Id, ImfC, backend >::factory_type
+			typedef typename storage::AMFFactory< backend >::template FromPolynomial<
+				Structure, imf::Id, ImfC
 			>::amf_type type;
 		};
 
-		/** Specialization for containers that allocate storage */
+		/** Specialization for functor-based containers that allocate storage */
 		template< typename Structure, typename ImfC, enum Backend backend, typename Lambda >
 		struct determine_amf_type< Structure, view::Functor< Lambda >, imf::Id, ImfC, backend > {
 
@@ -1162,10 +1187,10 @@ namespace alp {
 				"Incompatible combination of parameters provided to determine_amf_type."
 			);
 
-			typedef typename storage::AMFFactory::FromPolynomial<
-				storage::polynomials::NoneFactory
-			>::amf_type type;
+			// A functor-based container does not have an AMF
+			typedef void type;
 		};
+
 	} // namespace internal
 
 } // namespace alp

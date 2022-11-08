@@ -347,8 +347,8 @@ namespace alp {
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial<
-						typename internal::determine_poly_factory< structure, ImfR, ImfC, backend >::factory_type
+					storage::AMFFactory< backend >::template FromPolynomial<
+						Structure, ImfR, ImfC
 					>::Create(
 						ImfR( rows ),
 						ImfC( cols )
@@ -382,8 +382,8 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial<
-						typename internal::determine_poly_factory< structure, ImfR, ImfC, backend >::factory_type
+					storage::AMFFactory< backend >::template FromPolynomial<
+						Structure, ImfR, ImfC
 					>::Create(
 						ImfR( dim ),
 						ImfC( dim )
@@ -417,7 +417,7 @@ namespace alp {
 			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
 					getContainer( source_matrix ),
-					storage::AMFFactory::Compose<
+					storage::AMFFactory< backend >::template Compose<
 						ImfR, ImfC, typename SourceType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
@@ -440,7 +440,7 @@ namespace alp {
 			Matrix( SourceType &source_matrix ) :
 				base_type(
 					getContainer( source_matrix ),
-					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+					storage::AMFFactory< backend >::template Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
