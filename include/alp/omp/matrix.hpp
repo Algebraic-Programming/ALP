@@ -26,6 +26,7 @@
 #include <alp/backends.hpp>
 #include <alp/base/matrix.hpp>
 #include <alp/amf-based/matrix.hpp>
+#include "storagebasedmatrix.hpp"
 
 namespace alp {
 
