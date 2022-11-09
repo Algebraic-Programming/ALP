@@ -51,15 +51,15 @@ namespace alp {
 				const imf_r_type imf_r;
 				const imf_c_type imf_c;
 
-				AMF( ImfR imf_r, ImfC imf_c ) :
+				OMP_AMF( ImfR imf_r, ImfC imf_c ) :
 					imf_r( imf_r ), imf_c( imf_c ) {}
 
-				AMF( const AMF & ) = delete;
-				AMF &operator=( const AMF & ) = delete;
+				OMP_AMF( const OMP_AMF & ) = delete;
+				OMP_AMF &operator=( const OMP_AMF & ) = delete;
 
 			public:
 
-				AMF( AMF &&amf ) :
+				OMP_AMF( OMP_AMF &&amf ) :
 					imf_r( std::move( amf.imf_r ) ),
 					imf_c( std::move( amf.imf_c ) ) {}
 
@@ -101,7 +101,8 @@ namespace alp {
 				size_t getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
 					(void)s;
 					(void)P;
-					return map_poly.evaluate( imf_r.map( i ), imf_c.map( j ) );
+					//return map_poly.evaluate( imf_r.map( i ), imf_c.map( j ) );
+					return -1;
 				}
 
 				/**
@@ -118,7 +119,7 @@ namespace alp {
 				 */
 				std::pair< size_t, size_t > getCoords( const size_t storageIndex, const size_t s, const size_t P ) const;
 
-		}; // class AMF
+		}; // class OMP_AMF
 
 		/** Specialization for matrices */
 		template< typename Structure >
