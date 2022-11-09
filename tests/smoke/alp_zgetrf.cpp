@@ -87,74 +87,93 @@ std::vector< T >  generate_rectangular_matrix_data(
 	return data;
 }
 
-// //** check solution by calculating H-QR */
-// template<
-// 	typename D,
-// 	typename StructureGen,
-// 	typename GenView,
-// 	typename GenImfR,
-// 	typename GenImfC,
-// 	typename StructureOrth,
-// 	typename OrthogonalView,
-// 	typename OrthogonalImfR,
-// 	typename OrthogonalImfC,
-// 	class Minus = operators::subtract< D >,
-// 	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >
-// >
-// RC check_lu_solution(
-// 	alp::Matrix< D, StructureGen, alp::Density::Dense, GenView, GenImfR, GenImfC > &H,
-// 	alp::Matrix< D, StructureOrth, alp::Density::Dense, OrthogonalView, OrthogonalImfR, OrthogonalImfC > &Q,
-// 	alp::Matrix< D, StructureGen, alp::Density::Dense, GenView, GenImfR, GenImfC > &R,
-// 	const Ring &ring = Ring(),
-// 	const Minus &minus = Minus()
-// ) {
-// 	RC rc = SUCCESS;
-// 	const size_t n = nrows( H );
-// 	const size_t m = ncols( H );
+template<
+	typename D,
+	typename GeneralType,
+	typename GenView,
+	typename GenImfR,
+	typename GenImfC,
+	typename UType,
+	typename UView,
+	typename UImfR,
+	typename UImfC,
+	typename LType,
+	typename LView,
+	typename LImfR,
+	typename LImfC,
+	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	class Minus = operators::subtract< D >
+	>
+RC check_lu_solution(
+	Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &H,
+	Matrix< D, LType, alp::Dense, LView, LImfR, LImfC > &L,
+	Matrix< D, UType, alp::Dense, UView, UImfR, UImfC > &U,
+	Vector< size_t > &p,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
+) {
+	RC rc = SUCCESS;
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
 
-// #ifdef DEBUG
-// 	std::cout << " ** check_solution **\n";
-// 	std::cout << " input matrices:\n";
-// 	print_matrix( " << H >> ", H );
-// 	print_matrix( " << Q >> ", Q );
-// 	print_matrix( " << R >> ", R );
-// 	std::cout << " ********************\n";
-// #endif
+	const size_t m = nrows( H );
+	const size_t n = ncols( H );
 
-//  	alp::Matrix< D, StructureGen, alp::Density::Dense > QR( n, m );
-// 	// QR = Q * R
-// 	const Scalar< D > zero( ring.template getZero< D >() );
-// 	rc = rc ? rc : set( QR, zero );
-// 	rc = rc ? rc : mxm( QR, Q, R, ring );
-// 	// QR = QR - H
-// 	rc = foldl( QR, H, minus );
+#ifdef DEBUG
+	std::cout << " ********************\n";
+	std::cout << " ** check_solution **\n";
+	std::cout << " input:\n";
+	print_matrix( "  H  ", H );
+	print_matrix( "  L  ", L );
+	print_matrix( "  U  ", U );
+	print_vector( "  p  ", p );
+	std::cout << " ********************\n";
+#endif
 
-// #ifdef DEBUG
-// 	print_matrix( " << QR - H >> ", QR );
-// #endif
+ 	alp::Matrix< D, GeneralType, alp::Density::Dense > LU( m, n );
+	// LU = L * U
+	rc = rc ? rc : set( LU, zero );
+	rc = rc ? rc : mxm( LU, L, U, ring );
 
-// 	//Frobenius norm
-// 	D fnorm = ring.template getZero< D >();
-// 	rc = rc ? rc : alp::eWiseLambda(
-// 		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
-// 			(void) i;
-// 			(void) j;
-// 			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
-// 		},
-// 		QR
-// 	);
-// 	fnorm = std::sqrt( fnorm );
+	// until #591 is implemented we use no_permutation_vec explicitly
+	alp::Vector< size_t > no_permutation_vec( n );
+	{
+		// tmp data
+		std::vector< size_t > v( n );
+		std::iota( std::begin( v ), std::end( v ), 0 );
+		rc = rc ? rc : alp::buildVector( no_permutation_vec, v.begin(), v.end() );
+	}
 
-// #ifdef DEBUG
-// 	std::cout << " FrobeniusNorm(H-QR) = " << std::abs( fnorm ) << "\n";
-// #endif
-// 	if( tol < std::abs( fnorm ) ) {
-// 		std::cout << "The Frobenius norm is too large.\n";
-// 		return FAILED;
-// 	}
+	// LU = LU - [p]H // where p are row permutations
+	auto pH = alp::get_view< alp::structures::General >( H, p, no_permutation_vec );
+	rc = foldl( LU, pH, minus );
 
-// 	return rc;
-// }
+#ifdef DEBUG
+	print_matrix( " LU - [p]H >> ", LU );
+#endif
+
+	//Frobenius norm
+	D fnorm = ring.template getZero< D >();
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
+		},
+		LU
+	);
+	fnorm = std::sqrt( fnorm );
+
+#ifdef DEBUG
+	std::cout << " FrobeniusNorm(LU-[p]H) = " << std::abs( fnorm ) << "\n";
+#endif
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << "The Frobenius norm is too large.\n";
+		return FAILED;
+	}
+
+	return rc;
+}
 
 
 
@@ -181,11 +200,17 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	// alp::Matrix< ScalarType, structures::UpperTriangular > U( K, N );
 	alp::Matrix< ScalarType, General > L( M, K );
 	alp::Matrix< ScalarType, General > U( K, N );
-	alp::Vector< size_t > rowpermuts( M );
+	alp::Vector< size_t > permutation_vec( M );
 	{
 		std::srand( RNDSEED );
 		auto matrix_data = generate_rectangular_matrix_data< ScalarType >( M, N );
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
+
+		std::vector< size_t > dtmp( M, 0 );
+		for( size_t i = 0; i < M; ++i ) {
+			dtmp[ i ] = i;
+		}
+		alp::buildVector( permutation_vec, dtmp.begin(), dtmp.end() );
 	}
 #ifdef DEBUG
 	print_matrix( " input matrix H ", H );
@@ -193,7 +218,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 
 	rc = rc ? rc : set( L, zero );
 	rc = rc ? rc : set( U, zero );
-	rc = rc ? rc : algorithms::householder_lu( H, L, U, ring );
+	rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, ring );
 
 
 #ifdef DEBUG
@@ -202,10 +227,10 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	print_matrix( "  U ", U );
 #endif
 
-	// rc = check_lu_solution( H, L, U );
-	// if( rc != SUCCESS ) {
-	// 	std::cout << "Error: solution numerically wrong\n";
-	// }
+	rc = check_lu_solution( H, L, U, permutation_vec, ring );
+	if( rc != SUCCESS ) {
+		std::cout << "Error: solution numerically wrong\n";
+	}
 }
 
 int main( int argc, char **argv ) {
