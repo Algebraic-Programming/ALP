@@ -102,91 +102,60 @@ namespace alp {
 				std::cerr << " alp::set( HWork, H ) failed\n";
 				return rc;
 			}
-#ifdef DEBUG
-			print_matrix( " << HWork >> ", HWork );
-#endif
 
 			Vector< D, GeneralType, alp::Dense > PivotVec( n );
 			rc = rc ? rc : alp::set( PivotVec, zero );
 
 			for( size_t k = 0; k < std::min( n, m ); ++k ) {
- 				//const size_t m = n - k - 1;
-
-				// ===== Begin Computing v =====
+				// =====   algorithm  =====
 				// a = H[ k, k ]
 				// v = H[ k + 1 : , k ]
 				// w = H[ k, k + 1 : ]
+				// Ak = H[ k + 1 :, k + 1 : ]
+				// v = v / a
+				// Ak = Ak - outer(v,w)
 				auto a_view = alp::get_view( HWork, utils::range( k, k + 1 ), k );
 				auto v_view = alp::get_view( HWork, utils::range( k + 1, m ), k );
 				auto w_view = alp::get_view( HWork, k, utils::range( k + 1, n ) );
 				auto Ak_view = alp::get_view( HWork, utils::range( k + 1, m ), utils::range( k + 1, n ) );
 
+				Scalar< D > alpha( zero );
+				rc = rc ? rc : alp::foldl( alpha, a_view, ring.getAdditiveMonoid() );
 
-#ifdef DEBUG
-				print_vector( "--->in  v_view ", v_view );
-#endif
-				Scalar< D > a0( zero );
-				rc = rc ? rc : alp::foldl( a0, a_view, ring.getAdditiveMonoid() );
-				// Pivot
+				// pivoting: find index ipivot
 				size_t ipivot = k;
 				rc = rc ? rc : eWiseLambda(
-					[ &a0, &ipivot, &k ]( const size_t i, D &val ) {
-						if( std::abs( val ) > std::abs( *a0 ) ) {
-							*a0 = val;
+					[ &alpha, &ipivot, &k ]( const size_t i, D &val ) {
+						if( std::abs( val ) > std::abs( *alpha ) ) {
+							*alpha = val;
 							ipivot = i + k + 1;
 						}
 					},
 					v_view
 				);
-#ifdef DEBUG
-				std::cout << "k = " << k << "\n";
-				std::cout << "a0 = " << *a0 << "\n";
-				std::cout << "ipivot = " << ipivot << "\n";
-#endif
-
+				// do pivoting if needed
 				if( ipivot > k ) {
-#ifdef DEBUG
-					std::cout << "Pivoting " << ipivot << " <-> " << k << "\n";
-					print_vector( "--->in  p ", p );
-					print_matrix( "--->in  HWork ", HWork );
-#endif
-					size_t itmp = p[ ipivot ];
-					p[ ipivot ] = p[ k ];
-					p[ k ] = itmp;
+					//p[ ipivot ] <-> p[ k ]
+					auto p1 = alp::get_view( p, utils::range( k, k + 1 ) );
+					auto p2 = alp::get_view( p, utils::range( ipivot, ipivot + 1 ) );
+					Vector< size_t, GeneralType, alp::Dense > ptmp( 1 );
+					rc = rc ? rc : alp::set( ptmp, p1 );
+					rc = rc ? rc : alp::set( p1, p2 );
+					rc = rc ? rc : alp::set( p2, ptmp );
 
+					//HWork[ ipivot ] <-> HWork[ k ]
 					auto v1 = alp::get_view( HWork, k, utils::range( 0, n ) );
 					auto v2 = alp::get_view( HWork, ipivot, utils::range( 0, n ) );
 					rc = rc ? rc : alp::set( PivotVec, v1 );
 					rc = rc ? rc : alp::set( v1, v2 );
 					rc = rc ? rc : alp::set( v2, PivotVec );
-#ifdef DEBUG
-					print_vector( "--->out p ", p );
-					print_matrix( "--->out HWork ", HWork );
-#endif
 				}
 
-				Scalar< D > alpha( zero );
-				rc = rc ? rc : alp::foldl( alpha, a_view, ring.getAdditiveMonoid() );
 				rc = rc ? rc : alp::foldl( v_view, alpha, divide );
-#ifdef DEBUG
-				print_matrix( "--->after divide HWork ", HWork );
-
-				std::string matname( " << Ak_view(" );
-				matname = matname + std::to_string( k );
-				matname = matname + std::string( ") >> " );
-				print_matrix( matname, Ak_view );
-
-				print_vector( " v  ", v_view );
-				print_vector( " w  ", w_view );
-				print_vector( " a_view  ", a_view );
-				std::cout << " alpha = " << *alpha << "\n";
-#endif
 
 				auto w_view_star = conjugate( w_view );
 				auto Reflector = alp::outer( v_view, w_view_star, ring.getMultiplicativeOperator() );
-#ifdef DEBUG
-				print_matrix( " R ", Reflector );
-#endif
+
 				rc = rc ? rc : alp::foldl( Ak_view, Reflector, minus );
 
 			}
@@ -202,12 +171,6 @@ namespace alp {
 				auto Hrow = alp::get_view( HWork, k, utils::range( k, n ) );
 				rc = rc ? rc : alp::set( Urow, Hrow );
 			}
-
-#ifdef DEBUG
-			print_matrix( " HWork(before return) ", HWork );
-			print_matrix( " L(before return) ", L );
-			print_matrix( " U(before return) ", U );
-#endif
 
 			return rc;
 

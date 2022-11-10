@@ -190,46 +190,52 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	const Scalar< ScalarType > zero( ring.template getZero< ScalarType >() );
 	const Scalar< ScalarType > one( ring.template getOne< ScalarType >() );
 
-	// dimensions of sqare matrices H, Q and R
-	const size_t M = unit;
-	const size_t N = 2 * unit;
-	const size_t K = std::min( N, M );
+	// test thin, square and flat
+	std::vector< size_t > m_arr { unit, unit, 2* unit };
+	std::vector< size_t > n_arr { 2* unit, unit, unit, };
+	for( size_t i = 0; i < 3; ++i ) {
+		// dimensions of sqare matrices H, Q and R
+		const size_t M = m_arr[ i ];
+		const size_t N = n_arr[ i ];
+		const size_t K = std::min( N, M );
 
-	alp::Matrix< ScalarType, General > H( M, N );
-	// alp::Matrix< ScalarType, structures::LowerTriangular > L( M, K );
-	// alp::Matrix< ScalarType, structures::UpperTriangular > U( K, N );
-	alp::Matrix< ScalarType, General > L( M, K );
-	alp::Matrix< ScalarType, General > U( K, N );
-	alp::Vector< size_t > permutation_vec( M );
-	{
-		std::srand( RNDSEED );
-		auto matrix_data = generate_rectangular_matrix_data< ScalarType >( M, N );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
+		alp::Matrix< ScalarType, General > H( M, N );
+		// alp::Matrix< ScalarType, structures::LowerTriangular > L( M, K );
+		// alp::Matrix< ScalarType, structures::UpperTriangular > U( K, N );
+		alp::Matrix< ScalarType, General > L( M, K );
+		alp::Matrix< ScalarType, General > U( K, N );
+		alp::Vector< size_t > permutation_vec( M );
+		{
+			std::srand( RNDSEED );
+			auto matrix_data = generate_rectangular_matrix_data< ScalarType >( M, N );
+			rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 
-		std::vector< size_t > dtmp( M, 0 );
-		for( size_t i = 0; i < M; ++i ) {
-			dtmp[ i ] = i;
+			std::vector< size_t > dtmp( M, 0 );
+			for( size_t i = 0; i < M; ++i ) {
+				dtmp[ i ] = i;
+			}
+			alp::buildVector( permutation_vec, dtmp.begin(), dtmp.end() );
 		}
-		alp::buildVector( permutation_vec, dtmp.begin(), dtmp.end() );
-	}
 #ifdef DEBUG
-	print_matrix( " input matrix H ", H );
+		print_matrix( " input matrix H ", H );
 #endif
 
-	rc = rc ? rc : set( L, zero );
-	rc = rc ? rc : set( U, zero );
-	rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, ring );
+		rc = rc ? rc : set( L, zero );
+		rc = rc ? rc : set( U, zero );
+		rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, ring );
 
 
 #ifdef DEBUG
-	print_matrix( "  H ", H );
-	print_matrix( "  L ", L );
-	print_matrix( "  U ", U );
+		print_matrix( "  H ", H );
+		print_matrix( "  L ", L );
+		print_matrix( "  U ", U );
 #endif
 
-	rc = check_lu_solution( H, L, U, permutation_vec, ring );
-	if( rc != SUCCESS ) {
-		std::cout << "Error: solution numerically wrong\n";
+		rc = check_lu_solution( H, L, U, permutation_vec, ring );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: solution numerically wrong\n";
+			return;
+		}
 	}
 }
 
