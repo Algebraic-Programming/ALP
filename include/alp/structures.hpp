@@ -379,6 +379,7 @@ namespace alp {
 			};
 		};
 
+
 		/**
 		 * @brief A Band is a structure described by a compile-time tuple of 
 		 *        sorted, non-overlapping integer intervals which 
@@ -592,6 +593,36 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
+		template<>
+		struct isInstantiable< LowerTrapezoidal, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
+		};
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Square  > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return (imf_r.n == imf_c.n);
+			};
+		};
+
 		struct LowerTriangular: BaseStructure {
 
 			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
@@ -622,6 +653,16 @@ namespace alp {
 
 			using inferred_structures = tuple_cat< std::tuple< UpperTrapezoidal >, Trapezoidal::inferred_structures >::type;
 
+		};
+
+		template<>
+		struct isInstantiable< General, UpperTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
 		};
 
 		struct UpperTriangular: BaseStructure {

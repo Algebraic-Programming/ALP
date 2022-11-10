@@ -200,10 +200,8 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		const size_t K = std::min( N, M );
 
 		alp::Matrix< ScalarType, General > H( M, N );
-		// alp::Matrix< ScalarType, structures::LowerTriangular > L( M, K );
-		// alp::Matrix< ScalarType, structures::UpperTriangular > U( K, N );
-		alp::Matrix< ScalarType, General > L( M, K );
-		alp::Matrix< ScalarType, General > U( K, N );
+		alp::Matrix< ScalarType, structures::LowerTrapezoidal > L( M, K );
+		alp::Matrix< ScalarType, structures::UpperTrapezoidal > U( K, N );
 		alp::Vector< size_t > permutation_vec( M );
 		{
 			std::srand( RNDSEED );
@@ -226,9 +224,9 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 
 
 #ifdef DEBUG
-		print_matrix( "  H ", H );
-		print_matrix( "  L ", L );
-		print_matrix( "  U ", U );
+		print_matrix( "  H(out) ", H );
+		print_matrix( "  L(out) ", L );
+		print_matrix( "  U(out) ", U );
 #endif
 
 		rc = check_lu_solution( H, L, U, permutation_vec, ring );

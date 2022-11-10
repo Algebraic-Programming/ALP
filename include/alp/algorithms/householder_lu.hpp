@@ -46,27 +46,29 @@ namespace alp {
 		 *
 		 */
 		template<
-			typename D,
-			typename GeneralType,
-			typename GenView,
-			typename GenImfR,
-			typename GenImfC,
-			typename UType,
-			typename UView,
-			typename UImfR,
-			typename UImfC,
-			typename LType,
-			typename LView,
-			typename LImfR,
-			typename LImfC,
+			typename MatH,
+			typename D = typename MatH::value_type,
+			typename MatL,
+			typename MatU,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
-			class Divide = operators::divide< D >
+			class Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatH >::value &&
+				is_matrix< MatL >::value &&
+				is_matrix< MatU >::value &&
+				structures::is_a< typename MatH::structure, structures::General >::value &&
+				structures::is_a< typename MatL::structure, structures::LowerTrapezoidal >::value &&
+				structures::is_a< typename MatU::structure, structures::UpperTrapezoidal >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
 		>
 		RC householder_lu(
-			Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &H,
-			Matrix< D, LType, alp::Dense, LView, LImfR, LImfC > &L,
-			Matrix< D, UType, alp::Dense, UView, UImfR, UImfC > &U,
+			MatH &H,
+			MatL &L,
+			MatU &U,
 			Vector< size_t > &p,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -87,7 +89,7 @@ namespace alp {
 			std::cout << " n, k, m = " << n << ", "  << k << ", " << m << "\n";
 #endif
 
-			// L = identity( n )
+			// // L = identity( n )
 			auto Ldiag = alp::get_view< alp::view::diagonal >( L );
 			rc = rc ? rc : alp::set( Ldiag, one );
 			if( rc != SUCCESS ) {
@@ -96,14 +98,14 @@ namespace alp {
 			}
 
 			// Out of place specification of the computation
-			Matrix< D, GeneralType, alp::Dense > HWork( m, n );
+			MatH HWork( m, n );
 			rc = rc ? rc : alp::set( HWork, H );
 			if( rc != SUCCESS ) {
 				std::cerr << " alp::set( HWork, H ) failed\n";
 				return rc;
 			}
 
-			Vector< D, GeneralType, alp::Dense > PivotVec( n );
+			Vector< D > PivotVec( n );
 			rc = rc ? rc : alp::set( PivotVec, zero );
 
 			for( size_t k = 0; k < std::min( n, m ); ++k ) {
@@ -138,7 +140,7 @@ namespace alp {
 					//p[ ipivot ] <-> p[ k ]
 					auto p1 = alp::get_view( p, utils::range( k, k + 1 ) );
 					auto p2 = alp::get_view( p, utils::range( ipivot, ipivot + 1 ) );
-					Vector< size_t, GeneralType, alp::Dense > ptmp( 1 );
+					Vector< size_t > ptmp( 1 );
 					rc = rc ? rc : alp::set( ptmp, p1 );
 					rc = rc ? rc : alp::set( p1, p2 );
 					rc = rc ? rc : alp::set( p2, ptmp );
@@ -161,16 +163,13 @@ namespace alp {
 			}
 
 
-			//save the result
-			for( size_t k = 0; k < std::min( n, m ); ++k ) {
-				auto Hcol = alp::get_view( HWork, utils::range( k + 1, m ), k );
-				auto Lcol = alp::get_view( L, utils::range( k + 1, m ), k );
-				rc = rc ? rc : alp::set( Lcol, Hcol );
+			// //save the result in L and U
+			auto H_Utrapez = get_view< structures::UpperTrapezoidal >( HWork, utils::range( 0, k ), utils::range( 0, n ) );
+			rc = rc ? rc : alp::set( U, H_Utrapez );
 
-				auto Urow = alp::get_view( U, k, utils::range( k, n ) );
-				auto Hrow = alp::get_view( HWork, k, utils::range( k, n ) );
-				rc = rc ? rc : alp::set( Urow, Hrow );
-			}
+			auto H_Ltrapez = get_view< structures::LowerTrapezoidal >( HWork, utils::range( 1, m ), utils::range( 0, k ) );
+			auto L_lowerTrapez = get_view( L, utils::range( 1, m ), utils::range( 0, k ) );
+			rc = rc ? rc : alp::set( L_lowerTrapez, H_Ltrapez );
 
 			return rc;
 
