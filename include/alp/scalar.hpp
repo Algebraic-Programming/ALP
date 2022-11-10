@@ -27,6 +27,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/scalar.hpp>
 #endif
+#ifdef _ALP_WITH_OMP
+ #include <alp/omp/scalar.hpp>
+#endif
 
 // specify default only if requested during compilation
 #ifdef _ALP_BACKEND
