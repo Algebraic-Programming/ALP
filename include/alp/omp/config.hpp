@@ -29,6 +29,13 @@ namespace alp {
 
 		class OMP : public grb::config::OMP {};
 
+		// Dimensions of blocks counted in number of elements per dimension
+		constexpr size_t BLOCK_ROW_DIM = 16;
+		constexpr size_t BLOCK_COL_DIM = 16;
+
+		constexpr size_t REPLICATION_FACTOR_THREADS = 1;
+
+
 	} // namespace config
 
 } // namespace alp
