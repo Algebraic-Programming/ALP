@@ -39,7 +39,7 @@ void print_matrix( std::string name, const MatrixType &A ) {
 	// Temporary until adding multiple symmetry directions
 	constexpr bool sym_up { is_sym };
 
-	std::cout << name << "= [\n";
+	std::cout << name << "= array( [\n";
 	for( size_t row = 0; row < alp::nrows( A ); ++row ) {
 		std::cout << " [";
 		for( size_t col = 0; col < alp::ncols( A ); ++col ) {
@@ -64,7 +64,7 @@ void print_matrix( std::string name, const MatrixType &A ) {
 		}
 
 	}
-	std::cout << "]\n";
+	std::cout << "])\n";
 }
 
 template<
@@ -78,12 +78,12 @@ void print_vector( std::string name, const VectorType &v ) {
 		return;
 	}
 
-	std::cout << name << ":" << std::endl;
-	std::cout << "[";
+	std::cout << name << " = " ;
+	std::cout << "array([";
 	for( size_t i = 0; i < alp::nrows( v ); ++i ) {
-		std::cout << std::setprecision( 3 ) << "\t" << v[ i ];
+		std::cout << std::setprecision( 10 ) << "\t" << v[ i ]<< ", ";
 	}
-	std::cout << "\t" << "]" << "\n";
+	std::cout << "\t" << "])" << "\n";
 }
 
 #endif // _H_TEST_UTILS_PRINT_ALP_CONTAINERS
