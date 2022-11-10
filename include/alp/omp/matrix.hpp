@@ -32,6 +32,25 @@ namespace alp {
 
 	// Currently no backend specific implementation
 
+	namespace internal {
+
+		/** Specialization for diagonal view over Square matrix */
+		template<
+			enum view::Views target_view = view::original,
+			typename SourceMatrix,
+			std::enable_if_t<
+				is_matrix< SourceMatrix >::value
+			> * = nullptr
+		>
+		typename SourceMatrix::template view_type< view::diagonal >::type
+		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
+			size_t block_id = getAmf( source ).getBlockId( tr, tc, rt, br, bc );
+
+			return target_t( source );
+		}
+
+	} // namespace internal
+
 } // namespace alp
 
 #endif // end ``_H_ALP_OMP_MATRIX''
