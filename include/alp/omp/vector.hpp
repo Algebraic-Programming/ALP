@@ -128,8 +128,7 @@ namespace alp {
 				 *          code sections.
 				 */
 				Vector(
-					const size_t num_buffers,
-					const size_t buffer_size,
+					const Distribution &d,
 					const size_t cap = 0
 				) : initialized( false ) {
 					// TEMP init dummy variables for testing

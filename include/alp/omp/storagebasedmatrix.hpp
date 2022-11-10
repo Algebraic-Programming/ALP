@@ -267,7 +267,7 @@ namespace alp {
 				 */
 				StorageBasedMatrix( AmfType &&amf ) :
 					// \todo enable only if ImfR and ImfC are imf::Id
-					container( amf.getStorageDimensions(), 1 ),
+					container( amf.getDistribution() ),
 					amf( std::move( amf ) ) {
 					std::cout << "Entering OMP StorageBasedMatrix constructor\n";
 				}
