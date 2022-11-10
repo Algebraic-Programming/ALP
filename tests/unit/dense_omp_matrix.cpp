@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#define _DEBUG
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -35,7 +37,12 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	// create the matrix
 	alp::Matrix< float, alp::structures::General > M( n, n );
-//	rc = rc ? rc : alp::set( M, alp::Scalar< T >( ring.template getOne< T >() ) );
+	rc = rc ? rc : alp::set( M, alp::Scalar< T >( ring.template getOne< T >() ) );
+	if( rc == alp::SUCCESS ) {
+		std::cout << "set executed successfully.\n";
+	} else {
+		std::cout << "Error in set execution.\n";
+	}
 
 	// verify that accessing corner elements succeeds
 	// original matrix
