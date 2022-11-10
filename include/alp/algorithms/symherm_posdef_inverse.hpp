@@ -72,34 +72,34 @@ namespace alp {
 
 			const size_t N = nrows( H );
 
-			alp::Matrix< D, structures::UpperTriangular, Dense > L( N );
+			alp::Matrix< D, structures::UpperTriangular, Dense > U( N );
 
-			rc = rc ? rc : alp::set( L, zero );
+			rc = rc ? rc : alp::set( U, zero );
 
-			rc = rc ? rc : algorithms::cholesky_uptr( L, H, ring );
+			rc = rc ? rc : algorithms::cholesky_uptr( U, H, ring );
 #ifdef DEBUG
-			print_matrix( std::string( "  L " ), L );
+			print_matrix( std::string( "  U " ), U );
 #endif
-			// H = L^H L
-			// H^-1 = L^-1 L^H-1
-			alp::Matrix< D, structures::UpperTriangular, Dense > Linv( N );
-			rc = rc ? rc : alp::set( Linv, zero );
-			auto Linvdiag = alp::get_view< alp::view::diagonal >( Linv );
-			auto LinvT = alp::get_view< alp::view::transpose >( Linv );
-			rc = rc ? rc : alp::set( Linvdiag, one );
-			auto LT = alp::get_view< alp::view::transpose >( L );
+			// H = U^H U
+			// H^-1 = U^-1 U^H-1
+			alp::Matrix< D, structures::UpperTriangular, Dense > Uinv( N );
+			rc = rc ? rc : alp::set( Uinv, zero );
+			auto Uinvdiag = alp::get_view< alp::view::diagonal >( Uinv );
+			auto UinvT = alp::get_view< alp::view::transpose >( Uinv );
+			rc = rc ? rc : alp::set( Uinvdiag, one );
+			auto UT = alp::get_view< alp::view::transpose >( U );
 			for( size_t i = 0; i < N; ++i ){
-				auto x = alp::get_view( LinvT, utils::range( i, N ), i );
-				auto LT_submatview = alp::get_view( LT, utils::range( i, N ), utils::range( i, N ) );
-				rc = rc ? rc : alp::algorithms::forwardsubstitution( LT_submatview, x, ring );
+				auto x = alp::get_view( UinvT, utils::range( i, N ), i );
+				auto UT_submatview = alp::get_view( UT, utils::range( i, N ), utils::range( i, N ) );
+				rc = rc ? rc : alp::algorithms::forwardsubstitution( UT_submatview, x, ring );
 			}
 #ifdef DEBUG
-			print_matrix( std::string( "  Linv  " ), Linv );
+			print_matrix( std::string( "  Uinv  " ), Uinv );
 #endif
 			rc = rc ? rc : alp::set( Hinv, zero );
 			// conjugate(linv.T).dot(linv)
-			auto LinvTvstar = conjugate( LinvT );
-			rc = rc ? rc : alp::mxm( Hinv, Linv, LinvTvstar, ring );
+			auto UinvTvstar = conjugate( UinvT );
+			rc = rc ? rc : alp::mxm( Hinv, Uinv, UinvTvstar, ring );
 #ifdef DEBUG
 			print_matrix( std::string( "  Hinv  " ), Hinv );
 #endif
