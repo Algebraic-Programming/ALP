@@ -116,7 +116,7 @@ namespace alp {
 			print_matrix( " << HWork >> ", HWork );
 #endif
 
-			for( size_t k = 0; k < std::min( n - 1, m ); ++k ) {
+			for( size_t k = 0; k < std::min( n, m ); ++k ) {
  				//const size_t m = n - k - 1;
 
 				// ===== Begin Computing v =====
@@ -125,65 +125,60 @@ namespace alp {
 				// w = H[ k, k + 1 : ]
 
 
-//#define _NO_DISABLE_PERMUTE
-#ifdef _NO_DISABLE_PERMUTE
-				//
-				auto h_col_view = alp::get_view( HWork, utils::range( 0, m ), k );
-				// auto p_view = alp::get_view( p, utils::range( k, m ) );
-				auto h_col_perm_view = alp::get_view< alp::structures::General >( h_col_view, p ); //use in sort
+// 				//TODO
+// //#define _NO_DISABLE_PERMUTE
+// #ifdef _NO_DISABLE_PERMUTE
+// 				//
+// 				auto h_col_view = alp::get_view( HWork, utils::range( 0, m ), k );
+// 				// auto p_view = alp::get_view( p, utils::range( k, m ) );
+// 				auto h_col_perm_view = alp::get_view< alp::structures::General >( h_col_view, p ); //use in sort
 
-				auto p_view = alp::get_view( p, utils::range( k, m ) );
-				// get current permutations from p
-				std::vector< size_t > vj( m - k );
-				for( size_t ll = 0; ll < m - k ; ++ll ) {
-					vj[ ll ] = p_view[ ll ];
-				}
+// 				auto p_view = alp::get_view( p, utils::range( k, m ) );
+// 				// get current permutations from p
+// 				std::vector< size_t > vj( m - k );
+// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
+// 					vj[ ll ] = p_view[ ll ];
+// 				}
 
-#ifdef DEBUG
-				auto p1 = alp::get_view< alp::structures::General >( h_col_view, p );
-				print_vector( " h_col_perm_view(in) ", p1 );
-				std::cout << " vj(in) = [ ";
-				for( size_t ll = 0; ll < m - k ; ++ll ) {
-					std::cout << vj[ ll ] << ", ";
-				}
-				std::cout << "]\n";
-#endif
+// #ifdef DEBUG
+// 				auto p1 = alp::get_view< alp::structures::General >( h_col_view, p );
+// 				print_vector( " h_col_perm_view(in) ", p1 );
+// 				std::cout << " vj(in) = [ ";
+// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
+// 					std::cout << vj[ ll ] << ", ";
+// 				}
+// 				std::cout << "]\n";
+// #endif
 
-				std::sort(
-					vj.begin(),
-					vj.end(),
-					[ &h_col_perm_view ]( const size_t &a, const size_t &b ) {
-						return (
-							std::abs( h_col_perm_view[ a ] ) > std::abs( h_col_perm_view[ b ] )
-						);
-					}
-				);
-				for( size_t ll = 0; ll < m - k; ++ll ) {
-					p_view[ ll ] = vj[ ll ];
-				}
-#ifdef DEBUG
-				std::cout << " vj(out) = [ ";
-				for( size_t ll = 0; ll < m - k ; ++ll ) {
-					std::cout << vj[ ll ] << ", ";
-				}
-				std::cout << "]\n";
-				auto p2 = alp::get_view< alp::structures::General >( h_col_view, p );
-				print_vector( " h_col_perm_view(in) ", p2 );
-#endif
+// 				// std::sort(
+// 				// 	vj.begin(),
+// 				// 	vj.end(),
+// 				// 	[ &h_col_perm_view ]( const size_t &a, const size_t &b ) {
+// 				// 		return (
+// 				// 			std::abs( h_col_perm_view[ a ] ) > std::abs( h_col_perm_view[ b ] )
+// 				// 		);
+// 				// 	}
+// 				// );
+// 				for( size_t ll = 0; ll < m - k; ++ll ) {
+// 					p_view[ ll ] = vj[ ll ];
+// 				}
+// #ifdef DEBUG
+// 				std::cout << " vj(out) = [ ";
+// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
+// 					std::cout << vj[ ll ] << ", ";
+// 				}
+// 				std::cout << "]\n";
+// 				auto p2 = alp::get_view< alp::structures::General >( h_col_view, p );
+// 				print_vector( " h_col_perm_view(in) ", p2 );
+// #endif
 
-#endif //_NO_DISABLE_PERMUTE
+// #endif //_NO_DISABLE_PERMUTE
 
 
-				auto HWorkPerm = alp::get_view< alp::structures::General >(
-					HWork,
-					p,
-					no_permutation_vec
-				);
-
-				auto a_view = alp::get_view( HWorkPerm, utils::range( k, k + 1 ), k );
-				auto v_view = alp::get_view( HWorkPerm, utils::range( k + 1, m ), k );
-				auto w_view = alp::get_view( HWorkPerm, k, utils::range( k + 1, n ) );
-				auto Ak_view = alp::get_view( HWorkPerm, utils::range( k + 1, m ), utils::range( k + 1, n ) );
+				auto a_view = alp::get_view( HWork, utils::range( k, k + 1 ), k );
+				auto v_view = alp::get_view( HWork, utils::range( k + 1, m ), k );
+				auto w_view = alp::get_view( HWork, k, utils::range( k + 1, n ) );
+				auto Ak_view = alp::get_view( HWork, utils::range( k + 1, m ), utils::range( k + 1, n ) );
 
 				Scalar< D > alpha( zero );
 				rc = rc ? rc : alp::foldl( alpha, a_view, ring.getAdditiveMonoid() );
@@ -208,11 +203,17 @@ namespace alp {
 #endif
 				rc = rc ? rc : alp::foldl( Ak_view, Reflector, minus );
 
+			}
+
+
+			//save the result
+			for( size_t k = 0; k < std::min( n, m ); ++k ) {
+				auto Hcol = alp::get_view( HWork, utils::range( k + 1, m ), k );
 				auto Lcol = alp::get_view( L, utils::range( k + 1, m ), k );
-				rc = rc ? rc : alp::set( Lcol, v_view );
+				rc = rc ? rc : alp::set( Lcol, Hcol );
 
 				auto Urow = alp::get_view( U, k, utils::range( k, n ) );
-				auto Hrow = alp::get_view( HWorkPerm, k, utils::range( k, n ) );
+				auto Hrow = alp::get_view( HWork, k, utils::range( k, n ) );
 				rc = rc ? rc : alp::set( Urow, Hrow );
 			}
 
