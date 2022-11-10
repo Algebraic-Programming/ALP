@@ -83,15 +83,6 @@ namespace alp {
 
 			// check sizes
 
-
-			alp::Vector< size_t > no_permutation_vec( n );
-			{
-				// tmp data
-				std::vector< size_t > vi( n );
-				std::iota( std::begin( vi ), std::end( vi ), 0 );
-				rc = rc ? rc : alp::buildVector( no_permutation_vec, vi.begin(), vi.end() );
-			}
-
 #ifdef DEBUG
 			std::cout << " n, k, m = " << n << ", "  << k << ", " << m << "\n";
 #endif
@@ -106,8 +97,7 @@ namespace alp {
 
 			// Out of place specification of the computation
 			Matrix< D, GeneralType, alp::Dense > HWork( m, n );
-
-			rc = alp::set( HWork, H );
+			rc = rc ? rc : alp::set( HWork, H );
 			if( rc != SUCCESS ) {
 				std::cerr << " alp::set( HWork, H ) failed\n";
 				return rc;
@@ -116,6 +106,9 @@ namespace alp {
 			print_matrix( " << HWork >> ", HWork );
 #endif
 
+			Vector< D, GeneralType, alp::Dense > PivotVec( n );
+			rc = rc ? rc : alp::set( PivotVec, zero );
+
 			for( size_t k = 0; k < std::min( n, m ); ++k ) {
  				//const size_t m = n - k - 1;
 
@@ -123,68 +116,61 @@ namespace alp {
 				// a = H[ k, k ]
 				// v = H[ k + 1 : , k ]
 				// w = H[ k, k + 1 : ]
-
-
-// 				//TODO
-// //#define _NO_DISABLE_PERMUTE
-// #ifdef _NO_DISABLE_PERMUTE
-// 				//
-// 				auto h_col_view = alp::get_view( HWork, utils::range( 0, m ), k );
-// 				// auto p_view = alp::get_view( p, utils::range( k, m ) );
-// 				auto h_col_perm_view = alp::get_view< alp::structures::General >( h_col_view, p ); //use in sort
-
-// 				auto p_view = alp::get_view( p, utils::range( k, m ) );
-// 				// get current permutations from p
-// 				std::vector< size_t > vj( m - k );
-// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
-// 					vj[ ll ] = p_view[ ll ];
-// 				}
-
-// #ifdef DEBUG
-// 				auto p1 = alp::get_view< alp::structures::General >( h_col_view, p );
-// 				print_vector( " h_col_perm_view(in) ", p1 );
-// 				std::cout << " vj(in) = [ ";
-// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
-// 					std::cout << vj[ ll ] << ", ";
-// 				}
-// 				std::cout << "]\n";
-// #endif
-
-// 				// std::sort(
-// 				// 	vj.begin(),
-// 				// 	vj.end(),
-// 				// 	[ &h_col_perm_view ]( const size_t &a, const size_t &b ) {
-// 				// 		return (
-// 				// 			std::abs( h_col_perm_view[ a ] ) > std::abs( h_col_perm_view[ b ] )
-// 				// 		);
-// 				// 	}
-// 				// );
-// 				for( size_t ll = 0; ll < m - k; ++ll ) {
-// 					p_view[ ll ] = vj[ ll ];
-// 				}
-// #ifdef DEBUG
-// 				std::cout << " vj(out) = [ ";
-// 				for( size_t ll = 0; ll < m - k ; ++ll ) {
-// 					std::cout << vj[ ll ] << ", ";
-// 				}
-// 				std::cout << "]\n";
-// 				auto p2 = alp::get_view< alp::structures::General >( h_col_view, p );
-// 				print_vector( " h_col_perm_view(in) ", p2 );
-// #endif
-
-// #endif //_NO_DISABLE_PERMUTE
-
-
 				auto a_view = alp::get_view( HWork, utils::range( k, k + 1 ), k );
 				auto v_view = alp::get_view( HWork, utils::range( k + 1, m ), k );
 				auto w_view = alp::get_view( HWork, k, utils::range( k + 1, n ) );
 				auto Ak_view = alp::get_view( HWork, utils::range( k + 1, m ), utils::range( k + 1, n ) );
 
+
+#ifdef DEBUG
+				print_vector( "--->in  v_view ", v_view );
+#endif
+				Scalar< D > a0( zero );
+				rc = rc ? rc : alp::foldl( a0, a_view, ring.getAdditiveMonoid() );
+				// Pivot
+				size_t ipivot = k;
+				rc = rc ? rc : eWiseLambda(
+					[ &a0, &ipivot, &k ]( const size_t i, D &val ) {
+						if( std::abs( val ) > std::abs( *a0 ) ) {
+							*a0 = val;
+							ipivot = i + k + 1;
+						}
+					},
+					v_view
+				);
+#ifdef DEBUG
+				std::cout << "k = " << k << "\n";
+				std::cout << "a0 = " << *a0 << "\n";
+				std::cout << "ipivot = " << ipivot << "\n";
+#endif
+
+				if( ipivot > k ) {
+#ifdef DEBUG
+					std::cout << "Pivoting " << ipivot << " <-> " << k << "\n";
+					print_vector( "--->in  p ", p );
+					print_matrix( "--->in  HWork ", HWork );
+#endif
+					size_t itmp = p[ ipivot ];
+					p[ ipivot ] = p[ k ];
+					p[ k ] = itmp;
+
+					auto v1 = alp::get_view( HWork, k, utils::range( 0, n ) );
+					auto v2 = alp::get_view( HWork, ipivot, utils::range( 0, n ) );
+					rc = rc ? rc : alp::set( PivotVec, v1 );
+					rc = rc ? rc : alp::set( v1, v2 );
+					rc = rc ? rc : alp::set( v2, PivotVec );
+#ifdef DEBUG
+					print_vector( "--->out p ", p );
+					print_matrix( "--->out HWork ", HWork );
+#endif
+				}
+
 				Scalar< D > alpha( zero );
 				rc = rc ? rc : alp::foldl( alpha, a_view, ring.getAdditiveMonoid() );
-
 				rc = rc ? rc : alp::foldl( v_view, alpha, divide );
 #ifdef DEBUG
+				print_matrix( "--->after divide HWork ", HWork );
+
 				std::string matname( " << Ak_view(" );
 				matname = matname + std::to_string( k );
 				matname = matname + std::string( ") >> " );
@@ -217,7 +203,14 @@ namespace alp {
 				rc = rc ? rc : alp::set( Urow, Hrow );
 			}
 
+#ifdef DEBUG
+			print_matrix( " HWork(before return) ", HWork );
+			print_matrix( " L(before return) ", L );
+			print_matrix( " U(before return) ", U );
+#endif
+
 			return rc;
+
 		}
 	} // namespace algorithms
 } // namespace alp
