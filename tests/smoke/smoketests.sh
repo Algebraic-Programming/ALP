@@ -524,7 +524,7 @@ for BACKEND in ${BACKENDS[@]}; do
 	echo "#################################################################"
 	echo " "
 
-	NTEST_CHOLESKY=30
+	NTEST_CHOLESKY=100
 	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
 	echo "                                 symmetric positive definite matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_${BACKEND}  -n ${NTEST_CHOLESKY} &> ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log"
@@ -566,7 +566,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dsytrd (Householder tridiagonalisaiton) on"
-	echo ">>>                               a real symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
+	echo ">>>                              a real symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log || echo "Test FAILED"
@@ -574,31 +574,49 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
-	echo ">>>                               a complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
+	echo ">>>                              a random complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
-	NTEST_HOUSEHOLDER=20
+	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dgeqrf (Householder QR decomposition) on"
-	echo ">>>                               a real symmetric matrix (${NTEST_HOUSEHOLDER} x 2x${NTEST_HOUSEHOLDER})."
+	echo ">>>                              a random real symmetric matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER)))."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
-	NTEST_HOUSEHOLDER_COMPLEX=20
+	NTEST_HOUSEHOLDER_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zgeqrf (Householder QR decomposition) on"
-	echo ">>>                               a complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX} x 2x${NTEST_HOUSEHOLDER_COMPLEX})."
+	echo ">>>                              a random complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX)))."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 
+	NTEST_HOUSEHOLDER=100
+	echo ">>>      [x]           [ ]       Tests dgetrf (Householder LU decomposition) on"
+	echo ">>>                              a random real general matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER))),"
+	echo ">>>                              (${NTEST_HOUSEHOLDER} x ${NTEST_HOUSEHOLDER}) and ($((2*NTEST_HOUSEHOLDER)) x ${NTEST_HOUSEHOLDER})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgetrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zgetrf (Householder LU decomposition) on"
+	echo ">>>                              random complex general matrices of sizes (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX))),"
+	echo ">>>                              (${NTEST_HOUSEHOLDER_COMPLEX} x ${NTEST_HOUSEHOLDER_COMPLEX}) and ($((2*NTEST_HOUSEHOLDER_COMPLEX)) x ${NTEST_HOUSEHOLDER_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgetrf_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+	
 	NTEST_DIVCON=100
 	echo ">>>      [x]           [ ]       Tests dstedc (Divide and conquer tridiagonal eigensolver) on"
-	echo ">>>                               a tridiagonal real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	echo ">>>                              random tridiagonal real symmetric matrices of sizes (${NTEST_DIVCON}x${NTEST_DIVCON})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_dstedc_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || echo "Test FAILED"
@@ -606,7 +624,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_DIVCON=100
 	echo ">>>      [x]           [ ]       Tests syevd (Divide and conquer symmetric eigensolver) on"
-	echo ">>>                               a real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	echo ">>>                              a random real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_syevd_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log || echo "Test FAILED"
@@ -614,7 +632,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using backsubstitution ) on"
-	echo ">>>                               an upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	echo ">>>                              a random upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log || echo "Test FAILED"
@@ -622,7 +640,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using backsubstitution ) on"
-	echo ">>>                               an upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	echo ">>>                              a random upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_complex_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log || echo "Test FAILED"
@@ -630,7 +648,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_FORWARDSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using forwardsubstitution ) on"
-	echo ">>>                               an lower tridiagonal real matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	echo ">>>                              a random lower tridiagonal real matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log || echo "Test FAILED"
@@ -638,7 +656,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_FORWARDSUB=100
 	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using forwardsubstitution ) on"
-	echo ">>>                               an lower tridiagonal complex matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	echo ">>>                              a random lower tridiagonal complex matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_complex_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log || echo "Test FAILED"

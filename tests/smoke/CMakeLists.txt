@@ -192,12 +192,11 @@ add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
 
 add_grb_executables( alp_zgetrf alp_zgetrf.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS DEBUG #remove DEBUG in the final version
 )
 
 add_grb_executables( alp_zgetrf_complex alp_zgetrf.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS _COMPLEX DEBUG #remove DEBUG in the final version
+	COMPILE_DEFINITIONS _COMPLEX
 )
 
 add_grb_executables( alp_dstedc alp_stedc.cpp
