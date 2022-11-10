@@ -152,7 +152,7 @@ namespace alp {
 						const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
 
 						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
-							for( size_t bc = 0; bc < block_grid_dims.second; ++ bc ) {
+							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
 								const size_t block_id = d.getGlobalBlockId( tr, tc, br, bc );
 								const size_t block_size = d.getBlockSize( block_id );
