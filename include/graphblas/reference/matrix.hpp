@@ -46,8 +46,6 @@
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
 #include <graphblas/type_traits.hpp>
-
-#include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
 
 #include "NonzeroWrapper.hpp"
