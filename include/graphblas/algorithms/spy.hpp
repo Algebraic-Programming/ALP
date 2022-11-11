@@ -20,6 +20,7 @@
 #define _H_GRB_ALGORITHMS_SPY
 
 #include <type_traits>
+#include <vector>
 
 #include <graphblas.hpp>
 
