@@ -24,9 +24,11 @@
 #define _H_ALP_OMP_MATRIX
 
 #include <alp/backends.hpp>
+#include <alp/storage.hpp>
 #include <alp/base/matrix.hpp>
 #include <alp/amf-based/matrix.hpp>
 #include "storagebasedmatrix.hpp"
+#include <alp/reference/storage.hpp> // For AMFFactory
 
 namespace alp {
 
@@ -34,7 +36,14 @@ namespace alp {
 
 	namespace internal {
 
-		/** Specialization for diagonal view over Square matrix */
+		/**
+		 * Exposes a block of the parallel matrix as a reference ALP matrix.
+		 *
+		 * The underlying container (buffer/block) is obtained from the parallel
+		 * container, while the AMF is constructed based on the properties of the
+		 * block and the applied gather view (i.e., the IMFs associated to it).
+		 *
+		 */
 		template<
 			enum view::Views target_view = view::original,
 			typename SourceMatrix,
@@ -42,11 +51,29 @@ namespace alp {
 				is_matrix< SourceMatrix >::value
 			> * = nullptr
 		>
-		typename SourceMatrix::template view_type< view::diagonal >::type
+		typename internal::new_container_type_from<
+			typename SourceMatrix::template view_type< view::gather >::type
+		>::template change_backend< reference >::type
 		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
-			size_t block_id = getAmf( source ).getBlockId( tr, tc, rt, br, bc );
+			// get the container
+			const auto &distribution = getAmf( source ).getDistribution();
+			const size_t block_id = distribution.getGlobalBlockId( tr, tc, br, bc );
+			auto buffer = internal::getBuffer( internal::getContainer( source ), block_id );
 
-			return target_t( source );
+			// make an AMF
+			// make IMFs (take into account the block size
+			// note: When making a view over a vector, the second imf must be imf::Zero
+			const auto block_dims = distribution.getBlockDimensions( tr, tc, br, bc );
+			auto amf = alp::storage::AMFFactory< reference >::FromPolynomial< structures::General, imf::Id, imf::Id >::Create(
+				imf::Id( block_dims.first), imf::Id( block_dims.second )
+			);
+
+			// create a reference container with the container and AMF above
+			using target_t = typename internal::new_container_type_from<
+				typename SourceMatrix::template view_type< view::gather >::type
+			>::template change_backend< reference >::type;
+
+			return target_t( buffer, amf );
 		}
 
 	} // namespace internal
