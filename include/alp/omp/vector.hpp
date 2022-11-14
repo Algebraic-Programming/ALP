@@ -59,6 +59,8 @@ namespace alp {
 		template< typename T >
 		void setInitialized( Vector< T, omp > & v, const bool initialized ) noexcept;
 
+		template< typename T >
+		typename Vector< T, omp >::BufferType &getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept;
 
 		/**
 		 * The parallel shared memory implementation of the ALP/Dense vector.
@@ -78,19 +80,24 @@ namespace alp {
 				IO friends
 			   ******************** */
 
-			friend size_t internal::getLength< T >( const Vector< T, omp > & ) noexcept;
+			public:
 
-			friend const bool & internal::getInitialized< T >( const Vector< T, omp > & ) noexcept;
+				/** The type of the underlying container. */
+				using BufferType = Vector< T, reference >;
 
-			friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
+				friend size_t internal::getLength< T >( const Vector< T, omp > & ) noexcept;
+
+				friend const bool & internal::getInitialized< T >( const Vector< T, omp > & ) noexcept;
+
+				friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
+
+				friend BufferType &getBuffer< T >( Vector< T, omp > &, const size_t buffer_id ) noexcept;
+
 
 			private:
 
 				/** The number of buffers. */
 				size_t num_buffers;
-
-				/** The type of the underlying container. */
-				using BufferType = Vector< T, reference >;
 
 				/** The array of buffers. */
 				BufferType **buffers;
@@ -276,6 +283,12 @@ namespace alp {
 		template< typename T >
 		void setInitialized( Vector< T, omp > & v, bool initialized ) noexcept {
 			v.initialized = initialized;
+		}
+
+		template< typename T >
+		typename Vector< T, omp >::BufferType &getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept {
+			assert( buffer_id < v.num_buffers );
+			return v.buffers[ buffer_id ];
 		}
 
 	} // end namespace ``alp::internal''
