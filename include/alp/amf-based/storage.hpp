@@ -774,7 +774,7 @@ namespace alp {
 		/**
 		 * Collects AMF factory classes.
 		 */
-		template< enum Backend backend = config::default_backend >
+		template< enum Backend backend >
 		struct AMFFactory {
 
 			/**
