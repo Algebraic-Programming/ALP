@@ -815,6 +815,16 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< Orthogonal, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
+		};
+
 		struct Constant: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
