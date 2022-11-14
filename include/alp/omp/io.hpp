@@ -106,7 +106,7 @@ namespace alp {
 				for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
 					const size_t block_id = d.getGlobalBlockId( tr, tc, br, bc );
-					const size_t block_size = d.getBlockSize( block_id );
+					const size_t block_size = d.getBlockSize( tr, tc, br, bc );
 
 					#pragma omp critical
 					{

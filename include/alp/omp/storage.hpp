@@ -26,6 +26,8 @@
 #ifndef _H_ALP_OMP_STORAGE
 #define _H_ALP_OMP_STORAGE
 
+#include <cmath>
+
 #include <alp/amf-based/storage.hpp>
 
 namespace alp {
@@ -141,6 +143,9 @@ namespace alp {
 
 		private:
 
+			/** Row and column dimensions of the associated container */
+			const size_t m;
+			const size_t n;
 			/** The row and column dimensions of thread grid */
 			const size_t Tr;
 			const size_t Tc;
@@ -156,6 +161,7 @@ namespace alp {
 				const size_t m, const size_t n,
 				const size_t num_threads
 			) :
+				m( m ), n( n ),
 				Tr( static_cast< size_t >( sqrt( num_threads ) ) ),
 				Tc( num_threads / Tr ),
 				Rt( config::REPLICATION_FACTOR_THREADS ),
@@ -214,9 +220,22 @@ namespace alp {
 				return global_coords.first * Bc + global_coords.second;
 			}
 
-			/** Returns the size of the block given by the block id */
-			size_t getBlockSize( const size_t block_id ) const {
-				return 10;
+			/** Returns the dimensions of the block given by the block id */
+			std::pair< size_t, size_t > getBlockDimensions( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+				const auto global_block_coords = getGlobalBlockCoords( tr, tc, br, bc );
+				const size_t block_height = ( global_block_coords.first < Br - 1 ) ?
+					( config::BLOCK_ROW_DIM ) :
+					( m - config::BLOCK_ROW_DIM * ( Br - 1 ) );
+				const size_t block_width = ( global_block_coords.second < Bc - 1 ) ?
+					( config::BLOCK_COL_DIM ) :
+					( n - config::BLOCK_COL_DIM * ( Bc - 1 ) );
+				return { block_height, block_width };
+			}
+
+			/** Returns the size of the block defined by the thread and local block coordinates. */
+			size_t getBlockSize( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+				const auto dims = getBlockDimensions( tr, tc, br, bc );
+				return dims.first * dims.second;
 			}
 
 			std::pair< size_t, size_t > getThreadCoords( const size_t thread_id ) const {
