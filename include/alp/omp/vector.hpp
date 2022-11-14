@@ -130,18 +130,18 @@ namespace alp {
 				Vector(
 					const Distribution &d,
 					const size_t cap = 0
-				) : initialized( false ) {
+				) : num_buffers( 0 ), initialized( false ) {
 					// TEMP init dummy variables for testing
 					(void) cap;
 
 					std::cout << "Entered OMP internal::Vector constructor\n";
 
 					const auto block_grid_dims = d.getGlobalBlockGridDims();
-					const size_t total_global_blocks = block_grid_dims.first * block_grid_dims.second;
+					num_buffers = block_grid_dims.first * block_grid_dims.second;
 
 					// TODO: Implement allocation properly
-					buffers = new ( std::nothrow ) BufferType*[ total_global_blocks ];
-					if( ( total_global_blocks > 0 ) && ( buffers == nullptr ) ){
+					buffers = new ( std::nothrow ) BufferType*[ num_buffers ];
+					if( ( num_buffers > 0 ) && ( buffers == nullptr ) ){
 						throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 					}
 
@@ -155,7 +155,7 @@ namespace alp {
 							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
 								const size_t block_id = d.getGlobalBlockId( tr, tc, br, bc );
-								const size_t block_size = d.getBlockSize( block_id );
+								const size_t block_size = d.getBlockSize( tr, tc, br, bc );
 
 								#pragma omp critical
 								{
