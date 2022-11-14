@@ -43,8 +43,8 @@ namespace alp {
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
-				// structures::is_a< typename MatH::structure, structures::General >::value &&
-				// structures::is_a< typename MatU::structure, structures::Orthogonal >::value &&
+				structures::is_a< StruH, structures::General >::value &&
+				structures::is_a< StruU, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -91,33 +91,25 @@ namespace alp {
 			rc = rc ? rc : norm2( norm_v2, v, ring );
 			rc = rc ? rc : foldl( v, norm_v2, divide );
 
-			//     P=identity(m).astype(complex)
-			//     P[i+d:,i+d:]=P[i+d:,i+d:]-2*outer(v,conjugate(v))
-			Matrix< D, structures::Square, Dense > Reflector( m );
-			auto DiagR = alp::get_view< alp::view::diagonal >( Reflector );
-			rc = rc ? rc : alp::set( Reflector, zero );
-			rc = rc ? rc : alp::set( DiagR, one );
+			//P1=zeros((m-(i+d),m-(i+d))).astype(complex)
+			//P1=P1-2*outer(v,conjugate(v))
 			auto vvh = outer( v, ring.getMultiplicativeOperator() );
-			auto R_view = alp::get_view( Reflector, utils::range( i + d, m ),  utils::range( i + d, m ) );
-			rc = rc ? rc : foldl( R_view, vvh, minus );
-			rc = rc ? rc : foldl( R_view, vvh, minus );
+			typedef decltype( vvh ) OuterType;
+			Matrix< D, typename OuterType::structure, Dense > Reflector( m - ( i + d ) );
+			rc = rc ? rc : alp::set( Reflector, vvh );
+			rc = rc ? rc : foldl( Reflector, Scalar< D > ( -2 ), ring.getMultiplicativeOperator() );
 
-			//     A0=conjugate(P.T).dot(A0)
-			auto RT = get_view< alp::view::transpose >( Reflector );
-			auto RTstar = conjugate( RT );
-			Matrix< D, StruH, Dense > Mtemp( m, n );
-			// MatH Mtemp( m, n );
-			rc = rc ? rc : alp::set( Mtemp, zero );
-			rc = rc ? rc : mxm( Mtemp, RTstar, H, ring );
-			rc = rc ? rc : alp::set( H, Mtemp );
+			//     A0=P.dot(A0)
+			auto Hupdate = get_view( H, utils::range( i + d, m ), utils::range( 0, n ) );
+			Matrix< D, structures::General, Dense > Temp1( m - ( i + d ) , n );
+			rc = rc ? rc : alp::set( Temp1, Hupdate );
+			rc = rc ? rc : mxm( Hupdate, Reflector, Temp1, ring );
 
 			//     Uk=Uk.dot(P)
-			Matrix< D, StruU, Dense > Utemp( m, m );
-			// MatU Utemp( m, m );
-			rc = rc ? rc : alp::set( Utemp, zero );
-			rc = rc ? rc : mxm( Utemp, U, Reflector, ring );
-			rc = rc ? rc : alp::set( U, Utemp );
-
+			auto Uupdate = get_view< structures::General >( U, utils::range( 0, m ), utils::range( i + d, m ) );
+			Matrix< D, structures::General, Dense > Temp2( m, m - ( i + d ) );
+			rc = rc ? rc : alp::set( Temp2, Uupdate );
+			rc = rc ? rc : mxm( Uupdate, Temp2, Reflector, ring );
 
 			return rc;
 		}
@@ -173,7 +165,6 @@ namespace alp {
 
 			const size_t m = nrows( H );
 			const size_t n = ncols( H );
-			const size_t k = std::min( n, m );
 
 			// check sizes
 			if(
@@ -197,13 +188,13 @@ namespace alp {
 			//for i in range(min(n,m)):
 			for( size_t i = 0; i < std::min( n, m ); ++i ) {
 				if( i < std::min( n, m - 1 ) ) {
-					rc = rc ? rc : elminate_below_diag( i, H, U, 0, ring );
+					rc = rc ? rc : elminate_below_diag( i, H, U, 0, ring, minus, divide );
 				}
 
 				if( i < std::min( n - 2, m ) ) {
 					auto HT = get_view< alp::view::transpose >( H );
 					auto VT = get_view< alp::view::transpose >( V );
-					rc = rc ? rc : elminate_below_diag( i, HT, VT, 1, ring );
+					rc = rc ? rc : elminate_below_diag( i, HT, VT, 1, ring, minus, divide );
 				}
 
 

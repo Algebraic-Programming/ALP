@@ -196,7 +196,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		// dimensions of sqare matrices H, Q and R
 		const size_t M = m_arr[ i ];
 		const size_t N = n_arr[ i ];
-		const size_t K = std::min( N, M );
+		//const size_t K = std::min( N, M );
 
 		alp::Matrix< ScalarType, General > H( M, N );
 		alp::Matrix< ScalarType, General > B( M, N );
