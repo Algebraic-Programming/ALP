@@ -2238,6 +2238,8 @@ namespace alp {
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort
 	) noexcept {
 
+		// TODO: this overload has to go. A partial order is always needed.
+
 		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
 
 		if( !internal::getInitialized( toSort ) ) {
@@ -2273,6 +2275,10 @@ namespace alp {
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
 		CompareType cmp
 	) noexcept {
+
+		if ( getLength( permutation ) != getLength( toSort ) ) {
+			return ILLEGAL;
+		}
 
 		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
 

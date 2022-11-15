@@ -31,12 +31,12 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	typedef double T;
 
-    auto print_std_vector = [](std::vector< T > const vec) {
-        for (auto val : vec) {
-            std::cout << val << ' ';
-        }
-        std::cout << std::endl;
-    };
+	auto print_std_vector = [](std::vector< T > const vec) {
+		for(auto val : vec) {
+			std::cout << val << ' ';
+		}
+		std::cout << std::endl;
+	};
 
 	// Check with vector of length n randomly intitialized and shuffled
 	alp::Vector< size_t > perm( n );
@@ -52,9 +52,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	alp::buildVector( v, std::begin( stdv ), std::end( stdv ) );
 
-    std::cout << "Original content of the std::vector:" << std::endl;
+	std::cout << "Original content of the std::vector:" << std::endl;
 	print_std_vector( stdv );
-    std::cout << "Original content of the alp::Vector:" << std::endl;
+	std::cout << "Original content of the alp::Vector:" << std::endl;
 	print_vector("v", v);
 
 	alp::sort( perm, v );
@@ -64,17 +64,17 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	auto sorted_v = alp::get_view< alp::structures::General >( v, perm );
 
 	// Check sorted view
-	for ( size_t i = 0; i < n; i++ ) {
-		if ( stdv[i] != sorted_v[ i ] ) {
+	for( size_t i = 0; i < n; i++ ) {
+		if( stdv[i] != sorted_v[ i ] ) {
 			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" << std::endl;
 			rc = alp::FAILED;
 		}
 	}
 
-    std::cout << "Sorted alp::Vector:" << std::endl;
+	std::cout << "Sorted alp::Vector:" << std::endl;
 	print_vector("sorted_v", sorted_v);
 
-	if (rc == alp::FAILED ) {
+	if( rc == alp::FAILED ) {
 		return;
 	}
 
@@ -90,21 +90,20 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
 
 	// Check sorted view
-	for ( size_t i = 0; i < n; i++ ) {
-		if ( stdv[i] != desc_sorted_v[ i ] ) {
+	for( size_t i = 0; i < n; i++ ) {
+		if( stdv[i] != desc_sorted_v[ i ] ) {
 			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
 			rc = alp::FAILED;
 		}
 	}
 
-    std::cout << "Sorted alp::Vector in descending order:" << std::endl;
+	std::cout << "Sorted alp::Vector in descending order:" << std::endl;
 	print_vector("desc_sorted_v", desc_sorted_v);
-
 
 	rc = alp::SUCCESS;
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	size_t in = 100;
