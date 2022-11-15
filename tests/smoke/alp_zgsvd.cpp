@@ -26,6 +26,7 @@
 
 #include <alp.hpp>
 #include <alp/algorithms/householder_bidiag.hpp>
+#include <alp/algorithms/svd.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
@@ -215,6 +216,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		rc = rc ? rc : set( B, H );
 		rc = rc ? rc : set( V, zero );
 		rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
+		rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
 
 
 #ifdef DEBUG
