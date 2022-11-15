@@ -31,12 +31,14 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	typedef double T;
 
+#ifndef NDEBUG
 	auto print_std_vector = [](std::vector< T > const vec) {
 		for(auto val : vec) {
 			std::cout << val << ' ';
 		}
 		std::cout << std::endl;
 	};
+#endif
 
 	// Check with vector of length n randomly intitialized and shuffled
 	alp::Vector< size_t > perm( n );
@@ -52,10 +54,12 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	alp::buildVector( v, std::begin( stdv ), std::end( stdv ) );
 
+#ifndef NDEBUG
 	std::cout << "Original content of the std::vector:" << std::endl;
 	print_std_vector( stdv );
 	std::cout << "Original content of the alp::Vector:" << std::endl;
 	print_vector("v", v);
+#endif
 
 	alp::sort( perm, v );
 
@@ -66,39 +70,53 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	// Check sorted view
 	for( size_t i = 0; i < n; i++ ) {
 		if( stdv[i] != sorted_v[ i ] ) {
-			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" << std::endl;
+#ifndef NDEBUG
+			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " << " ( alp_sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" << std::endl;
+#endif
 			rc = alp::FAILED;
+#ifdef NDEBUG
+			return;
+#endif
 		}
 	}
 
+#ifndef NDEBUG
 	std::cout << "Sorted alp::Vector:" << std::endl;
 	print_vector("sorted_v", sorted_v);
 
 	if( rc == alp::FAILED ) {
 		return;
 	}
+#endif
 
-	// // Check descending sorted view
-	// alp::sort( perm, v, alp::relations:: );
+	// Check descending sorted view
+	alp::sort( perm, v, alp::relations::gt< T >() );
 
-	// auto desc_cmp = []( const T& a, const T& b) {
-	// 	return a > b;
-	// };
+	auto desc_cmp = []( const T& a, const T& b) {
+		return a > b;
+	};
 
-	// std::sort( std::begin( stdv ), std::end( stdv ), desc_cmp );
+	std::sort( std::begin( stdv ), std::end( stdv ), desc_cmp );
 
-	// auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
+	auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
 
-	// // Check sorted view
-	// for( size_t i = 0; i < n; i++ ) {
-	// 	if( stdv[i] != desc_sorted_v[ i ] ) {
-	// 		std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
-	// 		rc = alp::FAILED;
-	// 	}
-	// }
+	// Check sorted view
+	for( size_t i = 0; i < n; i++ ) {
+		if( stdv[i] != desc_sorted_v[ i ] ) {
+#ifndef NDEBUG
+			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " << " ( alp_sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
+#endif
+			rc = alp::FAILED;
+#ifdef NDEBUG
+			return;
+#endif
+		}
+	}
 
-	// std::cout << "Sorted alp::Vector in descending order:" << std::endl;
-	// print_vector("desc_sorted_v", desc_sorted_v);
+#ifndef NDEBUG
+	std::cout << "Sorted alp::Vector in descending order:" << std::endl;
+	print_vector("desc_sorted_v", desc_sorted_v);
+#endif
 
 	rc = alp::SUCCESS;
 }

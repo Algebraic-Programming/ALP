@@ -35,13 +35,13 @@ namespace alp {
 		namespace internal {
 
 			/**
-			 * Standard less then (lt) operator.
+			 * Standard less-than (\a lt) operator.
 			 *
-			 * Assumes native availability of operator < on the given data types 
+			 * Assumes native availability of operator< on the given data types 
 			 * or assumes that the relevant operators are properly overloaded.
 			 *
-			 * Assumes that the < operator is a strict total order. Non-standard/non-matching 
-			 * data types or non-standard (overloaded) < operators should 
+			 * Assumes that \a lt is a strict total order. Non-standard/non-matching 
+			 * data types or non-standard (overloaded) \a operator< should 
 			 * therefore be used with caution.
 			 *
 			 * @tparam SET The input data type.
@@ -120,14 +120,99 @@ namespace alp {
 			};
 
 			/**
-			 * Standard equal (eq) operator.
+			 * Standard greater-than (\a gt) operator.
 			 *
-			 * Assumes native availability of operator == on the given data types 
+			 * Assumes native availability of \a operator> on the given data types 
 			 * or assumes that the relevant operators are properly overloaded.
 			 *
-			 * Assumes that the == operator is an equivalence relation. 
+			 * Assumes that \a gt is a strict total order. Non-standard/non-matching 
+			 * data types or non-standard (overloaded) \a operator> should 
+			 * therefore be used with caution.
+			 *
+			 * @tparam SET The input data type.
+			 */
+			template< typename SET, enum Backend implementation = config::default_backend >
+			class gt {
+
+			public:
+				/** Alias to the left-hand input data type. */
+				typedef SET left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef SET right_type;
+
+				/**
+				 * Whether this relation is \em reflexive; that is,
+				 * for all \a a in \a SET, \f$ a > a \f$.
+				 */
+				static constexpr bool is_reflexive = false;
+
+				/**
+				 * Whether this relation is \em irreflexive; that is,
+				 * for all \a a in \a SET, not \f$ a > a \f$.
+				 */
+				static constexpr bool is_irreflexive = true;
+
+				/**
+				 * Whether this relation is \em symmetric; that is,
+				 * for all \a a, \a b in \a SET, 
+				 * if \f$ a > b \f$ then \f$ b > a \f$.
+				 */
+				static constexpr bool is_symmetric = false;
+
+				/**
+				 * Whether this relation is \em antisymmetric; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a > b \f$ and 
+				 * \f$ b > a \f$ then \f$ a = b \f$.
+				 */
+				static constexpr bool is_antisymmetric = true;
+
+				/**
+				 * Whether this relation is \em transitive; that is,
+				 * for all \a a, \a b, \a c in \a SET, if \f$ a > b \f$ and
+				 * \f$ b > c \f$ then \f$ a > c \f$.
+				 */
+				static constexpr bool is_transitive = true;
+
+				/**
+				 * Whether this relation is \em connected (or total); that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+				 * either \f$ a > b \f$ or \f$ b > a \f$.
+				 */
+				static constexpr bool is_connected = true;
+
+				/**
+				 * Whether this relation is <em> strongly connected </em>; 
+				 * that is,
+				 * for all \a a, \a b in \a SET, 
+				 * either \f$ a > b \f$ or \f$ b > a \f$.
+				 */
+				static constexpr bool is_strongly_connected = false;
+
+				/**
+				 * This function checks if <em> a > b </em>.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
+				 */
+				static bool check( const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b
+				) {
+					return *a > *b;
+				}
+			};
+
+			/**
+			 * Standard equal (\a eq) relation.
+			 *
+			 * Assumes native availability of \a operator== on the given data types 
+			 * or assumes that the relevant operators are properly overloaded.
+			 *
+			 * Assumes that \a eq is an equivalence relation. 
 			 * Non-standard/non-matching data types or non-standard (overloaded) 
-			 * == operators should therefore be used with caution.
+			 * \a operator== should therefore be used with caution.
 			 *
 			 * @tparam SET The input data type.
 			 */
@@ -205,13 +290,100 @@ namespace alp {
 			};
 
 			/**
-			 * Standard less then or equal (le) operator.
+			 * Standard not-equal (\a neq) operator.
 			 *
-			 * Assumes native availability of operator <= on the given data types 
+			 * Assumes native availability of \a operator!= on the given data types 
 			 * or assumes that the relevant operators are properly overloaded.
 			 *
-			 * Assumes that the <= operator is a total order. Non-standard/non-matching 
-			 * data types or non-standard (overloaded) <= operators should 
+			 * While \a neq does not require two values to be members of
+			 * an ordered set, the relation is still assumed to be irreflexive, 
+			 * symmetric and connected. 
+			 * Non-standard/non-matching data types or non-standard (overloaded) 
+			 * \a operator!= should therefore be used with caution.
+			 *
+			 * @tparam SET The input data type.
+			 */
+			template< typename SET, enum Backend implementation = config::default_backend >
+			class neq {
+
+			public:
+				/** Alias to the left-hand input data type. */
+				typedef SET left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef SET right_type;
+
+				/**
+				 * Whether this relation is \em reflexive; that is,
+				 * for all \a a in \a SET, \f$ a \neq a \f$.
+				 */
+				static constexpr bool is_reflexive = false;
+
+				/**
+				 * Whether this relation is \em irreflexive; that is,
+				 * for all \a a in \a SET, not \f$ a \neq a \f$.
+				 */
+				static constexpr bool is_irreflexive = true;
+
+				/**
+				 * Whether this relation is \em symmetric; that is,
+				 * for all \a a, \a b in \a SET, 
+				 * if \f$ a \neq b \f$ then \f$ b \neq a \f$.
+				 */
+				static constexpr bool is_symmetric = true;
+
+				/**
+				 * Whether this relation is \em antisymmetric; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ and 
+				 * \f$ b \neq a \f$ then \f$ a = b \f$.
+				 */
+				static constexpr bool is_antisymmetric = false;
+
+				/**
+				 * Whether this relation is \em transitive; that is,
+				 * for all \a a, \a b, \a c in \a SET, if \f$ a \neq b \f$ and
+				 * \f$ b \neq c \f$ then \f$ a \neq c \f$.
+				 */
+				static constexpr bool is_transitive = false;
+
+				/**
+				 * Whether this relation is \em connected; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+				 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
+				 */
+				static constexpr bool is_connected = true;
+
+				/**
+				 * Whether this relation is <em> strongly connected </em> (or total); 
+				 * that is,
+				 * for all \a a, \a b in \a SET, 
+				 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
+				 */
+				static constexpr bool is_strongly_connected = false;
+
+				/**
+				 * This function checks if <em> a != b </em>.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
+				 */
+				static bool check( const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b
+				) {
+					return *a != *b;
+				}
+			};
+
+			/**
+			 * Standard less-than-or-equal (\a le) operator.
+			 *
+			 * Assumes native availability of \a operator<= on the given data types 
+			 * or assumes that the relevant operators are properly overloaded.
+			 *
+			 * Assumes that \a le is a total order. Non-standard/non-matching 
+			 * data types or non-standard (overloaded) \a operator<= should 
 			 * therefore be used with caution.
 			 *
 			 * @tparam SET The input data type.
@@ -286,6 +458,91 @@ namespace alp {
 					const right_type * __restrict__ const b
 				) {
 					return *a <= *b;
+				}
+			};
+
+			/**
+			 * Standard greater-than-or-equal (\a ge) operator.
+			 *
+			 * Assumes native availability of \a operator>= on the given data types 
+			 * or assumes that the relevant operators are properly overloaded.
+			 *
+			 * Assumes that \a ge is a total order. Non-standard/non-matching 
+			 * data types or non-standard (overloaded) \a operator>= should 
+			 * therefore be used with caution.
+			 *
+			 * @tparam SET The input data type.
+			 */
+			template< typename SET, enum Backend implementation = config::default_backend >
+			class ge {
+
+			public:
+				/** Alias to the left-hand input data type. */
+				typedef SET left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef SET right_type;
+
+				/**
+				 * Whether this relation is \em reflexive; that is,
+				 * for all \a a in \a SET, \f$ a \ge a \f$.
+				 */
+				static constexpr bool is_reflexive = true;
+
+				/**
+				 * Whether this relation is \em irreflexive; that is,
+				 * for all \a a in \a SET, not \f$ a \ge a \f$.
+				 */
+				static constexpr bool is_irreflexive = false;
+
+				/**
+				 * Whether this relation is \em symmetric; that is,
+				 * for all \a a, \a b in \a SET, 
+				 * if \f$ a \ge b \f$ then \f$ b \ge a \f$.
+				 */
+				static constexpr bool is_symmetric = false;
+
+				/**
+				 * Whether this relation is \em antisymmetric; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \ge b \f$ and 
+				 * \f$ b \ge a \f$ then \f$ a = b \f$.
+				 */
+				static constexpr bool is_antisymmetric = true;
+
+				/**
+				 * Whether this relation is \em transitive; that is,
+				 * for all \a a, \a b, \a c in \a SET, if \f$ a \ge b \f$ and
+				 * \f$ b \ge c \f$ then \f$ a \ge c \f$.
+				 */
+				static constexpr bool is_transitive = true;
+
+				/**
+				 * Whether this relation is \em connected; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+				 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
+				 */
+				static constexpr bool is_connected = true;
+
+				/**
+				 * Whether this relation is <em> strongly connected </em> (or total); 
+				 * that is,
+				 * for all \a a, \a b in \a SET, 
+				 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
+				 */
+				static constexpr bool is_strongly_connected = true;
+
+				/**
+				 * This function checks if <em> a >= b </em>.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
+				 */
+				static bool check( const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b
+				) {
+					return *a >= *b;
 				}
 			};
 

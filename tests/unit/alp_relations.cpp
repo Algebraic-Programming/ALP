@@ -26,7 +26,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	(void) n;
 
 	/**
-	 * Basic checks on the less-then relation (lt).
+	 * Basic checks on the less-than relation (lt).
 	 * lt is a strict total order and therefore also a strict partial order.
 	 */
 	typedef alp::relations::lt< double > dbl_lt;
@@ -62,6 +62,48 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	if( dbl_lt::check(5, 5) ) {
 #ifndef NDEBUG
 		std::cerr << "dbl_lt::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	/**
+	 * Basic checks on the greater-than relation (gt).
+	 * lt is a strict total order and therefore also a strict partial order.
+	 */
+	typedef alp::relations::gt< double > dbl_gt;
+
+	static_assert( alp::is_relation< dbl_gt >::value );
+
+	static_assert( ! alp::is_partial_order< dbl_gt >::value );
+
+	static_assert( alp::is_strict_partial_order< dbl_gt >::value );
+
+	static_assert( ! alp::is_total_order< dbl_gt >::value );
+
+	static_assert( alp::is_strict_total_order< dbl_gt >::value );
+
+	static_assert( ! alp::is_equivalence_relation< dbl_gt >::value );
+
+	if( dbl_gt::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_gt::test(2.4, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! dbl_gt::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_gt::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( dbl_gt::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_gt::test(5, 5) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -118,7 +160,57 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	}
 
 	/**
-	 * Basic checks on the less-then-or-equal relation (le).
+	 * Basic checks on the not-equal relation (neq).
+	 * neq is neither an order nor an equivalence relation.
+	 */
+	typedef alp::relations::neq< int > int_neq;
+
+	static_assert( alp::is_relation< int_neq >::value );
+
+	static_assert( ! alp::is_partial_order< int_neq >::value );
+
+	static_assert( ! alp::is_strict_partial_order< int_neq >::value );
+
+	static_assert( ! alp::is_total_order< int_neq >::value );
+
+	static_assert( ! alp::is_strict_total_order< int_neq >::value );
+
+	static_assert( ! alp::is_equivalence_relation< int_neq >::value );
+
+	if( ! int_neq::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_neq::test(2.4, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_neq::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "int_neq::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( int_neq::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_neq::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( int_neq::check(5.5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_neq::test(5.5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	/**
+	 * Basic checks on the less-than-or-equal relation (le).
 	 * le is both a total order and therefore also a partial order.
 	 */
 	typedef alp::relations::le< int > int_le;
@@ -162,6 +254,56 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	if( ! int_le::check(5.5, 5) ) {
 #ifndef NDEBUG
 		std::cerr << "int_le::test(5.5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	/**
+	 * Basic checks on the greater-than-or-equal relation (ge).
+	 * le is both a total order and therefore also a partial order.
+	 */
+	typedef alp::relations::ge< int > int_ge;
+
+	static_assert( alp::is_relation< int_ge >::value );
+
+	static_assert( alp::is_partial_order< int_ge >::value );
+
+	static_assert( ! alp::is_strict_partial_order< int_ge >::value );
+
+	static_assert( alp::is_total_order< int_ge >::value );
+
+	static_assert( ! alp::is_strict_total_order< int_ge >::value );
+
+	static_assert( ! alp::is_equivalence_relation< int_ge >::value );
+
+	if( int_ge::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_ge::test(2.4, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_ge::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "int_ge::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_ge::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_ge::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_ge::check(5.5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_ge::test(5.5, 5) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;

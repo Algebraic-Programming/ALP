@@ -35,7 +35,7 @@ namespace alp {
 	namespace relations {
 
 		/**
-		 * This class implements the less-then relation.
+		 * This class implements the less-than relation.
 		 * It exposes the complete interface detailed in 
 		 * \a alp::relations::internal::HomogeneousRelation.
 		 *
@@ -52,6 +52,26 @@ namespace alp {
 		class lt : public internal::HomogeneousRelation< internal::lt< SET, implementation > > {
 		public:
 			lt() {}
+		};
+
+		/**
+		 * This class implements the greater-than relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
+		 *
+		 * \note A proper GraphBLAS program never uses the interface exposed by this
+		 *       relation directly, and instead simply passes the relation on to
+		 *       GraphBLAS functions.
+		 *
+		 * @tparam SET The domain and codomain of the relation.
+		 *
+		 * \warning This operator expects a numerical type for \a SET or types 
+		 *          that have the appropriate operator>-functions available.
+		 */
+		template< typename SET, enum Backend implementation = config::default_backend >
+		class gt : public internal::HomogeneousRelation< internal::gt< SET, implementation > > {
+		public:
+			gt() {}
 		};
 
 		/**
@@ -75,7 +95,27 @@ namespace alp {
 		};
 
 		/**
-		 * This class implements the less-then-or-equal relation.
+		 * This class implements the not-equal relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
+		 *
+		 * \note A proper GraphBLAS program never uses the interface exposed by this
+		 *       operator directly, and instead simply passes the operator on to
+		 *       GraphBLAS functions.
+		 *
+		 * @tparam SET The domain and codomain of the relation.
+		 *
+		 * \warning This operator expects a numerical type for \a SET or types 
+		 *          that have the appropriate operator==-functions available.
+		 */
+		template< typename SET, enum Backend implementation = config::default_backend >
+		class neq : public internal::HomogeneousRelation< internal::neq< SET, implementation > > {
+		public:
+			neq() {}
+		};
+
+		/**
+		 * This class implements the less-than-or-equal relation.
 		 * It exposes the complete interface detailed in 
 		 * \a alp::relations::internal::HomogeneousRelation.
 		 *
@@ -94,6 +134,26 @@ namespace alp {
 			le() {}
 		};
 
+		/**
+		 * This class implements the greater-than-or-equal relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
+		 *
+		 * \note A proper GraphBLAS program never uses the interface exposed by this
+		 *       operator directly, and instead simply passes the operator on to
+		 *       GraphBLAS functions.
+		 *
+		 * @tparam SET The domain and codomain of the relation.
+		 *
+		 * \warning This operator expects a numerical type for \a SET or types 
+		 *          that have the appropriate operator<=-functions available.
+		 */
+		template< typename SET, enum Backend implementation = config::default_backend >
+		class ge : public internal::HomogeneousRelation< internal::ge< SET, implementation > > {
+		public:
+			ge() {}
+		};
+
 	} // namespace relations
 
 	template<
@@ -101,6 +161,14 @@ namespace alp {
 		enum Backend implementation
 	>
 	struct is_relation< relations::lt< IntRel, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template<
+		typename IntRel,
+		enum Backend implementation
+	>
+	struct is_relation< relations::gt< IntRel, implementation > > {
 		static const constexpr bool value = true;
 	};
 
@@ -116,7 +184,23 @@ namespace alp {
 		typename IntRel,
 		enum Backend implementation
 	>
+	struct is_relation< relations::neq< IntRel, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template<
+		typename IntRel,
+		enum Backend implementation
+	>
 	struct is_relation< relations::le< IntRel, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template<
+		typename IntRel,
+		enum Backend implementation
+	>
+	struct is_relation< relations::ge< IntRel, implementation > > {
 		static const constexpr bool value = true;
 	};
 
