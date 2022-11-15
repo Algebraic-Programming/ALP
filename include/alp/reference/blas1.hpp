@@ -2231,14 +2231,11 @@ namespace alp {
 	 */
 	template<
 		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
-		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
-		typename Compare
+		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC
 	>
 	RC sort(
 		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
-		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
-		Compare cmp
-		//PHASE &phase = EXECUTE
+		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort
 	) noexcept {
 
 		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
@@ -2253,10 +2250,52 @@ namespace alp {
 			},
 			permutation
 		);
-		
-		(void)cmp;
-		//TODO: add alp::Vector::iterator to turn to std seq. sorting 
 
+		typedef Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > PermType;
+
+		typename PermType::iterator it_begin = internal::begin( permutation );
+		typename PermType::iterator it_end = internal::end( permutation );
+
+		std::sort( it_begin, it_end, [ &toSort ]( const size_t& a, const size_t& b ) {
+			return toSort[ a ] < toSort[ b ];
+		});
+		
+		return rc;
+	}
+
+	template<
+		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
+		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
+		typename CompareType
+	>
+	RC sort(
+		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
+		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
+		CompareType cmp
+	) noexcept {
+
+		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
+
+		if( !internal::getInitialized( toSort ) ) {
+			return SUCCESS;
+		}
+
+		RC rc = alp::eWiseLambda(
+			[ ]( const size_t i, size_t &val ) {
+				val = i;
+			},
+			permutation
+		);
+
+		typedef Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > PermType;
+
+		typename PermType::iterator it_begin = internal::begin( permutation );
+		typename PermType::iterator it_end = internal::end( permutation );
+
+		std::sort( it_begin, it_end, [ &toSort, &cmp ]( const size_t& a, const size_t& b ) {
+			return cmp( toSort[ a ], toSort[ b ] );
+		});
+		
 		return rc;
 	}
 

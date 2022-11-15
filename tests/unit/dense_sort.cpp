@@ -40,12 +40,12 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	// Check with vector of length n randomly intitialized and shuffled
 	alp::Vector< size_t > perm( n );
-	alp::Vector< double > v( n );
+	alp::Vector< T > v( n );
 
 	std::random_device rd;
 	std::default_random_engine rng( rd() );
 
-	std::vector< double > stdv( n );
+	std::vector< T > stdv( n );
 
 	std::iota( std::begin( stdv ), std::end( stdv ), 0. );
 	std::shuffle( std::begin( stdv ), std::end( stdv ), rng );
@@ -57,17 +57,49 @@ void alp_program( const size_t &n, alp::RC &rc ) {
     std::cout << "Original content of the alp::Vector:" << std::endl;
 	print_vector("v", v);
 
-	alp::sort( perm, v, []( T a, T b) { 
-		return a > b; 
-	} );
+	alp::sort( perm, v );
 
 	std::sort( std::begin( stdv ), std::end( stdv ) );
 
+	auto sorted_v = alp::get_view< alp::structures::General >( v, perm );
+
+	// Check sorted view
 	for ( size_t i = 0; i < n; i++ ) {
-		if ( stdv[i] != v[ perm[ i ] ] ) {
-			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( alp::v[ perm[ " << i << " ] ] = " << v[ perm[ i ] ] << " )" << std::endl;
+		if ( stdv[i] != sorted_v[ i ] ) {
+			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" << std::endl;
+			rc = alp::FAILED;
 		}
 	}
+
+    std::cout << "Sorted alp::Vector:" << std::endl;
+	print_vector("sorted_v", sorted_v);
+
+	if (rc == alp::FAILED ) {
+		return;
+	}
+
+	auto desc_cmp = []( const T& a, const T& b) {
+		return a > b;
+	};
+
+	// Check descending sorted view
+	alp::sort( perm, v, desc_cmp );
+
+	std::sort( std::begin( stdv ), std::end( stdv ), desc_cmp );
+
+	auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
+
+	// Check sorted view
+	for ( size_t i = 0; i < n; i++ ) {
+		if ( stdv[i] != desc_sorted_v[ i ] ) {
+			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
+			rc = alp::FAILED;
+		}
+	}
+
+    std::cout << "Sorted alp::Vector in descending order:" << std::endl;
+	print_vector("desc_sorted_v", desc_sorted_v);
+
 
 	rc = alp::SUCCESS;
 }
