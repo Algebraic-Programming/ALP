@@ -239,7 +239,7 @@ namespace alp {
 			}
 
 			std::pair< size_t, size_t > getThreadCoords( const size_t thread_id ) const {
-				const size_t tr = thread_id / Tr;
+				const size_t tr = thread_id / Tc;
 				const size_t tc = thread_id % Tc;
 				return { tr, tc };
 			}
