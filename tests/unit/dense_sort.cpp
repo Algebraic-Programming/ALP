@@ -61,7 +61,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	print_vector("v", v);
 #endif
 
-	alp::sort( perm, v );
+	alp::sort( perm, v, relations::lt< T >() );
 
 	std::sort( std::begin( stdv ), std::end( stdv ) );
 
@@ -71,7 +71,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	for( size_t i = 0; i < n; i++ ) {
 		if( stdv[i] != sorted_v[ i ] ) {
 #ifndef NDEBUG
-			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " << " ( alp_sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" << std::endl;
+			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " 
+				<< " ( alp_sorted_v[ " << i << " ] = " << sorted_v[ i ] << " )" 
+				<< std::endl;
 #endif
 			rc = alp::FAILED;
 #ifdef NDEBUG
@@ -104,7 +106,9 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	for( size_t i = 0; i < n; i++ ) {
 		if( stdv[i] != desc_sorted_v[ i ] ) {
 #ifndef NDEBUG
-			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " << " ( alp_sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
+			std::cerr << "Error: ( std_v[ " << i << " ] = " << stdv[i] << " ) != " 
+			<< " ( alp_sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" 
+			<< std::endl;
 #endif
 			rc = alp::FAILED;
 #ifdef NDEBUG
@@ -150,7 +154,7 @@ int main( int argc, char **argv ) {
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
 		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+			"test size.\n";
 		return 1;
 	}
 
@@ -169,3 +173,4 @@ int main( int argc, char **argv ) {
 		return 0;
 	}
 }
+

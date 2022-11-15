@@ -33,17 +33,17 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_relation< dbl_lt >::value );
 
-	static_assert( ! alp::is_partial_order< dbl_lt >::value );
+	static_assert( !( alp::is_partial_order< dbl_lt >::value ) );
 
 	static_assert( alp::is_strict_partial_order< dbl_lt >::value );
 
-	static_assert( ! alp::is_total_order< dbl_lt >::value );
+	static_assert( !( alp::is_total_order< dbl_lt >::value ) );
 
 	static_assert( alp::is_strict_total_order< dbl_lt >::value );
 
-	static_assert( ! alp::is_equivalence_relation< dbl_lt >::value );
+	static_assert( !( alp::is_equivalence_relation< dbl_lt >::value ) );
 
-	if( ! dbl_lt::check(2.4, 5) ) {
+	if( !( dbl_lt::check(2.4, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "dbl_lt::test(2.4, 5) failed." << std::endl;
 #endif
@@ -75,15 +75,15 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_relation< dbl_gt >::value );
 
-	static_assert( ! alp::is_partial_order< dbl_gt >::value );
+	static_assert( !( alp::is_partial_order< dbl_gt >::value ) );
 
 	static_assert( alp::is_strict_partial_order< dbl_gt >::value );
 
-	static_assert( ! alp::is_total_order< dbl_gt >::value );
+	static_assert( !( alp::is_total_order< dbl_gt >::value ) );
 
 	static_assert( alp::is_strict_total_order< dbl_gt >::value );
 
-	static_assert( ! alp::is_equivalence_relation< dbl_gt >::value );
+	static_assert( !( alp::is_equivalence_relation< dbl_gt >::value ) );
 
 	if( dbl_gt::check(2.4, 5) ) {
 #ifndef NDEBUG
@@ -93,7 +93,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! dbl_gt::check(5, 2.4) ) {
+	if( !( dbl_gt::check(5, 2.4) ) ) {
 #ifndef NDEBUG
 		std::cerr << "dbl_gt::check(5, 2.4) failed." << std::endl;
 #endif
@@ -119,11 +119,11 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_partial_order< int_eq >::value );
 
-	static_assert( ! alp::is_strict_partial_order< int_eq >::value );
+	static_assert( !( alp::is_strict_partial_order< int_eq >::value ) );
 
-	static_assert( ! alp::is_total_order< int_eq >::value );
+	static_assert( !( alp::is_total_order< int_eq >::value ) );
 
-	static_assert( ! alp::is_strict_total_order< int_eq >::value );
+	static_assert( !( alp::is_strict_total_order< int_eq >::value ) );
 
 	static_assert( alp::is_equivalence_relation< int_eq >::value );
 
@@ -143,7 +143,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_eq::check(5, 5) ) {
+	if( !( int_eq::check(5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_eq::test(5, 5) failed." << std::endl;
 #endif
@@ -151,7 +151,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_eq::check(5.5, 5) ) {
+	if( !( int_eq::check(5.5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_eq::test(5.5, 5) failed." << std::endl;
 #endif
@@ -167,17 +167,17 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_relation< int_neq >::value );
 
-	static_assert( ! alp::is_partial_order< int_neq >::value );
+	static_assert( !( alp::is_partial_order< int_neq >::value ) );
 
-	static_assert( ! alp::is_strict_partial_order< int_neq >::value );
+	static_assert( !( alp::is_strict_partial_order< int_neq >::value ) );
 
-	static_assert( ! alp::is_total_order< int_neq >::value );
+	static_assert( !( alp::is_total_order< int_neq >::value ) );
 
-	static_assert( ! alp::is_strict_total_order< int_neq >::value );
+	static_assert( !( alp::is_strict_total_order< int_neq >::value ) );
 
-	static_assert( ! alp::is_equivalence_relation< int_neq >::value );
+	static_assert( !( alp::is_equivalence_relation< int_neq >::value ) );
 
-	if( ! int_neq::check(2.4, 5) ) {
+	if( !( int_neq::check(2.4, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_neq::test(2.4, 5) failed." << std::endl;
 #endif
@@ -185,7 +185,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_neq::check(5, 2.4) ) {
+	if( !( int_neq::check(5, 2.4) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_neq::check(5, 2.4) failed." << std::endl;
 #endif
@@ -219,15 +219,15 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_partial_order< int_le >::value );
 
-	static_assert( ! alp::is_strict_partial_order< int_le >::value );
+	static_assert( !( alp::is_strict_partial_order< int_le >::value ) );
 
 	static_assert( alp::is_total_order< int_le >::value );
 
-	static_assert( ! alp::is_strict_total_order< int_le >::value );
+	static_assert( !( alp::is_strict_total_order< int_le >::value ) );
 
-	static_assert( ! alp::is_equivalence_relation< int_le >::value );
+	static_assert( !( alp::is_equivalence_relation< int_le >::value ) );
 
-	if( ! int_le::check(2.4, 5) ) {
+	if( !( int_le::check(2.4, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_le::test(2.4, 5) failed." << std::endl;
 #endif
@@ -243,7 +243,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_le::check(5, 5) ) {
+	if( !( int_le::check(5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_le::test(5, 5) failed." << std::endl;
 #endif
@@ -251,7 +251,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_le::check(5.5, 5) ) {
+	if( !( int_le::check(5.5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_le::test(5.5, 5) failed." << std::endl;
 #endif
@@ -269,13 +269,13 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_partial_order< int_ge >::value );
 
-	static_assert( ! alp::is_strict_partial_order< int_ge >::value );
+	static_assert( !( alp::is_strict_partial_order< int_ge >::value ) );
 
 	static_assert( alp::is_total_order< int_ge >::value );
 
-	static_assert( ! alp::is_strict_total_order< int_ge >::value );
+	static_assert( !( alp::is_strict_total_order< int_ge >::value ) );
 
-	static_assert( ! alp::is_equivalence_relation< int_ge >::value );
+	static_assert( !( alp::is_equivalence_relation< int_ge >::value ) );
 
 	if( int_ge::check(2.4, 5) ) {
 #ifndef NDEBUG
@@ -285,7 +285,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_ge::check(5, 2.4) ) {
+	if( !( int_ge::check(5, 2.4) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_ge::check(5, 2.4) failed." << std::endl;
 #endif
@@ -293,7 +293,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_ge::check(5, 5) ) {
+	if( !( int_ge::check(5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_ge::test(5, 5) failed." << std::endl;
 #endif
@@ -301,7 +301,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 		return;
 	}
 
-	if( ! int_ge::check(5.5, 5) ) {
+	if( !( int_ge::check(5.5, 5) ) ) {
 #ifndef NDEBUG
 		std::cerr << "int_ge::test(5.5, 5) failed." << std::endl;
 #endif

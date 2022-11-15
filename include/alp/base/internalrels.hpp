@@ -26,6 +26,8 @@
 #include <type_traits>
 
 #include <alp/backends.hpp>
+#include <alp/type_traits.hpp>
+
 
 namespace alp {
 
@@ -49,74 +51,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class lt {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a < a \f$.
-				 */
-				static constexpr bool is_reflexive = false;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a < a \f$.
+					 */
+					static constexpr bool is_reflexive = false;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a < a \f$.
-				 */
-				static constexpr bool is_irreflexive = true;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a < a \f$.
+					 */
+					static constexpr bool is_irreflexive = true;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a < b \f$ then \f$ b < a \f$.
-				 */
-				static constexpr bool is_symmetric = false;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a < b \f$ then \f$ b < a \f$.
+					 */
+					static constexpr bool is_symmetric = false;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a < b \f$ and 
-				 * \f$ b < a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a < b \f$ and 
+					 * \f$ b < a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = true;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a < b \f$ and
-				 * \f$ b < c \f$ then \f$ a < c \f$.
-				 */
-				static constexpr bool is_transitive = true;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a < b \f$ and
+					 * \f$ b < c \f$ then \f$ a < c \f$.
+					 */
+					static constexpr bool is_transitive = true;
 
-				/**
-				 * Whether this relation is \em connected (or total); that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a < b \f$ or \f$ b < a \f$.
-				 */
-				static constexpr bool is_connected = true;
+					/**
+					 * Whether this relation is \em connected (or total); that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a < b \f$ or \f$ b < a \f$.
+					 */
+					static constexpr bool is_connected = true;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em>; 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a < b \f$ or \f$ b < a \f$.
-				 */
-				static constexpr bool is_strongly_connected = false;
+					/**
+					 * Whether this relation is <em> strongly connected </em>; 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a < b \f$ or \f$ b < a \f$.
+					 */
+					static constexpr bool is_strongly_connected = false;
 
-				/**
-				 * This function checks if <em> a < b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a < *b;
-				}
+					/**
+					 * This function checks if <em> a < b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a < *b;
+					}
 			};
 
 			/**
@@ -134,74 +136,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class gt {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a > a \f$.
-				 */
-				static constexpr bool is_reflexive = false;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a > a \f$.
+					 */
+					static constexpr bool is_reflexive = false;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a > a \f$.
-				 */
-				static constexpr bool is_irreflexive = true;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a > a \f$.
+					 */
+					static constexpr bool is_irreflexive = true;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a > b \f$ then \f$ b > a \f$.
-				 */
-				static constexpr bool is_symmetric = false;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a > b \f$ then \f$ b > a \f$.
+					 */
+					static constexpr bool is_symmetric = false;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a > b \f$ and 
-				 * \f$ b > a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a > b \f$ and 
+					 * \f$ b > a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = true;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a > b \f$ and
-				 * \f$ b > c \f$ then \f$ a > c \f$.
-				 */
-				static constexpr bool is_transitive = true;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a > b \f$ and
+					 * \f$ b > c \f$ then \f$ a > c \f$.
+					 */
+					static constexpr bool is_transitive = true;
 
-				/**
-				 * Whether this relation is \em connected (or total); that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a > b \f$ or \f$ b > a \f$.
-				 */
-				static constexpr bool is_connected = true;
+					/**
+					 * Whether this relation is \em connected (or total); that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a > b \f$ or \f$ b > a \f$.
+					 */
+					static constexpr bool is_connected = true;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em>; 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a > b \f$ or \f$ b > a \f$.
-				 */
-				static constexpr bool is_strongly_connected = false;
+					/**
+					 * Whether this relation is <em> strongly connected </em>; 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a > b \f$ or \f$ b > a \f$.
+					 */
+					static constexpr bool is_strongly_connected = false;
 
-				/**
-				 * This function checks if <em> a > b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a > *b;
-				}
+					/**
+					 * This function checks if <em> a > b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a > *b;
+					}
 			};
 
 			/**
@@ -219,74 +221,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class eq {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a = a \f$.
-				 */
-				static constexpr bool is_reflexive = true;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a = a \f$.
+					 */
+					static constexpr bool is_reflexive = true;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a = a \f$.
-				 */
-				static constexpr bool is_irreflexive = false;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a = a \f$.
+					 */
+					static constexpr bool is_irreflexive = false;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a = b \f$ then \f$ b = a \f$.
-				 */
-				static constexpr bool is_symmetric = true;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a = b \f$ then \f$ b = a \f$.
+					 */
+					static constexpr bool is_symmetric = true;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a = b \f$ and 
-				 * \f$ b = a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a = b \f$ and 
+					 * \f$ b = a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = true;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a = b \f$ and
-				 * \f$ b = c \f$ then \f$ a = c \f$.
-				 */
-				static constexpr bool is_transitive = true;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a = b \f$ and
+					 * \f$ b = c \f$ then \f$ a = c \f$.
+					 */
+					static constexpr bool is_transitive = true;
 
-				/**
-				 * Whether this relation is \em connected; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a = b \f$ or \f$ b = a \f$.
-				 */
-				static constexpr bool is_connected = false;
+					/**
+					 * Whether this relation is \em connected; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a = b \f$ or \f$ b = a \f$.
+					 */
+					static constexpr bool is_connected = false;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em> (or total); 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a = b \f$ or \f$ b = a \f$.
-				 */
-				static constexpr bool is_strongly_connected = false;
+					/**
+					 * Whether this relation is <em> strongly connected </em> (or total); 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a = b \f$ or \f$ b = a \f$.
+					 */
+					static constexpr bool is_strongly_connected = false;
 
-				/**
-				 * This function checks if <em> a == b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a == *b;
-				}
+					/**
+					 * This function checks if <em> a == b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a == *b;
+					}
 			};
 
 			/**
@@ -306,74 +308,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class neq {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a \neq a \f$.
-				 */
-				static constexpr bool is_reflexive = false;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a \neq a \f$.
+					 */
+					static constexpr bool is_reflexive = false;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a \neq a \f$.
-				 */
-				static constexpr bool is_irreflexive = true;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a \neq a \f$.
+					 */
+					static constexpr bool is_irreflexive = true;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a \neq b \f$ then \f$ b \neq a \f$.
-				 */
-				static constexpr bool is_symmetric = true;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a \neq b \f$ then \f$ b \neq a \f$.
+					 */
+					static constexpr bool is_symmetric = true;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ and 
-				 * \f$ b \neq a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = false;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ and 
+					 * \f$ b \neq a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = false;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a \neq b \f$ and
-				 * \f$ b \neq c \f$ then \f$ a \neq c \f$.
-				 */
-				static constexpr bool is_transitive = false;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a \neq b \f$ and
+					 * \f$ b \neq c \f$ then \f$ a \neq c \f$.
+					 */
+					static constexpr bool is_transitive = false;
 
-				/**
-				 * Whether this relation is \em connected; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
-				 */
-				static constexpr bool is_connected = true;
+					/**
+					 * Whether this relation is \em connected; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
+					 */
+					static constexpr bool is_connected = true;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em> (or total); 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
-				 */
-				static constexpr bool is_strongly_connected = false;
+					/**
+					 * Whether this relation is <em> strongly connected </em> (or total); 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a \neq b \f$ or \f$ b \neq a \f$.
+					 */
+					static constexpr bool is_strongly_connected = false;
 
-				/**
-				 * This function checks if <em> a != b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a != *b;
-				}
+					/**
+					 * This function checks if <em> a != b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a != *b;
+					}
 			};
 
 			/**
@@ -391,74 +393,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class le {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a \le a \f$.
-				 */
-				static constexpr bool is_reflexive = true;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a \le a \f$.
+					 */
+					static constexpr bool is_reflexive = true;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a \le a \f$.
-				 */
-				static constexpr bool is_irreflexive = false;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a \le a \f$.
+					 */
+					static constexpr bool is_irreflexive = false;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a \le b \f$ then \f$ b \le a \f$.
-				 */
-				static constexpr bool is_symmetric = false;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a \le b \f$ then \f$ b \le a \f$.
+					 */
+					static constexpr bool is_symmetric = false;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \le b \f$ and 
-				 * \f$ b \le a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \le b \f$ and 
+					 * \f$ b \le a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = true;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a \le b \f$ and
-				 * \f$ b \le c \f$ then \f$ a \le c \f$.
-				 */
-				static constexpr bool is_transitive = true;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a \le b \f$ and
+					 * \f$ b \le c \f$ then \f$ a \le c \f$.
+					 */
+					static constexpr bool is_transitive = true;
 
-				/**
-				 * Whether this relation is \em connected; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
-				 */
-				static constexpr bool is_connected = true;
+					/**
+					 * Whether this relation is \em connected; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a \le b \f$ or \f$ b \le a \f$.
+					 */
+					static constexpr bool is_connected = true;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em> (or total); 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
-				 */
-				static constexpr bool is_strongly_connected = true;
+					/**
+					 * Whether this relation is <em> strongly connected </em> (or total); 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a \le b \f$ or \f$ b \le a \f$.
+					 */
+					static constexpr bool is_strongly_connected = true;
 
-				/**
-				 * This function checks if <em> a <= b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a <= *b;
-				}
+					/**
+					 * This function checks if <em> a <= b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a <= *b;
+					}
 			};
 
 			/**
@@ -476,74 +478,74 @@ namespace alp {
 			template< typename SET, enum Backend implementation = config::default_backend >
 			class ge {
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
+				public:
+					/** Alias to the domain data type. */
+					typedef SET domain;
 
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
+					/** Alias to the codomain data type. */
+					typedef SET codomain;
 
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a \ge a \f$.
-				 */
-				static constexpr bool is_reflexive = true;
+					/**
+					 * Whether this relation is \em reflexive; that is,
+					 * for all \a a in \a SET, \f$ a \ge a \f$.
+					 */
+					static constexpr bool is_reflexive = true;
 
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a \ge a \f$.
-				 */
-				static constexpr bool is_irreflexive = false;
+					/**
+					 * Whether this relation is \em irreflexive; that is,
+					 * for all \a a in \a SET, not \f$ a \ge a \f$.
+					 */
+					static constexpr bool is_irreflexive = false;
 
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a \ge b \f$ then \f$ b \ge a \f$.
-				 */
-				static constexpr bool is_symmetric = false;
+					/**
+					 * Whether this relation is \em symmetric; that is,
+					 * for all \a a, \a b in \a SET, 
+					 * if \f$ a \ge b \f$ then \f$ b \ge a \f$.
+					 */
+					static constexpr bool is_symmetric = false;
 
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \ge b \f$ and 
-				 * \f$ b \ge a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
+					/**
+					 * Whether this relation is \em antisymmetric; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \ge b \f$ and 
+					 * \f$ b \ge a \f$ then \f$ a = b \f$.
+					 */
+					static constexpr bool is_antisymmetric = true;
 
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a \ge b \f$ and
-				 * \f$ b \ge c \f$ then \f$ a \ge c \f$.
-				 */
-				static constexpr bool is_transitive = true;
+					/**
+					 * Whether this relation is \em transitive; that is,
+					 * for all \a a, \a b, \a c in \a SET, if \f$ a \ge b \f$ and
+					 * \f$ b \ge c \f$ then \f$ a \ge c \f$.
+					 */
+					static constexpr bool is_transitive = true;
 
-				/**
-				 * Whether this relation is \em connected; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
-				 */
-				static constexpr bool is_connected = true;
+					/**
+					 * Whether this relation is \em connected; that is,
+					 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+					 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
+					 */
+					static constexpr bool is_connected = true;
 
-				/**
-				 * Whether this relation is <em> strongly connected </em> (or total); 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
-				 */
-				static constexpr bool is_strongly_connected = true;
+					/**
+					 * Whether this relation is <em> strongly connected </em> (or total); 
+					 * that is,
+					 * for all \a a, \a b in \a SET, 
+					 * either \f$ a \ge b \f$ or \f$ b \ge a \f$.
+					 */
+					static constexpr bool is_strongly_connected = true;
 
-				/**
-				 * This function checks if <em> a >= b </em>.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool check( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a >= *b;
-				}
+					/**
+					 * This function checks if <em> a >= b </em>.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 *
+					 * \warning Passing invalid pointers will result in UB.
+					 */
+					static bool check( const domain * const a,
+						const codomain * const b
+					) {
+						return *a >= *b;
+					}
 			};
 
 			/**
@@ -558,211 +560,157 @@ namespace alp {
 			template< typename REL, enum Backend implementation = config::default_backend >
 			class RelationBase {
 
-			protected:
+				public:
 
-				/** The left-hand input domain. */
-				typedef typename REL::left_type D1;
+					/** The domain type. */
+					typedef typename REL::domain D1;
 
-				/** The right-hand input domain. */
-				typedef typename REL::right_type D2;
+					/** The codomain type. */
+					typedef typename REL::codomain D2;
 
-			public:
-				/** @return Whether this relation is reflexive. */
-				static constexpr bool is_reflexive() {
-					return REL::is_reflexive;
-				}
+					/** @return Whether this relation is reflexive. */
+					static constexpr bool is_reflexive() {
+						return REL::is_reflexive;
+					}
 
-				/** @return Whether this relation is irreflexive. */
-				static constexpr bool is_irreflexive() {
-					return REL::is_irreflexive;
-				}
+					/** @return Whether this relation is irreflexive. */
+					static constexpr bool is_irreflexive() {
+						return REL::is_irreflexive;
+					}
 
-				/** @return Whether this relation is symmetric. */
-				static constexpr bool is_symmetric() {
-					return REL::is_symmetric;
-				}
+					/** @return Whether this relation is symmetric. */
+					static constexpr bool is_symmetric() {
+						return REL::is_symmetric;
+					}
 
-				/** @return Whether this relation is antisymmetric. */
-				static constexpr bool is_antisymmetric() {
-					return REL::is_antisymmetric;
-				}
+					/** @return Whether this relation is antisymmetric. */
+					static constexpr bool is_antisymmetric() {
+						return REL::is_antisymmetric;
+					}
 
-				/** @return Whether this relation is transitive. */
-				static constexpr bool is_transitive() {
-					return REL::is_transitive;
-				}
+					/** @return Whether this relation is transitive. */
+					static constexpr bool is_transitive() {
+						return REL::is_transitive;
+					}
 
-				/** @return Whether this relation is connected. */
-				static constexpr bool is_connected() {
-					return REL::is_connected;
-				}
+					/** @return Whether this relation is connected. */
+					static constexpr bool is_connected() {
+						return REL::is_connected;
+					}
 
-				/** @return Whether this relation is strongly connected. */
-				static constexpr bool is_strongly_connected() {
-					return REL::is_strongly_connected;
-				}
+					/** @return Whether this relation is strongly connected. */
+					static constexpr bool is_strongly_connected() {
+						return REL::is_strongly_connected;
+					}
 
-				/**
-				 * This function checks if \f$ x REL y \f$.
-				 *
-				 * @tparam InputType1 The type of the input parameter \a x.
-				 * @tparam InputType2 The type of the input parameter \a y.
-				 *
-				 * \warning If \a InputType1 does not match \a D1 \em or \a InputType2 does
-				 *          not match \a D2, then input will be cast into temporary 
-				 *          variables of the correct types.
-				 *
-				 * \note Best performance is thus only guaranteed when all domains match.
-				 *
-				 * @param[in]  x The left-hand side input.
-				 * @param[in]  y The right-hand side input.
-				 */
-				template< typename InputType1, typename InputType2 >
-				static bool check( const InputType1 & x, const InputType2 & y ) {
-					const D1 a = static_cast< D1 >( x );
-					const D2 b = static_cast< D2 >( y );
-					return REL::check( &a, &b );
-				}
+					/**
+					 * This function checks if \f$ x REL y \f$.
+					 *
+					 * @tparam InputType1 The type of the input parameter \a x.
+					 * @tparam InputType2 The type of the input parameter \a y.
+					 *
+					 * \warning If \a InputType1 does not match \a D1 \em or \a InputType2 does
+					 *          not match \a D2, then input will be cast into temporary 
+					 *          variables of the correct types.
+					 *
+					 * \note Best performance is thus only guaranteed when all domains match.
+					 *
+					 * @param[in]  x The left-hand side input.
+					 * @param[in]  y The right-hand side input.
+					 */
+					template< typename InputType1, typename InputType2 >
+					static bool check( const InputType1 & x, const InputType2 & y ) {
+						const D1 a = static_cast< D1 >( x );
+						const D2 b = static_cast< D2 >( y );
+						return REL::check( &a, &b );
+					}
 
-				/**
-				 * This is the high-performance version of check() in the sense that no
-				 * casting is required. This version will be automatically called whenever
-				 * possible.
-				 */
-				static bool check( const D1 & x, const D2 & y ) {
-					return REL::check( &x, &y );
-				}
+					/**
+					 * This is the high-performance version of check() in the sense that no
+					 * casting is required. This version will be automatically called whenever
+					 * possible.
+					 */
+					static bool check( const D1 & x, const D2 & y ) {
+						return REL::check( &x, &y );
+					}
 			};
 
 			/**
-			 * TODO: Update for Relation
-			 * This is the operator interface exposed to the GraphBLAS implementation.
+			 * This is the relation interface exposed to the ALP implementation.
 			 *
-			 * \warning Note that most GraphBLAS usage requires associative operators.
-			 *          While very easily possible to create non-associative operators
-			 *          using this interface, passing them to GraphBLAS functions,
-			 *          either explicitly or indirectly (by, e.g., including them in a
-			 *          alp::Monoid or alp::Semiring), will lead to undefined
-			 *          behaviour.
-			 *
-			 * This class wraps around a base operator of type \a OP we denote by
-			 *        \f$ \odot:\ D_1\times D_2 \to D_3 \f$.
+			 * This class wraps around a base relation of type \a REL we denote by
+			 *        \f$ REL \subseteq D_1\times D_2 \f$.
 			 *
 			 * \parblock
 			 * \par Base Operators
 			 *
-			 * The class \a OP is expected to define the following public function:
-			 *   - \a apply, which takes three pointers to parameters \f$ x \in D_1 \f$
-			 *      \f$ y \in D_2 \f$, and \f$ z \in D_3 \f$ and computes
-			 *      \f$ z = x \odot y \f$.
+			 * The class \a REL is expected to define the following public function:
+			 *   - \a check, which takes two pointers to parameters \f$ a \in D_1 \f$
+			 *      and \f$ b \in D_2 \f$ and checks if 
+			 *      \f$ a REL b \f$.
 			 *
 			 * It is also expected to define the following types:
-			 *   - \a left_type, which corresponds to \f$ D_1 \f$,
-			 *   - \a right_type, which corresponds to \f$ D_2 \f$,
-			 *   - \a result_type, which corresponds to \f$ D_3 \f$.
+			 *   - \a domain, which corresponds to \f$ D_1 \f$,
+			 *   - \a codomain, which corresponds to \f$ D_2 \f$.
 			 *
-			 * It is also expected to define the following two public boolean fields:
-			 *   - \a has_foldr
-			 *   - \a has_foldl
+			 * It is also expected to define the following public boolean fields:
+			 *   - \a is_reflexive
+			 *   - \a is_irreflexive
+			 *   - \a is_symmetric
+			 *   - \a is_antisymmetric
+			 *   - \a is_transitive
+			 *   - \a is_connected
+			 *   - \a is_strongly_connected
 			 *
-			 * If \a has_foldr is \a true, then the class \a OP is expected to also
-			 * define the function
-			 *   - foldr, which takes two pointers to parameters \f$ x \in D_1 \f$
-			 *      and \f$ z \in D_2 \subseteq D_3 \f$ and stores in \a z the result of
-			 *      \f$ x \odot z \f$.
+			 * For an example of base relation, see alp::relations::internal::lt.
 			 *
-			 * If \a has_foldl is \a true, the the class \a OP is expected to also
-			 * define the function
-			 *   - foldl, which takes two pointers to parameters
-			 *      \f$ z \in D_1 \subseteq D_3 \f$ and \f$ y \in D_2 \f$ and stores in
-			 *      \a z the result of \f$ z \odot y \f$.
-			 *
-			 * For examples of these base operators, see alp::operators::internal::max
-			 * or alp::operators::internal::mul. An example of a full implementation,
-			 * in this case for numerical addition, is the following:
-			 *
-			 * \snippet internalops.hpp Example Base Operator Implementation
-			 *
-			 * \note GraphBLAS users should never call these functions directly. This
+			 * \note ALP users should never access these classes directly. This
 			 *       documentation is provided for developers to understand or extend
-			 *       the current implementation, for example to include new operators.
-			 *
-			 * \warning When calling these functions directly, note that the pointers
-			 *          to the memory areas are declared using the \em restrict key
-			 *          word. One of the consequences is that all pointers given in a
-			 *          single call <em>may never refer to the same memory area, or
-			 *          undefined behaviour is invoked</em>.
+			 *       the current implementation, for example to include new relations.
 			 *
 			 * \endparblock
 			 *
 			 * \parblock
-			 * \par The exposed GraphBLAS Operator Interface
+			 * \par The exposed GraphBLAS Relation Interface
 			 *
-			 * The Base Operators as illustrated above are wrapped by this class to
+			 * The Base Relations as illustrated above are wrapped by this class to
 			 * provide a more convient API. It translates the functionality of any Base
-			 * Operator and exposes the following interface instead:
+			 * Relation and exposes the following interface instead:
 			 *
-			 *   -# apply, which takes three parameters \f$ x, y, z \f$ of arbitrary
-			 *      types and computes \f$ z = x \odot y \f$ after performing any
+			 *   -# check, which takes two parameters \f$ a, b \f$ of arbitrary
+			 *      types and checks \f$ a REL b \f$ after performing any
 			 *      casting if required.
-			 *   -# foldr, which takes two parameters \f$ x, z \f$ of arbitrary types
-			 *      and computes \f$ z = x \odot z \f$ after performing any casting if
-			 *      required.
-			 *   -# foldl, which takes two parameters \f$ z, y \f$ of arbitrary types
-			 *      and computes \f$ z = z \odot y \f$ after performing any casting if
-			 *      required.
-			 *   -# eWiseApply, which takes three pointers to arrays \f$ x, y, z \f$
-			 *      and a size \a n. The arrays can correspond to elements of any type,
-			 *      all three with length at least \a n. For every i-th element of the
-			 *      three arrays, on the values \f$ x_i, y_i, z_i \f$, \f$ z_i \f$ will
-			 *      be set to \f$ x_i \odot y_i \f$.
-			 *   -# foldrArray, which takes a pointer to an array \f$ x \f$, a
-			 *      parameter \f$ z \f$ of arbitrary type, and a size \n as parameters.
-			 *      The value \f$ z \f$ will be overwritten to \f$ x_i \odot z \f$ for
-			 *      each of the \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$. The order of
-			 *      application, in the sense of which \f$ i \f$ are processed first,
-			 *      is undefined.
-			 *   -# foldlArray, which takes as parameters: \f$ z \f$ of arbitrary type,
-			 *      an array \f$ y \f$, and a size \n. The value \f$ z \f$ will be
-			 *      overwritten to \f$ z \odot y_i \f$ for each of the
-			 *      \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$. The order of application, in
-			 *      the sense of which \f$ i \f$ are processed first, is undefined.
 			 * \endparblock
 			 *
-			 * \note This class only allows wrapping of stateless base operators. This
-			 *       GraphBLAS implementation in principle allows for stateful
-			 *       operators, though they must be provided by a specialised class
+			 * \note This class only allows wrapping of stateless base relations. This
+			 *       ALP implementation in principle allows for stateful
+			 *       relations, though they must be provided by a specialised class
 			 *       which directly implements the above public interface.
 			 *
-			 * @see OperatorBase::apply
-			 * @see OperatorFR::foldr
-			 * @see OperatorFL::foldl
-			 * @see \ref OperatorNoFRFLeWiseApply
-			 * @see Operator::foldrArray
-			 * @see Operator::foldlArray
+			 * @see RelationBase::check
 			 *
 			 * \parblock
-			 * \par Providing New Operators
+			 * \par Providing New Relations
 			 *
-			 * New operators are easily added to this
-			 * GraphBLAS implementation by providing a base operator and wrapping this
-			 * class around it, as illustrated, e.g., by alp::operators::add as follows:
+			 * New relations are easily added to this
+			 * ALP implementation by providing a base relation and wrapping this
+			 * class around it, as illustrated, e.g., by alp::relations::lt as follows:
 			 *
-			 * \snippet ops.hpp Operator Wrapping
+			 * \snippet rels.hpp Relation Wrapping
 			 *
-			 * This need to be compatible with the GraphBLAS type traits, specifically,
-			 * the #is_operator template. To ensure this, a specialisation of it must be
+			 * This need to be compatible with the ALP type traits, specifically,
+			 * the #is_relation template. To ensure this, a specialisation of it must be
 			 * privided:
 			 *
-			 * \snippet ops.hpp Operator Type Traits
+			 * \snippet rels.hpp Relation Type Traits
 			 * \endparblock
 			 */
 			template< typename REL, enum Backend implementation = config::default_backend >
 			class Relation : public RelationBase< REL, implementation > {
 
-				public:
-					typedef typename RelationBase< REL, implementation >::D1 D1;
-					typedef typename RelationBase< REL, implementation >::D2 D2;
+				// public:
+				// 	typedef typename RelationBase< REL, implementation >::D1 D1;
+				// 	typedef typename RelationBase< REL, implementation >::D2 D2;
 
 			};
 
@@ -778,8 +726,8 @@ namespace alp {
 				enum Backend implementation = config::default_backend,
 				std::enable_if_t< 
 					std::is_same< 
-						typename REL::left_type, 
-						typename REL::right_type 
+						typename REL::domain, 
+						typename REL::codomain 
 					>::value 
 				> * = nullptr
 			>
@@ -789,6 +737,92 @@ namespace alp {
 		} // namespace internal
 
 	} // namespace relations
+
+	template< typename Rel >
+	struct is_homogeneous_relation {
+		static const constexpr bool value = is_relation< Rel >::value
+			and std::is_same< typename Rel::D1, typename Rel::D2 >::value;
+	};
+
+	template< typename Rel >
+	struct is_reflexive {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_reflexive();
+	};
+
+	template< typename Rel >
+	struct is_irreflexive {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_irreflexive();
+	};
+
+	template< typename Rel >
+	struct is_symmetric {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_symmetric();
+	};
+
+	template< typename Rel >
+	struct is_antisymmetric {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_antisymmetric();
+	};
+
+	template< typename Rel >
+	struct is_transitive {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_transitive();
+	};
+
+	template< typename Rel >
+	struct is_connected {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_connected();
+	};
+
+	template< typename Rel >
+	struct is_strongly_connected {
+		static const constexpr bool value = is_homogeneous_relation< Rel >::value
+			and Rel::is_strongly_connected();
+	};
+
+	template< typename Rel >
+	struct is_asymmetric {
+		static const constexpr bool value = is_irreflexive< Rel >::value
+			and is_antisymmetric< Rel >::value;
+	};
+
+	template< typename Rel >
+	struct is_partial_order {
+		static const constexpr bool value = is_reflexive< Rel >::value
+			and is_antisymmetric< Rel >::value
+			and is_transitive< Rel >::value;
+	};
+
+	template< typename Rel >
+	struct is_strict_partial_order {
+		static const constexpr bool value = is_asymmetric< Rel >::value
+			and is_transitive< Rel >::value;
+	};
+
+	template< typename Rel >
+	struct is_total_order {
+		static const constexpr bool value = is_partial_order< Rel >::value
+			and is_strongly_connected< Rel >::value;
+	};
+
+	template< typename Rel >
+	struct is_strict_total_order {
+		static const constexpr bool value = is_strict_partial_order< Rel >::value
+			and is_connected< Rel >::value;
+	};
+
+	template< typename Rel >
+	struct is_equivalence_relation {
+		static const constexpr bool value = is_reflexive< Rel >::value
+			and is_symmetric< Rel >::value
+			and is_transitive< Rel >::value;
+	};
 
 } // namespace alp
 

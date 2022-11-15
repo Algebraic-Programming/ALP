@@ -25,6 +25,7 @@
 
 #include <type_traits>
 
+#include "type_traits.hpp"
 #include "internalrels.hpp"
 
 namespace alp {
@@ -48,11 +49,15 @@ namespace alp {
 		 * \warning This operator expects a numerical type for \a SET or types 
 		 *          that have the appropriate operator<-functions available.
 		 */
+		// [Relation Wrapping]
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class lt : public internal::HomogeneousRelation< internal::lt< SET, implementation > > {
-		public:
-			lt() {}
+
+			public:
+
+				lt() {}
 		};
+		// [Relation Wrapping]
 
 		/**
 		 * This class implements the greater-than relation.
@@ -70,8 +75,10 @@ namespace alp {
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class gt : public internal::HomogeneousRelation< internal::gt< SET, implementation > > {
-		public:
-			gt() {}
+
+			public:
+
+				gt() {}
 		};
 
 		/**
@@ -90,8 +97,10 @@ namespace alp {
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class eq : public internal::HomogeneousRelation< internal::eq< SET, implementation > > {
-		public:
-			eq() {}
+
+			public:
+
+				eq() {}
 		};
 
 		/**
@@ -110,8 +119,10 @@ namespace alp {
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class neq : public internal::HomogeneousRelation< internal::neq< SET, implementation > > {
-		public:
-			neq() {}
+
+			public:
+
+				neq() {}
 		};
 
 		/**
@@ -130,8 +141,10 @@ namespace alp {
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class le : public internal::HomogeneousRelation< internal::le< SET, implementation > > {
-		public:
-			le() {}
+
+			public:
+
+				le() {}
 		};
 
 		/**
@@ -150,12 +163,15 @@ namespace alp {
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
 		class ge : public internal::HomogeneousRelation< internal::ge< SET, implementation > > {
-		public:
-			ge() {}
+
+			public:
+
+				ge() {}
 		};
 
 	} // namespace relations
 
+	// [Relation Type Traits]
 	template<
 		typename IntRel,
 		enum Backend implementation
@@ -163,6 +179,7 @@ namespace alp {
 	struct is_relation< relations::lt< IntRel, implementation > > {
 		static const constexpr bool value = true;
 	};
+	// [Relation Type Traits]
 
 	template<
 		typename IntRel,
@@ -202,44 +219,6 @@ namespace alp {
 	>
 	struct is_relation< relations::ge< IntRel, implementation > > {
 		static const constexpr bool value = true;
-	};
-
-	template< typename Rel >
-	struct is_partial_order {
-		static const constexpr bool value = is_relation< Rel >::value 
-			and Rel::is_reflexive() 
-			and Rel::is_transitive()
-			and Rel::is_antisymmetric();
-	};
-
-	template< typename Rel >
-	struct is_strict_partial_order {
-		static const constexpr bool value = is_relation< Rel >::value 
-			and Rel::is_irreflexive() 
-			and Rel::is_transitive()
-			and Rel::is_antisymmetric();
-	};
-
-	template< typename Rel >
-	struct is_total_order {
-		static const constexpr bool value = is_relation< Rel >::value 
-			and is_partial_order< Rel >::value
-			and Rel::is_strongly_connected();
-	};
-
-	template< typename Rel >
-	struct is_strict_total_order {
-		static const constexpr bool value = is_relation< Rel >::value 
-			and is_strict_partial_order< Rel >::value
-			and Rel::is_connected();
-	};
-
-	template< typename Rel >
-	struct is_equivalence_relation {
-		static const constexpr bool value = is_relation< Rel >::value 
-			and Rel::is_reflexive() 
-			and Rel::is_transitive()
-			and Rel::is_symmetric();
 	};
 
 } // namespace alp

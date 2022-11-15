@@ -164,6 +164,9 @@ namespace alp {
 				private:
 					
 					typedef typename self_type::storage_index_type index_type;
+					typedef std::iterator<
+						std::random_access_iterator_tag, T
+					> std_base_class;
 
 					self_type *vec;
 					index_type position;
@@ -185,9 +188,9 @@ namespace alp {
 					}
 
 				public:
-					typedef typename std::iterator<std::random_access_iterator_tag, T>::pointer pointer;
-					typedef typename std::iterator<std::random_access_iterator_tag, T>::reference reference;
-					typedef typename std::iterator<std::random_access_iterator_tag, T>::difference_type difference_type;
+					typedef typename std_base_class::pointer pointer;
+					typedef typename std_base_class::reference reference;
+					typedef typename std_base_class::difference_type difference_type;
 
 					/** Default constructor. */
 					VectorIterator() noexcept :

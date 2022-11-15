@@ -2222,27 +2222,26 @@ namespace alp {
 
 	/**
 	 * Compute the permutation vector needed to sort the input vector according to
-	 * the provided \a cmp function.
+	 * the provided \a cmp relation.
 	 *
 	 * @param[in] toSort vector of indices to sort, should not be modified
-	 * @param[in] cmp function with strict weak ordering relation between indices, eg bool cmp(const Type1 &a, const Type2 &b)
-	 *            cmp must not modify the objects passed to it
+	 * @param[in] cmp an ALP (strict) partial order
 	 *
 	 * @param[out] permutation iterator over index permutations which sort toSort vector
 	 *
 	 * Complexity should be \Theta(n*log(n)), and space complexity should be \Theta(n+T+P)
 	 */
 	template<
-		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
+		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
-		typename Relation = relations::lt< ValueType, reference >
+		typename Relation
 	>
 	RC sort(
-		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
+		Vector< IndexType, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
 		const Relation &rel = Relation(),
 		const std::enable_if_t<
-			! alp::is_object< ValueType >::value 
+			!( alp::is_object< ValueType >::value )
 			&& ( alp::is_partial_order< Relation >::value || alp::is_strict_partial_order< Relation >::value )
 		> * const = nullptr
 	) noexcept {
@@ -2254,18 +2253,21 @@ namespace alp {
 		}
 
 		RC rc = alp::eWiseLambda(
-			[ ]( const size_t i, size_t &val ) {
+			[ ]( const size_t i, IndexType &val ) {
 				val = i;
 			},
 			permutation
 		);
 
-		typedef Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > PermType;
+		typedef Vector< 
+			IndexType, IndexStructure, Density::Dense, 
+			IndexView, IndexImfR, IndexImfC, reference 
+		> PermType;
 
 		typename PermType::iterator it_begin = internal::begin( permutation );
 		typename PermType::iterator it_end = internal::end( permutation );
 
-		std::sort( it_begin, it_end, [ &toSort, &rel ]( const size_t& a, const size_t& b ) {
+		std::sort( it_begin, it_end, [ &toSort, &rel ]( const IndexType& a, const IndexType& b ) {
 			return rel.check( toSort[ a ], toSort[ b ] );
 		});
 		
