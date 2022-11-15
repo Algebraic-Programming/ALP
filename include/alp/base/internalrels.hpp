@@ -28,6 +28,8 @@
 #include <alp/backends.hpp>
 #include <alp/type_traits.hpp>
 
+#include "internalops.hpp"
+
 
 namespace alp {
 
@@ -209,12 +211,9 @@ namespace alp {
 			/**
 			 * Standard equal (\a eq) relation.
 			 *
-			 * Assumes native availability of \a operator== on the given data types 
-			 * or assumes that the relevant operators are properly overloaded.
-			 *
-			 * Assumes that \a eq is an equivalence relation. 
-			 * Non-standard/non-matching data types or non-standard (overloaded) 
-			 * \a operator== should therefore be used with caution.
+			 * Assumes native availability of ALP internal operator \a less_than
+			 * forming an equivalence relation on SET. Non-standard/non-matching 
+			 * data types should therefore be used with caution.
 			 *
 			 * @tparam SET The input data type.
 			 */
@@ -287,21 +286,23 @@ namespace alp {
 					static bool check( const domain * const a,
 						const codomain * const b
 					) {
-						return *a == *b;
+						bool check;
+						operators::internal::template equal<
+							SET, SET, bool, implementation 
+						>::apply( a, b, &check );
+						return check;
 					}
 			};
 
 			/**
 			 * Standard not-equal (\a neq) operator.
 			 *
-			 * Assumes native availability of \a operator!= on the given data types 
-			 * or assumes that the relevant operators are properly overloaded.
+			 * Assumes availability of ALP internal operator \a not_equal.
 			 *
-			 * While \a neq does not require two values to be members of
-			 * an ordered set, the relation is still assumed to be irreflexive, 
-			 * symmetric and connected. 
-			 * Non-standard/non-matching data types or non-standard (overloaded) 
-			 * \a operator!= should therefore be used with caution.
+			 * While \a not_equal does not require to form an order or an 
+			 * equivalence relation on SET, the formed relation is still assumed 
+			 * to be irreflexive, symmetric, and connected. Non-standard/non-matching 
+			 * data types should therefore be used with caution.
 			 *
 			 * @tparam SET The input data type.
 			 */
@@ -374,7 +375,11 @@ namespace alp {
 					static bool check( const domain * const a,
 						const codomain * const b
 					) {
-						return *a != *b;
+						bool check;
+						operators::internal::template not_equal<
+							SET, SET, bool, implementation 
+						>::apply( a, b, &check );
+						return check;
 					}
 			};
 
