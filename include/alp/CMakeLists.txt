@@ -48,6 +48,7 @@ set( root_files
 	"ops.hpp"
 	"phase.hpp"
 	"rc.hpp"
+	"rels.hpp"
 	"scalar.hpp"
 	"semiring.hpp"
 	"storage.hpp"

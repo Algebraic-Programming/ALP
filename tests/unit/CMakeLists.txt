@@ -45,6 +45,10 @@ add_grb_executables( alp_type_traits alp_type_traits.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( alp_relations alp_relations.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( alp_file_iterator alp_file_iterator.cpp
 	BACKENDS alp_reference
 )      

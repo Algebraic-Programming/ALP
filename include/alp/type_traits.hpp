@@ -124,6 +124,17 @@ namespace alp {
 	 * @tparam T The type to inspect.
 	 */
 	template< typename T >
+	struct is_relation {
+		/** Base case: an arbitrary type is not an operator. */
+		static const constexpr bool value = false;
+	};
+
+	/**
+	 * Used to inspect whether a given type is an ALP operator.
+	 *
+	 * @tparam T The type to inspect.
+	 */
+	template< typename T >
 	struct is_operator {
 		/** Base case: an arbitrary type is not an operator. */
 		static const constexpr bool value = false;

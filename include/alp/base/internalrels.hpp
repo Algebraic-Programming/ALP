@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-#include "config.hpp"
+#include <alp/backends.hpp>
 
 namespace alp {
 
@@ -165,7 +165,7 @@ namespace alp {
 				 * for all \a a, \a b in \a SET, if \f$ a < b \f$ and 
 				 * \f$ b < a \f$ then \f$ a = b \f$.
 				 */
-				static constexpr bool is_antisymmetric = false;
+				static constexpr bool is_antisymmetric = true;
 
 				/**
 				 * Whether this relation is \em transitive; that is,
@@ -503,6 +503,11 @@ namespace alp {
 			 */
 			template< typename REL, enum Backend implementation = config::default_backend >
 			class Relation : public RelationBase< REL > {
+
+				public:
+					typedef typename RelationBase< REL >::D1 D1;
+					typedef typename RelationBase< REL >::D2 D2;
+
 			};
 
 			/**
@@ -515,11 +520,59 @@ namespace alp {
 			template< 
 				typename REL, 
 				enum Backend implementation = config::default_backend,
-				typename std::enable_if< std::is_same< typename REL::left_type, typename REL::right_type >::value >::type
+				std::enable_if_t< 
+					std::is_same< 
+						typename REL::left_type, 
+						typename REL::right_type 
+					>::value 
+				> * = nullptr
 			>
 			class HomogeneousRelation : public RelationBase< REL > {
 			};
 
+			template< 
+				typename REL, 
+				enum Backend implementation = config::default_backend,
+				std::enable_if_t< 
+					REL::is_reflexive
+					&& REL::is_transitive
+					&& REL::is_antisymmetric
+				> * = nullptr
+			>
+			class PartialOrder : public HomogeneousRelation< REL > {
+			};
+
+			template< 
+				typename REL, 
+				enum Backend implementation = config::default_backend,
+				std::enable_if_t< 
+					REL::is_irreflexive
+					&& REL::is_transitive
+					&& REL::is_antisymmetric
+				> * = nullptr
+			>
+			class StrictPartialOrder : public HomogeneousRelation< REL > {
+			};
+
+			template< 
+				typename REL, 
+				enum Backend implementation = config::default_backend,
+				std::enable_if_t< 
+					REL::is_strongly_connected 
+				> * = nullptr
+			>
+			class TotalOrder : public PartialOrder< REL > {
+			};
+
+			template< 
+				typename REL, 
+				enum Backend implementation = config::default_backend,
+				std::enable_if_t< 
+					REL::is_connected 
+				> * = nullptr
+			>
+			class StrictTotalOrder : public StrictPartialOrder< REL > {
+			};
 
 		} // namespace internal
 
@@ -527,5 +580,5 @@ namespace alp {
 
 } // namespace alp
 
-#endif // _H_ALP_INTERNAL_OPERATORS_BASE
+#endif // _H_ALP_INTERNAL_RELATIONS_BASE
 
