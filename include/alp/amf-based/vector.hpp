@@ -123,8 +123,7 @@ namespace alp {
 			class VectorIterator: 
 				public std::iterator< std::random_access_iterator_tag, T > {
 				
-				friend VectorIterator internal::begin<>( self_type & v ) noexcept;
-				friend VectorIterator internal::end<>( self_type & v ) noexcept;
+				friend class Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, backend >;
 
 				private:
 					
@@ -133,12 +132,12 @@ namespace alp {
 					self_type * vec;
 					index_type position;
 
-					VectorIterator( self_type * v ) noexcept : 
-						vec( v ), position( 0 ) 
+					VectorIterator( self_type * vptr ) noexcept : 
+						vec( vptr ), position( 0 ) 
 					{}
 
-					VectorIterator( self_type * v, index_type pos ) noexcept : 
-						vec( v ), position( pos ) 
+					VectorIterator( self_type * vptr, index_type pos ) noexcept : 
+						vec( vptr ), position( pos ) 
 					{}
 
 					bool equal( const VectorIterator & other ) const noexcept {
@@ -279,9 +278,21 @@ namespace alp {
 				return nrows( static_cast< const base_type & >( *this ) );
 			}
 
+			VectorIterator begin() noexcept {
+				return VectorIterator( this );
+			}
+
+			VectorIterator end() noexcept {
+				return VectorIterator(  this, _length() );
+			}
+
+
 		public:
 			
 			typedef VectorIterator iterator;
+
+			friend iterator internal::begin<>( self_type & v ) noexcept;
+			friend iterator internal::end<>( self_type & v ) noexcept;
 
 			/** @see Vector::value_type. */
 			using value_type = T;
@@ -469,13 +480,13 @@ namespace alp {
 		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
 		typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::iterator
 		begin( alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > & v ) noexcept {
-			return typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::iterator( &v );
+			return v.begin();
 		}
 
 		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
 		typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::iterator
 		end( alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > & v ) noexcept {
-			return typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::iterator( &v, getLength( v ) );
+			return v.end();
 		}
 
 	} // end namespace ``alp::internal''
