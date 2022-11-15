@@ -2242,7 +2242,8 @@ namespace alp {
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
 		const Relation &rel = Relation(),
 		const std::enable_if_t<
-			! alp::is_object< ValueType >::value && alp::is_relation< Relation >::value
+			! alp::is_object< ValueType >::value 
+			&& ( alp::is_partial_order< Relation >::value || alp::is_strict_partial_order< Relation >::value )
 		> * const = nullptr
 	) noexcept {
 
