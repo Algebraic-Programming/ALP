@@ -619,7 +619,7 @@ namespace alp {
 					 * @param[in]  y The right-hand side input.
 					 */
 					template< typename InputType1, typename InputType2 >
-					static bool check( const InputType1 & x, const InputType2 & y ) {
+					static bool check( const InputType1 &x, const InputType2 &y ) {
 						const D1 a = static_cast< D1 >( x );
 						const D2 b = static_cast< D2 >( y );
 						return REL::check( &a, &b );
@@ -630,7 +630,7 @@ namespace alp {
 					 * casting is required. This version will be automatically called whenever
 					 * possible.
 					 */
-					static bool check( const D1 & x, const D2 & y ) {
+					static bool check( const D1 &x, const D2 &y ) {
 						return REL::check( &x, &y );
 					}
 			};

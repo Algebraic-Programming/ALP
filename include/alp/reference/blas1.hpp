@@ -2252,12 +2252,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		RC rc = alp::eWiseLambda(
-			[ ]( const size_t i, IndexType &val ) {
-				val = i;
-			},
-			permutation
-		);
+		RC rc = alp::set< alp::descriptors::use_index >( permutation, alp::Scalar< IndexType >( 0 ) );
 
 		typedef Vector< 
 			IndexType, IndexStructure, Density::Dense, 

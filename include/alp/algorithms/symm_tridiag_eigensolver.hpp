@@ -484,24 +484,12 @@ namespace alp {
 			print_vector( "  z  ", z );
 #endif
 
-			// permutations which sort dtmp
-			std::vector< size_t > isort_dtmp( n, 0 );
-			std::vector< size_t > no_permute_data( n, 0 );
-			for( size_t i = 0; i < n; ++i ) {
-				isort_dtmp[ i ] = i;
-				no_permute_data[ i ] = i;
-			}
-			std::sort(
-				isort_dtmp.begin(),
-				isort_dtmp.end(),
-				[ &dtmp ]( const size_t &a, const size_t &b ) {
-					return ( dtmp[ a ] < dtmp[ b ] );
-				}
-			);
+			// permutation that sorts dtmp
 			alp::Vector< size_t > permutation_vec( n );
+			rc = rc ? rc : alp::sort(permutation_vec, dtmp, alp::relations::lt< D >() );
+
 			alp::Vector< size_t > no_permutation_vec( n );
-			alp::buildVector( permutation_vec, isort_dtmp.begin(), isort_dtmp.end() );
-			alp::buildVector( no_permutation_vec, no_permute_data.begin(), no_permute_data.end() );
+			rc = rc ? rc : alp::set< alp::descriptors::use_index >( no_permutation_vec, alp::Scalar< size_t >( 0 ) );
 
 			auto dtmp2 = alp::get_view< alp::structures::General >(
 				dtmp,

@@ -313,7 +313,7 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	size_t in;
