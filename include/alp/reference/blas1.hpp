@@ -2218,7 +2218,8 @@ namespace alp {
 	}
 
 	/**
-	 * Sort vectors, function available to user, e.g. to sort eigenvectors
+	 * Compute the permutation vector needed to sort the input vector according to
+	 * the provided \a cmp function.
 	 *
 	 * @param[in] toSort vector of indices to sort, should not be modified
 	 * @param[in] cmp function with strict weak ordering relation between indices, eg bool cmp(const Type1 &a, const Type2 &b)
@@ -2226,20 +2227,37 @@ namespace alp {
 	 *
 	 * @param[out] permutation iterator over index permutations which sort toSort vector
 	 *
-	 * Complexity should be lower than O(n*log(n)), and space complexity should be lower than \Theta(n+T+P)
+	 * Complexity should be \Theta(n*log(n)), and space complexity should be \Theta(n+T+P)
 	 */
 	template<
-		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
+		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
 		typename Compare
 	>
 	RC sort(
-		Vector< IndexType, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
+		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
 		Compare cmp
 		//PHASE &phase = EXECUTE
 	) noexcept {
-		return SUCCESS;
+
+		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
+
+		if( !internal::getInitialized( toSort ) ) {
+			return SUCCESS;
+		}
+
+		RC rc = alp::eWiseLambda(
+			[ ]( const size_t i, size_t &val ) {
+				val = i;
+			},
+			permutation
+		);
+		
+		(void)cmp;
+		//TODO: add alp::Vector::iterator to turn to std seq. sorting 
+
+		return rc;
 	}
 
     /**
