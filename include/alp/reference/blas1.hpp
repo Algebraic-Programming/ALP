@@ -26,8 +26,11 @@
 #include <functional>
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
-#include <alp/rc.hpp>
 #include <alp/density.hpp>
+#include <alp/ops.hpp>
+#include <alp/rc.hpp>
+#include <alp/rels.hpp>
+#include <alp/semiring.hpp>
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
@@ -2218,28 +2221,52 @@ namespace alp {
 	}
 
 	/**
-	 * Sort vectors, function available to user, e.g. to sort eigenvectors
+	 * Compute the permutation vector needed to sort the input vector according to
+	 * the provided \a cmp relation.
 	 *
 	 * @param[in] toSort vector of indices to sort, should not be modified
-	 * @param[in] cmp function with strict weak ordering relation between indices, eg bool cmp(const Type1 &a, const Type2 &b)
-	 *            cmp must not modify the objects passed to it
+	 * @param[in] cmp an ALP (strict) partial order
 	 *
 	 * @param[out] permutation iterator over index permutations which sort toSort vector
 	 *
-	 * Complexity should be lower than O(n*log(n)), and space complexity should be lower than \Theta(n+T+P)
+	 * Complexity should be \Theta(n*log(n)), and space complexity should be \Theta(n+T+P)
 	 */
 	template<
 		typename IndexType, typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
-		typename Compare
+		typename Relation
 	>
 	RC sort(
 		Vector< IndexType, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
-		Compare cmp
-		//PHASE &phase = EXECUTE
+		const Relation &rel = Relation(),
+		const std::enable_if_t<
+			!( alp::is_object< ValueType >::value )
+			&& ( alp::is_partial_order< Relation >::value || alp::is_strict_partial_order< Relation >::value )
+		> * const = nullptr
 	) noexcept {
-		return SUCCESS;
+
+		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
+
+		if( !internal::getInitialized( toSort ) ) {
+			return SUCCESS;
+		}
+
+		RC rc = alp::set< alp::descriptors::use_index >( permutation, alp::Scalar< IndexType >( 0 ) );
+
+		typedef Vector< 
+			IndexType, IndexStructure, Density::Dense, 
+			IndexView, IndexImfR, IndexImfC, reference 
+		> PermType;
+
+		typename PermType::iterator it_begin = internal::begin( permutation );
+		typename PermType::iterator it_end = internal::end( permutation );
+
+		std::sort( it_begin, it_end, [ &toSort, &rel ]( const IndexType& a, const IndexType& b ) {
+			return rel.check( toSort[ a ], toSort[ b ] );
+		});
+		
+		return rc;
 	}
 
     /**

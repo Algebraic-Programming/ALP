@@ -55,10 +55,38 @@ namespace alp {
 			return getInitialized( static_cast< const typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::base_type & >( v ) );
 		}
 
-		template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
-		void setInitialized( alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > & v, bool initialized ) noexcept {
+		template< 
+			typename T, typename Structure, typename View, 
+			typename ImfR, typename ImfC, enum Backend backend 
+		>
+		void setInitialized( 
+			alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v, bool initialized 
+		) noexcept {
 			setInitialized( static_cast< typename alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend >::base_type &>( v ), initialized );
 		}
+
+		template< 
+			typename T, typename Structure, typename View, 
+			typename ImfR, typename ImfC, enum Backend backend 
+		>
+		typename alp::Vector< 
+			T, Structure, Density::Dense, View, ImfR, ImfC, backend 
+		>::iterator
+		begin( 
+			alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v 
+		) noexcept;
+
+		template< 
+			typename T, typename Structure, typename View, 
+			typename ImfR, typename ImfC, enum Backend backend 
+		>
+		typename alp::Vector< 
+			T, Structure, Density::Dense, View, ImfR, ImfC, backend 
+		>::iterator
+		end( 
+			alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v 
+		) noexcept;
+
 	} // end namespace ``alp::internal''
 
 	/**
@@ -95,22 +123,188 @@ namespace alp {
 	 *                   accessible via functions.
 	 *
 	 */
-	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
+	template< 
+		typename T, typename Structure, typename View, 
+		typename ImfR, typename ImfC, enum Backend backend 
+	>
 	class Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > { };
 
 	/*
 	 * ALP vector with a general structure
 	 */
-	template< typename T, typename View, typename ImfR, typename ImfC, enum Backend backend >
-	class Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > :
-		public Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > {
+	template< 
+		typename T, typename View, 
+		typename ImfR, typename ImfC, enum Backend backend 
+	>
+	class Vector< 
+		T, structures::General, Density::Dense, View, ImfR, ImfC, backend 
+	> : public Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > {
 
 		public:
 
-			typedef Vector< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > self_type;
-			typedef Matrix< T, structures::General, Density::Dense, View, ImfR, ImfC, backend > base_type;
+			typedef Vector< 
+				T, structures::General, Density::Dense, 
+				View, ImfR, ImfC, backend 
+			> self_type;
+			
+			typedef Matrix< 
+				T, structures::General, Density::Dense, 
+				View, ImfR, ImfC, backend 
+			> base_type;
 
 		private:
+			class VectorIterator: 
+				public std::iterator< std::random_access_iterator_tag, T > {
+				
+				friend class Vector< 
+					T, structures::General, Density::Dense, 
+					View, ImfR, ImfC, backend 
+				>;
+
+				private:
+					
+					typedef typename self_type::storage_index_type index_type;
+					typedef std::iterator<
+						std::random_access_iterator_tag, T
+					> std_base_class;
+
+					self_type *vec;
+					index_type position;
+
+					VectorIterator( self_type *vptr ) noexcept : 
+						vec( vptr ), position( 0 ) 
+					{}
+
+					VectorIterator( self_type *vptr, index_type pos ) noexcept : 
+						vec( vptr ), position( pos ) 
+					{}
+
+					bool equal( const VectorIterator &other ) const noexcept {
+						return ( vec == other.vec ) && ( position == other.position );
+					}
+
+					bool lessThen( const VectorIterator &other ) const noexcept {
+						return ( vec == other.vec ) && ( position < other.position );
+					}
+
+				public:
+					typedef typename std_base_class::pointer pointer;
+					typedef typename std_base_class::reference reference;
+					typedef typename std_base_class::difference_type difference_type;
+
+					/** Default constructor. */
+					VectorIterator() noexcept :
+						vec( nullptr ), position( 0 )
+					{}
+
+					/** Copy constructor. */
+					VectorIterator( const VectorIterator &other ) noexcept :
+						vec( other.vec ),
+						position( other.position )
+					{}
+
+					/** Move constructor. */
+					VectorIterator( VectorIterator &&other ) :
+						vec( nullptr ), position( 0 )
+					{
+						std::swap( vec, other.vec );
+						std::swap( position, other.position );
+					}
+
+					/** Copy assignment. */
+					VectorIterator& operator=( const VectorIterator &other ) noexcept {
+						vec = other.vec;
+						position = other.position;
+						return *this;
+					}
+
+					/** Move assignment. */
+					VectorIterator& operator=( VectorIterator &&other ) {
+						vec = nullptr;
+						position = 0;
+						std::swap( vec, other.vec );
+						std::swap( position, other.position );
+						return *this;
+					}
+
+					reference operator*() const {
+						return ( *vec )[ position ];
+					}
+
+					VectorIterator& operator++() {
+						++position;
+						return *this;
+					}
+
+					VectorIterator& operator--() {
+						--position;
+						return *this;
+					}
+
+					VectorIterator operator++( int ) {
+						return VectorIterator( vec, position++ );
+					}
+
+					VectorIterator operator--( int ) {
+						return VectorIterator( vec, position-- );
+					}
+
+					VectorIterator operator+( const difference_type &n ) const {
+						return VectorIterator( vec, ( position + n ) );
+					}
+
+					VectorIterator& operator+=( const difference_type &n ) {
+						position += n;
+						return *this;
+					}
+
+					VectorIterator operator-( const difference_type &n ) const {
+						return VectorIterator( vec, ( position - n ) );
+					}
+
+					VectorIterator& operator-=( const difference_type &n ) {
+						position -= n;
+						return *this;
+					}
+
+					reference operator[]( const difference_type &n ) const {
+						return ( *vec )[ position + n ];
+					}
+
+					bool operator==( const VectorIterator &other ) const {
+						return equal( other );
+					}
+
+					bool operator!=( const VectorIterator &other ) const {
+						return !equal( other );
+					}
+
+					bool operator<( const VectorIterator &other ) const {
+						return lessThen( other );
+					}
+
+					bool operator>( const VectorIterator &other ) const {
+						return !( lessThen( other ) || equal( other ) );
+					}
+
+					bool operator<=( const VectorIterator &other ) const {
+						return lessThen( other ) || equal( other );
+					}
+
+					bool operator>=( const VectorIterator &other ) const {
+						return !lessThen( other );
+					}
+
+					difference_type operator+( const VectorIterator &other ) const {
+						assert( other.vec == vec );
+						return position + other.position;
+					}
+
+					difference_type operator-( const VectorIterator &other ) const {
+						assert( other.vec == vec );
+						return position - other.position;
+					}
+			};
 
 			/*********************
 				Storage info friends
@@ -123,8 +317,21 @@ namespace alp {
 				return nrows( static_cast< const base_type & >( *this ) );
 			}
 
+			VectorIterator begin() noexcept {
+				return VectorIterator( this );
+			}
+
+			VectorIterator end() noexcept {
+				return VectorIterator(  this, _length() );
+			}
+
 
 		public:
+			
+			typedef VectorIterator iterator;
+
+			friend iterator internal::begin<>( self_type &v ) noexcept;
+			friend iterator internal::end<>( self_type &v ) noexcept;
 
 			/** @see Vector::value_type. */
 			using value_type = T;
@@ -306,6 +513,36 @@ namespace alp {
 			}
 
 	}; // class Vector with physical container
+
+	namespace internal {
+
+		template< 
+			typename T, typename Structure, typename View, 
+			typename ImfR, typename ImfC, enum Backend backend 
+		>
+		typename alp::Vector< 
+			T, Structure, Density::Dense, View, ImfR, ImfC, backend 
+		>::iterator
+		begin( 
+			alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v 
+		) noexcept {
+			return v.begin();
+		}
+
+		template< 
+			typename T, typename Structure, typename View, 
+			typename ImfR, typename ImfC, enum Backend backend 
+		>
+		typename alp::Vector< 
+			T, Structure, Density::Dense, View, ImfR, ImfC, backend 
+		>::iterator
+		end( 
+			alp::Vector< T, Structure, Density::Dense, View, ImfR, ImfC, backend > &v 
+		) noexcept {
+			return v.end();
+		}
+
+	} // end namespace ``alp::internal''
 
 	/** Identifies any backend's implementation of ALP vector as an ALP vector. */
 	template< typename T, typename Structure, typename View, typename ImfR, typename ImfC, enum Backend backend >
