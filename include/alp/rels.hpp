@@ -35,12 +35,12 @@ namespace alp {
 	namespace relations {
 
 		/**
-		 * This relation tests if two input parameters and writes it to
-		 * the output variable. It exposes the complete interface detailed in
-		 * alp::relations::internal::TotalOrder.
+		 * This class implements the less-then relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
 		 *
 		 * \note A proper GraphBLAS program never uses the interface exposed by this
-		 *       operator directly, and instead simply passes the operator on to
+		 *       relation directly, and instead simply passes the relation on to
 		 *       GraphBLAS functions.
 		 *
 		 * @tparam SET The domain and codomain of the relation.
@@ -49,19 +49,113 @@ namespace alp {
 		 *          that have the appropriate operator<-functions available.
 		 */
 		template< typename SET, enum Backend implementation = config::default_backend >
-		class lt : public internal::StrictTotalOrder< internal::lt< SET, implementation > > {
+		class lt : public internal::HomogeneousRelation< internal::lt< SET, implementation > > {
 		public:
 			lt() {}
 		};
 
+		/**
+		 * This class implements the equality relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
+		 *
+		 * \note A proper GraphBLAS program never uses the interface exposed by this
+		 *       operator directly, and instead simply passes the operator on to
+		 *       GraphBLAS functions.
+		 *
+		 * @tparam SET The domain and codomain of the relation.
+		 *
+		 * \warning This operator expects a numerical type for \a SET or types 
+		 *          that have the appropriate operator==-functions available.
+		 */
+		template< typename SET, enum Backend implementation = config::default_backend >
+		class eq : public internal::HomogeneousRelation< internal::eq< SET, implementation > > {
+		public:
+			eq() {}
+		};
+
+		/**
+		 * This class implements the less-then-or-equal relation.
+		 * It exposes the complete interface detailed in 
+		 * \a alp::relations::internal::HomogeneousRelation.
+		 *
+		 * \note A proper GraphBLAS program never uses the interface exposed by this
+		 *       operator directly, and instead simply passes the operator on to
+		 *       GraphBLAS functions.
+		 *
+		 * @tparam SET The domain and codomain of the relation.
+		 *
+		 * \warning This operator expects a numerical type for \a SET or types 
+		 *          that have the appropriate operator<=-functions available.
+		 */
+		template< typename SET, enum Backend implementation = config::default_backend >
+		class le : public internal::HomogeneousRelation< internal::le< SET, implementation > > {
+		public:
+			le() {}
+		};
+
 	} // namespace relations
 
-	template< 
+	template<
 		typename IntRel,
 		enum Backend implementation
 	>
 	struct is_relation< relations::lt< IntRel, implementation > > {
 		static const constexpr bool value = true;
+	};
+
+	template<
+		typename IntRel,
+		enum Backend implementation
+	>
+	struct is_relation< relations::eq< IntRel, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template<
+		typename IntRel,
+		enum Backend implementation
+	>
+	struct is_relation< relations::le< IntRel, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename Rel >
+	struct is_partial_order {
+		static const constexpr bool value = is_relation< Rel >::value 
+			and Rel::is_reflexive() 
+			and Rel::is_transitive()
+			and Rel::is_antisymmetric();
+	};
+
+	template< typename Rel >
+	struct is_strict_partial_order {
+		static const constexpr bool value = is_relation< Rel >::value 
+			and Rel::is_irreflexive() 
+			and Rel::is_transitive()
+			and Rel::is_antisymmetric();
+	};
+
+	template< typename Rel >
+	struct is_total_order {
+		static const constexpr bool value = is_relation< Rel >::value 
+			and is_partial_order< Rel >::value
+			and Rel::is_strongly_connected();
+	};
+
+	template< typename Rel >
+	struct is_strict_total_order {
+		static const constexpr bool value = is_relation< Rel >::value 
+			and is_strict_partial_order< Rel >::value
+			and Rel::is_connected();
+	};
+
+	template< typename Rel >
+	struct is_equivalence_relation {
+		static const constexpr bool value = is_relation< Rel >::value 
+			and Rel::is_reflexive() 
+			and Rel::is_transitive()
+			and Rel::is_symmetric();
 	};
 
 } // namespace alp

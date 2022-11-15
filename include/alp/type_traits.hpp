@@ -119,13 +119,13 @@ namespace alp {
 	};
 
 	/**
-	 * Used to inspect whether a given type is an ALP operator.
+	 * Used to inspect whether a given type is an ALP relation.
 	 *
 	 * @tparam T The type to inspect.
 	 */
 	template< typename T >
 	struct is_relation {
-		/** Base case: an arbitrary type is not an operator. */
+		/** Base case: an arbitrary type is not a relation. */
 		static const constexpr bool value = false;
 	};
 

@@ -78,27 +78,27 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 		return;
 	}
 
-	auto desc_cmp = []( const T& a, const T& b) {
-		return a > b;
-	};
+	// // Check descending sorted view
+	// alp::sort( perm, v, alp::relations:: );
 
-	// Check descending sorted view
-	alp::sort( perm, v, desc_cmp );
+	// auto desc_cmp = []( const T& a, const T& b) {
+	// 	return a > b;
+	// };
 
-	std::sort( std::begin( stdv ), std::end( stdv ), desc_cmp );
+	// std::sort( std::begin( stdv ), std::end( stdv ), desc_cmp );
 
-	auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
+	// auto desc_sorted_v = alp::get_view< alp::structures::General >( v, perm );
 
-	// Check sorted view
-	for( size_t i = 0; i < n; i++ ) {
-		if( stdv[i] != desc_sorted_v[ i ] ) {
-			std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
-			rc = alp::FAILED;
-		}
-	}
+	// // Check sorted view
+	// for( size_t i = 0; i < n; i++ ) {
+	// 	if( stdv[i] != desc_sorted_v[ i ] ) {
+	// 		std::cerr << "Error: ( std::v[ " << i << " ] = " << stdv[i] << " ) != " << " ( sorted_v[ " << i << " ] = " << desc_sorted_v[ i ] << " )" << std::endl;
+	// 		rc = alp::FAILED;
+	// 	}
+	// }
 
-	std::cout << "Sorted alp::Vector in descending order:" << std::endl;
-	print_vector("desc_sorted_v", desc_sorted_v);
+	// std::cout << "Sorted alp::Vector in descending order:" << std::endl;
+	// print_vector("desc_sorted_v", desc_sorted_v);
 
 	rc = alp::SUCCESS;
 }

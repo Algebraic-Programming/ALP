@@ -35,91 +35,6 @@ namespace alp {
 		namespace internal {
 
 			/**
-			 * Standard less then or equal (le) operator.
-			 *
-			 * Assumes native availability of operator <= on the given data types 
-			 * or assumes that the relevant operators are properly overloaded.
-			 *
-			 * Assumes that the <= operator is a total order. Non-standard/non-matching 
-			 * data types or non-standard (overloaded) <= operators should 
-			 * therefore be used with caution.
-			 *
-			 * @tparam SET The input data type.
-			 */
-			template< typename SET, enum Backend implementation = config::default_backend >
-			class le {
-
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef SET left_type;
-
-				/** Alias to the right-hand input data type. */
-				typedef SET right_type;
-
-				/**
-				 * Whether this relation is \em reflexive; that is,
-				 * for all \a a in \a SET, \f$ a \le a \f$.
-				 */
-				static constexpr bool is_reflexive = true;
-
-				/**
-				 * Whether this relation is \em irreflexive; that is,
-				 * for all \a a in \a SET, not \f$ a \le a \f$.
-				 */
-				static constexpr bool is_irreflexive = false;
-
-				/**
-				 * Whether this relation is \em symmetric; that is,
-				 * for all \a a, \a b in \a SET, 
-				 * if \f$ a \le b \f$ then \f$ b \le a \f$.
-				 */
-				static constexpr bool is_symmetric = false;
-
-				/**
-				 * Whether this relation is \em antisymmetric; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \le b \f$ and 
-				 * \f$ b \le a \f$ then \f$ a = b \f$.
-				 */
-				static constexpr bool is_antisymmetric = true;
-
-				/**
-				 * Whether this relation is \em transitive; that is,
-				 * for all \a a, \a b, \a c in \a SET, if \f$ a \le b \f$ and
-				 * \f$ b \le c \f$ then \f$ a \le c \f$.
-				 */
-				static constexpr bool is_transitive = true;
-
-				/**
-				 * Whether this relation is \em connected; that is,
-				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
-				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
-				 */
-				static constexpr bool is_connected = true;
-
-				/**
-				 * Whether this relation is <em> strongly connected </em> (or total); 
-				 * that is,
-				 * for all \a a, \a b in \a SET, 
-				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
-				 */
-				static constexpr bool is_strongly_connected = true;
-
-				/**
-				 * Check if a <= b.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 *
-				 * \warning Passing invalid pointers will result in UB.
-				 */
-				static bool test( const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b
-				) {
-					return *a <= *b;
-				}
-			};
-
-			/**
 			 * Standard less then (lt) operator.
 			 *
 			 * Assumes native availability of operator < on the given data types 
@@ -190,14 +105,14 @@ namespace alp {
 				static constexpr bool is_strongly_connected = false;
 
 				/**
-				 * Check if a < b.
+				 * This function checks if <em> a < b </em>.
 				 *
 				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 *
 				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static bool test( const left_type * __restrict__ const a,
+				static bool check( const left_type * __restrict__ const a,
 					const right_type * __restrict__ const b
 				) {
 					return *a < *b;
@@ -275,20 +190,104 @@ namespace alp {
 				static constexpr bool is_strongly_connected = false;
 
 				/**
-				 * Check if a == b.
+				 * This function checks if <em> a == b </em>.
 				 *
 				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 *
 				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static bool test( const left_type * __restrict__ const a,
+				static bool check( const left_type * __restrict__ const a,
 					const right_type * __restrict__ const b
 				) {
 					return *a == *b;
 				}
 			};
 
+			/**
+			 * Standard less then or equal (le) operator.
+			 *
+			 * Assumes native availability of operator <= on the given data types 
+			 * or assumes that the relevant operators are properly overloaded.
+			 *
+			 * Assumes that the <= operator is a total order. Non-standard/non-matching 
+			 * data types or non-standard (overloaded) <= operators should 
+			 * therefore be used with caution.
+			 *
+			 * @tparam SET The input data type.
+			 */
+			template< typename SET, enum Backend implementation = config::default_backend >
+			class le {
+
+			public:
+				/** Alias to the left-hand input data type. */
+				typedef SET left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef SET right_type;
+
+				/**
+				 * Whether this relation is \em reflexive; that is,
+				 * for all \a a in \a SET, \f$ a \le a \f$.
+				 */
+				static constexpr bool is_reflexive = true;
+
+				/**
+				 * Whether this relation is \em irreflexive; that is,
+				 * for all \a a in \a SET, not \f$ a \le a \f$.
+				 */
+				static constexpr bool is_irreflexive = false;
+
+				/**
+				 * Whether this relation is \em symmetric; that is,
+				 * for all \a a, \a b in \a SET, 
+				 * if \f$ a \le b \f$ then \f$ b \le a \f$.
+				 */
+				static constexpr bool is_symmetric = false;
+
+				/**
+				 * Whether this relation is \em antisymmetric; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \le b \f$ and 
+				 * \f$ b \le a \f$ then \f$ a = b \f$.
+				 */
+				static constexpr bool is_antisymmetric = true;
+
+				/**
+				 * Whether this relation is \em transitive; that is,
+				 * for all \a a, \a b, \a c in \a SET, if \f$ a \le b \f$ and
+				 * \f$ b \le c \f$ then \f$ a \le c \f$.
+				 */
+				static constexpr bool is_transitive = true;
+
+				/**
+				 * Whether this relation is \em connected; that is,
+				 * for all \a a, \a b in \a SET, if \f$ a \neq b \f$ then
+				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
+				 */
+				static constexpr bool is_connected = true;
+
+				/**
+				 * Whether this relation is <em> strongly connected </em> (or total); 
+				 * that is,
+				 * for all \a a, \a b in \a SET, 
+				 * either \f$ a \le b \f$ or \f$ b \le a \f$.
+				 */
+				static constexpr bool is_strongly_connected = true;
+
+				/**
+				 * This function checks if <em> a <= b </em>.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 *
+				 * \warning Passing invalid pointers will result in UB.
+				 */
+				static bool check( const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b
+				) {
+					return *a <= *b;
+				}
+			};
 
 			/**
 			 * This class takes a generic operator implementation and exposes a more
@@ -347,7 +346,7 @@ namespace alp {
 				}
 
 				/**
-				 * Straightforward test of this relation. Returns if \f$ x REL y \f$.
+				 * This function checks if \f$ x REL y \f$.
 				 *
 				 * @tparam InputType1 The type of the input parameter \a x.
 				 * @tparam InputType2 The type of the input parameter \a y.
@@ -362,19 +361,19 @@ namespace alp {
 				 * @param[in]  y The right-hand side input.
 				 */
 				template< typename InputType1, typename InputType2 >
-				static bool test( const InputType1 & x, const InputType2 & y ) {
+				static bool check( const InputType1 & x, const InputType2 & y ) {
 					const D1 a = static_cast< D1 >( x );
 					const D2 b = static_cast< D2 >( y );
-					return REL::test( &a, &b );
+					return REL::check( &a, &b );
 				}
 
 				/**
-				 * This is the high-performance version of apply() in the sense that no
-				 * casting is required. This version will be automatically caled whenever
+				 * This is the high-performance version of check() in the sense that no
+				 * casting is required. This version will be automatically called whenever
 				 * possible.
 				 */
-				static bool test( const D1 & x, const D2 & y ) {
-					return REL::test( &x, &y );
+				static bool check( const D1 & x, const D2 & y ) {
+					return REL::check( &x, &y );
 				}
 			};
 
@@ -502,11 +501,11 @@ namespace alp {
 			 * \endparblock
 			 */
 			template< typename REL, enum Backend implementation = config::default_backend >
-			class Relation : public RelationBase< REL > {
+			class Relation : public RelationBase< REL, implementation > {
 
 				public:
-					typedef typename RelationBase< REL >::D1 D1;
-					typedef typename RelationBase< REL >::D2 D2;
+					typedef typename RelationBase< REL, implementation >::D1 D1;
+					typedef typename RelationBase< REL, implementation >::D2 D2;
 
 			};
 
@@ -527,51 +526,7 @@ namespace alp {
 					>::value 
 				> * = nullptr
 			>
-			class HomogeneousRelation : public RelationBase< REL > {
-			};
-
-			template< 
-				typename REL, 
-				enum Backend implementation = config::default_backend,
-				std::enable_if_t< 
-					REL::is_reflexive
-					&& REL::is_transitive
-					&& REL::is_antisymmetric
-				> * = nullptr
-			>
-			class PartialOrder : public HomogeneousRelation< REL > {
-			};
-
-			template< 
-				typename REL, 
-				enum Backend implementation = config::default_backend,
-				std::enable_if_t< 
-					REL::is_irreflexive
-					&& REL::is_transitive
-					&& REL::is_antisymmetric
-				> * = nullptr
-			>
-			class StrictPartialOrder : public HomogeneousRelation< REL > {
-			};
-
-			template< 
-				typename REL, 
-				enum Backend implementation = config::default_backend,
-				std::enable_if_t< 
-					REL::is_strongly_connected 
-				> * = nullptr
-			>
-			class TotalOrder : public PartialOrder< REL > {
-			};
-
-			template< 
-				typename REL, 
-				enum Backend implementation = config::default_backend,
-				std::enable_if_t< 
-					REL::is_connected 
-				> * = nullptr
-			>
-			class StrictTotalOrder : public StrictPartialOrder< REL > {
+			class HomogeneousRelation : public Relation< REL, implementation > {
 			};
 
 		} // namespace internal

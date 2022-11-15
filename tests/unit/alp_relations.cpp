@@ -25,15 +25,144 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	(void) n;
 
-	/* Basic checks */
+	/**
+	 * Basic checks on the less-then relation (lt).
+	 * lt is a strict total order and therefore also a strict partial order.
+	 */
 	typedef alp::relations::lt< double > dbl_lt;
 
-	if( ! alp::is_relation< dbl_lt >::value ) {
+	static_assert( alp::is_relation< dbl_lt >::value );
+
+	static_assert( ! alp::is_partial_order< dbl_lt >::value );
+
+	static_assert( alp::is_strict_partial_order< dbl_lt >::value );
+
+	static_assert( ! alp::is_total_order< dbl_lt >::value );
+
+	static_assert( alp::is_strict_total_order< dbl_lt >::value );
+
+	static_assert( ! alp::is_equivalence_relation< dbl_lt >::value );
+
+	if( ! dbl_lt::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_lt::test(2.4, 5) failed." << std::endl;
+#endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( ! dbl_lt::test(2.4, 5) ) {
+	if( dbl_lt::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_lt::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( dbl_lt::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "dbl_lt::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	/**
+	 * Basic checks on the equality relation (eq).
+	 * eq is both an equivalence relation and a partial order.
+	 */
+	typedef alp::relations::eq< int > int_eq;
+
+	static_assert( alp::is_relation< int_eq >::value );
+
+	static_assert( alp::is_partial_order< int_eq >::value );
+
+	static_assert( ! alp::is_strict_partial_order< int_eq >::value );
+
+	static_assert( ! alp::is_total_order< int_eq >::value );
+
+	static_assert( ! alp::is_strict_total_order< int_eq >::value );
+
+	static_assert( alp::is_equivalence_relation< int_eq >::value );
+
+	if( int_eq::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_eq::test(2.4, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( int_eq::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "int_eq::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_eq::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_eq::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_eq::check(5.5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_eq::test(5.5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	/**
+	 * Basic checks on the less-then-or-equal relation (le).
+	 * le is both a total order and therefore also a partial order.
+	 */
+	typedef alp::relations::le< int > int_le;
+
+	static_assert( alp::is_relation< int_le >::value );
+
+	static_assert( alp::is_partial_order< int_le >::value );
+
+	static_assert( ! alp::is_strict_partial_order< int_le >::value );
+
+	static_assert( alp::is_total_order< int_le >::value );
+
+	static_assert( ! alp::is_strict_total_order< int_le >::value );
+
+	static_assert( ! alp::is_equivalence_relation< int_le >::value );
+
+	if( ! int_le::check(2.4, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_le::test(2.4, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( int_le::check(5, 2.4) ) {
+#ifndef NDEBUG
+		std::cerr << "int_le::check(5, 2.4) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_le::check(5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_le::test(5, 5) failed." << std::endl;
+#endif
+		rc = alp::FAILED;
+		return;
+	}
+
+	if( ! int_le::check(5.5, 5) ) {
+#ifndef NDEBUG
+		std::cerr << "int_le::test(5.5, 5) failed." << std::endl;
+#endif
 		rc = alp::FAILED;
 		return;
 	}

@@ -26,8 +26,11 @@
 #include <functional>
 #include <alp/backends.hpp>
 #include <alp/config.hpp>
-#include <alp/rc.hpp>
 #include <alp/density.hpp>
+#include <alp/ops.hpp>
+#include <alp/rc.hpp>
+#include <alp/rels.hpp>
+#include <alp/semiring.hpp>
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
@@ -2231,54 +2234,17 @@ namespace alp {
 	 */
 	template<
 		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
-		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC
-	>
-	RC sort(
-		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
-		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort
-	) noexcept {
-
-		// TODO: this overload has to go. A partial order is always needed.
-
-		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
-
-		if( !internal::getInitialized( toSort ) ) {
-			return SUCCESS;
-		}
-
-		RC rc = alp::eWiseLambda(
-			[ ]( const size_t i, size_t &val ) {
-				val = i;
-			},
-			permutation
-		);
-
-		typedef Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > PermType;
-
-		typename PermType::iterator it_begin = internal::begin( permutation );
-		typename PermType::iterator it_end = internal::end( permutation );
-
-		std::sort( it_begin, it_end, [ &toSort ]( const size_t& a, const size_t& b ) {
-			return toSort[ a ] < toSort[ b ];
-		});
-		
-		return rc;
-	}
-
-	template<
-		typename IndexStructure, typename IndexView, typename IndexImfR, typename IndexImfC,
 		typename ValueType, typename ValueStructure, typename ValueView, typename ValueImfR, typename ValueImfC,
-		typename CompareType
+		typename Relation = relations::lt< ValueType, reference >
 	>
 	RC sort(
 		Vector< size_t, IndexStructure, Density::Dense, IndexView, IndexImfR, IndexImfC, reference > &permutation,
 		const Vector< ValueType, ValueStructure, Density::Dense, ValueView, ValueImfR, ValueImfC, reference > &toSort,
-		CompareType cmp
+		const Relation &rel = Relation(),
+		const std::enable_if_t<
+			! alp::is_object< ValueType >::value && alp::is_relation< Relation >::value
+		> * const = nullptr
 	) noexcept {
-
-		if ( getLength( permutation ) != getLength( toSort ) ) {
-			return ILLEGAL;
-		}
 
 		internal::setInitialized( permutation, internal::getInitialized( toSort ) );
 
@@ -2298,8 +2264,8 @@ namespace alp {
 		typename PermType::iterator it_begin = internal::begin( permutation );
 		typename PermType::iterator it_end = internal::end( permutation );
 
-		std::sort( it_begin, it_end, [ &toSort, &cmp ]( const size_t& a, const size_t& b ) {
-			return cmp( toSort[ a ], toSort[ b ] );
+		std::sort( it_begin, it_end, [ &toSort, &rel ]( const size_t& a, const size_t& b ) {
+			return rel.check( toSort[ a ], toSort[ b ] );
 		});
 		
 		return rc;
