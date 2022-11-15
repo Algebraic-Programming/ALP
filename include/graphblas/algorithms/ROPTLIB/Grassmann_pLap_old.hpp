@@ -29,17 +29,12 @@ namespace ROPTLIB
         grb::Vector<double> ones;
         const size_t n, k;
         const double p;
-        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res, Prev;
-		mutable std::vector< grb::Matrix< double > * > UiUj;
-		mutable std::vector< grb::Matrix< double > * > Hess;
+        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res;
 
-        mutable grb::Matrix<double> Wuu, BUF;
+        mutable grb::Matrix<double> Wuu;
         mutable grb::Vector<double> vec, vec2, vec_aux;
 
-        mutable std::vector<double> sums, pows;
-        mutable std::vector<bool> mats;
 
-        mutable bool updated;
             
 
         const grb::Semiring<
@@ -54,14 +49,13 @@ namespace ROPTLIB
         // performance measurement
 
         mutable grb::utils::Timer timer;
-        mutable double io_time = 0, grb_time = 0, ropttgrb = 0, grbtropt = 0, hessT=0, gradT=0, fT=0;
+        mutable double io_time = 0, grb_time = 0;
 
         // function that converts a ROPTLIB nxk matrix to k graphblas vectors of length n
         void ROPTLIBtoGRB(
             const ROPTLIB::Variable &x,
             std::vector<grb::Vector<double> *> &grb_x) const
         {
-            timer.reset();
             grb::RC rc = grb::SUCCESS;
 
             const double *xPtr = x.ObtainReadData();
@@ -72,41 +66,8 @@ namespace ROPTLIB
 #endif
             for (size_t i = 0; i < k; ++i)
             {
-                grb::set(*(grb_x[i]), 0);
                 rc = rc ? rc : grb::buildVector(*(grb_x[i]), xPtr + i * n, xPtr + (i + 1) * n, SEQUENTIAL);
-                if(rc != grb::SUCCESS || isnan(*xPtr)){
-                    std::cout << "Result: " << grb::toString(rc)<<std::endl;
-                    std::cin.get();
-                }
-                //Check if same
-                if(!updated && grb_x == Columns){
-                    //std::cout << "Columns\n";
-                    if(grb::nnz(*(grb_x[i])) != grb::nnz(*(Prev[i]))){
-                        clear();
-                        updated = true;
-                      //  std::cout << "Diff input: "  << std::endl;
-
-                    } else {
-                        for (size_t j = 0; j < n; j++)
-                        {
-                            if((*(grb_x[i]))[j] != (*(Prev[i]))[j]){
-                                updated = true;
-                                clear();
-                                break;
-                            }
-                            if(isnan((*(grb_x[i]))[j])){
-                               std::cout << "num = " << (*(grb_x[i]))[j] << " den = " << j << ", l = " << i << "\n";
-                                std::cin.get();
-                            }
-                        }
-
-                    }
-                    grb::set(*(Prev[i]), *(grb_x[i]));
-                }
-
             }
-            updated = false;
-            ropttgrb += timer.time();
         }
 
         // function that writes a set of k graphblas vectors of length n to a ROPTLIB nxk matrix
@@ -114,7 +75,6 @@ namespace ROPTLIB
             const std::vector<grb::Vector<double> *> &grb_x,
             ROPTLIB::Element *result) const
         {
-            timer.reset();
             double *resPtr = result->ObtainWriteEntireData();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -128,95 +88,47 @@ namespace ROPTLIB
                     resPtr[i * n + pair.first] = pair.second;
                 }
             }
-            grbtropt += timer.time();
-        }
-
-        void setDerivativeMatrices(const size_t l) const{
-            if(mats[l]){
-                return;
-            }
-
-            grb::Vector<double> u = *(this->Columns[l]);
-
-            grb::set(*(UiUj[l]), W);
-
-			grb::eWiseLambda(
-				[ this, &u ]( const size_t i, const size_t j, double & v ) {
-					v =  u[ i ] - u[ j ];
-				},
-				*(this->UiUj[l]) );	
-
-            mats[l] = true;
         }
 
         double summandEvalNum(const size_t l) const
         {
-
-            if(sums[l] != 0){
-               return sums[l];
-            }
-
+            //grb::Matrix<double> Wuu(n, n, grb::nnz(W));
+            //grb::resize(Wuu, grb::nnz(W));
+           // grb::Vector<double> vec(n);
             double s = 0;
 
+            grb::set( Wuu, W );
+            grb::clear( vec_aux );
+            grb::eWiseLambda([ &l, this](const size_t i, const size_t j, double &v)
+                             { v = v * std::pow(std::fabs((*(this->Columns[l]))[i] - (*(this->Columns[l]))[j]), this->p); },
+                             Wuu);
 
-            powMat(l, BUF, this->p);	
-            
-            grb::set( vec_aux, 0 );
-
-            //grb::eWiseApply(Wuu, Wuu, BUF, reals_ring.getMultiplicativeOperator());
-
-            grb::vxm(vec_aux, ones, BUF, reals_ring);
+            grb::vxm(vec_aux, ones, Wuu, reals_ring);
             grb::dot(s, vec_aux, ones, reals_ring);
 
-            sums[l] = s;
             return s;
-        }
-
-        void powMat( const size_t l, grb::Matrix<double> &B, double pow, double threshold = 0.0) const{
-            setDerivativeMatrices(l);
-
-            grb::set(B, *(this->UiUj[l]));
-            grb::eWiseLambda(
-				[ pow, this, threshold]( const size_t i, const size_t j, double & v ) {
-                    v = std::pow(std::max(threshold, std::fabs(v)), pow);
-				},
-				B );	
         }
 
         double pPowSum(const size_t l) const
         {
-          
             //working with orthonormal columns
-            if (p == 2.0)
+            if (p == 2)
                 return 1.0;
-
-            if(pows[l] != 0){
-                return pows[l];
-            }
             
             double s = 0;
+            //grb::Vector<double> vec(n);
             grb::set( vec_aux, *Columns[l] );
             grb::eWiseMap([this](const double u)
                           { return std::pow(std::fabs(u), this->p); },
                           vec_aux);
             grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() );
 
-            pows[l] = s;
             return s;
         }
 
         double phi_p(const double &u) const
         {
             return u > 0 ? std::pow(u, p - 1) : -std::pow(-u, p - 1);
-        }
-        void clear() const{
-            for (size_t l = 0; l < k; l++)
-            {
-               sums[l] = 0;
-               pows[l] = 0;
-               mats[l] = false;
-            }
-
         }
 
     public:
@@ -226,29 +138,19 @@ namespace ROPTLIB
                                                                                             k(in_k),
                                                                                             p(p_in),
                                                                                             Wuu(in_n,in_n),
-                                                                                            BUF(in_n,in_n),
                                                                                             vec(in_n),
                                                                                             vec2(in_n),
                                                                                             vec_aux(in_n)
         {
             NumGradHess = false;
-            //timer.reset();
 
             grb::set(ones, 1);
 
             Columns.resize(k);
             Etax.resize(k);
             Res.resize(k);
-            Prev.resize(k);
-    		UiUj.resize( k );
-    		Hess.resize( k );
-            pows = std::vector<double>(k, 0);
-            sums = std::vector<double>(k, 0);
-            mats = std::vector<bool>(k, false);
 
             grb::resize(Wuu, grb::nnz(W));
-   			grb::resize( BUF, grb::nnz( W ) );
-
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
@@ -258,9 +160,6 @@ namespace ROPTLIB
                 Columns[i] = new grb::Vector<double>(n);
                 Etax[i] = new grb::Vector<double>(n);
                 Res[i] = new grb::Vector<double>(n);
-                Prev[i] = new grb::Vector<double>(n);
-   				UiUj[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
-   				Hess[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
             }
         }
 
@@ -297,21 +196,14 @@ namespace ROPTLIB
 
             timer.reset();
             double result = 0;
-            //clear();
             for (size_t l = 0; l < k; ++l)
             {
-                double s = summandEvalNum(l) / (2 * pPowSum(l));
-                if(isnan(s)){
-                    std::cout << "num = " << summandEvalNum( l ) << " den = " << 2*pPowSum( l ) << ", l = " << l << "\n";
-                }
-                result += s;
-                //sums[l] = s;
+                result += summandEvalNum(l) / (2 * pPowSum(l));
                 // Print result. This is the
                 // function evaluation. It is a double
                 //std::cout << "num = " << summandEvalNum( l ) << " den = " << 2*pPowSum( l ) << "\n";
             }
             grb_time += timer.time();
-            fT += timer.time();
 
             std::cout << " F(U)= "<< result << "\n";
             // for (size_t l = 0; l < k; ++l)
@@ -336,38 +228,11 @@ namespace ROPTLIB
             return result;
         }
 
-
-        void internalHessian(const size_t l) const {
-            grb::Matrix<double> H = *(Hess[l]); 
-            setDerivativeMatrices(l);
-            powMat(l, H, p-2);
-
-            grb::eWiseApply(H, H, W, reals_ring.getMultiplicativeOperator());
-            set(Wuu, H);
-            grb::eWiseApply<grb::descriptors::transpose_right>(H, H, Wuu, reals_ring.getAdditiveOperator());
-
-            grb::set(vec, 0);
-            grb::vxm(vec, ones, H, reals_ring);
-
-            double fac = (this->p) * (this->p - 1) / pPowSum(l);
-
-            grb::eWiseLambda(
-                [this, fac]( const size_t i, const size_t j, double & v ){
-                    v = -v * fac;
-                    if(i == j){
-                        v += (vec[i] * fac) +1e-10;
-                    }
-                },
-                H
-            );
-
-        };
-        
         virtual ROPTLIB::Element &EucGrad(
             const ROPTLIB::Variable &x,
             ROPTLIB::Element *result) const
         {
-  			std::cout << "EucGrad CALLED \n"; 
+  			std::cout << "EucGrad CALLED " << result << "\n"; 
 
             // convert to k Graphblas vectors
             timer.reset();
@@ -395,6 +260,9 @@ namespace ROPTLIB
             for (size_t l = 0; l < k; ++l)
             {
 
+                //grb::Matrix<double> Wphiu(n, n);
+                //grb::resize(Wphiu, grb::nnz(W));
+                //grb::Vector<double> vec(n);
 
                 // Print the entries of the input matrix W    
                 // for ( size_t i=0; i<n; ++i) {
@@ -410,31 +278,30 @@ namespace ROPTLIB
                 // End Print
 
 
-                double powsum = pPowSum(l);
-                double factor = summandEvalNum(l) / (2 * powsum);
-                 grb::set(BUF, *(UiUj[l]));
-                grb::eWiseLambda(
-				[ this, &l ]( const size_t i, const size_t j, double & v ) {
-					v = phi_p(v);
-				},
-				BUF );
-                
+                grb::set(Wuu, W);
+                grb::eWiseLambda([ &l, this](const size_t i, const size_t j, double &v)
+                                 { v = v * phi_p((*(this->Columns[l]))[j] - (*(this->Columns[l]))[i]); 
+                                 },
+                                 Wuu);
 
-                //Print the entries of the resulting matrix Wphiu
+                // Print the entries of the resulting matrix Wphiu
                 // for ( size_t i=0; i<n; ++i) {
                 //     grb::Vector<double> v1(n), v2(n);
                 //     grb::setElement( v1, 1, i );
                 //     grb::set( v2, 0 );
-                //     grb::vxm( v2, v1, Wuu, reals_ring );
+                //     grb::vxm( v2, v1, Wphiu, reals_ring );
                 //     for (const auto &elt : v2) {
                 //         if (elt.second != 0) std::cout << i << " " << elt.first << "\n"; 
                 //     }
                 // }
-                //std::cin.get();
-                //End Print
+                // std::cin.get();
+                // End Print
 
                 grb::set(vec, 0);
-                grb::vxm<grb::descriptors::transpose_matrix>(vec, ones, BUF, reals_ring);
+                grb::vxm(vec, ones, Wuu, reals_ring);
+
+                double powsum = pPowSum(l);
+                double factor = summandEvalNum(l) / (2 * powsum);
 
                 grb::set(*(Res[l]), 0);
                 // std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
@@ -464,10 +331,8 @@ namespace ROPTLIB
                 //     }
                 // }
                 // std::cin.get();
-                internalHessian(l);
             }
             grb_time += timer.time();
-            gradT += timer.time();
 
             // write data back to ROPTLIB format
             timer.reset();
@@ -532,7 +397,7 @@ namespace ROPTLIB
 			
             // convert to k Graphblas vectors
             timer.reset();
-            //ROPTLIBtoGRB(x, Columns);
+            ROPTLIBtoGRB(x, Columns);
             // for (size_t l = 0; l < k; ++l)
             // {
             //     for (const auto &pair : *Columns[l])
@@ -551,52 +416,89 @@ namespace ROPTLIB
             // evaluate hessian*vector in graphblas
             timer.reset();
 
+            //grb::Matrix<double> Wuu(n, n);
+            //grb::resize(Wuu, grb::nnz(W));
+            //grb::Vector<double> vec1(n), vec2(n);
+
             for (size_t l = 0; l < k; ++l)
             {
+                grb::set(Wuu, W);
 
-                // setDerivativeMatrices(l);
-                // powMat(l, Wuu, this->p-2, Hess_approx_thresh);	
+                // If the 1st eigenvector is constant, we have a division by zero when l = 0
+                // 
+                //  { v = std::pow(1e-16, p - 2); },
 
-                // grb::set(vec, 0);
-                // grb::set(vec2, 0);
-                // grb::vxm(vec, ones, Wuu, reals_ring);
-                // grb::vxm(vec2, *(this->Etax[l]), Wuu, reals_ring);
-                // double powsum = (this->p) * (this->p - 1) / pPowSum(l);
+                // OUT: hardcode the values of the component for l = 0
+                // if (l == 0)
+                // {
+                //     grb::eWiseLambda([this](const size_t i){
+                //         (*(this->Res[0]))[i] = (*(this->Etax[0]))[i] * 1e+2;
+                //     },
+                //     *(Res[0]), *(Etax[0]) );
+                // }
+                // else
+                // {
+                    grb::eWiseLambda([&l, this](const size_t i, const size_t j, double &v)
+                                     {
+                                        //  if (verbose_level = 5){
+                                        //  std::cout << "|x|^(p-2), with |x|:  " << std::fabs((*(this->Columns[l]))[i] - (*(this->Columns[l]))[j]) << std::endl;
+                                        // }
+                                         v = v * std::pow(std::max(Hess_approx_thresh,std::fabs(                                                                                                                 
+                                                         (*(this->Columns[l]))[i] - (*(this->Columns[l]))[j]) 
+                                                         ),
+                                                     p - 2);
 
-                // grb::set(*(Res[l]), 0);
-                // grb::eWiseLambda([ &powsum, &l, this](const size_t i)
-                //                  {
-                //                      (*(this->Res[l]))[i] =
-                //                          (powsum) *
-                //                          (vec[i] * (*(this->Etax[l]))[i] - vec2[i]);
+                                         //  std::cout << "i: " << i << " || j: " << j << " || w_ij: "<< v << std::endl;
+                                         //  std::cout << "u_li - u_lj: " <<  (*(this->Columns[l]))[i] - (*(this->Columns[l]))[j] <<
+                                         //  "|| max(t): " << std::fabs(
 
-                //                      //  std::cout << "-------------" << std::endl;
-                //                      //  std::cout <<  vec1[i] << " || " << std::endl;
+                                         //                      (*(this->Columns[l]))[i] - (*(this->Columns[l]))[j])  << "|| p-pow(t): " <<
+                                         //                      std::pow(
+                                         //              std::fabs(
 
-                //                     //  if (isnan((*(this->Res[l]))[i]))
-                //                     //  {
-                //                     //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-                //                     //      std::cout << " Nan in the Hessian computation. Printing components " << std::endl;
-                //                     //      std::cout << "Vector No is: " << i << std::endl;
-                //                     //      std::cout <<  "p(p-1)/||u||^p_p = "  << powsum << std::endl;                                         
-                //                     //      std::cout << "vec1 * eta = " <<  vec[i] * (*(this->Etax[l]))[i] << std::endl;
-                //                     //      std::cout << "vec1 = " <<  vec[i] << ", e =" << (*(this->Etax[l]))[i] << std::endl;
-                //                     //      std::cout << "vec2 = " << vec2[i] << std::endl;
-                //                     //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
-                //                     //       std::cin.get();
-                //                     //  }
-                //                  },
-                //                  vec);
-                // // }
-                // // std::cout << "p: " << p << " || "
-                // //           << "p*(p-1)/denom: " << ((this->p) * (this->p - 1) / powsum) << " ||" << std::endl;
-                // // std::cin.get();
+                                         //                      (*(this->Columns[l]))[i] - (*(this->Columns[l]))[j]),
+                                         //              p - 2)
+                                         //                       << std::endl;
+                                     },
+                                     Wuu);
+                
 
-                grb::vxm(*(Res[l]), *(Etax[l]), *(Hess[l]), reals_ring);
+                grb::set(vec, 0);
+                grb::set(vec2, 0);
+                grb::vxm(vec, ones, Wuu, reals_ring);
+                grb::vxm(vec2, *(this->Etax[l]), Wuu, reals_ring);
+                double powsum = pPowSum(l);
+
+                grb::set(*(Res[l]), 0);
+                grb::eWiseLambda([ &powsum, &l, this](const size_t i)
+                                 {
+                                     (*(this->Res[l]))[i] =
+                                         ((this->p) * (this->p - 1) / powsum) *
+                                         (vec[i] * (*(this->Etax[l]))[i] - vec2[i]);
+
+                                     //  std::cout << "-------------" << std::endl;
+                                     //  std::cout <<  vec1[i] << " || " << std::endl;
+
+                                    //  if (isnan((*(this->Res[l]))[i]))
+                                    //  {
+                                    //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+                                    //      std::cout << " Nan in the Hessian computation. Printing components " << std::endl;
+                                    //      std::cout << "Vector No is: " << l << std::endl;
+                                    //      std::cout <<  "p(p-1)/||u||^p_p = "  << powsum << std::endl;                                         
+                                    //      std::cout << "vec1 * eta = " <<  vec1[i] * (*(this->Etax[l]))[i] << std::endl;
+                                    //      std::cout << "vec2 = " << vec2[i] << std::endl;
+                                    //      std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
+                                    //     //  std::cin.get();
+                                    //  }
+                                 },
+                                 vec);
+                // }
+                // std::cout << "p: " << p << " || "
+                //           << "p*(p-1)/denom: " << ((this->p) * (this->p - 1) / powsum) << " ||" << std::endl;
+                // std::cin.get();
                 
             }
             grb_time += timer.time();
-            hessT += timer.time();
 
             timer.reset();
             GRBtoROPTLIB(Res, result);
@@ -633,8 +535,6 @@ namespace ROPTLIB
 
         double getGRBtime()
         {
-            std::cout << "R2G: " << ropttgrb << ", G2R" << grbtropt << std::endl; 
-            std::cout << "f: " << fT << ", grad: " << gradT << ", hess: " << hessT << std::endl; 
             return grb_time;
         }
     };
