@@ -21,7 +21,8 @@
 
 #include <alp.hpp>
 
-void alp_program( const size_t & n, alp::RC & rc ) {
+
+void alp_program( const size_t &n, alp::RC &rc ) {
 
 	(void) n;
 
@@ -43,25 +44,25 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( !( alp::is_equivalence_relation< dbl_lt >::value ) );
 
-	if( !( dbl_lt::check(2.4, 5) ) ) {
+	if( !( dbl_lt::check( 2.4, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_lt::test(2.4, 5) failed." << std::endl;
+		std::cerr << "dbl_lt::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( dbl_lt::check(5, 2.4) ) {
+	if( dbl_lt::check( 5, 2.4 ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_lt::check(5, 2.4) failed." << std::endl;
+		std::cerr << "dbl_lt::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( dbl_lt::check(5, 5) ) {
+	if( dbl_lt::check( 5, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_lt::test(5, 5) failed." << std::endl;
+		std::cerr << "dbl_lt::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -85,25 +86,25 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( !( alp::is_equivalence_relation< dbl_gt >::value ) );
 
-	if( dbl_gt::check(2.4, 5) ) {
+	if( dbl_gt::check( 2.4, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_gt::test(2.4, 5) failed." << std::endl;
+		std::cerr << "dbl_gt::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( dbl_gt::check(5, 2.4) ) ) {
+	if( !( dbl_gt::check( 5, 2.4 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_gt::check(5, 2.4) failed." << std::endl;
+		std::cerr << "dbl_gt::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( dbl_gt::check(5, 5) ) {
+	if( dbl_gt::check( 5, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "dbl_gt::test(5, 5) failed." << std::endl;
+		std::cerr << "dbl_gt::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -127,33 +128,33 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( alp::is_equivalence_relation< int_eq >::value );
 
-	if( int_eq::check(2.4, 5) ) {
+	if( int_eq::check( 2.4, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_eq::test(2.4, 5) failed." << std::endl;
+		std::cerr << "int_eq::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( int_eq::check(5, 2.4) ) {
+	if( int_eq::check( 5, 2.4 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_eq::check(5, 2.4) failed." << std::endl;
+		std::cerr << "int_eq::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_eq::check(5, 5) ) ) {
+	if( !( int_eq::check( 5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_eq::test(5, 5) failed." << std::endl;
+		std::cerr << "int_eq::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_eq::check(5.5, 5) ) ) {
+	if( !( int_eq::check( 5.5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_eq::test(5.5, 5) failed." << std::endl;
+		std::cerr << "int_eq::test( 5.5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -177,33 +178,33 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( !( alp::is_equivalence_relation< int_neq >::value ) );
 
-	if( !( int_neq::check(2.4, 5) ) ) {
+	if( !( int_neq::check( 2.4, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_neq::test(2.4, 5) failed." << std::endl;
+		std::cerr << "int_neq::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_neq::check(5, 2.4) ) ) {
+	if( !( int_neq::check( 5, 2.4 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_neq::check(5, 2.4) failed." << std::endl;
+		std::cerr << "int_neq::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( int_neq::check(5, 5) ) {
+	if( int_neq::check( 5, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_neq::test(5, 5) failed." << std::endl;
+		std::cerr << "int_neq::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( int_neq::check(5.5, 5) ) {
+	if( int_neq::check( 5.5, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_neq::test(5.5, 5) failed." << std::endl;
+		std::cerr << "int_neq::test( 5.5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -227,33 +228,33 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( !( alp::is_equivalence_relation< int_le >::value ) );
 
-	if( !( int_le::check(2.4, 5) ) ) {
+	if( !( int_le::check( 2.4, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_le::test(2.4, 5) failed." << std::endl;
+		std::cerr << "int_le::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( int_le::check(5, 2.4) ) {
+	if( int_le::check( 5, 2.4 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_le::check(5, 2.4) failed." << std::endl;
+		std::cerr << "int_le::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_le::check(5, 5) ) ) {
+	if( !( int_le::check( 5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_le::test(5, 5) failed." << std::endl;
+		std::cerr << "int_le::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_le::check(5.5, 5) ) ) {
+	if( !( int_le::check( 5.5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_le::test(5.5, 5) failed." << std::endl;
+		std::cerr << "int_le::test( 5.5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
@@ -277,33 +278,33 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	static_assert( !( alp::is_equivalence_relation< int_ge >::value ) );
 
-	if( int_ge::check(2.4, 5) ) {
+	if( int_ge::check( 2.4, 5 ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_ge::test(2.4, 5) failed." << std::endl;
+		std::cerr << "int_ge::test( 2.4, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_ge::check(5, 2.4) ) ) {
+	if( !( int_ge::check( 5, 2.4 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_ge::check(5, 2.4) failed." << std::endl;
+		std::cerr << "int_ge::check( 5, 2.4 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_ge::check(5, 5) ) ) {
+	if( !( int_ge::check( 5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_ge::test(5, 5) failed." << std::endl;
+		std::cerr << "int_ge::test( 5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;
 	}
 
-	if( !( int_ge::check(5.5, 5) ) ) {
+	if( !( int_ge::check( 5.5, 5 ) ) ) {
 #ifndef NDEBUG
-		std::cerr << "int_ge::test(5.5, 5) failed." << std::endl;
+		std::cerr << "int_ge::test( 5.5, 5 ) failed." << std::endl;
 #endif
 		rc = alp::FAILED;
 		return;

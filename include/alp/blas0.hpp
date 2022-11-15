@@ -31,9 +31,10 @@
  #include <alp/reference/blas0.hpp>
 #endif
 
+
 namespace alp {
 
-    namespace internal {
+	namespace internal {
 
 		/**
 		 * Helper class that, depending on a given descriptor, either returns a
@@ -55,16 +56,16 @@ namespace alp {
 		/* Version where use_index is allowed. */
 		template< alp::Descriptor descr, typename OutputType, typename D >
 		class ValueOrIndex< 
-            descr, OutputType, D, 
-            typename std::enable_if< std::is_arithmetic< OutputType >::value 
-            && ! std::is_same< D, void >::value >::type 
-        > {
+			descr, OutputType, D,
+			typename std::enable_if< std::is_arithmetic< OutputType >::value
+			&& ! std::is_same< D, void >::value >::type 
+		> {
 		private:
 			static constexpr const bool use_index = descr & alp::descriptors::use_index;
-			static_assert( 
-                use_index 
-                || std::is_convertible< D, OutputType >::value, "Cannot convert to the requested output type" 
-            );
+			static_assert(
+				use_index
+				|| std::is_convertible< D, OutputType >::value, "Cannot convert to the requested output type"
+			);
 
 		public:
 
@@ -80,19 +81,19 @@ namespace alp {
 
 		/* Version where use_index is not allowed. */
 		template< alp::Descriptor descr, typename OutputType, typename D >
-		class ValueOrIndex< 
-            descr, OutputType, D, 
-            typename std::enable_if< ! std::is_arithmetic< OutputType >::value 
-            && ! std::is_same< OutputType, void >::value >::type 
-        > {
-			static_assert( 
-                !( descr & descriptors::use_index ), 
-                "use_index descriptor given while output type is not numeric" 
-            );
-			static_assert( 
-                std::is_convertible< D, OutputType >::value, 
-                "Cannot convert input to the given output type" 
-            );
+		class ValueOrIndex<
+			descr, OutputType, D,
+			typename std::enable_if< ! std::is_arithmetic< OutputType >::value
+			&& ! std::is_same< OutputType, void >::value >::type
+		> {
+			static_assert(
+				!( descr & descriptors::use_index ),
+				"use_index descriptor given while output type is not numeric"
+			);
+			static_assert(
+				std::is_convertible< D, OutputType >::value,
+				"Cannot convert input to the given output type"
+			);
 
 		public:
 
@@ -101,7 +102,7 @@ namespace alp {
 			}
 		};
 
-    } // namespace internal
+	} // namespace internal
 
 } // namespace alp
 

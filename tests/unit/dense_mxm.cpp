@@ -24,6 +24,7 @@
 
 using namespace alp;
 
+
 template< typename T >
 void print_stdvec_as_matrix( std::string name, const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda ) {
 
@@ -186,8 +187,6 @@ void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size
 	}
 
 }
-
-
 
 void alp_program( const size_t & n, alp::RC & rc ) {
 

@@ -26,6 +26,7 @@
 // TEMPDISABLE should be removed in the final version
 #define TEMPDISABLE
 
+
 namespace alp {
 
 	namespace algorithms {
@@ -486,7 +487,7 @@ namespace alp {
 
 			// permutation that sorts dtmp
 			alp::Vector< size_t > permutation_vec( n );
-			rc = rc ? rc : alp::sort(permutation_vec, dtmp, alp::relations::lt< D >() );
+			rc = rc ? rc : alp::sort( permutation_vec, dtmp, alp::relations::lt< D >() );
 
 			alp::Vector< size_t > no_permutation_vec( n );
 			rc = rc ? rc : alp::set< alp::descriptors::use_index >( no_permutation_vec, alp::Scalar< size_t >( 0 ) );

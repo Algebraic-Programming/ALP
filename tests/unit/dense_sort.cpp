@@ -27,6 +27,7 @@
 
 using namespace alp;
 
+
 void alp_program( const size_t &n, alp::RC &rc ) {
 
 	typedef double T;
