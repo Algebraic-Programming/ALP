@@ -33,6 +33,13 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	typedef double T;
 
 #ifndef NDEBUG
+	/**
+	 * Note: in case of a distributed backend, the resulting printout 
+	 * may appear interleaved across processes. In ALP/GraphBLAS, there is 
+	 * the if( spmd<>::pid() == k ) guard to print for process k only, 
+	 * and the statement can of course be looped over k=0 
+	 * to spmd<>::nprocs() and separated by spmd<>::barrier().
+	 */
 	auto print_std_vector = [](std::vector< T > const vec) {
 		for(auto val : vec) {
 			std::cout << val << ' ';
