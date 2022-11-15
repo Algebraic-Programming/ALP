@@ -152,6 +152,7 @@
 // #include <alp/ops.hpp>
 // #include <alp/pinnedvector.hpp>
 // #include <alp/properties.hpp>
+#include <alp/rels.hpp>
 // #include <alp/semiring.hpp>
 // #include <alp/spmd.hpp>
 

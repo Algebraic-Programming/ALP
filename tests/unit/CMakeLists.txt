@@ -45,6 +45,10 @@ add_grb_executables( alp_type_traits alp_type_traits.cpp
 	BACKENDS alp_reference
 )
 
+add_grb_executables( alp_relations alp_relations.cpp
+	BACKENDS alp_reference
+)
+
 add_grb_executables( alp_file_iterator alp_file_iterator.cpp
 	BACKENDS alp_reference
 )      
@@ -266,6 +270,10 @@ add_grb_executables( dense_outer dense_outer.cpp
 )
 
 add_grb_executables( dense_set dense_set.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_sort dense_sort.cpp
 	BACKENDS alp_reference
 )
 

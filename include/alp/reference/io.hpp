@@ -23,6 +23,8 @@
 #ifndef _H_ALP_REFERENCE_IO
 #define _H_ALP_REFERENCE_IO
 
+#include <type_traits>
+
 #include <alp/base/io.hpp>
 #include "matrix.hpp"
 
@@ -451,7 +453,16 @@ namespace alp {
 
 		// foldl requires left-hand side to be initialized prior to the call
 		internal::setInitialized( x, true );
-		return foldl( x, val, alp::operators::right_assign< DataType >() );
+
+		// return foldl( x, val, alp::operators::right_assign< DataType >() );
+		const size_t n = size( x );
+		for ( size_t i = 0; i < n; ++i ) {
+			x[ i ] = internal::template ValueOrIndex< descr, DataType, T >::
+				getFromScalar( *val, i );
+		}
+	
+		return SUCCESS;
+
 	}
 
 	/**

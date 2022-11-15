@@ -1449,7 +1449,6 @@ namespace alp {
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
 				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					printf( "Hello from mul\n" );
 					if( *a || *b ) {
 						*c = static_cast< OUT >( true );
 					} else {
