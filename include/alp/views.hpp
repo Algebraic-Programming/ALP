@@ -53,6 +53,7 @@ namespace alp {
 			transpose,
 			diagonal,
 			matrix,
+			cross_backend,
 			_internal
 		};
 
@@ -98,6 +99,19 @@ namespace alp {
 			using applied_to = OriginalType;
 
 			static constexpr Views type_id = Views::matrix;
+
+		};
+
+		template< typename OriginalType >
+		struct CrossBackend {
+
+			using applied_to = OriginalType;
+
+			/**
+			 * Implemented as a separate struct to guide the process of determining
+			 * the AMF of the new container.
+			 */
+			static constexpr Views type_id = Views::cross_backend;
 
 		};
 
