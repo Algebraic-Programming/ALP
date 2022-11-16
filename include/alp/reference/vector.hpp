@@ -159,6 +159,34 @@ namespace alp {
 				}
 
 				/**
+				 * The ALP/Dense vector constructor providing an already allocated buffer.
+				 *
+				 * The constructed object will be uninitalised after successful construction.
+				 *
+				 * @param data    The pointer to an allocated array of elements of
+				 *                elements of types T.
+				 * @param length  The number of elements the vector above guarantees
+				 *                to hold.
+				 * @param cap     The capacity (not used, kept for compatibility with sparse backend)
+				 *
+				 * \parblock
+				 * \par Performance semantics.
+				 *        -# This constructor entails \f$ \Theta(1) \f$ amount of work.
+				 *        -# This constructor may allocate \f$ \Theta( 1 ) \f$ bytes
+				 *           of dynamic memory.
+				 *        -# This constructor will use \f$ \Theta(1) \f$ extra bytes of
+				 *           memory beyond that at constructor entry.
+				 *        -# This constructor incurs \f$ \Theta(1) \f$ data movement.
+				 *        -# This constructor does \em not make system calls.
+				 * \endparblock
+				 *
+				 * \warning Avoid the use of this constructor within performance critical
+				 *          code sections.
+				 */
+				Vector( T &data, const size_t length, const size_t cap = 0 ) :
+					n( length ), cap( std::max( length, cap ) ), data( data ), initialized( false ) {}
+
+				/**
 				 * Copy constructor.
 				 *
 				 * @param other The vector to copy. The initialization state of the copy
