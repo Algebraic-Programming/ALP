@@ -290,6 +290,7 @@ namespace alp {
 				typedef ImfR imf_r_type;
 				typedef ImfC imf_c_type;
 				typedef PolyFactory poly_factory_type;
+				typedef typename PolyFactory::poly_type mapping_polynomial_type;
 
 				/** Expose types defined within the class */
 				typedef struct StorageIndexType {
