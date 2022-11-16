@@ -60,7 +60,7 @@ namespace alp {
 		void setInitialized( Vector< T, omp > & v, const bool initialized ) noexcept;
 
 		template< typename T >
-		typename Vector< T, omp >::BufferType &getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept;
+		T *getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept;
 
 		/**
 		 * The parallel shared memory implementation of the ALP/Dense vector.
@@ -80,19 +80,13 @@ namespace alp {
 				IO friends
 			   ******************** */
 
-			public:
+			friend size_t internal::getLength< T >( const Vector< T, omp > & ) noexcept;
 
-				/** The type of the underlying container. */
-				using BufferType = Vector< T, reference >;
+			friend const bool & internal::getInitialized< T >( const Vector< T, omp > & ) noexcept;
 
-				friend size_t internal::getLength< T >( const Vector< T, omp > & ) noexcept;
+			friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
 
-				friend const bool & internal::getInitialized< T >( const Vector< T, omp > & ) noexcept;
-
-				friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
-
-				friend BufferType &getBuffer< T >( Vector< T, omp > &, const size_t buffer_id ) noexcept;
-
+			friend T *getBuffer< T >( Vector< T, omp > &, const size_t buffer_id ) noexcept;
 
 			private:
 
@@ -100,7 +94,7 @@ namespace alp {
 				size_t num_buffers;
 
 				/** The array of buffers. */
-				BufferType **buffers;
+				T **buffers;
 
 				/** Whether the container is presently initialized. */
 				bool initialized;
@@ -146,7 +140,7 @@ namespace alp {
 					num_buffers = thread_grid_dims.first * thread_grid_dims.second;
 
 					// TODO: Implement allocation properly
-					buffers = new ( std::nothrow ) BufferType*[ num_buffers ];
+					buffers = new ( std::nothrow ) value_type*[ num_buffers ];
 					if( ( num_buffers > 0 ) && ( buffers == nullptr ) ){
 						throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 					}
@@ -176,7 +170,7 @@ namespace alp {
 						}
 
 						// TODO: Implement allocation properly
-						buffers[ thread ] = new ( std::nothrow ) BufferType( alloc_size );
+						buffers[ thread ] = new ( std::nothrow ) value_type[ alloc_size ];
 
 						if( buffers[ thread ] == nullptr ) {
 							throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
@@ -282,9 +276,9 @@ namespace alp {
 		}
 
 		template< typename T >
-		typename Vector< T, omp >::BufferType &getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept {
+		T *getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept {
 			assert( buffer_id < v.num_buffers );
-			return *( v.buffers[ buffer_id ] );
+			return v.buffers[ buffer_id ];
 		}
 
 	} // end namespace ``alp::internal''

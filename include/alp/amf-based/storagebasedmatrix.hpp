@@ -297,8 +297,8 @@ namespace alp {
 					amf( std::move( amf ) ) {}
 
 				/** View on another container */
-				StorageBasedMatrix( Vector< T, backend > &container, AmfType &&amf ) :
-					container( container ),
+				StorageBasedMatrix( T *buffer, const size_t buffer_size, AmfType &&amf ) :
+					container( buffer, buffer_size ),
 					amf( std::move( amf ) ) {}
 
 		}; // class StorageBasedMatrix

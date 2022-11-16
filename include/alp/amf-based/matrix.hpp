@@ -467,7 +467,7 @@ namespace alp {
 				std::enable_if_t<
 					//std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
-					!internal::requires_allocation< View >::value &&
+					internal::requires_allocation< View >::value &&
 					std::is_same<
 						typename base_type::amf_type,
 						typename std::remove_reference< AmfType >::type
@@ -475,9 +475,10 @@ namespace alp {
 				> * = nullptr
 			>
 			//Matrix( SourceType &source_matrix, AmfType &&amf ) :
-			Matrix( BufferType &buffer, AmfType &&amf ) :
+			Matrix( BufferType &&buffer, const size_t buffer_size, AmfType &&amf ) :
 				base_type(
 					buffer,
+					buffer_size,
 					std::forward< typename base_type::amf_type >( amf )
 				) {}
 

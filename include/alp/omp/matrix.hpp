@@ -85,7 +85,7 @@ namespace alp {
 				typename SourceMatrix::template view_type< view::cross_backend >::type
 			>::template change_backend< reference >::type;
 
-			return target_t( buffer, amf );
+			return target_t( buffer, distribution.getBlockSize( tr, tc, br, bc ), amf );
 		}
 
 	} // namespace internal
