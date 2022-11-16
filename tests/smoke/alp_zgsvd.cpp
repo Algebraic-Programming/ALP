@@ -191,12 +191,12 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	const Scalar< ScalarType > one( ring.template getOne< ScalarType >() );
 
 	// test thin, square and flat
-	// std::vector< size_t > m_arr { unit, unit, 2* unit };
-	// std::vector< size_t > n_arr { 2* unit, unit, unit, };
-	// for( size_t i = 0; i < 3; ++i ) {
-	std::vector< size_t > m_arr { unit };
-	std::vector< size_t > n_arr { unit };
-	for( size_t i = 0; i < 1; ++i ) {
+	std::vector< size_t > m_arr { unit,  2 * unit, unit };
+	std::vector< size_t > n_arr { unit, unit, 2 * unit };
+	for( size_t i = 0; i < 3; ++i ) {
+	// std::vector< size_t > m_arr { unit };
+	// std::vector< size_t > n_arr { unit };
+	// for( size_t i = 0; i < 1; ++i ) {
 		// dimensions of sqare matrices H, Q and R
 		const size_t M = m_arr[ i ];
 		const size_t N = n_arr[ i ];
@@ -219,15 +219,15 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		rc = rc ? rc : set( B, H );
 		rc = rc ? rc : set( V, zero );
 		rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
-#ifdef DEBUG
-		rc = rc ? rc : set( H, B );
-		rc = rc ? rc : set( U, zero );
-		rc = rc ? rc : set( V, zero );
-		auto Udiag = get_view< alp::view::diagonal >( U );
-		rc = rc ? rc : alp::set( Udiag, one );
-		auto Vdiag = get_view< alp::view::diagonal >( V );
-		rc = rc ? rc : alp::set( Vdiag, one );
-#endif
+// #ifdef DEBUG
+// 		rc = rc ? rc : set( H, B );
+// 		rc = rc ? rc : set( U, zero );
+// 		rc = rc ? rc : set( V, zero );
+// 		auto Udiag = get_view< alp::view::diagonal >( U );
+// 		rc = rc ? rc : alp::set( Udiag, one );
+// 		auto Vdiag = get_view< alp::view::diagonal >( V );
+// 		rc = rc ? rc : alp::set( Vdiag, one );
+// #endif
 		rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
 
 
