@@ -138,13 +138,12 @@ namespace alp {
 					const Distribution &d,
 					const size_t cap = 0
 				) : num_buffers( 0 ), initialized( false ) {
-					// TEMP init dummy variables for testing
 					(void) cap;
 
 					std::cout << "Entered OMP internal::Vector constructor\n";
 
-					const auto block_grid_dims = d.getGlobalBlockGridDims();
-					num_buffers = block_grid_dims.first * block_grid_dims.second;
+					const auto thread_grid_dims = d.getThreadGridDims();
+					num_buffers = thread_grid_dims.first * thread_grid_dims.second;
 
 					// TODO: Implement allocation properly
 					buffers = new ( std::nothrow ) BufferType*[ num_buffers ];
@@ -158,32 +157,29 @@ namespace alp {
 						const size_t tc = d.getThreadCoords( thread ).second;
 						const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
 
+						size_t alloc_size = 0;
 						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-
-								const size_t block_id = d.getGlobalBlockId( tr, tc, br, bc );
-								const size_t block_size = d.getBlockSize( tr, tc, br, bc );
-
-								#pragma omp critical
-								{
-									if( thread != config::OMP::current_thread_ID() ) {
-										std::cout << "==============ERROR==================\n";
-										std::cout << "=== thread != omp::current_t_id() ===\n";
-										std::cout << "=====================================\n";
-									}
-									std::cout << "Thread "
-										<< " br = " << br << " bc = " << bc
-										<< " block_id = " << block_id
-										<< " by thread " << config::OMP::current_thread_ID() << std::endl;
-								}
-
-								// TODO: Implement allocation properly
-								buffers[ block_id ] = new ( std::nothrow ) BufferType( block_size );
-
-								if( buffers[ block_id ] == nullptr ) {
-									throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
-								}
+								alloc_size += d.getBlockSize( tr, tc, br, bc );
 							}
+						}
+
+						#pragma omp critical
+						{
+							if( thread != config::OMP::current_thread_ID() ) {
+								std::cout << "Warning: thread != OMP::current_thread_id()\n";
+							}
+							std::cout << "Thread with global coordinates tr = " << tr << " tc = " << tc
+								<< " on OpenMP thread " << config::OMP::current_thread_ID()
+								<< " allocating buffer of " << alloc_size << " elements "
+								<< " holding " << block_grid_dims.first << " x " << block_grid_dims.second << " blocks.\n";
+						}
+
+						// TODO: Implement allocation properly
+						buffers[ thread ] = new ( std::nothrow ) BufferType( alloc_size );
+
+						if( buffers[ thread ] == nullptr ) {
+							throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 						}
 					}
 				}
