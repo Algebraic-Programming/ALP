@@ -52,25 +52,37 @@ namespace alp {
 			> * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceMatrix::template view_type< view::gather >::type
+			typename SourceMatrix::template view_type< view::cross_backend >::type
 		>::template change_backend< reference >::type
 		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
+
+			(void) rt;
+
+			using value_type = typename SourceMatrix::value_type;
+
 			// get the container
 			const auto &distribution = getAmf( source ).getDistribution();
-			const size_t block_id = distribution.getGlobalBlockId( tr, tc, br, bc );
-			auto buffer = internal::getBuffer( internal::getContainer( source ), block_id );
+			const size_t thread_id = distribution.getThreadId( tr, tc );
+			auto buffer = internal::getBuffer( internal::getContainer( source ), thread_id );
 
 			// make an AMF
-			// make IMFs (take into account the block size
 			// note: When making a view over a vector, the second imf must be imf::Zero
 			const auto block_dims = distribution.getBlockDimensions( tr, tc, br, bc );
-			auto amf = alp::storage::AMFFactory< reference >::FromPolynomial< structures::General, imf::Id, imf::Id >::Create(
-				imf::Id( block_dims.first), imf::Id( block_dims.second )
+
+			// Using explicit amf_type to expose its type rather than relying on auto
+			// Considerations for improved implementations:
+			//  - ideally, the type of AMF and factory should be provided by a type trait
+			//    rather than being explicitely specified. To that end, determine_amf_type
+			//    should expose the factory in addition to the AMF type. Also factory might
+			//    expose the type of AMF it produces
+			using amf_type = typename determine_amf_type< structures::General, view::CrossBackend< SourceMatrix >, imf::Id, imf::Id, reference >::type;
+			amf_type amf = alp::storage::AMFFactory< reference >::FromPolynomial< structures::General, imf::Id, imf::Id >::Create(
+				imf::Id( block_dims.first ), imf::Id( block_dims.second )
 			);
 
 			// create a reference container with the container and AMF above
 			using target_t = typename internal::new_container_type_from<
-				typename SourceMatrix::template view_type< view::gather >::type
+				typename SourceMatrix::template view_type< view::cross_backend >::type
 			>::template change_backend< reference >::type;
 
 			return target_t( buffer, amf );
