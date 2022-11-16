@@ -24,7 +24,8 @@
 #define _H_ALP_OMP_IO
 
 #include <alp/base/io.hpp>
-#include "matrix.hpp"
+#include <alp/matrix.hpp>
+#include <alp/reference/io.hpp> // to delegate to reference implementations
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -96,38 +97,58 @@ namespace alp {
 
 		const Distribution &d = internal::getAmf( C ).getDistribution();
 
+		RC rc = SUCCESS;
+
 		#pragma omp parallel for
 		for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
 			const size_t tr = d.getThreadCoords( thread ).first;
 			const size_t tc = d.getThreadCoords( thread ).second;
 			const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
 
+			RC local_rc = SUCCESS;
+
 			for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 				for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-
-					const size_t block_id = d.getGlobalBlockId( tr, tc, br, bc );
-					const size_t block_size = d.getBlockSize( tr, tc, br, bc );
 
 					#pragma omp critical
 					{
 						if( thread != config::OMP::current_thread_ID() ) {
-							std::cout << "==============ERROR==================\n";
-							std::cout << "=== thread != omp::current_t_id() ===\n";
-							std::cout << "=====================================\n";
+							std::cout << "Warning: thread != OMP::current_thread_id()\n";
 						}
 						std::cout << "Thread "
 							<< " br = " << br << " bc = " << bc
-							<< " block_id = " << block_id
-							<< " by thread " << config::OMP::current_thread_ID() << std::endl;
+//							<< " block_id = " << block_id
+							<< " by thread tr = " << tr
+							<< " tc = " << tc
+							<< " OMP::threadID = "
+							<< config::OMP::current_thread_ID() << std::endl;
 					}
 
+					// Get a reference matrix view over the block
+					auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
+
+					// Construct a reference Scalar container from the input Scalar
+					Scalar< InputType, InputStructure, reference > ref_val( *val );
+
+					// Delegate the call to the reference set implementation
+					//local_rc = local_rc ? local_rc : set( refC, ref_val );
+					local_rc = set( refC, ref_val );
+
+					if( local_rc != SUCCESS ) {
+						#pragma omp critical
+						std::cout << "Reference set returned an error " << alp::toString( local_rc ) << "\n";
+						rc = local_rc;
+					} else {
+						#pragma omp critical
+						std::cout << "Reference set was successful\n";
+					}
 				}
 			}
 		}
 
 		internal::setInitialized( C, true );
 		std::cout << "Exiting set\n";
-		return SUCCESS;
+		return rc;
 	}
 
 } // end namespace ``alp''
