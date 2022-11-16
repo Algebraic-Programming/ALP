@@ -194,6 +194,16 @@ namespace alp {
 				return GlobalCoord( 0, 0 );
 			}
 
+			/** Returns the dimensions of the thread grid */
+			std::pair< size_t, size_t > getThreadGridDims() const {
+				return { Tr, Tc };
+			}
+
+			/** Returns the thread ID corresponding to the given thread coordinates. */
+			size_t getThreadId( const size_t tr, const size_t tc ) const {
+				return tr * Tc + tc;
+			}
+
 			/** Returns the total global amount of blocks */
 			std::pair< size_t, size_t > getGlobalBlockGridDims() const {
 				return { Br, Bc };
@@ -220,16 +230,27 @@ namespace alp {
 				return global_coords.first * Bc + global_coords.second;
 			}
 
+			/**
+			 * Returns the dimensions of the block given by the block id
+			 */
+			//std::pair< size_t, size_t > getBlockDimensions( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+			//	const auto global_block_coords = getGlobalBlockCoords( tr, tc, br, bc );
+			//	const size_t block_height = ( global_block_coords.first < Br - 1 ) ?
+			//		( config::BLOCK_ROW_DIM ) :
+			//		( m - config::BLOCK_ROW_DIM * ( Br - 1 ) );
+			//	const size_t block_width = ( global_block_coords.second < Bc - 1 ) ?
+			//		( config::BLOCK_COL_DIM ) :
+			//		( n - config::BLOCK_COL_DIM * ( Bc - 1 ) );
+			//	return { block_height, block_width };
+			//}
+
 			/** Returns the dimensions of the block given by the block id */
 			std::pair< size_t, size_t > getBlockDimensions( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
-				const auto global_block_coords = getGlobalBlockCoords( tr, tc, br, bc );
-				const size_t block_height = ( global_block_coords.first < Br - 1 ) ?
-					( config::BLOCK_ROW_DIM ) :
-					( m - config::BLOCK_ROW_DIM * ( Br - 1 ) );
-				const size_t block_width = ( global_block_coords.second < Bc - 1 ) ?
-					( config::BLOCK_COL_DIM ) :
-					( n - config::BLOCK_COL_DIM * ( Bc - 1 ) );
-				return { block_height, block_width };
+				(void) tr;
+				(void) tc;
+				(void) br;
+				(void) bc;
+				return { config::BLOCK_ROW_DIM, config::BLOCK_COL_DIM };
 			}
 
 			/** Returns the size of the block defined by the thread and local block coordinates. */
