@@ -159,17 +159,22 @@ namespace alp {
 			const size_t n = ncols( B );
 			const size_t k = std::min( m, n );
 
+			auto Bsubmat = get_view( B, utils::range( 1, k ), utils::range( 0, k - 1 ) );
+			auto Bsubdiag = get_view< alp::view::diagonal >( Bsubmat );
+			rc = rc ? rc : alp::set( Bsubdiag, zero );
+
 			// get lambda
 			// calcualte eigenvalue llambda of BEndSquare
 			// which is closer to t22
-			auto BEnd2x2 = get_view( B, utils::range( k - 2, k ), utils::range( k - 2, k ) );
+			Matrix< D, structures::Square, Dense > BSquare( k, k );
+			rc = rc ? rc : alp::set( BSquare, zero );
 
-			Matrix< D, structures::Square, Dense > BEndSquare( 2, 2 );
-			rc = rc ? rc : alp::set( BEndSquare, zero );
-			auto BEnd2x2T = get_view< alp::view::transpose >( BEnd2x2 );
-			auto BEnd2x2T_star = conjugate( BEnd2x2T );
-			rc = rc ? rc : mxm( BEndSquare, BEnd2x2T_star, BEnd2x2, ring );
+			auto Bselect = get_view( B, utils::range( 0, k ), utils::range( 0, k ) );
 
+			auto BT = get_view< alp::view::transpose >( Bselect );
+			auto BT_star = conjugate( BT );
+			rc = rc ? rc : mxm( BSquare, BT_star, Bselect, ring );
+			auto BEndSquare = get_view( BSquare, utils::range( k - 2, k ), utils::range( k - 2, k ) );
 
 			auto t11 = get_view( BEndSquare, 0, utils::range( 0, 1 ) );
 			auto t12 = get_view( BEndSquare, 0, utils::range( 1, 2 ) );
@@ -179,7 +184,6 @@ namespace alp {
 				std::cerr << " mxmfailed\n";
 				return rc;
 			}
-			print_matrix( "BEnd2x2 " , BEnd2x2 );
 			print_matrix( "BEndSquare " , BEndSquare );
 			print_vector( "t11 " , t11 );
 			print_vector( "t12 " , t12 );
@@ -226,14 +230,45 @@ namespace alp {
 #endif
 
 			Vector< D > rotvec( 2 );
-			auto Brow = get_view( B, 0, utils::range( 0, 2 ) );
+			auto Brow = get_view( BSquare, 0, utils::range( 0, 2 ) );
 			rc = rc ? rc : alp::set( rotvec, Brow );
+
 			auto rotvec0 = get_view( rotvec, utils::range( 0, 1 ) );
 			rc = rc ? rc : alp::foldl( rotvec0, aa, minus );
 
 			Matrix< D, structures::Square, Dense > G( 2, 2 );
 			rc = rc ? rc : alp::set( G, zero );
 			rc = rc ? rc : Givens( G, rotvec );
+
+			for( size_t i = 0; i < k - 1; ++i ){
+
+				// B[max(i-1,0):i+2,i:i+2]=B[max(i-1,0):i+2,i:i+2].dot(G)
+				auto Bblock1 = get_view( Bselect, utils::range( ( i == 0 ? 0 : i - 1 ), i + 2 ), utils::range( i, i + 2 ) );
+				Matrix< D, structures::General, Dense > TMP1( nrows( Bblock1 ), ncols( Bblock1 ) );
+				rc = rc ? rc : alp::set( TMP1, Bblock1 );
+				rc = rc ? rc : alp::set( Bblock1, zero );
+				rc = rc ? rc : mxm( Bblock1, TMP1, G, ring );
+
+				// A1[i:i+2,i:i+3]=G.T.dot(A1[i:i+2,i:i+3])
+				auto Bblock2 = get_view( Bselect, utils::range( i, i + 2 ), utils::range( i, std::min( i + 3, k ) ) );
+				Matrix< D, structures::General, Dense > TMP2( nrows( Bblock2 ), ncols( Bblock2 ) );
+
+				auto rotvec2 = get_view( Bselect, utils::range( i, i + 2 ), i );
+				rc = rc ? rc : Givens( G, rotvec2 );
+				auto GT = get_view< alp::view::transpose >( G );
+				rc = rc ? rc : alp::set( TMP2, Bblock2 );
+				rc = rc ? rc : alp::set( Bblock2, zero );
+				rc = rc ? rc : mxm( Bblock2, GT, TMP2, ring );
+
+				if( i + 2 < k ) {
+					auto rotvec3 = get_view( Bselect, i, utils::range( i + 1, i + 3 ) );
+					rc = rc ? rc : Givens( G, rotvec3 );
+				} else {
+					rc = rc ? rc : Givens( G, rotvec2 );
+				}
+
+			}
+
 
 
 			return rc;
