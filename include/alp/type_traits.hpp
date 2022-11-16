@@ -357,6 +357,7 @@ namespace alp {
 		struct requires_allocation : std::integral_constant<
 			bool,
 			std::is_same< view::Original< void >, View >::value ||
+			std::is_same< view::CrossBackend< typename View::applied_to >, View >::value ||
 			std::is_same< view::Functor< typename View::applied_to >, View >::value
 		> {};
 
