@@ -288,7 +288,7 @@ namespace alp {
 		template< typename T >
 		typename Vector< T, omp >::BufferType &getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept {
 			assert( buffer_id < v.num_buffers );
-			return v.buffers[ buffer_id ];
+			return *( v.buffers[ buffer_id ] );
 		}
 
 	} // end namespace ``alp::internal''
