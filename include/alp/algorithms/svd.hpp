@@ -50,6 +50,7 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+			(void) minus;
 			RC rc = SUCCESS;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
@@ -143,13 +144,15 @@ namespace alp {
 			> * = nullptr
 		>
 		RC gk_svd_step(
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
-			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
 			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
+			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
+			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+			(void) U;
+			(void) V;
 			RC rc = SUCCESS;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
@@ -239,6 +242,18 @@ namespace alp {
 			Matrix< D, structures::Square, Dense > G( 2, 2 );
 			rc = rc ? rc : alp::set( G, zero );
 			rc = rc ? rc : Givens( G, rotvec );
+			auto Gdiag = get_view< alp::view::diagonal >( G );
+			auto Gstar = conjugate( G );
+			auto GT = get_view< alp::view::transpose >( G );
+
+#ifdef DEBUG
+			//
+			print_matrix( "B(in) " , Bselect );
+			print_matrix( "U(in) " , U );
+			print_matrix( "V(in) " , V );
+			print_matrix( "G(in) " , G );
+			print_matrix( "Gstar(in) " , Gstar );
+#endif
 
 			for( size_t i = 0; i < k - 1; ++i ){
 
@@ -249,16 +264,49 @@ namespace alp {
 				rc = rc ? rc : alp::set( Bblock1, zero );
 				rc = rc ? rc : mxm( Bblock1, TMP1, G, ring );
 
-				// A1[i:i+2,i:i+3]=G.T.dot(A1[i:i+2,i:i+3])
+#ifdef DEBUG
+				print_matrix( "B(0) " , Bselect );
+#endif
+
+				// update V
+				// G2=G-identity(2).astype(complex)
+				rc = rc ? rc : alp::foldl( Gdiag, one, minus );
+				// V.T[:,i:i+2]=V.T[:,i:i+2]+V.T[:,i:i+2].dot(conjugate(G2))
+				auto VT = get_view< alp::view::transpose >( V );
+				auto VTstrip = get_view< structures::General >( VT, utils::range( 0, nrows( VT ) ), utils::range( i, i + 2 ) );
+				Matrix< D, structures::General, Dense > TMPStrip1( nrows( VTstrip ), 2 );
+				rc = rc ? rc : alp::set( TMPStrip1, VTstrip );
+				rc = rc ? rc : mxm( VTstrip, TMPStrip1, Gstar, ring );
+
+#ifdef DEBUG
+				print_matrix( "Gstar(0) " , Gstar );
+				print_matrix( "TMPStrip1(0) " , TMPStrip1 );
+				print_matrix( "VTstrip(0) " , VTstrip );
+				print_matrix( "V(0) " , V );
+#endif
+
+				// B[i:i+2,i:i+3]=G.T.dot(B[i:i+2,i:i+3])
 				auto Bblock2 = get_view( Bselect, utils::range( i, i + 2 ), utils::range( i, std::min( i + 3, k ) ) );
 				Matrix< D, structures::General, Dense > TMP2( nrows( Bblock2 ), ncols( Bblock2 ) );
-
 				auto rotvec2 = get_view( Bselect, utils::range( i, i + 2 ), i );
 				rc = rc ? rc : Givens( G, rotvec2 );
-				auto GT = get_view< alp::view::transpose >( G );
 				rc = rc ? rc : alp::set( TMP2, Bblock2 );
 				rc = rc ? rc : alp::set( Bblock2, zero );
 				rc = rc ? rc : mxm( Bblock2, GT, TMP2, ring );
+
+#ifdef DEBUG
+				print_matrix( "B(1) " , Bselect );
+#endif
+
+				// update U
+				// G2=G-identity(2).astype(complex)
+				rc = rc ? rc : alp::foldl( Gdiag, one, minus );
+				// U[:,k:k+2]=U[:,k:k+2]+U[:,k:k+2].dot(conjugate(G2))
+				auto Ustrip = get_view< structures::General >( U, utils::range( 0, ncols( U ) ), utils::range( i, i + 2 ) );
+				Matrix< D, structures::General, Dense > TMPStrip2( nrows( Ustrip ), ncols( Ustrip ) );
+				rc = rc ? rc : alp::set( TMPStrip2, Ustrip );
+				rc = rc ? rc : mxm( Ustrip, TMPStrip2, Gstar, ring );
+
 
 				if( i + 2 < k ) {
 					auto rotvec3 = get_view( Bselect, i, utils::range( i + 1, i + 3 ) );
