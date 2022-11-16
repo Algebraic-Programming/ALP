@@ -461,24 +461,25 @@ namespace alp {
 			 *                     result in a hard compilation error.
 			 */
 			template<
-				typename SourceType,
+				//typename SourceType,
+				typename BufferType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< SourceType, typename View::applied_to >::value &&
+					//std::is_same< SourceType, typename View::applied_to >::value &&
 					internal::is_view_over_storage< View >::value &&
-					!internal::requires_allocation< View >::value
+					!internal::requires_allocation< View >::value &&
+					std::is_same<
+						typename base_type::amf_type,
+						typename std::remove_reference< AmfType >::type
+					>::value
 				> * = nullptr
 			>
-			Matrix( SourceType &source_matrix, AmfType &&amf ) :
+			//Matrix( SourceType &source_matrix, AmfType &&amf ) :
+			Matrix( BufferType &buffer, AmfType &&amf ) :
 				base_type(
-					getContainer( source_matrix ),
+					buffer,
 					std::forward< typename base_type::amf_type >( amf )
-				) {
-				static_assert(
-					std::is_same< typename base_type::amf_type, AmfType >::value,
-					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
-				);
-			}
+				) {}
 
 			/**
 			 * Constructor for a functor-based matrix that allocates memory.
