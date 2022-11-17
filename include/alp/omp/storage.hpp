@@ -259,6 +259,13 @@ namespace alp {
 				return dims.first * dims.second;
 			}
 
+			/** For a given block, returns its offset from the beginning of the buffer in which it is stored */
+			size_t getBlocksOffset( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+				// The offset is calculated as the sum of sizes of all previous blocks
+				const size_t block_coord_1D = br * getLocalBlockGridDims( tr, tc ).second + bc;
+				return block_coord_1D * getBlockSize( tr, tc, br, bc );
+			}
+
 			std::pair< size_t, size_t > getThreadCoords( const size_t thread_id ) const {
 				const size_t tr = thread_id / Tc;
 				const size_t tc = thread_id % Tc;
