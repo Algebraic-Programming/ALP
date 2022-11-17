@@ -123,8 +123,8 @@ namespace alp {
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
-		 * @param[out]    U orthogonal
-		 * @param[out]    V orthogonal
+		 * @param[in,out]    U orthogonal
+		 * @param[in,out]    V orthogonal
 		 * @param[in,out] H input general matrix, output bidiagonal matrix (B)
 		 * @param[in]  ring A semiring for operations
 		 * @return RC       SUCCESS if the execution was correct
@@ -175,15 +175,6 @@ namespace alp {
 				return FAILED;
 			}
 
-
-			// set U to Identity
-			auto DiagU = alp::get_view< alp::view::diagonal >( U );
-			rc = rc ? rc : alp::set( U, zero );
-			rc = rc ? rc : alp::set( DiagU, one );
-			// set V to Identity
-			auto DiagV = alp::get_view< alp::view::diagonal >( V );
-			rc = rc ? rc : alp::set( V, zero );
-			rc = rc ? rc : alp::set( DiagV, one );
 
 			//for i in range(min(n,m)):
 			for( size_t i = 0; i < std::min( n, m ); ++i ) {
