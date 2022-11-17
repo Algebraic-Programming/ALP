@@ -30,6 +30,7 @@ namespace alp {
 	namespace algorithms {
 
 
+		// for a more general purpose
 		// a more stable implementations is needed
 		template<
 			typename D = double,
@@ -146,43 +147,43 @@ namespace alp {
 			rc = rc ? rc : mxm( BSquare, BT_star, Bselect, ring );
 			auto BEndSquare = get_view( BSquare, utils::range( k - 2, k ), utils::range( k - 2, k ) );
 
+			auto tdiag = get_view< alp::view::diagonal >( BEndSquare );
 			auto t11 = get_view( BEndSquare, 0, utils::range( 0, 1 ) );
 			auto t12 = get_view( BEndSquare, 0, utils::range( 1, 2 ) );
 			auto t22 = get_view( BEndSquare, 1, utils::range( 1, 2 ) );
 
-			Vector< D > aa( 1 );
-			rc = rc ? rc : alp::set( aa, t11 );
-			rc = rc ? rc : alp::foldl( aa, t22, ring.getAdditiveOperator() );
-			rc = rc ? rc : alp::foldl( aa, alp::Scalar< D >( 2 ), divide );
+			Scalar< D > llabmda( zero );
+			rc = rc ? rc : alp::foldl( llabmda, tdiag, ring.getAdditiveMonoid() );
+			rc = rc ? rc : alp::foldl( llabmda, alp::Scalar< D >( 2 ), divide );
 
-			Vector< D > bb( 1 );
-			rc = rc ? rc : alp::set( bb, t11 );
-			rc = rc ? rc : alp::foldl( bb, t22, minus );
+			Scalar< D > bb( zero );
+			rc = rc ? rc : alp::foldl( bb, t11, ring.getAdditiveMonoid() );
+			rc = rc ? rc : alp::foldl( bb, Scalar< D >( -1 ), ring.getMultiplicativeOperator() );
+			rc = rc ? rc : alp::foldl( bb, t22, ring.getAdditiveMonoid() );
 			rc = rc ? rc : alp::foldl( bb, alp::Scalar< D >( 2 ), divide );
-			rc = rc ? rc : alp::foldl( bb, conjugate( bb ), ring.getMultiplicativeOperator() );
 
-			Vector< D > cc( 1 );
-			rc = rc ? rc : alp::set( cc, conjugate( t12 ) );
-			rc = rc ? rc : alp::foldl( cc, t12, ring.getMultiplicativeOperator() );
-			rc = rc ? rc : alp::foldl( bb, cc, ring.getAdditiveOperator() );
+			Scalar< D > cc( zero );
+			rc = rc ? rc : alp::foldl( cc, conjugate( t12 ), ring.getAdditiveMonoid() );
+			//rc = rc ? rc : alp::foldl( cc, t12, ring.getMultiplicativeMonoid() );
 
-			rc = rc ? rc : eWiseLambda(
-				[ ]( const size_t i, D &val ) {
-					(void) i;
-					val = std::sqrt( val );
-				},
-				bb
-			);
+			Vector< D > DD( 2 );
+			rc = rc ? rc : alp::set( DD, zero );
+			auto DD0 =  get_view( DD, utils::range( 0, 1 ) );
+			auto DD1 =  get_view( DD, utils::range( 1, 2 ) );
+			rc = rc ? rc : alp::foldl( DD0, bb, ring.getAdditiveOperator() );
+			rc = rc ? rc : alp::foldl( DD1, cc, ring.getAdditiveOperator() );
+			rc = rc ? rc : alp::set( bb, zero );
+			rc = rc ? rc : alp::norm2( bb, DD, ring );
 
-			alp::Scalar< D > t11scal( zero );
-			alp::Scalar< D > t22scal( zero );
+			Scalar< D > t11scal( zero );
+			Scalar< D > t22scal( zero );
 			rc = rc ? rc : alp::foldl( t11scal, t11, ring.getAdditiveMonoid() );
 			rc = rc ? rc : alp::foldl( t22scal, t22, ring.getAdditiveMonoid() );
 
 			if ( std::real( *t11scal ) > std::real( *t22scal ) ) {
-				rc = rc ? rc : alp::foldl( aa, bb, minus );
+				rc = rc ? rc : alp::foldl( llabmda, bb, minus );
 			} else {
-				rc = rc ? rc : alp::foldl( aa, bb, ring.getAdditiveOperator() );
+				rc = rc ? rc : alp::foldl( llabmda, bb, ring.getAdditiveOperator() );
 			}
 			// end of get lambda
 
@@ -191,7 +192,7 @@ namespace alp {
 			rc = rc ? rc : alp::set( rotvec, Brow );
 
 			auto rotvec0 = get_view( rotvec, utils::range( 0, 1 ) );
-			rc = rc ? rc : alp::foldl( rotvec0, aa, minus );
+			rc = rc ? rc : alp::foldl( rotvec0, llabmda, minus );
 
 			Matrix< D, structures::Square, Dense > G( 2, 2 );
 			rc = rc ? rc : alp::set( G, zero );
