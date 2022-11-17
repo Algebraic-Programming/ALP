@@ -25,7 +25,6 @@
 #endif
 
 #include <alp.hpp>
-#include <alp/algorithms/householder_bidiag.hpp>
 #include <alp/algorithms/svd.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #ifdef DEBUG
@@ -215,28 +214,14 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		print_matrix( " input matrix H ", H );
 #endif
 
-		rc = rc ? rc : set( U, zero );
 		rc = rc ? rc : set( B, H );
-		rc = rc ? rc : set( V, zero );
-		rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
-// #ifdef DEBUG
-// 		rc = rc ? rc : set( H, B );
-// 		rc = rc ? rc : set( U, zero );
-// 		rc = rc ? rc : set( V, zero );
-// 		auto Udiag = get_view< alp::view::diagonal >( U );
-// 		rc = rc ? rc : alp::set( Udiag, one );
-// 		auto Vdiag = get_view< alp::view::diagonal >( V );
-// 		rc = rc ? rc : alp::set( Vdiag, one );
-// #endif
-		rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
-
+		rc = rc ? rc : algorithms::svd( U, B, V, ring );
 
 #ifdef DEBUG
 		print_matrix( "  U(out) ", U );
 		print_matrix( "  B(out) ", B );
 		print_matrix( "  V(out) ", V );
 #endif
-
 
 		rc = check_svd_solution( H, U, B, V, ring );
 		if( rc != SUCCESS ) {
