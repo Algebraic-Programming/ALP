@@ -540,6 +540,22 @@ for BACKEND in ${BACKENDS[@]}; do
 	# head -1 ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log
 	# grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log || echo "Test FAILED"
 	# echo " "
+
+	NTEST_POTRI=100
+	echo ">>>      [x]           [ ]       Tests inverse of a random"
+	echo "                                 symmetric positive definite matrix (${NTEST_POTRI}x${NTEST_POTRI})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_${BACKEND}  -n ${NTEST_POTRI} &> ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_POTRI_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests inverse of a random"
+	echo "                                 hermitian positive definite matrix (${NTEST_POTRI_COMPLEX}x${NTEST_POTRI_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_complex_${BACKEND}  -n ${NTEST_POTRI_COMPLEX} &> ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log"
+	head -1 ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
 	
 	NTEST_GEMM=100
 	echo ">>>      [x]           [ ]       Tests Gemm on matrix (${NTEST_GEMM}x${NTEST_GEMM}x${NTEST_GEMM})."
