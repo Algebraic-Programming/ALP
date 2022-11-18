@@ -110,20 +110,6 @@ namespace alp {
 			for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 				for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
-					#pragma omp critical
-					{
-						if( thread != config::OMP::current_thread_ID() ) {
-							std::cout << "Warning: thread != OMP::current_thread_id()\n";
-						}
-						std::cout << "Thread "
-							<< " br = " << br << " bc = " << bc
-//							<< " block_id = " << block_id
-							<< " by thread tr = " << tr
-							<< " tc = " << tc
-							<< " OMP::threadID = "
-							<< config::OMP::current_thread_ID() << std::endl;
-					}
-
 					// Get a reference matrix view over the block
 					auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
 
@@ -131,23 +117,16 @@ namespace alp {
 					Scalar< InputType, InputStructure, reference > ref_val( *val );
 
 					// Delegate the call to the reference set implementation
-					//local_rc = local_rc ? local_rc : set( refC, ref_val );
-					local_rc = set( refC, ref_val );
+					local_rc = local_rc ? local_rc : set( refC, ref_val );
 
 					if( local_rc != SUCCESS ) {
-						#pragma omp critical
-						std::cout << "Reference set returned an error " << alp::toString( local_rc ) << "\n";
 						rc = local_rc;
-					} else {
-						#pragma omp critical
-						std::cout << "Reference set was successful\n";
 					}
 				}
 			}
 		}
 
 		internal::setInitialized( C, true );
-		std::cout << "Exiting set\n";
 		return rc;
 	}
 
@@ -155,5 +134,5 @@ namespace alp {
 
 #undef NO_CAST_ASSERT
 
-#endif // end ``_H_ALP_REFERENCE_IO''
+#endif // end ``_H_ALP_OMP_IO''
 
