@@ -1,11 +1,12 @@
 
-#ifndef _LINEARIZED_HALO_NDIM_SYSTEM_H_
-#define _LINEARIZED_HALO_NDIM_SYSTEM_H_
+#ifndef _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM
+#define _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM
 
 #include <cstddef>
 #include <vector>
 #include <array>
 #include <cassert>
+#include <cstddef>
 
 #include "array_vector_storage.hpp"
 #include "linearized_ndim_system.hpp"
@@ -16,96 +17,100 @@ namespace grb {
 	namespace utils {
 		namespace geometry {
 
-// only with array_vector_storage
-template< typename CoordT, std::size_t DIMS > class linearized_halo_ndim_system:
-	public linearized_ndim_system< CoordT, array_vector_storage< CoordT, DIMS > > {
-public:
+			// only with ArrayVectorStorage
+			template<
+				typename SizeType,
+				size_t DIMS
+			> class LinearizedHaloNDimSystem:
+				public LinearizedNDimSystem< SizeType, ArrayVectorStorage< SizeType, DIMS > > {
+			public:
 
-	using iterator = linearized_halo_ndim_iterator< CoordT, DIMS >;
-    using const_vector_reference = typename array_vector_storage< CoordT, DIMS >::const_vector_storage;
-	using self_t = linearized_halo_ndim_system< CoordT, DIMS >;
-	using base_t = linearized_ndim_system< CoordT, array_vector_storage< CoordT, DIMS > >;
+				using VectorType = ArrayVectorStorage< SizeType, DIMS >;
+				using ConstVectorStorageType = typename VectorType::ConstVectorStorageType;
+				using SelfType = LinearizedHaloNDimSystem< SizeType, DIMS >;
+				using BaseType = LinearizedNDimSystem< SizeType, VectorType >;
+				using Iterator = LinearizedHaloNDimIterator< SizeType, DIMS >;
 
-    linearized_halo_ndim_system( const_vector_reference sizes, CoordT halo ):
-		base_t( sizes.cbegin(), sizes.cend() ),
-        _halo( halo ) {
+				LinearizedHaloNDimSystem( ConstVectorStorageType sizes, SizeType halo ):
+					BaseType( sizes.cbegin(), sizes.cend() ),
+					_halo( halo ) {
 
-		for( CoordT __size : sizes ) {
-			if ( __size < 2 * halo + 1 ) {
-				throw std::invalid_argument(
-					std::string( "the halo (" + std::to_string(halo) +
-					std::string( ") goes beyond a system size (" ) +
-					std::to_string( __size) + std::string( ")" ) ) );
-			}
-		}
+					for( SizeType __size : sizes ) {
+						if ( __size < 2 * halo + 1 ) {
+							throw std::invalid_argument(
+								std::string( "the halo (" + std::to_string(halo) +
+								std::string( ") goes beyond a system size (" ) +
+								std::to_string( __size) + std::string( ")" ) ) );
+						}
+					}
 
-        this->_system_size = __init_halo_search< CoordT, DIMS >(
-				this->get_sizes(),
-				_halo, this->_dimension_limits );
-		assert( this->_dimension_limits.size() == DIMS );
-    }
+					this->_system_size = __init_halo_search< SizeType, DIMS >(
+							this->get_sizes(),
+							_halo, this->_dimension_limits );
+					assert( this->_dimension_limits.size() == DIMS );
+				}
 
-    linearized_halo_ndim_system() = delete;
+				LinearizedHaloNDimSystem() = delete;
 
-    linearized_halo_ndim_system( const self_t & ) = default;
+				LinearizedHaloNDimSystem( const SelfType & ) = default;
 
-    linearized_halo_ndim_system( self_t && ) = delete;
+				LinearizedHaloNDimSystem( SelfType && ) = delete;
 
-    ~linearized_halo_ndim_system() noexcept {}
+				~LinearizedHaloNDimSystem() noexcept {}
 
-    self_t & operator=( const self_t & ) = default;
+				SelfType & operator=( const SelfType & ) = default;
 
-    self_t & operator=( self_t && ) = delete;
+				SelfType & operator=( SelfType && ) = delete;
 
-	iterator begin() const {
-		return iterator( *this );
-	}
+				Iterator begin() const {
+					return Iterator( *this );
+				}
 
-	iterator end() const {
-		return iterator::make_system_end_iterator( *this );
-	}
+				Iterator end() const {
+					return Iterator::make_system_end_iterator( *this );
+				}
 
-	std::size_t halo_system_size() const {
-		return this->_system_size;
-	}
+				size_t halo_system_size() const {
+					return this->_system_size;
+				}
 
-	std::size_t base_system_size() const {
-		return this->base_t::system_size();
-	}
+				size_t base_system_size() const {
+					return this->BaseType::system_size();
+				}
 
-    std::size_t halo() const {
-        return this->_halo;
-    }
+				size_t halo() const {
+					return this->_halo;
+				}
 
-    void compute_neighbors_range(
-        const array_vector_storage< CoordT, DIMS >& system_coordinates,
-	    array_vector_storage< CoordT, DIMS >& neighbors_start,
-	    array_vector_storage< CoordT, DIMS >& neighbors_range) const noexcept {
-        __compute_neighbors_range( this->get_sizes(),
-            this->_halo,
-            system_coordinates,
-            neighbors_start,
-            neighbors_range
-        );
-    }
+				void compute_neighbors_range(
+					const VectorType &system_coordinates,
+					VectorType &neighbors_start,
+					VectorType &neighbors_range) const noexcept {
+					__compute_neighbors_range( this->get_sizes(),
+						this->_halo,
+						system_coordinates,
+						neighbors_start,
+						neighbors_range
+					);
+				}
 
-    std::size_t neighbour_linear_to_element (
-        CoordT neighbor,
-	    array_vector_storage< CoordT, DIMS > & result) const noexcept {
-        return __neighbour_to_system_coords( this->get_sizes(),
-        this->_system_size, this->_dimension_limits, this->_halo, neighbor, result );
-    }
+				size_t neighbour_linear_to_element (
+					SizeType neighbor,
+					VectorType &result) const noexcept {
+					return __neighbour_to_system_coords( this->get_sizes(),
+					this->_system_size, this->_dimension_limits, this->_halo, neighbor, result );
+				}
 
-private:
+			private:
 
-    const CoordT _halo;
-    std::vector< ndim_vector< CoordT, CoordT, generic_vector_storage< CoordT > > > _dimension_limits;
-    std::size_t _system_size;
+				const SizeType _halo;
+				std::vector< NDimVector< SizeType, SizeType, DynamicVectorStorage< SizeType > > > _dimension_limits;
+				size_t _system_size;
 
-};
+			};
 
 		} // namespace geometry
 	} // namespace utils
 } // namespace grb
 
-#endif // _LINEARIZED_HALO_NDIM_SYSTEM_H_
+#endif // _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM

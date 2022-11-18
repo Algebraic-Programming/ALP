@@ -1,67 +1,100 @@
 
-#ifndef _ARRAY_VECTOR_STORAGE_H_
-#define _ARRAY_VECTOR_STORAGE_H_
+/*
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file array_vector_storage.cpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Extension of std::array<> exposing a larger interface and the underlying
+ * 	storage structure.
+ *
+ * @date 2022-10-24
+ */
+
+#ifndef _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
+#define _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
 
 #include <array>
 #include <stdexcept>
 #include <algorithm>
+#include <cstddef>
 
 namespace grb {
 	namespace utils {
 		namespace geometry {
 
-template< typename T, std::size_t DIMS > class array_vector_storage: public std::array< T, DIMS > {
+			/**
+			 * Array with fixed size based on std::array with an interface compliant to what other classes
+			 * in the geometry namespace expect, like storage() and dimensions() methods.
+			 *
+			 * It describes a vector of dimensions #dimensions().
+			 *
+			 * @tparam DataType the data type of the vector elements
+			 * @tparam DIMS the dimensions of the vector
+			 */
+			template<
+				typename DataType,
+				size_t DIMS
+			> class ArrayVectorStorage: public std::array< DataType, DIMS > {
 
-public:
+			public:
 
-	using vector_storage = std::array< T, DIMS >&;
-	using const_vector_storage = const std::array< T, DIMS >&;
+				using VectorStorageType = std::array< DataType, DIMS >&;
+				using ConstVectorStorageType = const std::array< DataType, DIMS >&;
 
-	array_vector_storage( std::size_t _dimensions ) {
-		static_assert( DIMS > 0, "cannot allocate 0-sized array" );
-		if( _dimensions != DIMS ) {
-			throw std::invalid_argument("given dimensions must match the type dimensions");
-		}
-	}
+				ArrayVectorStorage( size_t _dimensions ) {
+					static_assert( DIMS > 0, "cannot allocate 0-sized array" );
+					if( _dimensions != DIMS ) {
+						throw std::invalid_argument("given dimensions must match the type dimensions");
+					}
+				}
 
-	array_vector_storage() = delete;
+				ArrayVectorStorage() = delete;
 
-	// only copy constructor/assignment, since there's no external storage
-	array_vector_storage( const array_vector_storage< T, DIMS >& o ) noexcept {
-		std::copy_n( o.cbegin(), DIMS, this->begin() );
-	}
+				// only copy constructor/assignment, since there's no external storage
+				ArrayVectorStorage( const ArrayVectorStorage< DataType, DIMS > &o ) noexcept {
+					std::copy_n( o.cbegin(), DIMS, this->begin() );
+				}
 
-	/*
-	array_vector_storage( array_vector_storage< T >&& o ) {
-		std::copy_n( o._storage.cbegin(), DIMS, this->_storage.cbegin() );
-	}
-	*/
+				ArrayVectorStorage( ArrayVectorStorage< DataType, DIMS > &&o ) = delete;
 
-	array_vector_storage< T, DIMS >& operator=( const array_vector_storage< T, DIMS > &original ) noexcept {
-		std::copy_n( original.begin(), DIMS, this->begin() );
-		return *this;
-	}
+				ArrayVectorStorage< DataType, DIMS >& operator=(
+					const ArrayVectorStorage< DataType, DIMS > &original
+				) noexcept {
+					std::copy_n( original.begin(), DIMS, this->begin() );
+					return *this;
+				}
 
-	//array_vector_storage< T, DIMS >& operator=( array_vector_storage< T, DIMS > &&original ) = delete;
+				ArrayVectorStorage< DataType, DIMS >& operator=( ArrayVectorStorage< DataType, DIMS > &&original ) = delete;
 
-	~array_vector_storage() {}
+				constexpr size_t dimensions() const {
+					return DIMS;
+				}
 
-	constexpr std::size_t dimensions() const {
-		return DIMS;
-	}
+				inline VectorStorageType storage() {
+					return *this;
+				}
 
-	inline vector_storage storage() {
-		return *this;
-	}
-
-	inline const_vector_storage storage() const {
-		return *this;
-	}
-
-};
+				inline ConstVectorStorageType storage() const {
+					return *this;
+				}
+			};
 
 		} // namespace geometry
 	} // namespace utils
 } // namespace grb
 
-#endif // _ARRAY_VECTOR_STORAGE_H_
+#endif // _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
