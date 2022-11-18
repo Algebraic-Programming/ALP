@@ -607,6 +607,15 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< LowerTriangular, LowerTriangular > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
+		};
+
+
 		struct UpperTrapezoidal: BaseStructure {
 
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
