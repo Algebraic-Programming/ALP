@@ -58,7 +58,7 @@ namespace alp {
 			typename MatrixType,
 			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
+		typename MatrixType::const_access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
@@ -172,6 +172,7 @@ namespace alp {
 				typedef typename AmfType::imf_c_type imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
+				typedef const T &const_access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
 
@@ -260,7 +261,7 @@ namespace alp {
 				 *
 				 * @return const reference or value of the element at given position.
 				 */
-				const access_type access( const storage_index_type &storageIndex ) const {
+				const_access_type access( const storage_index_type &storageIndex ) const {
 					return container[ storageIndex ];
 				}
 

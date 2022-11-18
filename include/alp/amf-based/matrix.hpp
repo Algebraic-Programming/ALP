@@ -89,7 +89,7 @@ namespace alp {
 			typename MatrixType,
 			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
+		typename MatrixType::const_access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
@@ -145,7 +145,7 @@ namespace alp {
 					typename MatrixType,
 					std::enable_if< is_matrix< MatrixType >::value > *
 				>
-				friend const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
+				friend typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
 				template<
 					typename MatrixType,
@@ -169,7 +169,7 @@ namespace alp {
 
 				template< typename AccessType, typename StorageIndexType >
 				const AccessType access( const StorageIndexType storageIndex ) const {
-					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
+					static_assert( std::is_same< AccessType, typename DerivedMatrix::const_access_type >::value );
 					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
 					return static_cast< const DerivedMatrix & >( *this ).access( storageIndex );
 				}
@@ -1081,10 +1081,10 @@ namespace alp {
 			typename MatrixType,
 			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
+		typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
 				const MatrixBase< typename MatrixType::base_type > &
-			>( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			>( A ).template access< typename MatrixType::const_access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Non-constant variant. **/
