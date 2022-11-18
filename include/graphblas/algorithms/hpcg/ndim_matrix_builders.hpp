@@ -291,22 +291,26 @@ namespace grb {
 			hpcg_builder< DIMS, CoordT, T> & operator=( hpcg_builder< DIMS, CoordT, T> && ) = delete;
 
 			size_t system_size() const {
+				return system.base_system_size();
+			}
+
+			size_t num_neighbors() const {
 				return system.halo_system_size();
 			}
 
 			hpcg_sys_iterator make_begin_iterator(
 				T diag,
 				T non_diag
-			) {
+			) const {
 				return hpcg_sys_iterator( system, diag, non_diag );
 			}
 
 			hpcg_sys_iterator make_end_iterator(
 				T diag,
 				T non_diag
-			) {
+			) const {
 				hpcg_sys_iterator result( system, diag, non_diag );
-				result += system_size() - 1; // do not trigger boundary checks
+				result += num_neighbors() - 1; // do not trigger boundary checks
 				++result;
 				return result;
 			}

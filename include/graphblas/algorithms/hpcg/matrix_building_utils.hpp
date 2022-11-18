@@ -38,15 +38,6 @@
 #include "ndim_matrix_builders.hpp"
 
 
-#define PAR
-
-
-
-#ifndef PAR
-#include <graphblas/algorithms/hpcg/old_ndim_matrix_builders.hpp>
-#endif
-
-
 namespace grb {
 	namespace algorithms {
 
@@ -76,20 +67,6 @@ namespace grb {
 			begin += first;
 		}
 
-#ifndef PAR
-		template< typename T > void partition_rows(
-				T rows,
-				T& first_row,
-				T& last_row
-		) {
-			const size_t num_procs{ spmd<>::nprocs() };
-			const T per_process{ ( rows + num_procs - 1 ) / num_procs }; // round up
-			first_row = std::min( per_process * static_cast< T >( spmd<>::pid() ), rows );
-			last_row = std::min( first_row + per_process, rows );
-		}
-#endif
-
-
 		/**
 		 * @brief Builds a \p DIMS -dimensional system matrix for HPCG simulation.
 		 *
@@ -107,24 +84,25 @@ namespace grb {
 		 * @param non_diag_value value outside of the diagonal
 		 * @return grb::RC the success value returned when trying to build the matrix
 		 */
-		template< std::size_t DIMS, typename T, enum grb::Backend B >
-		grb::RC build_ndims_system_matrix( grb::Matrix< T, B > & M, const std::array< std::size_t, DIMS > & sys_sizes, std::size_t halo_size, T diag_value, T non_diag_value ) {
-			static_assert( DIMS > 0, "DIMS must be > 0" );
-			size_t n { std::accumulate( sys_sizes.cbegin(), sys_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
-			if( grb::nrows( M ) != n || grb::nrows( M ) != grb::ncols( M ) ) {
-				throw std::invalid_argument( "wrong matrix dimensions: matrix should "
-											"be square"
-											" and in accordance with given system "
-											"sizes" );
-			}
-#ifdef PAR
-			using coord_t = unsigned;
-			if( n > std::numeric_limits< coord_t >::max() ) {
+		template<
+			std::size_t DIMS,
+			typename coord_t,
+			typename T,
+			enum grb::Backend B
+		> grb::RC build_ndims_system_matrix(
+			grb::Matrix< T, B > & M,
+			const grb::algorithms::hpcg_builder< DIMS, coord_t, T > & hpcg_system,
+			T diag_value,
+			T non_diag_value
+		) {
+			if( hpcg_system.system_size() > std::numeric_limits< coord_t >::max() ) {
 				throw std::domain_error( "CoordT cannot store the matrix coordinates" );
 			}
+			/*
 			std::array< coord_t, DIMS > _sys_sizes;
 			for( size_t i = 0; i < DIMS; i++ ) _sys_sizes[i] = sys_sizes[i];
 			grb::algorithms::hpcg_builder< DIMS, coord_t, T > hpcg_system( _sys_sizes, halo_size );
+			*/
 			grb::algorithms::matrix_generator_iterator< DIMS, coord_t, T > begin(
 				hpcg_system.make_begin_iterator( diag_value, non_diag_value ) );
 			grb::algorithms::matrix_generator_iterator< DIMS, coord_t, T > end(
@@ -133,12 +111,6 @@ namespace grb {
 			partition_iteration_range( hpcg_system.system_size(), begin, end );
 
 			// std::cout << "num nonzeroes " << ( end - begin ) << std::endl;
-#else
-			size_t first_row, last_row;
-			partition_rows( n, first_row, last_row );
-			grb::algorithms::old::matrix_generator_iterator< DIMS, T > begin( sys_sizes, first_row, halo_size, diag_value, non_diag_value );
-			grb::algorithms::old::matrix_generator_iterator< DIMS, T > end( sys_sizes, last_row, halo_size, diag_value, non_diag_value );
-#endif
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
 
@@ -164,8 +136,15 @@ namespace grb {
 		 *                    in \p coarser_size , otherwise an exception is thrown
 		 * @return grb::RC the success value returned when trying to build the matrix
 		 */
-		template< std::size_t DIMS, typename T, enum grb::Backend B >
-		grb::RC build_ndims_coarsener_matrix( grb::Matrix< T, B > & M, const std::array< std::size_t, DIMS > & coarser_sizes, const std::array< std::size_t, DIMS > & finer_sizes ) {
+		template<
+			std::size_t DIMS,
+			typename T,
+			enum grb::Backend B
+		> grb::RC build_ndims_coarsener_matrix(
+			grb::Matrix< T, B > & M,
+			const std::array< std::size_t, DIMS > & coarser_sizes,
+			const std::array< std::size_t, DIMS > & finer_sizes
+		) {
 			static_assert( DIMS > 0, "DIMS must be > 0" );
 			size_t const rows { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
 			for( std::size_t i { 0 }; i < coarser_sizes.size(); i++ ) {
@@ -182,7 +161,6 @@ namespace grb {
 											" with rows == <product of coarser sizes> "
 											"and cols == <product of finer sizes>" );
 			}
-#ifdef PAR
 			using coord_t = unsigned;
 			if( rows > std::numeric_limits< coord_t >::max() ) {
 				throw std::domain_error( "CoordT cannot store the row coordinates" );
@@ -201,12 +179,6 @@ namespace grb {
 				coarsener.make_end_iterator()
 			);
 			partition_iteration_range( coarsener.system_size(), begin, end );
-#else
-			size_t first_row, last_row;
-			partition_rows( rows, first_row, last_row );
-			grb::algorithms::old::coarsener_generator_iterator< DIMS, T > begin( coarser_sizes, finer_sizes, first_row );
-			grb::algorithms::old::coarsener_generator_iterator< DIMS, T > end( coarser_sizes, finer_sizes, last_row );
-#endif
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
 
@@ -274,39 +246,57 @@ namespace grb {
 			T position;
 		};
 
+		template< typename CoordT >
 		struct true_iter {
 
-			static const bool TRUE = true;
+			static const bool __TRUE = true;
 
-			using self_t = true_iter;
+			using self_t = true_iter< CoordT >;
 			using iterator_category = std::random_access_iterator_tag;
 			using value_type = bool;
 			using pointer = const bool *;
-			using reference = bool;
+			using reference = const bool&;
 			using difference_type = long;
 
-			true_iter() = default;
+			true_iter() = delete;
 
-			bool operator!=( const self_t & ) const {
-				return true;
+			true_iter( CoordT first ): index( first ) {}
+
+			true_iter( const self_t & ) = default;
+
+			self_t & operator=( const self_t & ) = default;
+
+			bool operator!=( const self_t & other ) const {
+				return this->index != other.index;
 			}
 
 			self_t & operator++() noexcept {
+				(void) index++;
 				return *this;
 			}
 
-			self_t & operator++( int ) noexcept {
-				return operator++();
+			self_t & operator+=( size_t increment ) noexcept {
+				index += increment;
+				return *this;
+			}
+
+			difference_type operator-( const self_t & other ) noexcept {
+				return static_cast< difference_type >( this->index - other.index );
 			}
 
 			pointer operator->() const {
-				return &TRUE;
+				return &__TRUE;
 			}
 
 			reference operator*() const {
-				return true;
+				return *(this->operator->());
 			}
+
+		private:
+			CoordT index;
 		};
+
+		template< typename CoordT > const bool true_iter< CoordT >::__TRUE;
 
 		/**
 		 * @brief Populates \p masks with static color mask generated for a squared matrix of size \p matrix_size .
@@ -327,7 +317,11 @@ namespace grb {
 		 * @return grb::RC the success value returned when trying to build the vector
 		 */
 		template< enum grb::Backend B >
-		grb::RC build_static_color_masks( std::vector< grb::Vector< bool, B > > & masks, std::size_t matrix_size, std::size_t colors ) {
+		grb::RC build_static_color_masks(
+			std::vector< grb::Vector< bool, B > > & masks,
+			std::size_t matrix_size,
+			std::size_t colors
+		) {
 			if( ! masks.empty() ) {
 				throw std::invalid_argument( "vector of masks is expected to be "
 											"empty" );
@@ -355,7 +349,7 @@ namespace grb {
 				color_mask_iter< unsigned > begin( colors, i );
 				color_mask_iter< unsigned > end =
 					color_mask_iter< unsigned >::build_end_iterator( matrix_size, colors, i );
-				grb::buildVectorUnique( mask, begin, end, true_iter(), true_iter(), IOMode::SEQUENTIAL );
+				grb::buildVectorUnique( mask, begin, end, true_iter< size_t >( 0 ), true_iter< size_t >( matrix_size ), IOMode::SEQUENTIAL );
 			}
 			return rc;
 		}

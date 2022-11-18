@@ -43,7 +43,10 @@ namespace grb {
 		 * @tparam IOType type of values of the vectors for intermediate results
 		 * @tparam NonzeroType type of the values stored inside the system matrix #A
 		 */
-		template< typename IOType, typename NonzeroType >
+		template<
+			typename IOType,
+			typename NonzeroType
+		>
 		struct system_data {
 
 			const std::size_t system_size; ///< size of the system, i.e. side of the #A
@@ -65,14 +68,24 @@ namespace grb {
 			 * of rows and columns of the #A matrix.
 			 */
 			system_data( std::size_t sys_size ) :
-				system_size( sys_size ), A( sys_size, sys_size ), A_diagonal( sys_size ), z( sys_size ), r( sys_size ),
-				// temp(sys_size),
-				smoother_temp( sys_size ) {}
+				system_size( sys_size ),
+				A( sys_size, sys_size ),
+				A_diagonal( sys_size ),
+				z( sys_size ),
+				r( sys_size ),
+				smoother_temp( sys_size ) { }
 
 			// for safety, disable copy semantics
 			system_data( const system_data & o ) = delete;
 
 			system_data & operator=( const system_data & ) = delete;
+
+			grb::RC zero_temp_vectors() {
+				grb::RC rc = grb::set( z, 0 );
+				rc = rc ? rc : grb::set( r, 0 );
+				rc = rc ? rc : grb::set( smoother_temp, 0 );
+				return rc;
+			}
 		};
 
 		/**
@@ -104,7 +117,10 @@ namespace grb {
 		 * As for \ref system_data, internal vectors and matrices are initialized to the proper size,
 		 * but their values are \b not initialized.
 		 */
-		template< typename IOType, typename NonzeroType >
+		template<
+			typename IOType,
+			typename NonzeroType
+		>
 		struct multi_grid_data : public system_data< IOType, NonzeroType > {
 
 			const std::size_t finer_size; ///< ssize of the finer system to coarse from;
@@ -125,7 +141,10 @@ namespace grb {
 			 * @param[in] _finer_size  size of the finer system, i.e. size of external objects \b before coarsening
 			 */
 			multi_grid_data( std::size_t coarser_size, std::size_t _finer_size ) :
-				system_data< IOType, NonzeroType >( coarser_size ), finer_size( _finer_size ), Ax_finer( finer_size ), coarsening_matrix( coarser_size, finer_size ) {
+				system_data< IOType, NonzeroType >( coarser_size ),
+				finer_size( _finer_size ),
+				Ax_finer( finer_size ),
+				coarsening_matrix( coarser_size, finer_size ) {
 				coarser_level = nullptr;
 			}
 
@@ -136,6 +155,12 @@ namespace grb {
 				if( coarser_level != nullptr ) {
 					delete coarser_level;
 				}
+			}
+
+			grb::RC zero_temp_vectors() {
+				grb::RC rc = this->system_data< IOType, NonzeroType >::zero_temp_vectors();
+				rc = rc ? rc : grb::set( Ax_finer, 0 );
+				return rc;
 			}
 		};
 
@@ -184,6 +209,13 @@ namespace grb {
 				if( coarser_level != nullptr ) {
 					delete coarser_level;
 				}
+			}
+
+			grb::RC zero_temp_vectors() {
+				grb::RC rc = this->system_data< IOType, NonzeroType >::zero_temp_vectors();
+				rc = rc ? rc : grb::set( u, 0 );
+				rc = rc ? rc : grb::set( p, 0 );
+				return rc;
 			}
 		};
 

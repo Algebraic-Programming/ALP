@@ -202,6 +202,13 @@ namespace grb {
 			using array_t = typename row_generator< DIMS >::array_t;
 			using value_type = std::pair< std::pair< row_coordinate_type, column_coordinate_type >, T >;
 
+			using RowIndexType = typename row_generator< DIMS >::row_coordinate_type;
+			using ColumnIndexType = typename row_generator< DIMS >::row_coordinate_type;
+			using iterator_category = std::forward_iterator_tag;
+			using pointer = const value_type;
+			using reference = const value_type&;
+			using difference_type = long;
+
 			// halo may in future become a DIM-size array to iterate in arbitrary shapes
 			const row_coordinate_type halo;              ///< number of points per dimension to iterate around
 			const nonzero_value_type diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
@@ -417,6 +424,13 @@ namespace grb {
 			using nonzero_value_type = T;
 			using array_t = typename row_generator< DIMS >::array_t;
 			using value_type = std::pair< std::pair< row_coordinate_type, column_coordinate_type >, T >;
+
+			using RowIndexType = typename row_generator< DIMS >::row_coordinate_type;
+			using ColumnIndexType = typename row_generator< DIMS >::row_coordinate_type;
+			using iterator_category = std::forward_iterator_tag;
+			using pointer = const value_type;
+			using reference = const value_type&;
+			using difference_type = long;
 
 			// the sizes to project from
 			const array_t finer_sizes; ///< the size of the finer system (columns)

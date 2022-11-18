@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
+#include <type_traits>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/Timer.hpp>
@@ -66,15 +67,86 @@ namespace grb {
 		 */
 		template< std::size_t DIMS, typename T >
 		struct hpcg_system_params {
-			const std::array< std::size_t, DIMS > & physical_sys_sizes;
-			const std::size_t halo_size;
-			const std::size_t num_colors;
-			const T diag_value;
-			const T non_diag_value;
-			const std::size_t min_phys_size;
-			const std::size_t max_levels;
-			const std::size_t coarsening_step;
+			std::array< std::size_t, DIMS > physical_sys_sizes;
+			std::size_t halo_size;
+			std::size_t num_colors;
+			T diag_value;
+			T non_diag_value;
+			std::size_t min_phys_size;
+			std::size_t max_levels;
+			std::size_t coarsening_step;
 		};
+
+		// SystemData must have a zero_temp_vectors()
+		template< std::size_t DIMS, typename IOType, typename NonzeroType, typename SystemData >
+		grb::RC build_base_system(
+			typename std::enable_if<
+				std::is_base_of< system_data< IOType, NonzeroType >, SystemData >::value,
+			SystemData& >::type system,
+			size_t system_size,
+			const std::array< std::size_t, DIMS > & physical_sys_sizes,
+			size_t halo_size,
+			NonzeroType diag_value,
+			NonzeroType non_diag_value,
+			size_t num_colors,
+			std::array< double, 3 > & times
+		) {
+
+			grb::RC rc { grb::SUCCESS };
+			const size_t pid { spmd<>::pid() };
+			grb::utils::Timer timer;
+			static const char * const log_prefix = "  -- ";
+
+			using coord_t = unsigned;
+			static_assert( DIMS > 0, "DIMS must be > 0" );
+			size_t n { std::accumulate( physical_sys_sizes.cbegin(), physical_sys_sizes.cend(),
+				1UL, std::multiplies< size_t >() ) };
+			if( n > std::numeric_limits< coord_t >::max() ) {
+				throw std::domain_error( "CoordT cannot store the matrix coordinates" );
+			}
+			std::array< coord_t, DIMS > sys_sizes;
+			for( size_t i = 0; i < DIMS; i++ ) sys_sizes[i] = physical_sys_sizes[i];
+			grb::algorithms::hpcg_builder< DIMS, coord_t, NonzeroType > system_generator( sys_sizes, halo_size );
+
+			MASTER_PRINT( pid, log_prefix << "generating system matrix..." );
+			timer.reset();
+			rc = build_ndims_system_matrix< DIMS, coord_t, NonzeroType >(
+				system.A,
+				system_generator,
+				diag_value, non_diag_value
+			);
+			if( rc != grb::SUCCESS ) {
+				return rc;
+			}
+			times[ 0 ] = timer.time();
+			MASTER_PRINT( pid, " time (ms) " << times[ 0 ] << std::endl );
+
+			// set values of vectors
+			MASTER_PRINT( pid, log_prefix << "populating vectors..." );
+			timer.reset();
+			rc = set( system.A_diagonal, diag_value );
+			if( rc != grb::SUCCESS ) {
+				return rc;
+			}
+			rc = system.zero_temp_vectors();
+			if( rc != grb::SUCCESS ) {
+				return rc;
+			}
+			times[ 1 ] = timer.time();
+			MASTER_PRINT( pid, " time (ms) " << times[ 1 ] << std::endl );
+
+
+			MASTER_PRINT( pid, log_prefix << "generating color masks..." );
+			timer.reset();
+			rc = build_static_color_masks( system.color_masks, system_size, num_colors );
+			if( rc != grb::SUCCESS ) {
+				return rc;
+			}
+			times[ 2 ] = timer.time();
+			MASTER_PRINT( pid, " time (ms) " << times[ 2 ] << std::endl );
+
+			return rc;
+		}
 
 		/**
 		 * @brief Generates an entire HPCG problem according to the parameters in \p params , storing it in \p holder .
@@ -87,9 +159,13 @@ namespace grb {
 		 * otherwise the first unsuccessful return value
 		 */
 		template< std::size_t DIMS, typename T = double >
-		grb::RC build_hpcg_system( std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder, hpcg_system_params< DIMS, T > & params ) {
+		grb::RC build_hpcg_system(
+			std::unique_ptr< grb::algorithms::hpcg_data< T, T, T > > & holder,
+			const hpcg_system_params< DIMS, T > & params
+		) {
 			// n is the system matrix size
-			const std::size_t n { std::accumulate( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
+			const std::size_t n { std::accumulate( params.physical_sys_sizes.cbegin(),
+				params.physical_sys_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 
 			grb::algorithms::hpcg_data< T, T, T > * data { new grb::algorithms::hpcg_data< T, T, T >( n ) };
 
@@ -100,30 +176,21 @@ namespace grb {
 			grb::RC rc { grb::SUCCESS };
 			const size_t pid { spmd<>::pid() };
 			grb::utils::Timer timer;
-			MASTER_PRINT( pid, "\n-- generating system matrix...\n" << std::endl );
-			grb::spmd<>::barrier();
-			timer.reset();
-			rc = build_ndims_system_matrix< DIMS, T >( data->A, params.physical_sys_sizes, params.halo_size, params.diag_value, params.non_diag_value );
-			MASTER_PRINT( pid, "\n-- generating system matrix... time (ms) " << timer.time() << std::endl );
 
+			std::array< double, 3 > times;
+			MASTER_PRINT( pid, "\n-- main system" << std::endl );
+			rc = build_base_system< DIMS, T, T, grb::algorithms::hpcg_data< T, T, T > >( *data, n, params.physical_sys_sizes, params.halo_size,
+				params.diag_value, params.non_diag_value, params.num_colors, times );
 			if( rc != grb::SUCCESS ) {
-				MASTER_PRINT( pid, "Failure to generate the initial system ("
-					<< toString( rc ) << ") of size " << n << "\n" );
+				MASTER_PRINT( pid, " error: " << toString( rc ) );
 				return rc;
 			}
-
-			// set values of vectors
-			MASTER_PRINT( pid, "-- populating vectors..." );
-			timer.reset();
-			set( data->A_diagonal, params.diag_value );
-			data->zero_temp_vectors();
-			MASTER_PRINT( pid, " time (ms) " << timer.time() << std::endl );
-
-
-			MASTER_PRINT( pid, "-- generating color masks...\n" << std::endl );
-			timer.reset();
-			build_static_color_masks( data->color_masks, n, params.num_colors );
-			MASTER_PRINT( pid, "\n\n-- generating color masks... time (ms) " << timer.time() << std::endl );
+			MASTER_PRINT( pid, "-- main system generation time (ms) "
+				"[system matrix,vectors,color masks]:"
+				<< times[ 0 ]
+				<< "," << times[ 1 ]
+				<< "," << times[ 2 ] << std::endl;
+			);
 
 			// initialize coarsening with additional pointers and dimensions copies to iterate and divide
 			grb::algorithms::multi_grid_data< T, T > ** coarser = &data->coarser_level;
@@ -142,47 +209,32 @@ namespace grb {
 				std::size_t coarser_size { std::accumulate( coarser_sizes.cbegin(), coarser_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 				std::size_t previous_size { std::accumulate( previous_sizes.cbegin(), previous_sizes.cend(), 1UL, std::multiplies< std::size_t >() ) };
 				// build data structures for new level
-				grb::algorithms::multi_grid_data< double, double > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
+				grb::algorithms::multi_grid_data< T, T > * new_coarser { new grb::algorithms::multi_grid_data< double, double >( coarser_size, previous_size ) };
 				// install coarser level immediately to cleanup in case of build error
 				*coarser = new_coarser;
 
-				MASTER_PRINT( pid, "-- level " << coarsening_level << "\n\tgenerating coarsening matrix...\n" );
+				MASTER_PRINT( pid, "-- level " << coarsening_level << "\n  -- generating coarsening matrix...\n" );
 				timer.reset();
 				// initialize coarsener matrix, system matrix and diagonal vector for the coarser level
 				rc = build_ndims_coarsener_matrix< DIMS >( new_coarser->coarsening_matrix, coarser_sizes, previous_sizes );
 				if( rc != grb::SUCCESS ) {
-					MASTER_PRINT( pid, "Failure to generate coarsening matrix (" << toString( rc ) << ").\n" );
+					MASTER_PRINT( pid, " error: " << toString( rc ) );
 					return rc;
 				}
 				double coarsener_gen_time{ timer.time() };
 
-				MASTER_PRINT( pid, "\tgenerating system matrix...\n" );
-				timer.reset();
-				rc = build_ndims_system_matrix< DIMS, T >( new_coarser->A, coarser_sizes, params.halo_size, params.diag_value, params.non_diag_value );
+				rc = build_base_system< DIMS, T, T, grb::algorithms::multi_grid_data< T, T > >( *new_coarser, coarser_size, coarser_sizes, params.halo_size,
+					params.diag_value, params.non_diag_value, params.num_colors, times );
 				if( rc != grb::SUCCESS ) {
-					MASTER_PRINT( pid, "Failure to generate system matrix (" << toString( rc )
-						<< ") for size " << coarser_size << "\n" );
+					MASTER_PRINT( pid, " error: " << toString( rc ) );
 					return rc;
 				}
-				double coarse_sys_gen_time{ timer.time() };
-
-				MASTER_PRINT( pid, "\tpopulating vectors...\n" );
-				timer.reset();
-				set( new_coarser->A_diagonal, params.diag_value );
-				new_coarser->zero_temp_vectors();
-				double coarser_vec_gen_time{ timer.time() };
-
-				// build color masks for coarser level (same masks, but with coarser system size)
-				MASTER_PRINT( pid, "\tgenerating color masks..." << std::endl );
-				timer.reset();
-				rc = build_static_color_masks( new_coarser->color_masks, coarser_size, params.num_colors );
-				double coarse_masks_sys_time{ timer.time() };
-				MASTER_PRINT( pid, "-- level " << coarsening_level << "... time (ms) for "
-					"[coarsening matrix,coarse system matrix,coarser vectors,color masks]:"
+				MASTER_PRINT( pid, "-- level generation time (ms) "
+					"[level,coarsening matrix,system matrix,vectors,color masks]:"
 					<< coarsening_level << "," << coarsener_gen_time
-					<< "," << coarse_sys_gen_time
-					<< "," << coarser_vec_gen_time
-					<< "," << coarse_masks_sys_time << std::endl;
+					<< "," << times[ 0 ]
+					<< "," << times[ 1 ]
+					<< "," << times[ 2 ] << std::endl;
 				);
 
 				// prepare for new iteration
