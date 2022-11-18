@@ -163,13 +163,6 @@ namespace alp {
 			>
 			friend const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
-			protected:
-
-				struct StorageIndex {
-					size_t buffer_id;
-					size_t local_index;
-				};
-
 			public:
 
 				/** Expose static properties */
@@ -180,8 +173,9 @@ namespace alp {
 				typedef typename AmfType::imf_c_type imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
+				typedef const T &const_access_type;
 				/** Type of the index used to access the physical storage */
-				typedef StorageIndex storage_index_type;
+				typedef typename AmfType::storage_index_type storage_index_type;
 
 			protected:
 				typedef StorageBasedMatrix< T, AmfType, requires_allocation, omp > self_type;
@@ -246,12 +240,12 @@ namespace alp {
 				 *
 				 * @return const reference or value of the element at given position.
 				 */
-				const access_type access( const storage_index_type &storageIndex ) const {
-					return container[ storageIndex ];
+				const_access_type access( const storage_index_type &storageIndex ) const {
+					return getBuffer( container, storageIndex.buffer_id )[ storageIndex.offset ];
 				}
 
 				access_type access( const storage_index_type &storageIndex ) {
-					return container[ storageIndex ];
+					return getBuffer( container, storageIndex.buffer_id )[ storageIndex.offset ];
 				}
 
 				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {

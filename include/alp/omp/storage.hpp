@@ -173,23 +173,37 @@ namespace alp {
 				}
 			}
 
-			LocalBlockCoord mapBlockGlobalToLocal( const GlobalBlockCoord &g ) {
+			LocalBlockCoord mapBlockGlobalToLocal( const GlobalBlockCoord &g ) const {
 				(void) g;
 				return LocalBlockCoord( 0, 0, 0, 0, 0 );
 			}
 
-			GlobalBlockCoord mapBlockLocalToGlobal( const LocalBlockCoord &l ) {
+			GlobalBlockCoord mapBlockLocalToGlobal( const LocalBlockCoord &l ) const {
 				const size_t block_id_r = l.br * Tr + l.tr;
 				const size_t block_id_c = l.bc * Tc + l.tc;
 				return GlobalBlockCoord( block_id_r, block_id_c );
 			}
 
-			LocalCoord mapGlobalToLocal( const GlobalCoord &g ) {
-				(void) g;
-				return LocalCoord( 0, 0, 0, 0, 0, 0, 0 );
+			LocalCoord mapGlobalToLocal( const GlobalCoord &g ) const {
+				const size_t global_br = g.i / config::BLOCK_ROW_DIM;
+				const size_t local_br = global_br / Tr;
+				const size_t tr = global_br % Tr;
+				const size_t local_i = g.i % config::BLOCK_ROW_DIM;
+
+				const size_t global_bc = g.j / config::BLOCK_COL_DIM;
+				const size_t local_bc = global_bc / Tc;
+				const size_t tc = global_bc % Tc;
+				const size_t local_j = g.j % config::BLOCK_COL_DIM;
+
+				return LocalCoord(
+					tr, tc,
+					0, // Rt
+					local_br, local_bc,
+					local_i, local_j
+				);
 			}
 
-			GlobalCoord mapGlobalToLocal( const LocalCoord &l ) {
+			GlobalCoord mapLocalToGlobal( const LocalCoord &l ) const {
 				(void) l;
 				return GlobalCoord( 0, 0 );
 			}
@@ -449,9 +463,18 @@ namespace alp {
 				 *
 				 */
 				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
-					(void)s;
-					(void)P;
-					return storage_index_type( getBlockId( i, j, s, P ), getOffset( i, j, s, P ) );
+					(void) s;
+					(void) P;
+					const typename Distribution::GlobalCoord global( imf_r.map( i ), imf_c.map( j ) );
+					const typename Distribution::LocalCoord local = distribution.mapGlobalToLocal( global );
+
+					const size_t thread = local.tr * distribution.getThreadGridDims().second + local.tc;
+
+					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.tr, local.tc ).second + local.bc;
+					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
+					const size_t offset = local_block * distribution.getBlockSize() + local_element;
+
+					return storage_index_type( thread, offset );
 				}
 
 				/**

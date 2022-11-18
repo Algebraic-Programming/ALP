@@ -60,6 +60,9 @@ namespace alp {
 		void setInitialized( Vector< T, omp > & v, const bool initialized ) noexcept;
 
 		template< typename T >
+		const T *getBuffer( const Vector< T, omp > &v, const size_t buffer_id ) noexcept;
+
+		template< typename T >
 		T *getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept;
 
 		/**
@@ -87,6 +90,7 @@ namespace alp {
 			friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
 
 			friend T *getBuffer< T >( Vector< T, omp > &, const size_t buffer_id ) noexcept;
+			friend const T *getBuffer< T >( const Vector< T, omp > &, const size_t buffer_id ) noexcept;
 
 			private:
 
@@ -269,6 +273,12 @@ namespace alp {
 		template< typename T >
 		void setInitialized( Vector< T, omp > & v, bool initialized ) noexcept {
 			v.initialized = initialized;
+		}
+
+		template< typename T >
+		const T *getBuffer( const Vector< T, omp > &v, const size_t buffer_id ) noexcept {
+			assert( buffer_id < v.num_buffers );
+			return v.buffers[ buffer_id ];
 		}
 
 		template< typename T >
