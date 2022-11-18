@@ -66,8 +66,8 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
 
 
 struct inpdata {
-	std::string fname="";
-	size_t N=0;
+	std::string fname = "";
+	size_t N = 0;
 };
 
 

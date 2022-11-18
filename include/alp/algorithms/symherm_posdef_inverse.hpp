@@ -63,9 +63,7 @@ namespace alp {
 			const alp::Scalar< D > zero( ring.template getZero< D >() );
 			const alp::Scalar< D > one( ring.template getOne< D >() );
 
-			if(
-				( nrows( Hinv ) != nrows( H ) )
-			) {
+			if( nrows( Hinv ) != nrows( H ) ) {
 				std::cerr << "Incompatible sizes in symherm_posdef_inverse.\n";
 				return FAILED;
 			}
@@ -78,7 +76,7 @@ namespace alp {
 
 			rc = rc ? rc : algorithms::cholesky_uptr( U, H, ring );
 #ifdef DEBUG
-			print_matrix( std::string( "  U " ), U );
+			print_matrix( "  U ", U );
 #endif
 			// H = U^H U
 			// H^-1 = U^-1 U^H-1
@@ -94,14 +92,14 @@ namespace alp {
 				rc = rc ? rc : alp::algorithms::forwardsubstitution( UT_submatview, x, ring );
 			}
 #ifdef DEBUG
-			print_matrix( std::string( "  Uinv  " ), Uinv );
+			print_matrix( "  Uinv  ", Uinv );
 #endif
 			rc = rc ? rc : alp::set( Hinv, zero );
 			// conjugate(linv.T).dot(linv)
 			auto UinvTvstar = conjugate( UinvT );
 			rc = rc ? rc : alp::mxm( Hinv, Uinv, UinvTvstar, ring );
 #ifdef DEBUG
-			print_matrix( std::string( "  Hinv  " ), Hinv );
+			print_matrix( "  Hinv  ", Hinv );
 #endif
 			return rc;
 		}
