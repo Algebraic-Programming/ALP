@@ -1,6 +1,6 @@
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_NDIM_VECTOR
-#define _H_GRB_ALGORITHMS_GEOMETRY_NDIM_VECTOR
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
+#define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
 
 #include <utility>
 #include <vector>
@@ -12,7 +12,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			/**
 			 * Maps an N-dimensional vector to an array of data.
@@ -37,7 +37,6 @@ namespace grb {
 				typename SizeType,
 				typename InternalVectorType
 			> class NDimVector {
-
 			public:
 				static_assert( std::is_default_constructible< DataType >::value,
 					"the stored type is not default constructible" );
@@ -133,8 +132,8 @@ namespace grb {
 				}
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_NDIM_VECTOR
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR

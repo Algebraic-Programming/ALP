@@ -37,14 +37,73 @@
 #include <graphblas.hpp>
 #include <graphblas/utils/iterators/partition_range.hpp>
 
-#include "ndim_matrix_builders.hpp"
-
+#include "system_builder.hpp"
+#include "coarsener_builder.hpp"
 #include "coloring.hpp"
 
 namespace grb {
 	namespace algorithms {
 
-		template< typename CoordType > void split_rows_by_color(
+		/**
+		 * @brief Container of the parameter for HPCG simulation generation: physical system characteristics and
+		 * coarsening information.
+		 *
+		 * @tparam DIMS dimensions of the physical system
+		 * @tparam T type of matrix values
+		 */
+		template<
+			size_t DIMS,
+			typename NonzeroType
+		> struct hpcg_system_params {
+			std::array< size_t, DIMS > physical_sys_sizes;
+			size_t halo_size;
+			NonzeroType diag_value;
+			NonzeroType non_diag_value;
+			size_t min_phys_size;
+			size_t max_levels;
+			size_t coarsening_step;
+		};
+
+		template<
+			size_t DIMS,
+			typename CoordType,
+			typename NonzeroType
+		> void hpcg_build_multigrid_generators(
+			const hpcg_system_params< DIMS, NonzeroType > &params,
+			std::vector< grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > > &mg_generators
+		) {
+			static_assert( DIMS > 0, "DIMS must be > 0" );
+
+			size_t const current_size{ std::accumulate( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), 1UL,
+				std::multiplies< size_t >() ) };
+			if( current_size > std::numeric_limits< CoordType >::max() ) {
+				throw std::domain_error( "CoordT cannot store the matrix coordinates" );
+			}
+			size_t min_physical_size { *std::min_element( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend() ) };
+			if( min_physical_size < params.min_phys_size ) {
+				throw std::domain_error( "the initial system is too small" );
+			}
+
+			std::array< CoordType, DIMS > coord_sizes;
+			// type-translate coordinates
+			std::copy( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), coord_sizes.begin() );
+
+			// generate hierarchical coarseners
+			for( size_t coarsening_level = 0UL;
+				min_physical_size >= params.min_phys_size && coarsening_level <= params.max_levels;
+				coarsening_level++ ) {
+
+				// build generator
+				mg_generators.emplace_back( coord_sizes, params.halo_size, params.diag_value, params.non_diag_value );
+
+				// prepare for new iteration
+				min_physical_size /= params.coarsening_step;
+				std::for_each( coord_sizes.begin(), coord_sizes.end(),
+					[ &params ]( CoordType &v ){ v /= params.coarsening_step; });
+			}
+		}
+
+		template< typename CoordType > void hpcg_split_rows_by_color(
 			const std::vector< CoordType > & row_colors,
 			size_t num_colors,
 			std::vector< std::vector< CoordType > > & per_color_rows
@@ -57,11 +116,11 @@ namespace grb {
 
 		template <
 			size_t DIMS,
-			typename coord_t,
+			typename CoordType,
 			typename NonzeroType,
 			enum grb::Backend B
-		> grb::RC populate_system_matrix(
-			const grb::algorithms::HPCGBuilder< DIMS, coord_t, NonzeroType > &system_generator,
+		> grb::RC hpcg_populate_system_matrix(
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &system_generator,
 			grb::Matrix< NonzeroType, B > &M
 		) {
 			const size_t pid { spmd<>::pid() };
@@ -69,30 +128,29 @@ namespace grb {
 			if( pid == 0) {
 				std::cout << "- generating system matrix...";
 			}
-			typename grb::algorithms::HPCGBuilder< DIMS, coord_t, NonzeroType >::Iterator begin(
+			typename grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType >::Iterator begin(
 				system_generator.make_begin_iterator() );
-			typename grb::algorithms::HPCGBuilder< DIMS, coord_t, NonzeroType >::Iterator end(
+			typename grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType >::Iterator end(
 				system_generator.make_end_iterator()
 			);
 			grb::utils::partition_iteration_range_on_procs( system_generator.num_neighbors(), begin, end );
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
 
-
 		template<
-			typename coord_t,
 			size_t DIMS,
+			typename CoordType,
 			typename IOType,
 			typename NonzeroType
-		> grb::RC populate_coarsener(
-			const grb::algorithms::HPCGBuilder< DIMS, coord_t, NonzeroType > &finer_system_generator,
-			const grb::algorithms::HPCGBuilder< DIMS, coord_t, NonzeroType > &coarser_system_generator,
+		> grb::RC hpcg_populate_coarsener(
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &finer_system_generator,
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &coarser_system_generator,
 			coarsening_data< IOType, NonzeroType > &coarsener
 		) {
 			static_assert( DIMS > 0, "DIMS must be > 0" );
 
-			const std::array< coord_t, DIMS > &finer_sizes = finer_system_generator.get_generator().get_sizes();
-			const std::array< coord_t, DIMS > &coarser_sizes = coarser_system_generator.get_generator().get_sizes();
+			const std::array< CoordType, DIMS > &finer_sizes = finer_system_generator.get_generator().get_sizes();
+			const std::array< CoordType, DIMS > &coarser_sizes = coarser_system_generator.get_generator().get_sizes();
 			const size_t finer_size = finer_system_generator.system_size();
 			const size_t coarser_size = coarser_system_generator.system_size();
 
@@ -105,21 +163,15 @@ namespace grb {
 
 			assert( finer_sizes.size() == coarser_sizes.size() );
 
-			for( size_t i { 0 }; i < coarser_sizes.size(); i++ ) {
-				std::ldiv_t ratio = std::ldiv( finer_sizes[ i ], coarser_sizes[ i ] );
-				if( ratio.quot < 2 || ratio.rem != 0 ) {
-					throw std::invalid_argument( "finer sizes should be a multiple of coarser sizes" );
-				}
-			}
 			grb::Matrix< NonzeroType > &M = coarsener.coarsening_matrix;
 			if( grb::nrows( M ) != rows || grb::ncols( M ) != cols ) {
 				throw std::invalid_argument( "wrong matrix dimensions: matrix should be rectangular"
 											" with rows == <coarser size> and cols == <finer size>" );
 			}
 
-			grb::algorithms::hpcg_coarsener_builder< DIMS, coord_t, NonzeroType > coarsener_builder( coarser_sizes, finer_sizes );
-			grb::algorithms::coarsener_generator_iterator< DIMS, coord_t, NonzeroType > begin( coarsener_builder.make_begin_iterator() );
-			grb::algorithms::coarsener_generator_iterator< DIMS, coord_t, NonzeroType > end( coarsener_builder.make_end_iterator() );
+			grb::algorithms::HPCGCoarsenerBuilder< DIMS, CoordType, NonzeroType > coarsener_builder( finer_sizes, coarser_sizes );
+			grb::algorithms::HPCGCoarsenerGeneratorIterator< DIMS, CoordType, NonzeroType > begin( coarsener_builder.make_begin_iterator() );
+			grb::algorithms::HPCGCoarsenerGeneratorIterator< DIMS, CoordType, NonzeroType > end( coarsener_builder.make_end_iterator() );
 			grb::utils::partition_iteration_range_on_procs( coarsener_builder.system_size(), begin, end );
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
@@ -196,7 +248,7 @@ namespace grb {
 			 * @return grb::RC the success value returned when trying to build the vector
 			 */
 			template< enum grb::Backend B >
-			grb::RC build_static_color_masks(
+			grb::RC hpcg_build_static_color_masks(
 				size_t matrix_size,
 				const std::vector< std::vector< size_t > > &per_color_rows,
 				std::vector< grb::Vector< bool, B > > & masks
@@ -206,7 +258,7 @@ namespace grb {
 				}
 				for( size_t i = 0; i < per_color_rows.size(); i++ ) {
 					const std::vector< size_t > & rows = per_color_rows[ i ];
-					/*
+#ifdef _DEBUG
 					{
 						std::cout << "\ncolor " << i << std::endl;
 						for( size_t row : rows ) {
@@ -214,7 +266,7 @@ namespace grb {
 						}
 						std::cout << std::endl;
 					}
-					*/
+#endif
 					masks.emplace_back( matrix_size );
 					grb::Vector< bool > & output_mask = masks.back();
 					std::vector< size_t >::const_iterator begin = rows.cbegin();
@@ -227,7 +279,7 @@ namespace grb {
 							<< toString( rc ) << std::endl;
 						return rc;
 					}
-					/*
+#ifdef _DEBUG
 					{
 						std::cout << "mask color " << i << std::endl;
 						size_t count = 0;
@@ -238,7 +290,7 @@ namespace grb {
 						}
 						std::cout << std::endl;
 					}
-					*/
+#endif
 				}
 				return grb::SUCCESS;
 			}
@@ -246,12 +298,12 @@ namespace grb {
 		} // namespace internal
 
 		template<
-			typename coord_t,
 			size_t DIMS,
-			typename T
-		> grb::RC populate_smoothing_data(
-			const grb::algorithms::HPCGBuilder< DIMS, coord_t, T > &system_generator,
-			smoother_data< T > &smoothing_info
+			typename CoordType,
+			typename NonzeroType
+		> grb::RC hpcg_populate_smoothing_data(
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &system_generator,
+			smoother_data< NonzeroType > &smoothing_info
 		) {
 			const size_t pid { spmd<>::pid() };
 
@@ -266,10 +318,10 @@ namespace grb {
 			if( pid == 0 ) {
 				std::cout << "- running coloring heuristics...";
 			}
-			std::vector< coord_t > colors, color_counters;
-			color_matrix_greedy( system_generator.get_generator(), colors, color_counters );
-			std::vector< std::vector< coord_t > > per_color_rows;
-			split_rows_by_color( colors, color_counters.size(), per_color_rows );
+			std::vector< CoordType > colors, color_counters;
+			hpcg_greedy_color_ndim_system( system_generator.get_generator(), colors, color_counters );
+			std::vector< std::vector< CoordType > > per_color_rows;
+			hpcg_split_rows_by_color( colors, color_counters.size(), per_color_rows );
 			if( rc != grb::SUCCESS ) {
 				if( pid == 0 ) {
 					std::cout << "error: " << __LINE__ << std::endl;
@@ -280,65 +332,8 @@ namespace grb {
 				std::cout <<"- found " << color_counters.size() << " colors,"
 					<< " generating color masks...";
 			}
-			return internal::build_static_color_masks( system_generator.system_size(),
+			return internal::hpcg_build_static_color_masks( system_generator.system_size(),
 				per_color_rows, smoothing_info.color_masks );
-		}
-
-		/**
-		 * @brief Container of the parameter for HPCG simulation generation: physical system characteristics and
-		 * coarsening information.
-		 *
-		 * @tparam DIMS dimensions of the physical system
-		 * @tparam T type of matrix values
-		 */
-		template< size_t DIMS, typename T >
-		struct hpcg_system_params {
-			std::array< size_t, DIMS > physical_sys_sizes;
-			size_t halo_size;
-			T diag_value;
-			T non_diag_value;
-			size_t min_phys_size;
-			size_t max_levels;
-			size_t coarsening_step;
-		};
-
-		template<
-			size_t DIMS,
-			typename coord_t,
-			typename T
-		> void build_hpcg_multigrid_generators(
-			const hpcg_system_params< DIMS, T > &params,
-			std::vector< grb::algorithms::HPCGBuilder< DIMS, coord_t, T > > &mg_generators
-		) {
-			static_assert( DIMS > 0, "DIMS must be > 0" );
-
-			size_t const current_size{ std::accumulate( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), 1UL,
-				std::multiplies< size_t >() ) };
-			if( current_size > std::numeric_limits< coord_t >::max() ) {
-				throw std::domain_error( "CoordT cannot store the matrix coordinates" );
-			}
-			size_t min_physical_size { *std::min_element( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend() ) };
-			if( min_physical_size < params.min_phys_size ) {
-				throw std::domain_error( "the initial system is too small" );
-			}
-
-			std::array< coord_t, DIMS > coord_sizes;
-			// type-translate coordinates
-			std::copy( params.physical_sys_sizes.cbegin(), params.physical_sys_sizes.cend(), coord_sizes.begin() );
-
-			// generate linked list of hierarchical coarseners
-			for( size_t coarsening_level = 0UL;
-				min_physical_size >= params.min_phys_size && coarsening_level <= params.max_levels;
-				coarsening_level++ ) {
-
-				// build generator
-				mg_generators.emplace_back( coord_sizes, params.halo_size, params.diag_value, params.non_diag_value );
-
-				// prepare for new iteration
-				min_physical_size /= params.coarsening_step;
-				std::for_each( coord_sizes.begin(), coord_sizes.end(),
-					[ &params ]( coord_t &v ){ v /= params.coarsening_step; });
-			}
 		}
 
 	} // namespace algorithms

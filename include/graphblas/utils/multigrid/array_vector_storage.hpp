@@ -24,8 +24,8 @@
  * @date 2022-10-24
  */
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
-#define _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE
+#define _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE
 
 #include <array>
 #include <stdexcept>
@@ -34,7 +34,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			/**
 			 * Array with fixed size based on std::array with an interface compliant to what other classes
@@ -46,14 +46,14 @@ namespace grb {
 			 * @tparam DIMS the dimensions of the vector
 			 */
 			template<
-				typename DataType,
-				size_t DIMS
+				size_t DIMS,
+				typename DataType
 			> class ArrayVectorStorage: public std::array< DataType, DIMS > {
-
 			public:
 
 				using VectorStorageType = std::array< DataType, DIMS >&;
 				using ConstVectorStorageType = const std::array< DataType, DIMS >&;
+				using SelfType = ArrayVectorStorage< DIMS, DataType >;
 
 				ArrayVectorStorage( size_t _dimensions ) {
 					static_assert( DIMS > 0, "cannot allocate 0-sized array" );
@@ -65,20 +65,20 @@ namespace grb {
 				ArrayVectorStorage() = delete;
 
 				// only copy constructor/assignment, since there's no external storage
-				ArrayVectorStorage( const ArrayVectorStorage< DataType, DIMS > &o ) noexcept {
+				ArrayVectorStorage( const SelfType &o ) noexcept {
 					std::copy_n( o.cbegin(), DIMS, this->begin() );
 				}
 
-				ArrayVectorStorage( ArrayVectorStorage< DataType, DIMS > &&o ) = delete;
+				ArrayVectorStorage( SelfType &&o ) = delete;
 
-				ArrayVectorStorage< DataType, DIMS >& operator=(
-					const ArrayVectorStorage< DataType, DIMS > &original
+				SelfType& operator=(
+					const SelfType &original
 				) noexcept {
 					std::copy_n( original.begin(), DIMS, this->begin() );
 					return *this;
 				}
 
-				ArrayVectorStorage< DataType, DIMS >& operator=( ArrayVectorStorage< DataType, DIMS > &&original ) = delete;
+				SelfType & operator=( SelfType &&original ) = delete;
 
 				constexpr size_t dimensions() const {
 					return DIMS;
@@ -93,8 +93,8 @@ namespace grb {
 				}
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_ARRAY_VECTOR_STORAGE
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE

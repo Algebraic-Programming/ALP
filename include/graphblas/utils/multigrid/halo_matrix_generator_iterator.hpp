@@ -1,6 +1,6 @@
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_HALO_MATRIX_GENRATOR_ITERATOR
-#define _H_GRB_ALGORITHMS_GEOMETRY_HALO_MATRIX_GENRATOR_ITERATOR
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR
+#define _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR
 
 #include <cstddef>
 
@@ -10,8 +10,8 @@
 #include "array_vector_storage.hpp"
 
 namespace grb {
-	namespace algorithms {
-		namespace geometry {
+	namespace utils {
+		namespace multigrid {
 
 			template<
 				size_t DIMS,
@@ -26,8 +26,7 @@ namespace grb {
 
 				using RowIndexType = CoordType; ///< numeric type of rows
 				using ColumnIndexType = CoordType;
-
-				using LinearSystemType = grb::utils::geometry::LinearizedHaloNDimSystem< RowIndexType, DIMS >;
+				using LinearSystemType = LinearizedHaloNDimSystem< DIMS, RowIndexType >;
 				using SelfType = HaloMatrixGeneratorIterator< DIMS, CoordType, ValueType, ValueCallable >;
 				using Iterator = typename LinearSystemType::Iterator;
 
@@ -92,11 +91,7 @@ namespace grb {
 
 				HaloMatrixGeneratorIterator( const SelfType & ) = default;
 
-				// HaloMatrixGeneratorIterator( SelfType && ) = default;
-
 				SelfType & operator=( const SelfType & ) = default;
-
-				// SelfType & operator=( SelfType && ) = default;
 
 				/**
 				 * @brief Increments the iterator by moving coordinates to the next (row, column) to iterate on.
@@ -160,14 +155,14 @@ namespace grb {
 				}
 
 				/**
-				 * @brief Returns current row.
+				 * @brief Returns the current row.
 				 */
 				inline RowIndexType i() const {
 					return _val.i();
 				}
 
 				/**
-				 * @brief Returns current column.
+				 * @brief Returns the current column.
 				 */
 				inline ColumnIndexType j() const {
 					return _val.j();
@@ -183,10 +178,6 @@ namespace grb {
 					return _val.v();
 				}
 
-				const Iterator & it() const {
-					return this->_sys_iter;
-				}
-
 			private:
 				value_type _val;
 				const LinearSystemType *_lin_system;
@@ -198,10 +189,8 @@ namespace grb {
 				}
 			};
 
-
-
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_HALO_MATRIX_GENRATOR_ITERATOR
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR

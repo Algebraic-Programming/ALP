@@ -22,7 +22,7 @@
 #include <vector>
 #include <cstddef>
 
-#include <graphblas/utils/geometry/linearized_halo_ndim_system.hpp>
+#include <graphblas/utils/multigrid/linearized_halo_ndim_system.hpp>
 
 namespace grb {
 	namespace algorithms {
@@ -62,8 +62,8 @@ namespace grb {
 		template<
 			size_t DIMS,
 			typename CoordType
-		> void color_matrix_greedy(
-			const grb::utils::geometry::LinearizedHaloNDimSystem< CoordType, DIMS > &system,
+		> void hpcg_greedy_color_ndim_system(
+			const grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType > &system,
 			std::vector< CoordType > &row_colors,
 			std::vector< CoordType > &color_counters,
 			bool reorder_rows_per_color = false
@@ -78,7 +78,7 @@ namespace grb {
 			row_colors[0] = 0; // first point gets color 0
 
 			// Finds colors in a greedy (a likely non-optimal) fashion.
-			typename grb::utils::geometry::LinearizedHaloNDimSystem< CoordType, DIMS >::Iterator begin = system.begin();
+			typename grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType >::Iterator begin = system.begin();
 			begin.next_element(); // skip first row
 
 			while( begin.has_more_elements() ) {

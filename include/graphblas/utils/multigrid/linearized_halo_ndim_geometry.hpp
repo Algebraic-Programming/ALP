@@ -1,6 +1,6 @@
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_GEOMETRY
-#define _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_GEOMETRY
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_GEOMETRY
+#define _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_GEOMETRY
 
 #include <cstddef>
 #include <vector>
@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <cstddef>
+#include <algorithm>
 
 #include "array_vector_storage.hpp"
 #include "dynamic_vector_storage.hpp"
@@ -17,14 +18,17 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
-			template< typename CoordType, size_t DIMS > void __compute_neighbors_range(
-				const ArrayVectorStorage< CoordType, DIMS >& _system_sizes,
+			template<
+				size_t DIMS,
+				typename CoordType
+			> void __compute_neighbors_range(
+				const ArrayVectorStorage< DIMS, CoordType > &_system_sizes,
 				const CoordType halo,
-				const ArrayVectorStorage< CoordType, DIMS >& system_coordinates,
-				ArrayVectorStorage< CoordType, DIMS >& neighbors_start,
-				ArrayVectorStorage< CoordType, DIMS >& neighbors_range ) {
+				const ArrayVectorStorage< DIMS, CoordType > &system_coordinates,
+				ArrayVectorStorage< DIMS, CoordType > &neighbors_start,
+				ArrayVectorStorage< DIMS, CoordType > &neighbors_range ) {
 
 				for( CoordType i{0}; i < DIMS/* - 1*/; i++ ) {
 					const CoordType start{ system_coordinates[i] <= halo ? 0 : system_coordinates[i] - halo };
@@ -32,37 +36,28 @@ namespace grb {
 					neighbors_start[i] = start;
 					neighbors_range[i] = end - start + 1;
 				}
-				/*
-				const size_t last{ DIMS - 1 };
-				const CoordT start{ system_coordinates[ last ] <= halo ? 0 : system_coordinates[ last ] - halo };
-				const CoordT end{ system_coordinates[ last ] + halo }; // can extend beyond actual DIMS-dimensional space
-				neighbors_start[ last ] = start;
-				neighbors_range[ last ] = end - start + 1;
-				*/
 			}
 
-
-
-
-
-
-			template< typename CoordType, size_t DIMS > size_t __neighbour_to_system_coords(
-				const std::array< CoordType, DIMS > & sizes,
+			template<
+				size_t DIMS,
+				typename CoordType
+			> size_t __neighbour_to_system_coords(
+				const std::array< CoordType, DIMS > &sizes,
 				size_t system_size,
-				const std::vector< NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > > & dimension_neighbors,
+				const std::vector< NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > >
+					&dimension_neighbors,
 				CoordType halo,
 				CoordType neighbor,
-				ArrayVectorStorage< CoordType, DIMS > & result) {
-
+				ArrayVectorStorage< DIMS, CoordType > &result
+			){
 				if( neighbor > system_size ) {
 					throw std::invalid_argument("neighbor number ( " + std::to_string(neighbor)
 						+ " ) >= system size ( " + std::to_string( system_size ) + " )");
 				}
-
-				ArrayVectorStorage< CoordType, DIMS > halo_coords( DIMS );
-			#ifdef DBG
+				ArrayVectorStorage< DIMS, CoordType > halo_coords( DIMS );
+#ifdef _DEBUG
 				size_t * const halo_coords_end{ halo_coords.data() + DIMS };
-			#endif
+#endif
 				std::fill_n( halo_coords.begin(), DIMS, 0 );
 
 				for( size_t _dim{DIMS}; _dim > 0; _dim--) {
@@ -72,13 +67,11 @@ namespace grb {
 					const NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > & neighbors{ dimension_neighbors[dimension] };
 
 					CoordType * const halo_coords_begin{ halo_coords.data() + dimension };
-
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "DIMENSION " << dimension << std::endl << "- setup - neighbour " << neighbor << std::endl;
 					std::cout << "\thalo : ";
 					print_sequence( halo_coords_begin, halo_coords_end ) << std::endl;
-			#endif
-
+#endif
 					size_t h{0};
 					size_t previous_neighs{ 0 };
 					*halo_coords_begin = h;
@@ -90,47 +83,44 @@ namespace grb {
 						previous_neighs += halo_max_neighs;
 						halo_max_neighs = neighbors.at( halo_coords_begin );
 					}
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "- initial halo - neighbour " << neighbor << std::endl;
 					std::cout << "\th " << h << std::endl;
 					std::cout << "\thalo : ";
 					print_sequence( halo_coords_begin, halo_coords_end ) << std::endl;
 					std::cout << "\thalo_max_neighs " << halo_max_neighs << std::endl;
-			#endif
-
-
+#endif
 					if ( h < halo ){
 						result[dimension] = h;
 						neighbor -= previous_neighs;
-			#ifdef DBG
+#ifdef _DEBUG
 						std::cout << "end neighbour " << neighbor << std::endl;
-			#endif
+#endif
 						continue;
 					}
 					// saturation occurred
 					const size_t distance_from_halo{ ( neighbor - previous_neighs ) / halo_max_neighs };
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "- before middle elements - neighbour " << neighbor << std::endl;
 					std::cout << "\tprevious_neighs " << previous_neighs << std::endl;
 					std::cout << "\thalo_max_neighs " << halo_max_neighs << std::endl;
 					std::cout << "\tdistance_from_halo " << distance_from_halo << std::endl;
 					std::cout << "\tdimension_size " << dimension_size << std::endl;
-			#endif
+#endif
 					if ( distance_from_halo < dimension_size - 2 * halo ) {
 						result[dimension] =  distance_from_halo + halo;
 						neighbor -= (previous_neighs + distance_from_halo * halo_max_neighs) ;
-			#ifdef DBG
+#ifdef _DEBUG
 						std::cout << "end neighbour " << neighbor << std::endl;
-			#endif
+#endif
 						continue;
 					}
 					previous_neighs += ( dimension_size - 2 * halo ) * halo_max_neighs;
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "- after middle elements -neighbour " << neighbor << std::endl;
 					std::cout << "\tprevious_neighs " << previous_neighs << std::endl;
 					std::cout << "\thalo_max_neighs " << halo_max_neighs << std::endl;
-			#endif
-
+#endif
 					h = halo - 1;
 					*halo_coords_begin = h;
 					halo_max_neighs = neighbors.at( halo_coords_begin );
@@ -141,27 +131,27 @@ namespace grb {
 						halo_max_neighs = neighbors.at( halo_coords_begin );
 					}
 					neighbor -= previous_neighs;
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "- final halo - neighbour " << neighbor << std::endl;
 					std::cout << "\tadding h " << h << " previous_neighs " << previous_neighs << std::endl;
-			#endif
+#endif
 					// ( dimension_size - 1 ) because coordinates are 0-based and neighbor
 					// is "inside" range [ previous_neighs, previous_neighs + halo_max_neighs ]
 					result[dimension] = dimension_size - 1 - h;
-			#ifdef DBG
+#ifdef _DEBUG
 					std::cout << "end neighbour " << neighbor << std::endl;
-			#endif
+#endif
 				}
-
 				return neighbor;
 			}
 
 
 			template< typename CoordType > size_t __accumulate_dimension_neighbours(
-				const NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > >& prev_neighs,
+				const NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > &prev_neighs,
 				CoordType* coords_buffer,
 				size_t halo,
-				size_t local_size ) {
+				size_t local_size
+			) {
 				size_t neighs{0};
 				size_t h{0};
 				for( ; h < halo && local_size > 1; h++ ) {
@@ -188,17 +178,20 @@ namespace grb {
 				}
 			}
 
-			template< typename CoordType, size_t DIMS > size_t __init_halo_search(
-				typename LinearizedNDimSystem< CoordType, ArrayVectorStorage< CoordType, DIMS > >::ConstVectorReference sizes,
+			template<
+				typename CoordType,
+				size_t DIMS
+			> size_t __init_halo_search(
+				typename LinearizedNDimSystem< CoordType, ArrayVectorStorage< DIMS, CoordType > >::ConstVectorReference
+					sizes,
 				size_t halo,
-				std::vector< NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > >& dimension_limits ) {
-
+				std::vector< NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > > >& dimension_limits
+			) {
 				using nd_vec = NDimVector< CoordType, CoordType, DynamicVectorStorage< CoordType > >;
 				using nd_vec_iterator = typename nd_vec::DomainIterator;
 
 				std::vector<size_t> halo_sizes( DIMS, halo + 1);
 				dimension_limits.emplace_back(halo_sizes);
-
 				// initialize values
 				__populate_halo_neighbors< CoordType >( halo, dimension_limits[0] );
 				for( size_t i{1}; i < DIMS; i++ ) {
@@ -226,8 +219,8 @@ namespace grb {
 				return __accumulate_dimension_neighbours( dimension_limits[DIMS - 1], prev_coords, halo, sizes.back() );
 			}
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_GEOMETRY
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_GEOMETRY

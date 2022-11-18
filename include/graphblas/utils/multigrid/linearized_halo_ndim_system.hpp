@@ -1,6 +1,6 @@
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM
-#define _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_SYSTEM
+#define _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_SYSTEM
 
 #include <cstddef>
 #include <vector>
@@ -15,21 +15,20 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			// only with ArrayVectorStorage
 			template<
-				typename SizeType,
-				size_t DIMS
+				size_t DIMS,
+				typename SizeType
 			> class LinearizedHaloNDimSystem:
-				public LinearizedNDimSystem< SizeType, ArrayVectorStorage< SizeType, DIMS > > {
+				public LinearizedNDimSystem< SizeType, ArrayVectorStorage< DIMS, SizeType > > {
 			public:
-
-				using VectorType = ArrayVectorStorage< SizeType, DIMS >;
+				using VectorType = ArrayVectorStorage< DIMS, SizeType >;
 				using ConstVectorStorageType = typename VectorType::ConstVectorStorageType;
-				using SelfType = LinearizedHaloNDimSystem< SizeType, DIMS >;
+				using SelfType = LinearizedHaloNDimSystem< DIMS, SizeType >;
 				using BaseType = LinearizedNDimSystem< SizeType, VectorType >;
-				using Iterator = LinearizedHaloNDimIterator< SizeType, DIMS >;
+				using Iterator = LinearizedHaloNDimIterator< DIMS, SizeType >;
 
 				LinearizedHaloNDimSystem( ConstVectorStorageType sizes, SizeType halo ):
 					BaseType( sizes.cbegin(), sizes.cend() ),
@@ -102,15 +101,13 @@ namespace grb {
 				}
 
 			private:
-
 				const SizeType _halo;
 				std::vector< NDimVector< SizeType, SizeType, DynamicVectorStorage< SizeType > > > _dimension_limits;
 				size_t _system_size;
-
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_LINEARIZED_HALO_NDIM_SYSTEM
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_SYSTEM

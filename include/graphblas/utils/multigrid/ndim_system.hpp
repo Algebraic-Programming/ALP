@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM
-#define _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
+#define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
 
 #include <cstddef>
 #include <algorithm>
@@ -37,7 +37,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			/**
 			 * Describes a #dimensions()-dimensional system by storing its size along each dimension.
@@ -52,7 +52,6 @@ namespace grb {
 				typename SizeType,
 				typename InternalVectorType
 			> class NDimSystem {
-
 			public:
 				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type");
 
@@ -71,7 +70,7 @@ namespace grb {
 				 * @param begin range begin
 				 * @param end end of range
 				 */
-				template< typename IterT > NDimSystem( IterT begin, IterT end) noexcept :
+				template< typename IterType > NDimSystem( IterType begin, IterType end) noexcept :
 					_sizes( std::distance( begin, end ) )
 				{
 					std::copy( begin, end, this->_sizes.begin() );
@@ -98,12 +97,7 @@ namespace grb {
 
 				NDimSystem( const SelfType & ) = default;
 
-				// NDimSystem( SelfType && ) = default;
-
-				// NDimSystem( SelfType &&original ) noexcept: _sizes( std::move( original._sizes ) ) {}
 				NDimSystem( SelfType && ) = delete;
-
-				~NDimSystem() {}
 
 				SelfType & operator=( const SelfType &original ) = default;
 
@@ -122,12 +116,11 @@ namespace grb {
 				}
 
 			protected:
-
 				InternalVectorType _sizes;
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM

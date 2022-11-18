@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM_LINEARIZER
-#define _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM_LINEARIZER
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER
+#define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER
 
 #include <cstddef>
 #include <algorithm>
@@ -41,7 +41,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			/**
 			 * Extends a \p NDimSystem by linearizing it, i.e. it provides facilities to map a vector in
@@ -60,7 +60,6 @@ namespace grb {
 				typename SizeType,
 				typename InternalVectorType
 			> class LinearizedNDimSystem: public NDimSystem< SizeType, InternalVectorType > {
-
 			public:
 				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type");
 
@@ -160,17 +159,6 @@ namespace grb {
 					return linear;
 				}
 
-				// probably same as ndim_to_linear !!!
-				size_t ndim_to_linear_offset( ConstVectorStorageType ndim_vector ) const {
-					size_t linear{ 0 };
-					size_t steps{ 1 };
-					for( size_t i{ 0 }; i < this->dimensions(); i++ ) {
-						linear += steps * ndim_vector[i];
-						steps *= this->_sizes[i];
-					}
-					return linear;
-				}
-
 				// must be same dimensionality
 				void retarget( ConstVectorReference _new_sizes ) {
 					if( _new_sizes.dimensions() != this->_sizes.dimensions() ) {
@@ -191,11 +179,10 @@ namespace grb {
 				}
 
 			private:
-
 				VectorType offsets;
 				size_t _system_size;
 
-				 template<
+				template<
 					typename IterIn,
 					typename IterOut
 				> static size_t compute_offsets( IterIn in_begin, IterIn in_end, IterOut out_begin ) {
@@ -208,9 +195,8 @@ namespace grb {
 				}
 			};
 
-
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_NDIM_SYSTEM_LINEARIZER
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER

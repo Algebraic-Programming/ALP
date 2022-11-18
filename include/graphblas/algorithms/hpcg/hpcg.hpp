@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_HPCG
-#define _H_GRB_ALGORITHMS_HPCG
+#ifndef _H_GRB_ALGORITHMS_HPCG_HPCG
+#define _H_GRB_ALGORITHMS_HPCG_HPCG
 
 #include <utility>
 
@@ -71,4 +71,4 @@ namespace grb {
 	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_HPCG
+#endif // _H_GRB_ALGORITHMS_HPCG_HPCG

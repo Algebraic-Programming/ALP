@@ -29,7 +29,7 @@ namespace grb {
 			typename MGInfoType,
 			typename CoarsenerInfoType,
 			typename SmootherInfoType
-		> void allocate_multigrid_data(
+		> void multigrid_allocate_data(
 			const std::vector< size_t > &mg_sizes,
 			std::vector< std::unique_ptr< MGInfoType > > &system_levels,
 			std::vector< std::unique_ptr< CoarsenerInfoType > > &coarsener_levels,

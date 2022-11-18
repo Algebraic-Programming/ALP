@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_DYNAMIC_VECTOR_STORAGE
-#define _H_GRB_ALGORITHMS_GEOMETRY_DYNAMIC_VECTOR_STORAGE
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
+#define _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
 
 #include <cstddef>
 #include <cstddef>
@@ -32,7 +32,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			/**
 			 * Array with fixed size (i.e. decided at object creation) allocated on the heap with an interface compliant
@@ -54,7 +54,6 @@ namespace grb {
 				}
 
 			public:
-
 				// iterator fields
 				using reference = DataType&;
 				using const_reference = const DataType&;
@@ -147,8 +146,8 @@ namespace grb {
 				}
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_DYNAMIC_VECTOR_STORAGE
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE

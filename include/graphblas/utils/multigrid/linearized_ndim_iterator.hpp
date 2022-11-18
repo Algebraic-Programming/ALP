@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_GEOMETRY_NDIM_ITERATOR
-#define _H_GRB_ALGORITHMS_GEOMETRY_NDIM_ITERATOR
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR
+#define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR
 
 #include <cstddef>
 #include <algorithm>
@@ -29,7 +29,7 @@
 
 namespace grb {
 	namespace utils {
-		namespace geometry {
+		namespace multigrid {
 
 			// forward declaration for default
 			template<
@@ -42,7 +42,6 @@ namespace grb {
 				typename InternalVectorType
 			> class LinearizedNDimIterator {
 			public:
-
 				using VectorType = InternalVectorType;
 				using LinNDimSysType = LinearizedNDimSystem< SizeType, VectorType >;
 				using ConstVectorReference = const VectorType&;
@@ -50,12 +49,10 @@ namespace grb {
 
 				struct NDimPoint {
 				private:
-
 					const LinNDimSysType* system; // pointer because of copy assignment
 					VectorType coords;
 
 				public:
-
 					friend SelfType;
 
 					NDimPoint() = delete;
@@ -82,7 +79,6 @@ namespace grb {
 					}
 				};
 
-
 				// interface for std::random_access_iterator
 				using iterator_category = std::random_access_iterator_tag;
 				using value_type = NDimPoint;
@@ -107,10 +103,6 @@ namespace grb {
 
 				SelfType& operator=( const SelfType &original ) = default;
 
-				// LinearizedNDimIterator( SelfType && ) = delete;
-
-				// SelfType operator=( SelfType && ) = delete;
-
 				~LinearizedNDimIterator() {}
 
 				SelfType & operator++() noexcept {
@@ -119,11 +111,6 @@ namespace grb {
 					for( size_t i { 0 }; i < this->_p.system->dimensions() - 1 && rewind; i++ ) {
 						SizeType& coord = this->_p.coords[ i ];
 						// must rewind dimension if we wrap-around
-						/*
-						SizeType new_coord = ( coord + 1 ) % this->_p.system->get_sizes()[ i ];
-						rewind = new_coord < coord;
-						coord = new_coord;
-						*/
 						SizeType plus = coord + 1;
 						rewind = plus >= this->_p.system->get_sizes()[ i ];
 						coord = rewind ? 0 : plus;
@@ -187,11 +174,10 @@ namespace grb {
 
 			private:
 				NDimPoint _p;
-
 			};
 
-		} // namespace geometry
+		} // namespace multigrid
 	} // namespace utils
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_GEOMETRY_NDIM_ITERATOR
+#endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR
