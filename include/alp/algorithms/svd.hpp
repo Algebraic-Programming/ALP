@@ -107,7 +107,7 @@ namespace alp {
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
 				structures::is_a< StruB, structures::General >::value &&
-				structures::is_a< StruU, structures::Orthogonal >::value &&
+				// structures::is_a< StruU, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -284,8 +284,8 @@ namespace alp {
 			const Divide &divide = Divide()
 		) {
 			RC rc = SUCCESS;
-			const double tol = 1.e-5;
-			const size_t maxit = 10;
+			const double tol = 1.e-12;
+			const size_t maxit = 30;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -294,22 +294,97 @@ namespace alp {
 			const size_t n = ncols( B );
 			const size_t k = std::min( m, n );
 
+			auto Bsupsquare =  get_view( B, utils::range( 0, k - 1 ) , utils::range( 1, k ) );
+			auto superdiagonal = get_view< alp::view::diagonal >( Bsupsquare );
 
-			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
+			size_t i1 = 0;
+			size_t i2 = k;
+#ifdef DEBUG
+			std::cout << "---> (init) i1, i2 = " << i1 << ", " << i2 << "\n";
+#endif
+
+			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring, minus, divide );
 			//repeat while superdiagonal is not zero
 			for( size_t i = 0; i < maxit; ++i ) {
 				//TODO check for zeroes in diagonal, if any do Givens rotatations
-				//         to move zero from diagonal to superdiagonal
-				//TODO check for zeros in superdiagonaldiagonal, ify any,
-				//         break problem into blocks and solve blocks separately
+				//         to move the zero from diagonal to superdiagonal
+
+
+				//check for zeros in superdiagonaldiagonal, if any,
+				//move i1 and i2 to bound non-zero part of superdiagonaldiagonal
+				for( ; i1 < i2 ; ++i1 ) {
+					auto B_l = get_view( superdiagonal, utils::range( i1, i1 + 1 ) );
+					Scalar< D > bnorm( zero );
+					rc = rc ? rc : alp::norm2( bnorm, B_l, ring );
+					if( std::abs( *bnorm ) > tol ) {
+						break;
+					}
+				}
+				for( ; i2 > i1 ; --i2 ) {
+					auto B_l = get_view( superdiagonal, utils::range( i2 - 2, i2 - 1 ) );
+					Scalar< D > bnorm( zero );
+					rc = rc ? rc : alp::norm2( bnorm, B_l, ring );
+#ifdef DEBUG
+					print_vector( "superdiagonal ", superdiagonal );
+					std::cout << "---> i2 - 1, i2 = " << i2 - 1 << ", " << i2 << "\n";
+					print_vector( "B_l ", B_l );
+					std::cout << "---> | B_l | = " << *bnorm << "\n";
+#endif
+					if( std::abs( *bnorm ) > tol ) {
+						break;
+					}
+				}
+#ifdef DEBUG
+				print_matrix( "B ", B );
+				std::cout << "---> i1, i2 = " << i1 << ", " << i2 << "\n";
+#endif
+
+				auto Bview = get_view( B, utils::range( i1, i2 ), utils::range( i1, i2 ) );
+				Matrix< D, structures::Orthogonal, Dense > Utmp( nrows( Bview ), nrows( Bview ) );
+				Matrix< D, structures::Orthogonal, Dense > Vtmp( ncols( Bview ), ncols( Bview ) );
+				rc = rc ? rc : set( Utmp, zero );
+				rc = rc ? rc : set( Vtmp, zero );
+				// set Utmp to Identity
+				auto DiagUtmp = alp::get_view< alp::view::diagonal >( Utmp );
+				rc = rc ? rc : alp::set( Utmp, zero );
+				rc = rc ? rc : alp::set( DiagUtmp, one );
+				// set Vtmp to Identity
+				auto DiagVtmp = alp::get_view< alp::view::diagonal >( Vtmp );
+				rc = rc ? rc : alp::set( Vtmp, zero );
+				rc = rc ? rc : alp::set( DiagVtmp, one );
 
 				// sdv step
-				rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
+				rc = rc ? rc : algorithms::gk_svd_step( Utmp, Bview, Vtmp, ring, minus, divide );
+				// rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
+
+				Matrix< D, structures::Orthogonal, Dense > UtmpX( nrows( U ), ncols( U ) );
+				Matrix< D, structures::Orthogonal, Dense > VtmpX( nrows( V ), ncols( V ) );
+				{
+					auto DiagUtmpX = alp::get_view< alp::view::diagonal >( UtmpX );
+					rc = rc ? rc : alp::set( UtmpX, zero );
+					rc = rc ? rc : alp::set( DiagUtmpX, one );
+					auto DiagVtmpX = alp::get_view< alp::view::diagonal >( VtmpX );
+					rc = rc ? rc : alp::set( VtmpX, zero );
+					rc = rc ? rc : alp::set( DiagVtmpX, one );
+					auto SUtmpX = get_view( UtmpX, utils::range( i1, i2 ), utils::range( i1, i2 ) );
+					auto SVtmpX = get_view( VtmpX, utils::range( i1, i2 ), utils::range( i1, i2 ) );
+					rc = rc ? rc : alp::set( SUtmpX, Utmp );
+					rc = rc ? rc : alp::set( SVtmpX, Vtmp );
+				}
+
+
+				Matrix< D, structures::Orthogonal, Dense > Utmp2( nrows( U ), ncols( U ) );
+				Matrix< D, structures::Orthogonal, Dense > Vtmp2( nrows( V ), ncols( V ) );
+				rc = rc ? rc : set( Utmp2, U );
+				rc = rc ? rc : set( Vtmp2, V );
+				rc = rc ? rc : set( U, zero );
+				rc = rc ? rc : set( V, zero );
+				rc = rc ? rc : mxm( U, Utmp2, UtmpX, ring );
+				rc = rc ? rc : mxm( V, VtmpX, Vtmp2, ring );
+
 
 				// check convergence
 				Scalar< D > sup_diag_norm( zero );
-				auto Bsupsquare =  get_view( B, utils::range( 0, k - 1 ) , utils::range( 1, k ) );
-				auto superdiagonal = get_view< alp::view::diagonal >( Bsupsquare );
 				rc = rc ? rc : alp::norm2( sup_diag_norm, superdiagonal, ring );
 #ifdef DEBUG
 				std::cout << " norm( superdiagonal B ) = " << *sup_diag_norm << "\n";
@@ -361,7 +436,7 @@ namespace alp {
 
 			const size_t m = nrows( B );
 			const size_t n = ncols( B );
-			const size_t k = std::min( m, n );
+			//const size_t k = std::min( m, n );
 
 			rc = rc ? rc : set( U, zero );
 			rc = rc ? rc : set( V, zero );
@@ -379,9 +454,9 @@ namespace alp {
 				auto UT = get_view< alp::view::transpose >( U );
 				auto BT = get_view< alp::view::transpose >( B );
 				auto VT = get_view< alp::view::transpose >( V );
-				rc = rc ? rc : algorithms::svd_solve( VT, BT, UT, ring );
+				rc = rc ? rc : algorithms::svd_solve( VT, BT, UT, ring, minus, divide );
 			} else {
-				rc = rc ? rc : algorithms::svd_solve( U, B, V, ring );
+				rc = rc ? rc : algorithms::svd_solve( U, B, V, ring, minus, divide );
 			}
 
 			return rc;
