@@ -25,6 +25,7 @@
 #include <memory>
 
 #include <alp.hpp>
+#include "../utils/print_alp_containers.hpp"
 
 void alp_program( const size_t &n, alp::RC &rc ) {
 
@@ -37,21 +38,12 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 	// create the matrix
 	alp::Matrix< float, alp::structures::General > M( n, n );
+
+	// set all matrix elements to 1
 	rc = rc ? rc : alp::set( M, alp::Scalar< T >( ring.template getOne< T >() ) );
-	if( rc == alp::SUCCESS ) {
-		std::cout << "set executed successfully.\n";
-	} else {
-		std::cout << "Error in set execution.\n";
-	}
 
-	// verify that accessing corner elements succeeds
-	// original matrix
-	//alp::internal::access( M, alp::internal::getStorageIndex( M, 0, 0 ) );
-	//alp::internal::access( M, alp::internal::getStorageIndex( M, height - 1, 0 ) );
-	//alp::internal::access( M, alp::internal::getStorageIndex( M, 0, width - 1 ) );
-	//alp::internal::access( M, alp::internal::getStorageIndex( M, height - 1, width - 1 ) );
+	print_matrix( "M", M );
 
-	rc = alp::SUCCESS;
 }
 
 int main( int argc, char ** argv ) {
