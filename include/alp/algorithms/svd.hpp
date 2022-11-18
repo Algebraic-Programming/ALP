@@ -253,7 +253,78 @@ namespace alp {
 		}
 
 
-		// docs
+		// Docs
+		template<
+			typename D = double,
+			typename StruB,
+			typename ViewB,
+			typename ImfRB,
+			typename ImfCB,
+			typename StruU,
+			typename ViewU,
+			typename ImfRU,
+			typename ImfCU,
+			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			class Minus = operators::subtract< D >,
+			class Divide = operators::divide< D >,
+			std::enable_if_t<
+				structures::is_a< StruB, structures::General >::value &&
+				structures::is_a< StruU, structures::Orthogonal >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
+		>
+		RC svd_solve(
+			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
+			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
+			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
+			RC rc = SUCCESS;
+			const double tol = 1.e-5;
+			const size_t maxit = 10;
+
+			const Scalar< D > zero( ring.template getZero< D >() );
+			const Scalar< D > one( ring.template getOne< D >() );
+
+			const size_t m = nrows( B );
+			const size_t n = ncols( B );
+			const size_t k = std::min( m, n );
+
+
+			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
+			//repeat while superdiagonal is not zero
+			for( size_t i = 0; i < maxit; ++i ) {
+				//TODO check for zeroes in diagonal, if any do Givens rotatations
+				//         to move zero from diagonal to superdiagonal
+				//TODO check for zeros in superdiagonaldiagonal, ify any,
+				//         break problem into blocks and solve blocks separately
+
+				// sdv step
+				rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
+
+				// check convergence
+				Scalar< D > sup_diag_norm( zero );
+				auto Bsupsquare =  get_view( B, utils::range( 0, k - 1 ) , utils::range( 1, k ) );
+				auto superdiagonal = get_view< alp::view::diagonal >( Bsupsquare );
+				rc = rc ? rc : alp::norm2( sup_diag_norm, superdiagonal, ring );
+#ifdef DEBUG
+				std::cout << " norm( superdiagonal B ) = " << *sup_diag_norm << "\n";
+#endif
+				if( std::abs( *sup_diag_norm ) < tol ) {
+					break ;
+				}
+			}
+
+			return rc;
+		}
+
+
+
+		// Docs
 		template<
 			typename D = double,
 			typename StruB,
@@ -292,8 +363,6 @@ namespace alp {
 			const size_t n = ncols( B );
 			const size_t k = std::min( m, n );
 
-
-
 			rc = rc ? rc : set( U, zero );
 			rc = rc ? rc : set( V, zero );
 
@@ -306,9 +375,14 @@ namespace alp {
 			rc = rc ? rc : alp::set( V, zero );
 			rc = rc ? rc : alp::set( DiagV, one );
 
-			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring );
-			rc = rc ? rc : algorithms::gk_svd_step( U, B, V, ring );
-
+			if( n > m ) {
+				auto UT = get_view< alp::view::transpose >( U );
+				auto BT = get_view< alp::view::transpose >( B );
+				auto VT = get_view< alp::view::transpose >( V );
+				rc = rc ? rc : algorithms::svd_solve( VT, BT, UT, ring );
+			} else {
+				rc = rc ? rc : algorithms::svd_solve( U, B, V, ring );
+			}
 
 			return rc;
 		}
