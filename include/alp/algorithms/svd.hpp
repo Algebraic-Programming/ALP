@@ -324,17 +324,12 @@ namespace alp {
 					auto B_l = get_view( superdiagonal, utils::range( i2 - 2, i2 - 1 ) );
 					Scalar< D > bnorm( zero );
 					rc = rc ? rc : alp::norm2( bnorm, B_l, ring );
-#ifdef DEBUG
-					print_vector( "superdiagonal ", superdiagonal );
-					std::cout << "---> i2 - 1, i2 = " << i2 - 1 << ", " << i2 << "\n";
-					print_vector( "B_l ", B_l );
-					std::cout << "---> | B_l | = " << *bnorm << "\n";
-#endif
 					if( std::abs( *bnorm ) > tol ) {
 						break;
 					}
 				}
 #ifdef DEBUG
+				print_vector( "superdiagonal ", superdiagonal );
 				print_matrix( "B ", B );
 				std::cout << "---> i1, i2 = " << i1 << ", " << i2 << "\n";
 #endif
@@ -355,6 +350,7 @@ namespace alp {
 
 				// sdv step
 				rc = rc ? rc : algorithms::gk_svd_step( Utmp, Bview, Vtmp, ring, minus, divide );
+
 				// rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
 
 				Matrix< D, structures::Orthogonal, Dense > UtmpX( nrows( U ), ncols( U ) );
@@ -393,6 +389,50 @@ namespace alp {
 					break ;
 				}
 			}
+
+			// Rotate diagonal elements in complex plane
+			auto BSquare = alp::get_view( B, utils::range( 0, k ), utils::range( 0, k ) );
+			auto DiagBview = alp::get_view< alp::view::diagonal >( BSquare );
+			Matrix< D, structures::Square, Dense > RotMat( nrows( B ) );
+			auto DiagRotMat = alp::get_view< alp::view::diagonal >( RotMat );
+			rc = rc ? rc : alp::set( RotMat, zero );
+			rc = rc ? rc : alp::set( DiagRotMat, one );
+			auto d1 = alp::get_view( DiagRotMat, utils::range( 0, k ) );
+			rc = rc ? rc : alp::set( d1, DiagBview );
+
+			rc = rc ? rc : eWiseLambda(
+				[ ]( const size_t i, D &val ) {
+					val = val/std::abs(val);
+				},
+				d1
+			);
+
+			Matrix< D, structures::Orthogonal, Dense > UtmpRot( nrows( U ) );
+			rc = rc ? rc : alp::set( UtmpRot, U );
+			rc = rc ? rc : alp::set( U, zero );
+#ifdef DEBUG
+			print_matrix( "---->  RotMat(in) ", RotMat );
+			print_matrix( "---->  UtmpRot(in) ", UtmpRot );
+			print_matrix( "---->  U(in) ", U );
+#endif
+			rc = rc ? rc : mxm( U, UtmpRot, RotMat, ring );
+#ifdef DEBUG
+			print_matrix( "---->  U(out) ", U );
+#endif
+
+			Matrix< D, structures::General, Dense > BtmpRot( nrows( B ), ncols( B ) );
+			rc = rc ? rc : alp::set( BtmpRot, B );
+			rc = rc ? rc : alp::set( B, zero );
+			rc = rc ? rc : eWiseLambda(
+				[ &one ]( const size_t i, D &val ) {
+					val = (*one) / val; //make it foldl
+				},
+				d1
+			);
+#ifdef DEBUG
+			print_matrix( " RotMat(1) ", RotMat );
+#endif
+			rc = rc ? rc : mxm( B, RotMat, BtmpRot, ring );
 
 			return rc;
 		}
