@@ -63,8 +63,8 @@ namespace alp {
 	 *  - rt is replication factor for thread coordinates
 	 *  - br is block row-coordinate
 	 *  - bc is block column-coordinate
-	 *  - il is element's row-coordinate within its block
-	 *  - jl is element's column-coordinate within its block
+	 *  - i  is element's row-coordinate within its block
+	 *  - j  is element's column-coordinate within its block
 	 *
 	 * This implementation assumes block-cyclic distribution of blocks
 	 * among threads.
@@ -92,19 +92,19 @@ namespace alp {
 				const size_t rt;
 				const size_t br;
 				const size_t bc;
-				const size_t il;
-				const size_t jl;
+				const size_t i;
+				const size_t j;
 
 				LocalCoord(
 					const size_t tr, const size_t tc,
 					const size_t rt,
 					const size_t br, const size_t bc,
-					const size_t il, const size_t jl
+					const size_t i, const size_t j
 				) :
 					tr( tr ), tc( tc ),
 					rt( rt ),
 					br( br ), bc( bc ),
-					il( il ), jl( jl ) {}
+					i( i ), j( j ) {}
 	
 			};
 
@@ -146,12 +146,12 @@ namespace alp {
 			/** Row and column dimensions of the associated container */
 			const size_t m;
 			const size_t n;
-			/** The row and column dimensions of thread grid */
+			/** The row and column dimensions of the thread grid */
 			const size_t Tr;
 			const size_t Tc;
 			/** Replication factor in thread-coordinate space */
 			const size_t Rt;
-			/** The row and column dimensions of block grid */
+			/** The row and column dimensions of the global block grid */
 			const size_t Br;
 			const size_t Bc;
 
