@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 /**
  * @file multigrid_v_cycle.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief This file contains the routines for multi-grid solution refinement, including the main routine
+ * This file contains the routines for multi-grid solution refinement, including the main routine
  *        and those for coarsening and refinement of the tentative solution.
- * @date 2021-04-30
  */
 
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_V_CYCLE
@@ -33,57 +32,51 @@
 #include <utility>
 
 #include <graphblas.hpp>
-
 #include <graphblas/utils/iterators/IteratorValueAdaptor.hpp>
 
 #include "multigrid_data.hpp"
 
 namespace grb {
 	namespace algorithms {
-		/**
-		 * @brief Namespace for interfaces that should not be used outside of the algorithm namespace.
-		 */
-		namespace internal {
-
-
-
-		} // namespace internal
 
 		/**
-		 * @brief Multi-grid V cycle implementation to refine a given solution.
+		 * Multi-grid V cycle implementation to refine a given solution.
 		 *
 		 * A full multi-grid run goes through the following steps:
-		 * -# if \p presmoother_steps \f$ > 0 \f$, \p presmoother_steps of the Red-Black Gauss-Seidel smoother are run
-		 *    to improve on the initial solution stored into \p data.z
-		 * -# the coarsening of \f$ r - A*z \f$ is computed to find the coarser residual vector
-		 * -# a multi-grid run is recursively performed on the coarser system
-		 * -# the tentative solution from the coarser multi-grid run is prolonged and added to the current tentative solution
-		 *    into \p data.z
-		 * -# this solution is further smoothed for \p postsmoother_steps steps
 		 *
-		 * If coarsening information is not available, the multi-grid run consists in a single smmothing run.
+		 * 1. calls the pre-smoother to improve on the initial solution stored into \p mgiter_begin->z
+		 * 2. coarsens the residual vector
+		 * 3. recursively solves the coarser system
+		 * 4. prolongs the coarser solution into the \p mgiter_begin->z
+		 * 5. further smooths the solution wih a post-smoother call
 		 *
-		 * Failuers of GraphBLAS operations are handled by immediately stopping the execution and by returning
-		 * the failure code.
+		 * The algorithm moves across grid levels via the STL-like iterators \p mgiter_begin
+		 * and \p mgiter_end and accesses the grid data via the former (using the operator \c * ): when
+		 * \p mgiter_begin \c == \p mgiter_end , a smoothing round is invoked and the recursion halted.
+		 *
+		 * Failuers of GraphBLAS operations are handled by immediately stopping the execution
+		 * and returning the failure code.
 		 *
 		 * @tparam IOType type of result and intermediate vectors used during computation
 		 * @tparam NonzeroType type of matrix values
+		 * @tparam MGSysIterType type of the iterator across grid levels
+		 * @tparam MGSmootherType type of the smoother runner, with prescribed methods for the various
+		 *  smoothing steps
+		 * @tparam CoarsenerType type of the coarsener runner, with prescribed methods for coarsening
+		 *  and prolongation
 		 * @tparam Ring the ring of algebraic operators zero-values
 		 * @tparam Minus the minus operator for subtractions
 		 *
-		 * @param[in,out] data \ref multigrid_data object storing the relevant data for the multi-grid run of the current
-		 *                     clevel
-		 * @param[in,out] coarsening_data pointer to information for the coarsening/refinement operations and for the
-		 *                recursive multi-grid run on the coarsened system; if \c nullptr, no coarsening/refinement occurs
-		 *                and only smoothing occurs on the current solution
-		 * @param[in] presmoother_steps number of pre-smoother steps
-		 * @param[in] postsmoother_steps number of post-smoother steps
-		 * @param[in] ring the ring to perform the operations on
-		 * @param[in] minus the \f$ - \f$ operator for vector subtractions
-		 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
-		 *                          unsuccessful operation otherwise
+		 * @param mgiter_begin iterator pointing to the current level of the multi-grid
+		 * @param mgiter_end end iterator, indicating the end of the recursion
+		 * @param smoother callable object to invoke the smoothing steps
+		 * @param coarsener callable object to coarsen and prolong (between current and coarser grid levels)
+		 * @param ring the ring to perform the operations on
+		 * @param minus the \f$ - \f$ operator for vector subtractions
+		 * @return grb::RC if the algorithm could correctly terminate, the error code of the first
+		 *  unsuccessful operation otherwise
 		 */
-		template<
+		template <
 			typename IOType,
 			typename NonzeroType,
 			typename MGSysIterType,
@@ -99,22 +92,21 @@ namespace grb {
 			const Ring &ring,
 			const Minus &minus
 		) {
-			static_assert( std::is_base_of< multigrid_data< IOType, NonzeroType >,
+			static_assert( std::is_base_of< MultiGridData< IOType, NonzeroType >,
 				typename std::decay< decltype( *mgiter_begin ) >::type >::value, "the iterator type MGSysIterType"
-				" must reference an object of type multigrid_data< IOType, NonzeroType >" );
+				" must reference an object of type MultiGridData< IOType, NonzeroType >" );
 
-			RC ret { SUCCESS };
+			RC ret = SUCCESS;
 			assert( mgiter_begin != mgiter_end );
-			multigrid_data< IOType, NonzeroType > &finer_system = *mgiter_begin;
+			MultiGridData< IOType, NonzeroType > &finer_system = *mgiter_begin;
 			++mgiter_begin;
 
 #ifdef HPCG_PRINT_STEPS
 			DBG_println( "mg BEGINNING {" );
 #endif
 
-
 			// clean destination vector
-			ret = ret ? ret : grb::set( finer_system.z, 0 );
+			ret = ret ? ret : grb::set( finer_system.z, ring. template getZero< IOType >() );
 #ifdef HPCG_PRINT_STEPS
 			DBG_print_norm( finer_system.r, "initial r" );
 #endif
@@ -128,7 +120,7 @@ namespace grb {
 #endif
 				return ret;
 			}
-			multigrid_data< IOType, NonzeroType > &coarser_system = *mgiter_begin;
+			MultiGridData< IOType, NonzeroType > &coarser_system = *mgiter_begin;
 
 			// pre-smoother
 			ret = ret ? ret : smoother.pre_smooth( finer_system );
@@ -165,15 +157,31 @@ namespace grb {
 			return ret;
 		}
 
+		/**
+		 * Callable object to invoke the V-cycle multi-grid algorithm, which also requires
+		 * a smoother and a coarsener object.
+		 *
+		 * It is built by transferring into it the state of both the smoother and the coarsener,
+		 * in order to avoid use-after-free issues.
+		 *
+		 * @tparam IOType type of result and intermediate vectors used during computation
+		 * @tparam NonzeroType type of matrix values
+		 * @tparam MGSysIterType type of the iterator across grid levels
+		 * @tparam MGSmootherType type of the smoother runner, with prescribed methods for the various
+		 *  smoothing steps
+		 * @tparam CoarsenerType type of the coarsener runner, with prescribed methods for coarsening
+		 *  and prolongation
+		 * @tparam Ring the ring of algebraic operators and zero values
+		 * @tparam Minus the minus operator for subtractions
+		 */
 		template<
 			typename IOType,
 			typename NonzeroType,
-			typename InputType,
 			typename MGSmootherType,
 			typename CoarsenerType,
 			class Ring,
 			class Minus
-		> struct multigrid_runner {
+		> struct MultiGridRunner {
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring with default values" );
@@ -184,19 +192,20 @@ namespace grb {
 			static_assert( std::is_move_constructible< CoarsenerType >::value,
 				"CoarsenerType must be move-constructible");
 
-			using MultiGridInputType = multigrid_data< IOType, NonzeroType >;
+			using MultiGridInputType = MultiGridData< IOType, NonzeroType >;
 
 			// check the interface between HPCG and MG match
 			static_assert( std::is_base_of< typename MGSmootherType::SmootherInputType,
 				MultiGridInputType >::value, "input type of the Smoother kernel must match the input from Multi-Grid" );
 
-			MGSmootherType smoother_runner;
-			CoarsenerType coarsener_runner;
-			std::vector< std::unique_ptr< MultiGridInputType > > system_levels;
-			Ring ring;
-			Minus minus;
+			MGSmootherType smoother_runner; ///< object to run the smoother
+			CoarsenerType coarsener_runner; ///< object to run the coarsener
+			std::vector< std::unique_ptr< MultiGridInputType > > system_levels; ///< levels of the grid (finest first)
+			Ring ring; ///< algebraic ring
+			Minus minus; ///< minus operator
 
-			struct Extractor {
+			// operator to extract the reference out of an std::unique_ptr object
+			struct __extractor {
 				MultiGridInputType & operator()(
 					typename std::vector< std::unique_ptr< MultiGridInputType > >::reference &ref
 				) {
@@ -210,23 +219,29 @@ namespace grb {
 				}
 			};
 
-			using UniquePtrExtractor = grb::utils::IteratorValueAdaptor<
+			using __unique_ptr_extractor = grb::utils::IteratorValueAdaptor<
 				typename std::vector< std::unique_ptr< MultiGridInputType > >::iterator,
-				Extractor
+				__extractor
 			>;
 
-
-			multigrid_runner(
+			/**
+			 * Construct a new MultiGridRunner object by moving in the state of the pre-built
+			 * smoother and coarsener.
+			 */
+			MultiGridRunner(
 				MGSmootherType &&_smoother_runner,
 				CoarsenerType &&_coarsener_runner
 			) : smoother_runner( std::move( _smoother_runner ) ),
 				coarsener_runner( std::move(  _coarsener_runner ) ) {}
 
-			inline grb::RC operator()(
-				MultiGridInputType &system
-			) {
-				return multi_grid< IOType, NonzeroType, UniquePtrExtractor, MGSmootherType, CoarsenerType, Ring, Minus >(
-					UniquePtrExtractor( system_levels.begin() += system.level ), UniquePtrExtractor( system_levels.end() ),
+			/**
+			 * Operator to invoke a full multi-grid run starting from the given level.
+			 */
+			inline grb::RC operator()( MultiGridInputType &system ) {
+				return multi_grid< IOType, NonzeroType, __unique_ptr_extractor,
+					MGSmootherType, CoarsenerType, Ring, Minus >(
+					__unique_ptr_extractor( system_levels.begin() += system.level ),
+					__unique_ptr_extractor( system_levels.end() ),
 					smoother_runner, coarsener_runner, ring, minus );
 			}
 		};

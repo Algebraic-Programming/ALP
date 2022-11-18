@@ -15,20 +15,18 @@
  * limitations under the License.
  */
 
+/**
+ * @file dynamic_vector_storage.cpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Extension of a heap-allocated array exposing the underlying storage and iterators.
+ */
+
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
 #define _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
 
 #include <cstddef>
 #include <cstddef>
 #include <algorithm>
-
-/**
- * @file dynamic_vector_storage.cpp
- * @author Alberto Scolari (alberto.scolari@huawei.com)
- * Extension of a heap-allocated array exposing the underlying storage and iterators.
- *
- * @date 2022-10-24
- */
 
 namespace grb {
 	namespace utils {

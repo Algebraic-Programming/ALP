@@ -16,10 +16,16 @@
  */
 
 /**
+ * @dir include/graphblas/utils/iterators
+ * Various utilities to work with STL-like iterators and ALP/GraphBLAS iterators:
+ * adaptors, partitioning facilities, traits and functions to check compile-time
+ * and runtime properties.
+ */
+
+/**
  * @file IteratorValueAdaptor.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Adaptor to extract a given value out of an iterator.
- * @date 2022-10-08
+ * Definition of an adaptor to extract a given value out of an iterator.
  */
 
 #ifndef H_GRB_UTILS_ITERATOR_VALUE_ADAPTOR
@@ -45,9 +51,10 @@ namespace grb {
 			typename AdaptorType
 		> struct IteratorValueAdaptor {
 
-			static_assert( std::is_default_constructible< AdaptorType >::value, "RefType must be default-constructible" );
-			static_assert( std::is_copy_constructible< AdaptorType >::value, "RefType must be copy-constructible" );
-			static_assert( std::is_copy_assignable< AdaptorType >::value, "RefType must be copy-assignable" );
+			static_assert( std::is_copy_constructible< AdaptorType >::value,
+				"AdaptorType must be copy-constructible" );
+			static_assert( std::is_copy_assignable< AdaptorType >::value,
+				"AdaptorType must be copy-assignable" );
 
 			typedef decltype( std::declval< AdaptorType >()( *std::declval< InnerIterType >() ) ) reference;
 			typedef typename std::decay< reference >::type value_type;
@@ -65,31 +72,51 @@ namespace grb {
 			using SelfType = IteratorValueAdaptor< InnerIterType, AdaptorType >;
 
 			/**
-			 * Construct a new Iterator Value Adaptor object fro an actual iterator.
+			 * Construct a new IteratorValueAdaptor object from an actual iterator.
 			 * The adaptor is built via its default constructor.
-			 *
-			 * @param _iter the underlying iterator, to be copied
 			 */
-			IteratorValueAdaptor(
-				const InnerIterType &_iter
-			) :
+			IteratorValueAdaptor( typename std::enable_if< std::is_default_constructible< AdaptorType >::value,
+				const InnerIterType & >::type _iter ) :
 				iter( _iter ),
 				adaptor() {}
 
 			/**
-			 * Construct a new Iterator Value Adaptor object fro an actual iterator.
+			 * Construct a new IteratorValueAdaptor object from an iterator and an existing adaptor object.
+			 */
+			IteratorValueAdaptor(
+				const InnerIterType &_iter,
+				const AdaptorType &_adaptor
+			) :
+				iter( _iter ),
+				adaptor( _adaptor ) {}
+
+			/**
+			 * Construct a new Iterator Value Adaptor object from an actual iterator.
 			 * The adaptor is built via its default constructor.
 			 *
 			 * @param _iter the underlying iterator, to be moved
 			 */
 			IteratorValueAdaptor(
-				InnerIterType &&_iter
+				typename std::enable_if< std::is_default_constructible< AdaptorType >::value,
+				InnerIterType && >::type _iter
 			) :
 				iter( std::move( _iter ) ),
 				adaptor() {}
 
+			/**
+			 * Construct a new IteratorValueAdaptor object from an actual iterator
+			 * and an existing adaptor object by moving their state.
+			 */
+			IteratorValueAdaptor(
+				InnerIterType &&_iter,
+				AdaptorType &&_adaptor
+			) :
+				iter( std::move( _iter ) ),
+				adaptor( std::move( _adaptor ) ) {}
+
 			IteratorValueAdaptor() = delete;
 
+			// since it is an iterator, we MUST have copy and move semantics
 			IteratorValueAdaptor( const SelfType & ) = default;
 
 			IteratorValueAdaptor( SelfType && ) = default;
@@ -112,12 +139,18 @@ namespace grb {
 
 			SelfType& operator++() { ++iter; return *this; }
 
-			SelfType & operator+=( typename std::enable_if< is_random_access, const size_t >::type offset ) {
+			SelfType & operator+=(
+				typename std::enable_if< is_random_access,
+				const size_t >::type offset
+			) {
 				iter += offset;
 				return *this;
 			}
 
-			difference_type operator-( typename std::enable_if< is_random_access, const SelfType & >::type other ) {
+			difference_type operator-(
+				typename std::enable_if< is_random_access,
+				const SelfType & >::type other
+			) {
 				return iter - other.iter;
 			}
 		};

@@ -1,18 +1,67 @@
 
+/*
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @dir include/graphblas/utils/multigrid
+ * This folder contains various utilities to describe an N-dimensional mesh (possibly with halo)
+ * and iterate through its elements and through the neighbors of each element, possible generating
+ * a matrix out of this information.
+ *
+ * These facilities are used to generate system matrices and various inputs for multi-grid simulations.
+ */
+
+/**
+ * @file halo_matrix_generator_iterator.cpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Definition of HaloMatrixGeneratorIterator.
+ */
+
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR
 #define _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR
 
 #include <cstddef>
 
+#include "array_vector_storage.hpp"
 #include "linearized_halo_ndim_system.hpp"
 #include "linearized_ndim_system.hpp"
 #include "linearized_ndim_iterator.hpp"
-#include "array_vector_storage.hpp"
 
 namespace grb {
 	namespace utils {
 		namespace multigrid {
 
+			/**
+			 * Iterator type to generate a matrix on top of the couples <element>-<neighbor> of an
+			 * \p DIMS -dimensional mesh.
+			 *
+			 * This iterator is random-access and meets the the interface of an ALP/GraphBLAS
+			 * input iterator, i.e. an object of this type \a it has methods \a i(), \a j() and
+			 * \a v() to describe a nonzero triplet (row index, column index and value, respectively).
+			 *
+			 * This data structure is based on the LinearizedHaloNDimIterator class, esentially wrapping the
+			 * underlying element index as \a i() and the neighbor index as \a j(); the value \a v()
+			 * is user-customizable via a functor of type \p ValueCallable, which emits the nonzero
+			 * of type \p ValueType based on the passed values of \a i() and \a j().
+			 *
+			 * @tparam DIMS number of dimensions
+			 * @tparam CoordType tyoe storing the coordinate and the system sizes along each dimension
+			 * @tparam ValueType type of nonzeroes
+			 * @tparam ValueCallable callable object producing the nonzero value based on \a i() and \a j()
+			 */
 			template<
 				size_t DIMS,
 				typename CoordType,
@@ -55,8 +104,6 @@ namespace grb {
 					}
 
 				private:
-					// ValueType diagonal_value;     ///< value to be emitted when the object has moved to the diagonal
-					// ValueType non_diagonal_value; ///< value to emit outside of the diagonal
 					ValueCallable _value_producer;
 					RowIndexType _i;
 					ColumnIndexType _j;
@@ -70,7 +117,7 @@ namespace grb {
 				using difference_type = typename Iterator::difference_type;
 
 				/**
-				 * @brief Construct a new \c HaloMatrixGeneratorIterator object, setting the current row as \p row
+				 * Construct a new \c HaloMatrixGeneratorIterator object, setting the current row as \p row
 				 * and emitting \p diag if the iterator has moved on the diagonal, \p non_diag otherwise.
 				 *
 				 * @param sizes array with the sizes along the dimensions
@@ -94,7 +141,7 @@ namespace grb {
 				SelfType & operator=( const SelfType & ) = default;
 
 				/**
-				 * @brief Increments the iterator by moving coordinates to the next (row, column) to iterate on.
+				 * Increments the iterator by moving coordinates to the next (row, column) to iterate on.
 				 *
 				 * This operator internally increments the columns coordinates until wrap-around, when it increments
 				 * the row coordinates and resets the column coordinates to the first possible columns; this column coordinate
@@ -119,7 +166,7 @@ namespace grb {
 				}
 
 				/**
-				 * @brief Operator to compare \c this against \p o  and return whether they differ.
+				 * Operator to compare \c this against \p o  and return whether they differ.
 				 *
 				 * @param o object to compare \c this against
 				 * @return true of the row or the column is different between \p o and \c this
@@ -130,7 +177,7 @@ namespace grb {
 				}
 
 				/**
-				 * @brief Operator to compare \c this against \p o  and return whether they are equal.
+				 * Operator to compare \c this against \p o  and return whether they are equal.
 				 *
 				 * @param o object to compare \c this against
 				 * @return true of the row or the column is different between \p o and \c this
@@ -141,7 +188,7 @@ namespace grb {
 				}
 
 				/**
-				 * @brief Operator returning the triple to directly access row, column and element values.
+				 * Operator returning the triple to directly access row, column and element values.
 				 *
 				 * Useful when building the matrix by copying the triple of coordinates and value,
 				 * like for the BSP1D backend.
@@ -155,21 +202,21 @@ namespace grb {
 				}
 
 				/**
-				 * @brief Returns the current row.
+				 * Returns the current row.
 				 */
 				inline RowIndexType i() const {
 					return _val.i();
 				}
 
 				/**
-				 * @brief Returns the current column.
+				 * Returns the current column.
 				 */
 				inline ColumnIndexType j() const {
 					return _val.j();
 				}
 
 				/**
-				 * @brief Returns the current matrix value.
+				 * Returns the current matrix value.
 				 *
 				 * @return ValueType #diagonal_value if \code row == column \endcode (i.e. if \code this-> \endcode
 				 * #i() \code == \endcode \code this-> \endcode #j()), #non_diagonal_value otherwise

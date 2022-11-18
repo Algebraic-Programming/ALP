@@ -19,9 +19,7 @@
  * @file array_vector_storage.cpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
  * Extension of std::array<> exposing a larger interface and the underlying
- * 	storage structure.
- *
- * @date 2022-10-24
+ * storage structure.
  */
 
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE
@@ -38,12 +36,12 @@ namespace grb {
 
 			/**
 			 * Array with fixed size based on std::array with an interface compliant to what other classes
-			 * in the geometry namespace expect, like storage() and dimensions() methods.
+			 * in the geometry namespace expect, like #storage() and #dimensions() methods.
 			 *
 			 * It describes a vector of dimensions #dimensions().
 			 *
-			 * @tparam DataType the data type of the vector elements
 			 * @tparam DIMS the dimensions of the vector
+			 * @tparam DataType the data type of the vector elements
 			 */
 			template<
 				size_t DIMS,
@@ -55,6 +53,12 @@ namespace grb {
 				using ConstVectorStorageType = const std::array< DataType, DIMS >&;
 				using SelfType = ArrayVectorStorage< DIMS, DataType >;
 
+				/**
+				 * Construct a new Array Vector Storage object of given dimensions;
+				 * internal values are \b not initialized.
+				 *
+				 * \p _dimensions must be equal to \p DIMS, or an exception is thrown.
+				 */
 				ArrayVectorStorage( size_t _dimensions ) {
 					static_assert( DIMS > 0, "cannot allocate 0-sized array" );
 					if( _dimensions != DIMS ) {
@@ -71,23 +75,31 @@ namespace grb {
 
 				ArrayVectorStorage( SelfType &&o ) = delete;
 
-				SelfType& operator=(
-					const SelfType &original
-				) noexcept {
+				SelfType& operator=( const SelfType &original ) noexcept {
 					std::copy_n( original.begin(), DIMS, this->begin() );
 					return *this;
 				}
 
 				SelfType & operator=( SelfType &&original ) = delete;
 
+				/**
+				 * Returns the geometrical dimensions of this vector, i.e. of the
+				 * geometrical space it refers to.
+				 */
 				constexpr size_t dimensions() const {
 					return DIMS;
 				}
 
+				/**
+				 * Returns a reference to the underlying storage object.
+				 */
 				inline VectorStorageType storage() {
 					return *this;
 				}
 
+				/**
+				 * Returns a const reference to the underlying storage object.
+				 */
 				inline ConstVectorStorageType storage() const {
 					return *this;
 				}

@@ -15,25 +15,20 @@
  * limitations under the License.
  */
 
+/**
+ * @file ndim_system.cpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Definition of NDimSystem.
+ */
+
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
 
 #include <cstddef>
 #include <algorithm>
 #include <vector>
-#include <utility>
 #include <type_traits>
 #include <cstddef>
-
-#include "array_vector_storage.hpp"
-
-/**
- * @file ndim_system.cpp
- * @author Alberto Scolari (alberto.scolari@huawei.com)
- * Definition of \p NDimSystem.
- *
- * @date 2022-10-24
- */
 
 namespace grb {
 	namespace utils {
@@ -61,7 +56,8 @@ namespace grb {
 				using SelfType = NDimSystem< SizeType, InternalVectorType >;
 
 				/**
-				 * Construct a new NDimSystem object from an iterable range.
+				 * Construct a new NDimSystem object from an iterable range, where each referenced value
+				 * is a size of the system.
 				 *
 				 * The dimension is computed as \a std::distance(begin,end), i.e.
 				 * \p IterT should be a random-access iterator for performance.

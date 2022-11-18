@@ -35,6 +35,7 @@
 #include <iterator>
 #include <algorithm>
 
+#include <graphblas/utils/iterators/utils.hpp>
 
 namespace grb {
 
@@ -113,28 +114,6 @@ namespace grb {
 		}
 
 		namespace internal {
-
-			/**
-			 * Computes the difference between \a a and \a b and returns it as the given
-			 * type \a DiffT.
-			 *
-			 * Raises an exception if \a DiffT cannot store the difference.
-			 */
-			template<
-				typename SizeT,
-				typename DiffT
-			>
-			DiffT compute_distance(
-				const SizeT a,
-				const SizeT b
-			) {
-				const SizeT diff = std::max( a, b ) - std::min( a, b );
-				if( diff > static_cast< SizeT >( std::numeric_limits< DiffT >::max() ) ) {
-					throw std::range_error( "cannot represent difference" );
-				}
-				DiffT result = static_cast< DiffT >( diff );
-				return a >= b ? result : -result ;
-			}
 
 			/**
 			 * Stores the coordinate for a generator of diagonal matrices.
@@ -240,9 +219,8 @@ namespace grb {
 				typename SelfType::difference_type operator-(
 					const SelfType &other
 				) const {
-					return internal::compute_distance<
-						size_t, typename SelfType::difference_type
-					>( this->_v.coord, other._v.coord );
+					return compute_signed_distance< typename SelfType::difference_type,
+						size_t >( this->_v.coord, other._v.coord );
 				}
 
 				typename SelfType::pointer operator->() { return &_v; }
@@ -461,9 +439,8 @@ namespace grb {
 					const size_t this_position = coords_to_linear( _v.size, _v.row, _v.col );
 					const size_t other_position =
 						coords_to_linear( other._v.size, other._v.row, other._v.col );
-					return internal::compute_distance<
-						size_t, typename SelfType::difference_type
-					>( this_position, other_position );
+					return compute_signed_distance< typename SelfType::difference_type,
+						size_t >( this_position, other_position );
 				}
 
 				typename SelfType::pointer operator->() { return &_v; }
@@ -584,9 +561,8 @@ namespace grb {
 				typename SelfType::difference_type operator-(
 					const SelfType &other
 				) const {
-					return internal::compute_distance<
-						size_t, typename SelfType::difference_type
-					>( this->_v.offset, other._v.offset );
+					return compute_signed_distance< typename SelfType::difference_type,
+						size_t >( this->_v.offset, other._v.offset );
 				}
 
 				typename SelfType::pointer operator->() { return &_v; }

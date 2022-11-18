@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,14 @@
  * limitations under the License.
  */
 
-#ifndef _H_GRB_ALGORITHMS_HPCG_COARSENER_BUILDER
-#define _H_GRB_ALGORITHMS_HPCG_COARSENER_BUILDER
+/**
+ * @file single_point_coarsener.hpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Utilities to build the coarsening matrix for an HPCG simulation.
+ */
+
+#ifndef _H_GRB_ALGORITHMS_HPCG_SINGLE_POINT_COARSENER
+#define _H_GRB_ALGORITHMS_HPCG_SINGLE_POINT_COARSENER
 
 #include <cstddef>
 #include <array>
@@ -30,40 +36,44 @@
 namespace grb {
 	namespace algorithms {
 
+		// forward declaration
 		template<
 			size_t DIMS,
 			typename CoordType,
 			typename ValueType
-		>
-		class HPCGCoarsenerBuilder;
+		> class SinglePointCoarsenerBuilder;
 
 		/**
-		 * @brief Class to generate the coarsening matrix of an underlying \p DIMS -dimensional system.
+		 * Iterator class to generate the coarsening matrix for an HPCG simulation.
 		 *
-		 * This class coarsens a finer system to a coarser system by projecting each input value (column),
-		 * espressed in finer coordinates, to an output (row) value espressed in coarser coordinates.
-		 * The coarser sizes are assumed to be row_generator#physical_sizes, while the finer sizes are here
-		 * stored inside #finer_sizes.
+		 * The coarsening matrix samples a single value from the finer space for every element
+		 * of the coarser space; this value is the first one (i.e. the one with smallest coordinates)
+		 * in the finer sub-space corresponding to each coarser element.
 		 *
-		 * The corresponding refinement matrix is obtained by transposing the coarsening matrix.
+		 * This coarsening method is simple but can lead to unstable results, especially with certain combinations
+		 * of smoothers and partitioning methods.
 		 *
-		 * @tparam DIMS number of dimensions of the system
-		 * @tparam T type of matrix values
+		 * This iterator is random-access.
+		 *
+		 * @tparam DIMS number of dimensions
+		 * @tparam CoordType type storing the coordinates and the sizes
+		 * @tparam ValueType type of the nonzero: it must be able to represent 1 (the value to sample
+		 *  the finer value)
 		 */
 		template<
 			size_t DIMS,
 			typename CoordType,
 			typename ValueType
-		> struct HPCGCoarsenerGeneratorIterator {
+		> struct SinglePointCoarsenerIterator {
 
-			friend HPCGCoarsenerBuilder< DIMS, CoordType, ValueType >;
+			friend SinglePointCoarsenerBuilder< DIMS, CoordType, ValueType >;
 
 			using RowIndexType = CoordType; ///< numeric type of rows
 			using ColumnIndexType = CoordType;
 			using LinearSystemType = grb::utils::multigrid::LinearizedNDimSystem< CoordType,
 				grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > >;
 			using LinearSystemIterType = typename LinearSystemType::Iterator;
-			using SelfType = HPCGCoarsenerGeneratorIterator< DIMS, CoordType, ValueType >;
+			using SelfType = SinglePointCoarsenerIterator< DIMS, CoordType, ValueType >;
 			using ArrayType = std::array< CoordType, DIMS >;
 
 			struct _HPCGValueGenerator {
@@ -100,19 +110,16 @@ namespace grb {
 			using reference = const value_type&;
 			using difference_type = typename LinearSystemIterType::difference_type;
 
-			HPCGCoarsenerGeneratorIterator( const SelfType &o ) = default;
+			SinglePointCoarsenerIterator( const SelfType &o ) = default;
 
-			HPCGCoarsenerGeneratorIterator( SelfType &&o ) = default;
+			SinglePointCoarsenerIterator( SelfType &&o ) = default;
 
 			SelfType & operator=( const SelfType & ) = default;
 
 			SelfType & operator=( SelfType && ) = default;
 
 			/**
-			 * @brief Increments the row and the column according to the respective physical sizes,
-			 * thus iterating onto the coarsening matrix coordinates.
-			 *
-			 * @return \code *this \endcode, i.e. the same object with the updates row and column
+			 * Advances \c this by 1 in constant time.
 			 */
 			SelfType & operator++() noexcept {
 				(void) ++_sys_iter;
@@ -120,36 +127,36 @@ namespace grb {
 				return *this;
 			}
 
+			/**
+			 * Advances \c this by \p offset in constant time.
+			 */
 			SelfType & operator+=( size_t offset ) {
 				_sys_iter += offset;
 				update_coords();
 				return *this;
 			}
 
+			/**
+			 * Computes the difference between \c this and \p o as integer.
+			 */
 			difference_type operator-( const SelfType &o ) const {
 				return this->_sys_iter - o._sys_iter;
 			}
 
 			/**
-			 * @brief Returns whether \c this and \p o differ.
+			 * Returns whether \c this and \p o differ.
 			 */
 			bool operator!=( const SelfType &o ) const {
 				return this->_sys_iter != o._sys_iter;
 			}
 
 			/**
-			 * @brief Returns whether \c this and \p o are equal.
+			 * Returns whether \c this and \p o are equal.
 			 */
 			bool operator==( const SelfType &o ) const {
 				return ! this->operator!=( o );
 			}
 
-			/**
-			 * @brief Operator returning the triple to directly access row, column and element values.
-			 *
-			 * Useful when building the matrix by copying the triple of coordinates and value,
-			 * like for the BSP1D backend.
-			 */
 			reference operator*() const {
 				return _val;
 			}
@@ -159,53 +166,48 @@ namespace grb {
 			}
 
 			/**
-			 * @brief Returns the current row, according to the coarser system.
+			 * Returns the current row, within the coarser system.
 			 */
 			inline RowIndexType i() const {
 				return _val.i();
 			}
 
 			/**
-			 * @brief Returns the current column, according to the finer system.
+			 * Returns the current column, within the finer system.
 			 */
 			inline ColumnIndexType j() const {
 				return _val.j();
 			}
 
 			/**
-			 * @brief Returns always 1, as the coarsening keeps the same value.
+			 * Returns always 1, as the coarsening keeps the same value.
 			 */
 			inline ValueType v() const {
 				return _val.v();
 			}
 
 		private:
-			//// incremented when incrementing the row coordinates; is is the ration between
-			//// #finer_sizes and row_generator#physical_sizes
 			const LinearSystemType *_lin_sys;
-			const ArrayType *_steps; ///< array of steps, i.e. how much each column coordinate (finer system) must be
+			const ArrayType *_steps;
 			LinearSystemIterType _sys_iter;
 			value_type _val;
 
 			/**
-			 * @brief Construct a new \c HPCGCoarsenerGeneratorIterator object from the coarser and finer sizes,
-			 * setting its row at \p _current_row and the column at the corresponding value.
+			 * Construct a new SinglePointCoarsenerIterator object starting from the LinearizedNDimSystem
+			 * object \p system describing the \b coarser system and the \b ratios \p steps between each finer and
+			 * the corresponding corser dimension.
 			 *
-			 * Each finer size <b>must be an exact multiple of the corresponding coarser size</b>, otherwise the
-			 * construction will throw an exception.
-			 *
-			 * @param _coarser_sizes sizes of the coarser system (rows)
-			 * @param _finer_sizes sizes of the finer system (columns)
-			 * @param _current_row row (in the coarser system) to set the iterator on
+			 * @param system LinearizedNDimSystem object describing the coarser system
+			 * @param steps ratios per dimension between finer and coarser system
 			 */
-			HPCGCoarsenerGeneratorIterator(
+			SinglePointCoarsenerIterator(
 				const LinearSystemType &system,
 				const ArrayType &steps
 			) noexcept :
 				_lin_sys( &system ),
 				_steps( &steps ),
 				_sys_iter( _lin_sys->begin() ),
-				_val(0, 0)
+				_val( 0, 0 )
 			{
 				update_coords();
 			}
@@ -216,13 +218,13 @@ namespace grb {
 			}
 
 			/**
-			 * @brief Returns the row coordinates converted to the finer system, to compute
+			 * Returns the row coordinates converted to the finer system, to compute
 			 * the column value.
 			 */
 			ColumnIndexType coarse_rows_to_finer_col() const noexcept {
-				ColumnIndexType finer { 0 };
-				ColumnIndexType s { 1 };
-				for( size_t i { 0 }; i < DIMS; i++ ) {
+				ColumnIndexType finer = 0;
+				ColumnIndexType s = 1;
+				for( size_t i = 0; i < DIMS; i++ ) {
 					s *= (*_steps)[ i ];
 					finer += s * _sys_iter->get_position()[ i ];
 					s *= _lin_sys->get_sizes()[ i ];
@@ -231,21 +233,36 @@ namespace grb {
 			}
 		};
 
+		/**
+		 * Builder object to create iterators that generate a coarsening matrix.
+		 *
+		 * It is a facility to generate beginning and end iterators and abstract the logic away from users.
+		 *
+		 * @tparam DIMS number of dimensions
+		 * @tparam CoordType type storing the coordinates and the sizes
+		 * @tparam ValueType type of the nonzero: it must be able to represent 1 (the value to sample
+		 *  the finer value)
+		 */
 		template<
 			size_t DIMS,
 			typename CoordType,
 			typename ValueType
-		> class HPCGCoarsenerBuilder {
+		> class SinglePointCoarsenerBuilder {
 		public:
 			using ArrayType = std::array< CoordType, DIMS >;
-			using Iterator = HPCGCoarsenerGeneratorIterator< DIMS, CoordType, ValueType >;
-			using SelfType = HPCGCoarsenerBuilder< DIMS, CoordType, ValueType >;
+			using Iterator = SinglePointCoarsenerIterator< DIMS, CoordType, ValueType >;
+			using SelfType = SinglePointCoarsenerBuilder< DIMS, CoordType, ValueType >;
 
-			HPCGCoarsenerBuilder(
+			/**
+			 * Construct a new SinglePointCoarsenerBuilder object from the sizes of finer system
+			 * and those of the coarser system; finer sizes must be an exact multiple of coarser sizes,
+			 * otherwise an exception is raised.
+			 */
+			SinglePointCoarsenerBuilder(
 				const ArrayType &_finer_sizes,
 				const ArrayType &_coarser_sizes
 			) : system( _coarser_sizes.begin(), _coarser_sizes.end() ) {
-				for( size_t i { 0 }; i < DIMS; i++ ) {
+				for( size_t i = 0; i < DIMS; i++ ) {
 					// finer size MUST be an exact multiple of coarser_size
 					std::ldiv_t ratio = std::ldiv( _finer_sizes[ i ], _coarser_sizes[ i ] );
 					if( ratio.quot < 2 || ratio.rem != 0 ) {
@@ -258,26 +275,34 @@ namespace grb {
 				}
 			}
 
-			HPCGCoarsenerBuilder( const SelfType & ) = delete;
+			SinglePointCoarsenerBuilder( const SelfType & ) = delete;
 
-			HPCGCoarsenerBuilder( SelfType && ) = delete;
+			SinglePointCoarsenerBuilder( SelfType && ) = delete;
 
 			SelfType & operator=( const SelfType & ) = delete;
 
 			SelfType & operator=( SelfType && ) = delete;
 
+			/**
+			 * Returns the size of the finer system, i.e. its number of elements.
+			 */
 			size_t system_size() const {
 				return system.system_size();
 			}
 
+			/**
+			 * Produces a beginning iterator to generate the coarsening matrix.
+			 */
 			Iterator make_begin_iterator() {
 				return Iterator( system, steps );
 			}
 
+			/**
+			 * Produces an end iterator to stop the generation of the coarsening matrix.
+			 */
 			Iterator make_end_iterator() {
 				Iterator result( system, steps );
-				result += system_size() - 1; // do not trigger boundary checks
-				++result;
+				result += system_size(); // do not trigger boundary checks
 				return result;
 			}
 
@@ -292,5 +317,5 @@ namespace grb {
 
 	} // namespace algorithms
 } // namespace grb
-#endif // _H_GRB_ALGORITHMS_HPCG_COARSENER_BUILDER
+#endif // _H_GRB_ALGORITHMS_HPCG_SINGLE_POINT_COARSENER
 

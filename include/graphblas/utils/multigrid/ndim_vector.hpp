@@ -1,4 +1,26 @@
 
+/*
+ *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file ndim_vector.hpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Definition of NDimVector.
+ */
+
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
 
@@ -20,7 +42,7 @@ namespace grb {
 			 * The user constructs an object by passing the sizes (as an N-dimensional vector)
 			 * of the iteration space and accesses the stored data via an N-dimensional vector of coordinates.
 			 *
-			 * Example: if the user constructs an \p NDimVector with 3D sizes \a [2,3,4], she can access data
+			 * Example: if the user constructs an NDimVector with 3D sizes \a [2,3,4], she can access data
 			 * via a 3D coordinates vector of ranges \a [0-1]x[0-2]x[0-3] (here \a x denoting the cartesian product)
 			 * by using the #at() method.
 			 *
@@ -50,12 +72,22 @@ namespace grb {
 
 				NDimVector() = delete;
 
+				/**
+				 * Construct a new NDimVector object with sizes read from the iteration range
+				 * and number of dimensions equal to the range distance; the data values are
+				 * \b not initialized.
+				 */
 				template< typename IterT > NDimVector( IterT begin, IterT end) :
 					_linearizer( begin, end )
 				{
 					this->data = new DataType[ _linearizer.system_size() ];
 				}
 
+				/**
+				 * Construct a new NDimVector object with sizes read from the \p _sizes
+				 * and number of dimensions equal to \p _sizes.size(); the data values are
+				 * \b not initialized.
+				 */
 				NDimVector( const std::vector< size_t > &_sizes ) :
 					NDimVector( _sizes.cbegin(), _sizes.cend() ) {}
 
@@ -81,34 +113,64 @@ namespace grb {
 					this->clean_mem();
 				}
 
+				/**
+				 * Number of dimensions of the underlying geometrical space.
+				 */
 				size_t dimensions() const {
 					return this->_linearizer.dimensions();
 				}
 
+				/**
+				 * Size of the the underlying geometrical space, i.e. number of stored data elements.
+				 */
 				size_t data_size() const {
 					return this->_linearizer.system_size();
 				}
 
+				/**
+				 * Access the data element at N-dimension coordinate given by the iterable
+				 * \p coordinates.
+				 */
 				inline DataType& at( ConstDomainVectorReference coordinates ) {
 					return this->data[ this->get_coordinate( coordinates.storage() ) ];
 				}
 
+				/**
+				 * Const-access the data element at N-dimension coordinate given by the iterable
+				 * \p coordinates.
+				 */
 				inline const DataType& at( ConstDomainVectorReference coordinates ) const {
 					return this->data[ this->get_coordinate( coordinates.storage() ) ];
 				}
 
+				/**
+				 * Access the data element at N-dimension coordinate given by the vector
+				 * storage object \p coordinates.
+				 */
 				inline DataType& at( ConstDomainVectorStorageType coordinates ) {
 					return this->data[ this->get_coordinate( coordinates ) ];
 				}
 
+				/**
+				 * Const-access the data element at N-dimension coordinate given by the vector
+				 * storage object \p coordinates.
+				 */
 				inline const DataType& at( ConstDomainVectorStorageType coordinates ) const {
 					return this->data[ this->get_coordinate( coordinates ) ];
 				}
 
+				/**
+				 * Returns an iterator to the beginning of the N-dimensional underlyign space,
+				 * i.e. a vector \a [0,0,0,...,0].
+				 */
 				DomainIterator domain_begin() const {
 					return this->_linearizer.begin();
 				}
 
+				/**
+				 * Returns an iterator to the end of the N-dimensional underlyign space.
+				 * This iterator should not be referenced nor incremented.
+				 */
 				DomainIterator domain_end() const {
 					return this->_linearizer.end();
 				}

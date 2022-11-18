@@ -15,9 +15,14 @@
  * limitations under the License.
  */
 
+/**
+ * @file greedy_coloring.hpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Utilities to partition the elements of a mesh via a simple, greedy coloring algorithm.
+ */
 
-#ifndef _H_GRB_ALGORITHMS_HPCG_COLORING
-#define _H_GRB_ALGORITHMS_HPCG_COLORING
+#ifndef _H_GRB_ALGORITHMS_HPCG_GREEDY_COLORING
+#define _H_GRB_ALGORITHMS_HPCG_GREEDY_COLORING
 
 #include <vector>
 #include <cstddef>
@@ -69,11 +74,8 @@ namespace grb {
 			bool reorder_rows_per_color = false
 		) {
 
-			// This function can be used to completely transform any part of the data structures.
-			// Right now it does nothing, so compiling with a check for unused variables results in complaints
-
 			CoordType nrows = system.system_size();
-			row_colors.insert( row_colors.begin(), nrows, nrows ); // value `nrow' means `uninitialized'; initialized colors go from 0 to nrow-1
+			row_colors.insert( row_colors.begin(), nrows, nrows ); // value `nrows' means `uninitialized'; initialized colors go from 0 to nrow-1
 			CoordType totalColors = 1;
 			row_colors[0] = 0; // first point gets color 0
 
@@ -81,6 +83,7 @@ namespace grb {
 			typename grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType >::Iterator begin = system.begin();
 			begin.next_element(); // skip first row
 
+			std::vector< bool > assigned( totalColors );
 			while( begin.has_more_elements() ) {
 				CoordType curRow = begin->get_element_linear();
 
@@ -88,7 +91,7 @@ namespace grb {
 					// if color already assigned to curRow
 					continue;
 				}
-				std::vector< bool > assigned( totalColors, false );
+				assigned.assign( totalColors, false );
 				CoordType currentlyAssigned = 0;
 
 				while( begin.has_more_neighbours() ) {
@@ -108,6 +111,7 @@ namespace grb {
 
 				if( currentlyAssigned < totalColors ) {
 					// if there is at least one color left to use, look for it
+					// smallest possible
 					for( CoordType j = 0; j < totalColors; ++j ) {
 						if( !assigned[ j ] ) {
 							// if no neighbor with this color, use it for this row
@@ -163,4 +167,4 @@ namespace grb {
 	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_HPCG_COLORING
+#endif // _H_GRB_ALGORITHMS_HPCG_GREEDY_COLORING

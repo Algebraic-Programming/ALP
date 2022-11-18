@@ -15,13 +15,25 @@
  * limitations under the License.
  */
 
+/**
+ * @dir include/graphblas/algorithms/hpcg
+ * This folder contains the code specific to the HPCG benchmark implementation: generation of the physical system,
+ * generation of the single point coarsener and coloring algorithm.
+ */
+
+/**
+ * @file hpcg.hpp
+ * @author Alberto Scolari (alberto.scolari@huawei.com)
+ * Utility to build a full HPCG runner, bringing together all needed data structures.
+ */
+
 #ifndef _H_GRB_ALGORITHMS_HPCG_HPCG
 #define _H_GRB_ALGORITHMS_HPCG_HPCG
 
 #include <utility>
 
 #include <graphblas/algorithms/multigrid/red_black_gauss_seidel.hpp>
-#include <graphblas/algorithms/multigrid/coarsener.hpp>
+#include <graphblas/algorithms/multigrid/single_matrix_coarsener.hpp>
 #include <graphblas/algorithms/multigrid/multigrid_v_cycle.hpp>
 #include <graphblas/algorithms/multigrid/multigrid_cg.hpp>
 
@@ -36,14 +48,20 @@ namespace grb {
 			typename InputType,
 			class Ring,
 			class Minus
-		> using HPCGRunnerType = mg_cg_runner< IOType, NonzeroType, InputType, ResidualType,
-			multigrid_runner< IOType, NonzeroType, InputType,
-				red_black_smoother_runner< IOType, NonzeroType, Ring >,
-				single_point_coarsener< IOType, NonzeroType, Ring, Minus >,
+		> using HPCGRunnerType = MultiGridCGRunner< IOType, NonzeroType, InputType, ResidualType,
+			MultiGridRunner< IOType, NonzeroType,
+				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >,
+				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus >,
 				Ring, Minus >,
 			Ring, Minus
 		>;
 
+		/**
+		 * Builds a full HPCG runner object by "assemblying" all needed information,
+		 * with default type for smoother, coarsener and multi-grid runner.
+		 *
+		 * @param[in] smoother_steps how many times the smoother should run (both pre- and post-smoothing)
+		 */
 		template<
 			typename IOType,
 			typename ResidualType,
@@ -54,13 +72,13 @@ namespace grb {
 		> HPCGRunnerType< IOType, ResidualType, NonzeroType, InputType, Ring, Minus >
 			build_hpcg_runner( size_t smoother_steps ) {
 
-			single_point_coarsener< IOType, NonzeroType, Ring, Minus > coarsener;
-			red_black_smoother_runner< IOType, NonzeroType, Ring >
-				smoother{ smoother_steps, smoother_steps, 1UL, {}, Ring() };
+			SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus > coarsener;
+			RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >
+				smoother( { smoother_steps, smoother_steps, 1UL, {}, Ring() } );
 
-			multigrid_runner< IOType, NonzeroType, InputType,
-				red_black_smoother_runner< IOType, NonzeroType, Ring >,
-				single_point_coarsener< IOType, NonzeroType, Ring, Minus >,
+			MultiGridRunner< IOType, NonzeroType,
+				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >,
+				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus >,
 				Ring, Minus
 			> mg_runner( std::move( smoother ), std::move( coarsener ) );
 

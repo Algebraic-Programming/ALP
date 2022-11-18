@@ -16,14 +16,13 @@
  */
 
 /**
- * @file hpcg_data.hpp
+ * @file single_matrix_coarsener.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Implementation of the coarsener of HPCG
- * @date 2022-11-08
+ * Implementation of a coarsener using the same matrix for both coarsening and prolongation.
  */
 
-#ifndef _H_GRB_ALGORITHMS_HPCG_COARSENER
-#define _H_GRB_ALGORITHMS_HPCG_COARSENER
+#ifndef _H_GRB_ALGORITHMS_HPCG_SINGLE_MATRIX_COARSENER
+#define _H_GRB_ALGORITHMS_HPCG_SINGLE_MATRIX_COARSENER
 
 #include <vector>
 #include <memory>
@@ -35,37 +34,40 @@
 namespace grb {
 	namespace algorithms {
 
+		/**
+		 * Structure storing the data for the coarsener
+		 */
 		template<
 			typename IOType,
 			typename NonzeroType
-		>
-		struct coarsening_data {
+		> struct CoarseningData {
 
 			grb::Matrix< NonzeroType > coarsening_matrix; ///< matrix of size #system_size \f$ \times \f$ #finer_size
 			///< to coarsen an input vector of size #finer_size into a vector of size #system_size
 			grb::Vector< IOType > Ax_finer; ///< finer vector for intermediate computations, of size #finer_size
 
 			/**
-			 * @brief Construct a new \c coarsening_data by initializing internal data structures
-			 * @param[in] coarser_size size of the current system, i.e. size \b after coarsening
+			 * Construct a new CoarseningData object by initializing internal data structures.
+			 *
 			 * @param[in] _finer_size  size of the finer system, i.e. size of external objects \b before coarsening
+			 * @param[in] coarser_size size of the current system, i.e. size \b after coarsening
 			 */
-			coarsening_data( size_t _finer_size, size_t coarser_size ) :
+			CoarseningData( size_t _finer_size, size_t coarser_size ) :
 				coarsening_matrix( coarser_size, _finer_size ),
 				Ax_finer( _finer_size ) {}
 
-			grb::RC zero_temp_vectors() {
-				return grb::set( Ax_finer, 0 );
+			grb::RC init_vectors( IOType zero ) {
+				return grb::set( Ax_finer, zero );
 			}
 		};
 
 		namespace internal {
 
 			/**
-			 * @brief computes the coarser residual vector \p coarsening_data.r by coarsening
+			 * computes the coarser residual vector \p CoarseningData.r by coarsening
 			 *        \p coarsening_data.Ax_finer - \p r_fine via \p coarsening_data.coarsening_matrix.
 			 *
-			 * The coarsening information are stored inside \p coarsening_data.
+			 * The coarsening information are stored inside \p CoarseningData.
 			 *
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
@@ -73,7 +75,7 @@ namespace grb {
 			 * @tparam Minus the minus operator for subtractions
 			 *
 			 * @param[in] r_fine fine residual vector
-			 * @param[in,out] coarsening_data \ref multigrid_data data structure storing the information for coarsening
+			 * @param[in,out] coarsening_data \ref MultiGridData data structure storing the information for coarsening
 			 * @param[in] ring the ring to perform the operations on
 			 * @param[in] minus the \f$ - \f$ operator for vector subtractions
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
@@ -87,28 +89,27 @@ namespace grb {
 			> grb::RC compute_coarsening(
 				const grb::Vector< IOType > & r_fine, // fine residual
 				grb::Vector< IOType > & r_coarse, // fine residual
-				coarsening_data< IOType, NonzeroType > & coarsening_data,
+				CoarseningData< IOType, NonzeroType > & coarsening_data,
 				const Ring & ring,
 				const Minus & minus
 			) {
-				RC ret { SUCCESS };
+				RC ret = SUCCESS;
 				// DBG_print_norm( coarsening_data.Ax_finer, "+++ Ax_finer prima" );
-				ret = ret ? ret : grb::eWiseApply( coarsening_data.Ax_finer, r_fine, coarsening_data.Ax_finer,
-									  minus ); // Ax_finer = r_fine - Ax_finer
+				ret = ret ? ret : grb::eWiseApply( coarsening_data.Ax_finer, r_fine,
+					coarsening_data.Ax_finer, minus ); // Ax_finer = r_fine - Ax_finer
 				// DBG_print_norm( coarsening_data.Ax_finer, "+++ Ax_finer dopo" );
 				assert( ret == SUCCESS );
 
 				// actual coarsening, from  ncols(*coarsening_data->A) == *coarsening_data->system_size * 8
 				// to *coarsening_data->system_size
-				ret = ret ? ret : grb::set( r_coarse, 0 );
+				ret = ret ? ret : grb::set( r_coarse, ring.template getZero< IOType >() );
 				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( r_coarse, coarsening_data.coarsening_matrix,
 					coarsening_data.Ax_finer, ring ); // r = coarsening_matrix * Ax_finer
-				// DBG_print_norm( r_coarse, "+++ r_coarse" );
 				return ret;
 			}
 
 			/**
-			 * @brief computes the prolongation of the coarser solution \p coarsening_data.z and stores it into
+			 * computes the prolongation of the coarser solution \p coarsening_data.z and stores it into
 			 * \p x_fine.
 			 *
 			 * For prolongation, this function uses the matrix \p coarsening_data.coarsening_matrix by transposing it.
@@ -130,10 +131,10 @@ namespace grb {
 			> grb::RC compute_prolongation(
 				const grb::Vector< IOType > & z_coarse,
 				grb::Vector< IOType > & x_fine, // fine residual
-				grb::algorithms::coarsening_data< IOType, NonzeroType > & coarsening_data,
+				grb::algorithms::CoarseningData< IOType, NonzeroType > & coarsening_data,
 				const Ring & ring
 			) {
-				RC ret { SUCCESS };
+				RC ret = SUCCESS;
 				// actual refining, from  *coarsening_data->syztem_size == nrows(*coarsening_data->A) / 8
 				// to nrows(x_fine)
 				ret = ret ? ret : set( coarsening_data.Ax_finer, 0 );
@@ -149,40 +150,55 @@ namespace grb {
 
 		} // namespace internal
 
+		/**
+		 * Runner structure, holding the data to coarsen the levels of a multi-grid simulation.
+		 *
+		 * This coarsener just uses the same matrix to perform the coarsening (via an mxv())
+		 * and the prolongation, using it transposed.
+		 */
 		template<
 			typename IOType,
 			typename NonzeroType,
 			class Ring,
 			class Minus
-		> struct single_point_coarsener {
+		> struct SingleMatrixCoarsener {
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring with default values" );
 			static_assert( std::is_default_constructible< Minus >::value,
 				"cannot construct the Minus operator with default values" );
 
-			using MultiGridInputType = multigrid_data< IOType, NonzeroType >;
+			using MultiGridInputType = MultiGridData< IOType, NonzeroType >;
 
-			// default value: override with your own
-			std::vector< std::unique_ptr< grb::algorithms::coarsening_data< IOType, NonzeroType > > > coarsener_levels;
+			/**
+			 * Data to coarsen each level, from finer to coarser.
+			 */
+			std::vector< std::unique_ptr< grb::algorithms::CoarseningData< IOType,
+				NonzeroType > > > coarsener_levels;
 			Ring ring;
 			Minus minus;
 
-
-			// single_point_coarsener() = default;
-
+			/**
+			 * Method required by MultiGridRunner before the recursive call, to coarsen
+			 * the residual vector of \p finer (the finer system) into the residual of
+			 * \p coarser (the coarser system).
+			 */
 			inline grb::RC coarsen_residual(
 				const MultiGridInputType &finer,
 				MultiGridInputType &coarser
 			) {
 				// first compute the residual
-				coarsening_data< IOType, NonzeroType > &coarsener = *coarsener_levels[ finer.level ];
-				grb::RC ret = grb::set( coarsener.Ax_finer, 0 );
+				CoarseningData< IOType, NonzeroType > &coarsener = *coarsener_levels[ finer.level ];
+				grb::RC ret = grb::set( coarsener.Ax_finer, ring. template getZero< IOType >() );
 				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( coarsener.Ax_finer, finer.A, finer.z, ring );
-				// DBG_print_norm( coarsener.Ax_finer, "temp Axf" );
+
 				return internal::compute_coarsening( finer.r, coarser.r, coarsener, ring, minus );
 			}
 
+			/**
+			 * Method required by MultiGridRunner after the recursive call, to "prolong" the coarser solution
+			 * into the finer solution.
+			 */
 			inline grb::RC prolong_solution(
 				const MultiGridInputType &coarser,
 				MultiGridInputType &finer
@@ -194,4 +210,4 @@ namespace grb {
 	} // namespace algorithms
 } // namespace grb
 
-#endif // _H_GRB_ALGORITHMS_HPCG_COARSENER
+#endif // _H_GRB_ALGORITHMS_HPCG_SINGLE_MATRIX_COARSENER
