@@ -151,12 +151,8 @@ namespace alp {
 						const size_t tc = d.getThreadCoords( thread ).second;
 						const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
 
-						size_t alloc_size = 0;
-						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
-							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-								alloc_size += d.getBlockSize( tr, tc, br, bc );
-							}
-						}
+						// Assuming that all blocks are of the same size
+						const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
 
 						#pragma omp critical
 						{

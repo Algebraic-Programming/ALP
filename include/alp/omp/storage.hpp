@@ -245,17 +245,13 @@ namespace alp {
 			//}
 
 			/** Returns the dimensions of the block given by the block id */
-			std::pair< size_t, size_t > getBlockDimensions( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
-				(void) tr;
-				(void) tc;
-				(void) br;
-				(void) bc;
+			constexpr std::pair< size_t, size_t > getBlockDimensions() const {
 				return { config::BLOCK_ROW_DIM, config::BLOCK_COL_DIM };
 			}
 
-			/** Returns the size of the block defined by the thread and local block coordinates. */
-			size_t getBlockSize( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
-				const auto dims = getBlockDimensions( tr, tc, br, bc );
+			/** Returns the size (in number of elements) of the block defined by the thread and local block coordinates. */
+			size_t getBlockSize() const {
+				const auto dims = getBlockDimensions();
 				return dims.first * dims.second;
 			}
 
@@ -263,7 +259,7 @@ namespace alp {
 			size_t getBlocksOffset( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
 				// The offset is calculated as the sum of sizes of all previous blocks
 				const size_t block_coord_1D = br * getLocalBlockGridDims( tr, tc ).second + bc;
-				return block_coord_1D * getBlockSize( tr, tc, br, bc );
+				return block_coord_1D * getBlockSize();
 			}
 
 			std::pair< size_t, size_t > getThreadCoords( const size_t thread_id ) const {

@@ -68,7 +68,7 @@ namespace alp {
 
 			// make an AMF
 			// note: When making a view over a vector, the second imf must be imf::Zero
-			const auto block_dims = distribution.getBlockDimensions( tr, tc, br, bc );
+			const auto block_dims = distribution.getBlockDimensions();
 
 			// Using explicit amf_type to expose its type rather than relying on auto
 			// Considerations for improved implementations:
@@ -86,7 +86,7 @@ namespace alp {
 				typename SourceMatrix::template view_type< view::cross_backend >::type
 			>::template change_backend< reference >::type;
 
-			return target_t( block_buffer, distribution.getBlockSize( tr, tc, br, bc ), amf );
+			return target_t( block_buffer, distribution.getBlockSize(), amf );
 		}
 
 	} // namespace internal
