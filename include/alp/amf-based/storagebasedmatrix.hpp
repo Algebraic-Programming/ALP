@@ -53,19 +53,6 @@ namespace alp {
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
-		/** Forward declarations for access functions */
-		template<
-			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
-		>
-		typename MatrixType::const_access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
-
-		template<
-			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
-		>
-		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
-
 		/** Forward declaration */
 		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
 		class StorageBasedMatrix;
@@ -116,29 +103,6 @@ namespace alp {
 			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
-
-		/** Forward declaration */
-		template< typename DerivedMatrix >
-		class MatrixBase;
-
-		template< typename DerivedMatrix >
-		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
-
-		template<
-			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
-		>
-		size_t getStorageDimensions( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		bool getInitialized( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		void setInitialized( MatrixType &, const bool ) noexcept;
 
 		/**
 		 * Matrix container specialization
@@ -298,6 +262,11 @@ namespace alp {
 					amf( std::move( amf ) ) {}
 
 				/** View on another container */
+				StorageBasedMatrix( Vector< T, backend > &container, AmfType &&amf ) :
+					container( container ),
+					amf( std::move( amf ) ) {}
+
+				/** View on another raw container */
 				StorageBasedMatrix( T *buffer, const size_t buffer_size, AmfType &&amf ) :
 					container( buffer, buffer_size ),
 					amf( std::move( amf ) ) {}

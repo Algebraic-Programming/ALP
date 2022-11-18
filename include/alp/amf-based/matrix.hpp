@@ -87,13 +87,13 @@ namespace alp {
 		/** Forward declarations for access functions */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::const_access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
 
@@ -143,13 +143,13 @@ namespace alp {
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
@@ -167,9 +167,9 @@ namespace alp {
 					static_cast< DerivedMatrix & >( *this ).setInitialized( initialized );
 				}
 
-				template< typename AccessType, typename StorageIndexType >
-				const AccessType access( const StorageIndexType storageIndex ) const {
-					static_assert( std::is_same< AccessType, typename DerivedMatrix::const_access_type >::value );
+				template< typename ConstAccessType, typename StorageIndexType >
+				ConstAccessType access( const StorageIndexType storageIndex ) const {
+					static_assert( std::is_same< ConstAccessType, typename DerivedMatrix::const_access_type >::value );
 					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
 					return static_cast< const DerivedMatrix & >( *this ).access( storageIndex );
 				}
@@ -449,38 +449,33 @@ namespace alp {
 				) {}
 
 			/**
-			 * @deprecated
 			 * Constructor for a view over another storage-based matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.
 			 * @tparam AmfType     The type of the amf used to construct the matrix.
-			 *                     Used as a template parameter to benefit from
-			 *                     SFINAE for the case of FunctorBasedMatrix, when
-			 *                     base_type::amf_type does not exist and, therefore,
-			 *                     using the expression base_type::amf_type would
-			 *                     result in a hard compilation error.
+			 *                     Used as a template parameter to avoid hard
+			 *                     compilation error in the case of FunctorBasedMatrix,
+			 *                     when base_type::amf_type does not exist.
 			 */
 			template<
-				//typename SourceType,
 				typename BufferType,
 				typename AmfType,
 				std::enable_if_t<
-					//std::is_same< SourceType, typename View::applied_to >::value &&
-					internal::is_view_over_storage< View >::value &&
-					internal::requires_allocation< View >::value &&
-					std::is_same<
-						typename base_type::amf_type,
-						typename std::remove_reference< AmfType >::type
-					>::value
+					!is_container< BufferType >::value &&
+					internal::is_view_over_storage< View >::value
 				> * = nullptr
 			>
-			//Matrix( SourceType &source_matrix, AmfType &&amf ) :
 			Matrix( BufferType &&buffer, const size_t buffer_size, AmfType &&amf ) :
 				base_type(
 					buffer,
 					buffer_size,
 					std::forward< typename base_type::amf_type >( amf )
-				) {}
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, typename std::remove_reference< AmfType >::type >::value,
+					"The type of the provided AMF does not match the type of constructed container's AMF"
+				);
+			}
 
 			/**
 			 * Constructor for a functor-based matrix that allocates memory.
@@ -1079,7 +1074,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
@@ -1090,7 +1085,7 @@ namespace alp {
 		/** Non-constant variant. **/
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
