@@ -32,6 +32,8 @@
 #include <stdexcept>
 #include <utility>
 #include <limits.h>
+#include <iterator>
+#include <type_traits>
 
 #include <graphblas.hpp>
 
@@ -57,6 +59,9 @@ namespace grb {
 			IterT &begin,
 			IterT &end
 		) {
+			static_assert( std::is_base_of< std::random_access_iterator_tag,
+				typename std::iterator_traits< IterT >::iterator_category >::value,
+				"the given iterator is not a random access one" );
 			assert( num_nonzeroes == static_cast< size_t >( end - begin ) );
 			size_t first, last;
 			partition_nonzeroes( num_nonzeroes, first, last );
@@ -108,9 +113,8 @@ namespace grb {
 			grb::algorithms::matrix_generator_iterator< DIMS, coord_t, T > end(
 				hpcg_system.make_end_iterator( diag_value, non_diag_value )
 			);
-			partition_iteration_range( hpcg_system.system_size(), begin, end );
+			partition_iteration_range( hpcg_system.num_neighbors(), begin, end );
 
-			// std::cout << "num nonzeroes " << ( end - begin ) << std::endl;
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
 
@@ -181,70 +185,6 @@ namespace grb {
 			partition_iteration_range( coarsener.system_size(), begin, end );
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
 		}
-
-		template< typename T >
-		struct color_mask_iter {
-
-			using self_t = color_mask_iter< T >;
-			using iterator_category = std::random_access_iterator_tag;
-			using value_type = T;
-			using pointer = const value_type *;
-			using reference = value_type;
-			using difference_type = long;
-
-			color_mask_iter() = delete;
-
-			color_mask_iter( T _num_cols, T _pos ) noexcept:
-				color_num( _num_cols),
-				position( _pos ) {}
-
-
-			color_mask_iter( const self_t &o ):
-				color_num( o.color_num ),
-				position( o.position ) {}
-
-			//self_t & operator=( const self_t & ) = default;
-
-			bool operator!=( const self_t &o ) const {
-				return position != o.position;
-			}
-
-			self_t & operator++() noexcept {
-				position += color_num;
-				return *this;
-			}
-
-			self_t & operator++( int ) noexcept {
-				return operator++();
-			}
-
-			self_t & operator+=( size_t offset ) noexcept {
-				position += offset * color_num;
-				return *this;
-			}
-
-			difference_type operator-( const self_t &o ) const noexcept {
-				return static_cast< difference_type >( ( position - o.position ) / color_num );
-			}
-
-			pointer operator->() const {
-				return &position;
-			}
-
-			reference operator*() const {
-				// std::cout << "returning " << position << std::endl;
-				return position;
-			}
-
-			static self_t build_end_iterator( T vsize, T _num_cols, T _col ) {
-				T final_pos = ( ( vsize - _col + _num_cols - 1 ) / _num_cols ) * _num_cols + _col;
-				return self_t( _num_cols, final_pos );
-			}
-
-			private:
-			const T color_num;
-			T position;
-		};
 
 		template< typename CoordT >
 		struct true_iter {
@@ -318,40 +258,50 @@ namespace grb {
 		 */
 		template< enum grb::Backend B >
 		grb::RC build_static_color_masks(
-			std::vector< grb::Vector< bool, B > > & masks,
 			std::size_t matrix_size,
-			std::size_t colors
+			const std::vector< std::vector< size_t > > &per_color_rows,
+			std::vector< grb::Vector< bool, B > > & masks
 		) {
 			if( ! masks.empty() ) {
-				throw std::invalid_argument( "vector of masks is expected to be "
-											"empty" );
+				throw std::invalid_argument( "vector of masks is expected to be empty" );
 			}
-			if( matrix_size < colors ) {
-				throw std::invalid_argument( "syztem size is < number of colors: too "
-											"small" );
-			}
-			grb::RC rc { grb::SUCCESS };
-			masks.reserve( colors );
-			for( std::size_t i { 0U }; i < colors; i++ ) {
-				// build in-place, assuming the compiler deduces the right constructor according to B
-				masks.emplace_back( matrix_size );
-				grb::Vector< bool > & mask = masks.back();
-				// grb::set(mask, false); // DO NOT initialize false's explicitly, otherwise
-				// RBGS will touch them too and the runtime will increase!
+			for( size_t i = 0; i < per_color_rows.size(); i++ ) {
+				const std::vector< size_t > & rows = per_color_rows[ i ];
 				/*
-				for( std::size_t j = i; j < matrix_size; j += colors ) {
-					rc = grb::setElement( mask, true, j );
-					assert( rc == grb::SUCCESS );
-					if( rc != grb::SUCCESS )
-						return rc;
+				{
+					std::cout << "\ncolor " << i << std::endl;
+					for( size_t row : rows ) {
+						std::cout << row << " ";
+					}
+					std::cout << std::endl;
 				}
 				*/
-				color_mask_iter< unsigned > begin( colors, i );
-				color_mask_iter< unsigned > end =
-					color_mask_iter< unsigned >::build_end_iterator( matrix_size, colors, i );
-				grb::buildVectorUnique( mask, begin, end, true_iter< size_t >( 0 ), true_iter< size_t >( matrix_size ), IOMode::SEQUENTIAL );
+				masks.emplace_back( matrix_size );
+				grb::Vector< bool > & output_mask = masks.back();
+				std::vector< size_t >::const_iterator begin = rows.cbegin();
+				std::vector< size_t >::const_iterator end = rows.cend();
+				// partition_iteration_range( rows.size(), begin, end );
+				grb::RC rc = grb::buildVectorUnique( output_mask, begin , end, true_iter< size_t >( 0 ),
+					true_iter< size_t >( std::distance( begin, end ) ), IOMode::SEQUENTIAL );
+				if( rc != SUCCESS ) {
+					std::cerr << "error while creating output mask for color " << i << ": "
+						<< toString( rc ) << std::endl;
+					return rc;
+				}
+				/*
+				{
+					std::cout << "mask color " << i << std::endl;
+					size_t count = 0;
+					for( const auto & v : output_mask ) {
+						std::cout << v.first << " ";
+						count++;
+						if( count > 20 ) break;
+					}
+					std::cout << std::endl;
+				}
+				*/
 			}
-			return rc;
+			return grb::SUCCESS;
 		}
 
 	} // namespace algorithms

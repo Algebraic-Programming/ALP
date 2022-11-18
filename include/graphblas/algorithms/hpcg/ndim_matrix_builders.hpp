@@ -215,6 +215,10 @@ namespace grb {
 				return _val.v();
 			}
 
+			const __iter_t & it() const {
+				return this->_sys_iter;
+			}
+
 		private:
 			value_type _val;
 			const linear_system_t *_lin_system;
@@ -296,6 +300,10 @@ namespace grb {
 
 			size_t num_neighbors() const {
 				return system.halo_system_size();
+			}
+
+			const system_t & get_generator() const {
+				return system;
 			}
 
 			hpcg_sys_iterator make_begin_iterator(
@@ -497,6 +505,10 @@ namespace grb {
 			 */
 			inline ValueType v() const {
 				return _val.v();
+			}
+
+			const __iter_t & it() const {
+				return this->_sys_iter;
 			}
 
 		private:

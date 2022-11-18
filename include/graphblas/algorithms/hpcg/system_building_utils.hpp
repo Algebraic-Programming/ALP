@@ -37,6 +37,8 @@
 #include "hpcg_data.hpp"
 #include "matrix_building_utils.hpp"
 
+#include "coloring.hpp"
+
 #ifndef MASTER_PRINT
 #define INTERNAL_MASTER_PRINT
 #define MASTER_PRINT( pid, txt ) if( pid == 0 ) { std::cout << txt; }
@@ -69,13 +71,23 @@ namespace grb {
 		struct hpcg_system_params {
 			std::array< std::size_t, DIMS > physical_sys_sizes;
 			std::size_t halo_size;
-			std::size_t num_colors;
 			T diag_value;
 			T non_diag_value;
 			std::size_t min_phys_size;
 			std::size_t max_levels;
 			std::size_t coarsening_step;
 		};
+
+		template< typename CoordType > void split_rows_by_color(
+			const std::vector< CoordType > & row_colors,
+			size_t num_colors,
+			std::vector< std::vector< CoordType > > & per_color_rows
+		) {
+			per_color_rows.resize( num_colors );
+			for( CoordType i = 0; i < row_colors.size(); i++ ) {
+				per_color_rows[ row_colors[ i ] ].push_back( i );
+			}
+		}
 
 		// SystemData must have a zero_temp_vectors()
 		template< std::size_t DIMS, typename IOType, typename NonzeroType, typename SystemData >
@@ -88,8 +100,7 @@ namespace grb {
 			size_t halo_size,
 			NonzeroType diag_value,
 			NonzeroType non_diag_value,
-			size_t num_colors,
-			std::array< double, 3 > & times
+			std::array< double, 4 > & times
 		) {
 
 			grb::RC rc { grb::SUCCESS };
@@ -97,7 +108,7 @@ namespace grb {
 			grb::utils::Timer timer;
 			static const char * const log_prefix = "  -- ";
 
-			using coord_t = unsigned;
+			using coord_t = size_t;
 			static_assert( DIMS > 0, "DIMS must be > 0" );
 			size_t n { std::accumulate( physical_sys_sizes.cbegin(), physical_sys_sizes.cend(),
 				1UL, std::multiplies< size_t >() ) };
@@ -135,15 +146,28 @@ namespace grb {
 			times[ 1 ] = timer.time();
 			MASTER_PRINT( pid, " time (ms) " << times[ 1 ] << std::endl );
 
-
-			MASTER_PRINT( pid, log_prefix << "generating color masks..." );
+			MASTER_PRINT( pid, log_prefix << "running coloring heuristics..." );
 			timer.reset();
-			rc = build_static_color_masks( system.color_masks, system_size, num_colors );
+			std::vector< coord_t > colors, color_counters;
+			color_matrix_greedy( system_generator.get_generator(), colors, color_counters );
+			std::vector< std::vector< coord_t > > per_color_rows;
+			split_rows_by_color( colors, color_counters.size(), per_color_rows );
 			if( rc != grb::SUCCESS ) {
 				return rc;
 			}
 			times[ 2 ] = timer.time();
-			MASTER_PRINT( pid, " time (ms) " << times[ 2 ] << std::endl );
+			MASTER_PRINT( pid, " found " << color_counters.size() << " colors, time (ms) "
+				<< times[ 2 ] << std::endl );
+
+
+			MASTER_PRINT( pid, log_prefix << "generating color masks..." );
+			timer.reset();
+			rc = build_static_color_masks( system_size, per_color_rows, system.color_masks );
+			if( rc != grb::SUCCESS ) {
+				return rc;
+			}
+			times[ 3 ] = timer.time();
+			MASTER_PRINT( pid, " time (ms) " << times[ 3 ] << std::endl );
 
 			return rc;
 		}
@@ -177,19 +201,17 @@ namespace grb {
 			const size_t pid { spmd<>::pid() };
 			grb::utils::Timer timer;
 
-			std::array< double, 3 > times;
+			std::array< double, 4 > times;
 			MASTER_PRINT( pid, "\n-- main system" << std::endl );
 			rc = build_base_system< DIMS, T, T, grb::algorithms::hpcg_data< T, T, T > >( *data, n, params.physical_sys_sizes, params.halo_size,
-				params.diag_value, params.non_diag_value, params.num_colors, times );
+				params.diag_value, params.non_diag_value, times );
 			if( rc != grb::SUCCESS ) {
 				MASTER_PRINT( pid, " error: " << toString( rc ) );
 				return rc;
 			}
 			MASTER_PRINT( pid, "-- main system generation time (ms) "
-				"[system matrix,vectors,color masks]:"
-				<< times[ 0 ]
-				<< "," << times[ 1 ]
-				<< "," << times[ 2 ] << std::endl;
+				"(system matrix,vectors,coloring,color masks):" << times[ 0 ] << "," << times[ 1 ]
+				<< "," << times[ 2 ] << "," << times[ 3 ] << std::endl;
 			);
 
 			// initialize coarsening with additional pointers and dimensions copies to iterate and divide
@@ -224,17 +246,15 @@ namespace grb {
 				double coarsener_gen_time{ timer.time() };
 
 				rc = build_base_system< DIMS, T, T, grb::algorithms::multi_grid_data< T, T > >( *new_coarser, coarser_size, coarser_sizes, params.halo_size,
-					params.diag_value, params.non_diag_value, params.num_colors, times );
+					params.diag_value, params.non_diag_value, times );
 				if( rc != grb::SUCCESS ) {
 					MASTER_PRINT( pid, " error: " << toString( rc ) );
 					return rc;
 				}
 				MASTER_PRINT( pid, "-- level generation time (ms) "
-					"[level,coarsening matrix,system matrix,vectors,color masks]:"
-					<< coarsening_level << "," << coarsener_gen_time
-					<< "," << times[ 0 ]
-					<< "," << times[ 1 ]
-					<< "," << times[ 2 ] << std::endl;
+					"(level,coarsening matrix,system matrix,vectors,coloring,color masks):"
+					<< coarsening_level << "," << coarsener_gen_time << "," << times[ 0 ] << "," << times[ 1 ]
+					<< "," << times[ 2 ] << "," << times[ 3 ] << std::endl;
 				);
 
 				// prepare for new iteration

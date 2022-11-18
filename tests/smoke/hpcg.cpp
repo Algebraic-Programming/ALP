@@ -35,10 +35,6 @@
 #include <type_traits>
 
 #include <graphblas.hpp>
-#include <graphblas/algorithms/hpcg/hpcg.hpp>
-#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
-
-#include <graphblas/algorithms/hpcg/old_ndim_matrix_builders.hpp>
 
 #include <chrono>
 
@@ -67,6 +63,12 @@ void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring 
  */
 #define DBG_print_norm( vec, head ) print_norm( vec, head )
 #endif
+
+#include <graphblas/algorithms/hpcg/hpcg.hpp>
+#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
+
+#include <graphblas/algorithms/hpcg/old_ndim_matrix_builders.hpp>
+#include <graphblas/algorithms/hpcg/coloring.hpp>
 
 #include <graphblas/utils/Timer.hpp>
 
@@ -160,9 +162,9 @@ T static next_pow_2( T n ) {
  * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
  */
 static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
-	const std::array< size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
-		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
+		{ in.nx, in.ny, in.nz }, HALO_RADIUS, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE,
+			PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
 	};
 
 	return build_hpcg_system< 3, double >( holder, params );
@@ -361,6 +363,8 @@ static void test_iters();
 static void test_iters2();
 #endif
 
+void test_system_iter();
+
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
 	size_t test_outer_iterations;
@@ -371,6 +375,8 @@ int main( int argc, char ** argv ) {
 	test_iters2();
 	return 0;
 #endif
+	test_system_iter();
+	// return 0;
 
 	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
 	thcout << "System size x: " << sim_in.nx << std::endl;
@@ -490,6 +496,34 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 }
 
 
+void test_system_iter() {
+	constexpr size_t DIMS = 2;
+	using row_index_t = size_t;
+	std::array< row_index_t, DIMS > dims;
+	dims.fill( 4 );
+	grb::utils::geometry::linearized_halo_ndim_system< row_index_t, DIMS > system( dims, 1 );
+	grb::utils::geometry::linearized_halo_ndim_system< row_index_t, DIMS >::iterator begin = system.begin();
+
+	while( begin.has_more_elements() ) {
+		std::cout << "row " << begin->get_element_linear() << ": ";
+		while( begin.has_more_neighbours() ) {
+			std::cout << /* "-- " << */ begin->get_neighbor_linear() << " ";
+			begin.next_neighbour();
+		}
+		std::cout << std::endl;
+		begin.next_element();
+	}
+
+	std::vector< size_t > colors, counters;
+	color_matrix_greedy( system, colors, counters );
+
+	std::cout << "final assignment:" << std::endl;
+	for( size_t i = 0; i < colors.size(); i++ ){
+		std::cout << i << " -> " << colors[ i ] << ", ";
+	}
+	std::cout << std::endl;
+}
+
 
 
 struct NZ {
@@ -510,9 +544,10 @@ static void test_iters() {
 	using clock = std::chrono::steady_clock;
 
 	constexpr size_t DIMS = 3;
+	using coord_t = size_t;
 
-	std::array< unsigned, DIMS > finer_sizes{ 1024, 1024, 1024};
-	std::array< unsigned, DIMS > coarser_sizes;
+	std::array< coord_t, DIMS > finer_sizes{ 1024, 1024, 1024};
+	std::array< coord_t, DIMS > coarser_sizes;
 	for( size_t i = 0; i < finer_sizes.size(); i++ ) {
 		coarser_sizes[ i ] = finer_sizes[ i ] / 2;
 	}
@@ -528,8 +563,8 @@ static void test_iters() {
 	grb::algorithms::old::coarsener_generator_iterator< DIMS, double > send( lcoarser_sizes, lfiner_sizes, rows );
 
 
-	using citer = hpcg_coarsener_builder< DIMS, unsigned, double >::hpcg_coarsener_iterator;
-	hpcg_coarsener_builder< DIMS, unsigned, double > coarsener( coarser_sizes, finer_sizes );
+	using citer = hpcg_coarsener_builder< DIMS, coord_t, double >::hpcg_coarsener_iterator;
+	hpcg_coarsener_builder< DIMS, coord_t, double > coarsener( coarser_sizes, finer_sizes );
 	citer pbegin( coarsener.make_begin_iterator() );
 	const citer pend( coarsener.make_end_iterator() );
 
@@ -595,21 +630,22 @@ static void test_iters() {
 static void test_iters2() {
 
 	using clock = std::chrono::steady_clock;
+	using coord_t = size_t;
 
 	constexpr size_t DIMS = 3, halo_size = 1;
 	constexpr double diag_value = 26.0, non_diag_value = -1.0;
 
-	std::array< unsigned, DIMS > sys_sizes{ 64, 64, 64};
+	std::array< coord_t, DIMS > sys_sizes{ 64, 64, 64};
 	size_t n { std::accumulate( sys_sizes.cbegin(), sys_sizes.cend(), 1UL, std::multiplies< size_t >() ) };
 
 	std::array< size_t, DIMS > large_sys_sizes{ 64, 64, 64};
 	old::matrix_generator_iterator< DIMS, double > sbegin( large_sys_sizes, 0UL, halo_size, diag_value, non_diag_value );
 	old::matrix_generator_iterator< DIMS, double > send( large_sys_sizes, n, halo_size, diag_value, non_diag_value );
 
-	hpcg_builder< DIMS, unsigned, double > hpcg_system( sys_sizes, halo_size );
-	matrix_generator_iterator< DIMS, unsigned, double > pbegin(
+	hpcg_builder< DIMS, coord_t, double > hpcg_system( sys_sizes, halo_size );
+	matrix_generator_iterator< DIMS, coord_t, double > pbegin(
 		hpcg_system.make_begin_iterator( diag_value, non_diag_value ) );
-	matrix_generator_iterator< DIMS, unsigned, double > pend(
+	matrix_generator_iterator< DIMS, coord_t, double > pend(
 		hpcg_system.make_end_iterator( diag_value, non_diag_value )
 	);
 
