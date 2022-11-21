@@ -209,7 +209,7 @@ namespace alp {
 				// G2=G-identity(2).astype(complex)
 				rc = rc ? rc : alp::foldl( Gdiag, one, minus );
 				// V[i:i+2,:]=V[i:i+2,:] + conjugate(G2).dot(V[i:i+2,:])
-				auto Vstrip = get_view< structures::General >( V, utils::range( i, i + 2 ), utils::range( 0, n ) );
+				auto Vstrip = get_view< structures::General >( V, utils::range( i, i + 2 ), utils::range( 0, ncols( V ) ) );
 				Matrix< D, structures::General, Dense > TMPStrip1( nrows( Vstrip ), ncols( Vstrip ) );
 				rc = rc ? rc : alp::set( TMPStrip1, Vstrip );
 				rc = rc ? rc : mxm( Vstrip, GTstar, TMPStrip1, ring );
@@ -323,36 +323,9 @@ namespace alp {
 				}
 
 				auto Bview = get_view( B, utils::range( i1, i2 ), utils::range( i1, i2 ) );
-				Matrix< D, structures::Orthogonal, Dense > Utmp( nrows( Bview ), nrows( Bview ) );
-				Matrix< D, structures::Orthogonal, Dense > Vtmp( ncols( Bview ), ncols( Bview ) );
-				rc = rc ? rc : set( Utmp, zero );
-				rc = rc ? rc : set( Vtmp, zero );
-				// set Utmp to Identity
-				auto DiagUtmp = alp::get_view< alp::view::diagonal >( Utmp );
-				rc = rc ? rc : alp::set( Utmp, zero );
-				rc = rc ? rc : alp::set( DiagUtmp, one );
-				// set Vtmp to Identity
-				auto DiagVtmp = alp::get_view< alp::view::diagonal >( Vtmp );
-				rc = rc ? rc : alp::set( Vtmp, zero );
-				rc = rc ? rc : alp::set( DiagVtmp, one );
-
-				// sdv step
-				// rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
-				rc = rc ? rc : algorithms::gk_svd_step( Utmp, Bview, Vtmp, ring, minus, divide );
-
-				// update U
-				auto Ustrip = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
-				Matrix< D, structures::General, Dense > TMPStripU( nrows( Ustrip ), ncols( Ustrip ) );
-				rc = rc ? rc : alp::set( TMPStripU, Ustrip );
-				rc = rc ? rc : set( Ustrip, zero );
-				rc = rc ? rc : mxm( Ustrip, TMPStripU, Utmp, ring );
-
-				// update V
-				auto Vstrip = get_view< structures::General >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
-				Matrix< D, structures::General, Dense > TMPStripV( nrows( Vstrip ), ncols( Vstrip ) );
-				rc = rc ? rc : alp::set( TMPStripV, Vstrip );
-				rc = rc ? rc : set( Vstrip, zero );
-				rc = rc ? rc : mxm( Vstrip, Vtmp, TMPStripV, ring );
+				auto Uview = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
+				auto Vview = get_view< structures::General >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
+				rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
 
 				// check convergence
 				Scalar< D > sup_diag_norm( zero );
@@ -366,6 +339,7 @@ namespace alp {
 			}
 
 			// Rotate diagonal elements in complex plane
+			// in order to have them on real axis (positive singular values)
 			auto BSquare = alp::get_view( B, utils::range( 0, k ), utils::range( 0, k ) );
 			auto DiagBview = alp::get_view< alp::view::diagonal >( BSquare );
 			Matrix< D, structures::Square, Dense > RotMat( nrows( B ) );
@@ -384,8 +358,6 @@ namespace alp {
 				d1abs
 			);
 			rc = rc ? rc : alp::foldl( d1, d1abs, divide );
-
-
 
 			Matrix< D, structures::Orthogonal, Dense > UtmpRot( nrows( U ) );
 			rc = rc ? rc : alp::set( UtmpRot, U );
