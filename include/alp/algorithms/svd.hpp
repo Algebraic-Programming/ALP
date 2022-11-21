@@ -160,7 +160,6 @@ namespace alp {
 
 			Scalar< D > cc( zero );
 			rc = rc ? rc : alp::foldl( cc, conjugate( t12 ), ring.getAdditiveMonoid() );
-			//rc = rc ? rc : alp::foldl( cc, t12, ring.getMultiplicativeMonoid() );
 
 			Vector< D > DD( 2 );
 			rc = rc ? rc : alp::set( DD, zero );
@@ -199,7 +198,6 @@ namespace alp {
 			auto GTstar = conjugate( GT );
 
 			for( size_t i = 0; i < k - 1; ++i ){
-
 				// B[max(i-1,0):i+2,i:i+2]=B[max(i-1,0):i+2,i:i+2].dot(G)
 				auto Bblock1 = get_view( B, utils::range( ( i == 0 ? 0 : i - 1 ), i + 2 ), utils::range( i, i + 2 ) );
 				Matrix< D, structures::General, Dense > TMP1( nrows( Bblock1 ), ncols( Bblock1 ) );
@@ -339,33 +337,22 @@ namespace alp {
 				rc = rc ? rc : alp::set( DiagVtmp, one );
 
 				// sdv step
+				// rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
 				rc = rc ? rc : algorithms::gk_svd_step( Utmp, Bview, Vtmp, ring, minus, divide );
 
-				// rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
+				// update U
+				auto Ustrip = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
+				Matrix< D, structures::General, Dense > TMPStripU( nrows( Ustrip ), ncols( Ustrip ) );
+				rc = rc ? rc : alp::set( TMPStripU, Ustrip );
+				rc = rc ? rc : set( Ustrip, zero );
+				rc = rc ? rc : mxm( Ustrip, TMPStripU, Utmp, ring );
 
-				Matrix< D, structures::Orthogonal, Dense > UtmpX( nrows( U ), ncols( U ) );
-				Matrix< D, structures::Orthogonal, Dense > VtmpX( nrows( V ), ncols( V ) );
-				{
-					auto DiagUtmpX = alp::get_view< alp::view::diagonal >( UtmpX );
-					rc = rc ? rc : alp::set( UtmpX, zero );
-					rc = rc ? rc : alp::set( DiagUtmpX, one );
-					auto DiagVtmpX = alp::get_view< alp::view::diagonal >( VtmpX );
-					rc = rc ? rc : alp::set( VtmpX, zero );
-					rc = rc ? rc : alp::set( DiagVtmpX, one );
-					auto SUtmpX = get_view( UtmpX, utils::range( i1, i2 ), utils::range( i1, i2 ) );
-					auto SVtmpX = get_view( VtmpX, utils::range( i1, i2 ), utils::range( i1, i2 ) );
-					rc = rc ? rc : alp::set( SUtmpX, Utmp );
-					rc = rc ? rc : alp::set( SVtmpX, Vtmp );
-				}
-
-				Matrix< D, structures::Orthogonal, Dense > Utmp2( nrows( U ), ncols( U ) );
-				Matrix< D, structures::Orthogonal, Dense > Vtmp2( nrows( V ), ncols( V ) );
-				rc = rc ? rc : set( Utmp2, U );
-				rc = rc ? rc : set( Vtmp2, V );
-				rc = rc ? rc : set( U, zero );
-				rc = rc ? rc : set( V, zero );
-				rc = rc ? rc : mxm( U, Utmp2, UtmpX, ring );
-				rc = rc ? rc : mxm( V, VtmpX, Vtmp2, ring );
+				// update V
+				auto Vstrip = get_view< structures::General >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
+				Matrix< D, structures::General, Dense > TMPStripV( nrows( Vstrip ), ncols( Vstrip ) );
+				rc = rc ? rc : alp::set( TMPStripV, Vstrip );
+				rc = rc ? rc : set( Vstrip, zero );
+				rc = rc ? rc : mxm( Vstrip, Vtmp, TMPStripV, ring );
 
 				// check convergence
 				Scalar< D > sup_diag_norm( zero );
