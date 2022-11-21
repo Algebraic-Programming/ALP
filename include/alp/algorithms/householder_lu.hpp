@@ -29,7 +29,7 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 * @brief Computes Householder LU decomposition of general matrix \f$H = LU\f$
+		 *        Computes Householder LU decomposition of general matrix \f$H = LU\f$
 		 *        where \a H is general (complex or real),
 		 *        \a L lower trapezoidal,
 		 *        \a U is upper trapezoidal.
@@ -40,6 +40,7 @@ namespace alp {
 		 * @tparam Divide   Type of divide operator used in the computation
 		 * @param[out] L    output lower trapezoidal matrix
 		 * @param[out] U    output upper trapezoidal matrix
+		 * @param[out] p    output permutation vector
 		 * @param[in]  H    input general matrix
 		 * @param[in]  ring A semiring for operations
 		 * @return RC       SUCCESS if the execution was correct
@@ -50,10 +51,12 @@ namespace alp {
 			typename D = typename MatH::value_type,
 			typename MatL,
 			typename MatU,
+			typename IndexType,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
+				std::is_integral< IndexType >::value &&
 				is_matrix< MatH >::value &&
 				is_matrix< MatL >::value &&
 				is_matrix< MatU >::value &&
@@ -66,10 +69,10 @@ namespace alp {
 			> * = nullptr
 		>
 		RC householder_lu(
-			MatH &H,
+			const MatH &H,
 			MatL &L,
 			MatU &U,
-			Vector< size_t > &p,
+			Vector< IndexType > &p,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -81,16 +84,16 @@ namespace alp {
 
 			const size_t m = nrows( H );
 			const size_t n = ncols( H );
-			const size_t k = std::min( n, m );
+			const size_t kk = std::min( n, m );
 
 			// check sizes
 			if(
 				( nrows( L ) != nrows( H ) ) ||
 				( ncols( U ) != ncols( H ) ) ||
-				( nrows( U ) != k ) ||
-				( ncols( L ) != k )
+				( nrows( U ) != kk ) ||
+				( ncols( L ) != kk )
 			) {
-				std::cerr << " n, k, m = " << n << ", "  << k << ", " << m << "\n";
+				std::cerr << " n, kk, m = " << n << ", "  << kk << ", " << m << "\n";
 				std::cerr << "Incompatible sizes in householder_lu.\n";
 				return FAILED;
 			}

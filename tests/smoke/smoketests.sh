@@ -582,7 +582,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dgeqrf (Householder QR decomposition) on"
-	echo ">>>                              a random real symmetric matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER)))."
+	echo ">>>                              a random real general matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER)))."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log || echo "Test FAILED"
@@ -590,7 +590,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zgeqrf (Householder QR decomposition) on"
-	echo ">>>                              a random complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX)))."
+	echo ">>>                              a random complex general matrix (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX)))."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log || echo "Test FAILED"
@@ -598,7 +598,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dgetrf (Householder LU decomposition) on"
-	echo ">>>                              a random real general matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER))),"
+	echo ">>>                              a random real general matrices of sizes (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER))),"
 	echo ">>>                              (${NTEST_HOUSEHOLDER} x ${NTEST_HOUSEHOLDER}) and ($((2*NTEST_HOUSEHOLDER)) x ${NTEST_HOUSEHOLDER})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zgetrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log
