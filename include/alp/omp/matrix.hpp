@@ -28,7 +28,10 @@
 #include <alp/base/matrix.hpp>
 #include <alp/amf-based/matrix.hpp>
 #include "storagebasedmatrix.hpp"
-#include <alp/reference/storage.hpp> // For AMFFactory
+
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/reference/storage.hpp> // For AMFFactory
+#endif
 
 namespace alp {
 
@@ -37,7 +40,7 @@ namespace alp {
 	namespace internal {
 
 		/**
-		 * Exposes a block of the parallel matrix as a reference ALP matrix.
+		 * Exposes a block of the parallel matrix as a sequential ALP matrix.
 		 *
 		 * The underlying container (buffer/block) is obtained from the parallel
 		 * container, while the AMF is constructed based on the properties of the
@@ -53,7 +56,7 @@ namespace alp {
 		>
 		typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::cross_backend >::type
-		>::template change_backend< reference >::type
+		>::template change_backend< config::default_sequential_backend >::type
 		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
 
 			(void) rt;
@@ -76,15 +79,19 @@ namespace alp {
 			//    rather than being explicitely specified. To that end, determine_amf_type
 			//    should expose the factory in addition to the AMF type. Also factory might
 			//    expose the type of AMF it produces
-			using amf_type = typename determine_amf_type< structures::General, view::CrossBackend< SourceMatrix >, imf::Id, imf::Id, reference >::type;
-			amf_type amf = alp::storage::AMFFactory< reference >::FromPolynomial< structures::General, imf::Id, imf::Id >::Create(
+			using amf_type = typename determine_amf_type<
+				structures::General, view::CrossBackend< SourceMatrix >, imf::Id, imf::Id, config::default_sequential_backend
+			>::type;
+			amf_type amf = alp::storage::AMFFactory< config::default_sequential_backend >::FromPolynomial<
+				structures::General, imf::Id, imf::Id
+			>::Create(
 				imf::Id( block_dims.first ), imf::Id( block_dims.second )
 			);
 
-			// create a reference container with the container and AMF above
+			// create a sequential container with the container and AMF above
 			using target_t = typename internal::new_container_type_from<
 				typename SourceMatrix::template view_type< view::cross_backend >::type
-			>::template change_backend< reference >::type;
+			>::template change_backend< config::default_sequential_backend >::type;
 
 			return target_t( block_buffer, distribution.getBlockSize(), amf );
 		}

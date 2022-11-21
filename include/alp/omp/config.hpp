@@ -27,6 +27,9 @@ namespace alp {
 
 	namespace config {
 
+		/** The default sequential backend to be selected for this parallel backend. */
+		static constexpr alp::Backend default_sequential_backend = _ALP_SECONDARY_BACKEND;
+
 		class OMP : public grb::config::OMP {};
 
 		// Dimensions of blocks counted in number of elements per dimension

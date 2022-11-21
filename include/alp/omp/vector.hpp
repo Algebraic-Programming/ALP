@@ -32,7 +32,10 @@
 #include <alp/backends.hpp>
 #include <alp/base/vector.hpp>
 #include <alp/amf-based/vector.hpp>
-#include <alp/reference/vector.hpp>
+
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/reference/vector.hpp>
+#endif
 
 // #include <alp/utils/alloc.hpp>
 // #include <alp/utils/autodeleter.hpp>

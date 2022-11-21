@@ -25,7 +25,11 @@
 
 #include <alp/base/io.hpp>
 #include <alp/matrix.hpp>
-#include <alp/reference/io.hpp> // to delegate to reference implementations
+
+// Include backend to which sequential work is delegated
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/reference/io.hpp>
+#endif
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
