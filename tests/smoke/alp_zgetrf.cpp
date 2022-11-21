@@ -137,12 +137,7 @@ RC check_lu_solution(
 
 	// until #591 is implemented we use no_permutation_vec explicitly
 	alp::Vector< size_t > no_permutation_vec( n );
-	{
-		// tmp data
-		std::vector< size_t > v( n );
-		std::iota( std::begin( v ), std::end( v ), 0 );
-		rc = rc ? rc : alp::buildVector( no_permutation_vec, v.begin(), v.end() );
-	}
+	alp::set< alp::descriptors::use_index >( no_permutation_vec, alp::Scalar< size_t >( 0 ) );
 
 	// LU = LU - [p]H // where p are row permutations
 	auto pH = alp::get_view< alp::structures::General >( H, p, no_permutation_vec );
@@ -207,12 +202,6 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 			std::srand( RNDSEED );
 			auto matrix_data = generate_rectangular_matrix_data< ScalarType >( M, N );
 			rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
-
-			std::vector< size_t > dtmp( M, 0 );
-			for( size_t i = 0; i < M; ++i ) {
-				dtmp[ i ] = i;
-			}
-			alp::buildVector( permutation_vec, dtmp.begin(), dtmp.end() );
 		}
 #ifdef DEBUG
 		print_matrix( " input matrix H ", H );

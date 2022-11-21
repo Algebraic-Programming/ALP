@@ -379,7 +379,6 @@ namespace alp {
 			};
 		};
 
-
 		/**
 		 * @brief A Band is a structure described by a compile-time tuple of 
 		 *        sorted, non-overlapping integer intervals which 
@@ -593,13 +592,21 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
+		struct Diagonal;
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
 		template<>
 		struct isInstantiable< LowerTrapezoidal, LowerTrapezoidal > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				(void) imf_r;
-				(void) imf_c;
-				return true;
+				return ( imf_c.map( 0 ) <= imf_r.map( imf_r.n - 1 ) );
 			};
 		};
 
@@ -617,9 +624,10 @@ namespace alp {
 		struct isInstantiable< LowerTrapezoidal, Square  > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				(void) imf_r;
-				(void) imf_c;
-				return (imf_r.n == imf_c.n);
+				return (
+					( imf_r.n == imf_c.n ) &&
+					( imf_r.map( imf_r.n - 1 ) <= imf_c.map( 0 ) )
+				);
 			};
 		};
 

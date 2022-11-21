@@ -86,6 +86,9 @@ namespace alp {
 			const size_t n = ncols( H );
 			const size_t kk = std::min( n, m );
 
+			// initialize permutation vector to identity permutation
+			alp::set< alp::descriptors::use_index >( p, alp::Scalar< IndexType >( 0 ) );
+
 			// check sizes
 			if(
 				( nrows( L ) != nrows( H ) ) ||
@@ -99,7 +102,7 @@ namespace alp {
 			}
 
 
-			// // L = identity( n )
+			// L = identity( n )
 			auto Ldiag = alp::get_view< alp::view::diagonal >( L );
 			rc = rc ? rc : alp::set( Ldiag, one );
 			if( rc != SUCCESS ) {
@@ -174,11 +177,11 @@ namespace alp {
 
 
 			// //save the result in L and U
-			auto H_Utrapez = get_view< structures::UpperTrapezoidal >( HWork, utils::range( 0, k ), utils::range( 0, n ) );
+			auto H_Utrapez = get_view< structures::UpperTrapezoidal >( HWork, utils::range( 0, kk ), utils::range( 0, n ) );
 			rc = rc ? rc : alp::set( U, H_Utrapez );
 
-			auto H_Ltrapez = get_view< structures::LowerTrapezoidal >( HWork, utils::range( 1, m ), utils::range( 0, k ) );
-			auto L_lowerTrapez = get_view( L, utils::range( 1, m ), utils::range( 0, k ) );
+			auto H_Ltrapez = get_view< structures::LowerTrapezoidal >( HWork, utils::range( 1, m ), utils::range( 0, kk ) );
+			auto L_lowerTrapez = get_view( L, utils::range( 1, m ), utils::range( 0, kk ) );
 			rc = rc ? rc : alp::set( L_lowerTrapez, H_Ltrapez );
 
 			return rc;
