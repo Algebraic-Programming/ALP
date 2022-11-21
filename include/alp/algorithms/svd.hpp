@@ -130,10 +130,6 @@ namespace alp {
 			const size_t n = ncols( B );
 			const size_t k = std::min( m, n );
 
-			//auto Bsubmat = get_view( B, utils::range( 1, k ), utils::range( 0, k - 1 ) );
-			//auto Bsubdiag = get_view< alp::view::diagonal >( Bsubmat );
-			//rc = rc ? rc : alp::set( Bsubdiag, zero );
-
 			// get lambda
 			// calcualte eigenvalue llambda of BEndSquare
 			// which is closer to t22
@@ -245,9 +241,7 @@ namespace alp {
 				} else {
 					rc = rc ? rc : Givens( G, rotvec2 );
 				}
-
 			}
-
 
 			return rc;
 		}
@@ -299,15 +293,16 @@ namespace alp {
 
 			size_t i1 = 0;
 			size_t i2 = k;
-#ifdef DEBUG
-			std::cout << "---> (init) i1, i2 = " << i1 << ", " << i2 << "\n";
-#endif
 
 			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring, minus, divide );
 			//repeat while superdiagonal is not zero
 			for( size_t i = 0; i < maxit; ++i ) {
-				//TODO check for zeroes in diagonal, if any do Givens rotatations
-				//         to move the zero from diagonal to superdiagonal
+				//todo: replace convergenve tests with absolute tolerance cehck
+				//      with reltive tolerance checks
+
+				//todo: check for zeroes in diagonal, if any do Givens rotatations
+				//      to move the zero from diagonal to superdiagonal
+				//      (no likely to affect randomly generated tests)
 
 
 				//check for zeros in superdiagonaldiagonal, if any,
@@ -328,11 +323,6 @@ namespace alp {
 						break;
 					}
 				}
-#ifdef DEBUG
-				print_vector( "superdiagonal ", superdiagonal );
-				print_matrix( "B ", B );
-				std::cout << "---> i1, i2 = " << i1 << ", " << i2 << "\n";
-#endif
 
 				auto Bview = get_view( B, utils::range( i1, i2 ), utils::range( i1, i2 ) );
 				Matrix< D, structures::Orthogonal, Dense > Utmp( nrows( Bview ), nrows( Bview ) );
@@ -368,7 +358,6 @@ namespace alp {
 					rc = rc ? rc : alp::set( SVtmpX, Vtmp );
 				}
 
-
 				Matrix< D, structures::Orthogonal, Dense > Utmp2( nrows( U ), ncols( U ) );
 				Matrix< D, structures::Orthogonal, Dense > Vtmp2( nrows( V ), ncols( V ) );
 				rc = rc ? rc : set( Utmp2, U );
@@ -377,7 +366,6 @@ namespace alp {
 				rc = rc ? rc : set( V, zero );
 				rc = rc ? rc : mxm( U, Utmp2, UtmpX, ring );
 				rc = rc ? rc : mxm( V, VtmpX, Vtmp2, ring );
-
 
 				// check convergence
 				Scalar< D > sup_diag_norm( zero );
@@ -399,40 +387,29 @@ namespace alp {
 			rc = rc ? rc : alp::set( DiagRotMat, one );
 			auto d1 = alp::get_view( DiagRotMat, utils::range( 0, k ) );
 			rc = rc ? rc : alp::set( d1, DiagBview );
-
+			Vector< D > d1abs( size( d1 ) );
+			rc = rc ? rc : alp::set( d1abs, d1 );
 			rc = rc ? rc : eWiseLambda(
 				[ ]( const size_t i, D &val ) {
-					val = val/std::abs(val);
+					(void) i;
+					val = std::abs(val);
 				},
-				d1
+				d1abs
 			);
+			rc = rc ? rc : alp::foldl( d1, d1abs, divide );
+
+
 
 			Matrix< D, structures::Orthogonal, Dense > UtmpRot( nrows( U ) );
 			rc = rc ? rc : alp::set( UtmpRot, U );
 			rc = rc ? rc : alp::set( U, zero );
-#ifdef DEBUG
-			print_matrix( "---->  RotMat(in) ", RotMat );
-			print_matrix( "---->  UtmpRot(in) ", UtmpRot );
-			print_matrix( "---->  U(in) ", U );
-#endif
-			rc = rc ? rc : mxm( U, UtmpRot, RotMat, ring );
-#ifdef DEBUG
-			print_matrix( "---->  U(out) ", U );
-#endif
+			rc = rc ? rc : alp::mxm( U, UtmpRot, RotMat, ring );
 
 			Matrix< D, structures::General, Dense > BtmpRot( nrows( B ), ncols( B ) );
 			rc = rc ? rc : alp::set( BtmpRot, B );
 			rc = rc ? rc : alp::set( B, zero );
-			rc = rc ? rc : eWiseLambda(
-				[ &one ]( const size_t i, D &val ) {
-					val = (*one) / val; //make it foldl
-				},
-				d1
-			);
-#ifdef DEBUG
-			print_matrix( " RotMat(1) ", RotMat );
-#endif
-			rc = rc ? rc : mxm( B, RotMat, BtmpRot, ring );
+			rc = rc ? rc : alp::foldr( one, d1, divide );
+			rc = rc ? rc : alp::mxm( B, RotMat, BtmpRot, ring );
 
 			return rc;
 		}
