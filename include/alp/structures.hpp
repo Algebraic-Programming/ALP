@@ -784,7 +784,7 @@ namespace alp {
 			typedef std::tuple< Interval< 0 > > band_intervals;
 
 			using inferred_structures = tuple_cat<
-				std::tuple< Diagonal >,
+				std::tuple< RectangularDiagonal >,
 				RectangularLowerBidiagonal::inferred_structures,
 				RectangularUpperBidiagonal::inferred_structures
 			>::type;
@@ -823,6 +823,14 @@ namespace alp {
 			typedef std::tuple< OpenInterval > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< Orthogonal >, NonSingular::inferred_structures, OrthogonalColumns::inferred_structures, OrthogonalRows::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< RectangularDiagonal, Square > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (imf_r.n == imf_c.n);
+			};
 		};
 
 		template<>

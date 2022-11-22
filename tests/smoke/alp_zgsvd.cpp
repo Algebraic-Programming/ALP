@@ -193,16 +193,13 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	std::vector< size_t > m_arr { unit,  2 * unit, unit };
 	std::vector< size_t > n_arr { unit, unit, 2 * unit };
 	for( size_t i = 0; i < 3; ++i ) {
-	// std::vector< size_t > m_arr { unit };
-	// std::vector< size_t > n_arr { unit };
-	// for( size_t i = 0; i < 1; ++i ) {
 		// dimensions of sqare matrices H, Q and R
 		const size_t M = m_arr[ i ];
 		const size_t N = n_arr[ i ];
 		//const size_t K = std::min( N, M );
 
 		alp::Matrix< ScalarType, General > H( M, N );
-		alp::Matrix< ScalarType, General > B( M, N );
+		alp::Matrix< ScalarType, structures::RectangularDiagonal > B( M, N );
 		alp::Matrix< ScalarType, structures::Orthogonal > U( M, M );
 		alp::Matrix< ScalarType, structures::Orthogonal > V( N, N );
 		{

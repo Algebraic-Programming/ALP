@@ -142,6 +142,20 @@ namespace alp {
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
+		/** Specialization for rectangular-lower-bidiagonal matrix */
+		template<>
+		struct determine_poly_factory< structures::RectangularLowerBidiagonal, imf::Id, imf::Id, reference > {
+			// should use band storage
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for rectangular-diagonal matrix */
+		template<>
+		struct determine_poly_factory< structures::RectangularDiagonal, imf::Id, imf::Id, reference > {
+			// should use band storage
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for vectors */
 		template< typename Structure >
 		struct determine_poly_factory< Structure, imf::Id, imf::Zero, reference > {
