@@ -400,7 +400,7 @@ namespace alp {
 				is_matrix< MatV >::value &&
 				structures::is_a< typename MatH::structure, structures::General >::value &&
 				structures::is_a< typename MatU::structure, structures::Orthogonal >::value &&
-				structures::is_a< typename MatS::structure, structures::General >::value &&
+				structures::is_a< typename MatS::structure, structures::RectangularDiagonal >::value &&
 				structures::is_a< typename MatV::structure, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
