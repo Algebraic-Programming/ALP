@@ -115,7 +115,7 @@ namespace alp {
 		}
 
 		/**
-		 * @brief Computes Householder bidiagonalisation of general matrix \f$H = U B V \f$
+		 *        Computes Householder (inplace) bidiagonalisation of general matrix \f$H = U B V \f$
 		 *        where \a H is general (complex or real),
 		 *        \a U orthogonal, \a B is bidiagonal and  \a V orthogonal.
 		 *
@@ -123,10 +123,10 @@ namespace alp {
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
-		 * @param[in,out]    U orthogonal
-		 * @param[in,out]    V orthogonal
-		 * @param[in,out] H input general matrix, output bidiagonal matrix (B)
-		 * @param[in]  ring A semiring for operations
+		 * @param[in,out]   U updated orthogonal matrix
+		 * @param[in,out]   V updated orthogonal matrix
+		 * @param[in,out]   H input general matrix, output bidiagonal matrix (B)
+		 * @param[in]       ring A semiring for operations
 		 * @return RC       SUCCESS if the execution was correct
 		 *
 		 */
@@ -175,7 +175,6 @@ namespace alp {
 				return FAILED;
 			}
 
-
 			//for i in range(min(n,m)):
 			for( size_t i = 0; i < std::min( n, m ); ++i ) {
 				if( i < std::min( n, m - 1 ) ) {
@@ -187,10 +186,7 @@ namespace alp {
 					auto VT = get_view< alp::view::transpose >( V );
 					rc = rc ? rc : elminate_below_diag( i, HT, VT, 1, ring, minus, divide );
 				}
-
-
 			}
-
 
 			return rc;
 
