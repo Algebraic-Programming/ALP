@@ -32,6 +32,7 @@ namespace alp {
 
 		// for a more general purpose
 		// a more stable implementations is needed
+		// todo: move to utils?
 		template<
 			typename D = double,
 			typename StruG,
@@ -133,6 +134,7 @@ namespace alp {
 			// get lambda
 			// calcualte eigenvalue llambda of BEndSquare
 			// which is closer to t22
+			// todo: do not calcualte entire BSquare, only last 2x2 sub-matrix
 			Matrix< D, structures::Square, Dense > BSquare( k, k );
 			rc = rc ? rc : alp::set( BSquare, zero );
 
@@ -232,7 +234,6 @@ namespace alp {
 				rc = rc ? rc : alp::set( TMPStrip2, Ustrip );
 				rc = rc ? rc : mxm( Ustrip, TMPStrip2, Gstar, ring );
 
-
 				if( i + 2 < k ) {
 					auto rotvec3 = get_view( B, i, utils::range( i + 1, i + 3 ) );
 					rc = rc ? rc : Givens( G, rotvec3 );
@@ -276,8 +277,6 @@ namespace alp {
 			const Divide &divide = Divide()
 		) {
 			RC rc = SUCCESS;
-			const double tol = 1.e-12;
-			const size_t maxit = 30;
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -285,6 +284,9 @@ namespace alp {
 			const size_t m = nrows( B );
 			const size_t n = ncols( B );
 			const size_t k = std::min( m, n );
+
+			const double tol = 1.e-12;
+			const size_t maxit = k*5;
 
 			auto Bsupsquare =  get_view( B, utils::range( 0, k - 1 ) , utils::range( 1, k ) );
 			auto superdiagonal = get_view< alp::view::diagonal >( Bsupsquare );
@@ -321,18 +323,20 @@ namespace alp {
 						break;
 					}
 				}
+				if( i2 <= i1 ){
+					break;
+				}
 
 				auto Bview = get_view( B, utils::range( i1, i2 ), utils::range( i1, i2 ) );
 				auto Uview = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
 				auto Vview = get_view< structures::General >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
+
 				rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
 
 				// check convergence
 				Scalar< D > sup_diag_norm( zero );
 				rc = rc ? rc : alp::norm2( sup_diag_norm, superdiagonal, ring );
-#ifdef DEBUG
-				std::cout << " norm( superdiagonal B ) = " << *sup_diag_norm << "\n";
-#endif
+
 				if( std::abs( *sup_diag_norm ) < tol ) {
 					break ;
 				}
@@ -342,33 +346,20 @@ namespace alp {
 			// in order to have them on real axis (positive singular values)
 			auto BSquare = alp::get_view( B, utils::range( 0, k ), utils::range( 0, k ) );
 			auto DiagBview = alp::get_view< alp::view::diagonal >( BSquare );
-			Matrix< D, structures::Square, Dense > RotMat( nrows( B ) );
-			auto DiagRotMat = alp::get_view< alp::view::diagonal >( RotMat );
-			rc = rc ? rc : alp::set( RotMat, zero );
-			rc = rc ? rc : alp::set( DiagRotMat, one );
-			auto d1 = alp::get_view( DiagRotMat, utils::range( 0, k ) );
-			rc = rc ? rc : alp::set( d1, DiagBview );
-			Vector< D > d1abs( size( d1 ) );
-			rc = rc ? rc : alp::set( d1abs, d1 );
-			rc = rc ? rc : eWiseLambda(
-				[ ]( const size_t i, D &val ) {
-					(void) i;
-					val = std::abs(val);
-				},
-				d1abs
-			);
-			rc = rc ? rc : alp::foldl( d1, d1abs, divide );
-
-			Matrix< D, structures::Orthogonal, Dense > UtmpRot( nrows( U ) );
-			rc = rc ? rc : alp::set( UtmpRot, U );
-			rc = rc ? rc : alp::set( U, zero );
-			rc = rc ? rc : alp::mxm( U, UtmpRot, RotMat, ring );
-
-			Matrix< D, structures::General, Dense > BtmpRot( nrows( B ), ncols( B ) );
-			rc = rc ? rc : alp::set( BtmpRot, B );
-			rc = rc ? rc : alp::set( B, zero );
-			rc = rc ? rc : alp::foldr( one, d1, divide );
-			rc = rc ? rc : alp::mxm( B, RotMat, BtmpRot, ring );
+			for( size_t i = 0; i < size( DiagBview ); ++i ) {
+				Scalar< D > sigmaiphase( zero );
+				Scalar< D > sigmainorm( zero );
+				auto U_vi = get_view< >( U, utils::range( 0, nrows( U ) ), i );
+				auto B_vi = get_view< >( B, i, utils::range( 0, ncols( B ) ) );
+				auto d_i = get_view< >( DiagBview, utils::range( i, i + 1 ) );
+				rc = rc ? rc : alp::norm2( sigmainorm, d_i, ring );
+				if( std::abs( *sigmainorm ) > tol ) {
+					rc = rc ? rc : alp::foldl( sigmaiphase, d_i, ring.getAdditiveMonoid() );
+					rc = rc ? rc : alp::foldl( sigmaiphase, sigmainorm, divide );
+					rc = rc ? rc : alp::foldl( U_vi, sigmaiphase, ring.getMultiplicativeOperator() );
+					rc = rc ? rc : alp::foldl( B_vi, sigmaiphase, divide );
+				}
+			}
 
 			return rc;
 		}
