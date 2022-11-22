@@ -92,7 +92,7 @@ namespace alp {
 		}
 
 
-		// Golub-Kahan SVD step
+		/** Golub-Kahan SVD step */
 		template<
 			typename D = double,
 			typename StruB,
@@ -245,8 +245,7 @@ namespace alp {
 			return rc;
 		}
 
-
-		// Docs
+		/** Golub-Khan SVD algorithm */
 		template<
 			typename D = double,
 			typename StruB,
@@ -367,46 +366,52 @@ namespace alp {
 
 
 		/**
-		 *        Computes singular value decomposition (inplace) of general matrix \f$H = U S V \f$
+		 *        Computes singular value decomposition (inplace) of a
+		 *        general matrix \f$H = U B V \f$
 		 *        where \a H is general (complex or real),
-		 *        \a U orthogonal, \a B is  and  \a V orthogonal.
+		 *        \a U orthogonal and \a V are orthogonal, \a B is nonzero only on diagonal
+		 *        and it contains positive singular values.
+		 *        If convergenece is not reached B will contain nonzeros on superdiagonal.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
 		 * @tparam Divide   Type of divide operator used in the computation
-		 * @param[in,out]   U updated orthogonal matrix
-		 * @param[in,out]   V updated orthogonal matrix
-		 * @param[in,out]   H input general matrix, output bidiagonal matrix (B)
+		 * @param[out]      U orthogonal matrix
+		 * @param[out]      V orthogonal matrix
+		 * @param[in,out]   B input general matrix, output bidiagonal matrix
 		 * @param[in]       ring A semiring for operations
 		 * @return RC       SUCCESS if the execution was correct
 		 *
 		 */
 		template<
-			typename D = double,
-			typename StruB,
-			typename ViewB,
-			typename ImfRB,
-			typename ImfCB,
-			typename StruU,
-			typename ViewU,
-			typename ImfRU,
-			typename ImfCU,
+			typename MatH,
+			typename MatU,
+			typename MatS,
+			typename MatV,
+			typename D = typename MatH::value_type,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
-				structures::is_a< StruB, structures::General >::value &&
-				structures::is_a< StruU, structures::Orthogonal >::value &&
+				is_matrix< MatH >::value &&
+				is_matrix< MatU >::value &&
+				is_matrix< MatS >::value &&
+				is_matrix< MatV >::value &&
+				structures::is_a< typename MatH::structure, structures::General >::value &&
+				structures::is_a< typename MatU::structure, structures::Orthogonal >::value &&
+				structures::is_a< typename MatS::structure, structures::General >::value &&
+				structures::is_a< typename MatV::structure, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
 			> * = nullptr
 		>
 		RC svd(
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
-			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
+			const MatH &H,
+			MatU &U,
+			MatS &S,
+			MatV &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -416,8 +421,12 @@ namespace alp {
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
 
-			const size_t m = nrows( B );
-			const size_t n = ncols( B );
+			const size_t m = nrows( H );
+			const size_t n = ncols( H );
+
+			//inplace work on B
+			MatH B( m, n );
+			rc = rc ? rc : set( B, H );
 
 			rc = rc ? rc : set( U, zero );
 			rc = rc ? rc : set( V, zero );
@@ -439,6 +448,12 @@ namespace alp {
 			} else {
 				rc = rc ? rc : algorithms::svd_solve( U, B, V, ring, minus, divide );
 			}
+
+			//update S
+			auto DiagS = alp::get_view< alp::view::diagonal >( S );
+			auto DiagB = alp::get_view< alp::view::diagonal >( B );
+			rc = rc ? rc : set( S, zero );
+			rc = rc ? rc : set( DiagS, DiagB );
 
 			return rc;
 		}

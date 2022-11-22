@@ -214,8 +214,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		print_matrix( " input matrix H ", H );
 #endif
 
-		rc = rc ? rc : set( B, H );
-		rc = rc ? rc : algorithms::svd( U, B, V, ring );
+		rc = rc ? rc : algorithms::svd( H, U, B, V, ring );
 
 #ifdef DEBUG
 		print_matrix( "  U(out) ", U );

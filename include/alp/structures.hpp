@@ -779,6 +779,17 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Diagonal >, LowerBidiagonal::inferred_structures, UpperBidiagonal::inferred_structures >::type;
 		};
 
+		struct RectangularDiagonal: BaseStructure {
+
+			typedef std::tuple< Interval< 0 > > band_intervals;
+
+			using inferred_structures = tuple_cat<
+				std::tuple< Diagonal >,
+				RectangularLowerBidiagonal::inferred_structures,
+				RectangularUpperBidiagonal::inferred_structures
+			>::type;
+		};
+
 		struct FullRank: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
