@@ -366,7 +366,22 @@ namespace alp {
 
 
 
-		// Docs
+		/**
+		 *        Computes singular value decomposition (inplace) of general matrix \f$H = U S V \f$
+		 *        where \a H is general (complex or real),
+		 *        \a U orthogonal, \a B is  and  \a V orthogonal.
+		 *
+		 * @tparam D        Data element type
+		 * @tparam Ring     Type of the semiring used in the computation
+		 * @tparam Minus    Type minus operator used in the computation
+		 * @tparam Divide   Type of divide operator used in the computation
+		 * @param[in,out]   U updated orthogonal matrix
+		 * @param[in,out]   V updated orthogonal matrix
+		 * @param[in,out]   H input general matrix, output bidiagonal matrix (B)
+		 * @param[in]       ring A semiring for operations
+		 * @return RC       SUCCESS if the execution was correct
+		 *
+		 */
 		template<
 			typename D = double,
 			typename StruB,
