@@ -132,18 +132,14 @@ namespace alp {
 			const size_t k = std::min( m, n );
 
 			// get lambda
-			// calcualte eigenvalue llambda of BEndSquare
+			// calcualte eigenvalue llambda of
 			// which is closer to t22
-			// todo: do not calcualte entire BSquare, only last 2x2 sub-matrix
-			Matrix< D, structures::Square, Dense > BSquare( k, k );
-			rc = rc ? rc : alp::set( BSquare, zero );
-
-			auto Bselect = get_view( B, utils::range( 0, k ), utils::range( 0, k ) );
-
-			auto BT = get_view< alp::view::transpose >( Bselect );
-			auto BT_star = conjugate( BT );
-			rc = rc ? rc : mxm( BSquare, BT_star, Bselect, ring );
-			auto BEndSquare = get_view( BSquare, utils::range( k - 2, k ), utils::range( k - 2, k ) );
+			auto BEnd = get_view( B, utils::range( k - 3, k ), utils::range( k - 2, k ) );
+			Matrix< D, structures::Square, Dense > BEndSquare( 2, 2 );
+			rc = rc ? rc : alp::set( BEndSquare, zero );
+			auto BEndT = get_view< alp::view::transpose >( BEnd );
+			auto BEndT_star = conjugate( BEndT );
+			rc = rc ? rc : mxm( BEndSquare, BEndT_star, BEnd, ring );
 
 			auto tdiag = get_view< alp::view::diagonal >( BEndSquare );
 			auto t11 = get_view( BEndSquare, 0, utils::range( 0, 1 ) );
@@ -185,8 +181,12 @@ namespace alp {
 			// end of get lambda
 
 			Vector< D > rotvec( 2 );
-			auto Brow = get_view( BSquare, 0, utils::range( 0, 2 ) );
+			auto Brow = get_view( B, 0, utils::range( 0, 2 ) );
+			auto B00 = get_view( B, 0, utils::range( 0, 1 ) );
+			Scalar< D > b00star( zero );
+			rc = rc ? rc : alp::foldl( b00star, conjugate( B00 ), ring.getAdditiveMonoid() );
 			rc = rc ? rc : alp::set( rotvec, Brow );
+			rc = rc ? rc : alp::foldl( rotvec, b00star, ring.getMultiplicativeOperator() );
 
 			auto rotvec0 = get_view( rotvec, utils::range( 0, 1 ) );
 			rc = rc ? rc : alp::foldl( rotvec0, llabmda, minus );
@@ -403,7 +403,6 @@ namespace alp {
 
 			const size_t m = nrows( B );
 			const size_t n = ncols( B );
-			//const size_t k = std::min( m, n );
 
 			rc = rc ? rc : set( U, zero );
 			rc = rc ? rc : set( V, zero );
