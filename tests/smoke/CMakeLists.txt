@@ -190,14 +190,13 @@ add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
 	COMPILE_DEFINITIONS _COMPLEX
 )
 
-add_grb_executables( alp_zgsvd alp_zgsvd.cpp
+add_grb_executables( alp_zgesvd alp_zgesvd.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS DEBUG #remove DEBUG in the final version
 )
 
-add_grb_executables( alp_zgsvd_complex alp_zgsvd.cpp
+add_grb_executables( alp_zgesvd_complex alp_zgesvd.cpp
         BACKENDS alp_reference
-	COMPILE_DEFINITIONS _COMPLEX DEBUG  #remove DEBUG in the final version
+	COMPILE_DEFINITIONS _COMPLEX
 )
 
 add_grb_executables( alp_zgetrf alp_zgetrf.cpp
