@@ -699,14 +699,14 @@ namespace alp {
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_structure< structures::Square >::type
+	>::template change_structure< structures::Diagonal >::type
 	::template view_type< view::diagonal >::type
 	get_view( SourceMatrix &source ) {
 
 		const size_t source_rows = nrows( source );
 		const size_t source_cols = ncols( source );
 		const size_t smaller_dimension = std::min( source_rows, source_cols );
-		auto square_view = get_view< structures::Square >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
+		auto square_view = get_view< structures::Diagonal >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
 		return get_view< view::diagonal >( square_view );
 	}
 

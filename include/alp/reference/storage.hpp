@@ -67,6 +67,20 @@ namespace alp {
 			typedef storage::polynomials::PackedFactory< storage::LOWER, storage::ROW_WISE > factory_type;
 		};
 
+		/** Specialization for upper-trapezoidal matrix */
+		template<>
+		struct determine_poly_factory< structures::UpperTrapezoidal, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for lower-trapezoidal matrix */
+		template<>
+		struct determine_poly_factory< structures::LowerTrapezoidal, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for symmetric matrix */
 		template<>
 		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, reference > {

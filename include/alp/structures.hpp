@@ -592,6 +592,46 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
+		struct Diagonal;
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( imf_c.map( 0 ) <= imf_r.map( imf_r.n - 1 ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
+		};
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Square  > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (
+					( imf_r.n == imf_c.n ) &&
+					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
+				);
+			};
+		};
+
 		struct LowerTriangular: BaseStructure {
 
 			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
@@ -622,6 +662,16 @@ namespace alp {
 
 			using inferred_structures = tuple_cat< std::tuple< UpperTrapezoidal >, Trapezoidal::inferred_structures >::type;
 
+		};
+
+		template<>
+		struct isInstantiable< General, UpperTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
 		};
 
 		struct UpperTriangular: BaseStructure {
