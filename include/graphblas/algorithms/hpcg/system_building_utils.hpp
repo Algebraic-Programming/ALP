@@ -39,6 +39,7 @@
 
 #include "system_builder.hpp"
 #include "single_point_coarsener.hpp"
+#include "average_coarsener.hpp"
 #include "greedy_coloring.hpp"
 
 namespace grb {
@@ -168,13 +169,22 @@ namespace grb {
 		 * This function takes care of parallelizing the generation by using a random-access iterator
 		 * to generate the coarsening matrix and by distributing the generation across nodes
 		 * of a distributed system (if any).
+		 * @tparam IterBuilderType type of the matrix builder, either SinglePointCoarsenerBuilder
+		 *  or AverageCoarsenerBuilder
+		 * @tparam DIMS number of dimensions
+		 * @tparam CoordType type storing the coordinates and the sizes
+		 * @tparam NonzeroType type of the nonzero
+		 * @param finer_system_generator object generating the finer system
+		 * @param coarser_system_generator object generating the finer system
+		 * @param coarsener structure with the matrix to populate
 		 */
 		template<
+			typename IterBuilderType,
 			size_t DIMS,
 			typename CoordType,
 			typename IOType,
 			typename NonzeroType
-		> grb::RC hpcg_populate_coarsener(
+		> grb::RC hpcg_populate_coarsener_any_builder(
 			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &finer_system_generator,
 			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &coarser_system_generator,
 			CoarseningData< IOType, NonzeroType > &coarsener
@@ -201,13 +211,48 @@ namespace grb {
 											" with rows == <coarser size> and cols == <finer size>" );
 			}
 
-			using gen_t = typename grb::algorithms::SinglePointCoarsenerBuilder< DIMS, CoordType, NonzeroType >;
-			gen_t coarsener_builder( finer_sizes, coarser_sizes );
-			typename gen_t::Iterator begin( coarsener_builder.make_begin_iterator() ),
+			IterBuilderType coarsener_builder( finer_sizes, coarser_sizes );
+			typename IterBuilderType::Iterator begin( coarsener_builder.make_begin_iterator() ),
 				end( coarsener_builder.make_end_iterator() );
 			grb::utils::partition_iteration_range_on_procs( spmd<>::nprocs(), spmd<>::pid(),
 				coarsener_builder.system_size(), begin, end );
 			return buildMatrixUnique( M, begin, end, grb::IOMode::PARALLEL );
+		}
+
+		/**
+		 * Populates a coarsener that samples one element every \a 2^DIMS .
+		 */
+		template<
+			size_t DIMS,
+			typename CoordType,
+			typename IOType,
+			typename NonzeroType
+		> grb::RC hpcg_populate_coarsener(
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &finer_system_generator,
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &coarser_system_generator,
+			CoarseningData< IOType, NonzeroType > &coarsener
+		) {
+			return hpcg_populate_coarsener_any_builder<
+				grb::algorithms::SinglePointCoarsenerBuilder< DIMS, CoordType, NonzeroType > >
+				( finer_system_generator, coarser_system_generator, coarsener );
+		}
+
+		/**
+		 * Populates a coarsener that averages over \a 2^DIMS elements.
+		 */
+		template<
+			size_t DIMS,
+			typename CoordType,
+			typename IOType,
+			typename NonzeroType
+		> grb::RC hpcg_populate_coarsener_avg(
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &finer_system_generator,
+			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &coarser_system_generator,
+			CoarseningData< IOType, NonzeroType > &coarsener
+		) {
+			return hpcg_populate_coarsener_any_builder<
+				grb::algorithms::AverageCoarsenerBuilder< DIMS, CoordType, NonzeroType > >
+				( finer_system_generator, coarser_system_generator, coarsener );
 		}
 
 		namespace internal {

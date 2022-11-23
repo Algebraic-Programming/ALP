@@ -119,6 +119,7 @@ struct simulation_input {
 	size_t nx, ny, nz;
 	size_t max_coarsening_levels;
 	// solver options
+	bool use_average_coarsener;
 	size_t inner_test_repetitions;
 	size_t max_iterations;
 	size_t smoother_steps;
@@ -311,7 +312,11 @@ static void build_3d_system(
 		if( i > 0 ) {
 			MASTER_PRINT( pid, " populating coarsening data: " );
 			timer.reset();
-			rc = hpcg_populate_coarsener( mg_generators[ i - 1 ], mg_generators[ i ], *coarsener_levels[ i - 1 ] );
+			if( !in.use_average_coarsener ) {
+				rc = hpcg_populate_coarsener( mg_generators[ i - 1 ], mg_generators[ i ], *coarsener_levels[ i - 1 ] );
+			} else {
+				rc = hpcg_populate_coarsener_avg( mg_generators[ i - 1 ], mg_generators[ i ], *coarsener_levels[ i - 1 ] );
+			}
 			time = timer.time();
 			ASSERT_RC_SUCCESS( rc );
 			MASTER_PRINT( pid, " time (ms) " << time << std::endl )
@@ -443,6 +448,7 @@ int main( int argc, char ** argv ) {
 	thcout << "System size x: " << sim_in.nx << std::endl;
 	thcout << "System size y: " << sim_in.ny << std::endl;
 	thcout << "System size z: " << sim_in.nz << std::endl;
+	thcout << "Coarsener: " << (sim_in.use_average_coarsener ? "average" : "single point sampler" ) << std::endl;
 	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels << std::endl;
 	thcout << "Test repetitions: " << sim_in.inner_test_repetitions << std::endl;
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
@@ -452,6 +458,7 @@ int main( int argc, char ** argv ) {
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
 	thcout << "Maximum norm for residual: " << max_diff_norm << std::endl;
+
 
 	// the output struct
 	struct output out;
@@ -535,7 +542,9 @@ static void parse_arguments(
 		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false,
 			"do not apply pre-conditioning via multi-grid V cycle" )
 		.add_option( "--print-iter-stats", sim_in.print_iter_stats, false,
-			"on each iteration, print more statistics" );
+			"on each iteration, print more statistics" )
+		.add_option( "--use-average-coarsener", sim_in.use_average_coarsener, false,
+			"coarsen by averaging instead of by sampling a single point (slower, but more accurate)" );
 
 	parser.parse( argc, argv );
 
