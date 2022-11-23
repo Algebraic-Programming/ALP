@@ -29,10 +29,10 @@ namespace alp {
 	namespace algorithms {
 
 		/**
-		 *        Computes Householder LU decomposition of general matrix \f$H = LU\f$
-		 *        where \a H is general (complex or real),
-		 *        \a L lower trapezoidal,
-		 *        \a U is upper trapezoidal.
+		 * Computes Householder LU decomposition of general matrix \f$H = LU\f$
+		 * where \a H is general (complex or real),
+		 * \a L lower trapezoidal,
+		 * \a U is upper trapezoidal.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
@@ -178,7 +178,7 @@ namespace alp {
 			}
 
 
-			// //save the result in L and U
+			// save the result in L and U
 			auto H_Utrapez = get_view< structures::UpperTrapezoidal >( HWork, utils::range( 0, kk ), utils::range( 0, n ) );
 			rc = rc ? rc : alp::set( U, H_Utrapez );
 

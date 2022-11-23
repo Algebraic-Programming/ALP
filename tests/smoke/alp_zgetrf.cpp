@@ -46,7 +46,7 @@ using ScalarType = BaseScalarType;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
-//** generate random rectangular matrix data: complex version */
+/** generate random rectangular matrix data: complex version */
 template< typename T >
 std::vector< T > generate_rectangular_matrix_data(
 	size_t N,
@@ -66,7 +66,7 @@ std::vector< T > generate_rectangular_matrix_data(
 	return data;
 }
 
-//** generate random rectangular matrix data: real version */
+/** generate random rectangular matrix data: real version */
 template<
 	typename T
 >
@@ -103,7 +103,7 @@ template<
 	typename LImfC,
 	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 	class Minus = operators::subtract< D >
-	>
+>
 RC check_lu_solution(
 	Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &H,
 	Matrix< D, LType, alp::Dense, LView, LImfR, LImfC > &L,
