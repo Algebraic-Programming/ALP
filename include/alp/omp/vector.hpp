@@ -103,6 +103,10 @@ namespace alp {
 				/** The array of buffers. */
 				T **buffers;
 
+				/** Containers constructed around portions of buffers. */
+				using container_type = Vector< T, config::default_sequential_backend >;
+				std::vector< std::vector< container_type > > containers;
+
 				/** Whether the container is presently initialized. */
 				bool initialized;
 
@@ -138,13 +142,13 @@ namespace alp {
 				Vector(
 					const Distribution &d,
 					const size_t cap = 0
-				) : num_buffers( 0 ), initialized( false ) {
+				) : num_buffers( d.getThreadGridDims().first * d.getThreadGridDims().second ),
+					containers( num_buffers ),
+					initialized( false ) {
+
 					(void) cap;
 
 					std::cout << "Entered OMP internal::Vector constructor\n";
-
-					const auto thread_grid_dims = d.getThreadGridDims();
-					num_buffers = thread_grid_dims.first * thread_grid_dims.second;
 
 					// TODO: Implement allocation properly
 					buffers = new ( std::nothrow ) value_type*[ num_buffers ];
@@ -178,6 +182,20 @@ namespace alp {
 						if( buffers[ thread ] == nullptr ) {
 							throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 						}
+
+						// Reserve space for all internal container wrappers to avoid re-allocation
+						containers[ thread ].reserve( block_grid_dims.first * block_grid_dims.second );
+
+						// Populate the array of internal container wrappers
+						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
+							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
+								const size_t offset = d.getBlocksOffset( tr, tc, br, bc );
+								containers[ thread ].emplace_back( &( buffers[ thread ][ offset ] ), d.getBlockSize() );
+							}
+						}
+
+						// Ensure that the array contains the expected number of containers
+						assert( containers[ thread ].size() == block_grid_dims.first * block_grid_dims.second );
 					}
 				}
 
