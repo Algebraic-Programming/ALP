@@ -478,6 +478,37 @@ namespace alp {
 			}
 
 			/**
+			 * Constructor for a view over another matrix' internal container.
+			 *
+			 * @tparam ContainerType  The type of the internal container.
+			 * @tparam AmfType     The type of the amf used to construct the matrix.
+			 *                     Used as a template parameter to benefit from
+			 *                     SFINAE for the case of FunctorBasedMatrix, when
+			 *                     base_type::amf_type does not exist and, therefore,
+			 *                     using the expression base_type::amf_type would
+			 *                     result in a hard compilation error.
+			 */
+			template<
+				typename ContainerType,
+				typename AmfType,
+				std::enable_if_t<
+					internal::is_container< ContainerType >::value &&
+					internal::is_view_over_storage< View >::value &&
+					!internal::requires_allocation< View >::value
+				> * = nullptr
+			>
+			Matrix( ContainerType &container, AmfType &&amf ) :
+				base_type(
+					container,
+					std::forward< typename base_type::amf_type >( amf )
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, typename std::remove_reference< AmfType >::type >::value,
+					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
+				);
+			}
+
+			/**
 			 * Constructor for a functor-based matrix that allocates memory.
 			 * Specialization for a matrix with non necessarily equal row and column dimensions.
 			 *

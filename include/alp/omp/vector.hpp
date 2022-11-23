@@ -63,10 +63,14 @@ namespace alp {
 		void setInitialized( Vector< T, omp > & v, const bool initialized ) noexcept;
 
 		template< typename T >
-		const T *getBuffer( const Vector< T, omp > &v, const size_t buffer_id ) noexcept;
+		const Vector< T, config::default_sequential_backend > &getLocalContainer(
+			const Vector< T, omp > &v, const size_t thread, const size_t block
+		) noexcept;
 
 		template< typename T >
-		T *getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept;
+		Vector< T, config::default_sequential_backend > &getLocalContainer(
+			Vector< T, omp > &v, const size_t thread, const size_t block
+		) noexcept;
 
 		/**
 		 * The parallel shared memory implementation of the ALP/Dense vector.
@@ -92,8 +96,13 @@ namespace alp {
 
 			friend void internal::setInitialized< T >( Vector< T, omp > & , bool ) noexcept;
 
-			friend T *getBuffer< T >( Vector< T, omp > &, const size_t buffer_id ) noexcept;
-			friend const T *getBuffer< T >( const Vector< T, omp > &, const size_t buffer_id ) noexcept;
+			friend const Vector< T, config::default_sequential_backend > &getLocalContainer<>(
+				const Vector< T, omp > &v, const size_t thread, const size_t block
+			) noexcept;
+
+			friend Vector< T, config::default_sequential_backend > &getLocalContainer<>(
+				Vector< T, omp > &v, const size_t thread, const size_t block
+			) noexcept;
 
 			private:
 
@@ -297,15 +306,23 @@ namespace alp {
 		}
 
 		template< typename T >
-		const T *getBuffer( const Vector< T, omp > &v, const size_t buffer_id ) noexcept {
-			assert( buffer_id < v.num_buffers );
-			return v.buffers[ buffer_id ];
+		const Vector< T, config::default_sequential_backend > &getLocalContainer(
+			const Vector< T, omp > &v,
+			const size_t thread, const size_t block
+		) noexcept {
+			assert( thread < v.num_buffers );
+			assert( block < v.containers[ thread ].size() );
+			return v.containers[ thread ][ block ];
 		}
 
 		template< typename T >
-		T *getBuffer( Vector< T, omp > &v, const size_t buffer_id ) noexcept {
-			assert( buffer_id < v.num_buffers );
-			return v.buffers[ buffer_id ];
+		Vector< T, config::default_sequential_backend > &getLocalContainer(
+			Vector< T, omp > &v,
+			const size_t thread, const size_t block
+		) noexcept {
+			assert( thread < v.num_buffers );
+			assert( block < v.containers[ thread ].size() );
+			return v.containers[ thread ][ block ];
 		}
 
 	} // end namespace ``alp::internal''

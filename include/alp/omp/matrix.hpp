@@ -61,13 +61,11 @@ namespace alp {
 
 			(void) rt;
 
-			using value_type = typename SourceMatrix::value_type;
-
 			// get the container
 			const auto &distribution = getAmf( source ).getDistribution();
-			const size_t thread_id = distribution.getThreadId( tr, tc );
-			value_type *const thread_buffer = internal::getBuffer( internal::getContainer( source ), thread_id );
-			value_type *const block_buffer = thread_buffer + distribution.getBlocksOffset( tr, tc, br, bc );
+			const size_t thread_id = tr * distribution.getThreadGridDims().second + tc;
+			const size_t block_id = br * distribution.getLocalBlockGridDims( tr, tc ).second + bc;
+			auto &container = internal::getLocalContainer( internal::getContainer( source ), thread_id, block_id );
 
 			// make an AMF
 			// note: When making a view over a vector, the second imf must be imf::Zero
@@ -93,7 +91,7 @@ namespace alp {
 				typename SourceMatrix::template view_type< view::cross_backend >::type
 			>::template change_backend< config::default_sequential_backend >::type;
 
-			return target_t( block_buffer, distribution.getBlockSize(), amf );
+			return target_t( container, amf );
 		}
 
 	} // namespace internal
