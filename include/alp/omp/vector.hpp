@@ -157,7 +157,9 @@ namespace alp {
 
 					(void) cap;
 
+#ifdef DEBUG
 					std::cout << "Entered OMP internal::Vector constructor\n";
+#endif
 
 					// TODO: Implement allocation properly
 					buffers = new ( std::nothrow ) value_type*[ num_buffers ];
@@ -174,6 +176,7 @@ namespace alp {
 						// Assuming that all blocks are of the same size
 						const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
 
+#ifdef DEBUG
 						#pragma omp critical
 						{
 							if( thread != config::OMP::current_thread_ID() ) {
@@ -184,6 +187,7 @@ namespace alp {
 								<< " allocating buffer of " << alloc_size << " elements "
 								<< " holding " << block_grid_dims.first << " x " << block_grid_dims.second << " blocks.\n";
 						}
+#endif
 
 						// TODO: Implement allocation properly
 						buffers[ thread ] = new ( std::nothrow ) value_type[ alloc_size ];
