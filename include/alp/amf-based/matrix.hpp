@@ -333,11 +333,6 @@ namespace alp {
 				using type = Vector< T, structures::General, Density::Dense, view::Diagonal< self_type >, imf::Id, imf::Zero, backend >;
 			};
 
-			template < bool d >
-			struct view_type< view::cross_backend, d > {
-				using type = Matrix< T, Structure, Density::Dense, view::CrossBackend< self_type >, imf::Id, imf::Id, backend >;
-			};
-
 			/**
 			 * Constructor for a storage-based matrix that allocates storage.
 			 * Specialization for a matrix with not necessarily equal row and column dimensions.

@@ -1191,14 +1191,6 @@ namespace alp {
 			typedef void type;
 		};
 
-		/** Specialization for views producing a container for a different backend */
-		template< typename Structure, typename TargetType, enum Backend backend >
-		struct determine_amf_type< Structure, view::CrossBackend< TargetType >, imf::Id, imf::Id, backend > {
-
-			typedef typename storage::AMFFactory< backend >::template FromPolynomial<
-				Structure, imf::Id, imf::Id
-			>::amf_type type;
-		};
 	} // namespace internal
 
 } // namespace alp

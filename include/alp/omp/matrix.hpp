@@ -55,7 +55,7 @@ namespace alp {
 			> * = nullptr
 		>
 		typename internal::new_container_type_from<
-			typename SourceMatrix::template view_type< view::cross_backend >::type
+			typename SourceMatrix::template view_type< view::gather >::type
 		>::template change_backend< config::default_sequential_backend >::type
 		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
 
@@ -69,26 +69,28 @@ namespace alp {
 
 			// make an AMF
 			// note: When making a view over a vector, the second imf must be imf::Zero
+
+			// Type of AMF factory corresponding to the full local block's AMF
+			using original_amf_factory = alp::storage::AMFFactory< config::default_sequential_backend >::FromPolynomial<
+				structures::General, imf::Id, imf::Id
+			>;
+
+			// AMF factory after applying the global view
+			using amf_factory = alp::storage::AMFFactory< config::default_sequential_backend >::Compose<
+				imf::Strided, imf::Strided, typename original_amf_factory::amf_type
+			>;
+
 			const auto block_dims = distribution.getBlockDimensions();
 
-			// Using explicit amf_type to expose its type rather than relying on auto
-			// Considerations for improved implementations:
-			//  - ideally, the type of AMF and factory should be provided by a type trait
-			//    rather than being explicitely specified. To that end, determine_amf_type
-			//    should expose the factory in addition to the AMF type. Also factory might
-			//    expose the type of AMF it produces
-			using amf_type = typename determine_amf_type<
-				structures::General, view::CrossBackend< SourceMatrix >, imf::Id, imf::Id, config::default_sequential_backend
-			>::type;
-			amf_type amf = alp::storage::AMFFactory< config::default_sequential_backend >::FromPolynomial<
-				structures::General, imf::Id, imf::Id
-			>::Create(
-				imf::Id( block_dims.first ), imf::Id( block_dims.second )
+			typename amf_factory::amf_type amf = amf_factory::Create(
+				imf::Id( block_dims.first ),
+				imf::Id( block_dims.second ),
+				original_amf_factory::Create( imf::Id( block_dims.first ), imf::Id( block_dims.second ) )
 			);
 
 			// create a sequential container with the container and AMF above
 			using target_t = typename internal::new_container_type_from<
-				typename SourceMatrix::template view_type< view::cross_backend >::type
+				typename SourceMatrix::template view_type< view::gather >::type
 			>::template change_backend< config::default_sequential_backend >::type;
 
 			return target_t( container, amf );
