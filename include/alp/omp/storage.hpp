@@ -313,10 +313,11 @@ namespace alp {
 				typedef struct StorageIndexType {
 
 					size_t buffer_id;
+					size_t block_id;
 					size_t offset;
 
-					StorageIndexType( const size_t buffer_id, const size_t offset ) :
-						buffer_id( buffer_id ), offset( offset ) {}
+					StorageIndexType( const size_t buffer_id, const size_t block_id, const size_t offset ) :
+						buffer_id( buffer_id ), block_id( block_id ), offset( offset ) {}
 
 				} storage_index_type;
 
@@ -472,9 +473,8 @@ namespace alp {
 
 					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.tr, local.tc ).second + local.bc;
 					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
-					const size_t offset = local_block * distribution.getBlockSize() + local_element;
 
-					return storage_index_type( thread, offset );
+					return storage_index_type( thread, local_block, local_element );
 				}
 
 				/**

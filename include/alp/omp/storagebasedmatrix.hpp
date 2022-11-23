@@ -129,13 +129,15 @@ namespace alp {
 				 *                      space.
 				 *
 				 * @return const reference or value of the element at given position.
+				 * \note This function may result in accessing memory belonging to
+				 *       another thread, which may incurr performance penalty.
 				 */
-				const_access_type access( const storage_index_type &storageIndex ) const {
-					return getBuffer( container, storageIndex.buffer_id )[ storageIndex.offset ];
+				const_access_type access( const storage_index_type &si ) const {
+					return getRaw( getLocalContainer( container, si.buffer_id, si.block_id ) )[ si.offset ];
 				}
 
-				access_type access( const storage_index_type &storageIndex ) {
-					return getBuffer( container, storageIndex.buffer_id )[ storageIndex.offset ];
+				access_type access( const storage_index_type &si ) {
+					return getRaw( getLocalContainer( container, si.buffer_id, si.block_id ) )[ si.offset ];
 				}
 
 				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
