@@ -114,13 +114,13 @@ namespace alp {
 			for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 				for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
-					// Get a reference matrix view over the block
+					// Get a sequential matrix view over the block
 					auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
 
-					// Construct a reference Scalar container from the input Scalar
-					Scalar< InputType, InputStructure, reference > ref_val( *val );
+					// Construct a sequential Scalar container from the input Scalar
+					Scalar< InputType, InputStructure, config::default_sequential_backend > ref_val( *val );
 
-					// Delegate the call to the reference set implementation
+					// Delegate the call to the sequential set implementation
 					local_rc = local_rc ? local_rc : set( refC, ref_val );
 
 					if( local_rc != SUCCESS ) {
