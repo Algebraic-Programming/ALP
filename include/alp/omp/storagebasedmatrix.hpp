@@ -73,8 +73,8 @@ namespace alp {
 
 				typedef typename std::conditional<
 					requires_allocation,
-					Vector< T, omp >,
-					Vector< T, omp > &
+					internal::Vector< T, omp >,
+					internal::Vector< T, omp > &
 				>::type container_type;
 
 				/** A container-type view is characterized by its association with a physical container */
