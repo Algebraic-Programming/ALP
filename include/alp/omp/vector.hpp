@@ -280,6 +280,11 @@ namespace alp {
 				 */
 				~Vector() {
 					if( buffers != nullptr ) {
+						for( size_t i = 0; i < num_buffers; ++i ) {
+							if( buffers[ i ] != nullptr ) {
+								delete buffers[ i ];
+							}
+						}
 						delete [] buffers;
 					}
 				}
