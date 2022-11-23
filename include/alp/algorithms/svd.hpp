@@ -294,7 +294,9 @@ namespace alp {
 			size_t i2 = k;
 
 			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring, minus, divide );
-			//repeat while superdiagonal is not zero
+
+			//add bidiagonal struct
+			// eliminate superdiagonal elements via Givens rotations
 			for( size_t i = 0; i < maxit; ++i ) {
 				//todo: replace convergenve tests with absolute tolerance cehck
 				//      with reltive tolerance checks
