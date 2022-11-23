@@ -933,7 +933,7 @@ namespace alp {
 					);
 					return Compose< imf::Id, imf::Zero, AMF< imf::Id, imf::Id, typename PolyFactory::poly_type, backend > >::Create(
 						imf_r, imf_c,
-						FromPolynomial< structures::General, imf::Id, imf::Zero >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
+						FromPolynomial< Structure, imf::Id, imf::Zero >::Create( imf::Id( imf_r.N ), imf::Id( imf_c.N ) )
 					);
 				}
 
