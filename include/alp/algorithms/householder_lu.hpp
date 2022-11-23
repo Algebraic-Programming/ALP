@@ -129,6 +129,8 @@ namespace alp {
 				// Ak = H[ k + 1 :, k + 1 : ]
 				// v = v / a
 				// Ak = Ak - outer(v,w)
+				// scalar view should replace vector view of length 1 (issue #598)
+				// besides here there are many places in the use cases where this should be changed
 				auto a_view = alp::get_view( HWork, utils::range( k, k + 1 ), k );
 				auto v_view = alp::get_view( HWork, utils::range( k + 1, m ), k );
 				auto w_view = alp::get_view( HWork, k, utils::range( k + 1, n ) );

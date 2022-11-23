@@ -566,7 +566,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dsytrd (Householder tridiagonalisaiton) on"
-	echo ">>>                              a real symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
+	echo ">>>                              a real, random symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log || echo "Test FAILED"
@@ -574,7 +574,7 @@ for BACKEND in ${BACKENDS[@]}; do
 
 	NTEST_HOUSEHOLDER_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
-	echo ">>>                              a random complex hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
+	echo ">>>                              a complex, random hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log"
 	head -1 ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log || echo "Test FAILED"
