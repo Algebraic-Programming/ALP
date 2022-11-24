@@ -33,6 +33,7 @@
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iterators/IteratorValueAdaptor.hpp>
+#include <graphblas/utils/Timer.hpp>
 
 #include "multigrid_data.hpp"
 
@@ -201,6 +202,8 @@ namespace grb {
 			MGSmootherType smoother_runner; ///< object to run the smoother
 			CoarsenerType coarsener_runner; ///< object to run the coarsener
 			std::vector< std::unique_ptr< MultiGridInputType > > system_levels; ///< levels of the grid (finest first)
+			bool print_duration = false; ///< whether to print the duration of a full multi-grid call
+			grb::utils::Timer timer;
 			Ring ring; ///< algebraic ring
 			Minus minus; ///< minus operator
 
@@ -238,11 +241,19 @@ namespace grb {
 			 * Operator to invoke a full multi-grid run starting from the given level.
 			 */
 			inline grb::RC operator()( MultiGridInputType &system ) {
-				return multi_grid< IOType, NonzeroType, __unique_ptr_extractor,
+				if( print_duration ) {
+					timer.reset();
+				}
+				grb::RC ret = multi_grid< IOType, NonzeroType, __unique_ptr_extractor,
 					MGSmootherType, CoarsenerType, Ring, Minus >(
 					__unique_ptr_extractor( system_levels.begin() += system.level ),
 					__unique_ptr_extractor( system_levels.end() ),
 					smoother_runner, coarsener_runner, ring, minus );
+				if( print_duration ) {
+					double duration = timer.time();
+					std::cout << " pre-conditioner (ms) "<< duration;
+				}
+				return ret;
 			}
 		};
 

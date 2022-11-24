@@ -36,7 +36,6 @@
 #include <utility>
 
 #include <graphblas.hpp>
-#include <graphblas/utils/Timer.hpp>
 
 #include "multigrid_data.hpp"
 
@@ -66,7 +65,6 @@ namespace grb {
 			grb::Vector< IOType > p;    ///< temporary vector (typically for x refinements coming from the multi-grid run)
 			grb::Vector< IOType > x;    ///< system solution being refined over the iterations: it us up to the user
 			///< to set the initial solution value to something meaningful
-
 
 			/**
 			 * Construct a new \c MultiGridCGData object by building its vectors with size \p sys_size.
@@ -98,7 +96,7 @@ namespace grb {
 									///< and the result achieved so far returned
 			ResidualType tolerance; ///< ratio between initial residual and current residual that halts the solver
 										///< if reached, for the solution is to be considered "good enough"
-			bool print_iter_stats; ///< whether to print information on the multi-grid and the residual on each iteration
+			bool print_iter_residual; ///< whether to print information on the multi-grid and the residual on each iteration
 			Ring ring; ///< algebraic ring to be used
 			Minus minus; ///< minus operator to be used
 		};
@@ -189,8 +187,6 @@ namespace grb {
 			ResidualType old_r_dot_z = residual_zero, r_dot_z = residual_zero, beta = residual_zero;
 			size_t iter = 0;
 
-			grb::utils::Timer timer;
-
 #ifdef HPCG_PRINT_STEPS
 			DBG_print_norm( p, "start p" );
 			DBG_print_norm( Ap, "start Ap" );
@@ -200,17 +196,12 @@ namespace grb {
 #ifdef HPCG_PRINT_STEPS
 				DBG_println( "========= iteration " << iter << " =========" );
 #endif
+				if( cg_opts.print_iter_residual ) {
+					std::cout << "iteration " << iter;
+				}
 				if( cg_opts.with_preconditioning ) {
-					if( cg_opts.print_iter_stats ) {
-						timer.reset();
-					}
 					ret = ret ? ret : multigrid_runner( grid_base );
 					assert( ret == SUCCESS );
-					if( cg_opts.print_iter_stats ) {
-						double duration = timer.time();
-						std::cout << "iteration, pre-conditioner: " << iter << ","
-							<< duration << std::endl;
-					}
 				} else {
 					ret = ret ? ret : grb::set( z, r ); // z = r;
 					assert( ret == SUCCESS );
@@ -279,8 +270,8 @@ namespace grb {
 
 				norm_residual = std::sqrt( norm_residual );
 
-				if( cg_opts.print_iter_stats ) {
-					std::cout << "iteration, residual: " << iter << "," << norm_residual << std::endl;
+				if( cg_opts.print_iter_residual ) {
+					std::cout << " residual " << norm_residual << std::endl;
 				}
 
 				++iter;

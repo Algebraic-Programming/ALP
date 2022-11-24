@@ -391,7 +391,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 	// restore CG options to user-given values
 	hpcg_runner.cg_opts.max_iterations = in.max_iterations;
-	hpcg_runner.cg_opts.print_iter_stats = in.print_iter_stats;
+	hpcg_runner.cg_opts.print_iter_residual = in.print_iter_stats;
+	mg_runner.print_duration = in.print_iter_stats;
 	MASTER_PRINT( pid, TEXT_HIGHLIGHT << "beginning solver..." << std::endl );
 	out.inner_test_repetitions = 0;
 	out.times.useful = 0.0;
