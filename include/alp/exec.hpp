@@ -30,6 +30,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include "alp/reference/exec.hpp"
 #endif
+#ifdef _ALP_WITH_OMP
+ #include "alp/omp/exec.hpp"
+#endif
 
 #ifdef _ALP_BACKEND
 namespace alp {

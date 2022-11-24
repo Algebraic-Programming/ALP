@@ -36,3 +36,7 @@ set( backend_alp_reference_srcs
 if( WITH_ALP_REFERENCE_BACKEND )
 	add_subdirectory( reference )
 endif()
+
+if( WITH_ALP_OMP_BACKEND )
+	add_subdirectory( omp )
+endif()
