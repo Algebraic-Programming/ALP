@@ -152,13 +152,11 @@ namespace grb {
 			MultiGridrunnerType &multigrid_runner,
 			CGOutInfo< ResidualType > &out_info
 		) {
-			ResidualType alpha;
-
-			const grb::Matrix< NonzeroType > &A = grid_base.A;
+			const grb::Matrix< NonzeroType > &A = grid_base.A; // system matrix
 			grb::Vector< IOType > &r = grid_base.r;  // residual vector
 			grb::Vector< IOType > &z = grid_base.z;  // pre-conditioned residual vector
-			grb::Vector< IOType > &x = cg_data.x;
-			const grb::Vector< InputType > &b = cg_data.b;
+			grb::Vector< IOType > &x = cg_data.x; // initial (and final) solution
+			const grb::Vector< InputType > &b = cg_data.b; // right-side value
 			grb::Vector< IOType > &p = cg_data.p;  // direction vector
 			grb::Vector< IOType > &Ap = cg_data.u; // temp vector
 			grb::RC ret = SUCCESS;
@@ -169,15 +167,17 @@ namespace grb {
 			ret = ret ? ret : grb::set( p, io_zero );
 
 			ret = ret ? ret : grb::set( p, x );
-			ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, x, cg_opts.ring ); // Ap = A * x
+			// Ap = A * x
+			ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, x, cg_opts.ring );
 			assert( ret == SUCCESS );
-
-			ret = ret ? ret : grb::eWiseApply( r, b, Ap, cg_opts.minus ); // r = b - Ap;
+			// r = b - Ap
+			ret = ret ? ret : grb::eWiseApply( r, b, Ap, cg_opts.minus );
 			assert( ret == SUCCESS );
 
 			const ResidualType residual_zero = cg_opts.ring.template getZero< ResidualType >();
 			ResidualType norm_residual = residual_zero;
-			ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring ); // norm_residual = r' * r;
+			// norm_residual = r' * r
+			ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring );
 			assert( ret == SUCCESS );
 
 			// compute sqrt to avoid underflow
@@ -196,7 +196,6 @@ namespace grb {
 			DBG_print_norm( Ap, "start Ap" );
 			DBG_print_norm( r, "start r" );
 #endif
-
 			do {
 #ifdef HPCG_PRINT_STEPS
 				DBG_println( "========= iteration " << iter << " =========" );
@@ -219,58 +218,63 @@ namespace grb {
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( z, "initial z" );
 #endif
-
-				ResidualType pAp;
-
 				if( iter == 0 ) {
 					ret = ret ? ret : grb::set( p, z ); //  p = z;
 					assert( ret == SUCCESS );
-
 					ret = ret ? ret : grb::dot( r_dot_z, r, z, cg_opts.ring ); // r_dot_z = r' * z;
 					assert( ret == SUCCESS );
 				} else {
 					old_r_dot_z = r_dot_z;
-
+					// r_dot_z = r' * z
 					r_dot_z = cg_opts.ring.template getZero< ResidualType >();
-					ret = ret ? ret : grb::dot( r_dot_z, r, z, cg_opts.ring ); // r_dot_z = r' * z;
+					ret = ret ? ret : grb::dot( r_dot_z, r, z, cg_opts.ring );
 					assert( ret == SUCCESS );
 
 					beta = r_dot_z / old_r_dot_z;
-					ret = ret ? ret : grb::set( Ap, io_zero );                         // Ap  = 0;
-					ret = ret ? ret : grb::eWiseMulAdd( Ap, beta, p, z, cg_opts.ring ); // Ap += beta * p + z;
-					std::swap( Ap, p );                                         // p = Ap;
+					// Ap  = 0
+					ret = ret ? ret : grb::set( Ap, io_zero );
+					assert( ret == SUCCESS );
+					// Ap += beta * p
+					ret = ret ? ret : grb::eWiseMul( Ap, beta, p, cg_opts.ring );
+					assert( ret == SUCCESS );
+					// Ap = Ap + z
+					ret = ret ? ret : grb::eWiseApply( Ap, Ap, z, cg_opts.ring.getAdditiveOperator() );
+					assert( ret == SUCCESS );
+					// p = Ap
+					std::swap( Ap, p );
 					assert( ret == SUCCESS );
 				}
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( p, "middle p" );
 #endif
-
+				// Ap = A * p
 				ret = ret ? ret : grb::set( Ap, io_zero );
-				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, p, cg_opts.ring ); // Ap = A * p;
+				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( Ap, "middle Ap" );
 #endif
-				pAp = cg_opts.ring.template getZero< ResidualType >();
-				ret = ret ? ret : grb::dot( pAp, Ap, p, cg_opts.ring ); // pAp = p' * Ap
+				// pAp = p' * Ap
+				ResidualType pAp = cg_opts.ring.template getZero< ResidualType >();
+				ret = ret ? ret : grb::dot( pAp, Ap, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 
-				alpha = r_dot_z / pAp;
-
-				ret = ret ? ret : grb::eWiseMul( x, alpha, p, cg_opts.ring ); // x += alpha * p;
+				ResidualType alpha = r_dot_z / pAp;
+				// x += alpha * p
+				ret = ret ? ret : grb::eWiseMul( x, alpha, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( x, "end x" );
 #endif
-
-				ret = ret ? ret : grb::eWiseMul( r, -alpha, Ap, cg_opts.ring ); // r += - alpha * Ap;
+				// r += - alpha * Ap
+				ret = ret ? ret : grb::eWiseMul( r, -alpha, Ap, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( r, "end r" );
 #endif
-
+				// residual = r' * r
 				norm_residual = cg_opts.ring.template getZero< ResidualType >();
-				ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring ); // residual = r' * r;
+				ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring );
 				assert( ret == SUCCESS );
 
 				norm_residual = std::sqrt( norm_residual );
