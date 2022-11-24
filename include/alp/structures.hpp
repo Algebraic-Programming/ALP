@@ -826,10 +826,20 @@ namespace alp {
 		};
 
 		template<>
-		struct isInstantiable< RectangularDiagonal, Square > {
+		struct isInstantiable< RectangularDiagonal, Diagonal > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return (imf_r.n == imf_c.n);
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
 			};
 		};
 
