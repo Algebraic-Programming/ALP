@@ -511,7 +511,9 @@ for BACKEND in ${BACKENDS[@]}; do
 done
 
 for BACKEND in ${BACKENDS[@]}; do
-	if [ "${BACKEND:0:4}" != "alp_" ]; then
+	# Temporarily execute tests only for alp_reference backend
+	# until all backends start supporting all smoke tests.
+	if [ "${BACKEND}" != "alp_reference" ]; then
 		continue
 	fi
 

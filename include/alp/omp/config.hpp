@@ -1,3 +1,4 @@
+
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -14,24 +15,33 @@
  * limitations under the License.
  */
 
-/**
- *
- * @file
- *
- * This file registers mechanisms for coordinate mapping between
- * logical and physical iteration spaces.
- *
- */
 
-#ifndef _H_ALP_STORAGE
-#define _H_ALP_STORAGE
+#ifndef _H_ALP_OMP_CONFIG
+#define _H_ALP_OMP_CONFIG
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/storage.hpp>
+#include <alp/base/config.hpp>
+
+#include <graphblas/omp/config.hpp>
+
+namespace alp {
+
+	namespace config {
+
+		/** The default sequential backend to be selected for this parallel backend. */
+		static constexpr alp::Backend default_sequential_backend = _ALP_SECONDARY_BACKEND;
+
+		class OMP : public grb::config::OMP {};
+
+		// Dimensions of blocks counted in number of elements per dimension
+		constexpr size_t BLOCK_ROW_DIM = 16;
+		constexpr size_t BLOCK_COL_DIM = 16;
+
+		constexpr size_t REPLICATION_FACTOR_THREADS = 1;
+
+
+	} // namespace config
+
+} // namespace alp
+
 #endif
 
-#ifdef _ALP_WITH_OMP
- #include <alp/omp/storage.hpp>
-#endif
-
-#endif // _H_ALP_STORAGE

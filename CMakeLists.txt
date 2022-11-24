@@ -52,6 +52,7 @@ endif()
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
+option( WITH_ALP_OMP_BACKEND "With OMP Dense backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
@@ -190,6 +191,7 @@ endif()
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_ALP_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
+set( WITH_ALP_OMP_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
 if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND )
@@ -204,6 +206,10 @@ endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
 	set( WITH_ALP_REFERENCE_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_OMP_BACKEND )
+	set( WITH_ALP_OMP_BACKEND_HEADERS ON )
 endif()
 
 add_subdirectory( include )
