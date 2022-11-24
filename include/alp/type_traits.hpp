@@ -409,6 +409,12 @@ namespace alp {
 				typedef new_container_type_from< type > _and_;
 			};
 
+			template< enum Backend new_backend >
+			struct change_backend {
+				typedef Container< T, Structure, density, View, ImfR, ImfC, new_backend > type;
+				typedef new_container_type_from< type > _and_;
+			};
+
 			private:
 				new_container_type_from() = delete;
 		};

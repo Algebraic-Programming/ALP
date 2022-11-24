@@ -88,13 +88,13 @@ namespace alp {
 		/** Forward declarations for access functions */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
+		typename MatrixType::const_access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
 
@@ -144,13 +144,13 @@ namespace alp {
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
-				friend const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
+				friend typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
@@ -168,9 +168,9 @@ namespace alp {
 					static_cast< DerivedMatrix & >( *this ).setInitialized( initialized );
 				}
 
-				template< typename AccessType, typename StorageIndexType >
-				const AccessType access( const StorageIndexType storageIndex ) const {
-					static_assert( std::is_same< AccessType, typename DerivedMatrix::access_type >::value );
+				template< typename ConstAccessType, typename StorageIndexType >
+				ConstAccessType access( const StorageIndexType storageIndex ) const {
+					static_assert( std::is_same< ConstAccessType, typename DerivedMatrix::const_access_type >::value );
 					static_assert( std::is_same< StorageIndexType, typename DerivedMatrix::storage_index_type >::value );
 					return static_cast< const DerivedMatrix & >( *this ).access( storageIndex );
 				}
@@ -348,8 +348,8 @@ namespace alp {
 			>
 			Matrix( const size_t rows, const size_t cols, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial<
-						typename internal::determine_poly_factory< structure, ImfR, ImfC, backend >::factory_type
+					storage::AMFFactory< backend >::template FromPolynomial<
+						Structure, ImfR, ImfC
 					>::Create(
 						ImfR( rows ),
 						ImfC( cols )
@@ -383,8 +383,8 @@ namespace alp {
 			>
 			Matrix( const size_t dim, const size_t cap = 0 ) :
 				base_type(
-					storage::AMFFactory::FromPolynomial<
-						typename internal::determine_poly_factory< structure, ImfR, ImfC, backend >::factory_type
+					storage::AMFFactory< backend >::template FromPolynomial<
+						Structure, ImfR, ImfC
 					>::Create(
 						ImfR( dim ),
 						ImfC( dim )
@@ -418,7 +418,7 @@ namespace alp {
 			Matrix( SourceType &source_matrix, ImfR imf_r, ImfC imf_c ) :
 				base_type(
 					getContainer( source_matrix ),
-					storage::AMFFactory::Compose<
+					storage::AMFFactory< backend >::template Compose<
 						ImfR, ImfC, typename SourceType::base_type::amf_type
 					>::Create( imf_r, imf_c, internal::getAmf( source_matrix ) )
 				) {}
@@ -441,14 +441,43 @@ namespace alp {
 			Matrix( SourceType &source_matrix ) :
 				base_type(
 					getContainer( source_matrix ),
-					storage::AMFFactory::Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
+					storage::AMFFactory< backend >::template Reshape< View::type_id, typename SourceType::amf_type >::Create( internal::getAmf( source_matrix ) )
 				) {}
 
 			/**
-			 * @deprecated
-			 * Constructor for a view over another storage-based matrix.
+			 * Constructor for a view over an internal container of another matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.
+			 * @tparam AmfType  The type of the amf corresponding to the layout of
+			 *                  the provided container.
+			 *                  Used as a template parameter to avoid hard
+			 *                  compilation error in the case of FunctorBasedMatrix,
+			 *                  when base_type::amf_type does not exist.
+			 */
+			template<
+				typename BufferType,
+				typename AmfType,
+				std::enable_if_t<
+					!is_container< BufferType >::value &&
+					internal::is_view_over_storage< View >::value
+				> * = nullptr
+			>
+			Matrix( BufferType &&buffer, const size_t buffer_size, AmfType &&amf ) :
+				base_type(
+					buffer,
+					buffer_size,
+					std::forward< typename base_type::amf_type >( amf )
+				) {
+				static_assert(
+					std::is_same< typename base_type::amf_type, typename std::remove_reference< AmfType >::type >::value,
+					"The type of the provided AMF does not match the type of constructed container's AMF"
+				);
+			}
+
+			/**
+			 * Constructor for a view over another matrix' internal container.
+			 *
+			 * @tparam ContainerType  The type of the internal container.
 			 * @tparam AmfType     The type of the amf used to construct the matrix.
 			 *                     Used as a template parameter to benefit from
 			 *                     SFINAE for the case of FunctorBasedMatrix, when
@@ -457,21 +486,21 @@ namespace alp {
 			 *                     result in a hard compilation error.
 			 */
 			template<
-				typename SourceType,
+				typename ContainerType,
 				typename AmfType,
 				std::enable_if_t<
-					std::is_same< SourceType, typename View::applied_to >::value &&
+					internal::is_container< ContainerType >::value &&
 					internal::is_view_over_storage< View >::value &&
 					!internal::requires_allocation< View >::value
 				> * = nullptr
 			>
-			Matrix( SourceType &source_matrix, AmfType &&amf ) :
+			Matrix( ContainerType &container, AmfType &&amf ) :
 				base_type(
-					getContainer( source_matrix ),
+					container,
 					std::forward< typename base_type::amf_type >( amf )
 				) {
 				static_assert(
-					std::is_same< typename base_type::amf_type, AmfType >::value,
+					std::is_same< typename base_type::amf_type, typename std::remove_reference< AmfType >::type >::value,
 					"The AMF type of the constructor parameter needs to match the AMF type of this container specialization."
 				);
 			}
@@ -1073,18 +1102,18 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
-		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
+		typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
 				const MatrixBase< typename MatrixType::base_type > &
-			>( A ).template access< typename MatrixType::access_type, typename MatrixType::storage_index_type >( storageIndex );
+			>( A ).template access< typename MatrixType::const_access_type, typename MatrixType::storage_index_type >( storageIndex );
 		}
 
 		/** Non-constant variant. **/
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<

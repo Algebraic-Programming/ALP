@@ -94,6 +94,7 @@ reference=yes
 banshee=no
 lpf=no
 alp_reference=yes
+alp_omp=yes
 show=no
 FLAGS=$''
 LPF_INSTALL_PATH=
@@ -296,6 +297,11 @@ the current directory before invocation or confirm the deletion of its content w
 		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=OFF"
 	else
 		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=ON"
+	fi
+	if [[ "${alp_omp}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=ON"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"
