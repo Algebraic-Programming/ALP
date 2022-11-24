@@ -444,13 +444,14 @@ namespace alp {
 				) {}
 
 			/**
-			 * Constructor for a view over another storage-based matrix.
+			 * Constructor for a view over an internal container of another matrix.
 			 *
 			 * @tparam SourceType  The type of the target matrix.
-			 * @tparam AmfType     The type of the amf used to construct the matrix.
-			 *                     Used as a template parameter to avoid hard
-			 *                     compilation error in the case of FunctorBasedMatrix,
-			 *                     when base_type::amf_type does not exist.
+			 * @tparam AmfType  The type of the amf corresponding to the layout of
+			 *                  the provided container.
+			 *                  Used as a template parameter to avoid hard
+			 *                  compilation error in the case of FunctorBasedMatrix,
+			 *                  when base_type::amf_type does not exist.
 			 */
 			template<
 				typename BufferType,
