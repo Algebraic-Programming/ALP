@@ -53,19 +53,6 @@ namespace alp {
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
-		/** Forward declarations for access functions */
-		template<
-			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
-		>
-		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
-
-		template<
-			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
-		>
-		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
-
 		/** Forward declaration */
 		template< typename T, typename AmfType, bool requires_allocation, Backend backend >
 		class StorageBasedMatrix;
@@ -117,29 +104,6 @@ namespace alp {
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
-		/** Forward declaration */
-		template< typename DerivedMatrix >
-		class MatrixBase;
-
-		template< typename DerivedMatrix >
-		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
-
-		template<
-			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
-		>
-		size_t getStorageDimensions( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		bool getInitialized( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		void setInitialized( MatrixType &, const bool ) noexcept;
-
 		/**
 		 * Matrix container specialization
 		 * Implements both original containers and views on containers.
@@ -172,6 +136,7 @@ namespace alp {
 				typedef typename AmfType::imf_c_type imf_c_type;
 				/** Type returned by access function */
 				typedef T &access_type;
+				typedef const T &const_access_type;
 				/** Type of the index used to access the physical storage */
 				typedef size_t storage_index_type;
 
@@ -260,7 +225,7 @@ namespace alp {
 				 *
 				 * @return const reference or value of the element at given position.
 				 */
-				const access_type access( const storage_index_type &storageIndex ) const {
+				const_access_type access( const storage_index_type &storageIndex ) const {
 					return container[ storageIndex ];
 				}
 
@@ -299,6 +264,11 @@ namespace alp {
 				/** View on another container */
 				StorageBasedMatrix( Vector< T, backend > &container, AmfType &&amf ) :
 					container( container ),
+					amf( std::move( amf ) ) {}
+
+				/** View on another raw container */
+				StorageBasedMatrix( T *buffer, const size_t buffer_size, AmfType &&amf ) :
+					container( buffer, buffer_size ),
 					amf( std::move( amf ) ) {}
 
 		}; // class StorageBasedMatrix

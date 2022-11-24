@@ -82,6 +82,7 @@ namespace alp {
 				typedef T value_type;
 				/** Type returned by access function */
 				typedef T access_type;
+				typedef T const_access_type;
 				/** Type of the index used to access the physical storage */
 				typedef std::pair< size_t, size_t > storage_index_type;
 
