@@ -38,7 +38,8 @@ namespace alp {
 		public:
 
 			/** \internal No implementation notes. */
-			Launcher( const size_t process_id = 0,
+			Launcher(
+				const size_t process_id = 0,
 				const size_t nprocs = 1,
 				const std::string hostname = "localhost",
 				const std::string port = "0"
