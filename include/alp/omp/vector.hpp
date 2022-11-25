@@ -151,7 +151,7 @@ namespace alp {
 				Vector(
 					const Distribution &d,
 					const size_t cap = 0
-				) : num_buffers( d.getThreadGridDims().first * d.getThreadGridDims().second ),
+				) : num_buffers( d.getThreadGridDims().Tr * d.getThreadGridDims().Tc ),
 					containers( num_buffers ),
 					initialized( false ) {
 

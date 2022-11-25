@@ -141,6 +141,14 @@ namespace alp {
 
 			};
 
+			struct ThreadGrid {
+				const size_t Tr;
+				const size_t Tc;
+				static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
+
+				ThreadGrid( const size_t Tr, const size_t Tc ) : Tr( Tr ), Tc( Tc ) {}
+			};
+
 		private:
 
 			/** Row and column dimensions of the associated container */
@@ -162,13 +170,13 @@ namespace alp {
 				const size_t num_threads
 			) :
 				m( m ), n( n ),
-				Tr( static_cast< size_t >( sqrt( num_threads ) ) ),
-				Tc( num_threads / Tr ),
+				Tr( static_cast< size_t >( sqrt( num_threads/ Rt ) ) ),
+				Tc( num_threads / Rt / Tr ),
 				Br( static_cast< size_t >( std::ceil( static_cast< double >( m ) / config::BLOCK_ROW_DIM ) ) ),
 				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ) {
 
-				if( num_threads != Tr * Tc ) {
-					std::cerr << "Error\n";
+				if( num_threads != Tr * Tc * Rt ) {
+					std::cerr << "Warning: Provided number of threads cannot be factorized in a 3D grid.\n";
 				}
 			}
 
@@ -208,13 +216,13 @@ namespace alp {
 			}
 
 			/** Returns the dimensions of the thread grid */
-			std::pair< size_t, size_t > getThreadGridDims() const {
-				return { Tr, Tc };
+			const ThreadGrid getThreadGridDims() const {
+				return ThreadGrid( Tr, Tc );
 			}
 
 			/** Returns the thread ID corresponding to the given thread coordinates. */
-			size_t getThreadId( const size_t tr, const size_t tc ) const {
-				return tr * Tc + tc;
+			size_t getThreadId( const size_t tr, const size_t tc, const size_t rt ) const {
+				return rt * Tr * Tc + tr * Tc + tc;
 			}
 
 			/** Returns the total global amount of blocks */
@@ -402,7 +410,7 @@ namespace alp {
 					const typename Distribution::GlobalCoord global( imf_r.map( i ), imf_c.map( j ) );
 					const typename Distribution::LocalCoord local = distribution.mapGlobalToLocal( global );
 
-					const size_t thread = local.tr * distribution.getThreadGridDims().second + local.tc;
+					const size_t thread = local.tr * distribution.getThreadGridDims().Tc + local.tc;
 
 					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.tr, local.tc ).second + local.bc;
 					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
