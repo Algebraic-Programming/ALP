@@ -149,9 +149,9 @@ namespace alp {
 				 *          code sections.
 				 */
 				Vector(
-					const Distribution &d,
+					const Distribution_2_5D &d,
 					const size_t cap = 0
-				) : num_buffers( d.getThreadGridDims().first * d.getThreadGridDims().second ),
+				) : num_buffers( d.getNumberOfThreads() ),
 					containers( num_buffers ),
 					initialized( false ) {
 
@@ -169,9 +169,8 @@ namespace alp {
 
 					#pragma omp parallel for
 					for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
-						const size_t tr = d.getThreadCoords( thread ).first;
-						const size_t tc = d.getThreadCoords( thread ).second;
-						const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
+						const auto t_coords = d.getThreadCoords( thread );
+						const auto block_grid_dims = d.getLocalBlockGridDims( t_coords );
 
 						// Assuming that all blocks are of the same size
 						const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
@@ -182,7 +181,7 @@ namespace alp {
 							if( thread != config::OMP::current_thread_ID() ) {
 								std::cout << "Warning: thread != OMP::current_thread_id()\n";
 							}
-							std::cout << "Thread with global coordinates tr = " << tr << " tc = " << tc
+							std::cout << "Thread with global coordinates tr = " << t_coords.tr << " tc = " << t_coords.tc
 								<< " on OpenMP thread " << config::OMP::current_thread_ID()
 								<< " allocating buffer of " << alloc_size << " elements "
 								<< " holding " << block_grid_dims.first << " x " << block_grid_dims.second << " blocks.\n";
@@ -202,7 +201,7 @@ namespace alp {
 						// Populate the array of internal container wrappers
 						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-								const size_t offset = d.getBlocksOffset( tr, tc, br, bc );
+								const size_t offset = d.getBlocksOffset( t_coords, br, bc );
 								containers[ thread ].emplace_back( &( buffers[ thread ][ offset ] ), d.getBlockSize() );
 							}
 						}
