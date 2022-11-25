@@ -257,6 +257,14 @@ namespace alp {
 				return global_coords.first * Bc + global_coords.second;
 			}
 
+			size_t getLocalBlockId( const LocalCoord &local ) const {
+				return local.br * getLocalBlockGridDims( local.getThreadCoords() ).second + local.bc;
+			}
+
+			size_t getLocalBlockId( const ThreadCoords &t, const size_t br, const size_t bc ) const {
+				return br * getLocalBlockGridDims( t ).second + bc;
+			}
+
 			/**
 			 * Returns the dimensions of the block given by the block id
 			 */
@@ -418,7 +426,7 @@ namespace alp {
 					const typename Distribution::LocalCoord local = distribution.mapGlobalToLocal( global );
 
 					const size_t thread = distribution.getThreadId( local.getThreadCoords() );
-					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.getThreadCoords() ).second + local.bc;
+					const size_t local_block = distribution.getLocalBlockId( local );
 					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
 
 					return storage_index_type( thread, local_block, local_element );

@@ -63,7 +63,7 @@ namespace alp {
 			// get the container
 			const auto &distribution = getAmf( source ).getDistribution();
 			const size_t thread_id = distribution.getThreadId( t );
-			const size_t block_id = br * distribution.getLocalBlockGridDims( t ).second + bc;
+			const size_t block_id = distribution.getLocalBlockId( t, br, bc );
 			auto &container = internal::getLocalContainer( internal::getContainer( source ), thread_id, block_id );
 
 			// make an AMF
