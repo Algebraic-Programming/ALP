@@ -59,11 +59,9 @@ namespace alp {
 		>::template change_backend< config::default_sequential_backend >::type
 		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
 
-			(void) rt;
-
 			// get the container
 			const auto &distribution = getAmf( source ).getDistribution();
-			const size_t thread_id = tr * distribution.getThreadGridDims().Tc + tc;
+			const size_t thread_id = distribution.getThreadId( tr, tc, rt );
 			const size_t block_id = br * distribution.getLocalBlockGridDims( tr, tc ).second + bc;
 			auto &container = internal::getLocalContainer( internal::getContainer( source ), thread_id, block_id );
 

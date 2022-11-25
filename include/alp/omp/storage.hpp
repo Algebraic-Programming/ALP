@@ -149,6 +149,14 @@ namespace alp {
 				ThreadGrid( const size_t Tr, const size_t Tc ) : Tr( Tr ), Tc( Tc ) {}
 			};
 
+			struct ThreadCoords {
+				const size_t tr;
+				const size_t tc;
+				const size_t rt;
+
+				ThreadCoords( const size_t tr, const size_t tc, const size_t rt ) : tr( tr ), tc( tc ), rt( rt ) {}
+			};
+
 		private:
 
 			/** Row and column dimensions of the associated container */
@@ -283,10 +291,11 @@ namespace alp {
 				return block_coord_1D * getBlockSize();
 			}
 
-			std::pair< size_t, size_t > getThreadCoords( const size_t thread_id ) const {
-				const size_t tr = thread_id / Tc;
-				const size_t tc = thread_id % Tc;
-				return { tr, tc };
+			ThreadCoords getThreadCoords( const size_t thread_id ) const {
+				const size_t rt = thread_id / ( Tr * Tc );
+				const size_t tr = ( thread_id % ( Tr * Tc ) ) / Tc;
+				const size_t tc = ( thread_id % ( Tr * Tc ) ) % Tc;
+				return { tr, tc, rt };
 			}
 	};
 		

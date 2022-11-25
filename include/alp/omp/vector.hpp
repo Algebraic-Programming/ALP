@@ -151,7 +151,7 @@ namespace alp {
 				Vector(
 					const Distribution &d,
 					const size_t cap = 0
-				) : num_buffers( d.getThreadGridDims().Tr * d.getThreadGridDims().Tc ),
+				) : num_buffers( d.getThreadGridDims().Tr * d.getThreadGridDims().Tc * d.getThreadGridDims().Rt ),
 					containers( num_buffers ),
 					initialized( false ) {
 
@@ -169,8 +169,8 @@ namespace alp {
 
 					#pragma omp parallel for
 					for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
-						const size_t tr = d.getThreadCoords( thread ).first;
-						const size_t tc = d.getThreadCoords( thread ).second;
+						const size_t tr = d.getThreadCoords( thread ).tr;
+						const size_t tc = d.getThreadCoords( thread ).tc;
 						const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
 
 						// Assuming that all blocks are of the same size
