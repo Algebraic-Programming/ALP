@@ -151,14 +151,6 @@ namespace alp {
 
 			};
 
-			struct ThreadGrid {
-				const size_t Tr;
-				const size_t Tc;
-				static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
-
-				ThreadGrid( const size_t Tr, const size_t Tc ) : Tr( Tr ), Tc( Tc ) {}
-			};
-
 		private:
 
 			/** Row and column dimensions of the associated container */
@@ -228,11 +220,6 @@ namespace alp {
 			GlobalCoord mapLocalToGlobal( const LocalCoord &l ) const {
 				(void) l;
 				return GlobalCoord( 0, 0 );
-			}
-
-			/** Returns the dimensions of the thread grid */
-			const ThreadGrid getThreadGridDims() const {
-				return ThreadGrid( Tr, Tc );
 			}
 
 			/** Returns the thread ID corresponding to the given thread coordinates. */
