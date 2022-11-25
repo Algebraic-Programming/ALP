@@ -150,7 +150,7 @@ namespace alp {
 			const size_t Tr;
 			const size_t Tc;
 			/** Replication factor in thread-coordinate space */
-			const size_t Rt;
+			static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
 			/** The row and column dimensions of the global block grid */
 			const size_t Br;
 			const size_t Bc;
@@ -164,7 +164,6 @@ namespace alp {
 				m( m ), n( n ),
 				Tr( static_cast< size_t >( sqrt( num_threads ) ) ),
 				Tc( num_threads / Tr ),
-				Rt( config::REPLICATION_FACTOR_THREADS ),
 				Br( static_cast< size_t >( std::ceil( static_cast< double >( m ) / config::BLOCK_ROW_DIM ) ) ),
 				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ) {
 
