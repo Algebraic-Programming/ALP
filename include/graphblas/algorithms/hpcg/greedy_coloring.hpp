@@ -53,8 +53,14 @@ namespace grb {
 		 * most sizes, as the constants in front of this algorithms are very small. Implementing a distributed
 		 * coloring algorithm is anyway out of the scope of this prototype.
 		 *
+		 * Colors are by default assigned in a greedy way from the lowest one up, making this coloring scheme very
+		 * regular: close elements tend to have similar colors. This can be changed with \p lower_color_first
+		 * \c = \c false , which assigns colors from the highest one. This may avoid "destructive interference"
+		 * with following coarsening schemes.
+		 *
 		 * @tparam DIMS dimensions of the system
 		 * @tparam CoordType type of the coordinates
+		 * @tparam lower_color_first start greedy assignment of colors from lowest first
 		 * @param[in] system generator for an \p DIMS - dimesional system with halo
 		 * @param[out] row_colors if \p reorder_rows_per_color is false, stores the color of each row;
 		 * 	if \p reorder_rows_per_color is true, stores the new position of each row, so that rows
@@ -66,7 +72,8 @@ namespace grb {
 		 */
 		template<
 			size_t DIMS,
-			typename CoordType
+			typename CoordType,
+			bool lowest_color_first = true
 		> void hpcg_greedy_color_ndim_system(
 			const grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType > &system,
 			std::vector< CoordType > &row_colors,
@@ -112,11 +119,24 @@ namespace grb {
 				if( currentlyAssigned < totalColors ) {
 					// if there is at least one color left to use, look for it
 					// smallest possible
-					for( CoordType j = 0; j < totalColors; ++j ) {
-						if( !assigned[ j ] ) {
-							// if no neighbor with this color, use it for this row
-							row_colors[ curRow ] = j;
-							break;
+					if( lowest_color_first ) {
+						// here, assign colors greedily starting from the lowest available one
+						for( CoordType j = 0; j < totalColors; ++j ) {
+							if( !assigned[ j ] ) {
+								// if no neighbor with this color, use it for this row
+								row_colors[ curRow ] = j;
+								break;
+							}
+						}
+					} else {
+						// here, assign colors greedily starting from the highest available one
+						for( CoordType j = totalColors; j > 0; --j ) {
+							CoordType color = j - 1;
+							if( !assigned[ color ] ) {
+								// if no neighbor with this color, use it for this row
+								row_colors[ curRow ] = color;
+								break;
+							}
 						}
 					}
 				} else {
