@@ -234,8 +234,8 @@ namespace alp {
 			}
 
 			/** Returns the thread ID corresponding to the given thread coordinates. */
-			size_t getThreadId( const size_t tr, const size_t tc, const size_t rt ) const {
-				return rt * Tr * Tc + tr * Tc + tc;
+			size_t getThreadId( const ThreadCoords t ) const {
+				return t.rt * Tr * Tc + t.tr * Tc + t.tc;
 			}
 
 			/** Returns the total global amount of blocks */
@@ -244,11 +244,11 @@ namespace alp {
 			}
 
 			/** Returns the dimensions of the block grid associated to the given thread */
-			std::pair< size_t, size_t > getLocalBlockGridDims( const size_t tr, const size_t tc ) const {
+			std::pair< size_t, size_t > getLocalBlockGridDims( const ThreadCoords t ) const {
 				// The RHS of the + operand covers the case
 				// when the last block of threads is not full
-				const size_t blocks_r = Br / Tr + ( tr < Br % Tr ? 1 : 0 );
-				const size_t blocks_c = Bc / Tc + ( tc < Bc % Tc ? 1 : 0 );
+				const size_t blocks_r = Br / Tr + ( t.tr < Br % Tr ? 1 : 0 );
+				const size_t blocks_c = Bc / Tc + ( t.tc < Bc % Tc ? 1 : 0 );
 				return { blocks_r, blocks_c };
 			}
 
@@ -290,9 +290,9 @@ namespace alp {
 			}
 
 			/** For a given block, returns its offset from the beginning of the buffer in which it is stored */
-			size_t getBlocksOffset( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+			size_t getBlocksOffset( const ThreadCoords t, const size_t br, const size_t bc ) const {
 				// The offset is calculated as the sum of sizes of all previous blocks
-				const size_t block_coord_1D = br * getLocalBlockGridDims( tr, tc ).second + bc;
+				const size_t block_coord_1D = br * getLocalBlockGridDims( t ).second + bc;
 				return block_coord_1D * getBlockSize();
 			}
 
@@ -426,7 +426,7 @@ namespace alp {
 
 					const size_t thread = local.tr * distribution.getThreadGridDims().Tc + local.tc;
 
-					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.tr, local.tc ).second + local.bc;
+					const size_t local_block = local.br * distribution.getLocalBlockGridDims( { local.tr, local.tc, local.rt } ).second + local.bc;
 					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
 
 					return storage_index_type( thread, local_block, local_element );

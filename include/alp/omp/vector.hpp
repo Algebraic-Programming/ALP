@@ -170,7 +170,7 @@ namespace alp {
 					#pragma omp parallel for
 					for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
 						const auto t_coords = d.getThreadCoords( thread );
-						const auto block_grid_dims = d.getLocalBlockGridDims( t_coords.tr, t_coords.tc );
+						const auto block_grid_dims = d.getLocalBlockGridDims( t_coords );
 
 						// Assuming that all blocks are of the same size
 						const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
@@ -201,7 +201,7 @@ namespace alp {
 						// Populate the array of internal container wrappers
 						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
 							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-								const size_t offset = d.getBlocksOffset( t_coords.tr, t_coords.tc, br, bc );
+								const size_t offset = d.getBlocksOffset( t_coords, br, bc );
 								containers[ thread ].emplace_back( &( buffers[ thread ][ offset ] ), d.getBlockSize() );
 							}
 						}

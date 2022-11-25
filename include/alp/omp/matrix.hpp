@@ -50,6 +50,7 @@ namespace alp {
 		template<
 			enum view::Views target_view = view::original,
 			typename SourceMatrix,
+			typename ThreadCoords,
 			std::enable_if_t<
 				is_matrix< SourceMatrix >::value
 			> * = nullptr
@@ -57,12 +58,12 @@ namespace alp {
 		typename internal::new_container_type_from<
 			typename SourceMatrix::template view_type< view::gather >::type
 		>::template change_backend< config::default_sequential_backend >::type
-		get_view( SourceMatrix &source, const size_t tr, const size_t tc, const size_t rt, const size_t br, const size_t bc ) {
+		get_view( SourceMatrix &source, const ThreadCoords t, const size_t br, const size_t bc ) {
 
 			// get the container
 			const auto &distribution = getAmf( source ).getDistribution();
-			const size_t thread_id = distribution.getThreadId( tr, tc, rt );
-			const size_t block_id = br * distribution.getLocalBlockGridDims( tr, tc ).second + bc;
+			const size_t thread_id = distribution.getThreadId( t );
+			const size_t block_id = br * distribution.getLocalBlockGridDims( t ).second + bc;
 			auto &container = internal::getLocalContainer( internal::getContainer( source ), thread_id, block_id );
 
 			// make an AMF
