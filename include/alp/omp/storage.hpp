@@ -206,7 +206,7 @@ namespace alp {
 
 				return LocalCoord(
 					tr, tc,
-					0, // Rt
+					0, // Rt always maps to the front layer
 					local_br, local_bc,
 					local_i, local_j
 				);
