@@ -99,15 +99,14 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const Distribution &d = internal::getAmf( C ).getDistribution();
+		const Distribution_2_5D &d = internal::getAmf( C ).getDistribution();
 
 		RC rc = SUCCESS;
 
 		#pragma omp parallel for
 		for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
-			const size_t tr = d.getThreadCoords( thread ).first;
-			const size_t tc = d.getThreadCoords( thread ).second;
-			const auto block_grid_dims = d.getLocalBlockGridDims( tr, tc );
+			const auto t_coords = d.getThreadCoords( thread );
+			const auto block_grid_dims = d.getLocalBlockGridDims( t_coords );
 
 			RC local_rc = SUCCESS;
 
@@ -115,7 +114,7 @@ namespace alp {
 				for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
 
 					// Get a sequential matrix view over the block
-					auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
+					auto refC = internal::get_view( C, t_coords, br, bc );
 
 					// Construct a sequential Scalar container from the input Scalar
 					Scalar< InputType, InputStructure, config::default_sequential_backend > ref_val( *val );
