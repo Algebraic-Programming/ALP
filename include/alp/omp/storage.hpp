@@ -238,6 +238,10 @@ namespace alp {
 				return t.rt * Tr * Tc + t.tr * Tc + t.tc;
 			}
 
+			size_t getNumberOfThreads() const {
+				return Tr * Tc * Rt;
+			}
+
 			/** Returns the total global amount of blocks */
 			std::pair< size_t, size_t > getGlobalBlockGridDims() const {
 				return { Br, Bc };
