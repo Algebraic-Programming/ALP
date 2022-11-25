@@ -218,6 +218,11 @@ namespace alp {
 				);
 			}
 
+			/**
+			 * Maps coordinates from local to global space.
+			 *
+			 * \todo Add implementation
+			 */
 			GlobalCoord mapLocalToGlobal( const LocalCoord &l ) const {
 				(void) l;
 				return GlobalCoord( 0, 0 );
@@ -240,7 +245,7 @@ namespace alp {
 
 			/** Returns the dimensions of the block grid associated to the given thread */
 			std::pair< size_t, size_t > getLocalBlockGridDims( const size_t tr, const size_t tc ) const {
-				// The LHS of the + operand covers the case
+				// The RHS of the + operand covers the case
 				// when the last block of threads is not full
 				const size_t blocks_r = Br / Tr + ( tr < Br % Tr ? 1 : 0 );
 				const size_t blocks_c = Bc / Tc + ( tc < Bc % Tc ? 1 : 0 );
