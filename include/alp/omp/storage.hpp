@@ -74,6 +74,15 @@ namespace alp {
 
 		public:
 
+			/** Type encapsulating thread coordinates within the thread grid. */
+			struct ThreadCoords {
+				const size_t tr;
+				const size_t tc;
+				const size_t rt;
+
+				ThreadCoords( const size_t tr, const size_t tc, const size_t rt ) : tr( tr ), tc( tc ), rt( rt ) {}
+			};
+
 			/** Type encapsulating the global element coordinate. */
 			struct GlobalCoord {
 
@@ -87,9 +96,7 @@ namespace alp {
 			/** Type encapsulating the local element coordinate. */
 			struct LocalCoord {
 
-				const size_t tr;
-				const size_t tc;
-				const size_t rt;
+				const ThreadCoords t;
 				const size_t br;
 				const size_t bc;
 				const size_t i;
@@ -101,10 +108,13 @@ namespace alp {
 					const size_t br, const size_t bc,
 					const size_t i, const size_t j
 				) :
-					tr( tr ), tc( tc ),
-					rt( rt ),
+					t( tr, tc, rt ),
 					br( br ), bc( bc ),
 					i( i ), j( j ) {}
+
+				const ThreadCoords &getThreadCoords() const {
+					return t;
+				}
 	
 			};
 
@@ -147,14 +157,6 @@ namespace alp {
 				static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
 
 				ThreadGrid( const size_t Tr, const size_t Tc ) : Tr( Tr ), Tc( Tc ) {}
-			};
-
-			struct ThreadCoords {
-				const size_t tr;
-				const size_t tc;
-				const size_t rt;
-
-				ThreadCoords( const size_t tr, const size_t tc, const size_t rt ) : tr( tr ), tc( tc ), rt( rt ) {}
 			};
 
 		private:
@@ -428,9 +430,8 @@ namespace alp {
 					const typename Distribution::GlobalCoord global( imf_r.map( i ), imf_c.map( j ) );
 					const typename Distribution::LocalCoord local = distribution.mapGlobalToLocal( global );
 
-					const size_t thread = local.tr * distribution.getThreadGridDims().Tc + local.tc;
-
-					const size_t local_block = local.br * distribution.getLocalBlockGridDims( { local.tr, local.tc, local.rt } ).second + local.bc;
+					const size_t thread = distribution.getThreadId( local.getThreadCoords() );
+					const size_t local_block = local.br * distribution.getLocalBlockGridDims( local.getThreadCoords() ).second + local.bc;
 					const size_t local_element = local.i * config::BLOCK_ROW_DIM + local.j;
 
 					return storage_index_type( thread, local_block, local_element );
