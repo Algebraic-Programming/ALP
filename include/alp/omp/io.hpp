@@ -99,7 +99,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		const Distribution &d = internal::getAmf( C ).getDistribution();
+		const Distribution_2_5D &d = internal::getAmf( C ).getDistribution();
 
 		RC rc = SUCCESS;
 

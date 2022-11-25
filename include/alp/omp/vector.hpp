@@ -149,7 +149,7 @@ namespace alp {
 				 *          code sections.
 				 */
 				Vector(
-					const Distribution &d,
+					const Distribution_2_5D &d,
 					const size_t cap = 0
 				) : num_buffers( d.getNumberOfThreads() ),
 					containers( num_buffers ),

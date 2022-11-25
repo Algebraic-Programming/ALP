@@ -70,7 +70,7 @@ namespace alp {
 	 * among threads.
 	 *
 	 */
-	class Distribution {
+	class Distribution_2_5D {
 
 		public:
 
@@ -167,7 +167,7 @@ namespace alp {
 
 		public:
 
-			Distribution(
+			Distribution_2_5D(
 				const size_t m, const size_t n,
 				const size_t num_threads
 			) :
@@ -356,7 +356,7 @@ namespace alp {
 				 */
 				const size_t num_threads;
 
-				const Distribution distribution;
+				const Distribution_2_5D distribution;
 
 				AMF(
 					ImfR imf_r,
@@ -382,7 +382,7 @@ namespace alp {
 					std::cout << "Entering OMP AMF move constructor\n";
 				}
 
-				const Distribution &getDistribution() const {
+				const Distribution_2_5D &getDistribution() const {
 					return distribution;
 				}
 
@@ -422,8 +422,8 @@ namespace alp {
 				storage_index_type getStorageIndex( const size_t i, const size_t j, const size_t s, const size_t P ) const {
 					(void) s;
 					(void) P;
-					const typename Distribution::GlobalCoord global( imf_r.map( i ), imf_c.map( j ) );
-					const typename Distribution::LocalCoord local = distribution.mapGlobalToLocal( global );
+					const typename Distribution_2_5D::GlobalCoord global( imf_r.map( i ), imf_c.map( j ) );
+					const typename Distribution_2_5D::LocalCoord local = distribution.mapGlobalToLocal( global );
 
 					const size_t thread = distribution.getThreadId( local.getThreadCoords() );
 					const size_t local_block = distribution.getLocalBlockId( local );
