@@ -64,6 +64,7 @@ namespace grb {
 			/**
 			 * Runs a single step of Red-Black Gauss-Seidel for a specific color.
 			 *
+			 * @tparam descr descriptor for static information
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
 			 * @tparam Ring the ring of algebraic operators zero-values
@@ -79,6 +80,7 @@ namespace grb {
 			 *  unsuccessful operation otherwise
 			 */
 			template<
+				Descriptor descr,
 				typename IOType,
 				typename NonzeroType,
 				class Ring
@@ -92,10 +94,12 @@ namespace grb {
 				const Ring & ring
 			) {
 				RC ret = SUCCESS;
-				ret = ret ? ret : grb::set( smoother_temp, ring. template getZero< IOType >() );
 
-				// acc_temp[mask] = A[mask] * x[mask]
-				ret = ret ? ret : grb::mxv< grb::descriptors::safe_overlap >( smoother_temp, color_mask, A, x, ring );
+				// smoother_temp[color_mask] = A[color_mask] * x[color_mask]
+				// use the structural descriptors, assuming ONLY the values of the current color are set
+				// note that if this assumption does not hold, also the following eWiseLambda() is wrong
+				ret = ret ? ret : grb::mxv< grb::descriptors::safe_overlap | grb::descriptors::structural >(
+					smoother_temp, color_mask, A, x, ring );
 				assert( ret == SUCCESS );
 
 				// TODO internal issue #201
@@ -106,13 +110,10 @@ namespace grb {
 					grb::eWiseLambda(
 						[ &x, &r, &smoother_temp, &color_mask, &A_diagonal ]( const size_t i ) {
 							// if the mask was properly initialized, the check on the mask value is unnecessary;
-							// nonetheless, it is left not to violate the semantics of RBGS in case also the false values
-							// had been initialized (in which case the check is fundamental); if only true values were initialized,
-							// we expect CPU branch prediction to neutralize the branch cost
 							// if( color_mask[ i ] ) {
-								IOType d = A_diagonal[ i ];
-								IOType v = r[ i ] - smoother_temp[ i ] + x[ i ] * d;
-								x[ i ] = v / d;
+							IOType d = A_diagonal[ i ];
+							IOType v = r[ i ] - smoother_temp[ i ] + x[ i ] * d;
+							x[ i ] = v / d;
 							// }
 						},
 						color_mask, x, r, smoother_temp, A_diagonal );
@@ -130,6 +131,7 @@ namespace grb {
 			 * and no check is performed to ensure these assumptions hold. Hence, it is up to user logic
 			 * to pass correct coloring information. Otherwise, \b no guarantees hold on the result.
 			 *
+			 * @tparam descr descriptor for static information
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
 			 * @tparam Ring the ring of algebraic operators zero-values
@@ -140,6 +142,7 @@ namespace grb {
 			 *                          unsuccessful operation otherwise
 			 */
 			template<
+				Descriptor descr,
 				typename IOType,
 				typename NonzeroType,
 				class Ring
@@ -149,19 +152,27 @@ namespace grb {
 				const Ring & ring
 			) {
 				RC ret = SUCCESS;
+				// zero the temp output just once, assuming proper masking avoids
+				// interference among different colors
+				ret = ret ? ret : grb::set< descr >( smoothing_info.smoother_temp,
+					ring. template getZero< IOType >() );
+
 				// forward step
 				using cit_t = typename std::vector< grb::Vector< bool > >::const_iterator;
 				cit_t end = smoothing_info.color_masks.cend();
 				for( cit_t it = smoothing_info.color_masks.cbegin(); it != end && ret == SUCCESS; ++it ) {
-					ret = rbgs_single_step( data.A, smoothing_info.A_diagonal, data.r, data.z,
-						smoothing_info.smoother_temp, *it, ring );
+					ret = rbgs_single_step< descr >( data.A, smoothing_info.A_diagonal, data.r,
+						data.z, smoothing_info.smoother_temp, *it, ring );
 				}
+				ret = ret ? ret : grb::set< descr >( smoothing_info.smoother_temp,
+					ring. template getZero< IOType >() );
+
 				// backward step
 				using crit_t = typename std::vector< grb::Vector< bool > >::const_reverse_iterator;
 				crit_t rend = smoothing_info.color_masks.crend();
 				for( crit_t rit = smoothing_info.color_masks.crbegin(); rit != rend && ret == SUCCESS; ++rit ) {
-					ret = rbgs_single_step( data.A, smoothing_info.A_diagonal, data.r, data.z,
-						smoothing_info.smoother_temp, *rit, ring );
+					ret = rbgs_single_step< descr >( data.A, smoothing_info.A_diagonal, data.r,
+						data.z, smoothing_info.smoother_temp, *rit, ring );
 				}
 				return ret;
 			}
@@ -177,11 +188,13 @@ namespace grb {
 		 * @tparam IOType type of result and intermediate vectors used during computation
 		 * @tparam NonzeroType type of matrix values
 		 * @tparam Ring the ring of algebraic operators
+		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
 		template <
 			typename IOType,
 			typename NonzeroType,
-			class Ring
+			class Ring,
+			Descriptor descr = descriptors::no_operation
 		> struct RedBlackGSSmootherRunner {
 
 			size_t presmoother_steps; ///< number of pre-smoother steps
@@ -224,7 +237,8 @@ namespace grb {
 				SmootherData< IOType > &smoothing_info = *( levels.at( data.level ).get() );
 
 				for( size_t i = 0; i < smoother_steps && ret == SUCCESS; i++ ) {
-					ret = ret ? ret : internal::red_black_gauss_seidel( data, smoothing_info, ring );
+					ret = ret ? ret : internal::red_black_gauss_seidel< descr >(
+						data, smoothing_info, ring );
 					assert( ret == SUCCESS );
 				}
 				return ret;

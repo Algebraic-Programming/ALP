@@ -69,6 +69,7 @@ namespace grb {
 			 *
 			 * The coarsening information are stored inside \p CoarseningData.
 			 *
+			 * @tparam descr descriptor for static information
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
 			 * @tparam Ring the ring of algebraic operators zero-values
@@ -82,6 +83,7 @@ namespace grb {
 			 *                          unsuccessful operation otherwise
 			 */
 			template<
+				Descriptor descr,
 				typename IOType,
 				typename NonzeroType,
 				class Ring,
@@ -94,16 +96,14 @@ namespace grb {
 				const Minus & minus
 			) {
 				RC ret = SUCCESS;
-				// DBG_print_norm( coarsening_data.Ax_finer, "+++ Ax_finer prima" );
-				ret = ret ? ret : grb::eWiseApply( coarsening_data.Ax_finer, r_fine,
+				ret = ret ? ret : grb::eWiseApply< descr >( coarsening_data.Ax_finer, r_fine,
 					coarsening_data.Ax_finer, minus ); // Ax_finer = r_fine - Ax_finer
-				// DBG_print_norm( coarsening_data.Ax_finer, "+++ Ax_finer dopo" );
 				assert( ret == SUCCESS );
 
 				// actual coarsening, from  ncols(*coarsening_data->A) == *coarsening_data->system_size * 8
 				// to *coarsening_data->system_size
-				ret = ret ? ret : grb::set( r_coarse, ring.template getZero< IOType >() );
-				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( r_coarse, coarsening_data.coarsening_matrix,
+				ret = ret ? ret : grb::set< descr >( r_coarse, ring.template getZero< IOType >() );
+				ret = ret ? ret : grb::mxv< descr >( r_coarse, coarsening_data.coarsening_matrix,
 					coarsening_data.Ax_finer, ring ); // r = coarsening_matrix * Ax_finer
 				return ret;
 			}
@@ -114,6 +114,7 @@ namespace grb {
 			 *
 			 * For prolongation, this function uses the matrix \p coarsening_data.coarsening_matrix by transposing it.
 			 *
+			 * @tparam descr descriptor for static information
 			 * @tparam IOType type of result and intermediate vectors used during computation
 			 * @tparam NonzeroType type of matrix values
 			 * @tparam Ring the ring of algebraic operators zero-values
@@ -125,6 +126,7 @@ namespace grb {
 			 * unsuccessful operation otherwise
 			 */
 			template<
+				Descriptor descr,
 				typename IOType,
 				typename NonzeroType,
 				class Ring
@@ -137,13 +139,13 @@ namespace grb {
 				RC ret = SUCCESS;
 				// actual refining, from  *coarsening_data->syztem_size == nrows(*coarsening_data->A) / 8
 				// to nrows(x_fine)
-				ret = ret ? ret : set( coarsening_data.Ax_finer, 0 );
+				ret = ret ? ret : grb::set< descr >( coarsening_data.Ax_finer, ring.template getZero< IOType >() );
 
-				ret = ret ? ret : grb::mxv< grb::descriptors::transpose_matrix | grb::descriptors::dense >(
+				ret = ret ? ret : grb::mxv< descr | grb::descriptors::transpose_matrix >(
 					coarsening_data.Ax_finer, coarsening_data.coarsening_matrix, z_coarse, ring );
 				assert( ret == SUCCESS );
 
-				ret = ret ? ret : grb::foldl( x_fine, coarsening_data.Ax_finer, ring.getAdditiveMonoid() ); // x_fine += Ax_finer;
+				ret = ret ? ret : grb::foldl< descr >( x_fine, coarsening_data.Ax_finer, ring.getAdditiveMonoid() ); // x_fine += Ax_finer;
 				assert( ret == SUCCESS );
 				return ret;
 			}
@@ -160,7 +162,8 @@ namespace grb {
 			typename IOType,
 			typename NonzeroType,
 			class Ring,
-			class Minus
+			class Minus,
+			Descriptor descr = descriptors::no_operation
 		> struct SingleMatrixCoarsener {
 
 			static_assert( std::is_default_constructible< Ring >::value,
@@ -189,10 +192,10 @@ namespace grb {
 			) {
 				// first compute the residual
 				CoarseningData< IOType, NonzeroType > &coarsener = *coarsener_levels[ finer.level ];
-				grb::RC ret = grb::set( coarsener.Ax_finer, ring. template getZero< IOType >() );
-				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( coarsener.Ax_finer, finer.A, finer.z, ring );
+				grb::RC ret = grb::set< descr >( coarsener.Ax_finer, ring. template getZero< IOType >() );
+				ret = ret ? ret : grb::mxv< descr >( coarsener.Ax_finer, finer.A, finer.z, ring );
 
-				return internal::compute_coarsening( finer.r, coarser.r, coarsener, ring, minus );
+				return internal::compute_coarsening< descr >( finer.r, coarser.r, coarsener, ring, minus );
 			}
 
 			/**
@@ -203,7 +206,7 @@ namespace grb {
 				const MultiGridInputType &coarser,
 				MultiGridInputType &finer
 			) {
-				return internal::compute_prolongation( coarser.z, finer.z, *coarsener_levels[ finer.level ], ring );
+				return internal::compute_prolongation< descr >( coarser.z, finer.z, *coarsener_levels[ finer.level ], ring );
 			}
 		};
 

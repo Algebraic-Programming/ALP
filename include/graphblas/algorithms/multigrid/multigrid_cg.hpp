@@ -120,6 +120,7 @@ namespace grb {
 		 * Failures of GraphBLAS operations are handled by immediately stopping the execution and by returning
 		 * the failure code.
 		 *
+		 * @tparam descr descriptor for static information
 		 * @tparam IOType type of result and intermediate vectors used during computation
 		 * @tparam ResidualType type of the residual norm
 		 * @tparam NonzeroType type of matrix values
@@ -136,6 +137,7 @@ namespace grb {
 		 * @return grb::RC SUCCESS in case of succesful run
 		 */
 		template<
+			Descriptor descr,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -166,16 +168,16 @@ namespace grb {
 
 			ret = ret ? ret : grb::set( p, x );
 			// Ap = A * x
-			ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, x, cg_opts.ring );
+			ret = ret ? ret : grb::mxv< descr >( Ap, A, x, cg_opts.ring );
 			assert( ret == SUCCESS );
 			// r = b - Ap
-			ret = ret ? ret : grb::eWiseApply( r, b, Ap, cg_opts.minus );
+			ret = ret ? ret : grb::eWiseApply< descr >( r, b, Ap, cg_opts.minus );
 			assert( ret == SUCCESS );
 
 			const ResidualType residual_zero = cg_opts.ring.template getZero< ResidualType >();
 			ResidualType norm_residual = residual_zero;
 			// norm_residual = r' * r
-			ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring );
+			ret = ret ? ret : grb::dot< descr >( norm_residual, r, r, cg_opts.ring );
 			assert( ret == SUCCESS );
 
 			// compute sqrt to avoid underflow
@@ -203,33 +205,36 @@ namespace grb {
 					ret = ret ? ret : multigrid_runner( grid_base );
 					assert( ret == SUCCESS );
 				} else {
-					ret = ret ? ret : grb::set( z, r ); // z = r;
+					// z = r
+					ret = ret ? ret : grb::set( z, r );
 					assert( ret == SUCCESS );
 				}
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( z, "initial z" );
 #endif
 				if( iter == 0 ) {
-					ret = ret ? ret : grb::set( p, z ); //  p = z;
+					//  p = z
+					ret = ret ? ret : grb::set< descr >( p, z );
 					assert( ret == SUCCESS );
-					ret = ret ? ret : grb::dot( r_dot_z, r, z, cg_opts.ring ); // r_dot_z = r' * z;
+					// r_dot_z = r' * z
+					ret = ret ? ret : grb::dot< descr >( r_dot_z, r, z, cg_opts.ring );
 					assert( ret == SUCCESS );
 				} else {
 					old_r_dot_z = r_dot_z;
 					// r_dot_z = r' * z
 					r_dot_z = cg_opts.ring.template getZero< ResidualType >();
-					ret = ret ? ret : grb::dot( r_dot_z, r, z, cg_opts.ring );
+					ret = ret ? ret : grb::dot< descr >( r_dot_z, r, z, cg_opts.ring );
 					assert( ret == SUCCESS );
 
 					beta = r_dot_z / old_r_dot_z;
 					// Ap  = 0
-					ret = ret ? ret : grb::set( Ap, io_zero );
+					ret = ret ? ret : grb::set< descr >( Ap, io_zero );
 					assert( ret == SUCCESS );
 					// Ap += beta * p
-					ret = ret ? ret : grb::eWiseMul( Ap, beta, p, cg_opts.ring );
+					ret = ret ? ret : grb::eWiseMul< descr >( Ap, beta, p, cg_opts.ring );
 					assert( ret == SUCCESS );
 					// Ap = Ap + z
-					ret = ret ? ret : grb::eWiseApply( Ap, Ap, z, cg_opts.ring.getAdditiveOperator() );
+					ret = ret ? ret : grb::eWiseApply< descr >( Ap, Ap, z, cg_opts.ring.getAdditiveOperator() );
 					assert( ret == SUCCESS );
 					// p = Ap
 					std::swap( Ap, p );
@@ -239,33 +244,33 @@ namespace grb {
 				DBG_print_norm( p, "middle p" );
 #endif
 				// Ap = A * p
-				ret = ret ? ret : grb::set( Ap, io_zero );
-				ret = ret ? ret : grb::mxv< grb::descriptors::dense >( Ap, A, p, cg_opts.ring );
+				ret = ret ? ret : grb::set< descr >( Ap, io_zero );
+				ret = ret ? ret : grb::mxv< descr >( Ap, A, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( Ap, "middle Ap" );
 #endif
 				// pAp = p' * Ap
 				ResidualType pAp = cg_opts.ring.template getZero< ResidualType >();
-				ret = ret ? ret : grb::dot( pAp, Ap, p, cg_opts.ring );
+				ret = ret ? ret : grb::dot< descr >( pAp, Ap, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 
 				ResidualType alpha = r_dot_z / pAp;
 				// x += alpha * p
-				ret = ret ? ret : grb::eWiseMul( x, alpha, p, cg_opts.ring );
+				ret = ret ? ret : grb::eWiseMul< descr >( x, alpha, p, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( x, "end x" );
 #endif
 				// r += - alpha * Ap
-				ret = ret ? ret : grb::eWiseMul( r, -alpha, Ap, cg_opts.ring );
+				ret = ret ? ret : grb::eWiseMul< descr >( r, -alpha, Ap, cg_opts.ring );
 				assert( ret == SUCCESS );
 #ifdef HPCG_PRINT_STEPS
 				DBG_print_norm( r, "end r" );
 #endif
 				// residual = r' * r
 				norm_residual = cg_opts.ring.template getZero< ResidualType >();
-				ret = ret ? ret : grb::dot( norm_residual, r, r, cg_opts.ring );
+				ret = ret ? ret : grb::dot< descr >( norm_residual, r, r, cg_opts.ring );
 				assert( ret == SUCCESS );
 
 				norm_residual = std::sqrt( norm_residual );
@@ -299,6 +304,7 @@ namespace grb {
 		 * @tparam MultiGridrunnerType type for the multi-grid runner object
 		 * @tparam Ring algebraic ring type
 		 * @tparam Minus minus operator
+		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
 		template<
 			typename IOType,
@@ -307,7 +313,8 @@ namespace grb {
 			typename ResidualType,
 			typename MultiGridRunnerType,
 			class Ring,
-			class Minus
+			class Minus,
+			Descriptor descr = descriptors::no_operation
 		> struct MultiGridCGRunner {
 
 			using HPCGInputType = MultiGridCGData< IOType, NonzeroType, InputType >;
@@ -348,7 +355,7 @@ namespace grb {
 				MultiGridCGData< IOType, NonzeroType, InputType > &cg_data,
 				CGOutInfo< ResidualType > &out_info
 			) {
-				return multigrid_conjugate_gradient( cg_data, cg_opts, grid_base, mg_runner, out_info );
+				return multigrid_conjugate_gradient< descr >( cg_data, cg_opts, grid_base, mg_runner, out_info );
 			}
 
 		};

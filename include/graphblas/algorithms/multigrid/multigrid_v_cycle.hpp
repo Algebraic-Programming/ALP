@@ -58,6 +58,7 @@ namespace grb {
 		 * Failuers of GraphBLAS operations are handled by immediately stopping the execution
 		 * and returning the failure code.
 		 *
+		 * @tparam descr descriptor for static information
 		 * @tparam IOType type of result and intermediate vectors used during computation
 		 * @tparam NonzeroType type of matrix values
 		 * @tparam MGSysIterType type of the iterator across grid levels
@@ -78,6 +79,7 @@ namespace grb {
 		 *  unsuccessful operation otherwise
 		 */
 		template <
+			Descriptor descr,
 			typename IOType,
 			typename NonzeroType,
 			typename MGSysIterType,
@@ -107,7 +109,7 @@ namespace grb {
 #endif
 
 			// clean destination vector
-			ret = ret ? ret : grb::set( finer_system.z, ring. template getZero< IOType >() );
+			ret = ret ? ret : grb::set< descr >( finer_system.z, ring. template getZero< IOType >() );
 #ifdef HPCG_PRINT_STEPS
 			DBG_print_norm( finer_system.r, "initial r" );
 #endif
@@ -136,7 +138,7 @@ namespace grb {
 			DBG_print_norm( coarser_system.r, "coarse r" );
 #endif
 
-			ret = ret ? ret : multi_grid< IOType, NonzeroType, MGSysIterType,
+			ret = ret ? ret : multi_grid< descr, IOType, NonzeroType, MGSysIterType,
 				MGSmootherType, CoarsenerType, Ring, Minus >( mgiter_begin, mgiter_end,
 				smoother, coarsener, ring, minus );
 			assert( ret == SUCCESS );
@@ -165,23 +167,24 @@ namespace grb {
 		 * It is built by transferring into it the state of both the smoother and the coarsener,
 		 * in order to avoid use-after-free issues.
 		 *
-		 * @tparam IOType type of result and intermediate vectors used during computation
-		 * @tparam NonzeroType type of matrix values
-		 * @tparam MGSysIterType type of the iterator across grid levels
 		 * @tparam MGSmootherType type of the smoother runner, with prescribed methods for the various
 		 *  smoothing steps
 		 * @tparam CoarsenerType type of the coarsener runner, with prescribed methods for coarsening
+		 * @tparam IOType type of result and intermediate vectors used during computation
+		 * @tparam NonzeroType type of matrix values
 		 *  and prolongation
 		 * @tparam Ring the ring of algebraic operators and zero values
 		 * @tparam Minus the minus operator for subtractions
+		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
 		template<
-			typename IOType,
-			typename NonzeroType,
 			typename MGSmootherType,
 			typename CoarsenerType,
+			typename IOType,
+			typename NonzeroType,
 			class Ring,
-			class Minus
+			class Minus,
+			Descriptor descr = descriptors::no_operation
 		> struct MultiGridRunner {
 
 			static_assert( std::is_default_constructible< Ring >::value,
@@ -244,7 +247,7 @@ namespace grb {
 				if( print_duration ) {
 					timer.reset();
 				}
-				grb::RC ret = multi_grid< IOType, NonzeroType, __unique_ptr_extractor,
+				grb::RC ret = multi_grid< descr, IOType, NonzeroType, __unique_ptr_extractor,
 					MGSmootherType, CoarsenerType, Ring, Minus >(
 					__unique_ptr_extractor( system_levels.begin() += system.level ),
 					__unique_ptr_extractor( system_levels.end() ),

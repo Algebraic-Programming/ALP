@@ -97,9 +97,10 @@ using StdRing = Semiring< grb::operators::add< NonzeroType >, grb::operators::mu
 	grb::identities::zero, grb::identities::one >;
 using StdMinus = operators::subtract< NonzeroType >;
 using coord_t = size_t;
+constexpr Descriptor hpcg_desc = descriptors::dense;
 
 // assembled types for simulation runners and input/output structures
-using hpcg_runner_t = HPCGRunnerType< IOType, NonzeroType, InputType, ResidualType,
+using hpcg_runner_t = HPCGRunnerType< hpcg_desc, IOType, NonzeroType, InputType, ResidualType,
 	StdRing, StdMinus >;
 using mg_data_t = MultiGridData< IOType, NonzeroType >;
 using coarsening_data_t = CoarseningData< IOType, NonzeroType >;
@@ -338,7 +339,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	std::unique_ptr< hpcg_data_t > hpcg_state;
 
 	// define the main HPCG runner and initialize the options of its components
-	hpcg_runner_t hpcg_runner( build_hpcg_runner< IOType, NonzeroType, InputType, ResidualType,
+	hpcg_runner_t hpcg_runner( build_hpcg_runner< hpcg_desc, IOType, NonzeroType, InputType, ResidualType,
 		StdRing, StdMinus >( in.smoother_steps ) );
 	auto &mg_runner = hpcg_runner.mg_runner;
 	auto &coarsener = mg_runner.coarsener_runner;

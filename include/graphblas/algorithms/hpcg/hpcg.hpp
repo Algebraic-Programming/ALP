@@ -42,6 +42,7 @@ namespace grb {
 
 		// simply "assemble" types
 		template<
+			Descriptor descr,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -49,11 +50,11 @@ namespace grb {
 			class Ring,
 			class Minus
 		> using HPCGRunnerType = MultiGridCGRunner< IOType, NonzeroType, InputType, ResidualType,
-			MultiGridRunner< IOType, NonzeroType,
-				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >,
-				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus >,
-				Ring, Minus >,
-			Ring, Minus
+			MultiGridRunner<
+				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring, descr >,
+				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus, descr >,
+				IOType, NonzeroType, Ring, Minus, descr
+			>, Ring, Minus, descr
 		>;
 
 		/**
@@ -63,26 +64,27 @@ namespace grb {
 		 * @param[in] smoother_steps how many times the smoother should run (both pre- and post-smoothing)
 		 */
 		template<
+			Descriptor descr,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
 			typename InputType,
 			class Ring,
 			class Minus
-		> HPCGRunnerType< IOType, ResidualType, NonzeroType, InputType, Ring, Minus >
+		> HPCGRunnerType< descr, IOType, ResidualType, NonzeroType, InputType, Ring, Minus >
 			build_hpcg_runner( size_t smoother_steps ) {
 
-			SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus > coarsener;
-			RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >
+			SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus, descr > coarsener;
+			RedBlackGSSmootherRunner< IOType, NonzeroType, Ring, descr >
 				smoother( { smoother_steps, smoother_steps, 1UL, {}, Ring() } );
 
-			MultiGridRunner< IOType, NonzeroType,
-				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring >,
-				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus >,
-				Ring, Minus
+			MultiGridRunner<
+				RedBlackGSSmootherRunner< IOType, NonzeroType, Ring, descr >,
+				SingleMatrixCoarsener< IOType, NonzeroType, Ring, Minus, descr >,
+				IOType, NonzeroType, Ring, Minus, descr
 			> mg_runner( std::move( smoother ), std::move( coarsener ) );
 
-			return HPCGRunnerType< IOType, ResidualType, NonzeroType, InputType, Ring, Minus >(
+			return HPCGRunnerType< descr, IOType, ResidualType, NonzeroType, InputType, Ring, Minus >(
 				std::move( mg_runner ) );
 		}
 
