@@ -303,6 +303,7 @@ the current directory before invocation or confirm the deletion of its content w
 		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=OFF"
 	else
 		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=ON"
+	fi
 	if [[ "${alp_omp}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=OFF"
 	else
