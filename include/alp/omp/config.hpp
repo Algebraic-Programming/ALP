@@ -33,12 +33,12 @@ namespace alp {
 		class OMP : public grb::config::OMP {};
 
 		// Dimensions of blocks counted in number of elements per dimension
-		constexpr size_t BLOCK_ROW_DIM = 16;
-		constexpr size_t BLOCK_COL_DIM = 16;
+		constexpr size_t BLOCK_ROW_DIM = 2;
+		constexpr size_t BLOCK_COL_DIM = 2;
 
 		// Temporary solution to accomodate for 2.5D mxm
-		constexpr size_t THREAD_ROW_DIM = 4;
-		constexpr size_t THREAD_COL_DIM = 4;
+		constexpr size_t THREAD_ROW_DIM = 2;
+		constexpr size_t THREAD_COL_DIM = 2;
 
 		constexpr size_t REPLICATION_FACTOR_THREADS = 2;
 
