@@ -171,6 +171,83 @@ RC check_lu_solution(
 }
 
 
+/** no pivoting version */
+template<
+	typename D,
+	typename GeneralType,
+	typename GenView,
+	typename GenImfR,
+	typename GenImfC,
+	typename UType,
+	typename UView,
+	typename UImfR,
+	typename UImfC,
+	typename LType,
+	typename LView,
+	typename LImfR,
+	typename LImfC,
+	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	class Minus = operators::subtract< D >
+>
+RC check_lu_solution(
+	Matrix< D, GeneralType, alp::Dense, GenView, GenImfR, GenImfC > &H,
+	Matrix< D, LType, alp::Dense, LView, LImfR, LImfC > &L,
+	Matrix< D, UType, alp::Dense, UView, UImfR, UImfC > &U,
+	const Ring &ring = Ring(),
+	const Minus &minus = Minus()
+) {
+	RC rc = SUCCESS;
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
+
+	const size_t m = nrows( H );
+	const size_t n = ncols( H );
+
+#ifdef DEBUG
+	std::cout << " ********************\n";
+	std::cout << " ** check_solution **\n";
+	std::cout << " input:\n";
+	print_matrix( "  H  ", H );
+	print_matrix( "  L  ", L );
+	print_matrix( "  U  ", U );
+	std::cout << " ********************\n";
+#endif
+
+ 	alp::Matrix< D, GeneralType, alp::Density::Dense > LU( m, n );
+	// LU = L * U
+	rc = rc ? rc : set( LU, zero );
+	rc = rc ? rc : mxm( LU, L, U, ring );
+
+	// LU = LU - H
+	rc = foldl( LU, H, minus );
+
+#ifdef DEBUG
+	print_matrix( " LU - H >> ", LU );
+#endif
+
+	//Frobenius norm
+	D fnorm = ring.template getZero< D >();
+	rc = rc ? rc : alp::eWiseLambda(
+		[ &fnorm, &ring ]( const size_t i, const size_t j, D &val ) {
+			(void) i;
+			(void) j;
+			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
+		},
+		LU
+	);
+	fnorm = std::sqrt( fnorm );
+
+#ifdef DEBUG
+	std::cout << " FrobeniusNorm(LU-H) = " << std::abs( fnorm ) << "\n";
+#endif
+	if( tol < std::abs( fnorm ) ) {
+		std::cout << "The Frobenius norm is too large.\n";
+		return FAILED;
+	}
+
+	return rc;
+}
+
 
 void alp_program( const size_t &unit, alp::RC &rc ) {
 	rc = SUCCESS;
@@ -211,7 +288,6 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		rc = rc ? rc : set( U, zero );
 		rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, ring );
 
-
 #ifdef DEBUG
 		print_matrix( "  H(out) ", H );
 		print_matrix( "  L(out) ", L );
@@ -222,6 +298,19 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		if( rc != SUCCESS ) {
 			std::cout << "Error: solution numerically wrong\n";
 			return;
+		}
+
+		// test blocked version, for bs = 1, 2, 4, 8 ... N
+		for( size_t bs = 1; bs <= K; bs = std::min( bs * 2, K ) ) {
+			rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, bs, ring );
+			rc = rc ? rc : check_lu_solution( H, L, U, ring );
+			if( rc != SUCCESS ) {
+				std::cout << "Error: solution (blocked version) numerically wrong\n";
+				return;
+			}
+			if( bs == K ) {
+				break;
+			}
 		}
 	}
 }
