@@ -39,7 +39,7 @@
  #include <alp/reference/io.hpp>
 #endif
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #include "../../../tests/utils/print_alp_containers.hpp"
 #endif
 
@@ -92,7 +92,7 @@ namespace alp {
 				"void)"
 			);
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 			std::cout << "In alp::internal::mxm_generic (omp)\n";
 #endif
 
@@ -123,8 +123,9 @@ namespace alp {
 			const auto tg_a = da.getThreadGridDims();
 			const auto tg_b = db.getThreadGridDims();
 			const auto tg_c = dc.getThreadGridDims();
-
-			if( tg_c.rt != tg_a.rt || tg_a.rt != tg_b.rt ) {
+			
+			// 2.5D factor ranges within 3D limits
+			if( tg_c.rt != tg_a.rt || tg_a.rt != tg_b.rt || ( tg_a.tc % tg_a.rt ) != 0 ) {
 				return MISMATCH;
 			}
 
@@ -136,10 +137,14 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
+#ifndef NDEBUG
+			#pragma omp critical
+			std::cerr << "In alp::internal::mxm_generic (omp)\n"
+				"\tBeginning parallel region" << std::endl;
+#endif
+
 			#pragma omp parallel
 			{			
-				// #pragma omp for
-				// for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
 				const size_t thread = config::OMP::current_thread_ID();
 
 				const th_coord_t th_ijk_a = da.getThreadCoords( thread );
@@ -156,7 +161,7 @@ namespace alp {
 					|| block_grid_dims_c.second != set_block_grid_dims_b.second 
 					|| set_block_grid_dims_a.second != set_block_grid_dims_b.first 
 				) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tMismatching local block grid size on set." << std::endl;
@@ -166,6 +171,12 @@ namespace alp {
 
 				// Broadcast A and B to all c-dimensional layers
 				if( local_rc == SUCCESS && th_ijk_a.rt > 0 ) {
+
+#ifndef NDEBUG
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tCopying A." << std::endl;
+#endif
 
 					th_coord_t th_ij0_a( th_ijk_a.tr, th_ijk_a.tc, 0 );
 
@@ -184,6 +195,12 @@ namespace alp {
 
 				if( local_rc == SUCCESS && th_ijk_b.rt > 0 ) {
 
+#ifndef NDEBUG
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tCopying B." << std::endl;
+#endif
+
 					th_coord_t th_ij0_b( th_ijk_b.tr, th_ijk_b.tc, 0 );
 
 					for( size_t br = 0; br < set_block_grid_dims_b.first; ++br ) {
@@ -199,13 +216,19 @@ namespace alp {
 
 				if( local_rc == SUCCESS && th_ijk_c.rt > 0 ) {
 
+#ifndef NDEBUG
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tZeroing C." << std::endl;
+#endif
+
+					alp::Scalar< 
+						OutputType, alp::structures::General, config::default_sequential_backend 
+					> zero( monoid.template getIdentity< OutputType >() );
+
 					for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
 						for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
-
 							auto refCijk = get_view( C, th_ijk_c, br, bc );
-							alp::Scalar< 
-								OutputType, alp::structures::General, config::default_sequential_backend 
-							> zero( monoid.template getIdentity< OutputType >() );
 							local_rc = local_rc ? local_rc : set( refCijk, zero );
 						}
 					}
@@ -213,7 +236,7 @@ namespace alp {
 
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues replicating input matrices." << std::endl;
@@ -223,21 +246,38 @@ namespace alp {
 
 				// End Broadcast of A and B and zero-ing of C
 				#pragma omp barrier
-				
+
+#ifndef NDEBUG
+				#pragma omp critical
+				std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+					"\tPassing barrier" << std::endl;
+#endif
+
 				if( rc == SUCCESS ) {
 					
-					// #pragma omp for
-					// for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
-
 					// Initialize circular shifts at stride of Rt
-					size_t s_a = utils::modulus( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tc / tg_a.rt, tg_a.tc );
-					size_t s_b = utils::modulus( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_b.tr / tg_b.rt, tg_b.tr );
+					// size_t s_a = utils::modulus( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tc / tg_a.rt, tg_a.tc );
+					// size_t s_b = utils::modulus( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_b.tr / tg_b.rt, tg_b.tr );
+					size_t c_a = utils::modulus( th_ijk_a.tc + th_ijk_a.tr + th_ijk_a.rt * tg_a.tc / tg_a.rt, tg_a.tc );
+					size_t r_b = utils::modulus( th_ijk_b.tr + th_ijk_b.tc + th_ijk_b.rt * tg_b.tr / tg_b.rt, tg_b.tr );
 
 					// Per-c-dimensional-layer partial computation
 					for( size_t r = 0; r < tg_a.tc / tg_a.rt; ++r ) {
 
-						const th_coord_t th_isk_a( th_ijk_a.tr, s_a, th_ijk_a.rt );
-						const th_coord_t th_sjk_b( s_b, th_ijk_b.tc, th_ijk_b.rt );
+						const th_coord_t th_isk_a( th_ijk_a.tr, c_a, th_ijk_a.rt );
+						const th_coord_t th_sjk_b( r_b, th_ijk_b.tc, th_ijk_b.rt );
+
+#ifndef NDEBUG
+						if( thread == 1 ) {
+							#pragma omp critical
+							{
+								std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+									"\tCompute iteration r=" << r << "\n"
+									"\tStarting from A( " << th_ijk_a.tr << ", " << c_a << ", " << th_ijk_a.rt << " )\n"
+									"\tStarting from B( " << r_b << ", " << th_ijk_b.tc << ", " << th_ijk_b.rt << " )" <<std::endl;
+							}
+						}
+#endif
 
 						const auto mxm_block_grid_dims_a = da.getLocalBlockGridDims( th_isk_a );
 						const auto mxm_block_grid_dims_b = db.getLocalBlockGridDims( th_sjk_b );
@@ -246,7 +286,7 @@ namespace alp {
 							|| block_grid_dims_c.second != mxm_block_grid_dims_b.second 
 							|| mxm_block_grid_dims_a.second != mxm_block_grid_dims_b.first 
 						) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 							#pragma omp critical
 							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 								"\tMismatching local block grid size on mxm." << std::endl;
@@ -263,30 +303,53 @@ namespace alp {
 
 									for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
 
+
 										const auto refB_loc = get_view( B, th_sjk_b, bk, bc );
 										auto refC_ijk = get_view( C, th_ijk_c, br, bc );
 
+#ifndef NDEBUG
+										if( thread == 1 ) {
+											#pragma omp critical 
+											{
+												std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+													"\tIteration r=" << r << " computing: " << bk << " " << br << " " << bc << std::endl;
+												print_matrix("Aref pre", refA_loc );
+												print_matrix("Bref pre", refB_loc );
+												print_matrix("Cref pre", refC_ijk );
+											}
+										}
+#endif
+
 										// Delegate the call to the sequential mxm implementation
 										local_rc = local_rc ? local_rc : mxm_generic< allow_void >( refC_ijk, refA_loc, refB_loc, oper, monoid, mulMonoid );
+
+#ifndef NDEBUG
+										if( thread == 1 ) {
+											#pragma omp critical 
+											{
+												print_matrix("Cref post", refC_ijk );
+											}
+										}
+#endif
 
 									}
 								}
 							}
 
 							// Circular shift rightwards for A
-							s_a = utils::modulus( s_a + 1, tg_a.tc );
+							c_a = utils::modulus( c_a + 1, tg_a.tc );
 							// Circular shift downwards for B
-							s_b = utils::modulus( s_b + 1, tg_b.tr );
+							r_b = utils::modulus( r_b + 1, tg_b.tr );
 
 						} 
 
 					} 
-					// }
-				}
+
+				} // End computation per layer of c-dimension
 
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues with local mxm computations." << std::endl;
@@ -299,11 +362,23 @@ namespace alp {
 
 				if( rc == SUCCESS ) {
 					
-					// Global c-dimension reduction
+					// Final c-dimension reduction
 					// (Consider if rt > 0 critical section?)
 					if ( local_rc == SUCCESS && th_ijk_c.rt == 0 ) {
 
+#ifndef NDEBUG
+						#pragma omp critical
+						std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+							"\tEntering reduction." << std::endl;
+#endif
+
 						for( size_t r = 1; r < tg_c.rt; ++r ) {
+
+#ifndef NDEBUG
+							#pragma omp critical
+							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+								"\tReduction iteration r=" << r << std::endl;
+#endif
 
 							const th_coord_t th_ijr_c( th_ijk_c.tr, th_ijk_c.tc, r );
 
@@ -321,11 +396,12 @@ namespace alp {
 						}
 
 					}
-				}
+				
+				} // End of final reduction along c-dimension
 				
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
-#ifdef _DEBUG
+#ifndef NDEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues with final reduction." << std::endl;

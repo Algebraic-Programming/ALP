@@ -161,14 +161,14 @@ namespace alp {
 			/** Row and column dimensions of the associated container */
 			const size_t m;
 			const size_t n;
-			/** The row and column dimensions of the thread grid */
-			const size_t Tr;
-			const size_t Tc;
 			/** Replication factor in thread-coordinate space */
 			static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
 			/** The row and column dimensions of the global block grid */
 			const size_t Br;
 			const size_t Bc;
+			/** The row and column dimensions of the thread grid */
+			const size_t Tr;
+			const size_t Tc;
 
 		public:
 
@@ -177,13 +177,14 @@ namespace alp {
 				const size_t num_threads
 			) :
 				m( m ), n( n ),
-				Tr( config::THREAD_ROW_DIM ), // Temporary
-				Tc( config::THREAD_COL_DIM ),
 				Br( static_cast< size_t >( std::ceil( static_cast< double >( m ) / config::BLOCK_ROW_DIM ) ) ),
-				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ) {
-
-				if( num_threads != Tr * Tc * Rt ) {
-					std::cerr << "Warning: Provided number of threads cannot be factorized in a 3D grid.\n";
+				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ),
+				Tr( ( Br > config::THREAD_ROW_DIM ) ? config::THREAD_ROW_DIM : Br ), // Temporary
+				Tc( ( Bc > config::THREAD_COL_DIM ) ? config::THREAD_COL_DIM : Bc ) 
+			{
+				if( ( Tr > 1 ) && ( Tc > 1 ) && ( num_threads != Tr * Tc * Rt ) ) {
+					std::cerr << "Warning: Provided number of threads cannot be factorized in a 3D grid:\n"
+						"\t" << Tr << " x " << Tc << " x " << Rt << std::endl;
 				}
 			}
 
@@ -308,6 +309,15 @@ namespace alp {
 			}
 
 			ThreadCoords getThreadCoords( const size_t thread_id ) const {
+				// const size_t _Tr = ( Tr == 1 ) ? Tc : Tr;
+				// const size_t _Tc = ( Tc == 1 ) ? Tr : Tc;
+
+				// const size_t rt = thread_id / ( _Tr * _Tc );
+				// const size_t tr = ( thread_id % ( _Tr * _Tc ) ) / _Tc;
+				// const size_t tc = ( thread_id % ( _Tr * _Tc ) ) % _Tc;
+
+				// return { tr % Tr, tc % Tc, rt };
+
 				const size_t rt = thread_id / ( Tr * Tc );
 				const size_t tr = ( thread_id % ( Tr * Tc ) ) / Tc;
 				const size_t tc = ( thread_id % ( Tr * Tc ) ) % Tc;
