@@ -302,7 +302,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 
 		// test blocked version, for bs = 1, 2, 4, 8 ... N
 		for( size_t bs = 1; bs <= K; bs = std::min( bs * 2, K ) ) {
-			rc = rc ? rc : algorithms::householder_lu( H, L, U, permutation_vec, bs, ring );
+			rc = rc ? rc : algorithms::householder_lu( H, L, U, bs, ring );
 			rc = rc ? rc : check_lu_solution( H, L, U, ring );
 			if( rc != SUCCESS ) {
 				std::cout << "Error: solution (blocked version) numerically wrong\n";

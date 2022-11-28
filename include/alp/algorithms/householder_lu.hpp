@@ -327,7 +327,6 @@ namespace alp {
 			const MatH &H,
 			MatL &L,
 			MatU &U,
-			Vector< IndexType > &p,
 			IndexType &bs,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
@@ -340,9 +339,6 @@ namespace alp {
 			const size_t m = nrows( H );
 			const size_t n = ncols( H );
 			const size_t kk = std::min( n, m );
-
-			// initialize permutation vector to identity permutation
-			alp::set< alp::descriptors::use_index >( p, alp::Scalar< IndexType >( 0 ) );
 
 			// check sizes
 			if(
@@ -367,9 +363,6 @@ namespace alp {
 				std::cerr << " alp::set( HWork, H ) failed\n";
 				return rc;
 			}
-
-			Vector< D > PivotVec( n );
-			rc = rc ? rc : alp::set( PivotVec, zero );
 
 			size_t nblocks_r = m / bs;
 			if( m != nblocks_r * bs ) {
@@ -425,6 +418,213 @@ namespace alp {
 
 			return rc;
 		}
+
+
+// 		/** blocked version with per-block pivoting */
+// 		template<
+// 			typename MatH,
+// 			typename D = typename MatH::value_type,
+// 			typename MatL,
+// 			typename MatU,
+// 			typename IndexType,
+// 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+// 			class Minus = operators::subtract< D >,
+// 			class Divide = operators::divide< D >,
+// 			std::enable_if_t<
+// 				std::is_integral< IndexType >::value &&
+// 				is_matrix< MatH >::value &&
+// 				is_matrix< MatL >::value &&
+// 				is_matrix< MatU >::value &&
+// 				structures::is_a< typename MatH::structure, structures::General >::value &&
+// 				structures::is_a< typename MatL::structure, structures::LowerTrapezoidal >::value &&
+// 				structures::is_a< typename MatU::structure, structures::UpperTrapezoidal >::value &&
+// 				is_semiring< Ring >::value &&
+// 				is_operator< Minus >::value &&
+// 				is_operator< Divide >::value
+// 			> * = nullptr
+// 		>
+// 		RC householder_lu(
+// 			const MatH &H,
+// 			MatL &L,
+// 			MatU &U,
+// 			Vector< IndexType > &p,
+// 			IndexType &bs,
+// 			const Ring &ring = Ring(),
+// 			const Minus &minus = Minus(),
+// 			const Divide &divide = Divide()
+// 		) {
+// 			RC rc = SUCCESS;
+
+// 			const Scalar< D > zero( ring.template getZero< D >() );
+// 			const Scalar< D > one( ring.template getOne< D >() );
+
+// 			const size_t m = nrows( H );
+// 			const size_t n = ncols( H );
+// 			const size_t kk = std::min( n, m );
+
+// 			// initialize permutation vector to identity permutation
+// 			alp::set< alp::descriptors::use_index >( p, alp::Scalar< IndexType >( 0 ) );
+
+// 			// check sizes
+// 			if(
+// 				( nrows( L ) != nrows( H ) ) ||
+// 				( ncols( U ) != ncols( H ) ) ||
+// 				( nrows( U ) != kk ) ||
+// 				( ncols( L ) != kk )
+// 			) {
+// 				std::cerr << " n, kk, m = " << n << ", "  << kk << ", " << m << "\n";
+// 				std::cerr << "Incompatible sizes in householder_lu.\n";
+// 				return FAILED;
+// 			}
+
+
+// 			alp::set( L, zero );
+// 			alp::set( U, zero );
+
+// 			// Out of place specification of the computation
+// 			MatH HWork( m, n );
+// 			rc = rc ? rc : alp::set( HWork, H );
+// 			if( rc != SUCCESS ) {
+// 				std::cerr << " alp::set( HWork, H ) failed\n";
+// 				return rc;
+// 			}
+
+// 			Vector< D > PivotVec( n );
+// 			rc = rc ? rc : alp::set( PivotVec, zero );
+
+// 			size_t nblocks_r = m / bs;
+// 			if( m != nblocks_r * bs ) {
+// 				nblocks_r += 1;
+// 			}
+
+// 			size_t nblocks_c = n / bs;
+// 			if( n != nblocks_c * bs ) {
+// 				nblocks_c += 1;
+// 			}
+
+// 			for( size_t k = 0; k < std::min( nblocks_r, nblocks_c ); ++k ) {
+// #ifdef DEBUG
+// 				std::cout << "k = "<< kk << "\n";
+// #endif
+
+// 				auto range_a = utils::range( k * bs, std::min( ( k + 1) * bs, kk ) );
+// 				auto range_b = utils::range( std::min( ( k + 1) * bs, kk ), kk );
+
+// 				auto range_c = utils::range( std::min( ( k + 1) * bs, kk ), nrows( L ) );
+// 				auto range_d = utils::range( std::min( ( k + 1) * bs, kk ), ncols( U ) );
+
+// #ifdef DEBUG
+// 				std::cout << "range_a = [ "<< k * bs << ", " << std::min( ( k + 1) * bs, kk ) << " > \n";
+// 				std::cout << "range_b = [ "<< std::min( ( k + 1) * bs, kk ) << ", " << kk << " > \n";
+// #endif
+
+// 				auto A00 = alp::get_view< structures::General >( HWork, range_a, range_a );
+// 				auto A01 = alp::get_view( HWork, range_a, range_d );
+// 				auto A10 = alp::get_view( HWork, range_c, range_a );
+// 				auto A11 = alp::get_view( HWork, range_c, range_d );
+
+// 				auto L00 = alp::get_view< structures::LowerTrapezoidal >( L, range_a, range_a );
+// 				auto L10 = alp::get_view< structures::General >( L, range_c, range_a );
+
+// 				auto U00 = alp::get_view< structures::UpperTrapezoidal >( U, range_a, range_a );
+// 				auto U01 = alp::get_view< structures::General >( U, range_a, range_d );
+
+// #ifdef DEBUG
+// 				print_matrix( "A00 ", A00 );
+// 				print_matrix( "A01 ", A01 );
+// 				print_matrix( "A10 ", A10 );
+// 				print_matrix( "A11 ", A11 );
+// #endif
+
+// #ifdef DEBUG
+// 				print_matrix( "A00(in) ", A00 );
+// 				print_matrix( "L00(in) ", L00 );
+// 				print_matrix( "U00(in) ", U00 );
+// #endif
+
+// 				alp::Vector< size_t > pvec( nrows( A00 ) );
+// 				alp::set< alp::descriptors::use_index >( pvec, alp::Scalar< size_t >( 0 ) );
+// 				rc = rc ? rc : algorithms::householder_lu( A00, L00, U00, pvec, ring );
+
+// #ifdef DEBUG
+// 				print_matrix( "L00(update) ", L00 );
+// 				print_matrix( "U00(update) ", U00 );
+// 				print_vector( "pvec(update) ", pvec );
+// #endif
+
+
+// 				// U[k*bs:b,b:]=inv(L00).dot(A0[k*bs:b,b:][p00])
+// 				// L00 X=A0[k*bs:b,b:][p00]
+// 				auto L00_LT = alp::get_view< structures::LowerTriangular >( L00 );
+// 				alp::Vector< size_t > no_permutation_vec( ncols( A01 ) );
+// 				alp::set< alp::descriptors::use_index >( no_permutation_vec, alp::Scalar< size_t >( 0 ) );
+// 				auto A01_perm = alp::get_view< alp::structures::General >( A01, pvec, no_permutation_vec );
+// 				rc = rc ? rc : algorithms::forwardsubstitution( L00_LT, U01, A01_perm, ring );
+
+// 				// L[b:,k*bs:b]=(A0[b:,k*bs:b]).dot(inv(U00))
+// 				//  U00.T X.T =A0[b:,k*bs:b].T
+// 				auto U00_UT = alp::get_view< structures::UpperTriangular >( U00 );
+// 				auto U00_UT_T = alp::get_view< alp::view::transpose >( U00_UT );
+// 				auto A10_T = alp::get_view< alp::view::transpose >( A10 );
+// 				auto L10_T = alp::get_view< alp::view::transpose >( L10 );
+// 				rc = rc ? rc : algorithms::forwardsubstitution( U00_UT_T, L10_T, A10_T, ring );
+
+// 				// A11tmp=L[b:,k*bs:b].dot(U[k*bs:b,b:])
+// 				// A0[b:,b:]=A0[b:,b:]-A11tmp
+// 				Matrix< D, structures::General > A11tmp( nrows( L10 ), ncols( U01 ) );
+// #ifdef DEBUG
+// 				std::cout << "A11 : "<< nrows( A11 ) << " x " << ncols( A11 ) << "  \n";
+// 				std::cout << "A11tmp : "<< nrows( A11tmp ) << " x " << ncols( A11tmp ) << "  \n";
+// 				std::cout << "L10 : "<< nrows( L10 ) << " x " << ncols( L10 ) << "  \n";
+// 				std::cout << "U01 : "<< nrows( U01 ) << " x " << ncols( U01 ) << "  \n";
+// #endif
+// 				rc = rc ? rc : set( A11tmp, zero );
+// 				rc = rc ? rc : mxm( A11tmp, L10, U01, ring );;
+// 				rc = rc ? rc : foldl( A11, A11tmp, minus );
+
+
+// 				//L[k*bs:b,:k*bs]=(L[k*bs:b,:k*bs])[p00]
+// 				auto L00a = alp::get_view< structures::General >( L, range_a, utils::range( 0, k * bs ) );
+// 				Matrix< D, structures::General > tmpL00a( nrows( L00a ), ncols( L00a ) );
+// 				rc = rc ? rc : set( tmpL00a, L00a );
+// 				rc = rc ? rc : set( L00a, zero ); //not needed
+// 				alp::Vector< size_t > no_permutation_vec2( ncols( L00a ) );
+// 				alp::set< alp::descriptors::use_index >( no_permutation_vec2, alp::Scalar< size_t >( 0 ) );
+// 				auto tmpL00a_perm = alp::get_view< alp::structures::General >( A01, pvec, no_permutation_vec2 );
+// 				rc = rc ? rc : set( L00a, tmpL00a_perm );
+
+// 				auto p_block = alp::get_view( p, range_a );
+// #ifdef DEBUG
+// 				print_vector( "pvec(in) ", pvec );
+// 				print_vector( "p(in) ", p );
+// #endif
+
+// 				alp::Vector< size_t > vec_tmp( size( p_block ) );
+// 				rc = rc ? rc : set( vec_tmp, p_block );
+// 				auto vec_tmp_perm = alp::get_view< alp::structures::General >( vec_tmp, pvec );
+// 				rc = rc ? rc : set( p_block, vec_tmp_perm );
+
+// #ifdef DEBUG
+// 				print_vector( "pvec(out) ", pvec );
+// 				print_vector( "p(out) ", p );
+// 				print_matrix( "L ", L );
+// 				print_matrix( "U ", U );
+// 				print_matrix( "A11 ", A11 );
+// #endif
+// 			}
+
+
+// 			// // save the result in L and U
+// 			// auto H_Utrapez = get_view< structures::UpperTrapezoidal >( HWork, utils::range( 0, kk ), utils::range( 0, n ) );
+// 			// rc = rc ? rc : alp::set( U, H_Utrapez );
+
+// 			// auto H_Ltrapez = get_view< structures::LowerTrapezoidal >( HWork, utils::range( 1, m ), utils::range( 0, kk ) );
+// 			// auto L_lowerTrapez = get_view( L, utils::range( 1, m ), utils::range( 0, kk ) );
+// 			// rc = rc ? rc : alp::set( L_lowerTrapez, H_Ltrapez );
+
+// 			return rc;
+
+// 		}
 
 
 	} // namespace algorithms
