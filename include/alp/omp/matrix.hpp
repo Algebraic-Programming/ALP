@@ -101,7 +101,9 @@ namespace alp {
 				typename SourceMatrix::template view_type< view::gather >::type
 			>::template change_backend< config::default_sequential_backend >::type;
 
-			return target_t( container, amf );
+			target_t blk_matrix( container, amf );
+			internal::setInitialized( blk_matrix, internal::getInitialized( source ) );
+			return blk_matrix;
 		}
 
 	} // namespace internal
