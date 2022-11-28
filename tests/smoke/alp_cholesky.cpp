@@ -152,14 +152,18 @@ alp::RC check_cholesky_solution(
 	const size_t N = nrows( H );
 	MatSymmType UTU( N );
 	rc = rc ? rc : alp::set( UTU, zero );
-	auto UT = alp::get_view< alp::view::transpose >( U );
+
+	Matrix< T, structures::UpperTriangular > Ustar( N );
+	rc = rc ? rc : alp::set( Ustar, alp::conjugate( U ) );
+	auto UstarT = alp::get_view< alp::view::transpose >( U );
+
 #ifdef DEBUG
 	print_matrix( "  UTU  ", UTU );
 	print_matrix( "  U   ", U );
-	print_matrix( "  UT   ", UT );
+	print_matrix( "  UstarT   ", UstarT );
 #endif
-	auto UTstar = alp::conjugate( UT );
-	rc = rc ? rc : alp::mxm( UTU, UTstar, U, ring );
+
+	rc = rc ? rc : alp::mxm( UTU, UstarT, U, ring );
 #ifdef DEBUG
 	print_matrix( " << UTU >> ", UTU );
 #endif
