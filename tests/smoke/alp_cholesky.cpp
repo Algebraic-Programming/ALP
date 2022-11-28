@@ -73,16 +73,16 @@ struct inpdata {
  *   positive definite matrix for in-place tests
  */
 template< typename T >
-void generate_spd_matrix_full( size_t N, std::vector<T> &data ) {
+void generate_symmherm_pos_def_mat_data_full( size_t N, std::vector<T> &data ) {
 	if( data.size() != N * N ) {
 		std::cout << "Error: generate_spd_matrix_full: Provided container does not have adequate size\n";
 	}
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			mat_data[ i * N + j ] = random_value< T >();
-			mat_data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
+			data[ i * N + j ] = random_value< T >();
+			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			if( i == j ) {
-				mat_data[ j * N + i ] += static_cast< T >( N );
+				data[ j * N + i ] += static_cast< T >( N );
 			}
 		}
 	}
@@ -242,11 +242,11 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		std::srand( RNDSEED );
 #ifdef _ALP_WITH_REFERENCE
 		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
-		generate_spd_matrix( N, matrix_data );
+		generate_symmherm_pos_def_mat_data( N, matrix_data );
 #endif
 #ifdef _ALP_WITH_DISPATCH
 		std::vector< ScalarType > matrix_data( N * N );
-		generate_spd_matrix_full( N, matrix_data );
+		generate_symmherm_pos_def_mat_data_full( N, matrix_data );
 #endif
 		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
