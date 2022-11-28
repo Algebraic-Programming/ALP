@@ -22,8 +22,10 @@
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
+#include <alp/amf-based/storagebasedmatrix.hpp>
 #include "config.hpp"
 #include "storage.hpp"
+#include "vector.hpp"
 
 namespace alp {
 

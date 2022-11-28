@@ -875,9 +875,6 @@ namespace alp {
 		const fwd_iterator &start,
 		const fwd_iterator &end
 	) noexcept {
-		(void)A;
-		(void)start;
-		(void)end;
 
 		// Temporarily assuming 1-1 mapping with user container
 		internal::setInitialized(A, true);
