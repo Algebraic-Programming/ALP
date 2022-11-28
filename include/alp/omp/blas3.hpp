@@ -39,7 +39,7 @@
  #include <alp/reference/io.hpp>
 #endif
 
-#ifndef _NDEBUG
+#ifdef _DEBUG
 #include "../../../tests/utils/print_alp_containers.hpp"
 #endif
 
@@ -92,14 +92,14 @@ namespace alp {
 				"void)"
 			);
 
-#ifndef _NDEBUG
+#ifdef _DEBUG
 			std::cout << "In alp::internal::mxm_generic (omp)\n";
 #endif
 
 			// Early exit checks 
-			if( ! internal::getInitialized( A ) || 
-				! internal::getInitialized( B ) || 
-				! internal::getInitialized( C ) 
+			if( ! internal::getInitialized( A ) ||
+				! internal::getInitialized( B ) ||
+				! internal::getInitialized( C )
 			) {
 				internal::setInitialized( C, false );
 				return SUCCESS;
@@ -156,7 +156,7 @@ namespace alp {
 					|| block_grid_dims_c.second != set_block_grid_dims_b.second 
 					|| set_block_grid_dims_a.second != set_block_grid_dims_b.first 
 				) {
-#ifndef _NDEBUG
+#ifdef _DEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tMismatching local block grid size on set." << std::endl;
@@ -164,7 +164,7 @@ namespace alp {
 					local_rc = MISMATCH;
 				}
 
-				// Broadcast Aij and Bij to all c-dimensional layers
+				// Broadcast A and B to all c-dimensional layers
 				if( local_rc == SUCCESS && th_ijk_a.rt > 0 ) {
 
 					th_coord_t th_ij0_a( th_ijk_a.tr, th_ijk_a.tc, 0 );
@@ -177,15 +177,10 @@ namespace alp {
 
 							local_rc = local_rc ? local_rc : set( refAijk, refAij0 );
 
-#ifndef _NDEBUG
-							print_matrix("refAij0", refAij0);
-							print_matrix("refAijk", refAijk);
-#endif
-
 						}
 					}
 				
-				} // End Broadcast of Aij
+				} // End Broadcast of A
 
 				if( local_rc == SUCCESS && th_ijk_b.rt > 0 ) {
 
@@ -194,17 +189,31 @@ namespace alp {
 					for( size_t br = 0; br < set_block_grid_dims_b.first; ++br ) {
 						for( size_t bc = 0; bc < set_block_grid_dims_b.second; ++bc ) {
 
-							auto refBij0 = internal::get_view( B, th_ij0_b, br, bc );
-							auto refBijk = internal::get_view( B, th_ijk_b, br, bc );
+							auto refBij0 = get_view( B, th_ij0_b, br, bc );
+							auto refBijk = get_view( B, th_ijk_b, br, bc );
 
 							local_rc = local_rc ? local_rc : set( refBijk, refBij0 );
 						}
 					}
-				}
+				} // End Broadcast of B
+
+				if( local_rc == SUCCESS && th_ijk_c.rt > 0 ) {
+
+					for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
+						for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
+
+							auto refCijk = get_view( C, th_ijk_c, br, bc );
+							alp::Scalar< 
+								OutputType, alp::structures::General, config::default_sequential_backend 
+							> zero( monoid.template getIdentity< OutputType >() );
+							local_rc = local_rc ? local_rc : set( refCijk, zero );
+						}
+					}
+				} // End Zero-ing of C
 
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
-#ifndef _NDEBUG
+#ifdef _DEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues replicating input matrices." << std::endl;
@@ -212,7 +221,7 @@ namespace alp {
 					rc = local_rc;
 				}
 
-				// } // End Broadcast of Aij and Bij
+				// End Broadcast of A and B and zero-ing of C
 				#pragma omp barrier
 				
 				if( rc == SUCCESS ) {
@@ -237,7 +246,7 @@ namespace alp {
 							|| block_grid_dims_c.second != mxm_block_grid_dims_b.second 
 							|| mxm_block_grid_dims_a.second != mxm_block_grid_dims_b.first 
 						) {
-#ifndef _NDEBUG
+#ifdef _DEBUG
 							#pragma omp critical
 							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 								"\tMismatching local block grid size on mxm." << std::endl;
@@ -250,15 +259,15 @@ namespace alp {
 							for( size_t bk = 0; bk < mxm_block_grid_dims_a.second; ++bk ) {
 								for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
 	
-									const auto refA_loc = internal::get_view( A, th_isk_a, br, bk );
+									const auto refA_loc = get_view( A, th_isk_a, br, bk );
 
 									for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
 
-										const auto refB_loc = internal::get_view( B, th_sjk_b, bk, bc );
-										auto refC_ijk = internal::get_view( C, th_ijk_c, br, bc );
+										const auto refB_loc = get_view( B, th_sjk_b, bk, bc );
+										auto refC_ijk = get_view( C, th_ijk_c, br, bc );
 
 										// Delegate the call to the sequential mxm implementation
-										local_rc = local_rc ? local_rc : internal::mxm_generic< allow_void >( refC_ijk, refA_loc, refB_loc, oper, monoid, mulMonoid );
+										local_rc = local_rc ? local_rc : mxm_generic< allow_void >( refC_ijk, refA_loc, refB_loc, oper, monoid, mulMonoid );
 
 									}
 								}
@@ -270,9 +279,6 @@ namespace alp {
 							s_b = utils::modulus( s_b + 1, tg_b.tr );
 
 						} 
-						// else {
-						// 	break;
-						// }
 
 					} 
 					// }
@@ -280,9 +286,11 @@ namespace alp {
 
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
+#ifdef _DEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues with local mxm computations." << std::endl;
+#endif
 					rc = local_rc;
 				}
 
@@ -310,9 +318,6 @@ namespace alp {
 								}
 							}
 
-							// if( local_rc != SUCCESS ) {
-							// 	break;
-							// }
 						}
 
 					}
@@ -320,9 +325,11 @@ namespace alp {
 				
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
+#ifdef _DEBUG
 					#pragma omp critical
 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
 						"\tIssues with final reduction." << std::endl;
+#endif
 					rc = local_rc;
 				}
 
