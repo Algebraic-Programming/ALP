@@ -478,7 +478,7 @@ namespace alp {
 				}
 #endif
 
-				auto A22UT = get_view< structures::Symmetric >( L, range2, range2 );
+				auto A22UT = get_view< structures::Symmetric >( U, range2, range2 );
 				auto A12T = get_view< view::transpose >( A12 );
 				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A22UT, A12T, ring, minus );
 #ifdef DEBUG
