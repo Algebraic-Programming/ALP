@@ -32,6 +32,9 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/storage.hpp> // For AMFFactory
 #endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/storage.hpp> // For AMFFactory
+#endif
 
 namespace alp {
 
