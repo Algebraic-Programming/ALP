@@ -49,6 +49,9 @@
 #include "vector.hpp"
 
 
+#include "vector.hpp"
+#include "storage.hpp"
+
 namespace alp {
 	namespace internal {
 

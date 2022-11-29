@@ -34,7 +34,6 @@
 #include <alp/imf.hpp>
 #include <alp/rc.hpp>
 #include <alp/views.hpp>
-
 #include <alp/base/vector.hpp>
 
 #include "matrix.hpp"
