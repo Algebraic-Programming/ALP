@@ -38,10 +38,12 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/blas3.hpp>
  #include <alp/reference/io.hpp>
+ #include <alp/reference/blas2.hpp>
 #endif
 #ifdef _ALP_OMP_WITH_DISPATCH
  #include <alp/dispatch/blas3.hpp>
  #include <alp/dispatch/io.hpp>
+ #include <alp/dispatch/blas2.hpp>
 #endif
 
 #ifndef NDEBUG
@@ -193,6 +195,12 @@ namespace alp {
 
 							local_rc = local_rc ? local_rc : set( refAijk, refAij0 );
 
+#ifndef NDEBUG
+							#pragma omp critical
+							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+								"\tCopying A local RC=" << alp::toString( local_rc ) << std::endl;
+#endif
+
 						}
 					}
 				
@@ -215,6 +223,13 @@ namespace alp {
 							auto refBijk = get_view( B, th_ijk_b, br, bc );
 
 							local_rc = local_rc ? local_rc : set( refBijk, refBij0 );
+
+#ifndef NDEBUG
+							#pragma omp critical
+							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+								"\tCopying B local RC=" << alp::toString( local_rc ) << std::endl;
+#endif
+
 						}
 					}
 				} // End Broadcast of B
@@ -233,8 +248,16 @@ namespace alp {
 
 					for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
 						for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
+
 							auto refCijk = get_view( C, th_ijk_c, br, bc );
 							local_rc = local_rc ? local_rc : set( refCijk, zero );
+
+#ifndef NDEBUG
+							#pragma omp critical
+							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+								"\tZeroing C local RC=" << alp::toString( local_rc ) << std::endl;
+#endif
+
 						}
 					}
 				} // End Zero-ing of C
@@ -394,7 +417,14 @@ namespace alp {
 									auto refCijr = internal::get_view( C, th_ijr_c, br, bc );
 
 									// Final result in C at layer 0
-									local_rc = local_rc ? local_rc : foldl( refCij0, refCijr, monoid );
+									local_rc = local_rc ? local_rc : foldl( refCij0, refCijr, monoid.getOperator() );
+
+#ifndef NDEBUG
+									#pragma omp critical
+									std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+										"\tFinal reduction local RC=" << alp::toString( local_rc ) << std::endl;
+#endif
+
 								}
 							}
 
