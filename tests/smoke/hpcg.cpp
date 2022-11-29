@@ -24,7 +24,6 @@
  * benchmark impementation in https://github.com/hpcg-benchmark/hpcg.
  */
 
-#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -68,7 +67,7 @@ template< typename T > void print_norm( const grb::Vector< T > &r, const char * 
 // default simulation parameters, set as in reference HPCG
 // users can input different ones via the cmd line
 constexpr size_t PHYS_SYSTEM_SIZE_DEF = 16UL;
-constexpr size_t PHYS_SYSTEM_SIZE_MIN = 4UL;
+constexpr size_t PHYS_SYSTEM_SIZE_MIN = 2UL;
 constexpr size_t MAX_COARSENING_LEVELS = 3UL;
 constexpr size_t MAX_ITERATIONS_DEF = 56UL;
 constexpr size_t SMOOTHER_STEPS_DEF = 1;
@@ -289,6 +288,12 @@ static void build_3d_system(
 	// and track the time for diagnostics purposes
 	for( size_t i = 0; i < mg_generators.size(); i++) {
 		MASTER_PRINT( pid, "SYSTEM LEVEL " << i << std::endl );
+		auto& sizes = mg_generators[ i ].get_generator().get_sizes();
+		MASTER_PRINT( pid, " sizes: " );
+		for( size_t s = 0; s < DIMS - 1; s++ ) {
+			MASTER_PRINT( pid,sizes[ s ] << " x " );
+		}
+		MASTER_PRINT( pid, sizes[ DIMS - 1 ] << std::endl );
 		MASTER_PRINT( pid, " populating system matrix: " );
 		timer.reset();
 		grb::RC rc = hpcg_populate_system_matrix( mg_generators[ i ], system_levels.at(i)->A );

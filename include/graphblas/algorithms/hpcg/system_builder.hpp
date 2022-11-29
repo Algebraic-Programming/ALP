@@ -100,7 +100,7 @@ namespace grb {
 					throw std::invalid_argument( "halo should be higher than 0" );
 				}
 				for( const auto i : sizes ) {
-					if( i < 2 * halo + 1 ) {
+					if( i < halo + 1 ) {
 						throw std::invalid_argument( "Iteration halo goes beyond system sizes" );
 					}
 				}

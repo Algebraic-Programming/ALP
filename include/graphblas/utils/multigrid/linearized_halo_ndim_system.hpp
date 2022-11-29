@@ -108,7 +108,7 @@ namespace grb {
 					_halo( halo )
 				{
 					for( SizeType __size : sizes ) {
-						if ( __size < 2 * halo + 1 ) {
+						if ( __size < halo + 1 ) {
 							throw std::invalid_argument(
 								std::string( "the halo (" + std::to_string(halo) +
 								std::string( ") goes beyond a system size (" ) +
