@@ -86,7 +86,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 			rc = FAILED;
 		}
 	}
-	for( const auto & pair : chk2 ) {
+	for( const auto &pair : chk2 ) {
 		if( pair.second != 2 ) {
 			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second
 				<< " ), expected " << pair.first << ", 2 )\n";
@@ -169,7 +169,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.second != 1 ) {
 				std::cout << "\t got unexpected entry ( " << pair.first << ", "
 					<< pair.second << " ), expected value 1.\n";
@@ -204,7 +204,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 				<< "expected 2\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.first == 1 ) {
 				const double expect = n - 1 + ( 1 == n / 2 ? 1 : 0 );
 				if( pair.second != expect ) {
@@ -233,7 +233,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.second != 1 ) {
 				std::cout << "\t got unexpected entry ( " << pair.first << ", "
 					<< pair.second << " ): expected value 1.\n";
