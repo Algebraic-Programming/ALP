@@ -34,6 +34,8 @@
  #include <alp/dispatch/io.hpp>
 #endif
 
+#include "storage.hpp"
+
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
