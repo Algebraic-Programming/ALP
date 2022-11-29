@@ -41,6 +41,10 @@
  #include <alp/reference/blas3.hpp>
  #include <alp/reference/io.hpp>
 #endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/blas3.hpp>
+ #include <alp/dispatch/io.hpp>
+#endif
 
 #ifndef NDEBUG
 #include "../../../tests/utils/print_alp_containers.hpp"

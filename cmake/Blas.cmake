@@ -18,14 +18,14 @@ else()
         set(HEADER_NAME "cblas")
 endif()
 
-file(WRITE "${CMAKE_BINARY_DIR}/blas_wrapper/blas.h" "#include \"${HEADER_NAME}.h\"\n" )
+file(WRITE "${CMAKE_BINARY_DIR}/blas_wrapper/alp_blas.h" "#include \"${HEADER_NAME}.h\"\n" )
 #target_include_directories(cblas INTERFACE "${CMAKE_BINARY_DIR}/blas_wrapper" )
 
 target_include_directories( cblas INTERFACE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/blas_wrapper>
         $<INSTALL_INTERFACE:.>
 )
-install(FILES "${CMAKE_BINARY_DIR}/blas_wrapper/blas.h" DESTINATION "${INCLUDE_INSTALL_DIR}/blas_wrapper")
+install(FILES "${CMAKE_BINARY_DIR}/blas_wrapper/alp_blas.h" DESTINATION "${INCLUDE_INSTALL_DIR}/blas_wrapper")
 
 install(
 	TARGETS cblas EXPORT GraphBLASTargets

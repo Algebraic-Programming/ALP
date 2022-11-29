@@ -28,11 +28,13 @@
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 #include <alp/density.hpp>
+
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
 #include "blas0.hpp"
 #include "blas2.hpp"
+
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
