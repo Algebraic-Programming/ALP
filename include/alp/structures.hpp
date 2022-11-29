@@ -638,9 +638,7 @@ namespace alp {
 		struct isInstantiable< LowerTrapezoidal, General  > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				return (
-					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
-				);
+				return ( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) );
 			};
 		};
 
@@ -821,20 +819,6 @@ namespace alp {
 			>::type;
 		};
 
-		struct RectangularUpperBidiagonal: BaseStructure {
-
-			typedef std::tuple< Interval< 0, 2 > > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< RectangularUpperBidiagonal >, UpperTrapezoidal::inferred_structures	>::type;
-		};
-
-		struct RectangularLowerBidiagonal: BaseStructure {
-
-			typedef std::tuple< Interval< -1, 1 > > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< RectangularLowerBidiagonal >, LowerTrapezoidal::inferred_structures	>::type;
-		};
-
 		struct Diagonal: BaseStructure {
 
 			typedef std::tuple< Interval< 0 > > band_intervals;
@@ -844,17 +828,6 @@ namespace alp {
 				RectangularDiagonal::inferred_structures,
 				LowerBidiagonal::inferred_structures,
 				UpperBidiagonal::inferred_structures
-			>::type;
-		};
-
-		struct RectangularDiagonal: BaseStructure {
-
-			typedef std::tuple< Interval< 0 > > band_intervals;
-
-			using inferred_structures = tuple_cat<
-				std::tuple< RectangularDiagonal >,
-				RectangularLowerBidiagonal::inferred_structures,
-				RectangularUpperBidiagonal::inferred_structures
 			>::type;
 		};
 

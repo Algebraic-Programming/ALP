@@ -54,7 +54,7 @@ void print_matrix( std::string name, const MatrixType &A ) {
 					std::cout <<  ",";
 				}
 			} else {
-				std::cout << std::setprecision( 0 ) << "\t" << ".";
+				std::cout << std::setprecision( 0 ) << "\t" << "0, ";
 			}
 		}
 		if( row + 1 != alp::nrows( A ) ) {
