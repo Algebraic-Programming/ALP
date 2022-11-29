@@ -30,7 +30,8 @@
 #include <alp/rc.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/type_traits.hpp>
-#include <alp/scalar.hpp>
+
+#include "scalar.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \

@@ -39,10 +39,11 @@
 
 #include <alp/rc.hpp>
 #include <alp/imf.hpp>
-#include <alp/matrix.hpp>
 #include <alp/density.hpp>
-#include <alp/storage.hpp>
 #include <alp/views.hpp>
+
+#include "matrix.hpp"
+#include "storage.hpp"
 
 
 

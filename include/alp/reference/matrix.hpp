@@ -40,12 +40,13 @@
 #include <alp/utils.hpp>
 #include <alp/utils/autodeleter.hpp>
 //#include <alp/utils/pattern.hpp> //for help with dealing with pattern matrix input
-#include <alp/vector.hpp>
-#include <alp/storage.hpp>
 #include <alp/structures.hpp>
 #include <alp/density.hpp>
 #include <alp/views.hpp>
 #include <alp/imf.hpp>
+
+#include "vector.hpp"
+#include "storage.hpp"
 
 namespace alp {
 	namespace internal {

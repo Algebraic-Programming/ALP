@@ -29,9 +29,9 @@
 #include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/structures.hpp>
-#include <alp/blas0.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
+#include "blas0.hpp"
 #include "io.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
