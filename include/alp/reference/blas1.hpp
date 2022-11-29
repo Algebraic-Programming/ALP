@@ -31,12 +31,14 @@
 #include <alp/rc.hpp>
 #include <alp/rels.hpp>
 #include <alp/semiring.hpp>
+
 #include "scalar.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
 #include "io.hpp"
 #include "blas0.hpp"
 #include "blas2.hpp"
+
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #define NO_CAST_ASSERT( x, y, z )                                              \

@@ -24,7 +24,11 @@
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/storage.hpp>
+
+#include "storage.hpp"
+#include "vector.hpp"
+
+#include <alp/dispatch/vector.hpp>
 
 namespace alp {
 

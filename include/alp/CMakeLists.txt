@@ -113,6 +113,7 @@ if( WITH_ALP_OMP_BACKEND_HEADERS )
 	add_library( backend_alp_omp_headers INTERFACE )
 	target_link_libraries( backend_alp_omp_headers INTERFACE backend_headers_nodefs )
 	target_link_libraries( backend_alp_omp_headers INTERFACE OpenMP::OpenMP_CXX )
+	target_link_libraries( backend_alp_omp_headers INTERFACE cblas )
 	target_compile_definitions( backend_alp_omp_headers INTERFACE "${ALP_OMP_INCLUDE_DEFS}" )
 
 	install( TARGETS backend_alp_omp_headers EXPORT GraphBLASTargets )
