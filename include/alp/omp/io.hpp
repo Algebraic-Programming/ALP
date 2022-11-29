@@ -30,6 +30,9 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/io.hpp>
 #endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/io.hpp>
+#endif
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \

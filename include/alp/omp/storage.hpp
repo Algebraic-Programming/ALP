@@ -28,7 +28,12 @@
 
 #include <cmath>
 
-#include <alp/amf-based/storage.hpp>
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/amf-based/storage.hpp>
+#endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/storage.hpp>
+#endif
 
 namespace alp {
 
