@@ -45,6 +45,9 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/vector.hpp>
 #endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/vector.hpp>
+#endif
 
 
 namespace alp {
