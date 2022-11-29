@@ -33,6 +33,14 @@
 #include <alp/base/vector.hpp>
 #include <alp/amf-based/vector.hpp>
 
+#include <alp/rc.hpp>
+#include <alp/imf.hpp>
+#include <alp/density.hpp>
+#include <alp/views.hpp>
+#include "config.hpp"
+#include "matrix.hpp"
+#include "storage.hpp"
+
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/vector.hpp>
 #endif
@@ -43,14 +51,6 @@
 // #include <alp/utils/alloc.hpp>
 // #include <alp/utils/autodeleter.hpp>
 // #include <alp/reference/vectoriterator.hpp>
-
-#include <alp/config.hpp>
-#include <alp/rc.hpp>
-#include <alp/imf.hpp>
-#include <alp/matrix.hpp>
-#include <alp/density.hpp>
-#include <alp/storage.hpp>
-#include <alp/views.hpp>
 
 namespace alp {
 
