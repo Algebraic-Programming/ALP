@@ -24,10 +24,10 @@
 #define _H_ALP_OMP_MATRIX
 
 #include <alp/backends.hpp>
-#include <alp/storage.hpp>
 #include <alp/base/matrix.hpp>
 #include <alp/amf-based/matrix.hpp>
 #include "storagebasedmatrix.hpp"
+#include "storage.hpp"
 
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/storage.hpp> // For AMFFactory

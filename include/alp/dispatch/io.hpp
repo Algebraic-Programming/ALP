@@ -24,9 +24,9 @@
 #define _H_ALP_DISPATCH_IO
 
 #include <alp/base/io.hpp>
-#include <alp/vector.hpp>
-#include <alp/scalar.hpp>
 #include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
