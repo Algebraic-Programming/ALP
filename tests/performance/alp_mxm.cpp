@@ -21,6 +21,8 @@
 
 #include <graphblas/utils/Timer.hpp>
 
+#include <alp_blas.h>
+
 #include <alp.hpp>
 
 
@@ -32,6 +34,25 @@ struct inpdata {
 	size_t N=0;
   	size_t repeat=1;
 };
+
+template< typename MatType, typename T >
+void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda,
+                                                 const MatType & mA, double threshold=1e-7 ) {
+
+  if( std::is_same< typename MatType::structure, alp::structures::General >::value ) {
+                for( size_t row = 0; row < m; ++row ) {
+                        for( size_t col = 0; col < n; ++col ) {
+				double va = ( double )( vA[ row * lda + col ] );
+                                double vm = ( double )( alp::internal::access( mA, alp::internal::getStorageIndex( mA, row, col ) ) );
+				double re = std::abs( ( va - vm ) / va );
+                                if( re > threshold ) {
+                                        std::cout << "Error ( " << row << ", " << col << " ): " << va << " v " << vm << std::endl;
+                                }
+			}
+                }
+	}
+  std::cout << "check ok\n";
+}
 
 
 /** gnerate random rectangular matrix data */
@@ -52,8 +73,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
   rc = alp::SUCCESS;
 
 	const size_t N = unit.N;
-	const size_t K = 2 * N;
-	const size_t M = 3 * N;
+	const size_t K = 1 * N;
+	const size_t M = 1 * N;
 	grb::utils::Timer timer;
 	timer.reset();
 	double times;
@@ -65,22 +86,18 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		alp::identities::one
 	> ring;
 
-
-
 	times = 0;
 	alp::Matrix< ScalarType, alp::structures::General, alp::Dense > A( N, K );
 	alp::Matrix< ScalarType, alp::structures::General, alp::Dense > B( K, M );
 	alp::Matrix< ScalarType, alp::structures::General, alp::Dense > C( N, M );
 
-	{
-		std::vector< ScalarType > Amatrix_data( N * K );
-		generate_random_matrix_data( N * K, Amatrix_data );
-		rc = rc ? rc : alp::buildMatrix( A, Amatrix_data.begin(), Amatrix_data.end() );
+	std::vector< ScalarType > Amatrix_data( N * K );
+	generate_random_matrix_data( N * K, Amatrix_data );
+	rc = rc ? rc : alp::buildMatrix( A, Amatrix_data.begin(), Amatrix_data.end() );
 
-		std::vector< ScalarType > Bmatrix_data( K * M );
-		generate_random_matrix_data( K * M, Bmatrix_data );
-		rc = rc ? rc : alp::buildMatrix( A, Bmatrix_data.begin(), Bmatrix_data.end() );
-	}
+	std::vector< ScalarType > Bmatrix_data( K * M );
+	generate_random_matrix_data( K * M, Bmatrix_data );
+	rc = rc ? rc : alp::buildMatrix( B, Bmatrix_data.begin(), Bmatrix_data.end() );
 
 	std::cout << "Testing  C(" << nrows( C ) << " x " << ncols( C )
 		  << ") +=   A(" << nrows( A ) << " x " << ncols( A )
@@ -96,6 +113,25 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		times += timer.time();
 	}
 
+
+	std::vector< ScalarType > Cmatrix_data( N * M, *zero );
+	cblas_dgemm(
+		CblasRowMajor,
+		CblasNoTrans,
+		CblasNoTrans,
+		N,
+		M,
+		K,
+		1,
+		&(Amatrix_data[0]),
+		K,
+		&(Bmatrix_data[0]),
+		M,
+		1,
+		&(Cmatrix_data[0]),
+		M
+	);
+	diff_stdvec_matrix( Cmatrix_data, N, M, M, C );
 
 	std::cout << " times(total) = " << times << "\n";
 	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
