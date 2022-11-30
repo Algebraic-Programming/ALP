@@ -166,7 +166,11 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( size( internal::getVector(in) ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getVector(in) ) };
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(in) )
+		};
 		std::array< uintptr_t, 2 > destinations{
 			getID( internal::getVector(x) ),
 			getID( internal::getVector(y) )
@@ -207,9 +211,10 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( size( internal::getVector(x) ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 2 > sourcesC{
+		std::array< uintptr_t, 3 > sourcesC{
 			getID( internal::getVector(x) ),
-			getID( internal::getVector(y) )
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
@@ -1394,7 +1399,10 @@ namespace grb {
 			&beta
 		);
 		std::array< const void *, 1 > sourcesP{ &beta };
-		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getVector(x) ) };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(z) )
+		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_VECTOR_SCALAR_MONOID,
@@ -1436,7 +1444,10 @@ namespace grb {
 			&alpha
 		);
 		std::array< const void *, 1 > sourcesP{ &alpha };
-		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getVector(y) ) };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
+		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::EWISEAPPLY_SCALAR_VECTOR_MONOID,
@@ -1478,10 +1489,11 @@ namespace grb {
 		if( ret != SUCCESS ) { return ret; }
 		if( phase != EXECUTE ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 3 > sourcesC{
+		std::array< uintptr_t, 4 > sourcesC{
 			getID( internal::getVector(mask) ),
 			getID( internal::getVector(x) ),
-			getID( internal::getVector(y) )
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
@@ -1520,9 +1532,10 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( size( internal::getVector(x) ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 2 > sourcesC{
+		std::array< uintptr_t, 3 > sourcesC{
 			getID( internal::getVector(x) ),
-			getID( internal::getVector(y) )
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(

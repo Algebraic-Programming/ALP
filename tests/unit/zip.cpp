@@ -55,7 +55,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		if( out.first != 1.5 || out.second != 2 ) {
 			std::cerr << "\t unexpected output "
 				<< "( " << pair.first << ", < " << out.first << ", "
-				<< out.second << " > ), expected " << pair.first << ", < 1.5, 2 > )\n";
+				<< out.second << " > ), expected " << pair.first << ", "
+				<< "< 1.5, 2 > )\n";
 			rc = FAILED;
 		}
 	}
@@ -85,7 +86,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 			rc = FAILED;
 		}
 	}
-	for( const auto & pair : chk2 ) {
+	for( const auto &pair : chk2 ) {
 		if( pair.second != 2 ) {
 			std::cerr << "\t unexpected output ( " << pair.first << ", " << pair.second
 				<< " ), expected " << pair.first << ", 2 )\n";
@@ -122,48 +123,56 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::zip( A, I, J, V );
 	}
 	if( rc != SUCCESS ) {
-		std::cout << "grb::zip to matrix (non-void) FAILED with error " << grb::toString( rc ) << "\n";
+		std::cout << "grb::zip to matrix (non-void) FAILED with error "
+			<< grb::toString( rc ) << "\n";
 	} else {
 		if( grb::nnz( A ) != n ) {
-			std::cout << "\t got " << grb::nnz( A ) << " matrix nonzeroes, expected " << n << "\n";
+			std::cout << "\t got " << grb::nnz( A ) << " matrix nonzeroes, "
+				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
 		// check via grb::mxv
-		(void)grb::set( right, 1 );
-		(void)grb::clear( left );
-		(void)grb::vxm( left, right, A, ring );
+		(void) grb::set( right, 1 );
+		(void) grb::clear( left );
+		(void) grb::vxm( left, right, A, ring );
 		if( grb::nnz( left ) != 2 ) {
-			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, expected 2\n";
+			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, "
+				<< "expected 2\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.first == 1 ) {
 				const double expect = n - 1 + ( 1 == n / 2 ? 1 : 0 );
 				if( pair.second != expect ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected " << expect << "\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected " << expect << "\n";
 					rc = FAILED;
 				}
 			} else if( pair.first == n / 2 && n / 2 != 1 ) {
 				if( pair.second != 1 ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected 1\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected 1\n";
 					rc = FAILED;
 				}
 			} else {
 				if( pair.second != 0 ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected none\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected none\n";
 					rc = FAILED;
 				}
 			}
 		}
-		(void)grb::clear( left );
-		(void)grb::mxv( left, A, right, ring );
+		(void) grb::clear( left );
+		(void) grb::mxv( left, A, right, ring );
 		if( grb::nnz( left ) != n ) {
-			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, expected " << n << "\n";
+			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, "
+				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.second != 1 ) {
-				std::cout << "\t got unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 1.\n";
+				std::cout << "\t got unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ), expected value 1.\n";
 				rc = FAILED;
 			}
 		}
@@ -178,48 +187,56 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		rc = grb::zip( A_void, I, J );
 	}
 	if( rc != SUCCESS ) {
-		std::cout << "grb::zip to matrix (void) FAILED with error " << grb::toString( rc ) << "\n";
+		std::cout << "grb::zip to matrix (void) FAILED with error " << grb::toString( rc )
+			<< "\n";
 	} else {
 		if( grb::nnz( A_void ) != n ) {
-			std::cout << "\t got " << grb::nnz( A_void ) << " matrix nonzeroes, expected " << n << "\n";
+			std::cout << "\t got " << grb::nnz( A_void ) << " matrix nonzeroes, "
+				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
 		// check via grb::mxv
-		(void)grb::set( right, 1 );
-		(void)grb::clear( left );
-		(void)grb::vxm( left, right, A_void, ring );
+		(void) grb::set( right, 1 );
+		(void) grb::clear( left );
+		(void) grb::vxm( left, right, A_void, ring );
 		if( grb::nnz( left ) != 2 ) {
-			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, expected 2\n";
+			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, "
+				<< "expected 2\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.first == 1 ) {
 				const double expect = n - 1 + ( 1 == n / 2 ? 1 : 0 );
 				if( pair.second != expect ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected " << expect << "\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected " << expect << "\n";
 					rc = FAILED;
 				}
 			} else if( pair.first == n / 2 && n / 2 != 1 ) {
 				if( pair.second != 1 ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected 1\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected 1\n";
 					rc = FAILED;
 				}
 			} else {
 				if( pair.second != 0 ) {
-					std::cout << "\t got " << pair.second << " nonzeroes in column " << pair.first << ", expected none\n";
+					std::cout << "\t got " << pair.second << " nonzeroes in column "
+						<< pair.first << ", expected none\n";
 					rc = FAILED;
 				}
 			}
 		}
-		(void)grb::clear( left );
-		(void)grb::mxv( left, A_void, right, ring );
+		(void) grb::clear( left );
+		(void) grb::mxv( left, A_void, right, ring );
 		if( grb::nnz( left ) != n ) {
-			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, expected " << n << "\n";
+			std::cout << "\t got " << grb::nnz( left ) << " nonzeroes in output vector, "
+				<< "expected " << n << "\n";
 			rc = FAILED;
 		}
-		for( const auto & pair : left ) {
+		for( const auto &pair : left ) {
 			if( pair.second != 1 ) {
-				std::cout << "\t got unexpected entry ( " << pair.first << ", " << pair.second << " ): expected value 1.\n";
+				std::cout << "\t got unexpected entry ( " << pair.first << ", "
+					<< pair.second << " ): expected value 1.\n";
 				rc = FAILED;
 			}
 		}
@@ -261,7 +278,7 @@ int main( int argc, char ** argv ) {
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
 		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+			"test size.\n";
 		return 1;
 	}
 
@@ -273,9 +290,11 @@ int main( int argc, char ** argv ) {
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << "Test FAILED (" << grb::toString( out ) << ")\n"
+			<< std::endl;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	}
 	return 0;
 }
+
