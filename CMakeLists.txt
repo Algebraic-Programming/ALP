@@ -174,13 +174,12 @@ set( TEST_CATEGORIES "unit" "smoke" "performance" )
 # scope and propagate down to the other files
 include( AddGRBVars )
 
-# here, add information for wrappers generated during installation
-include( AddGRBInstall )
-
 if( WITH_ALP_DISPATCH_BACKEND )
         include( Blas )
 endif( )
 
+# here, add information for wrappers generated during installation
+include( AddGRBInstall )
 
 # compilation flags for all targets
 include( CompileFlags )
