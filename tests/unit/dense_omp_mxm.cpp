@@ -20,7 +20,7 @@
 #include <vector>
 
 #include <alp.hpp>
-#ifndef _DEBUG
+#ifdef NDEBUG
  #include "../utils/print_alp_containers.hpp"
 #endif
 
@@ -50,7 +50,7 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
     
 	T temp;
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	print_stdvec_as_matrix("vA", vA, n, n, n);
 	print_stdvec_as_matrix("vB", vB, n, n, n);
 	print_stdvec_as_matrix("vC - PRE", vC, n, n, n);
@@ -70,7 +70,7 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
 		}
 	}
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	print_stdvec_as_matrix("vC - POST", vC, n, n, n);
 #endif
 }
@@ -193,6 +193,10 @@ void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size
 
 }
 
+#define M ( alp::config::BLOCK_ROW_DIM * n )
+#define K ( alp::config::BLOCK_COL_DIM * n )
+#define N ( alp::config::BLOCK_COL_DIM * n )
+
 void alp_program( const size_t & n, alp::RC & rc ) {
 
 	typedef double T;
@@ -202,34 +206,34 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	T one  = ring.getOne< T >();
 	T zero = ring.getZero< T >();
 
-	std::vector< T > A_data( n * n );
-	std::vector< T > B_data( n * n );
-	std::vector< T > C_data( n * n, zero );
+	std::vector< T > A_data( M * K );
+	std::vector< T > B_data( K * N );
+	std::vector< T > C_data( M * N, zero );
 
 	// std::vector< T > A_packed( n * ( n + 1 ) / 2 );
 	// std::vector< T > B_packed( n * ( n + 1 ) / 2 );
 	// std::vector< T > C_packed( n * ( n + 1 ) / 2, zero );
 
-	std::vector< T > A_vec( n * n );
-	std::vector< T > B_vec( n * n );
-	std::vector< T > C_vec( n * n, zero );
+	std::vector< T > A_vec( M * K );
+	std::vector< T > B_vec( K * N );
+	std::vector< T > C_vec( M * N, zero );
 
-	std::cout << "\tTesting dense General mxm " << n << std::endl;
+	std::cout << "\tTesting dense General mxm " << M << " " << K << " " << N << std::endl;
 
-	stdvec_build_matrix< structures::General >( A_data, n, n, n, zero, one, one );
-	stdvec_build_matrix< structures::General >( B_data, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::General >( A_data, M, K, K, zero, one, one );
+	stdvec_build_matrix< structures::General >( B_data, K, N, N, zero, one, one );
 
 	// initialize test
-	alp::Matrix< T, structures::General > A( n, n );
-	alp::Matrix< T, structures::General > B( n, n );
-	alp::Matrix< T, structures::General > C( n, n );
+	alp::Matrix< T, structures::General > A( M, K );
+	alp::Matrix< T, structures::General > B( K, N );
+	alp::Matrix< T, structures::General > C( M, N );
 
 	// Initialize input matrices
 	rc = alp::buildMatrix( A, A_data.begin(), A_data.end() );
 	rc = alp::buildMatrix( B, B_data.begin(), B_data.end() );
 	rc = alp::buildMatrix( C, C_data.begin(), C_data.end() );
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	print_matrix("A", A);
 	print_matrix("B", B);
 	print_matrix("C - PRE", C);
@@ -237,16 +241,16 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 
 	rc = alp::mxm( C, A, B, ring );
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 	print_matrix("C - POST", C);
 #endif
 
-	stdvec_build_matrix< structures::General >( A_vec, n, n, n, zero, one, one );
-	stdvec_build_matrix< structures::General >( B_vec, n, n, n, zero, one, one );
+	stdvec_build_matrix< structures::General >( A_vec, M, K, K, zero, one, one );
+	stdvec_build_matrix< structures::General >( B_vec, K, N, N, zero, one, one );
 
-	mxm_stdvec_as_matrix( C_vec, n, A_vec, n, B_vec, n, n, n, n, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
+	mxm_stdvec_as_matrix( C_vec, N, A_vec, K, B_vec, N, M, K, N, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid() );
 
-	diff_stdvec_matrix( C_vec, n, n, n, C );
+	diff_stdvec_matrix( C_vec, M, N, N, C );
 
 	// std::cout << "\n\n=========== Testing Uppertriangular ============\n\n";
 
