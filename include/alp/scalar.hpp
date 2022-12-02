@@ -24,8 +24,6 @@
 
 #include "base/scalar.hpp"
 
-#include <alp/structures.hpp>
-
 // now include all specialisations contained in the backend directories:
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/scalar.hpp>
