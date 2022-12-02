@@ -31,11 +31,11 @@
 #include <functional>
 
 #include <alp/backends.hpp>
-#include <alp/blas1.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/rc.hpp>
 #include <alp/semiring.hpp>
 
+#include "blas1.hpp"
 #include "config.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"

@@ -23,13 +23,12 @@
 #ifndef _H_ALP_INTERNAL_OPERATORS_BASE
 #define _H_ALP_INTERNAL_OPERATORS_BASE
 
-#include <alp/utils/suppressions.h>
-
 #include <type_traits>
 #include <utility>
 
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
+#include <alp/utils/suppressions.h>
 
 #include "config.hpp"
 

@@ -23,9 +23,6 @@
 #ifndef _H_ALP_INIT
 #define _H_ALP_INIT
 
-#include "backends.hpp"
-#include "base/init.hpp"
-
 // include all implementations
 #ifdef _ALP_WITH_REFERENCE
  #include "alp/reference/init.hpp"

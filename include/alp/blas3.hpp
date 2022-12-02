@@ -22,10 +22,6 @@
 #ifndef _H_ALP_BLAS3
 #define _H_ALP_BLAS3
 
-#include "base/blas3.hpp"
-#include "config.hpp"
-#include "phase.hpp"
-
 // now include all specialisations contained in the backend directories:
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/blas3.hpp>

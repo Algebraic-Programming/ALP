@@ -22,15 +22,17 @@
 #ifndef _H_ALP_BLAS3_BASE
 #define _H_ALP_BLAS3_BASE
 
+#include <graphblas/utils/iscomplex.hpp> // use from grb
+
 #include <alp/backends.hpp>
-#include <alp/phase.hpp>
 #include <alp/identities.hpp>
 #include <alp/monoid.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/phase.hpp>
 
 #include "matrix.hpp"
 #include "vector.hpp"
 #include "io.hpp"
+
 
 namespace alp {
 

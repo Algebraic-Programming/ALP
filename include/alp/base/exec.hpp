@@ -23,14 +23,15 @@
 #ifndef _H_ALP_EXEC_BASE
 #define _H_ALP_EXEC_BASE
 
+#ifndef _ALP_NO_STDIO
+#include <iostream>
+#endif
 #include <stdexcept>
 #include <string>
 
 #include <alp/backends.hpp>
 #include <alp/rc.hpp>
-#ifndef _ALP_NO_STDIO
-#include <iostream>
-#endif
+
 
 namespace alp {
 

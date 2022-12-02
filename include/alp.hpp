@@ -140,21 +140,28 @@
 // #pragma message "Included ALP.hpp"
 
 // collects the user-level includes
-// #include <alp/benchmark.hpp>
+#include <alp/backends.hpp>
 #include <alp/blas0.hpp>
 #include <alp/blas1.hpp>
 #include <alp/blas2.hpp>
 #include <alp/blas3.hpp>
-// #include <alp/collectives.hpp>
+#include <alp/config.hpp>
+#include <alp/density.hpp>
+#include <alp/descriptors.hpp>
 #include <alp/exec.hpp>
+#include <alp/identities.hpp>
+#include <alp/imf.hpp>
 #include <alp/init.hpp>
-// #include <alp/io.hpp>
-// #include <alp/ops.hpp>
-// #include <alp/pinnedvector.hpp>
-// #include <alp/properties.hpp>
+#include <alp/io.hpp>
+#include <alp/iomode.hpp>
+#include <alp/ops.hpp>
+#include <alp/rc.hpp>
 #include <alp/rels.hpp>
-// #include <alp/semiring.hpp>
-// #include <alp/spmd.hpp>
+#include <alp/semiring.hpp>
+#include <alp/structures.hpp>
+#include <alp/type_traits.hpp>
+#include <alp/utils.hpp>
+#include <alp/views.hpp>
 
 #ifdef _ALP_BACKEND
 // #pragma message "_ALP_BACKEND defined"
@@ -162,6 +169,7 @@
 // but ONLY if a default backend is define; otherwise, the previous headers
 // contain the relevant definitions (without defaults)
  #include <alp/matrix.hpp>
+ #include <alp/scalar.hpp>
  #include <alp/vector.hpp>
 #endif
 

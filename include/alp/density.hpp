@@ -26,8 +26,6 @@
 #ifndef _H_ALP_DENSITY
 #define _H_ALP_DENSITY
 
-#include <tuple>
-#include <type_traits>
 
 namespace alp {
 

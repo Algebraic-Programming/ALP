@@ -24,20 +24,24 @@
 #define _H_ALP_REFERENCE_BLAS1
 
 #include <functional>
+
+#include <graphblas/utils/iscomplex.hpp> // use from grb
+
 #include <alp/backends.hpp>
-#include <alp/config.hpp>
 #include <alp/density.hpp>
 #include <alp/ops.hpp>
 #include <alp/rc.hpp>
 #include <alp/rels.hpp>
 #include <alp/semiring.hpp>
-#include "scalar.hpp"
-#include "matrix.hpp"
-#include "vector.hpp"
-#include "io.hpp"
+#include <alp/structures.hpp>
+
 #include "blas0.hpp"
 #include "blas2.hpp"
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include "config.hpp"
+#include "io.hpp"
+#include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -309,7 +313,7 @@ namespace alp {
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {
-		return foldr( x, Scalar< IOType >( beta ), monoid );
+		return foldr( x, Scalar< IOType, structures::General, reference >( beta ), monoid );
 	}
 
 	/**
@@ -1972,11 +1976,11 @@ namespace alp {
 		typename IOType, typename IOStructure,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class Ring,
-		Backend backend >
-	RC dot( Scalar< IOType, IOStructure, backend > &x,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &left,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &right,
+		class Ring
+	>
+	RC dot( Scalar< IOType, IOStructure, reference > &x,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			!alp::is_object< InputType1 >::value &&
@@ -1998,12 +2002,11 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename IOType,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
-		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		Backend backend
+		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
 	RC dot( IOType &x,
-		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &left,
-		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, backend > &right,
+		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &left,
+		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &right,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			!alp::is_object< InputType1 >::value &&
@@ -2012,7 +2015,7 @@ namespace alp {
 			alp::is_semiring< Ring >::value,
 		void >::type * const = NULL
 	) {
-		Scalar< IOType, structures::General, backend > res( x );
+		Scalar< IOType, structures::General, reference > res( x );
 		RC rc = alp::dot< descr >( res,
 			left, right,
 			ring.getAdditiveMonoid(),
@@ -2252,7 +2255,7 @@ namespace alp {
 			return SUCCESS;
 		}
 
-		RC rc = alp::set< alp::descriptors::use_index >( permutation, alp::Scalar< IndexType >( 0 ) );
+		RC rc = alp::set< alp::descriptors::use_index >( permutation, alp::Scalar< IndexType, structures::General, reference >( 0 ) );
 
 		typedef Vector< 
 			IndexType, IndexStructure, Density::Dense, 
@@ -2296,12 +2299,11 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename OutputStructure,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
-		class Ring,
-		Backend backend
+		class Ring
 	>
 	RC norm2(
-		Scalar< OutputType, OutputStructure, backend > &x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
+		Scalar< OutputType, OutputStructure, reference > &x,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,
@@ -2320,12 +2322,11 @@ namespace alp {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType,
 		typename InputType, typename InputStructure, typename InputView, typename InputImfR, typename InputImfC,
-		class Ring,
-		Backend backend
+		class Ring
 	>
 	RC norm2(
 		OutputType &x,
-		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
+		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Ring &ring = Ring(),
 		const typename std::enable_if<
 			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,

@@ -45,10 +45,13 @@
 #ifndef _H_ALP_IMF
 #define _H_ALP_IMF
 
-#include <memory>
-#include <vector>
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
+#include <vector>
+
+#include "density.hpp"
+
 
 namespace alp {
 

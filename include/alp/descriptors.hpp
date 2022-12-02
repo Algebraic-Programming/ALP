@@ -24,11 +24,11 @@
  * @date 15 March, 2016
  */
 
-#include <sstream>
-#include <string>
-
 #ifndef _H_ALP_DESCRIPTOR
 #define _H_ALP_DESCRIPTOR
+
+#include <string>
+
 
 namespace alp {
 

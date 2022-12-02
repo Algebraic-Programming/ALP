@@ -31,22 +31,23 @@
 #include <vector>
 
 #include <alp/backends.hpp>
-#include <alp/base/matrix.hpp>
 #include <alp/config.hpp>
+#include <alp/density.hpp>
+#include <alp/imf.hpp>
 #include <alp/ops.hpp>
 #include <alp/rc.hpp>
+#include <alp/structures.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/utils/autodeleter.hpp>
-//#include <alp/utils/pattern.hpp> //for help with dealing with pattern matrix input
-#include <alp/vector.hpp>
-#include <alp/storage.hpp>
-#include <alp/structures.hpp>
-#include <alp/density.hpp>
 #include <alp/views.hpp>
-#include <alp/imf.hpp>
+
+#include <alp/base/matrix.hpp>
+
 #include "functorbasedmatrix.hpp"
+#include "storage.hpp"
 #include "storagebasedmatrix.hpp"
+#include "vector.hpp"
+
 
 namespace alp {
 
