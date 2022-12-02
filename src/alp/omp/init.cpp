@@ -36,7 +36,7 @@ alp::RC alp::init< alp::omp >( const size_t s, const size_t P, void * const data
 	RC rc = alp::SUCCESS;
 	// print output
 	const auto T = config::OMP::threads();
-	std::cerr << "Info: alp::init (omp) called. OpenMP is set to utilise " << T << " threads.\n";
+	std::cout << "Info: alp::init (omp) called. OpenMP is set to utilise " << T << " threads.\n";
 
 	// sanity checks
 	if( P > 1 ) {
@@ -54,7 +54,7 @@ alp::RC alp::init< alp::omp >( const size_t s, const size_t P, void * const data
 
 template<>
 alp::RC alp::finalize< alp::omp >() {
-	std::cerr << "Info: alp::finalize (omp) called.\n";
+	std::cout << "Info: alp::finalize (omp) called.\n";
 	return alp::SUCCESS;
 }
 
