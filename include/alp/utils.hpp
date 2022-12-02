@@ -26,6 +26,7 @@
 #include <assert.h>
 
 #include <cmath>  //fabs
+#include <functional> // modulus
 #include <limits> //numeric_limits
 #include <type_traits>
 
@@ -295,7 +296,21 @@ namespace alp {
 			}
 
 		};
-
+		
+		
+		/**
+		 * Computation of modulus operation \f$ mod(x, n) \f$ based on remainder 
+		 * of division for type \a T.
+		 * Assumes \a T implements: \a operator%, \a operator<, and \a operator+.
+		 */
+		template < typename T >
+		T modulus( const T x, const T n, const T zero) {
+			
+			const T rem = std::modulus( _k, _n );
+			
+			return ( rem < zero ) ? rem + _n : rem;
+		};
+					
 	} // namespace utils
 
 } // namespace alp
