@@ -19,12 +19,16 @@
 #define _H_ALP_OMP_STORAGEBASEDMATRIX
 
 #include <alp/backends.hpp>
-#include <alp/base/matrix.hpp>
-#include <alp/config.hpp>
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/storage.hpp>
+
+#include <alp/amf-based/storagebasedmatrix.hpp>
+
+#include "config.hpp"
+#include "storage.hpp"
+#include "vector.hpp"
+
 
 namespace alp {
 
