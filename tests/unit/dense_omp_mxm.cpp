@@ -20,7 +20,9 @@
 #include <vector>
 
 #include <alp.hpp>
-//#include "../utils/print_alp_containers.hpp"
+#ifndef _DEBUG
+ #include "../utils/print_alp_containers.hpp"
+#endif
 
 using namespace alp;
 
@@ -48,9 +50,11 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
     
 	T temp;
 
+#ifdef _DEBUG
 	print_stdvec_as_matrix("vA", vA, n, n, n);
 	print_stdvec_as_matrix("vB", vB, n, n, n);
 	print_stdvec_as_matrix("vC - PRE", vC, n, n, n);
+#endif
 
 	for( size_t i = 0; i < m; ++i ) {
 		for( size_t j = 0; j < n; ++j ) {
@@ -66,8 +70,9 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
 		}
 	}
 
+#ifdef _DEBUG
 	print_stdvec_as_matrix("vC - POST", vC, n, n, n);
-
+#endif
 }
 
 template< typename Structure, typename T >
@@ -224,13 +229,17 @@ void alp_program( const size_t & n, alp::RC & rc ) {
 	rc = alp::buildMatrix( B, B_data.begin(), B_data.end() );
 	rc = alp::buildMatrix( C, C_data.begin(), C_data.end() );
 
+#ifdef _DEBUG
 	print_matrix("A", A);
 	print_matrix("B", B);
 	print_matrix("C - PRE", C);
+#endif
 
 	rc = alp::mxm( C, A, B, ring );
 
+#ifdef _DEBUG
 	print_matrix("C - POST", C);
+#endif
 
 	stdvec_build_matrix< structures::General >( A_vec, n, n, n, zero, one, one );
 	stdvec_build_matrix< structures::General >( B_vec, n, n, n, zero, one, one );
