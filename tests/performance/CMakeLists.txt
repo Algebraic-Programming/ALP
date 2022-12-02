@@ -82,11 +82,6 @@ add_grb_executables( alp_cholesky_perf alp_cholesky.cpp
 	BACKENDS alp_reference alp_dispatch
 )
 
-#add_grb_executables( alp_cholesky_perf_netliblapack alp_cholesky.cpp
-#	BACKENDS alp_reference alp_dispatch
-#	ADDITIONAL_LINK_LIBRARIES lapack kblas gfortran kmlheaders 
-#)
-
 add_grb_executables( alp_mxm_perf alp_mxm.cpp
 	BACKENDS alp_reference alp_dispatch alp_omp
 )
