@@ -35,6 +35,8 @@
 #include <type_traits>
 
 #include "imf.hpp"
+#include "views.hpp"
+
 
 namespace alp {
 

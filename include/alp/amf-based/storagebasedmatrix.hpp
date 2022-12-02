@@ -19,12 +19,21 @@
 #define _H_ALP_AMF_BASED_STORAGEBASEDMATRIX
 
 #include <alp/backends.hpp>
-#include <alp/base/matrix.hpp>
 #include <alp/config.hpp>
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/storage.hpp>
+
+#include <alp/base/matrix.hpp>
+
+#include "storage.hpp"
+
+/**
+ * @todo This should not happen given the hierarchy of concepts. Fix by splitting
+ * \a internal::Vector from the various vector.hpp
+ */
+ #include <alp/reference/vector.hpp>
+
 
 namespace alp {
 
@@ -303,10 +312,6 @@ namespace alp {
 
 		}; // class StorageBasedMatrix
 
-	} // namespace internal
-
-	/** Definitions of previously declared global methods that operate on ALP Matrix */
-	namespace internal {
 
 		/** Get the reference to the AMF of a storage-based matrix */
 		template<

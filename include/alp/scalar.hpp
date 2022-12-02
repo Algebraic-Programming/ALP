@@ -18,7 +18,10 @@
 #ifndef _H_ALP_SCALAR
 #define _H_ALP_SCALAR
 
-#include "base/config.hpp"
+#include <alp/structures.hpp>
+
+#include "config.hpp"
+
 #include "base/scalar.hpp"
 
 // now include all specialisations contained in the backend directories:
@@ -27,7 +30,7 @@
 #endif
 
 // specify default only if requested during compilation
-#ifdef _ALP_BACKEND
+// #ifdef _ALP_BACKEND
 namespace alp {
 
 	template< typename T, typename Structure = structures::General, enum Backend backend = config::default_backend >
@@ -40,7 +43,7 @@ namespace alp {
 	};
 
 }
-#endif
+// #endif
 
 #endif // end ``_H_ALP_SCALAR''
 

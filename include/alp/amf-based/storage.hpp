@@ -26,10 +26,13 @@
 #ifndef _H_ALP_AMF_BASED_STORAGE
 #define _H_ALP_AMF_BASED_STORAGE
 
+#include <cassert>
 #include <memory>
+
 #include <alp/imf.hpp>
 #include <alp/structures.hpp>
 #include <alp/views.hpp>
+
 
 namespace alp {
 

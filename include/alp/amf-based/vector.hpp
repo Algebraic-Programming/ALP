@@ -24,21 +24,21 @@
 #define _H_ALP_AMF_BASED_VECTOR
 
 
-#include <stdexcept>
 #include <memory>
+#include <stdexcept>
 
 #include <assert.h>
 
-#include <alp/rc.hpp>
 #include <alp/backends.hpp>
-
-#include <alp/imf.hpp>
-#include <alp/matrix.hpp>
 #include <alp/density.hpp>
-#include <alp/storage.hpp>
+#include <alp/imf.hpp>
+#include <alp/rc.hpp>
 #include <alp/views.hpp>
 
 #include <alp/base/vector.hpp>
+
+#include "matrix.hpp"
+#include "storage.hpp"
 
 
 namespace alp {

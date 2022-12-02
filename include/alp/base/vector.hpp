@@ -29,10 +29,11 @@
 #include <utility> //pair
 
 #include <alp/backends.hpp>
+#include <alp/density.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/ops.hpp>
 #include <alp/rc.hpp>
-#include <alp/density.hpp>
+
 
 namespace alp {
 	namespace internal {

@@ -24,6 +24,9 @@
 #define _H_ALP_CONFIG_BASE
 
 #include <cstddef> //size_t
+#ifndef _ALP_NO_STDIO
+ #include <iostream> //std::cout
+#endif
 #include <string>
 
 #include <assert.h>
@@ -31,9 +34,6 @@
 
 #include <alp/backends.hpp>
 
-#ifndef _ALP_NO_STDIO
- #include <iostream> //std::cout
-#endif
 
 // if the user did not define _ALP_BACKEND, set it to the default sequential
 // implementation

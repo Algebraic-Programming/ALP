@@ -27,13 +27,13 @@
 #ifndef _H_ALP_UTILS_AUTO_DELETER
 #define _H_ALP_UTILS_AUTO_DELETER
 
+#include <memory>
 #ifndef _ALP_NO_LIBNUMA
-#include <numa.h>
+ #include <numa.h>
 #endif
 
-#include <memory>
+#include <alp/config.hpp>
 
-#include "alp/config.hpp"
 
 namespace alp {
 

@@ -25,11 +25,17 @@
 
 #include <cstddef>
 
-#include <alp/backends.hpp>
-#include <alp/config.hpp>
-#include <alp/rc.hpp>
-#include <alp/matrix.hpp>
 #include <graphblas/utils/iscomplex.hpp>
+
+#include <alp/backends.hpp>
+#include <alp/rc.hpp>
+
+#include "blas0.hpp"
+#include "blas1.hpp"
+#include "config.hpp"
+#include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_OP_ASSERT( x, y, z )                                           \
 	static_assert( x,                                                          \

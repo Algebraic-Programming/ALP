@@ -26,7 +26,12 @@
 #include <type_traits>
 
 #include <alp/base/io.hpp>
+
+#include "blas1.hpp"
+#include "blas2.hpp"
 #include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -44,6 +49,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
 
 namespace alp {
 

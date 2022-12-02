@@ -25,6 +25,7 @@
 
 #include <alp/base/properties.hpp>
 
+
 namespace alp {
 
 	/** \internal No implementation notes. */
