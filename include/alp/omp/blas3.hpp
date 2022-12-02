@@ -112,29 +112,35 @@ namespace alp {
 				return MISMATCH;
 			}
 
-			const Distribution &da = internal::getAmf( A ).getDistribution();
-			const Distribution &db = internal::getAmf( B ).getDistribution();
-			const Distribution &dc = internal::getAmf( C ).getDistribution();
+			const Distribution_2_5D &da = internal::getAmf( A ).getDistribution();
+			const Distribution_2_5D &db = internal::getAmf( B ).getDistribution();
+			const Distribution_2_5D &dc = internal::getAmf( C ).getDistribution();
+
+			const auto tg_a = da.getThreadGridDims();
+			const auto tg_b = db.getThreadGridDims();
+			const auto tg_c = dc.getThreadGridDims();
+
+			using th_coord_t = typename Distribution_2_5D::ThreadCoords;
 
 			RC rc = SUCCESS;
 
 			#pragma omp parallel for
 			for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
 
-				const auto th_ijk_a = da.getThreadCoords( thread );
-				const auto th_ijk_b = da.getThreadCoords( thread );
-				const auto th_ijk_c = da.getThreadCoords( thread );
+				const th_coord_t th_ijk_a = da.getThreadCoords( thread );
+				const th_coord_t th_ijk_b = da.getThreadCoords( thread );
+				const th_coord_t th_ijk_c = da.getThreadCoords( thread );
 
-				const auto block_grid_dims_a = d.getLocalBlockGridDims( t_coords_a );
-				const auto block_grid_dims_b = d.getLocalBlockGridDims( t_coords_b );
-				const auto block_grid_dims_c = d.getLocalBlockGridDims( t_coords_c );
+				const auto block_grid_dims_a = d.getLocalBlockGridDims( th_ijk_a );
+				const auto block_grid_dims_b = d.getLocalBlockGridDims( th_ijk_b );
+				const auto block_grid_dims_c = d.getLocalBlockGridDims( th_ijk_c );
 
 				RC local_rc = SUCCESS;
 
 				// Broadcast Aij and Bij to all c layers
-				if( t_coords.rt > 0 ) {
+				if( th_ijk_a.rt > 0 ) {
 
-					typename Distribution::ThreadCoord th_ij0_a( t_coords_a.tr, t_coords_a.tc, 0 );
+					th_coord_t th_ij0_a( th_ijk_a.tr, th_ijk_a.tc, 0 );
 
 					for( size_t br = 0; br < block_grid_dims_a.first; ++br ) {
 						for( size_t bc = 0; bc < block_grid_dims_a.second; ++bc ) {
@@ -150,7 +156,7 @@ namespace alp {
 
 					if( local_rc != SUCCESS ) {
 
-						typename Distribution::ThreadCoord th_ij0_b( t_coords_b.tr, t_coords_b.tc, 0 );
+						th_coord_t th_ij0_b( th_ijk_b.tr, th_ijk_b.tc, 0 );
 
 						for( size_t br = 0; br < block_grid_dims_b.first; ++br ) {
 							for( size_t bc = 0; bc < block_grid_dims_b.second; ++bc ) {
@@ -166,25 +172,38 @@ namespace alp {
 				}
 				// End Broadcast of Aij and Bij
 				#pragma omp barrier
+				
+				auto mod = [](const size_t _k, const size_t _n) = {
+					return ( ( _k %= _n ) < 0 ) ? _k + _n : _k;
+				};
+				
+				// TODO from here
+				// size_t s_a = mod( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tr / th_ijk_a.rt, tg_a.tr );
+				// th_coord_t th_isk_a( th_ijk_a.tr, s, th_ijk_a.tr );
 
+				// size_t s_b = mod( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_a.tr / th_ijk_a.rt, tg_a.tr );
+				// th_coord_t th_isk_a( th_ijk_a.tr, s, th_ijk_a.tr );
 
-				// for( size_t br = 0; br < block_grid_dims.first; ++br ) {
-				// 	for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
+				// for( size_t bk = 0; bk < block_grid_dims_a.second; ++bk ) {
+				// 	for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
+				// 		for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
 
-				// 		// Get a sequential matrix view over the block
-				// 		auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
+				// 			// Get a sequential matrix view over the block
+				// 			auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
 
-				// 		// Construct a sequential Scalar container from the input Scalar
-				// 		Scalar< InputType, InputStructure, config::default_sequential_backend > ref_val( *val );
+				// 			// Construct a sequential Scalar container from the input Scalar
+				// 			Scalar< InputType, InputStructure, config::default_sequential_backend > ref_val( *val );
 
-				// 		// Delegate the call to the sequential set implementation
-				// 		local_rc = local_rc ? local_rc : set( refC, ref_val );
+				// 			// Delegate the call to the sequential set implementation
+				// 			local_rc = local_rc ? local_rc : set( refC, ref_val );
 
-				// 		if( local_rc != SUCCESS ) {
-				// 			rc = local_rc;
+				// 			if( local_rc != SUCCESS ) {
+				// 				rc = local_rc;
+				// 			}
 				// 		}
 				// 	}
 				// }
+
 			}
 
 			internal::setInitialized( C, true );
