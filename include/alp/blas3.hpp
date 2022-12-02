@@ -26,6 +26,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/blas3.hpp>
 #endif
+#ifdef _ALP_WITH_OMP
+ #include <alp/omp/blas3.hpp>
+#endif
 
 #endif // end _H_ALP_BLAS3
 

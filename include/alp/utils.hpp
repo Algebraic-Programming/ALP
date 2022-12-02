@@ -300,15 +300,15 @@ namespace alp {
 		
 		/**
 		 * Computation of modulus operation \f$ mod(x, n) \f$ based on remainder 
-		 * of division for type \a T.
+		 * of division for type \a T within range [0, n).
 		 * Assumes \a T implements: \a operator%, \a operator<, and \a operator+.
 		 */
 		template < typename T >
-		T modulus( const T x, const T n, const T zero) {
+		T modulus( const T x, const T n ) {
 			
-			const T rem = std::modulus( _k, _n );
+			const T rem = x % n;
 			
-			return ( rem < zero ) ? rem + _n : rem;
+			return ( rem < static_cast< T >( 0 ) ) ? rem + n : rem;
 		};
 					
 	} // namespace utils

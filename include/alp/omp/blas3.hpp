@@ -28,7 +28,10 @@
 
 #include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
+#include <alp/matrix.hpp>
+#include <alp/amf-based/matrix.hpp>
 #include <alp/structures.hpp>
+#include <alp/storage.hpp>
 
 // Include backend to which sequential work is delegated
 #ifdef _ALP_OMP_WITH_REFERENCE
@@ -36,8 +39,9 @@
  #include <alp/reference/io.hpp>
 #endif
 
-#include "matrix.hpp"
-#include "storage.hpp"
+#ifndef _NDEBUG
+#include "../../../tests/utils/print_alp_containers.hpp"
+#endif
 
 
 namespace alp {
@@ -63,9 +67,9 @@ namespace alp {
 		RC mxm_generic( 
 			alp::Matrix< OutputType, OutputStructure, 
 			Density::Dense, OutputView, OutputImfR, OutputImfC, omp > &C,
-			const alp::Matrix< InputType1, InputStructure1, 
+			alp::Matrix< InputType1, InputStructure1, 
 			Density::Dense, InputView1, InputImfR1, InputImfC1, omp > &A,
-			const alp::Matrix< InputType2, InputStructure2, 
+			alp::Matrix< InputType2, InputStructure2, 
 			Density::Dense, InputView2, InputImfR2, InputImfC2, omp > &B,
 			const Operator &oper,
 			const Monoid &monoid,
@@ -88,7 +92,7 @@ namespace alp {
 				"void)"
 			);
 
-#ifdef _DEBUG
+#ifndef _NDEBUG
 			std::cout << "In alp::internal::mxm_generic (omp)\n";
 #endif
 
@@ -132,8 +136,11 @@ namespace alp {
 
 			RC rc = SUCCESS;
 
-			#pragma omp parallel for
-			for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
+			#pragma omp parallel
+			{			
+				// #pragma omp for
+				// for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
+				const size_t thread = config::OMP::current_thread_ID();
 
 				const th_coord_t th_ijk_a = da.getThreadCoords( thread );
 				const th_coord_t th_ijk_b = db.getThreadCoords( thread );
@@ -149,6 +156,11 @@ namespace alp {
 					|| block_grid_dims_c.second != set_block_grid_dims_b.second 
 					|| set_block_grid_dims_a.second != set_block_grid_dims_b.first 
 				) {
+#ifndef _NDEBUG
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tMismatching local block grid size on set." << std::endl;
+#endif
 					local_rc = MISMATCH;
 				}
 
@@ -160,10 +172,15 @@ namespace alp {
 					for( size_t br = 0; br < set_block_grid_dims_a.first; ++br ) {
 						for( size_t bc = 0; bc < set_block_grid_dims_a.second; ++bc ) {
 
-							auto refAij0 = internal::get_view( A, th_ij0_a, br, bc );
-							auto refAijk = internal::get_view( A, th_ijk_a, br, bc );
+							auto refAij0 = get_view( A, th_ij0_a, br, bc );
+							auto refAijk = get_view( A, th_ijk_a, br, bc );
 
 							local_rc = local_rc ? local_rc : set( refAijk, refAij0 );
+
+#ifndef _NDEBUG
+							print_matrix("refAij0", refAij0);
+							print_matrix("refAijk", refAijk);
+#endif
 
 						}
 					}
@@ -172,42 +189,59 @@ namespace alp {
 
 				if( local_rc == SUCCESS && th_ijk_b.rt > 0 ) {
 
-						th_coord_t th_ij0_b( th_ijk_b.tr, th_ijk_b.tc, 0 );
+					th_coord_t th_ij0_b( th_ijk_b.tr, th_ijk_b.tc, 0 );
 
-						for( size_t br = 0; br < set_block_grid_dims_b.first; ++br ) {
-							for( size_t bc = 0; bc < set_block_grid_dims_b.second; ++bc ) {
+					for( size_t br = 0; br < set_block_grid_dims_b.first; ++br ) {
+						for( size_t bc = 0; bc < set_block_grid_dims_b.second; ++bc ) {
 
-								auto refBij0 = internal::get_view( B, th_ij0_b, br, bc );
-								auto refBijk = internal::get_view( B, th_ijk_b, br, bc );
+							auto refBij0 = internal::get_view( B, th_ij0_b, br, bc );
+							auto refBijk = internal::get_view( B, th_ijk_b, br, bc );
 
-								local_rc = local_rc ? local_rc : set( refBijk, refBij0 );
-							}
+							local_rc = local_rc ? local_rc : set( refBijk, refBij0 );
 						}
 					}
-
 				}
-				// End Broadcast of Aij and Bij
+
+				// Different values for rc could converge here (eg, MISMATCH, FAILED).
+				if( local_rc != SUCCESS ) {
+#ifndef _NDEBUG
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tIssues replicating input matrices." << std::endl;
+#endif
+					rc = local_rc;
+				}
+
+				// } // End Broadcast of Aij and Bij
 				#pragma omp barrier
 				
-				if( local_rc == SUCCESS ) {
+				if( rc == SUCCESS ) {
 					
+					// #pragma omp for
+					// for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
+
 					// Initialize circular shifts at stride of Rt
 					size_t s_a = utils::modulus( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tc / tg_a.rt, tg_a.tc );
 					size_t s_b = utils::modulus( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_b.tr / tg_b.rt, tg_b.tr );
 
-					// Accumulate remaining local c-dimension factor
+					// Per-c-dimensional-layer partial computation
 					for( size_t r = 0; r < tg_a.tc / tg_a.rt; ++r ) {
 
 						const th_coord_t th_isk_a( th_ijk_a.tr, s_a, th_ijk_a.rt );
 						const th_coord_t th_sjk_b( s_b, th_ijk_b.tc, th_ijk_b.rt );
 
-						const auto mxm_block_grid_dims_a = d.getLocalBlockGridDims( th_isk_a );
-						const auto mxm_block_grid_dims_b = d.getLocalBlockGridDims( th_sjk_b );
+						const auto mxm_block_grid_dims_a = da.getLocalBlockGridDims( th_isk_a );
+						const auto mxm_block_grid_dims_b = db.getLocalBlockGridDims( th_sjk_b );
 
 						if( block_grid_dims_c.first != mxm_block_grid_dims_a.first 
 							|| block_grid_dims_c.second != mxm_block_grid_dims_b.second 
 							|| mxm_block_grid_dims_a.second != mxm_block_grid_dims_b.first 
 						) {
+#ifndef _NDEBUG
+							#pragma omp critical
+							std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+								"\tMismatching local block grid size on mxm." << std::endl;
+#endif
 							local_rc = MISMATCH;
 						}
 
@@ -235,15 +269,28 @@ namespace alp {
 							// Circular shift downwards for B
 							s_b = utils::modulus( s_b + 1, tg_b.tr );
 
-						} else {
-							break;
-						}
+						} 
+						// else {
+						// 	break;
+						// }
 
 					} 
+					// }
+				}
 
-					// End layer-by-layer partial computation
-					#pragma omp barrier
+				// Different values for rc could converge here (eg, MISMATCH, FAILED).
+				if( local_rc != SUCCESS ) {
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tIssues with local mxm computations." << std::endl;
+					rc = local_rc;
+				}
 
+				// End layer-by-layer partial computation
+				#pragma omp barrier
+
+				if( rc == SUCCESS ) {
+					
 					// Global c-dimension reduction
 					// (Consider if rt > 0 critical section?)
 					if ( local_rc == SUCCESS && th_ijk_c.rt == 0 ) {
@@ -263,9 +310,9 @@ namespace alp {
 								}
 							}
 
-							if( local_rc != SUCCESS ) {
-								break;
-							}
+							// if( local_rc != SUCCESS ) {
+							// 	break;
+							// }
 						}
 
 					}
@@ -273,6 +320,9 @@ namespace alp {
 				
 				// Different values for rc could converge here (eg, MISMATCH, FAILED).
 				if( local_rc != SUCCESS ) {
+					#pragma omp critical
+					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
+						"\tIssues with final reduction." << std::endl;
 					rc = local_rc;
 				}
 
@@ -312,44 +362,77 @@ namespace alp {
 	 * @param phase 	The execution phase.
 	 */
 	template<
-		typename OutputStructMatT,
-		typename InputStructMatT1,
-		typename InputStructMatT2,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename OutputView, 
+		typename OutputImfR, typename OutputImfC,
+		typename InputStructure1, typename InputView1, 
+		typename InputImfR1, typename InputImfC1,
+		typename InputStructure2, typename InputView2, 
+		typename InputImfR2, typename InputImfC2,
 		class Semiring
 	>
-	RC mxm( OutputStructMatT & C,
-		const InputStructMatT1 & A,
-		const InputStructMatT2 & B,
+	RC mxm( 
+		alp::Matrix< OutputType, OutputStructure, 
+		Density::Dense, OutputView, OutputImfR, OutputImfC, omp > &C,
+		alp::Matrix< InputType1, InputStructure1, 
+		Density::Dense, InputView1, InputImfR1, InputImfC1, omp > &A,
+		alp::Matrix< InputType2, InputStructure2, 
+		Density::Dense, InputView2, InputImfR2, InputImfC2, omp > &B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value,
-			void >::type * const = NULL ) {
+		const typename std::enable_if< 
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_semiring< Semiring >::value,
+			void 
+		>::type * const = NULL 
+	) {
 		(void)phase;
 
-		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
+		return internal::mxm_generic< false >( 
+			C, A, B,
+			ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid()
+		);
+
 	}
 
 	/**
 	 * Dense Matrix-Matrix multiply between structured matrices.
 	 * Version with additive monoid and multiplicative operator
 	 */
-	template< typename OutputStructMatT, 
-		typename InputStructMatT1,
-		typename InputStructMatT2,
+	template< 
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename OutputView, 
+		typename OutputImfR, typename OutputImfC,
+		typename InputStructure1, typename InputView1, 
+		typename InputImfR1, typename InputImfC1,
+		typename InputStructure2, typename InputView2, 
+		typename InputImfR2, typename InputImfC2,
 		class Operator, class Monoid
 	>
-	RC mxm( OutputStructMatT & C,
-		const InputStructMatT1 & A,
-		const InputStructMatT2 & B,
+	RC mxm( 
+		alp::Matrix< OutputType, OutputStructure, 
+		Density::Dense, OutputView, OutputImfR, OutputImfC, omp > &C,
+		alp::Matrix< InputType1, InputStructure1, 
+		Density::Dense, InputView1, InputImfR1, InputImfC1, omp > &A,
+		alp::Matrix< InputType2, InputStructure2, 
+		Density::Dense, InputView2, InputImfR2, InputImfC2, omp > &B,
 		const Operator & mulOp,
 		const Monoid & addM,
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value &&
-		                               alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const typename std::enable_if< 
+			!alp::is_object< OutputType >::value &&
+			!alp::is_object< InputType1 >::value &&
+			!alp::is_object< InputType2 >::value &&
+			alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
+			void 
+		>::type * const = NULL 
+	) {
 		(void)phase;
 
 		return internal::mxm_generic< false >( C, A, B, mulOp, addM, Monoid() );
+	
 	}
 
 } // end namespace ``alp''
