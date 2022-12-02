@@ -490,46 +490,71 @@ namespace alp {
 	 * @param phase 	The execution phase.
 	 */
 	template<
-		typename OutputStructMatT,
-		typename InputStructMatT1,
-		typename InputStructMatT2,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename OutputView, 
+		typename OutputImfR, typename OutputImfC,
+		typename InputStructure1, typename InputView1, 
+		typename InputImfR1, typename InputImfC1,
+		typename InputStructure2, typename InputView2, 
+		typename InputImfR2, typename InputImfC2,
 		class Semiring
 	>
 	RC mxm( 
-		OutputStructMatT & C,
-		const InputStructMatT1 & A,
-		const InputStructMatT2 & B,
+		alp::Matrix< OutputType, OutputStructure, 
+		Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const alp::Matrix< InputType1, InputStructure1, 
+		Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+		const alp::Matrix< InputType2, InputStructure2, 
+		Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const std::enable_if_t< 
-			! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value
-		> * const = NULL 
+		const typename std::enable_if< 
+			!alp::is_object< OutputType >::value && 
+			!alp::is_object< InputType1 >::value && 
+			!alp::is_object< InputType2 >::value && 
+			alp::is_semiring< Semiring >::value,
+			void 
+		>::type * const = NULL 
 	) {
 		(void)phase;
 
-		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
+		return internal::mxm_generic< false >( 
+			C, A, B, 
+			ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() 
+		);
 	}
 
 	/**
 	 * Dense Matrix-Matrix multiply between structured matrices.
 	 * Version with additive monoid and multiplicative operator
 	 */
-	template< typename OutputStructMatT, 
-		typename InputStructMatT1,
-		typename InputStructMatT2,
+	template< 
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename OutputView, 
+		typename OutputImfR, typename OutputImfC,
+		typename InputStructure1, typename InputView1, 
+		typename InputImfR1, typename InputImfC1,
+		typename InputStructure2, typename InputView2, 
+		typename InputImfR2, typename InputImfC2,
 		class Operator, class Monoid
 	>
 	RC mxm( 
-		OutputStructMatT & C,
-		const InputStructMatT1 & A,
-		const InputStructMatT2 & B,
+		alp::Matrix< OutputType, OutputStructure, 
+		Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
+		const alp::Matrix< InputType1, InputStructure1, 
+		Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
+		const alp::Matrix< InputType2, InputStructure2, 
+		Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const Operator & mulOp,
 		const Monoid & addM,
 		const PHASE &phase = NUMERICAL,
-		const std::enable_if_t< 
-			! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value &&
-		    alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value
-		> * const = NULL 
+		const typename std::enable_if< 
+			!alp::is_object< OutputType >::value && 
+			!alp::is_object< InputType1 >::value && 
+			!alp::is_object< InputType2 >::value &&
+			alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
+			void 
+		>::type * const = NULL 
 	) {
 		(void)phase;
 
