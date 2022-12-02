@@ -26,15 +26,18 @@
 #include <algorithm>   // for std::min/max
 #include <type_traits> // for std::enable_if
 
-#include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
-#include <alp/matrix.hpp>
-#include <alp/amf-based/matrix.hpp>
 #include <alp/structures.hpp>
-#include <alp/storage.hpp>
+
+// #include <alp/amf-based/matrix.hpp>
+#include <alp/base/blas3.hpp>
+
+#include "matrix.hpp"
+#include "storage.hpp"
 
 // Include backend to which sequential work is delegated
 #ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/reference/blas2.hpp>
  #include <alp/reference/blas3.hpp>
  #include <alp/reference/io.hpp>
 #endif

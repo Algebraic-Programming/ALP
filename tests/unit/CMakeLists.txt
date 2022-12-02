@@ -270,7 +270,7 @@ add_grb_executables( dense_omp_matrix dense_omp_matrix.cpp
 )
 
 add_grb_executables( dense_omp_mxm dense_omp_mxm.cpp
-	BACKENDS alp_reference alp_omp
+	BACKENDS alp_omp
 )
 
 add_grb_executables( dense_outer dense_outer.cpp
