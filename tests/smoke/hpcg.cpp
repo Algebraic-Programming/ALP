@@ -70,20 +70,20 @@ template< typename T > void print_norm( const grb::Vector< T > &r, const char * 
 #include <utils/print_vec_mat.hpp>
 
 //========== MAIN PROBLEM PARAMETERS =========
-// values modifiable via cmd line args: default set as in reference HPCG
-constexpr size_t PHYS_SYSTEM_SIZE_DEF{ 16UL };
-constexpr size_t PHYS_SYSTEM_SIZE_MIN{ 4UL };
-constexpr size_t DEF_COARSENING_LEVELS{ 1U };
-constexpr size_t MAX_COARSENING_LEVELS{ 4U };
-constexpr size_t MAX_ITERATIONS_DEF{ 56UL };
-constexpr size_t SMOOTHER_STEPS_DEF{ 1 };
+// default simulation parameters, set as in reference HPCG
+// users can input different ones via the cmd line
+constexpr size_t PHYS_SYSTEM_SIZE_DEF = 16UL;
+constexpr size_t PHYS_SYSTEM_SIZE_MIN = 2UL;
+constexpr size_t MAX_COARSENING_LEVELS = 3U;
+constexpr size_t MAX_ITERATIONS_DEF = 56UL;
+constexpr size_t SMOOTHER_STEPS_DEF = 1;
 
-// internal values
-constexpr double SYSTEM_DIAG_VALUE { 26.0 };
-constexpr double SYSTEM_NON_DIAG_VALUE { -1.0 };
-constexpr size_t BAND_WIDTH_3D { 13UL };
-constexpr size_t HALO_RADIUS { 1U };
-constexpr double MAX_NORM { 4.0e-14 };
+// internal values defining the simulated physical system
+constexpr double SYSTEM_DIAG_VALUE = 26.0;
+constexpr double SYSTEM_NON_DIAG_VALUE = -1.0;
+constexpr size_t BAND_WIDTH_3D = 13UL;
+constexpr size_t HALO_RADIUS = 1U;
+constexpr double MAX_NORM = 4.0e-14;
 //============================================
 
 using namespace grb;
@@ -494,7 +494,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
 		.add_optional_argument( "--nz", sim_in.nz, PHYS_SYSTEM_SIZE_DEF, "physical system size along z" )
-		.add_optional_argument( "--max-coarse-levels", sim_in.max_coarsening_levels, DEF_COARSENING_LEVELS,
+		.add_optional_argument( "--max-coarse-levels", sim_in.max_coarsening_levels, MAX_COARSENING_LEVELS,
 			"maximum level for coarsening; 0 means no coarsening; note: actual level may be limited"
 			" by the minimum system dimension" )
 		.add_optional_argument( "--test-rep", sim_in.inner_test_repetitions, grb::config::BENCHMARKING::inner(),
