@@ -104,6 +104,9 @@ namespace alp {
 
 			private:
 
+				/** The distribution of the vector among threads. */
+				Distribution_2_5D distr;
+
 				/** The number of buffers. */
 				size_t num_buffers;
 
@@ -149,7 +152,8 @@ namespace alp {
 				Vector(
 					const Distribution_2_5D &d,
 					const size_t cap = 0
-				) : num_buffers( d.getNumberOfThreads() ),
+				) : distr( d ),
+					num_buffers( d.getNumberOfThreads() ),
 					containers( num_buffers ),
 					initialized( false ) {
 
@@ -165,47 +169,54 @@ namespace alp {
 						throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 					}
 
-					#pragma omp parallel for
-					for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
-						const auto t_coords = d.getThreadCoords( thread );
-						const auto block_grid_dims = d.getLocalBlockGridDims( t_coords );
+					#pragma omp parallel
+					{
+						const size_t thread = config::OMP::current_thread_ID();
 
-						// Assuming that all blocks are of the same size
-						const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
+						const auto t_coords = d.getThreadCoords( thread );
+
+						if ( d.isActiveThread( t_coords ) ) {
+
+							const auto block_grid_dims = d.getLocalBlockGridDims( t_coords );
+
+							// Assuming that all blocks are of the same size
+							const size_t alloc_size = block_grid_dims.first * block_grid_dims.second * d.getBlockSize();
 
 #ifdef DEBUG
-						#pragma omp critical
-						{
-							if( thread != config::OMP::current_thread_ID() ) {
-								std::cout << "Warning: thread != OMP::current_thread_id()\n";
+							#pragma omp critical
+							{
+								if( thread != config::OMP::current_thread_ID() ) {
+									std::cout << "Warning: thread != OMP::current_thread_id()\n";
+								}
+								std::cout << "Thread with global coordinates tr = " << t_coords.tr << " tc = " << t_coords.tc
+									<< " on OpenMP thread " << config::OMP::current_thread_ID()
+									<< " allocating buffer of " << alloc_size << " elements "
+									<< " holding " << block_grid_dims.first << " x " << block_grid_dims.second << " blocks.\n";
 							}
-							std::cout << "Thread with global coordinates tr = " << t_coords.tr << " tc = " << t_coords.tc
-								<< " on OpenMP thread " << config::OMP::current_thread_ID()
-								<< " allocating buffer of " << alloc_size << " elements "
-								<< " holding " << block_grid_dims.first << " x " << block_grid_dims.second << " blocks.\n";
-						}
 #endif
 
-						// TODO: Implement allocation properly
-						buffers[ thread ] = new ( std::nothrow ) value_type[ alloc_size ];
+							// TODO: Implement allocation properly
+							buffers[ thread ] = new ( std::nothrow ) value_type[ alloc_size ];
 
-						if( buffers[ thread ] == nullptr ) {
-							throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
-						}
-
-						// Reserve space for all internal container wrappers to avoid re-allocation
-						containers[ thread ].reserve( block_grid_dims.first * block_grid_dims.second );
-
-						// Populate the array of internal container wrappers
-						for( size_t br = 0; br < block_grid_dims.first; ++br ) {
-							for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
-								const size_t offset = d.getBlocksOffset( t_coords, br, bc );
-								containers[ thread ].emplace_back( &( buffers[ thread ][ offset ] ), d.getBlockSize() );
+							if( buffers[ thread ] == nullptr ) {
+								throw std::runtime_error( "Could not allocate memory during alp::Vector<omp> construction." );
 							}
-						}
 
-						// Ensure that the array contains the expected number of containers
-						assert( containers[ thread ].size() == block_grid_dims.first * block_grid_dims.second );
+							// Reserve space for all internal container wrappers to avoid re-allocation
+							containers[ thread ].reserve( block_grid_dims.first * block_grid_dims.second );
+
+							// Populate the array of internal container wrappers
+							for( size_t br = 0; br < block_grid_dims.first; ++br ) {
+								for( size_t bc = 0; bc < block_grid_dims.second; ++bc ) {
+									const size_t offset = d.getBlocksOffset( t_coords, br, bc );
+									containers[ thread ].emplace_back( &( buffers[ thread ][ offset ] ), d.getBlockSize() );
+								}
+							}
+
+							// Ensure that the array contains the expected number of containers
+							assert( containers[ thread ].size() == block_grid_dims.first * block_grid_dims.second );
+						
+						} // End active threads allocation
 					}
 				}
 
@@ -277,9 +288,14 @@ namespace alp {
 				 */
 				~Vector() {
 					if( buffers != nullptr ) {
-						for( size_t i = 0; i < num_buffers; ++i ) {
-							if( buffers[ i ] != nullptr ) {
-								delete buffers[ i ];
+						#pragma omp parallel
+						{
+							const size_t thread = config::OMP::current_thread_ID();
+
+							if ( distr.isActiveThread( thread ) ) {
+								if( buffers[ thread ] != nullptr ) {
+									delete [] buffers[ thread ];
+								}
 							}
 						}
 						delete [] buffers;
