@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <numeric> //iota
 #include <iostream>
 #include <sstream>
 
@@ -77,26 +76,26 @@ namespace alp {
 			const IndexType m = nrows( H );
 			const IndexType n = ncols( H );
 
-			//     v=copy(A0[i+d:,i])
+			// v=copy(A0[i+d:,i])
 			auto a = get_view( H, utils::range( i + d, m ), i );
 			Vector< D > v( m - ( i + d ) );
 			rc = rc ? rc : alp::set( v, a );
 
-			//     alpha=v[0]/abs(v[0])
+			// alpha=v[0]/abs(v[0])
 			Scalar< D > alpha( zero );
 			auto v0 = get_view( v, utils::range( 0, 1 ) );
 			rc = rc ? rc : foldl( alpha, v0, ring.getAdditiveMonoid() );
 			rc = rc ? rc : foldl( alpha, Scalar< D >( std::abs( *alpha ) ), divide );
 
-			//     alpha=alpha*norm(v)
+			// alpha=alpha*norm(v)
 			Scalar< D > norm_v1( zero );
 			rc = rc ? rc : norm2( norm_v1, v, ring );
 			rc = rc ? rc : foldl( alpha, norm_v1, ring.getMultiplicativeOperator() );
 
-			//     v[0]=v[0]-alpha
+			// v[0]=v[0]-alpha
 			rc = rc ? rc : foldl( v0, alpha, minus );
 
-			//     v=v/norm(v)
+			// v=v/norm(v)
 			Scalar< D > norm_v2( zero );
 			rc = rc ? rc : norm2( norm_v2, v, ring );
 			rc = rc ? rc : foldl( v, norm_v2, divide );
@@ -108,13 +107,13 @@ namespace alp {
 			rc = rc ? rc : alp::set( reflector, vvh );
 			rc = rc ? rc : foldl( reflector, Scalar< D > ( -2 ), ring.getMultiplicativeOperator() );
 
-			//     A0=P.dot(A0)
+			// A0=P.dot(A0)
 			auto Hupdate = get_view( H, utils::range( i + d, m ), utils::range( 0, n ) );
 			Matrix< D, structures::General, Dense > Temp1( m - ( i + d ) , n );
 			rc = rc ? rc : alp::set( Temp1, Hupdate );
 			rc = rc ? rc : mxm( Hupdate, reflector, Temp1, ring );
 
-			//     Uk=Uk.dot(P)
+			// Uk=Uk.dot(P)
 			auto Uupdate = get_view< structures::OrthogonalColumns >( U, utils::range( 0, m ), utils::range( i + d, m ) );
 			Matrix< D, structures::OrthogonalColumns, Dense > Temp2( m, m - ( i + d ) );
 			rc = rc ? rc : alp::set( Temp2, Uupdate );

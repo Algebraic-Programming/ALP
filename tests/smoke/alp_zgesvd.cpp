@@ -88,31 +88,31 @@ std::vector< T >  generate_rectangular_matrix_data(
 }
 
 template<
-	typename D,
-	typename GenType,
-	typename GenView,
-	typename GenImfR,
-	typename GenImfC,
-	typename UType,
-	typename UView,
-	typename UImfR,
-	typename UImfC,
-	typename BType,
-	typename BView,
-	typename BImfR,
-	typename BImfC,
-	typename VType,
-	typename VView,
-	typename VImfR,
-	typename VImfC,
+	typename MatH,
+	typename MatU,
+	typename MatS,
+	typename MatV,
+	typename D = typename MatH::value_type,
 	class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
-	class Minus = operators::subtract< D >
-	>
+	class Minus = operators::subtract< D >,
+	std::enable_if_t<
+		is_matrix< MatH >::value &&
+		is_matrix< MatU >::value &&
+		is_matrix< MatS >::value &&
+		is_matrix< MatV >::value &&
+		structures::is_a< typename MatH::structure, structures::General >::value &&
+		structures::is_a< typename MatU::structure, structures::Orthogonal >::value &&
+		structures::is_a< typename MatS::structure, structures::RectangularDiagonal >::value &&
+		structures::is_a< typename MatV::structure, structures::Orthogonal >::value &&
+		is_semiring< Ring >::value &&
+		is_operator< Minus >::value
+	> * = nullptr
+>
 RC check_svd_solution(
-	Matrix< D, GenType, alp::Dense, GenView, GenImfR, GenImfC > &H,
-	Matrix< D, UType, alp::Dense, UView, UImfR, UImfC > &U,
-	Matrix< D, BType, alp::Dense, BView, BImfR, BImfC > &B,
-	Matrix< D, VType, alp::Dense, VView, VImfR, VImfC > &V,
+	MatH &H,
+	MatU &U,
+	MatS &S,
+	MatV &V,
 	const Ring &ring = Ring(),
 	const Minus &minus = Minus()
 ) {
@@ -129,27 +129,27 @@ RC check_svd_solution(
 	std::cout << " input:\n";
 	print_matrix( "  H  ", H );
 	print_matrix( "  U  ", U );
-	print_matrix( "  B  ", B );
+	print_matrix( "  S  ", S );
 	print_matrix( "  V  ", V );
 	std::cout << " ********************\n";
 #endif
 
- 	alp::Matrix< D, GenType, alp::Density::Dense > UB( m, n );
-	// UB = U * B
-	rc = rc ? rc : set( UB, zero );
-	rc = rc ? rc : mxm( UB, U, B, ring );
+	MatH US( m, n );
+	// UB = U * S
+	rc = rc ? rc : set( US, zero );
+	rc = rc ? rc : mxm( US, U, S, ring );
 
- 	alp::Matrix< D, GenType, alp::Density::Dense > UBV( m, n );
-	// UBV = U * B * V
-	rc = rc ? rc : set( UBV, zero );
-	rc = rc ? rc : mxm( UBV, UB, V, ring );
+	MatH USV( m, n );
+	// USV = U * S * V
+	rc = rc ? rc : set( USV, zero );
+	rc = rc ? rc : mxm( USV, US, V, ring );
 
 
 #ifdef DEBUG
-	print_matrix( " UBV ", UBV );
+	print_matrix( " USV ", USV );
 #endif
 
-	rc = foldl( UBV, H, minus );
+	rc = foldl( USV, H, minus );
 
 	//Frobenius norm
 	D fnorm = ring.template getZero< D >();
@@ -159,12 +159,12 @@ RC check_svd_solution(
 			(void) j;
 			internal::foldl( fnorm, val * val, ring.getAdditiveOperator() );
 		},
-		UBV
+		USV
 	);
 	fnorm = std::sqrt( fnorm );
 
 #ifdef DEBUG
-	std::cout << " FrobeniusNorm(UBV-H) = " << std::abs( fnorm ) << "\n";
+	std::cout << " FrobeniusNorm(USV-H) = " << std::abs( fnorm ) << "\n";
 #endif
 	if( tol < std::abs( fnorm ) ) {
 		std::cout << "The Frobenius norm is too large.\n";
@@ -199,7 +199,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		//const size_t K = std::min( N, M );
 
 		alp::Matrix< ScalarType, General > H( M, N );
-		alp::Matrix< ScalarType, structures::RectangularDiagonal > B( M, N );
+		alp::Matrix< ScalarType, structures::RectangularDiagonal > S( M, N );
 		alp::Matrix< ScalarType, structures::Orthogonal > U( M, M );
 		alp::Matrix< ScalarType, structures::Orthogonal > V( N, N );
 		{
@@ -211,15 +211,15 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 		print_matrix( " input matrix H ", H );
 #endif
 
-		rc = rc ? rc : algorithms::svd( H, U, B, V, ring );
+		rc = rc ? rc : algorithms::svd( H, U, S, V, ring );
 
 #ifdef DEBUG
 		print_matrix( "  U(out) ", U );
-		print_matrix( "  B(out) ", B );
+		print_matrix( "  S(out) ", S );
 		print_matrix( "  V(out) ", V );
 #endif
 
-		rc = check_svd_solution( H, U, B, V, ring );
+		rc = check_svd_solution( H, U, S, V, ring );
 		if( rc != SUCCESS ) {
 			std::cout << "Error: solution numerically wrong\n";
 			return;

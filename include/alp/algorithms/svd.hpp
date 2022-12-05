@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <numeric> //iota
 #include <iostream>
 #include <sstream>
 
@@ -34,22 +33,23 @@ namespace alp {
 		// a more stable implementations is needed
 		// todo: move to utils?
 		template<
-			typename D = double,
-			typename StruG,
-			typename ViewG,
-			typename ImfRG,
-			typename ImfCG,
-			typename Struv,
-			typename Viewv,
-			typename ImfRv,
-			typename ImfCv,
+			typename MatG,
+			typename VecV,
+			typename D = typename MatG::value_type,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
-			class Divide = operators::divide< D >
+			class Divide = operators::divide< D >,
+			std::enable_if_t<
+				is_matrix< MatG >::value &&
+				is_vector< VecV >::value &&
+				is_semiring< Ring >::value &&
+				is_operator< Minus >::value &&
+				is_operator< Divide >::value
+			> * = nullptr
 		>
 		RC Givens(
-			Matrix< D, StruG, Dense, ViewG, ImfRG, ImfCG > &G,
-			Vector< D, Struv, Dense, Viewv, ImfRv, ImfCv > &v,
+			MatG &G,
+			VecV &v,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -94,41 +94,29 @@ namespace alp {
 
 		/** Golub-Kahan SVD step */
 		template<
-			typename D = double,
-			typename StruB,
-			typename ViewB,
-			typename ImfRB,
-			typename ImfCB,
-			typename StruU,
-			typename ViewU,
-			typename ImfRU,
-			typename ImfCU,
-			typename StruV,
-			typename ViewV,
-			typename ImfRV,
-			typename ImfCV,
+			typename MatB,
+			typename MatU,
+			typename MatV,
+			typename D = typename MatB::value_type,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
-				structures::is_a< StruB, structures::General >::value &&
-				(
-					structures::is_a< StruU, structures::OrthogonalRows >::value ||
-					structures::is_a< StruU, structures::OrthogonalColumns >::value
-				) &&
-				(
-					structures::is_a< StruV, structures::OrthogonalRows >::value ||
-					structures::is_a< StruV, structures::OrthogonalColumns >::value
-				) &&
+				is_matrix< MatB >::value &&
+				is_matrix< MatU >::value &&
+				is_matrix< MatV >::value &&
+				structures::is_a< typename MatB::structure, structures::General >::value &&
+				structures::is_a< typename MatU::structure, structures::OrthogonalColumns >::value &&
+				structures::is_a< typename MatV::structure, structures::OrthogonalRows >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
 			> * = nullptr
 		>
 		RC gk_svd_step(
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
-			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
-			Matrix< D, StruV, Dense, ViewV, ImfRV, ImfCV > &V,
+			MatU &U,
+			MatB &B,
+			MatV &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -157,9 +145,9 @@ namespace alp {
 			auto t12 = get_view( BEndSquare, 0, utils::range( 1, 2 ) );
 			auto t22 = get_view( BEndSquare, 1, utils::range( 1, 2 ) );
 
-			Scalar< D > llabmda( zero );
-			rc = rc ? rc : alp::foldl( llabmda, tdiag, ring.getAdditiveMonoid() );
-			rc = rc ? rc : alp::foldl( llabmda, alp::Scalar< D >( 2 ), divide );
+			Scalar< D > llambda( zero );
+			rc = rc ? rc : alp::foldl( llambda, tdiag, ring.getAdditiveMonoid() );
+			rc = rc ? rc : alp::foldl( llambda, alp::Scalar< D >( 2 ), divide );
 
 			Scalar< D > bb( zero );
 			rc = rc ? rc : alp::foldl( bb, t11, ring.getAdditiveMonoid() );
@@ -185,9 +173,9 @@ namespace alp {
 			rc = rc ? rc : alp::foldl( t22scal, t22, ring.getAdditiveMonoid() );
 
 			if ( std::real( *t11scal ) > std::real( *t22scal ) ) {
-				rc = rc ? rc : alp::foldl( llabmda, bb, minus );
+				rc = rc ? rc : alp::foldl( llambda, bb, minus );
 			} else {
-				rc = rc ? rc : alp::foldl( llabmda, bb, ring.getAdditiveOperator() );
+				rc = rc ? rc : alp::foldl( llambda, bb, ring.getAdditiveOperator() );
 			}
 			// end of get lambda
 
@@ -200,7 +188,7 @@ namespace alp {
 			rc = rc ? rc : alp::foldl( rotvec, b00star, ring.getMultiplicativeOperator() );
 
 			auto rotvec0 = get_view( rotvec, utils::range( 0, 1 ) );
-			rc = rc ? rc : alp::foldl( rotvec0, llabmda, minus );
+			rc = rc ? rc : alp::foldl( rotvec0, llambda, minus );
 
 			Matrix< D, structures::Square, Dense > G( 2, 2 );
 			rc = rc ? rc : alp::set( G, zero );
@@ -258,35 +246,29 @@ namespace alp {
 
 		/** Golub-Khan SVD algorithm */
 		template<
-			typename D = double,
-			typename StruB,
-			typename ViewB,
-			typename ImfRB,
-			typename ImfCB,
-			typename StruU,
-			typename ViewU,
-			typename ImfRU,
-			typename ImfCU,
-			typename StruV,
-			typename ViewV,
-			typename ImfRV,
-			typename ImfCV,
+			typename MatB,
+			typename MatU,
+			typename MatV,
+			typename D = typename MatB::value_type,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
-				structures::is_a< StruB, structures::General >::value &&
-				structures::is_a< StruU, structures::Orthogonal >::value &&
-				structures::is_a< StruV, structures::Orthogonal >::value &&
+				is_matrix< MatB >::value &&
+				is_matrix< MatU >::value &&
+				is_matrix< MatV >::value &&
+				structures::is_a< typename MatB::structure, structures::General >::value &&
+				structures::is_a< typename MatU::structure, structures::Orthogonal >::value &&
+				structures::is_a< typename MatV::structure, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
 			> * = nullptr
 		>
 		RC svd_solve(
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
-			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
-			Matrix< D, StruV, Dense, ViewV, ImfRV, ImfCV > &V,
+			MatU &U,
+			MatB &B,
+			MatV &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -301,7 +283,7 @@ namespace alp {
 			const size_t k = std::min( m, n );
 
 			const double tol = 1.e-12;
-			const size_t maxit = k*5;
+			const size_t maxit = k * 5;
 
 			auto Bsupsquare =  get_view( B, utils::range( 0, k - 1 ) , utils::range( 1, k ) );
 			auto superdiagonal = get_view< alp::view::diagonal >( Bsupsquare );
@@ -311,18 +293,15 @@ namespace alp {
 
 			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring, minus, divide );
 
-			// add bidiagonal struct
 			// eliminate superdiagonal elements via Givens rotations
 			for( size_t i = 0; i < maxit; ++i ) {
-				// todo: replace convergenve tests with absolute tolerance cehck
-				//      with reltive tolerance checks
-
+				// todo: In convergence test: replace absolute with relative tolerance check
 				// todo: check for zeroes in diagonal, if any do Givens rotatations
 				//      to move the zero from diagonal to superdiagonal
 				//      (no likely to affect randomly generated tests)
 
-				// check for zeros in superdiagonaldiagonal, if any,
-				// move i1 and i2 to bound non-zero part of superdiagonaldiagonal
+				// check for zeros in superdiagonal, if any,
+				// move i1 and i2 to bound non-zero part of superdiagonal
 				for( ; i1 < i2; ++i1 ) {
 					auto B_l = get_view( superdiagonal, utils::range( i1, i1 + 1 ) );
 					Scalar< D > bnorm( zero );
@@ -384,7 +363,7 @@ namespace alp {
 
 		/**
 		 * Computes singular value decomposition (inplace) of a
-		 * general matrix \f$H = U B V \f$
+		 * general matrix \f$H(input) = U B V \f$
 		 * where \a H is general (complex or real),
 		 * \a U orthogonal and \a V are orthogonal, \a B is nonzero only on diagonal
 		 * and it contains positive singular values.
