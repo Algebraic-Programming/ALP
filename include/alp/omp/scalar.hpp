@@ -24,14 +24,14 @@
 
 #include <assert.h>
 
-#include <alp/rc.hpp>
 #include <alp/backends.hpp>
-
 #include <alp/density.hpp>
+#include <alp/rc.hpp>
 #include <alp/structures.hpp>
 #include <alp/views.hpp>
 
 #include <alp/base/scalar.hpp>
+
 
 namespace alp {
 

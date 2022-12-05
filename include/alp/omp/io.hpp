@@ -24,7 +24,10 @@
 #define _H_ALP_OMP_IO
 
 #include <alp/base/io.hpp>
-#include <alp/matrix.hpp>
+
+#include "matrix.hpp"
+#include "scalar.hpp"
+#include "storage.hpp"
 
 // Include backend to which sequential work is delegated
 #ifdef _ALP_OMP_WITH_REFERENCE

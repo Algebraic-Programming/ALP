@@ -24,9 +24,12 @@
 #define _H_ALP_OMP_EXEC
 
 #include <alp/backends.hpp>
-#include <alp/base/exec.hpp>
-#include <alp/reference/init.hpp>
 
+#include <alp/base/exec.hpp>
+
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/reference/init.hpp>
+#endif
 namespace alp {
 
 	/**
