@@ -746,20 +746,6 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Bidiagonal >, Triangular::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
-		struct LowerBidiagonal: BaseStructure {
-
-			typedef std::tuple< Interval< -1, 1 > > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< LowerBidiagonal >, Bidiagonal::inferred_structures, LowerTriangular::inferred_structures >::type;
-		};
-
-		struct UpperBidiagonal: BaseStructure {
-
-			typedef std::tuple< Interval< 0, 2 > > band_intervals;
-
-			using inferred_structures = tuple_cat< std::tuple< UpperBidiagonal >, Bidiagonal::inferred_structures, UpperTriangular::inferred_structures >::type;
-		};
-
 		struct RectangularUpperBidiagonal: BaseStructure {
 
 			typedef std::tuple< Interval< 0, 2 > > band_intervals;
@@ -774,11 +760,28 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< RectangularLowerBidiagonal >, LowerTrapezoidal::inferred_structures	>::type;
 		};
 
-		struct Diagonal: BaseStructure {
+		struct LowerBidiagonal: BaseStructure {
 
-			typedef std::tuple< Interval< 0 > > band_intervals;
+			typedef std::tuple< Interval< -1, 1 > > band_intervals;
 
-			using inferred_structures = tuple_cat< std::tuple< Diagonal >, LowerBidiagonal::inferred_structures, UpperBidiagonal::inferred_structures >::type;
+			using inferred_structures = tuple_cat<
+				std::tuple< LowerBidiagonal >,
+				RectangularLowerBidiagonal::inferred_structures,
+				Bidiagonal::inferred_structures,
+				LowerTriangular::inferred_structures
+			>::type;
+		};
+
+		struct UpperBidiagonal: BaseStructure {
+
+			typedef std::tuple< Interval< 0, 2 > > band_intervals;
+
+			using inferred_structures = tuple_cat<
+				std::tuple< UpperBidiagonal >,
+				RectangularUpperBidiagonal::inferred_structures,
+				Bidiagonal::inferred_structures,
+				UpperTriangular::inferred_structures
+			>::type;
 		};
 
 		struct RectangularDiagonal: BaseStructure {
@@ -791,6 +794,19 @@ namespace alp {
 				RectangularUpperBidiagonal::inferred_structures
 			>::type;
 		};
+
+		struct Diagonal: BaseStructure {
+
+			typedef std::tuple< Interval< 0 > > band_intervals;
+
+			using inferred_structures = tuple_cat<
+				std::tuple< Diagonal >,
+				RectangularDiagonal::inferred_structures,
+				LowerBidiagonal::inferred_structures,
+				UpperBidiagonal::inferred_structures
+			>::type;
+		};
+
 
 		struct FullRank: BaseStructure {
 

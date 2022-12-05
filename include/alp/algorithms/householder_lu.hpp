@@ -99,7 +99,7 @@ namespace alp {
 #ifdef DEBUG
 				std::cerr << " n, kk, m = " << n << ", "  << kk << ", " << m << "\n";
 				std::cerr << "Incompatible sizes in householder_lu.\n";
-#endif DEBUG
+#endif
 				return FAILED;
 			}
 
