@@ -19,9 +19,10 @@
 #ifndef _H_ALP_OMP_CONFIG
 #define _H_ALP_OMP_CONFIG
 
+#include <graphblas/omp/config.hpp>
+
 #include <alp/base/config.hpp>
 
-#include <graphblas/omp/config.hpp>
 
 namespace alp {
 
