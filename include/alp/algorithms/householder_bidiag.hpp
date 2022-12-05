@@ -94,8 +94,7 @@ namespace alp {
 			//P1=zeros((m-(i+d),m-(i+d))).astype(complex)
 			//P1=P1-2*outer(v,conjugate(v))
 			auto vvh = outer( v, ring.getMultiplicativeOperator() );
-			typedef decltype( vvh ) OuterType;
-			Matrix< D, typename OuterType::structure, Dense > Reflector( m - ( i + d ) );
+			Matrix< D, typename decltype( vvh )::structure, Dense > Reflector( m - ( i + d ) );
 			rc = rc ? rc : alp::set( Reflector, vvh );
 			rc = rc ? rc : foldl( Reflector, Scalar< D > ( -2 ), ring.getMultiplicativeOperator() );
 
@@ -115,9 +114,9 @@ namespace alp {
 		}
 
 		/**
-		 *        Computes Householder (inplace) bidiagonalisation of general matrix \f$H = U B V \f$
-		 *        where \a H is general (complex or real),
-		 *        \a U orthogonal, \a B is bidiagonal and  \a V orthogonal.
+		 * Computes Householder (inplace) bidiagonalisation of general matrix \f$H = U B V \f$
+		 * where \a H is general (complex or real),
+		 * \a U orthogonal, \a B is bidiagonal and  \a V orthogonal.
 		 *
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation

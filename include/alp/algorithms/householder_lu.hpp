@@ -96,8 +96,10 @@ namespace alp {
 				( nrows( U ) != kk ) ||
 				( ncols( L ) != kk )
 			) {
+#ifdef DEBUG
 				std::cerr << " n, kk, m = " << n << ", "  << kk << ", " << m << "\n";
 				std::cerr << "Incompatible sizes in householder_lu.\n";
+#endif DEBUG
 				return FAILED;
 			}
 

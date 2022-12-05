@@ -108,7 +108,7 @@ namespace alp {
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
 				structures::is_a< StruB, structures::General >::value &&
-				// structures::is_a< StruU, structures::Orthogonal >::value &&
+				//structures::is_a< StruU, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -261,7 +261,7 @@ namespace alp {
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
 				structures::is_a< StruB, structures::General >::value &&
-				structures::is_a< StruU, structures::Orthogonal >::value &&
+				// structures::is_a< StruU, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -295,20 +295,19 @@ namespace alp {
 
 			rc = rc ? rc : algorithms::householder_bidiag( U, B, V, ring, minus, divide );
 
-			//add bidiagonal struct
+			// add bidiagonal struct
 			// eliminate superdiagonal elements via Givens rotations
 			for( size_t i = 0; i < maxit; ++i ) {
-				//todo: replace convergenve tests with absolute tolerance cehck
+				// todo: replace convergenve tests with absolute tolerance cehck
 				//      with reltive tolerance checks
 
-				//todo: check for zeroes in diagonal, if any do Givens rotatations
+				// todo: check for zeroes in diagonal, if any do Givens rotatations
 				//      to move the zero from diagonal to superdiagonal
 				//      (no likely to affect randomly generated tests)
 
-
-				//check for zeros in superdiagonaldiagonal, if any,
-				//move i1 and i2 to bound non-zero part of superdiagonaldiagonal
-				for( ; i1 < i2 ; ++i1 ) {
+				// check for zeros in superdiagonaldiagonal, if any,
+				// move i1 and i2 to bound non-zero part of superdiagonaldiagonal
+				for( ; i1 < i2; ++i1 ) {
 					auto B_l = get_view( superdiagonal, utils::range( i1, i1 + 1 ) );
 					Scalar< D > bnorm( zero );
 					rc = rc ? rc : alp::norm2( bnorm, B_l, ring );
@@ -316,7 +315,7 @@ namespace alp {
 						break;
 					}
 				}
-				for( ; i2 > i1 ; --i2 ) {
+				for( ; i2 > i1; --i2 ) {
 					auto B_l = get_view( superdiagonal, utils::range( i2 - 2, i2 - 1 ) );
 					Scalar< D > bnorm( zero );
 					rc = rc ? rc : alp::norm2( bnorm, B_l, ring );
@@ -350,9 +349,9 @@ namespace alp {
 			for( size_t i = 0; i < size( DiagBview ); ++i ) {
 				Scalar< D > sigmaiphase( zero );
 				Scalar< D > sigmainorm( zero );
-				auto U_vi = get_view< >( U, utils::range( 0, nrows( U ) ), i );
-				auto B_vi = get_view< >( B, i, utils::range( 0, ncols( B ) ) );
-				auto d_i = get_view< >( DiagBview, utils::range( i, i + 1 ) );
+				auto U_vi = get_view( U, utils::range( 0, nrows( U ) ), i );
+				auto B_vi = get_view( B, i, utils::range( 0, ncols( B ) ) );
+				auto d_i = get_view( DiagBview, utils::range( i, i + 1 ) );
 				rc = rc ? rc : alp::norm2( sigmainorm, d_i, ring );
 				if( std::abs( *sigmainorm ) > tol ) {
 					rc = rc ? rc : alp::foldl( sigmaiphase, d_i, ring.getAdditiveMonoid() );
@@ -368,13 +367,18 @@ namespace alp {
 
 
 		/**
-		 *        Computes singular value decomposition (inplace) of a
-		 *        general matrix \f$H = U B V \f$
-		 *        where \a H is general (complex or real),
-		 *        \a U orthogonal and \a V are orthogonal, \a B is nonzero only on diagonal
-		 *        and it contains positive singular values.
-		 *        If convergenece is not reached B will contain nonzeros on superdiagonal.
+		 * Computes singular value decomposition (inplace) of a
+		 * general matrix \f$H = U B V \f$
+		 * where \a H is general (complex or real),
+		 * \a U orthogonal and \a V are orthogonal, \a B is nonzero only on diagonal
+		 * and it contains positive singular values.
+		 * If convergenece is not reached B will contain nonzeros on superdiagonal.
 		 *
+		 * @tparam          MatH type of general matrix on which we perform SVD
+		 * @tparam          MatU type of orthogonal matrix U, output of SVD
+		 * @tparam          MatS type of rectangulardiagonal matrix S,
+		 *                       output which has positive nonzero elements on diagonal
+		 * @tparam          MatV type of orthogonal matrix V, output of SVD
 		 * @tparam D        Data element type
 		 * @tparam Ring     Type of the semiring used in the computation
 		 * @tparam Minus    Type minus operator used in the computation
@@ -451,7 +455,7 @@ namespace alp {
 				rc = rc ? rc : algorithms::svd_solve( U, B, V, ring, minus, divide );
 			}
 
-			//update S
+			// update S
 			auto DiagS = alp::get_view< alp::view::diagonal >( S );
 			auto DiagB = alp::get_view< alp::view::diagonal >( B );
 			rc = rc ? rc : set( S, zero );
