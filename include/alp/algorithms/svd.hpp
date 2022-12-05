@@ -103,12 +103,23 @@ namespace alp {
 			typename ViewU,
 			typename ImfRU,
 			typename ImfCU,
+			typename StruV,
+			typename ViewV,
+			typename ImfRV,
+			typename ImfCV,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
 				structures::is_a< StruB, structures::General >::value &&
-				//structures::is_a< StruU, structures::Orthogonal >::value &&
+				(
+					structures::is_a< StruU, structures::OrthogonalRows >::value ||
+					structures::is_a< StruU, structures::OrthogonalColumns >::value
+				) &&
+				(
+					structures::is_a< StruV, structures::OrthogonalRows >::value ||
+					structures::is_a< StruV, structures::OrthogonalColumns >::value
+				) &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -117,7 +128,7 @@ namespace alp {
 		RC gk_svd_step(
 			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
 			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
+			Matrix< D, StruV, Dense, ViewV, ImfRV, ImfCV > &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -211,8 +222,8 @@ namespace alp {
 				// G2=G-identity(2).astype(complex)
 				rc = rc ? rc : alp::foldl( Gdiag, one, minus );
 				// V[i:i+2,:]=V[i:i+2,:] + conjugate(G2).dot(V[i:i+2,:])
-				auto Vstrip = get_view< structures::General >( V, utils::range( i, i + 2 ), utils::range( 0, ncols( V ) ) );
-				Matrix< D, structures::General, Dense > TMPStrip1( nrows( Vstrip ), ncols( Vstrip ) );
+				auto Vstrip = get_view< structures::OrthogonalRows >( V, utils::range( i, i + 2 ), utils::range( 0, ncols( V ) ) );
+				Matrix< D, structures::OrthogonalRows, Dense > TMPStrip1( nrows( Vstrip ), ncols( Vstrip ) );
 				rc = rc ? rc : alp::set( TMPStrip1, Vstrip );
 				rc = rc ? rc : mxm( Vstrip, GTstar, TMPStrip1, ring );
 
@@ -229,8 +240,8 @@ namespace alp {
 				// G2=G-identity(2).astype(complex)
 				rc = rc ? rc : alp::foldl( Gdiag, one, minus );
 				// U[:,k:k+2]=U[:,k:k+2]+U[:,k:k+2].dot(conjugate(G2))
-				auto Ustrip = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i, i + 2 ) );
-				Matrix< D, structures::General, Dense > TMPStrip2( nrows( Ustrip ), ncols( Ustrip ) );
+				auto Ustrip = get_view< structures::OrthogonalColumns >( U, utils::range( 0, nrows( U ) ), utils::range( i, i + 2 ) );
+				Matrix< D, structures::OrthogonalColumns, Dense > TMPStrip2( nrows( Ustrip ), ncols( Ustrip ) );
 				rc = rc ? rc : alp::set( TMPStrip2, Ustrip );
 				rc = rc ? rc : mxm( Ustrip, TMPStrip2, Gstar, ring );
 
@@ -256,12 +267,17 @@ namespace alp {
 			typename ViewU,
 			typename ImfRU,
 			typename ImfCU,
+			typename StruV,
+			typename ViewV,
+			typename ImfRV,
+			typename ImfCV,
 			class Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
 			class Minus = operators::subtract< D >,
 			class Divide = operators::divide< D >,
 			std::enable_if_t<
 				structures::is_a< StruB, structures::General >::value &&
-				// structures::is_a< StruU, structures::Orthogonal >::value &&
+				structures::is_a< StruU, structures::Orthogonal >::value &&
+				structures::is_a< StruV, structures::Orthogonal >::value &&
 				is_semiring< Ring >::value &&
 				is_operator< Minus >::value &&
 				is_operator< Divide >::value
@@ -270,7 +286,7 @@ namespace alp {
 		RC svd_solve(
 			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &U,
 			Matrix< D, StruB, Dense, ViewB, ImfRB, ImfCB > &B,
-			Matrix< D, StruU, Dense, ViewU, ImfRU, ImfCU > &V,
+			Matrix< D, StruV, Dense, ViewV, ImfRV, ImfCV > &V,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -328,8 +344,8 @@ namespace alp {
 				}
 
 				auto Bview = get_view( B, utils::range( i1, i2 ), utils::range( i1, i2 ) );
-				auto Uview = get_view< structures::General >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
-				auto Vview = get_view< structures::General >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
+				auto Uview = get_view< structures::OrthogonalColumns >( U, utils::range( 0, nrows( U ) ), utils::range( i1, i2 ) );
+				auto Vview = get_view< structures::OrthogonalRows >( V, utils::range( i1, i2 ), utils::range( 0, ncols( V ) ) );
 
 				rc = rc ? rc : algorithms::gk_svd_step( Uview, Bview, Vview, ring, minus, divide );
 

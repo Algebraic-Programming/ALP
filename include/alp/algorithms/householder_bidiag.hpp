@@ -115,8 +115,8 @@ namespace alp {
 			rc = rc ? rc : mxm( Hupdate, reflector, Temp1, ring );
 
 			//     Uk=Uk.dot(P)
-			auto Uupdate = get_view< structures::General >( U, utils::range( 0, m ), utils::range( i + d, m ) );
-			Matrix< D, structures::General, Dense > Temp2( m, m - ( i + d ) );
+			auto Uupdate = get_view< structures::OrthogonalColumns >( U, utils::range( 0, m ), utils::range( i + d, m ) );
+			Matrix< D, structures::OrthogonalColumns, Dense > Temp2( m, m - ( i + d ) );
 			rc = rc ? rc : alp::set( Temp2, Uupdate );
 			rc = rc ? rc : mxm( Uupdate, Temp2, reflector, ring );
 

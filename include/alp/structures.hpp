@@ -865,22 +865,56 @@ namespace alp {
 		struct isInstantiable< Orthogonal, Orthogonal > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				// This check has to be further improved.
-				// Orthogonal matrix in the current implementation
-				// means full-rank square orthogonal matrix.
-				// Rectangular matrix orthogonal only by rows (or columns)
-				// does not fit into the current Orthogonal structure.
 				return imf_r.n == imf_c.n ;
 			};
 		};
 
 		template<>
-		struct isInstantiable< Orthogonal, General > {
+		struct isInstantiable< OrthogonalColumns, OrthogonalColumns > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_c;
+				return(
+					( imf_r.map( 0 ) == 0 ) &&
+					( imf_r.map( imf_r.n ) == imf_r.n )
+				);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Orthogonal, OrthogonalColumns > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_c;
+				return(
+					( imf_r.map( 0 ) == 0 ) &&
+					( imf_r.map( imf_r.n ) == imf_r.n )
+				);
+			};
+		};
+
+
+		template<>
+		struct isInstantiable< OrthogonalRows, OrthogonalRows > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
 				(void) imf_r;
-				(void) imf_c;
-				return true;
+				return(
+					( imf_c.map( 0 ) == 0 ) &&
+					( imf_c.map( imf_c.n ) == imf_c.n )
+				);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Orthogonal, OrthogonalRows > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				return(
+					( imf_c.map( 0 ) == 0 ) &&
+					( imf_c.map( imf_c.n ) == imf_c.n )
+				);
 			};
 		};
 

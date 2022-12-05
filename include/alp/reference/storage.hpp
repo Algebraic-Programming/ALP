@@ -54,6 +54,21 @@ namespace alp {
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
+		/** Specialization for orthogonalrows matrix */
+		template<>
+		struct determine_poly_factory< structures::OrthogonalRows, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for orthogonalcolumns matrix */
+		template<>
+		struct determine_poly_factory< structures::OrthogonalColumns, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+
 		/** Specialization for upper-triangular matrix */
 		template<>
 		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, reference > {
