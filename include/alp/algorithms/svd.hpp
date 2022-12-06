@@ -29,6 +29,11 @@ namespace alp {
 	namespace algorithms {
 
 
+		/**
+		 * Calculate Givens rotation 2x2 matrix elements and overwrite
+		 * the content of matrix G. Givens rotation elements G=[[c,-s*],[s,c]] are determined by
+		 * input vector v=[a,b], so that G v = [r,0]
+		 */
 		// for a more general purpose
 		// a more stable implementations is needed
 		// todo: move to utils?
@@ -56,6 +61,16 @@ namespace alp {
 		) {
 			(void) minus;
 			RC rc = SUCCESS;
+
+#ifdef DEBUG
+			if( ( nrows( G ) != 2 ) ||
+			    ( ncols( G ) != 2 ) ||
+			    ( size( v ) != 2 )
+			  ) {
+				std::cerr << "Wrong size in Givens.";
+				return FAILED;
+			}
+#endif
 
 			const Scalar< D > zero( ring.template getZero< D >() );
 			const Scalar< D > one( ring.template getOne< D >() );
@@ -131,7 +146,7 @@ namespace alp {
 			const size_t k = std::min( m, n );
 
 			// get lambda
-			// calcualte eigenvalue llambda of
+			// calculate eigenvalue llambda of
 			// which is closer to t22
 			auto BEnd = get_view( B, utils::range( k - 3, k ), utils::range( k - 2, k ) );
 			Matrix< D, structures::Square, Dense > BEndSquare( 2, 2 );
@@ -425,7 +440,7 @@ namespace alp {
 			const size_t m = nrows( H );
 			const size_t n = ncols( H );
 
-			//inplace work on B
+			// inplace work on B
 			MatH B( m, n );
 			rc = rc ? rc : set( B, H );
 
