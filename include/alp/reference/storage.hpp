@@ -54,6 +54,21 @@ namespace alp {
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
+		/** Specialization for orthogonalrows matrix */
+		template<>
+		struct determine_poly_factory< structures::OrthogonalRows, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for orthogonalcolumns matrix */
+		template<>
+		struct determine_poly_factory< structures::OrthogonalColumns, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+
 		/** Specialization for upper-triangular matrix */
 		template<>
 		struct determine_poly_factory< structures::UpperTriangular, imf::Id, imf::Id, reference > {
@@ -134,6 +149,27 @@ namespace alp {
 			public:
 				//typedef storage::polynomials::BandFactory< interval, storage::ROW_WISE > factory_type;
 				typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for rectangular-upper-bidiagonal matrix */
+		template<>
+		struct determine_poly_factory< structures::RectangularUpperBidiagonal, imf::Id, imf::Id, reference > {
+			// should use band storage
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for rectangular-lower-bidiagonal matrix */
+		template<>
+		struct determine_poly_factory< structures::RectangularLowerBidiagonal, imf::Id, imf::Id, reference > {
+			// should use band storage
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for rectangular-diagonal matrix */
+		template<>
+		struct determine_poly_factory< structures::RectangularDiagonal, imf::Id, imf::Id, reference > {
+			// should use band storage
+			typedef storage::polynomials::FullFactory<> factory_type;
 		};
 
 		/** Specialization for vectors */
