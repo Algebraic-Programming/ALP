@@ -33,10 +33,10 @@
  * \a internal::Vector from the various vector.hpp
  */
 
-#ifdef _ALP_WITH_REFERENCE || _ALP_OMP_WITH_REFERENCE
+#if defined( _ALP_WITH_REFERENCE ) || defined( _ALP_OMP_WITH_REFERENCE )
  #include <alp/reference/vector.hpp>
 #endif
-#ifdef _ALP_WITH_DISPATCH || _ALP_OMP_WITH_DISPATCH
+#if defined( _ALP_WITH_DISPATCH ) || defined( _ALP_OMP_WITH_DISPATCH )
  #include <alp/dispatch/vector.hpp>
 #endif
 
