@@ -228,7 +228,33 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi
 			echo " "
+			
+			NTEST=256
+			if [ -f "${TEST_BIN_DIR}/gmres_${BACKEND}" ]
+			then
+			    echo ">>>      [x]           [ ]       Testing the GMRES real algorithm for the random generated"
+			    echo "                                 matrix (${NTEST}x${NTEST}) with preconditioner. This test"
+			    echo "                                 verifies against a predifined solution vector."
+			    echo "                                 It uses direct-mode file IO."
+			    $runner ${TEST_BIN_DIR}/gmres_${BACKEND} --n ${NTEST}  &> ${TEST_OUT_DIR}/gmres_${BACKEND}_${P}_${T}.log
+			    head -1 ${TEST_OUT_DIR}/gmres_${BACKEND}_${P}_${T}.log
+			    grep 'Test OK' ${TEST_OUT_DIR}/gmres_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			    echo " "
+			fi
 
+			NTEST=256
+			if [ -f "${TEST_BIN_DIR}/gmres_complex_${BACKEND}" ]
+			then
+			    echo ">>>      [x]           [ ]       Testing the GMRES complex algorithm for the random generated"
+			    echo "                                 matrix (${NTEST}x${NTEST}) with preconditioner. This test"
+			    echo "                                 verifies against a predifined solution vector."
+			    echo "                                 It uses direct-mode file IO."
+			    $runner ${TEST_BIN_DIR}/gmres_complex_${BACKEND} --n ${NTEST}  &> ${TEST_OUT_DIR}/gmres_complex_${BACKEND}_${P}_${T}.log
+			    head -1 ${TEST_OUT_DIR}/gmres_complex_${BACKEND}_${P}_${T}.log
+			    grep 'Test OK' ${TEST_OUT_DIR}/gmres_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			    echo " "
+			fi
+			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"
