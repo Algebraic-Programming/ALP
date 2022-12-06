@@ -746,26 +746,67 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< Bidiagonal >, Triangular::inferred_structures, Tridiagonal::inferred_structures >::type;
 		};
 
+		struct RectangularUpperBidiagonal: BaseStructure {
+
+			typedef std::tuple< Interval< 0, 2 > > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< RectangularUpperBidiagonal >, UpperTrapezoidal::inferred_structures	>::type;
+		};
+
+		struct RectangularLowerBidiagonal: BaseStructure {
+
+			typedef std::tuple< Interval< -1, 1 > > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< RectangularLowerBidiagonal >, LowerTrapezoidal::inferred_structures	>::type;
+		};
+
 		struct LowerBidiagonal: BaseStructure {
 
-			typedef std::tuple< Interval< -1, 0 > > band_intervals;
+			typedef std::tuple< Interval< -1, 1 > > band_intervals;
 
-			using inferred_structures = tuple_cat< std::tuple< LowerBidiagonal >, Bidiagonal::inferred_structures, LowerTriangular::inferred_structures >::type;
+			using inferred_structures = tuple_cat<
+				std::tuple< LowerBidiagonal >,
+				RectangularLowerBidiagonal::inferred_structures,
+				Bidiagonal::inferred_structures,
+				LowerTriangular::inferred_structures
+			>::type;
 		};
 
 		struct UpperBidiagonal: BaseStructure {
 
-			typedef std::tuple< Interval< 0, 1 > > band_intervals;
+			typedef std::tuple< Interval< 0, 2 > > band_intervals;
 
-			using inferred_structures = tuple_cat< std::tuple< UpperBidiagonal >, Bidiagonal::inferred_structures, UpperTriangular::inferred_structures >::type;
+			using inferred_structures = tuple_cat<
+				std::tuple< UpperBidiagonal >,
+				RectangularUpperBidiagonal::inferred_structures,
+				Bidiagonal::inferred_structures,
+				UpperTriangular::inferred_structures
+			>::type;
+		};
+
+		struct RectangularDiagonal: BaseStructure {
+
+			typedef std::tuple< Interval< 0 > > band_intervals;
+
+			using inferred_structures = tuple_cat<
+				std::tuple< RectangularDiagonal >,
+				RectangularLowerBidiagonal::inferred_structures,
+				RectangularUpperBidiagonal::inferred_structures
+			>::type;
 		};
 
 		struct Diagonal: BaseStructure {
 
 			typedef std::tuple< Interval< 0 > > band_intervals;
 
-			using inferred_structures = tuple_cat< std::tuple< Diagonal >, LowerBidiagonal::inferred_structures, UpperBidiagonal::inferred_structures >::type;
+			using inferred_structures = tuple_cat<
+				std::tuple< Diagonal >,
+				RectangularDiagonal::inferred_structures,
+				LowerBidiagonal::inferred_structures,
+				UpperBidiagonal::inferred_structures
+			>::type;
 		};
+
 
 		struct FullRank: BaseStructure {
 
@@ -803,15 +844,69 @@ namespace alp {
 		};
 
 		template<>
+		struct isInstantiable< RectangularDiagonal, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
+		template<>
 		struct isInstantiable< Orthogonal, Orthogonal > {
 			template< typename ImfR, typename ImfC >
 			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
-				// This check has to be further improved.
-				// Orthogonal matrix in the current implementation
-				// means full-rank square orthogonal matrix.
-				// Rectangular matrix orthogonal only by rows (or columns)
-				// does not fit into the current Orthogonal structure.
 				return imf_r.n == imf_c.n ;
+			};
+		};
+
+		template<>
+		struct isInstantiable< OrthogonalColumns, OrthogonalColumns > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_c;
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value );
+				return( imf_r.map( imf_r.n - 1 ) == imf_r.n - 1	);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Orthogonal, OrthogonalColumns > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_c;
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value );
+				return( imf_r.map( imf_r.n - 1 ) == imf_r.n - 1	);
+			};
+		};
+
+
+		template<>
+		struct isInstantiable< OrthogonalRows, OrthogonalRows > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				static_assert( std::is_base_of< imf::Strided, ImfC >::value );
+				return( imf_c.map( imf_c.n - 1 ) == imf_c.n - 1	);
+			};
+		};
+
+		template<>
+		struct isInstantiable< Orthogonal, OrthogonalRows > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				static_assert( std::is_base_of< imf::Strided, ImfC >::value );
+				return( imf_c.map( imf_c.n - 1 ) == imf_c.n - 1	);
 			};
 		};
 
