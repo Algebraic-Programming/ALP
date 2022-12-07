@@ -29,7 +29,11 @@
 #include <alp/config.hpp>
 #include <alp/rc.hpp>
 
+#include <alp/base/blas2.hpp>
+
+#include "blas0.hpp"
 #include "matrix.hpp"
+#include "scalar.hpp"
 
 #include <graphblas/utils/iscomplex.hpp>
 
