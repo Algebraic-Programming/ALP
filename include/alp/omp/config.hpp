@@ -41,7 +41,7 @@ namespace alp {
 		constexpr size_t THREAD_ROW_DIM = 4;
 		constexpr size_t THREAD_COL_DIM = 4;
 
-		constexpr size_t REPLICATION_FACTOR_THREADS = 4;
+		constexpr size_t REPLICATION_FACTOR_THREADS = 1;
 
 
 	} // namespace config
