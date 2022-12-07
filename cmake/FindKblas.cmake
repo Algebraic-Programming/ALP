@@ -34,7 +34,7 @@ creates a target Kblas::Kblas to link against libkblas
 # documentation of find_library() https://cmake.org/cmake/help/latest/command/find_library.html
 
 if(NOT KBLAS_IMPL)
-	set(KBLAS_IMPL "nolocking")
+	set(KBLAS_IMPL "locking")
 else()
 	#if( "${KBLAS_IMPL}" IN_LIST "locking;nolocking;omp;pthread" )
 	if( NOT "${KBLAS_IMPL}" MATCHES "^(locking|nolocking|omp|pthread)$")
