@@ -319,7 +319,7 @@ namespace alp {
 								auto refCijr = internal::get_view( C, th_ijr_c, br, bc );
 
 								// Final result in C at layer 0
-								local_rc = local_rc ? local_rc : foldl( refCij0, refCijr, monoid );
+								local_rc = local_rc ? local_rc : foldl( refCij0, refCijr, monoid.getOperator() );
 							}
 						}
 
