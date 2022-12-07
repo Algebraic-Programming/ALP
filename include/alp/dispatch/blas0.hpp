@@ -25,11 +25,12 @@
 
 #include <type_traits> // std::enable_if, std::is_same
 
-#include <alp/base/blas0.hpp>
 #include <alp/backends.hpp>
-#include <alp/rc.hpp>
 #include <alp/descriptors.hpp>
+#include <alp/rc.hpp>
 #include <alp/type_traits.hpp>
+
+#include <alp/base/blas0.hpp>
 
 #include "scalar.hpp"
 
