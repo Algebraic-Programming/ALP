@@ -9,6 +9,19 @@
 #    POSIX threads: -lpthread
 #    OpenMP: -fopenmp in the case of GCC
 
+# Before running please export: 
+# The root folder where this branch is cloned.
+export ALP_SOURCE="$(realpath ../)"
+# The build folder from which running these steps.
+export ALP_BUILD="$(pwd)"
+# The KunpengBLAS installation folder.
+# For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
+export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+# The lib folder of the LAPACK library.
+export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
+# The include folder of the LAPACK library.
+# Must include the C/C++ LAPACKE interface.
+export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
 
 ####################
 ####################
@@ -36,7 +49,7 @@
 
 export ALP_SOURCE="$(realpath ../)"
 cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make smoketests
+make smoketests -j$(nproc)
 
 ####################
 ####################
@@ -63,14 +76,8 @@ make smoketests
 # If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
 # If you are using locally installed kblas, make sure to set proper BLAS_LIB path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
 
-export ALP_BUILD="$(pwd)"
-export ALP_SOURCE="$(realpath ../)"
-export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
-export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
-export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
-
 cmake -DKBLAS_ROOT="$BLAS_LIB" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make install -j20 || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # To compile and run the LAPACK Cholesky test (not ALP code).
 # Here you can use gcc flags, i.e. "-L/path/toib/ -llapack" (or simply " -llapack" to use system installed lapack library).
@@ -83,7 +90,7 @@ install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE
 #    The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
 #    It recursively requires an unblocked version of the same algorithm (of size BSxBS) which does not dispatch to LAPACK.
 #    All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
-make test_alp_cholesky_perf_alp_dispatch || ( echo "test failed" &&  exit 1 )
+make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
 tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 
 ####################
@@ -102,7 +109,7 @@ CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
 cmake -DKBLAS_ROOT="$BLAS_LIB" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make install -j20 || ( echo "test failed" &&  exit 1 )
+make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # Compile and run gemm-based BLAS test.
 install/bin/grbcxx -b alp_dispatch -o blas_mxm.exe $ALP_SOURCE/tests/performance/blas_mxm.cpp -lgfortran || ( echo "test failed" &&  exit 1 )
@@ -116,6 +123,6 @@ cd $CWD
 #    We set OMP_NUM_THREADS=64 threads and fix GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" to reflect the NUMA domains in the node;
 #    The algorithm is allocating memory using a 2D block-cyclic layout with blocks of size 128x128.
 
-make test_alp_mxm_perf_alp_omp || ( echo "test failed" &&  exit 1 )
+make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
 GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 

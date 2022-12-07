@@ -4,7 +4,30 @@ This file is intended to provide instructions for:
 - Running performance tests of the ALP/Dense reference backend with dispatch to BLAS (aka alp_dispatch);
 - Running performance tests of the ALP/Dense shared memory backend with dispatch to BLAS (aka alp_omp).
 
-An analogous [script-like](alpdense.sh) version of this page is available in the ALP root directory of this branch.
+An analogous [script-like](alpdense.sh) version of this page is available in the ALP root directory of this branch. You may decide to run it or follow the instructions in this page step by step. Either way, before running any instructions please make sure to define the following environment variables:
+
+```
+# The root folder where this branch is cloned.
+export ALP_SOURCE="$(realpath ../)"
+# The build folder from which running these steps.
+export ALP_BUILD="$(pwd)"
+# The KunpengBLAS installation folder.
+# For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
+export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+# The lib folder of the LAPACK library.
+export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
+# The include folder of the LAPACK library.
+# Must include the C/C++ LAPACKE interface.
+export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
+```
+
+Assuming this branch is cloned in the `ALP_SOURCE` folder, you may run it as follows from the `$ALP_SOURCE/build` directory:
+
+```
+bash ../alpdense.sh
+```
+
+Otherwise, you may follow step by step the instructions below.
 
 # Source code location
 
@@ -40,12 +63,12 @@ We collect the following smoke tests associated with the ALP/Dense reference bac
   - Singular value decomposition of a real/complex general matrix ([source](tests/smoke/alp_zgesvd.cpp))
 
 This tests are collected and run as ALP smoketests.
-Assuming that you are currently in the ALP cloned directory (ALP_SOURCE), create a `build` directory and call the following commands from there:
+From `$ALP_SOURCE/build` run:
 
 ```
 export ALP_SOURCE="$(realpath ../)"
 cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make smoketests
+make smoketests -j$(nproc)
 ```
 The last command runs all registered smoke tests including the ALP/GraphBLAS smoketests.
 
@@ -57,26 +80,19 @@ This tests have been executed:
 - Linking against KunpengBLAS from the Kunpeng BoostKit 22.0.RC1 and the netlib LAPACK linking to the same BLAS library.
 - All tests reported times are in milliseconds and printed after the "time (per repeat)" text.
 
-These instructions assume that you are using _Kunpeng BoostKit 22.0.RC1_ extracted in a directory `BLAS_LIB`
-which should contain the `include/kblas.h` header file and the `lib/kblas` directory. However, any other BLAS library could also be used.
+In our evaluation we extracted the _Kunpeng BoostKit 22.0.RC1_ in a `BLAS_LIB` folder (the `kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package). `BLAS_LIB` should contain the `include/kblas.h` header file and the `lib/kblas` directory. 
 
 ## Compilation and execution of the sequential Cholesky decomposition tests
 
 Here we compare our ALP Cholesky implementation, based on the alp_dispatch backend, against the `potrf` LAPACK functionality.
 
-If no LAPACK library can be found by the compiler in system directories, `LAPACK_LIB` and `LAPACK_INCLUDE` have to be properly set and explicitly provided when calling cmake. In particular, in this test we assume the availability of the C/C++ LAPACKE interface.
-If you are using locally installed KunpengBLAS, make sure to set proper BLAS_LIB path to `kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package.
-In the example below, we assume no system libraries are available. Create and enter a `$ALP_SOURCE/build` folder and run the following commands:
+If no LAPACK library can be found by the compiler in system directories, `LAPACK_LIB` and `LAPACK_INCLUDE` have to be properly set (as mentioned at the beginning of this guide) and appropriately provided when calling cmake. In particular, in this test we assume the availability of the C/C++ LAPACKE interface.
+If you are using locally installed KunpengBLAS, make sure to set the `BLAS_LIB` path to the `kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package.
+In the example below, we assume no system libraries are available. From the `$ALP_SOURCE/build` folder run the following commands:
 
 ```
-export ALP_BUILD="$(pwd)"
-export ALP_SOURCE="$(realpath ../)"
-export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
-export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
-export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
-
 cmake -DKBLAS_ROOT="$BLAS_LIB" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make install -j20 || ( echo "test failed" &&  exit 1 )
+make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 ```
 
 ### LAPACK-based test
@@ -86,6 +102,7 @@ To compile and run the LAPACK-based Cholesky test (not ALP code) run the followi
 install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
 ./cholesky_lapack_reference.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+In our tests, we executed `./cholesky_lapack_reference.exe` with matrix sizes (`-n` flag) in the range [400:100:3000].
 
 ### ALP-based test
 
@@ -95,9 +112,10 @@ Some facts about this test:
 - All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
 
 ```
-make test_alp_cholesky_perf_alp_dispatch || ( echo "test failed" &&  exit 1 )
+make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
 tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+As for the LAPACK-based test, we executed `tests/performance/alp_cholesky_perf_alp_dispatch` with matrix sizes (`-n` flag) in the range [400:100:3000].
 
 **Note:** A consistent test should use the same BLAS in LAPACK-based as well as in the ALP-based tests.
 
@@ -114,7 +132,7 @@ CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
 cmake -DKBLAS_ROOT="$BLAS_LIB" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make install -j20 || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 ```
 
 ### `gemm`-based BLAS test.
@@ -125,6 +143,7 @@ install/bin/grbcxx -b alp_dispatch -o blas_mxm.exe $ALP_SOURCE/tests/performance
 OMP_NUM_THREADS=64 ./blas_mxm.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 cd $CWD
 ```
+In our tests, we executed `./blas_mxm.exe` with matrix sizes (`-n` flag) in the range [1024:1024:10240].
 
 ### ALP-based test.
 
@@ -137,6 +156,7 @@ Some facts about this test:
 From `$ALP_SOURCE/build` run:
 
 ```
-make test_alp_mxm_perf_alp_omp || ( echo "test failed" &&  exit 1 )
+make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
 GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+As for the gemm-based test, we executed `tests/performance/alp_mxm_perf_alp_omp` with matrix sizes (`-n` flag) in the range [1024:1024:10240].
