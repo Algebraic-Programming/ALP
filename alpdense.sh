@@ -16,7 +16,7 @@ export ALP_SOURCE="$(realpath ../)"
 export ALP_BUILD="$(pwd)"
 # The KunpengBLAS installation folder.
 # For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
-export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
 # The lib folder of the LAPACK library.
 export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
 # The include folder of the LAPACK library.
@@ -63,7 +63,7 @@ make smoketests -j$(nproc)
 #    Linking against KunpengBLAS (Kunpeng BoostKit 22.0.RC1) and netlib LAPACK.
 #    All tests report time in milliseconds after "time (ms, ...)" text line.
 #
-# These instructions assume that you are using "Kunpeng BoostKit 22.0.RC1" extracted in a directory BLAS_LIB
+# These instructions assume that you are using "Kunpeng BoostKit 22.0.RC1" extracted in a directory BLAS_ROOT
 # which should contain include/kblas.h file and the lib/kblas/ directory.
 # However, any other blas library could also be used.
 
@@ -74,9 +74,9 @@ make smoketests -j$(nproc)
 
 # Assuming that you are currently in the ALP cloned directory, create a "build" directory and call the following commands from there.
 # If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
-# If you are using locally installed kblas, make sure to set proper BLAS_LIB path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
+# If you are using locally installed kblas, make sure to set proper BLAS_ROOT path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
 
-cmake -DKBLAS_ROOT="$BLAS_LIB" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # To compile and run the LAPACK Cholesky test (not ALP code).
@@ -108,7 +108,7 @@ tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "t
 CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
-cmake -DKBLAS_ROOT="$BLAS_LIB" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # Compile and run gemm-based BLAS test.
