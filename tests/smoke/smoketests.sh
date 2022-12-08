@@ -668,18 +668,18 @@ for BACKEND in ${BACKENDS[@]}; do
 	echo ">>>      [x]           [ ]       Tests dgesvd (Singular value decomposition) on"
 	echo ">>>                              a real, random general matrices of sizes (${NTEST_SVD}x$((2*NTEST_SVD))),"
 	echo ">>>                              (${NTEST_SVD} x ${NTEST_SVD}) and ($((2*NTEST_SVD)) x ${NTEST_SVD})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_${BACKEND} ${NTEST_SVD} &> ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_${BACKEND} -n ${NTEST_SVD} &> ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	head -9 ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_SVD_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zgesvd (Singular value decomposition) on"
 	echo ">>>                              a complex, random general matrices of sizes (${NTEST_SVD_COMPLEX}x$((2*NTEST_SVD_COMPLEX))),"
 	echo ">>>                              (${NTEST_SVD_COMPLEX} x ${NTEST_SVD_COMPLEX}) and ($((2*NTEST_SVD_COMPLEX)) x ${NTEST_SVD_COMPLEX})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_complex_${BACKEND} ${NTEST_SVD_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_complex_${BACKEND} -n ${NTEST_SVD_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	head -9 ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 done

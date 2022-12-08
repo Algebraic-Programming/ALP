@@ -181,8 +181,6 @@ RC check_lu_solution(
 void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
-
-
 	// test thin, square and flat
 	std::vector< size_t > m_arr { unit.N, unit.N, 2 * unit.N };
 	std::vector< size_t > n_arr { 2 * unit.N, unit.N, unit.N };
