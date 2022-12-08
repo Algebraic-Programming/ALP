@@ -530,6 +530,7 @@ for BACKEND in ${BACKENDS[@]}; do
 	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
 	echo "                                 symmetric positive definite matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_${BACKEND}  -n ${NTEST_CHOLESKY} &> ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	head -4 ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
@@ -545,16 +546,16 @@ for BACKEND in ${BACKENDS[@]}; do
 	NTEST_POTRI=100
 	echo ">>>      [x]           [ ]       Tests inverse of a random"
 	echo "                                 symmetric positive definite matrix (${NTEST_POTRI}x${NTEST_POTRI})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_${BACKEND}  -n ${NTEST_POTRI} &> ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_${BACKEND}  -n ${NTEST_POTRI} &> ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	head -4 ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log || echo "Test FAILED"  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_POTRI_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests inverse of a random"
 	echo "                                 hermitian positive definite matrix (${NTEST_POTRI_COMPLEX}x${NTEST_POTRI_COMPLEX})."
 	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_complex_${BACKEND}  -n ${NTEST_POTRI_COMPLEX} &> ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log
+	head -4 ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log
 	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log || echo "Test FAILED"
 	echo " "
 	
