@@ -10,18 +10,28 @@
 #    OpenMP: -fopenmp in the case of GCC
 
 # Before running please export: 
+
 # The root folder where this branch is cloned.
 export ALP_SOURCE="$(realpath ../)"
+
 # The build folder from which running these steps.
 export ALP_BUILD="$(pwd)"
-# The KunpengBLAS installation folder.
-# For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
-export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+
+# The KML installation folder.
+# For example, the "usr/local/kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
+#export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+
 # The lib folder of the LAPACK library.
-export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
+#export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
+
 # The include folder of the LAPACK library.
 # Must include the C/C++ LAPACKE interface.
-export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
+#export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
+
+if [ -z ${BLAS_ROOT+x} ] || [ -z ${LAPACK_LIB+x} ] || [ -z ${LAPACK_INCLUDE+x} ]; then
+    echo "Please define BLAS_ROOT, LAPACK_LIB, and LAPACK_INCLUDE variables."
+    exit 1
+fi
 
 ####################
 ####################

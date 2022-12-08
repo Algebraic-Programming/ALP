@@ -12,23 +12,27 @@ This tests have been executed:
 - Linking against KunpengBLAS from the Kunpeng BoostKit 22.0.RC1 and the netlib LAPACK linking to the same BLAS library.
 - All tests report runtime in milliseconds after the _time (ms, ...)_ text lines printed on screen.
 
-In our evaluation we extracted the _Kunpeng BoostKit 22.0.RC1_ in a `BLAS_ROOT` folder (the `usr/local/kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package). `BLAS_ROOT` should contain the `include/kblas.h` header file and the `lib/kblas` directory. 
+In our evaluation we extracted the _Kunpeng BoostKit 22.0.RC1_ in a `BLAS_ROOT` folder (the `usr/local/kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package). `BLAS_ROOT` should contain the `include/kblas.h` header file and the `lib/kblas/{locking, nolocking, omp, pthread}/libkblas.so` library. 
 
-If no system LAPACK library can be found by the compiler, `LAPACK_LIB` and `LAPACK_INCLUDE` have to be appropriately set and provided to cmake, for example exporting them as follows:
+If no system LAPACK library can be found by the compiler, `LAPACK_LIB` (containing the `liblapack.{a,so}` library) and `LAPACK_INCLUDE` (containing the `lapacke.h` header file) have to be appropriately set and provided to cmake, for example exporting them as follows:
 
 ```
 # The root folder where this branch is cloned.
 export ALP_SOURCE="$(realpath ../)"
 # The build folder from which running these steps.
 export ALP_BUILD="$(pwd)"
-# The KunpengBLAS installation folder.
-# For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
-export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+# The KML installation folder.
+# For example, the "usr/local/kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
+#export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
 # The lib folder of the LAPACK library.
-export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
+#export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
 # The include folder of the LAPACK library.
 # Must include the C/C++ LAPACKE interface.
-export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
+#export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
+
+if [ -z ${BLAS_ROOT+x} ] || [ -z ${LAPACK_LIB+x} ] || [ -z ${LAPACK_INCLUDE+x} ]; then
+    echo "Please define BLAS_ROOT, LAPACK_LIB, and LAPACK_INCLUDE variables."
+fi
 ```
 
 In particular, we assume the availability of the C/C++ LAPACKE interface and, for all tests below, we assume no system libraries are available. 
@@ -80,12 +84,9 @@ This tests are collected and run as ALP smoketests.
 From `$ALP_SOURCE/build` run:
 
 ```
-export ALP_SOURCE="$(realpath ../)"
-cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make smoketests -j$(nproc)
+cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+make smoketests_alp -j$(nproc)
 ```
-
-**Note:** The last command runs all registered smoke tests including the ALP/GraphBLAS smoketests.
 
 # Sequential Cholesky Decomposition Tests (optimized)
 
@@ -134,7 +135,7 @@ You can compile with the `omp` version of KunpengBLAS by additionally providing 
 CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
-cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_OMP_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 ```
 
