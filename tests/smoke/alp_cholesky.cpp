@@ -25,6 +25,7 @@
 #include <iomanip>
 #endif
 
+#include <graphblas/utils/Timer.hpp>
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/cholesky.hpp>
@@ -47,6 +48,12 @@ using HermitianOrSymmetricPD = structures::SymmetricPositiveDefinite;
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
+struct inpdata {
+	size_t N = 0;
+	size_t repeat = 1;
+	std::string fname = "";
+};
+
 template< typename T >
 T random_value();
 
@@ -61,13 +68,6 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
 	const BaseScalarType im = random_value< BaseScalarType >();
 	return std::complex< BaseScalarType >( re, im );
 }
-
-
-struct inpdata {
-	std::string fname="";
-	size_t N=0;
-};
-
 
 /** Generate full storage Symmetric or Hermitian
  *   positive definite matrix for in-place tests
@@ -321,6 +321,28 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 			break;
 		}
 	}
+
+
+	// time blocked inplace version with bs = 64
+	std::cout << "Timing of blocked inplace version with bs = 64.\n";
+	grb::utils::Timer timer;
+	timer.reset();
+	double times = 0;
+
+	for( size_t j = 0; j < unit.repeat; ++j ) {
+		size_t bs = std::min( static_cast< size_t >( 64 ), N );
+
+		timer.reset();
+
+		rc = rc ? rc : algorithms::cholesky_uptr_blk( U, H, bs, ring );
+
+		times += timer.time();
+
+		rc = rc ? rc : check_cholesky_solution( H, U, ring );
+	}
+
+	std::cout << " times(total) = " << times << "\n";
+	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
 }
 
 int main( int argc, char **argv ) {
@@ -329,59 +351,80 @@ int main( int argc, char **argv ) {
 	inpdata in;
 
 	// error checking
-	if( argc == 3 ) {
+	if(
+		( argc == 3 ) || ( argc == 5 )
+	) {
 		std::string readflag;
 		std::istringstream ss1( argv[ 1 ] );
 		std::istringstream ss2( argv[ 2 ] );
 		if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
-			std::cerr << "Error parsing first argument\n";
+			std::cerr << "Error parsing\n";
 			printUsage = true;
 		} else if(
-			( readflag != std::string( "-fname" ) ) &&
-			( readflag != std::string( "-n" ) )
+			( readflag != std::string( "-n" ) ) &&
+			( readflag != std::string( "-fname" ) )
 		) {
-			std::cerr << "Given first argument is unknown\n";
+			std::cerr << "Given first argument is unknown: " << readflag << "\n";
 			printUsage = true;
 		} else {
-			if( readflag == std::string( "-fname" ) ) {
-				if( ! ( ( ss2 >> in.fname ) &&  ss2.eof() ) ) {
-					std::cerr << "Error parsing second argument\n";
-					printUsage = true;
-				}
-			}
-
-			if( readflag == std::string( "-n" ) ) {
+			if( readflag == std::string( "-n" )  ) {
 				if( ! ( ( ss2 >> in.N ) &&  ss2.eof() ) ) {
-					std::cerr << "Error parsing second argument\n";
+					std::cerr << "Error parsing\n";
 					printUsage = true;
 				}
 			}
-
+			if( readflag == std::string( "-fname" )  ) {
+				if( ! ( ( ss2 >> in.fname ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing\n";
+					printUsage = true;
+				}
+			}
 		}
+
+		if( argc == 5 ) {
+			std::string readflag;
+			std::istringstream ss1( argv[ 3 ] );
+			std::istringstream ss2( argv[ 4 ] );
+			if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+				std::cerr << "Error parsing\n";
+				printUsage = true;
+			} else if(
+				readflag != std::string( "-repeat" )
+			) {
+				std::cerr << "Given third argument is unknown\n";
+				printUsage = true;
+			} else {
+				if( ! ( ( ss2 >> in.repeat ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing\n";
+					printUsage = true;
+				}
+			}
+		}
+
 	} else {
-		std::cout << "Wrong number of arguments\n" ;
+		std::cout << "Wrong number of arguments\n";
 		printUsage = true;
 	}
 
 	if( printUsage ) {
 		std::cerr << "Usage: \n";
-		std::cerr << "       " << argv[ 0 ] << " -fname FILENAME.mtx \n";
-		std::cerr << "      or  \n";
 		std::cerr << "       " << argv[ 0 ] << " -n N \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N   -repeat N \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -fname \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -fname   -repeat N \n";
 		return 1;
 	}
 
-	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	alp::Launcher< AUTOMATIC > launcher;
-	alp::RC out;
-	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
-	}
-	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
+	alp::RC rc = alp::SUCCESS;
+	alp_program( in, rc );
+	if( rc == alp::SUCCESS ) {
+		std::cout << "Test OK\n";
+		return 0;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test FAILED\n";
+		return 1;
 	}
-	return 0;
 }
