@@ -238,8 +238,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		const bool transposeA = transpose_AB_configs[ i ].first;
 		const bool transposeB = transpose_AB_configs[ i ].second;
 		std::cout << " GEMM versions: transposeA = " << transposeA << ", transposeB = " << transposeB << "\n";
-		std::cout << " times(total) = " << times[ i ] << "\n";
-		std::cout << " times(per repeat) = " << times[ i ] / unit.repeat  << "\n";
+		std::cout << " time (ms, total) = " << times[ i ] << "\n";
+		std::cout << " time (ms, per repeat) = " << times[ i ] / unit.repeat  << "\n";
 	}
 }
 

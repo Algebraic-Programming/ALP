@@ -57,9 +57,8 @@ fi
 
 # This tests are collected and run as ALP smoketests as follows:
 
-export ALP_SOURCE="$(realpath ../)"
 cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make smoketests -j$(nproc)
+SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 
 ####################
 ####################

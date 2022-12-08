@@ -108,8 +108,8 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	  times += timer.time();
 	}
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 	// print("C ", Cmatrix_data, N, M );
 }

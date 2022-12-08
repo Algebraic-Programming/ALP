@@ -85,8 +85,10 @@ From `$ALP_SOURCE/build` run:
 
 ```
 cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-make smoketests_alp -j$(nproc)
+SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 ```
+
+**Note:** The variable `SMOKE_PRINT_TIME=ON` is used to print timing information of each test to screen. Set it to `OFF` or remove it from the command if this action is not desired.
 
 # Sequential Cholesky Decomposition Tests (optimized)
 
