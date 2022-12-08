@@ -50,10 +50,10 @@ endif()
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
-option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" ON )
+option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" OFF )
 option( WITH_ALP_DISPATCH_BACKEND "With Dispatch Dense backend" OFF )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
-option( WITH_ALP_OMP_BACKEND "With OMP Dense backend" ON )
+option( WITH_ALP_OMP_BACKEND "With OMP Dense backend" OFF )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
