@@ -24,6 +24,7 @@
 #include <iomanip>
 #endif
 
+#include <graphblas/utils/Timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/forwardsubstitution.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
@@ -43,6 +44,11 @@ using ScalarType = BaseScalarType;
 
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
+
+struct inpdata {
+	size_t N = 0;
+	size_t repeat = 1;
+};
 
 template< typename T >
 T random_value();
@@ -207,113 +213,152 @@ RC check_solution(
 	return rc;
 }
 
-void alp_program( const size_t &unit, alp::RC &rc ) {
+void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
-	alp::Semiring<
-		alp::operators::add< ScalarType >,
-		alp::operators::mul< ScalarType >,
-		alp::identities::zero,
-		alp::identities::one
-	> ring;
+	grb::utils::Timer timer;
+	timer.reset();
+	double times = 0;
 
-	// dimensions of lower triangular matrix
-	const size_t N = unit;
+	for( size_t j = 0; j < unit.repeat; ++j ) {
 
-	alp::Vector< ScalarType > b( N );
-	alp::Vector< ScalarType > x( N );
-	alp::Matrix< ScalarType, structures::LowerTriangular > A( N );
-	{
-		std::srand( RNDSEED );
-		auto matrix_data = generate_lpd_matrix< ScalarType >( N );
-		rc = rc ? rc : alp::buildMatrix( A, matrix_data.begin(), matrix_data.end() );
+		alp::Semiring<
+			alp::operators::add< ScalarType >,
+			alp::operators::mul< ScalarType >,
+			alp::identities::zero,
+			alp::identities::one
+			> ring;
+
+		// dimensions of lower triangular matrix
+		const size_t N = unit.N;
+
+		alp::Vector< ScalarType > b( N );
+		alp::Vector< ScalarType > x( N );
+		alp::Matrix< ScalarType, structures::LowerTriangular > A( N );
+		{
+			std::srand( RNDSEED );
+			auto matrix_data = generate_lpd_matrix< ScalarType >( N );
+			rc = rc ? rc : alp::buildMatrix( A, matrix_data.begin(), matrix_data.end() );
+		}
+		rc = rc ? rc : alp::set( b, Scalar< ScalarType >( ring.template getOne< ScalarType >() ) );
+		rc = rc ? rc : alp::set( x, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
+
+#ifdef DEBUG
+		print_matrix( " input matrix A ", A );
+		print_vector( " input vector b ", b );
+#endif
+
+		rc = rc ? rc : algorithms::forwardsubstitution( A, x, b, ring );
+
+#ifdef DEBUG
+		print_vector( " output vector x ", x );
+#endif
+		rc = rc ? rc : check_solution( A, x, b );
+
+		const size_t M = N / 2;
+		// matrix version
+		alp::Matrix< ScalarType, structures::General > X( N, M );
+		alp::Matrix< ScalarType, structures::General > B( N, M );
+		rc = rc ? rc : alp::set( X, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
+		{
+			auto matrix_data = generate_data< ScalarType >( N * M );
+			rc = rc ? rc : alp::buildMatrix( B, matrix_data.begin(), matrix_data.end() );
+		}
+#ifdef DEBUG
+		print_matrix( " input matrix B ", B );
+#endif
+		rc = rc ? rc : algorithms::forwardsubstitution( A, X, B, ring );
+		rc = rc ? rc : check_solution( A, X, B );
+
+		//inplace version
+		rc = rc ? rc : alp::set( x, b );
+		rc = rc ? rc : algorithms::forwardsubstitution( A, x, ring );
+		rc = rc ? rc : check_solution( A, x, b );
+
+		//inplace matrix version
+		rc = rc ? rc : alp::set( X, B );
+
+		timer.reset();
+
+		rc = rc ? rc : algorithms::forwardsubstitution( A, X, ring );
+
+		times += timer.time();
+
+		rc = rc ? rc : check_solution( A, X, B );
 	}
-	rc = rc ? rc : alp::set( b, Scalar< ScalarType >( ring.template getOne< ScalarType >() ) );
-	rc = rc ? rc : alp::set( x, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
 
-#ifdef DEBUG
-	print_matrix( " input matrix A ", A );
-	print_vector( " input vector b ", b );
-#endif
-
-	rc = rc ? rc : algorithms::forwardsubstitution( A, x, b, ring );
-
-#ifdef DEBUG
-	print_vector( " output vector x ", x );
-#endif
-	rc = rc ? rc : check_solution( A, x, b );
-
-	const size_t M = N / 2;
-	// matrix version
-	alp::Matrix< ScalarType, structures::General > X( N, M );
-	alp::Matrix< ScalarType, structures::General > B( N, M );
-	rc = rc ? rc : alp::set( X, Scalar< ScalarType >( ring.template getZero< ScalarType >() ) );
-	{
-		auto matrix_data = generate_data< ScalarType >( N * M );
-		rc = rc ? rc : alp::buildMatrix( B, matrix_data.begin(), matrix_data.end() );
-	}
-#ifdef DEBUG
-	print_matrix( " input matrix B ", B );
-#endif
-	rc = rc ? rc : algorithms::forwardsubstitution( A, X, B, ring );
-	rc = rc ? rc : check_solution( A, X, B );
-
-	//inplace version
-	rc = rc ? rc : alp::set( x, b );
-	rc = rc ? rc : algorithms::forwardsubstitution( A, x, ring );
-	rc = rc ? rc : check_solution( A, x, b );
-
-	//inplace matrix version
-	rc = rc ? rc : alp::set( X, B );
-	rc = rc ? rc : algorithms::forwardsubstitution( A, X, ring );
-	rc = rc ? rc : check_solution( A, X, B );
+	std::cout << " times(total) = " << times << "\n";
+	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
 
 }
 
 int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
-	size_t in = 5;
+	inpdata in;
 
 	// error checking
-	if( argc > 2 ) {
-		printUsage = true;
-	}
-	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
-			std::cerr << "Error parsing first argument\n";
+	if(
+		( argc == 3 ) || ( argc == 5 )
+	) {
+		std::string readflag;
+		std::istringstream ss1( argv[ 1 ] );
+		std::istringstream ss2( argv[ 2 ] );
+		if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+			std::cerr << "Error parsing\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
+		} else if(
+			readflag != std::string( "-n" )
+		) {
+			std::cerr << "Given first argument is unknown\n";
 			printUsage = true;
 		} else {
-			// all OK
-			in = read;
+			if( ! ( ( ss2 >> in.N ) &&  ss2.eof() ) ) {
+				std::cerr << "Error parsing\n";
+				printUsage = true;
+			}
 		}
+
+		if( argc == 5 ) {
+			std::string readflag;
+			std::istringstream ss1( argv[ 3 ] );
+			std::istringstream ss2( argv[ 4 ] );
+			if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+				std::cerr << "Error parsing\n";
+				printUsage = true;
+			} else if(
+				readflag != std::string( "-repeat" )
+			) {
+				std::cerr << "Given third argument is unknown\n";
+				printUsage = true;
+			} else {
+				if( ! ( ( ss2 >> in.repeat ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing\n";
+					printUsage = true;
+				}
+			}
+		}
+
+	} else {
+		std::cout << "Wrong number of arguments\n";
+		printUsage = true;
 	}
+
 	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "Usage: \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N   -repeat N \n";
 		return 1;
 	}
 
-	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	alp::Launcher< AUTOMATIC > launcher;
-	alp::RC out;
-	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
-	}
-	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
+	alp::RC rc = alp::SUCCESS;
+	alp_program( in, rc );
+	if( rc == alp::SUCCESS ) {
+		std::cout << "Test OK\n";
+		return 0;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test FAILED\n";
+		return 1;
 	}
-	return 0;
 }

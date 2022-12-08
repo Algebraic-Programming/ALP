@@ -270,7 +270,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 
 		timer.reset();
 
-
 		rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q, d, ring );
 
 		times += timer.time();

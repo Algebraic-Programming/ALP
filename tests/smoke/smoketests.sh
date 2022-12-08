@@ -585,17 +585,15 @@ for BACKEND in ${BACKENDS[@]}; do
 	NTEST_HOUSEHOLDER=100
 	echo ">>>      [x]           [ ]       Tests dgeqrf (Householder QR decomposition) on"
 	echo ">>>                              a random real general matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER)))."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} -n ${NTEST_HOUSEHOLDER} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_HOUSEHOLDER_COMPLEX=100
 	echo ">>>      [x]           [ ]       Tests zgeqrf (Householder QR decomposition) on"
 	echo ">>>                              a random complex general matrix (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX)))."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} -n ${NTEST_HOUSEHOLDER_COMPLEX} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_HOUSEHOLDER=100
@@ -633,33 +631,29 @@ for BACKEND in ${BACKENDS[@]}; do
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using backsubstitution ) on"
 	echo ">>>                              a random upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_${BACKEND} -n ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log"   || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_BACKSUB=100
 	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using backsubstitution ) on"
 	echo ">>>                              a random upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_complex_${BACKEND} ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_complex_${BACKEND} -n ${NTEST_BACKSUB} &> ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log"   || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_FORWARDSUB=100
 	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using forwardsubstitution ) on"
 	echo ">>>                              a random lower tridiagonal real matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_${BACKEND} -n ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_FORWARDSUB=100
 	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using forwardsubstitution ) on"
 	echo ">>>                              a random lower tridiagonal complex matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_complex_${BACKEND} ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_complex_${BACKEND} -n ${NTEST_FORWARDSUB} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_SVD=100
