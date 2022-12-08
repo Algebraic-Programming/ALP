@@ -619,17 +619,15 @@ for BACKEND in ${BACKENDS[@]}; do
 	NTEST_DIVCON=100
 	echo ">>>      [x]           [ ]       Tests dstedc (Divide and conquer tridiagonal eigensolver) on"
 	echo ">>>                              random tridiagonal real symmetric matrices of sizes (${NTEST_DIVCON}x${NTEST_DIVCON})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_dstedc_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_dstedc_${BACKEND} -n ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_DIVCON=100
 	echo ">>>      [x]           [ ]       Tests syevd (Divide and conquer symmetric eigensolver) on"
 	echo ">>>                              a random real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
-	bash -c "$runner ${TEST_BIN_DIR}/alp_syevd_${BACKEND} ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log"
-	head -1 ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log || echo "Test FAILED"
+	bash -c "$runner ${TEST_BIN_DIR}/alp_syevd_${BACKEND} -n ${NTEST_DIVCON} &> ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
 	echo " "
 
 	NTEST_BACKSUB=100
