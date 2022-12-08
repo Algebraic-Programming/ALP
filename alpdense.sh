@@ -57,7 +57,7 @@ fi
 
 # This tests are collected and run as ALP smoketests as follows:
 
-cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 
 ####################
@@ -117,7 +117,7 @@ tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "t
 CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
-cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_OMP_BACKEND=ON -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # Compile and run gemm-based BLAS test.
@@ -132,6 +132,7 @@ cd $CWD
 #    We set OMP_NUM_THREADS=64 threads and fix GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" to reflect the NUMA domains in the node;
 #    The algorithm is allocating memory using a 2D block-cyclic layout with blocks of size 128x128.
 
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DWITH_ALP_OMP_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
 GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 
