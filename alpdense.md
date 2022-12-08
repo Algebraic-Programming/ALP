@@ -1,10 +1,20 @@
 # Introduction
 This file is intended to provide instructions for:
-- Running smoke tests for the ALP/Dense reference backend (aka alp_reference);
-- Running performance tests of the ALP/Dense reference backend with dispatch to BLAS (aka alp_dispatch);
-- Running performance tests of the ALP/Dense shared memory backend with dispatch to BLAS (aka alp_omp).
+- Running smoke, unoptimized performance tests for the ALP/Dense sequential reference backend (aka alp_reference);
+- Running optimized performance tests of the ALP/Dense sequential reference backend with dispatch to BLAS (aka alp_dispatch);
+- Running optimized performance tests of the ALP/Dense shared memory backend with dispatch to BLAS (aka alp_omp).
 
-An analogous [script-like](alpdense.sh) version of this page is available in the ALP root directory of this branch. You may decide to run it or follow the instructions in this page step by step. Either way, before running any instructions please make sure to define the following environment variables:
+# Performance Tests
+
+This tests have been executed:
+- On a Kunpeng 920 node using 1 core for the sequential reference and alp_dispatch tests and 64 cores for the alp_omp tests;
+- Compiling with gcc 9.4.0;
+- Linking against KunpengBLAS from the Kunpeng BoostKit 22.0.RC1 and the netlib LAPACK linking to the same BLAS library.
+- All tests report runtime in milliseconds after the _time (ms, ...)_ text lines printed on screen.
+
+In our evaluation we extracted the _Kunpeng BoostKit 22.0.RC1_ in a `BLAS_ROOT` folder (the `usr/local/kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package). `BLAS_ROOT` should contain the `include/kblas.h` header file and the `lib/kblas` directory. 
+
+If no system LAPACK library can be found by the compiler, `LAPACK_LIB` and `LAPACK_INCLUDE` have to be appropriately set and provided to cmake, for example exporting them as follows:
 
 ```
 # The root folder where this branch is cloned.
@@ -13,7 +23,7 @@ export ALP_SOURCE="$(realpath ../)"
 export ALP_BUILD="$(pwd)"
 # The KunpengBLAS installation folder.
 # For example, the "kml" directory extracted from the "boostkit-kml-1.6.0-1.aarch64.rpm"
-export BLAS_LIB="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
+export BLAS_ROOT="/path/to/kunpengblas/boostkit-kml-1.6.0.aarch64/usr/local/kml"
 # The lib folder of the LAPACK library.
 export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
 # The include folder of the LAPACK library.
@@ -21,15 +31,19 @@ export LAPACK_LIB="/path/to/lapack/netlib/build/lib"
 export LAPACK_INCLUDE="/path/to/lapack/netlib/lapack-3.9.1/LAPACKE/include/"
 ```
 
-Assuming this branch is cloned in the `ALP_SOURCE` folder, you may run it as follows from the `$ALP_SOURCE/build` directory:
+In particular, we assume the availability of the C/C++ LAPACKE interface and, for all tests below, we assume no system libraries are available. 
+
+Assuming this branch is cloned in the `ALP_SOURCE` folder, all instructions provided below should be run from a `$ALP_SOURCE/build` folder.
+
+An analogous [script-like](alpdense.sh) version of this page is available in the ALP root directory of this branch. You may decide to run it directly (**note:** always making sure to customize the export commands above to your environment first) as follows:
 
 ```
 bash ../alpdense.sh
 ```
 
-Otherwise, you may follow step by step the instructions below.
+or follow the instructions in this page step by step.
 
-# Source code location
+# Source Code Location
 
 Assuming this branch is cloned in the `ALP_SOURCE` folder, all ALP/Dense include files are located in the `$ALP_SOURCE/include/alp` folder:
 - In particular, all the pre-implemented algorithms are located in `$ALP_SOURCE/include/alp/algorithms` 
@@ -45,13 +59,13 @@ For all tests below, the standard ALP dependencies are required:
 - POSIX threads: -lpthread
 - OpenMP: -fopenmp in the case of GCC
 
-# Smoke tests
+# Sequential Smoke Tests (Functional, Unoptimized)
 
 We collect the following smoke tests associated with the ALP/Dense reference backend:
 - Basic targets:
   - General matrix-matrix multiplication ([source](tests/smoke/alp_gemm.cpp))
   - Householder tridiagonalization of a real symmetric/complex Hermitian matrix ([source](tests/smoke/alp_zhetrd.cpp))
-  - Divide and conquer tridiagonal eigensolver for tridiagonal, real symmetric matrices ([source](tests/smoke/alp_dstedc.cpp))
+  - Divide and conquer tridiagonal eigensolver for tridiagonal, real symmetric matrices ([source](tests/smoke/alp_stedc.cpp))
   - Eigensolver for real symmetric matrices ([source](tests/smoke/alp_zheevd.cpp))
   - Householder QR decomposition of a real/complex general matrix ([source](tests/smoke/alp_zgeqrf.cpp))
 - Challenge targets:
@@ -70,32 +84,21 @@ export ALP_SOURCE="$(realpath ../)"
 cmake -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make smoketests -j$(nproc)
 ```
-The last command runs all registered smoke tests including the ALP/GraphBLAS smoketests.
 
-# Performance tests
+**Note:** The last command runs all registered smoke tests including the ALP/GraphBLAS smoketests.
 
-This tests have been executed:
-- On a Kunpeng 920 node using 1 core for the sequential alp_dispatch tests and 64 cores for the alp_omp tests;
-- Compiling with gcc 9.4.0;
-- Linking against KunpengBLAS from the Kunpeng BoostKit 22.0.RC1 and the netlib LAPACK linking to the same BLAS library.
-- All tests report runtime in milliseconds after the _time (ms, ...)_ text lines.
-
-In our evaluation we extracted the _Kunpeng BoostKit 22.0.RC1_ in a `BLAS_LIB` folder (the `kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package). `BLAS_LIB` should contain the `include/kblas.h` header file and the `lib/kblas` directory. 
-
-## Compilation and execution of the sequential Cholesky decomposition tests
+# Sequential Cholesky Decomposition Tests (optimized)
 
 Here we compare our ALP Cholesky implementation, based on the alp_dispatch backend, against the `potrf` LAPACK functionality.
 
-If no LAPACK library can be found by the compiler in system directories, `LAPACK_LIB` and `LAPACK_INCLUDE` have to be properly set (as mentioned at the beginning of this guide) and appropriately provided when calling cmake. In particular, in this test we assume the availability of the C/C++ LAPACKE interface.
-If you are using locally installed KunpengBLAS, make sure to set the `BLAS_LIB` path to the `kml` directory extracted from the `boostkit-kml-1.6.0-1.aarch64.rpm` package.
-In the example below, we assume no system libraries are available. From the `$ALP_SOURCE/build` folder run the following commands:
+From the `$ALP_SOURCE/build` folder run the following commands:
 
 ```
-cmake -DKBLAS_ROOT="$BLAS_LIB" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 ```
 
-### LAPACK-based test
+## LAPACK-Based Test
 
 To compile and run the LAPACK-based Cholesky test (not ALP code) run the following commands:
 ```
@@ -104,7 +107,7 @@ install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE
 ```
 In our tests, we executed `./cholesky_lapack_reference.exe` with matrix sizes (`-n` flag) in the range [400, 3000] in steps of 100.
 
-### ALP-based test
+## ALP-Based Test (Dispatch Sequential Building Blocks to Optimized BLAS)
 
 Some facts about this test:
 - The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
@@ -119,7 +122,7 @@ As for the LAPACK-based test, we executed `tests/performance/alp_cholesky_perf_a
 
 **Note:** A consistent test should use the same BLAS in LAPACK-based as well as in the ALP-based tests.
 
-## Compilation and execution of shared memory parallel `mxm` tests
+# Shared-Memory Parallel `mxm` Tests (Optimized)
 
 Here we compare our ALP shared memory backend (alp_omp) `mxm` implementation against the BLAS's `gemm` functionality.
 `mxm` is an inplace, ALP primitive that computes C = C + A*B, with matrices of conforming sizes.
@@ -131,11 +134,11 @@ You can compile with the `omp` version of KunpengBLAS by additionally providing 
 CWD=$(pwd)
 ompbuild="build_with_omp_blas"
 rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
-cmake -DKBLAS_ROOT="$BLAS_LIB" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 ```
 
-### `gemm`-based BLAS test.
+## `gemm`-Based BLAS Test.
 
 from `$ompbuild` run:
 ```
@@ -145,7 +148,7 @@ cd $CWD
 ```
 In our tests, we executed `./blas_mxm.exe` with matrix sizes (`-n` flag) in the range [1024:1024:10240].
 
-### ALP-based test.
+## ALP-Based Test (Dispatch Sequential Building Blocks to Optimized BLAS).
 
 Some facts about this test:
 - The ALP `mxm` shared memory implementation is based on a [2.5D matrix multiplication algorithm](https://netlib.org/lapack/lawnspdf/lawn248.pdf);
