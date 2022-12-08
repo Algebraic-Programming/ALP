@@ -94,6 +94,9 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	std::vector< ScalarType > matrix_data( N * N );
 	generate_spd_matrix_full( N, matrix_data );
 
+	std::cout << "Testing Cholesky decomposition U^T * U = S, with S SPD of size ( " << N << " x " << N << " )\n";
+	std::cout << "Test repeated " << unit.repeat << " times.\n";
+
 	times = 0;
 	alp::Matrix< ScalarType, alp::structures::Square, alp::Dense > LL_original( N );
 	alp::Matrix< ScalarType, alp::structures::Square, alp::Dense > LL( N );
@@ -108,8 +111,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	}
 
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 	//print("matrix_data", &(matrix_data[0]), N);
 

@@ -100,9 +100,9 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = rc ? rc : alp::buildMatrix( B, Bmatrix_data.begin(), Bmatrix_data.end() );
 
 	std::cout << "Testing  C(" << nrows( C ) << " x " << ncols( C )
-		  << ") +=   A(" << nrows( A ) << " x " << ncols( A )
+		  << ") += A(" << nrows( A ) << " x " << ncols( A )
 		  << ") x B(" << nrows( B ) << " x " << ncols( B )
-		  << ")  "  << unit.repeat << " times.\n";
+		  << ") "  << unit.repeat << " times.\n";
 
 	alp::Scalar< ScalarType > zero( ring.template getZero< ScalarType >() );
 
@@ -133,8 +133,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	);
 	diff_stdvec_matrix( Cmatrix_data, N, M, M, C );
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 }
 

@@ -61,7 +61,7 @@ make smoketests -j$(nproc)
 #    On a Kunpeng 920 node with 1 core (alp_dispatch) or 64 cores (alp_omp);
 #    Compiling with gcc 9.4.0 compiler;
 #    Linking against KunpengBLAS (Kunpeng BoostKit 22.0.RC1) and netlib LAPACK.
-#    All tests report time in milliseconds after "times (per repeat)" text.
+#    All tests report time in milliseconds after "time (ms, ...)" text line.
 #
 # These instructions assume that you are using "Kunpeng BoostKit 22.0.RC1" extracted in a directory BLAS_LIB
 # which should contain include/kblas.h file and the lib/kblas/ directory.
