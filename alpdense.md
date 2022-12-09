@@ -90,6 +90,22 @@ SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 
 **Note:** The variable `SMOKE_PRINT_TIME=ON` is used to print timing information of each test to screen. Set it to `OFF` or remove it from the command if this action is not desired.
 
+If the tests run correctly, for each of them you should see an output similar to the following:
+
+```
+****************************************************************************************
+      FUNCTIONAL    PERFORMANCE                       DESCRIPTION      
+----------------------------------------------------------------------------------------
+
+>>>      [x]           [ ]       Tests Cholesky decomposition for a random
+                                 symmetric positive definite matrix (100x100).
+Timing of blocked inplace version with bs = 64.
+ time (ms, total) = 72.1747
+ time (ms, per repeat) = 3.60873
+Test OK
+
+```
+
 # Sequential Cholesky Decomposition Tests (optimized)
 
 Here we compare our ALP Cholesky implementation, based on the alp_dispatch backend, against the `potrf` LAPACK functionality.
@@ -108,6 +124,17 @@ To compile and run the LAPACK-based Cholesky test (not ALP code) run the followi
 install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
 ./cholesky_lapack_reference.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+
+If the commands run correctly the output on screen should look like the following:
+
+```
+Testing dpotrf_ for U^T * U = S, with S SPD of size ( 1024 x 1024 )
+Test repeated 10 times.
+ time (ms, total) = 433.652
+ time (ms, per repeat) = 43.3652
+Tests OK
+```
+
 In our tests, we executed `./cholesky_lapack_reference.exe` with matrix sizes (`-n` flag) in the range [400, 3000] in steps of 100.
 
 ## ALP-Based Test (Dispatch Sequential Building Blocks to Optimized BLAS)
@@ -121,6 +148,17 @@ Some facts about this test:
 make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
 tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+
+If the commands run correctly the output on screen should look like the following:
+
+```
+Testing Cholesky decomposition U^T * U = S, with S SPD of size ( 1024 x 1024 )
+Test repeated 10 times.
+ time (ms, total) = 463.652
+ time (ms, per repeat) = 46.3652
+Tests OK
+```
+
 As for the LAPACK-based test, we executed `tests/performance/alp_cholesky_perf_alp_dispatch` with matrix sizes (`-n` flag) in the range [400, 3000] in steps of 100.
 
 **Note:** A consistent test should use the same BLAS in LAPACK-based as well as in the ALP-based tests.
@@ -149,6 +187,16 @@ install/bin/grbcxx -b alp_dispatch -o blas_mxm.exe $ALP_SOURCE/tests/performance
 OMP_NUM_THREADS=64 ./blas_mxm.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 cd $CWD
 ```
+
+If the commands run correctly the output on screen should look like the following:
+
+```
+Testing cblas_dgemm for C(1024 x 1024) +=   A(1024 x 1024) x B(1024 x 1024)  10 times.
+ time (ms, total) = 116.494
+ time (ms, per repeat) = 11.6494
+Tests OK
+```
+
 In our tests, we executed `./blas_mxm.exe` with matrix sizes (`-n` flag) in the range [1024:1024:10240].
 
 ## ALP-Based Test (Dispatch Sequential Building Blocks to Optimized BLAS).
@@ -167,4 +215,14 @@ cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DWITH_ALP_OMP_BA
 make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
 GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 ```
+
+If the commands run correctly the output on screen should look like the following:
+
+```
+Testing  C(1024 x 1024) += A(1024 x 1024) x B(1024 x 1024) 10 times.
+ time (ms, total) = 69.7239
+ time (ms, per repeat) = 6.97239
+Tests OK
+```
+
 As for the gemm-based test, we executed `tests/performance/alp_mxm_perf_alp_omp` with matrix sizes (`-n` flag) in the range [1024:1024:10240].
