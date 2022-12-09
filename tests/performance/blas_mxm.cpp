@@ -80,7 +80,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
   // print("C ", Cmatrix_data, N, M );
 
 
-  std::cout << "Testing  C(" << N << " x " << M
+  std::cout << "Testing cblas_dgemm for C(" << N << " x " << M
 	    << ") +=   A(" << N << " x " << K
 	    << ") x B(" << K << " x " << M
 	    << ")  "  << unit.repeat << " times.\n";
