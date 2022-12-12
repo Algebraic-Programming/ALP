@@ -26,9 +26,20 @@
 
 template<
 	typename MatrixType,
-	std::enable_if_t< alp::is_matrix< MatrixType >::value > * = nullptr
+	std::enable_if_t< alp::is_matrix< MatrixType >::value > * = nullptr,
+	typename D = typename MatrixType::value_type,
+	class Ring = alp::Semiring<
+		alp::operators::add< D >,
+		alp::operators::mul< D >,
+		alp::identities::zero,
+		alp::identities::one
+	>
 >
-void print_matrix( std::string name, const MatrixType &A ) {
+void print_matrix(
+	std::string name,
+	const MatrixType &A,
+	const Ring &ring = Ring()
+) {
 
 	if( ! alp::internal::getInitialized( A ) ) {
 		std::cout << "Matrix " << name << " uninitialized. Nothing to print.\n";
@@ -54,7 +65,7 @@ void print_matrix( std::string name, const MatrixType &A ) {
 					std::cout <<  ",";
 				}
 			} else {
-				std::cout << std::setprecision( 0 ) << "\t" << "0, ";
+				std::cout << std::setprecision( 0 ) << "\t" << ring.template getZero< D >() << ", ";
 			}
 		}
 		if( row + 1 != alp::nrows( A ) ) {
