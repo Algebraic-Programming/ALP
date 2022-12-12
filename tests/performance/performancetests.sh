@@ -70,8 +70,8 @@ fi
 DATASETS=(west0497.mtx facebook_combined.txt cit-HepTh.txt com-amazon.ungraph.txt com-youtube.ungraph.txt cit-Patents.txt com-orkut.ungraph.txt)
 DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
 DATASET_SIZES=(497 4039 27770 334863 1134890 3774768 3072441)
-KNN4SOLS=(118 499 2805 1 64 1 1048907)
-KNN6SOLS=(357 547 5176 1 246 1 1453447)
+KNN4SOLS=(59 421 1138 1 32 1 1048907)
+KNN6SOLS=(238 526 4189 1 181 1 1268035)
 
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
 MULTIPLICATION_DATASETS=(west0497.mtx fidap037.mtx cavity17.mtx s3rmt3m3.mtx bloweybq.mtx bcsstk17.mtx Pres_Poisson.mtx gyro_m.mtx memplus.mtx lhr34.mtx bcsstk32.mtx vanbody.mtx s3dkt3m2.mtx G2_circuit.mtx Stanford.mtx coPapersCiteseer.mtx bundle_adj.mtx Stanford_Berkeley.mtx apache2.mtx Emilia_923.mtx ldoor.mtx ecology2.mtx Serena.mtx cage14.mtx G3_circuit.mtx wikipedia-20051105.mtx wikipedia-20061104.mtx Freescale1.mtx wikipedia-20070206.mtx Queen_4147.mtx cage15.mtx adaptive.mtx rgg_n_2_24_s0.mtx uk-2002.mtx road_usa.mtx MOLIERE_2016.mtx europe_osm.mtx twitter.mtx com-Friendster.mtx)
