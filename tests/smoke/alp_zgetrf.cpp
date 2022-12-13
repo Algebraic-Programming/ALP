@@ -232,7 +232,7 @@ RC check_lu_solution(
 	return rc;
 }
 
-/** check if LU decomposition is correct H==LU, in-place without pivoting version */
+/** check if LU decomposition is correct H==LU, out-of-place without pivoting version */
 template<
 	typename MatH,
 	typename D = typename MatH::value_type,
