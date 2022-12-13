@@ -762,6 +762,7 @@ namespace alp {
 
 	namespace internal {
 
+
 		/**
 		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
 		 * The compatibility depends on the TargetStructure, SourceStructure and IMFs, and is calculated during runtime.
@@ -783,8 +784,19 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
-				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			if(
+				( imf_r.n != 0  &&  imf_c.n != 0 ) &&
+				! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) )
+			  ) {
+				std::string message("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions. ");
+#ifdef DEBUG
+				message = message + " (Target) ";
+				message = message + typeid( TargetStructure ).name();
+				message = message + " and (Source)";
+				message = message + typeid( typename SourceMatrix::structure ).name();
+				message = message + "\n";
+#endif
+				throw std::runtime_error( message );
 			}
 
 			using target_t = typename internal::new_container_type_from<
