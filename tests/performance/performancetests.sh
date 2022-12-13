@@ -70,7 +70,7 @@ fi
 DATASETS=(west0497.mtx facebook_combined.txt cit-HepTh.txt com-amazon.ungraph.txt com-youtube.ungraph.txt cit-Patents.txt com-orkut.ungraph.txt)
 DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
 DATASET_SIZES=(497 4039 27770 334863 1134890 3774768 3072441)
-KNN4SOLS=(59 421 1138 1 32 1 1048907)
+KNN4SOLS=(59 421 1138 1 32 1 609122)
 KNN6SOLS=(238 526 4189 1 181 1 1268035)
 
 #the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
