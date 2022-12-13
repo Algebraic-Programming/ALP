@@ -433,7 +433,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, backend > &x,
 		const Scalar< InputType2, InputStructure2, backend > &beta,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if<
+		const std::enable_if_t<
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&

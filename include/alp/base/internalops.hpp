@@ -2084,7 +2084,7 @@ namespace alp {
 			 * @see OperatorBase for additional functions exposed to the final operator.
 			 */
 			template< typename OP >
-			class OperatorFR< OP, typename std::enable_if< OP::has_foldr && std::is_same< typename OP::right_type, typename OP::result_type >::value >::type > : public OperatorBase< OP > {
+			class OperatorFR< OP, std::enable_if_t< OP::has_foldr && std::is_same< typename OP::right_type, typename OP::result_type >::value > > : public OperatorBase< OP > {
 
 			private:
 				typedef typename OperatorBase< OP >::D1 D1;
@@ -2496,7 +2496,7 @@ namespace alp {
 			 *                   operator.
 			 */
 			template< typename OP >
-			class OperatorFL< OP, typename std::enable_if< OP::has_foldl && std::is_same< typename OP::left_type, typename OP::result_type >::value >::type > : public OperatorFR< OP > {
+			class OperatorFL< OP, std::enable_if_t< OP::has_foldl && std::is_same< typename OP::left_type, typename OP::result_type >::value > > : public OperatorFR< OP > {
 
 			private:
 			public:
@@ -2678,7 +2678,7 @@ namespace alp {
 			 *                   operator.
 			 */
 			template< typename OP >
-			class OperatorNoFR< OP, typename std::enable_if< OP::has_foldl && ! ( OP::has_foldr ) && std::is_same< typename OP::left_type, typename OP::result_type >::value >::type > :
+			class OperatorNoFR< OP, std::enable_if_t< OP::has_foldl && ! ( OP::has_foldr ) && std::is_same< typename OP::left_type, typename OP::result_type >::value > > :
 				public OperatorFL< OP > {
 
 			private:
@@ -2841,8 +2841,8 @@ namespace alp {
 			 */
 			template< typename OP >
 			class OperatorNoFRFL< OP,
-				typename std::enable_if< ( ! ( OP::has_foldl ) || ! ( std::is_same< typename OP::left_type, typename OP::result_type >::value ) ) &&
-					( ! ( OP::has_foldr ) || ! ( std::is_same< typename OP::right_type, typename OP::result_type >::value ) ) >::type > : public OperatorNoFR< OP > {
+				std::enable_if_t< ( ! ( OP::has_foldl ) || ! ( std::is_same< typename OP::left_type, typename OP::result_type >::value ) ) &&
+					( ! ( OP::has_foldr ) || ! ( std::is_same< typename OP::right_type, typename OP::result_type >::value ) ) > > : public OperatorNoFR< OP > {
 
 			private:
 			public:

@@ -59,7 +59,7 @@ namespace alp {
 		 * @returns Whether a == b.
 		 */
 		template< typename T >
-		static bool equals( const T & a, const T & b, typename std::enable_if< ! std::is_floating_point< T >::value >::type * = NULL ) {
+		static bool equals( const T & a, const T & b, std::enable_if_t< ! std::is_floating_point< T >::value > * = NULL ) {
 			// simply do standard compare
 			return a == b;
 		}
@@ -83,7 +83,7 @@ namespace alp {
 		 */
 		template< typename T, typename U >
 		static bool equals( const T &a, const T &b, const U epsilons,
-			typename std::enable_if< std::is_floating_point< T >::value >::type * = NULL
+			std::enable_if_t< std::is_floating_point< T >::value > * = NULL
 		) {
 			assert( epsilons >= 1 );
 
