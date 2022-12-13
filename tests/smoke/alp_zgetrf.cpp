@@ -87,6 +87,7 @@ std::vector< T >  generate_rectangular_matrix_data(
 	return data;
 }
 
+/** check if LU decomposition is correct H==LU */
 template<
 	typename MatH,
 	typename D = typename MatH::value_type,
@@ -173,7 +174,7 @@ RC check_lu_solution(
 	return rc;
 }
 
-/** in-place with pivoting version */
+/** check if LU decomposition is correct H==LU, in-place with pivoting version */
 template<
 	typename MatH,
 	typename D = typename MatH::value_type,
@@ -231,7 +232,7 @@ RC check_lu_solution(
 	return rc;
 }
 
-/** no pivoting version */
+/** check if LU decomposition is correct H==LU, in-place without pivoting version */
 template<
 	typename MatH,
 	typename D = typename MatH::value_type,
@@ -309,7 +310,7 @@ RC check_lu_solution(
 	return rc;
 }
 
-/** in-place without pivoting version */
+/** check if LU decomposition is correct H==LU, in-place without pivoting version */
 template<
 	typename MatH,
 	typename D = typename MatH::value_type,
@@ -381,8 +382,7 @@ void alp_program( const size_t &unit, alp::RC &rc ) {
 	std::vector< size_t > m_arr { unit, unit, 2* unit };
 	std::vector< size_t > n_arr { 2* unit, unit, unit, };
 	for( size_t i = 0; i < 3; ++i ) {
-//	for( size_t i = 2; i < 3; ++i ) {
-		// dimensions of sqare matrices H, Q and R
+		// dimensions of rectangular matrix H
 		const size_t M = m_arr[ i ];
 		const size_t N = n_arr[ i ];
 		const size_t K = std::min( N, M );

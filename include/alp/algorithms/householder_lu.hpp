@@ -677,9 +677,6 @@ namespace alp {
 			}
 
 			for( size_t k = 0; k < std::min( nblocks_r, nblocks_c ); ++k ) {
-#ifdef DEBUG
-				std::cout << "k = "<< kk << "\n";
-#endif
 
 				auto range_a = utils::range( k * bs, std::min( ( k + 1) * bs, kk ) );
 				auto range_c = utils::range( std::min( ( k + 1) * bs, kk ), nrows( L ) );
@@ -802,9 +799,9 @@ namespace alp {
 
 				rc = rc ? rc : algorithms::householder_lu( A00, ring );
 
-				// TODO: add Unitriangular structure and add
+				// todo: add Unitriangular structure and add
 				//       the corresponding forwardsubstitution specialization,
-				//       then remove L00 temporary
+				//       then remove L00 temporary #608
 				// auto L00 = alp::get_view< structures::LowerTrapezoidal >( L, range_a, range_a ); // -> A00/down
 				Matrix< D, structures::General > L00( nrows( A00 ), ncols( A00 ) );
 				auto L00diag = alp::get_view< alp::view::diagonal >( L00 );
@@ -875,9 +872,6 @@ namespace alp {
 			// initialize permutation vector to identity permutation
 			alp::set< alp::descriptors::use_index >( p, alp::Scalar< IndexType >( 0 ) );
 
-			// Vector< D > PivotVec( n );
-			// rc = rc ? rc : alp::set( PivotVec, zero );
-
 			size_t nblocks_r = m / bs;
 			if( m != nblocks_r * bs ) {
 				nblocks_r += 1;
@@ -902,17 +896,19 @@ namespace alp {
 				alp::Vector< size_t > pvec( nrows( A00 ) );
 				rc = rc ? rc : alp::set< alp::descriptors::use_index >( pvec, alp::Scalar< size_t >( 0 ) );
 				rc = rc ? rc : algorithms::householder_lu( A00, pvec, ring );
-				//rc = rc ? rc : algorithms::householder_lu( A00, ring );
 
-
-				// TODO: add Unitriangular structure and add
-				//       the corresponding for(/back)wardsubstitution specialization,
-				//       then remove L00 temporary
+				// todo: add Unitriangular structure and add
+				//       the corresponding forwardsubstitution specialization,
+				//       then remove L00 temporary #608
 				Matrix< D, structures::General > L00( nrows( A00 ), ncols( A00 ) );
 				auto L00diag = alp::get_view< alp::view::diagonal >( L00 );
 				rc = rc ? rc : alp::set( L00diag, one );
-				auto l1tmp = alp::get_view< structures::LowerTrapezoidal >( L00, utils::range( 1, nrows( A00 ) ), utils::range( 0, ncols( A00 ) - 1 ) );
-				auto a1tmp = alp::get_view< structures::LowerTrapezoidal >( A00, utils::range( 1, nrows( A00 ) ), utils::range( 0, ncols( A00 ) - 1 ) );
+				auto l1tmp = alp::get_view< structures::LowerTrapezoidal >(
+					L00, utils::range( 1, nrows( A00 ) ), utils::range( 0, ncols( A00 ) - 1 )
+				);
+				auto a1tmp = alp::get_view< structures::LowerTrapezoidal >(
+					A00, utils::range( 1, nrows( A00 ) ), utils::range( 0, ncols( A00 ) - 1 )
+				);
 				rc = rc ? rc : alp::set( l1tmp, a1tmp );
 
 				// U[ k * bs : b, b : ] = inv( L00 ).dot( A0[ k * bs : b, b : ][ p00 ] )
