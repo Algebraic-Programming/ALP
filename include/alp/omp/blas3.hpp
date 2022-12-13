@@ -29,7 +29,6 @@
 #include <alp/descriptors.hpp>
 #include <alp/structures.hpp>
 
-// #include <alp/amf-based/matrix.hpp>
 #include <alp/base/blas3.hpp>
 
 #include "matrix.hpp"
@@ -77,12 +76,12 @@ namespace alp {
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !alp::is_object< OutputType >::value &&
+			const std::enable_if_t< !alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value && !
 				alp::is_object< InputType2 >::value &&
 				alp::is_operator< Operator >::value &&
 				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL
+			void > * const = NULL
 		) {
 
 			static_assert( 
@@ -100,18 +99,17 @@ namespace alp {
 #endif
 
 			// Early exit checks 
-			if( ! internal::getInitialized( A ) ||
-				! internal::getInitialized( B ) ||
+			if( ! internal::getInitialized( A ) || ! internal::getInitialized( B ) ||
 				! internal::getInitialized( C )
 			) {
 				internal::setInitialized( C, false );
 				return SUCCESS;
 			}
 
-			const std::ptrdiff_t m   { static_cast< std::ptrdiff_t >( nrows( C ) ) };
-			const std::ptrdiff_t n   { static_cast< std::ptrdiff_t >( ncols( C ) ) };
+			const std::ptrdiff_t m { static_cast< std::ptrdiff_t >( nrows( C ) ) };
+			const std::ptrdiff_t n { static_cast< std::ptrdiff_t >( ncols( C ) ) };
 			const std::ptrdiff_t m_a { static_cast< std::ptrdiff_t >( nrows( A ) ) };
-			const std::ptrdiff_t k   { static_cast< std::ptrdiff_t >( ncols( A ) ) };
+			const std::ptrdiff_t k { static_cast< std::ptrdiff_t >( ncols( A ) ) };
 			const std::ptrdiff_t k_b { static_cast< std::ptrdiff_t >( nrows( B ) ) };
 			const std::ptrdiff_t n_b { static_cast< std::ptrdiff_t >( ncols( B ) ) };
 
@@ -155,18 +153,6 @@ namespace alp {
 				const th_coord_t th_ijk_c = dc.getThreadCoords( thread );
 
 				RC local_rc = SUCCESS;
-
-// 				if( block_grid_dims_c.first != set_block_grid_dims_a.first 
-// 					|| block_grid_dims_c.second != set_block_grid_dims_b.second 
-// 					|| set_block_grid_dims_a.second != set_block_grid_dims_b.first 
-// 				) {
-// #ifndef NDEBUG
-// 					#pragma omp critical
-// 					std::cerr << "Thread " << thread << " in alp::internal::mxm_generic (omp)\n"
-// 						"\tMismatching local block grid size on set." << std::endl;
-// #endif
-// 					local_rc = MISMATCH;
-// 				}
 
 				// Broadcast A and B to all c-dimensional layers
 				if( local_rc == SUCCESS && da.isActiveThread( th_ijk_a ) && th_ijk_a.rt > 0 ) {
@@ -307,7 +293,6 @@ namespace alp {
 									const auto refA_loc = get_view( A, th_isk_a, br, bk );
 
 									for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
-
 
 										const auto refB_loc = get_view( B, th_sjk_b, bk, bc );
 										auto refC_ijk = get_view( C, th_ijk_c, br, bc );
@@ -465,13 +450,13 @@ namespace alp {
 		Density::Dense, InputView2, InputImfR2, InputImfC2, omp > &B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< 
+		const std::enable_if_t< 
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_semiring< Semiring >::value,
 			void 
-		>::type * const = NULL 
+		> * const = NULL 
 	) {
 		(void)phase;
 
@@ -506,13 +491,13 @@ namespace alp {
 		const Operator & mulOp,
 		const Monoid & addM,
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< 
+		const std::enable_if_t< 
 			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
 			void 
-		>::type * const = NULL 
+		> * const = NULL 
 	) {
 		(void)phase;
 

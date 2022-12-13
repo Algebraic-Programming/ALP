@@ -314,7 +314,7 @@ namespace alp {
 			}
 
 			bool isActiveThread(const ThreadCoords &t ) const {
-				return t.tr < Tr && t.tc < Tc && t.rt < Rt;
+				return ( t.tr < Tr ) && ( t.tc < Tc ) && ( t.rt < Rt );
 			}
 
 			bool isActiveThread(const size_t thread_id ) const {

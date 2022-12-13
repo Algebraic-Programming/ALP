@@ -28,7 +28,7 @@ using namespace alp;
 
 
 template< typename T >
-void print_stdvec_as_matrix( std::string name, const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda ) {
+void print_stdvec_as_matrix( std::string name, const std::vector< T > &vA, const size_t m, const size_t n, const size_t lda ) {
 
 	std::cout << "Vec " << name << ":" << std::endl;
 	for( size_t row = 0; row < m; ++row ) {
@@ -41,27 +41,29 @@ void print_stdvec_as_matrix( std::string name, const std::vector< T > & vA, cons
 }
 
 template< typename T, typename Operator, typename Monoid >
-void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
-							const std::vector< T > & vA, const size_t lda,
-							const std::vector< T > & vB, const size_t ldb,
-							const size_t m, const size_t k, const size_t n,
-							const Operator oper,
-							const Monoid monoid ) {
+void mxm_stdvec_as_matrix(	
+	std::vector< T > &vC, const size_t ldc,
+	const std::vector< T > &vA, const size_t lda,
+	const std::vector< T > &vB, const size_t ldb,
+	const size_t m, const size_t k, const size_t n,
+	const Operator oper,
+	const Monoid monoid 
+) {
     
 	T temp;
 
 #ifndef NDEBUG
-	print_stdvec_as_matrix("vA", vA, n, n, n);
-	print_stdvec_as_matrix("vB", vB, n, n, n);
-	print_stdvec_as_matrix("vC - PRE", vC, n, n, n);
+	print_stdvec_as_matrix( "vA", vA, n, n, n );
+	print_stdvec_as_matrix( "vB", vB, n, n, n );
+	print_stdvec_as_matrix( "vC - PRE", vC, n, n, n );
 #endif
 
 	for( size_t i = 0; i < m; ++i ) {
 		for( size_t j = 0; j < n; ++j ) {
-			T & c_val { vC[ i * ldc + j ] };
+			T &c_val { vC[ i * ldc + j ] };
 			for( size_t l = 0; l < k; ++l ) {
-					const T & a_val { vA[ i * lda + l ] };
-					const T & b_val { vB[ l * ldb + j ] };
+					const T &a_val { vA[ i * lda + l ] };
+					const T &b_val { vB[ l * ldb + j ] };
 					// std::cout << c_val << " += " << a_val << " * " << b_val << std::endl;
 					(void)internal::apply( temp, a_val, b_val, oper );
 					// std::cout << "temp = " << temp << std::endl;
@@ -71,12 +73,12 @@ void mxm_stdvec_as_matrix(	std::vector< T > & vC, const size_t ldc,
 	}
 
 #ifndef NDEBUG
-	print_stdvec_as_matrix("vC - POST", vC, n, n, n);
+	print_stdvec_as_matrix( "vC - POST", vC, n, n, n );
 #endif
 }
 
 template< typename Structure, typename T >
-void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
+void stdvec_build_matrix( std::vector< T > &vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one ) {
 
 		if( std::is_same< Structure, structures::General >::value ) {
 			std::fill( vA.begin(), vA.end(), one );
@@ -96,7 +98,7 @@ void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n,
 }
 
 template< typename Structure, typename T >
-void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one, const T inc ) {
+void stdvec_build_matrix( std::vector< T > &vA, const size_t m, const size_t n, const size_t lda, const T zero, const T one, const T inc ) {
 
 		T val = one;
 		if( std::is_same< Structure, structures::General >::value ) {
@@ -128,23 +130,23 @@ void stdvec_build_matrix( std::vector< T > & vA, const size_t m, const size_t n,
 }
 
 template< typename Structure, typename T >
-void stdvec_build_matrix_packed( std::vector< T > & vA, const T one ) {
+void stdvec_build_matrix_packed( std::vector< T > &vA, const T one ) {
 
 	std::fill( vA.begin(), vA.end(), one );
 
 }
 
 template< typename Structure, typename T >
-void stdvec_build_matrix_packed( std::vector< T > & vA, const T one, const T inc ) {
+void stdvec_build_matrix_packed( std::vector< T > &vA, const T one, const T inc ) {
 
 		T val = one;
 		if( std::is_same< Structure, structures::Symmetric >::value ) { // Assumes Packed Row - Upper
-			for( auto & elem: vA ) {
+			for( auto &elem: vA ) {
 				elem = val;
 				val += inc;
 			}
 		} else if( std::is_same< Structure, structures::UpperTriangular >::value ) { // Assumes Packed Row - Upper
-			for( auto & elem: vA ) {
+			for( auto &elem: vA ) {
 				elem = val;
 				val += inc;
 			}
@@ -153,8 +155,8 @@ void stdvec_build_matrix_packed( std::vector< T > & vA, const T one, const T inc
 }
 
 template< typename MatType, typename T >
-void diff_stdvec_matrix( const std::vector< T > & vA, const size_t m, const size_t n, const size_t lda,
-						 const MatType & mA, double threshold=1e-7 ) {
+void diff_stdvec_matrix( const std::vector< T > &vA, const size_t m, const size_t n, const size_t lda,
+						 const MatType & mA, double threshold = 1e-7 ) {
 
 	if( std::is_same< typename MatType::structure, structures::General >::value ) {
 		for( size_t row = 0; row < m; ++row ) {
@@ -233,15 +235,15 @@ void run_mxm( const size_t m, const size_t k, const size_t n, alp::RC &rc ) {
 	}
 
 #ifndef NDEBUG
-	print_matrix("A", A);
-	print_matrix("B", B);
-	print_matrix("C - PRE", C);
+	print_matrix( "A", A );
+	print_matrix( "B", B );
+	print_matrix( "C - PRE", C );
 #endif
 
 	rc = rc ? rc : alp::mxm( C, A, B, ring );
 
 #ifndef NDEBUG
-	print_matrix("C - POST", C);
+	print_matrix( "C - POST", C );
 #endif
 
 	if ( rc != alp::SUCCESS )
@@ -296,7 +298,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 
 }
 
-int main( int argc, char ** argv ) {
+int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
 	size_t in = 4;

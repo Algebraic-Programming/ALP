@@ -152,7 +152,7 @@ namespace alp {
 	) noexcept {
 		
 		static_assert( 
-			( std::is_same< InputType, typename fwd_iterator::value_type >::value ), 
+			std::is_same< InputType, typename fwd_iterator::value_type >::value, 
 			"alp::buildMatrix (omp): Mismatching type between user-provided input "
 			"container and output ALP container."
 		);
