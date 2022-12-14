@@ -1240,8 +1240,9 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR, InputImfC, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-T3), operator variant\n";
 	#endif
@@ -1264,8 +1265,9 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), operator variant\n";
 	#endif
@@ -1290,8 +1292,9 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Scalar< InputType2, InputStructure2, reference> &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), monoid variant\n";
 	#endif
@@ -1314,8 +1317,9 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
 	#endif
@@ -1338,8 +1342,9 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, reference> &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
 	#endif
@@ -1362,8 +1367,9 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Monoid & monoid = Monoid(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
 	#endif
@@ -1449,8 +1455,9 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator variant\n";
 	#endif
@@ -1542,8 +1549,9 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const OP & op = OP(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_operator< OP >::value
+		> * const = NULL ) {
 	#ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
 	#endif
@@ -1640,12 +1648,15 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Ring
 	>
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
+	RC eWiseMul( 
+		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value
+		> * const = NULL 
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
@@ -1674,12 +1685,15 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Ring
 	>
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
+	RC eWiseMul( 
+		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & y,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value
+		> * const = NULL 
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
@@ -1708,12 +1722,15 @@ namespace alp {
 		typename InputType2, typename InputStructure2,
 		class Ring
 	>
-	RC eWiseMul( Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
+	RC eWiseMul( 
+		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & z,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & x,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< ! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< OutputType >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && alp::is_semiring< Ring >::value
+		> * const = NULL 
+	) {
 		// static sanity checks
 		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D1, InputType1 >::value ), "alp::eWiseMul",
 			"called with a left-hand side input vector with element type that does not "
@@ -1923,17 +1940,19 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AddMonoid, class AnyOp
 	>
-	RC dot( OutputType &z,
+	RC dot( 
+		OutputType &z,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const AddMonoid &addMonoid = AddMonoid(),
 		const AnyOp &anyOp = AnyOp(),
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< 
+			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
-			alp::is_operator< AnyOp >::value,
-		void >::type * const = NULL
+			alp::is_operator< AnyOp >::value
+		> * const = NULL
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< InputType1, typename AnyOp::D1 >::value ), "alp::dot",
@@ -1978,16 +1997,17 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Ring
 	>
-	RC dot( Scalar< IOType, IOStructure, reference > &x,
+	RC dot( 
+		Scalar< IOType, IOStructure, reference > &x,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &left,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &right,
 		const Ring &ring = Ring(),
-		const typename std::enable_if<
+		const std::enable_if_t<
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
-			alp::is_semiring< Ring >::value,
-		void >::type * const = NULL
+			alp::is_semiring< Ring >::value
+		> * const = NULL
 	) {
 		return alp::dot< descr >( x,
 		// return alp::dot( x,
@@ -2004,16 +2024,17 @@ namespace alp {
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2
 	>
-	RC dot( IOType &x,
+	RC dot( 
+		IOType &x,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &left,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &right,
 		const Ring &ring = Ring(),
-		const typename std::enable_if<
+		const std::enable_if_t<
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
-			alp::is_semiring< Ring >::value,
-		void >::type * const = NULL
+			alp::is_semiring< Ring >::value
+		> * const = NULL
 	) {
 		Scalar< IOType, structures::General, reference > res( x );
 		RC rc = alp::dot< descr >( res,
@@ -2305,10 +2326,9 @@ namespace alp {
 		Scalar< OutputType, OutputStructure, reference > &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if<
-			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,
-			void
-		>::type * const = NULL
+		const std::enable_if_t<
+			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
+		> * const = NULL
 	) {
 		RC ret = alp::dot< descr >( x, y, y, ring );
 		if( ret == SUCCESS ) {
@@ -2328,10 +2348,9 @@ namespace alp {
 		OutputType &x,
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &y,
 		const Ring &ring = Ring(),
-		const typename std::enable_if<
-			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value,
-			void
-		>::type * const = nullptr
+		const std::enable_if_t<
+			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
+		> * const = nullptr
 	) {
 		Scalar< OutputType, structures::General, reference > res( x );
 		RC rc = norm2( res, y, ring );

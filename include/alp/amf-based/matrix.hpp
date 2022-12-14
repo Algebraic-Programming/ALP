@@ -88,19 +88,19 @@ namespace alp {
 		/** Forward declarations for access functions */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
@@ -144,19 +144,19 @@ namespace alp {
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex );
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P );
 
@@ -743,7 +743,7 @@ namespace alp {
 	template<
 		typename TargetStructure,
 		typename SourceMatrix,
-		std::enable_if< is_matrix< SourceMatrix >::value > * = nullptr
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
@@ -761,7 +761,6 @@ namespace alp {
 	}
 
 	namespace internal {
-
 
 		/**
 		 * Implement a gather through a View over compatible Structure using provided Index Mapping Functions.
@@ -1085,7 +1084,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
@@ -1096,7 +1095,7 @@ namespace alp {
 		/** Non-constant variant. **/
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
@@ -1122,7 +1121,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );

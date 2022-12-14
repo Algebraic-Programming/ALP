@@ -65,13 +65,13 @@ namespace alp {
 		/** Forward declarations for access functions */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::access_type access( const MatrixType &, const typename MatrixType::storage_index_type & );
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::access_type access( MatrixType &, const typename MatrixType::storage_index_type & );
 
@@ -122,7 +122,7 @@ namespace alp {
 		/** Returns the reference to the AMF of a storage-based matrix */
 		template<
 			typename MatrixType,
-			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
@@ -167,7 +167,7 @@ namespace alp {
 			/** Get the reference to the AMF of a storage-based matrix */
 			template<
 				typename MatrixType,
-				std::enable_if< internal::is_storage_based< MatrixType >::value > *
+				std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 			>
 			friend const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
@@ -316,7 +316,7 @@ namespace alp {
 		/** Get the reference to the AMF of a storage-based matrix */
 		template<
 			typename MatrixType,
-			std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept {
 			return A.getAmf();
@@ -326,7 +326,7 @@ namespace alp {
 
 	template<
 		typename MatrixType,
-		std::enable_if< internal::is_storage_based< MatrixType >::value > * = nullptr
+		std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
 	>
 	size_t internal::getStorageDimensions( const MatrixType &A ) noexcept {
 		static_assert( is_storage_based< MatrixType >::value, "getStorageDimensions supported only for storage-based containers.");

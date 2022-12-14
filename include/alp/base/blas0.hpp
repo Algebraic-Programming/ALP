@@ -403,8 +403,10 @@ namespace alp {
 		template< alp::Descriptor descr, typename OutputType, typename D >
 		class ValueOrIndex< 
 			descr, OutputType, D,
-			typename std::enable_if< std::is_arithmetic< OutputType >::value
-			&& ! std::is_same< D, void >::value >::type 
+			std::enable_if_t< 
+				std::is_arithmetic< OutputType >::value
+				&& ! std::is_same< D, void >::value 
+			>
 		> {
 		private:
 			static constexpr const bool use_index = descr & alp::descriptors::use_index;
@@ -429,8 +431,10 @@ namespace alp {
 		template< alp::Descriptor descr, typename OutputType, typename D >
 		class ValueOrIndex<
 			descr, OutputType, D,
-			typename std::enable_if< ! std::is_arithmetic< OutputType >::value
-			&& ! std::is_same< OutputType, void >::value >::type
+			std::enable_if_t< 
+				! std::is_arithmetic< OutputType >::value
+				&& ! std::is_same< OutputType, void >::value 
+			>
 		> {
 			static_assert(
 				!( descr & descriptors::use_index ),
