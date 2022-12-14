@@ -73,7 +73,7 @@ namespace alp {
 				!is_object< InputType1 >::value &&
 				!is_object< InputType2 >::value &&
 				!is_object< OutputType >::value,
-			void > * = NULL
+			void > * = nullptr
 		) {
 			// static sanity check
 			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || (
@@ -106,7 +106,7 @@ namespace alp {
 		RC foldr( const InputType & x,
 			IOType & y,
 			const OP & op = OP(),
-			const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = NULL ) {
+			const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = nullptr ) {
 			// static sanity check
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) ||
 								( std::is_same< InputType, typename OP::D1 >::value && std::is_same< IOType, typename OP::D2 >::value && std::is_same< IOType, typename OP::D3 >::value ) ),
@@ -131,7 +131,7 @@ namespace alp {
 		RC foldl( IOType & x,
 			const InputType & y,
 			const OP & op = OP(),
-			const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = NULL ) {
+			const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = nullptr ) {
 			// static sanity check
 			NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) ||
 								( std::is_same< IOType, typename OP::D1 >::value && std::is_same< InputType, typename OP::D2 >::value && std::is_same< IOType, typename OP::D3 >::value ) ),
@@ -207,7 +207,7 @@ namespace alp {
 			!is_object< InputType1 >::value &&
 			!is_object< InputType2 >::value &&
 			!is_object< OutputType >::value,
-		void > * = NULL
+		void > * = nullptr
 	) {
 
 		RC rc = internal::apply( *out, *x, *y, op );
@@ -225,7 +225,7 @@ namespace alp {
 	RC foldr( const Scalar< InputType, InputStructure, reference > &x,
 		Scalar< IOType, IOStructure, reference > &y,
 		const OP & op = OP(),
-		const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = NULL ) {
+		const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = nullptr ) {
 		
 		RC rc = internal::foldr( *x, *y, op);
 
@@ -242,7 +242,7 @@ namespace alp {
 	RC foldl( Scalar< IOType, IOStructure, reference > &x,
 		const Scalar< InputType, InputStructure, reference > &y,
 		const OP & op = OP(),
-		const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = NULL ) {
+		const std::enable_if_t< is_operator< OP >::value && ! is_object< InputType >::value && ! is_object< IOType >::value, void > * = nullptr ) {
 
 		RC rc = internal::foldl( *x, *y, op );
 
