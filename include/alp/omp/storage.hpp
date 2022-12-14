@@ -172,8 +172,8 @@ namespace alp {
 				const size_t num_threads
 			) :
 				m( m ), n( n ),
-				Tr( static_cast< size_t >( sqrt( num_threads/ Rt ) ) ),
-				Tc( num_threads / Rt / Tr ),
+				Tr( config::THREAD_ROW_DIM ), // Temporary
+				Tc( config::THREAD_COL_DIM ),
 				Br( static_cast< size_t >( std::ceil( static_cast< double >( m ) / config::BLOCK_ROW_DIM ) ) ),
 				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ) {
 
@@ -229,6 +229,11 @@ namespace alp {
 
 			size_t getNumberOfThreads() const {
 				return Tr * Tc * Rt;
+			}
+
+			/** Returns the thread grid size */
+			ThreadCoords getThreadGridDims() const {
+				return { Tr, Tc, Rt };
 			}
 
 			/** Returns the total global amount of blocks */
