@@ -160,14 +160,14 @@ namespace alp {
 
 			template<
 				typename MatrixType,
-				std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+				std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 			>
 			friend size_t getStorageDimensions( const MatrixType &A ) noexcept;
 
 			/** Get the reference to the AMF of a storage-based matrix */
 			template<
 				typename MatrixType,
-				std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+				std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 			>
 			friend const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept;
 
