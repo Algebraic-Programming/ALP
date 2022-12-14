@@ -120,6 +120,14 @@ namespace alp {
 			const auto tg_b = db.getThreadGridDims();
 			const auto tg_c = dc.getThreadGridDims();
 
+			if( tg_c.rt != tg_a.rt || tg_a.rt != tg_b.rt ) {
+				return MISMATCH;
+			}
+
+			if( tg_c.tr != tg_a.tr || tg_c.tc != tg_b.tc || tg_a.tc != tg_b.tr ) {
+				return MISMATCH;
+			}
+
 			using th_coord_t = typename Distribution_2_5D::ThreadCoords;
 
 			RC rc = SUCCESS;
@@ -128,38 +136,46 @@ namespace alp {
 			for( size_t thread = 0; thread < config::OMP::current_threads(); ++thread ) {
 
 				const th_coord_t th_ijk_a = da.getThreadCoords( thread );
-				const th_coord_t th_ijk_b = da.getThreadCoords( thread );
-				const th_coord_t th_ijk_c = da.getThreadCoords( thread );
+				const th_coord_t th_ijk_b = db.getThreadCoords( thread );
+				const th_coord_t th_ijk_c = dc.getThreadCoords( thread );
 
-				const auto block_grid_dims_a = d.getLocalBlockGridDims( th_ijk_a );
-				const auto block_grid_dims_b = d.getLocalBlockGridDims( th_ijk_b );
-				const auto block_grid_dims_c = d.getLocalBlockGridDims( th_ijk_c );
+				const auto set_block_grid_dims_a = da.getLocalBlockGridDims( th_ijk_a );
+				const auto set_block_grid_dims_b = db.getLocalBlockGridDims( th_ijk_b );
+				const auto block_grid_dims_c = dc.getLocalBlockGridDims( th_ijk_c );
 
 				RC local_rc = SUCCESS;
 
-				// Broadcast Aij and Bij to all c layers
-				if( th_ijk_a.rt > 0 ) {
+				if( block_grid_dims_c.first != set_block_grid_dims_a.first 
+					|| block_grid_dims_c.second != set_block_grid_dims_b.second 
+					|| set_block_grid_dims_a.second != set_block_grid_dims_b.first 
+				) {
+					local_rc = MISMATCH;
+				}
+
+				// Broadcast Aij and Bij to all c-dimensional layers
+				if( local_rc == SUCCESS && th_ijk_a.rt > 0 ) {
 
 					th_coord_t th_ij0_a( th_ijk_a.tr, th_ijk_a.tc, 0 );
 
-					for( size_t br = 0; br < block_grid_dims_a.first; ++br ) {
-						for( size_t bc = 0; bc < block_grid_dims_a.second; ++bc ) {
+					for( size_t br = 0; br < set_block_grid_dims_a.first; ++br ) {
+						for( size_t bc = 0; bc < set_block_grid_dims_a.second; ++bc ) {
 
 							auto refAij0 = internal::get_view( A, th_ij0_a, br, bc );
 							auto refAijk = internal::get_view( A, th_ijk_a, br, bc );
 
 							local_rc = local_rc ? local_rc : set( refAijk, refAij0 );
 
-
 						}
 					}
+				
+				} // End Broadcast of Aij
 
-					if( local_rc != SUCCESS ) {
+				if( local_rc == SUCCESS && th_ijk_b.rt > 0 ) {
 
 						th_coord_t th_ij0_b( th_ijk_b.tr, th_ijk_b.tc, 0 );
 
-						for( size_t br = 0; br < block_grid_dims_b.first; ++br ) {
-							for( size_t bc = 0; bc < block_grid_dims_b.second; ++bc ) {
+						for( size_t br = 0; br < set_block_grid_dims_b.first; ++br ) {
+							for( size_t bc = 0; bc < set_block_grid_dims_b.second; ++bc ) {
 
 								auto refBij0 = internal::get_view( B, th_ij0_b, br, bc );
 								auto refBijk = internal::get_view( B, th_ijk_b, br, bc );
@@ -173,40 +189,95 @@ namespace alp {
 				// End Broadcast of Aij and Bij
 				#pragma omp barrier
 				
-				auto mod = [](const size_t _k, const size_t _n) = {
-					return ( ( _k %= _n ) < 0 ) ? _k + _n : _k;
-				};
+				if( local_rc == SUCCESS ) {
+					
+					// Initialize circular shifts at stride of Rt
+					size_t s_a = utils::modulus( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tc / tg_a.rt, tg_a.tc );
+					size_t s_b = utils::modulus( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_b.tr / tg_b.rt, tg_b.tr );
+
+					// Accumulate remaining local c-dimension factor
+					for( size_t r = 0; r < tg_a.tc / tg_a.rt; ++r ) {
+
+						const th_coord_t th_isk_a( th_ijk_a.tr, s_a, th_ijk_a.rt );
+						const th_coord_t th_sjk_b( s_b, th_ijk_b.tc, th_ijk_b.rt );
+
+						const auto mxm_block_grid_dims_a = d.getLocalBlockGridDims( th_isk_a );
+						const auto mxm_block_grid_dims_b = d.getLocalBlockGridDims( th_sjk_b );
+
+						if( block_grid_dims_c.first != mxm_block_grid_dims_a.first 
+							|| block_grid_dims_c.second != mxm_block_grid_dims_b.second 
+							|| mxm_block_grid_dims_a.second != mxm_block_grid_dims_b.first 
+						) {
+							local_rc = MISMATCH;
+						}
+
+						if( local_rc == SUCCESS ) {
+
+							for( size_t bk = 0; bk < mxm_block_grid_dims_a.second; ++bk ) {
+								for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
+	
+									const auto refA_loc = internal::get_view( A, th_isk_a, br, bk );
+
+									for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
+
+										const auto refB_loc = internal::get_view( B, th_sjk_b, bk, bc );
+										auto refC_ijk = internal::get_view( C, th_ijk_c, br, bc );
+
+										// Delegate the call to the sequential mxm implementation
+										local_rc = local_rc ? local_rc : internal::mxm_generic< allow_void >( refC_ijk, refA_loc, refB_loc, oper, monoid, mulMonoid );
+
+									}
+								}
+							}
+
+							// Circular shift rightwards for A
+							s_a = utils::modulus( s_a + 1, tg_a.tc );
+							// Circular shift downwards for B
+							s_b = utils::modulus( s_b + 1, tg_b.tr );
+
+						} else {
+							break;
+						}
+
+					} 
+
+					// End layer-by-layer partial computation
+					#pragma omp barrier
+
+					// Global c-dimension reduction
+					// (Consider if rt > 0 critical section?)
+					if ( local_rc == SUCCESS && th_ijk_c.rt == 0 ) {
+
+						for( size_t r = 1; r < tg_c.rt; ++r ) {
+
+							const th_coord_t th_ijr_c( th_ijk_c.tr, th_ijk_c.tc, r );
+
+							for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
+								for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
+
+									auto refCij0 = internal::get_view( C, th_ijk_c, br, bc ); // k == 0 
+									auto refCijr = internal::get_view( C, th_ijr_c, br, bc );
+
+									// Final result in C at layer 0
+									local_rc = local_rc ? local_rc : foldl( refCij0, refCijr, monoid );
+								}
+							}
+
+							if( local_rc != SUCCESS ) {
+								break;
+							}
+						}
+
+					}
+				}
 				
-				// TODO from here
-				// size_t s_a = mod( th_ijk_a.tc - th_ijk_a.tr + th_ijk_a.rt * tg_a.tr / th_ijk_a.rt, tg_a.tr );
-				// th_coord_t th_isk_a( th_ijk_a.tr, s, th_ijk_a.tr );
-
-				// size_t s_b = mod( th_ijk_b.tr - th_ijk_b.tc + th_ijk_b.rt * tg_a.tr / th_ijk_a.rt, tg_a.tr );
-				// th_coord_t th_isk_a( th_ijk_a.tr, s, th_ijk_a.tr );
-
-				// for( size_t bk = 0; bk < block_grid_dims_a.second; ++bk ) {
-				// 	for( size_t br = 0; br < block_grid_dims_c.first; ++br ) {
-				// 		for( size_t bc = 0; bc < block_grid_dims_c.second; ++bc ) {
-
-				// 			// Get a sequential matrix view over the block
-				// 			auto refC = internal::get_view( C, tr, tc, 1 /* rt */, br, bc );
-
-				// 			// Construct a sequential Scalar container from the input Scalar
-				// 			Scalar< InputType, InputStructure, config::default_sequential_backend > ref_val( *val );
-
-				// 			// Delegate the call to the sequential set implementation
-				// 			local_rc = local_rc ? local_rc : set( refC, ref_val );
-
-				// 			if( local_rc != SUCCESS ) {
-				// 				rc = local_rc;
-				// 			}
-				// 		}
-				// 	}
-				// }
+				// Different values for rc could converge here (eg, MISMATCH, FAILED).
+				if( local_rc != SUCCESS ) {
+					rc = local_rc;
+				}
 
 			}
 
-			internal::setInitialized( C, true );
 			return rc;
 
 		}
