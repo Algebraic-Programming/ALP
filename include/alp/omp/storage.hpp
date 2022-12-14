@@ -131,39 +131,39 @@ namespace alp {
 
 			};
 
-			/** Type encapsulating the local block coordinate. */
-			struct LocalBlockCoord {
+			// /** Type encapsulating the local block coordinate. */
+			// struct LocalBlockCoord {
 
-				const size_t tr;
-				const size_t tc;
-				const size_t rt;
-				const size_t br;
-				const size_t bc;
+			// 	const size_t tr;
+			// 	const size_t tc;
+			// 	const size_t rt;
+			// 	const size_t br;
+			// 	const size_t bc;
 
-				LocalBlockCoord(
-					const size_t tr, const size_t tc,
-					const size_t rt,
-					const size_t br, const size_t bc
-				) :
-					tr( tr ), tc( tc ),
-					rt( rt ),
-					br( br ), bc( bc ) {}
+			// 	LocalBlockCoord(
+			// 		const size_t tr, const size_t tc,
+			// 		const size_t rt,
+			// 		const size_t br, const size_t bc
+			// 	) :
+			// 		tr( tr ), tc( tc ),
+			// 		rt( rt ),
+			// 		br( br ), bc( bc ) {}
 
-			};
+			// };
 
 		private:
 
 			/** Row and column dimensions of the associated container */
 			const size_t m;
 			const size_t n;
-			/** The row and column dimensions of the thread grid */
-			const size_t Tr;
-			const size_t Tc;
 			/** Replication factor in thread-coordinate space */
 			static constexpr size_t Rt = config::REPLICATION_FACTOR_THREADS;
 			/** The row and column dimensions of the global block grid */
 			const size_t Br;
 			const size_t Bc;
+			/** The row and column dimensions of the thread grid */
+			const size_t Tr;
+			const size_t Tc;
 
 		public:
 
@@ -172,26 +172,27 @@ namespace alp {
 				const size_t num_threads
 			) :
 				m( m ), n( n ),
-				Tr( static_cast< size_t >( sqrt( num_threads/ Rt ) ) ),
-				Tc( num_threads / Rt / Tr ),
 				Br( static_cast< size_t >( std::ceil( static_cast< double >( m ) / config::BLOCK_ROW_DIM ) ) ),
-				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ) {
-
-				if( num_threads != Tr * Tc * Rt ) {
-					std::cerr << "Warning: Provided number of threads cannot be factorized in a 3D grid.\n";
+				Bc( static_cast< size_t >( std::ceil( static_cast< double >( n ) / config::BLOCK_COL_DIM ) ) ),
+				Tr( ( Br > config::THREAD_ROW_DIM ) ? config::THREAD_ROW_DIM : Br ), 
+				Tc( ( Bc > config::THREAD_COL_DIM ) ? config::THREAD_COL_DIM : Bc ) 
+			{
+				if( num_threads != config::THREAD_ROW_DIM * config::THREAD_COL_DIM * config::REPLICATION_FACTOR_THREADS ) {
+					std::cerr << "Warning: Provided number of threads cannot be factorized in a 2.5D grid:\n"
+						"\t" << num_threads << " != " << config::THREAD_ROW_DIM << " x " << config::THREAD_COL_DIM << " x " << config::REPLICATION_FACTOR_THREADS << std::endl;
 				}
 			}
 
-			LocalBlockCoord mapBlockGlobalToLocal( const GlobalBlockCoord &g ) const {
-				(void) g;
-				return LocalBlockCoord( 0, 0, 0, 0, 0 );
-			}
+			// LocalBlockCoord mapBlockGlobalToLocal( const GlobalBlockCoord &g ) const {
+			// 	(void) g;
+			// 	return LocalBlockCoord( 0, 0, 0, 0, 0 );
+			// }
 
-			GlobalBlockCoord mapBlockLocalToGlobal( const LocalBlockCoord &l ) const {
-				const size_t block_id_r = l.br * Tr + l.tr;
-				const size_t block_id_c = l.bc * Tc + l.tc;
-				return GlobalBlockCoord( block_id_r, block_id_c );
-			}
+			// GlobalBlockCoord mapBlockLocalToGlobal( const LocalBlockCoord &l ) const {
+			// 	const size_t block_id_r = l.br * Tr + l.tr;
+			// 	const size_t block_id_c = l.bc * Tc + l.tc;
+			// 	return GlobalBlockCoord( block_id_r, block_id_c );// Temporary
+			// }
 
 			LocalCoord mapGlobalToLocal( const GlobalCoord &g ) const {
 				const size_t global_br = g.i / config::BLOCK_ROW_DIM;
@@ -212,23 +213,31 @@ namespace alp {
 				);
 			}
 
-			/**
-			 * Maps coordinates from local to global space.
-			 *
-			 * \todo Add implementation
-			 */
-			GlobalCoord mapLocalToGlobal( const LocalCoord &l ) const {
-				(void) l;
-				return GlobalCoord( 0, 0 );
-			}
+			// /**
+			//  * Maps coordinates from local to global space.
+			//  *
+			//  * \todo Add implementation
+			//  */
+			// GlobalCoord mapLocalToGlobal( const LocalCoord &l ) const {
+			// 	(void) l;
+			// 	return GlobalCoord( 0, 0 );
+			// }
 
-			/** Returns the thread ID corresponding to the given thread coordinates. */
+			/** 
+			 * Returns the thread ID corresponding to the given thread coordinates. 
+			 * The fixed thread grid enables to map left-over threads.
+			 */
 			size_t getThreadId( const ThreadCoords t ) const {
-				return t.rt * Tr * Tc + t.tr * Tc + t.tc;
+				return t.rt * config::THREAD_ROW_DIM * config::THREAD_COL_DIM + t.tr * config::THREAD_COL_DIM + t.tc;
 			}
 
 			size_t getNumberOfThreads() const {
-				return Tr * Tc * Rt;
+				return config::THREAD_ROW_DIM * config::THREAD_COL_DIM * config::REPLICATION_FACTOR_THREADS;
+			}
+
+			/** Returns the thread grid size */
+			ThreadCoords getThreadGridDims() const {
+				return { Tr, Tc, Rt };
 			}
 
 			/** Returns the total global amount of blocks */
@@ -245,17 +254,17 @@ namespace alp {
 				return { blocks_r, blocks_c };
 			}
 
-			/** Returns the global block coordinates based on the thread and local block coordinates */
-			std::pair< size_t, size_t > getGlobalBlockCoords( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
-				const size_t global_br = br * Tr + tr % Tr;
-				const size_t global_bc = bc * Tc + tc % Tc;
-				return { global_br, global_bc };
-			}
+			// /** Returns the global block coordinates based on the thread and local block coordinates */
+			// std::pair< size_t, size_t > getGlobalBlockCoords( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+			// 	const size_t global_br = br * Tr + tr % Tr;
+			// 	const size_t global_bc = bc * Tc + tc % Tc;
+			// 	return { global_br, global_bc };
+			// }
 
-			size_t getGlobalBlockId( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
-				const auto global_coords = getGlobalBlockCoords( tr, tc, br, bc );
-				return global_coords.first * Bc + global_coords.second;
-			}
+			// size_t getGlobalBlockId( const size_t tr, const size_t tc, const size_t br, const size_t bc ) const {
+			// 	const auto global_coords = getGlobalBlockCoords( tr, tc, br, bc );
+			// 	return global_coords.first * Bc + global_coords.second;
+			// }
 
 			size_t getLocalBlockId( const LocalCoord &local ) const {
 				return local.br * getLocalBlockGridDims( local.getThreadCoords() ).second + local.bc;
@@ -291,18 +300,28 @@ namespace alp {
 			}
 
 			/** For a given block, returns its offset from the beginning of the buffer in which it is stored */
-			size_t getBlocksOffset( const ThreadCoords t, const size_t br, const size_t bc ) const {
+			size_t getBlocksOffset( const ThreadCoords &t, const size_t br, const size_t bc ) const {
 				// The offset is calculated as the sum of sizes of all previous blocks
 				const size_t block_coord_1D = br * getLocalBlockGridDims( t ).second + bc;
 				return block_coord_1D * getBlockSize();
 			}
 
 			ThreadCoords getThreadCoords( const size_t thread_id ) const {
-				const size_t rt = thread_id / ( Tr * Tc );
-				const size_t tr = ( thread_id % ( Tr * Tc ) ) / Tc;
-				const size_t tc = ( thread_id % ( Tr * Tc ) ) % Tc;
+				const size_t rt = thread_id / ( config::THREAD_ROW_DIM * config::THREAD_COL_DIM );
+				const size_t tr = ( thread_id % ( config::THREAD_ROW_DIM * config::THREAD_COL_DIM ) ) / config::THREAD_COL_DIM;
+				const size_t tc = ( thread_id % ( config::THREAD_ROW_DIM * config::THREAD_COL_DIM ) ) % config::THREAD_COL_DIM;
 				return { tr, tc, rt };
 			}
+
+			bool isActiveThread(const ThreadCoords &t ) const {
+				return ( t.tr < Tr ) && ( t.tc < Tc ) && ( t.rt < Rt );
+			}
+
+			bool isActiveThread(const size_t thread_id ) const {
+				const auto th_coords = getThreadCoords( thread_id );
+				return isActiveThread( th_coords );
+			}
+
 	};
 		
 	namespace storage {

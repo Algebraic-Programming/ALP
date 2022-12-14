@@ -23,6 +23,8 @@
 #ifndef _H_ALP_OMP_IO
 #define _H_ALP_OMP_IO
 
+#include <type_traits>
+
 #include <alp/base/io.hpp>
 
 #include "matrix.hpp"
@@ -134,6 +136,49 @@ namespace alp {
 
 		internal::setInitialized( C, true );
 		return rc;
+	}
+
+	/**
+	 * Temporarily assuming 1-1, row-major mapping with user container.
+	 */
+	template< 
+		typename InputType, typename Structure, typename View, 
+		typename ImfR, typename ImfC, typename fwd_iterator 
+	>
+	RC buildMatrix(
+		Matrix< InputType, Structure, Density::Dense, View, ImfR, ImfC, omp > &A,
+		const fwd_iterator &start,
+		const fwd_iterator &end
+	) noexcept {
+		
+		static_assert( 
+			std::is_same< InputType, typename fwd_iterator::value_type >::value, 
+			"alp::buildMatrix (omp): Mismatching type between user-provided input "
+			"container and output ALP container."
+		);
+
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+
+		if( ( end - start ) != static_cast< std::ptrdiff_t >( m * n ) ) {
+			
+			std::cerr << "alp::buildMatrix (omp): Mismatching sizes between "
+				"user-provided input container and output ALP container." << std::endl;
+
+			return MISMATCH;
+		}
+
+		internal::setInitialized(A, true);
+
+		fwd_iterator it = start;
+
+		for( size_t i = 0; i < m; ++i ) {
+			for( size_t j = 0; j < n; ++j ) {
+				internal::access( A, internal::getStorageIndex( A, i, j ) ) = *( it++ );
+			}
+		}
+		
+		return SUCCESS;
 	}
 
 } // end namespace ``alp''

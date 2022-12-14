@@ -23,6 +23,8 @@
 #ifndef _H_ALP_OMP_MATRIX
 #define _H_ALP_OMP_MATRIX
 
+#include <type_traits>
+
 #include <alp/backends.hpp>
 #include <alp/type_traits.hpp>
 
@@ -36,6 +38,7 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/storage.hpp> // For AMFFactory
 #endif
+
 
 namespace alp {
 
@@ -56,10 +59,10 @@ namespace alp {
 			typename SourceMatrix,
 			typename ThreadCoords,
 			std::enable_if_t<
-				is_matrix< SourceMatrix >::value
+				alp::is_matrix< SourceMatrix >::value
 			> * = nullptr
 		>
-		typename internal::new_container_type_from<
+		typename new_container_type_from<
 			typename SourceMatrix::template view_type< view::gather >::type
 		>::template change_backend< config::default_sequential_backend >::type
 		get_view( SourceMatrix &source, const ThreadCoords t, const size_t br, const size_t bc ) {
@@ -68,7 +71,7 @@ namespace alp {
 			const auto &distribution = getAmf( source ).getDistribution();
 			const size_t thread_id = distribution.getThreadId( t );
 			const size_t block_id = distribution.getLocalBlockId( t, br, bc );
-			auto &container = internal::getLocalContainer( internal::getContainer( source ), thread_id, block_id );
+			auto &container = getLocalContainer( getContainer( source ), thread_id, block_id );
 
 			// make an AMF
 			// note: When making a view over a vector, the second imf must be imf::Zero
@@ -92,11 +95,13 @@ namespace alp {
 			);
 
 			// create a sequential container with the container and AMF above
-			using target_t = typename internal::new_container_type_from<
+			using target_t = typename new_container_type_from<
 				typename SourceMatrix::template view_type< view::gather >::type
 			>::template change_backend< config::default_sequential_backend >::type;
 
-			return target_t( container, amf );
+			target_t blk_matrix( container, amf );
+			internal::setInitialized( blk_matrix, internal::getInitialized( source ) );
+			return blk_matrix;
 		}
 
 	} // namespace internal
