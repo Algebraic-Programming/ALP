@@ -80,7 +80,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
 		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
 	}
@@ -94,15 +94,18 @@ namespace alp {
 		class AdditiveMonoid,
 		class MultiplicativeOperator
 	>
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC vxm( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImfR3, InputImfC3, reference > & mask,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
-				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value
+		> * const = NULL 
+	) {
 		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
 	}
@@ -118,13 +121,14 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Ring
 	>
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC vxm( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImfR3, InputImfC3, reference > & mask,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImfR4, InputImfC4, reference > & v_mask,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -140,7 +144,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
 		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
 	}
@@ -152,14 +156,17 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class AdditiveMonoid, class MultiplicativeOperator
 	>
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC vxm( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
-				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value
+		> * const = NULL 
+	) {
 		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
 	}
@@ -172,12 +179,13 @@ namespace alp {
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		class Ring
 	>
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC mxv( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImfR3, InputImfC3, reference > & mask,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Ring & ring,
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
 		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
 	}
@@ -199,7 +207,7 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImfR4, InputImfC4, reference > & v_mask,
 		const Ring & ring,
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
 
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
@@ -214,11 +222,13 @@ namespace alp {
 		typename InputType2 = typename Ring::D2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		typename InputType1 = typename Ring::D1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1
 	>
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC mxv( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Ring & ring,
-		const typename std::enable_if< alp::is_semiring< Ring >::value, void >::type * const = NULL ) {
+		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL 
+	) {
 		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
 	}
@@ -230,14 +240,17 @@ namespace alp {
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		class AdditiveMonoid, class MultiplicativeOperator
 	>
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC mxv( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
-				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value
+		> * const = NULL 
+	) {
 		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
 		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
 	}
@@ -256,18 +269,20 @@ namespace alp {
 		class AdditiveMonoid,
 		class MultiplicativeOperator
 	>
-	RC vxm( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC vxm( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImfR3, InputImfC3, reference > & mask,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImfR4, InputImfC4, reference > & v_mask,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
-				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
-
+		const std::enable_if_t< 
+			alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
+			! std::is_same< InputType2, void >::value
+		> * const = NULL 
+	) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}
@@ -286,18 +301,20 @@ namespace alp {
 		class AdditiveMonoid,
 		class MultiplicativeOperator
 	>
-	RC mxv( Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
+	RC mxv( 
+		Vector< IOType, IOStructure, Density::Dense, IOView, IOImfR, IOImfC, reference > & u,
 		const Vector< InputType3, InputStructure3, Density::Dense, InputView3, InputImfR3, InputImfC3, reference > & mask,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Vector< InputType4, InputStructure4, Density::Dense, InputView4, InputImfR4, InputImfC4, reference > & v_mask,
 		const AdditiveMonoid & add = AdditiveMonoid(),
 		const MultiplicativeOperator & mul = MultiplicativeOperator(),
-		const typename std::enable_if< alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
-				! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
-				! std::is_same< InputType2, void >::value,
-			void >::type * const = NULL ) {
-
+		const std::enable_if_t< 
+			alp::is_monoid< AdditiveMonoid >::value && alp::is_operator< MultiplicativeOperator >::value && ! alp::is_object< IOType >::value &&
+			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! alp::is_object< InputType4 >::value &&
+			! std::is_same< InputType2, void >::value
+		> * const = NULL 
+	) {
 		throw std::runtime_error( "Needs an implementation." );
 		return SUCCESS;
 	}

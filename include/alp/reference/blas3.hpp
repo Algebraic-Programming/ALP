@@ -104,10 +104,11 @@ namespace alp {
 			typename InputStructure2, typename InputView2, 
 			typename InputImfR2, typename InputImfC2
 		>
-		typename std::enable_if<
+		std::enable_if_t<
 			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
 			( BandPos2 < std::tuple_size< typename InputStructure2::band_intervals >::value ),
-		RC >::type mxm_band_generic( 
+			RC
+		> mxm_band_generic( 
 			alp::Matrix< OutputType, OutputStructure, 
 			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType1, InputStructure1, 
@@ -136,9 +137,10 @@ namespace alp {
 			typename InputStructure2, typename InputView2, 
 			typename InputImfR2, typename InputImfC2
 		>
-		typename std::enable_if<
+		std::enable_if_t<
 			( BandPos1 == std::tuple_size< typename InputStructure1::band_intervals >::value ),
-		RC >::type mxm_band_generic( 
+			RC
+		> mxm_band_generic( 
 			alp::Matrix< OutputType, OutputStructure, 
 			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType1, InputStructure1, 
@@ -176,10 +178,11 @@ namespace alp {
 			typename InputStructure2, typename InputView2, 
 			typename InputImfR2, typename InputImfC2
 		>
-		typename std::enable_if<
+		std::enable_if_t<
 			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
 			( BandPos2 == std::tuple_size< typename InputStructure2::band_intervals >::value ),
-		RC >::type mxm_band_generic( 
+			RC
+		> mxm_band_generic( 
 			alp::Matrix< OutputType, OutputStructure, 
 			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType1, InputStructure1, 
@@ -210,10 +213,11 @@ namespace alp {
 			typename InputStructure2, typename InputView2, 
 			typename InputImfR2, typename InputImfC2
 		>
-		typename std::enable_if<
+		std::enable_if_t<
 			( BandPos1 < std::tuple_size< typename InputStructure1::band_intervals >::value ) &&
 			( BandPos2 < std::tuple_size< typename InputStructure2::band_intervals >::value ),
-		RC >::type mxm_band_generic( 
+			RC
+		> mxm_band_generic( 
 			alp::Matrix< OutputType, OutputStructure, 
 			Density::Dense, OutputView, OutputImfR, OutputImfC, reference > &C,
 			const alp::Matrix< InputType1, InputStructure1, 
@@ -410,12 +414,13 @@ namespace alp {
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if< !alp::is_object< OutputType >::value &&
-				!alp::is_object< InputType1 >::value && !
-				alp::is_object< InputType2 >::value &&
+			const std::enable_if_t< 
+				!alp::is_object< OutputType >::value &&
+				!alp::is_object< InputType1 >::value &&
+				!alp::is_object< InputType2 >::value &&
 				alp::is_operator< Operator >::value &&
-				alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL
+				alp::is_monoid< Monoid >::value
+			> * const = NULL
 		) {
 
 			static_assert( 
@@ -490,13 +495,16 @@ namespace alp {
 		typename InputStructMatT2,
 		class Semiring
 	>
-	RC mxm( OutputStructMatT & C,
+	RC mxm( 
+		OutputStructMatT & C,
 		const InputStructMatT1 & A,
 		const InputStructMatT2 & B,
 		const Semiring & ring = Semiring(),
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value && alp::is_semiring< Semiring >::value
+		> * const = NULL 
+	) {
 		(void)phase;
 
 		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
@@ -511,15 +519,18 @@ namespace alp {
 		typename InputStructMatT2,
 		class Operator, class Monoid
 	>
-	RC mxm( OutputStructMatT & C,
+	RC mxm( 
+		OutputStructMatT & C,
 		const InputStructMatT1 & A,
 		const InputStructMatT2 & B,
 		const Operator & mulOp,
 		const Monoid & addM,
 		const PHASE &phase = NUMERICAL,
-		const typename std::enable_if< ! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value &&
-		                               alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			! alp::is_object< typename OutputStructMatT::value_type >::value && ! alp::is_object< typename InputStructMatT1::value_type >::value && ! alp::is_object< typename InputStructMatT2::value_type >::value &&
+		    alp::is_operator< Operator >::value && alp::is_monoid< Monoid >::value
+		> * const = NULL 
+	) {
 		(void)phase;
 
 		return internal::mxm_generic< false >( C, A, B, mulOp, addM, Monoid() );
@@ -557,12 +568,12 @@ namespace alp {
 			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if<
+			const std::enable_if_t<
 				!alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value &&
 				!alp::is_object< InputType2 >::value &&
-				alp::is_operator< Operator >::value,
-			void >::type * const = nullptr
+				alp::is_operator< Operator >::value
+			> * const = nullptr
 		) {
 			(void)C;
 			(void)A;
@@ -598,12 +609,12 @@ namespace alp {
 			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if<
+			const std::enable_if_t<
 				!alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value &&
 				!alp::is_object< InputType2 >::value &&
-				alp::is_operator< Operator >::value,
-			void >::type * const = nullptr
+				alp::is_operator< Operator >::value
+			> * const = nullptr
 		) {
 			(void)mulMonoid;
 			assert( C != nullptr );
@@ -683,12 +694,12 @@ namespace alp {
 			const alp::Scalar< InputTypeScalar2, InputStructureScalar2, reference > *beta,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
-			const typename std::enable_if<
+			const std::enable_if_t<
 				!alp::is_object< OutputType >::value &&
 				!alp::is_object< InputType1 >::value &&
 				!alp::is_object< InputType2 >::value &&
-				alp::is_operator< Operator >::value,
-			void >::type * const = NULL
+				alp::is_operator< Operator >::value
+			> * const = NULL
 		) {
 			(void)alpha;
 			(void)beta;
@@ -763,11 +774,12 @@ namespace alp {
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const MulMonoid &mulmono,
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< 
+			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
-			alp::is_monoid< MulMonoid >::value,
-		void >::type * const = NULL
+			alp::is_monoid< MulMonoid >::value
+		> * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
@@ -819,11 +831,12 @@ namespace alp {
 		const Scalar< InputType1, InputStructure1, reference > &alpha,
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &B,
 		const MulMonoid &mulmono,
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< 
+			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
-			alp::is_monoid< MulMonoid >::value,
-		void >::type * const = NULL
+			alp::is_monoid< MulMonoid >::value
+		> * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
@@ -876,11 +889,12 @@ namespace alp {
 		const Matrix< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &A,
 		const Scalar< InputType2, InputStructure2, reference > &beta,
 		const MulMonoid &mulmono,
-		const typename std::enable_if< !alp::is_object< OutputType >::value &&
+		const std::enable_if_t< 
+			!alp::is_object< OutputType >::value &&
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
-			alp::is_monoid< MulMonoid >::value,
-		void >::type * const = NULL
+			alp::is_monoid< MulMonoid >::value
+		> * const = NULL
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
@@ -1367,12 +1381,15 @@ namespace alp {
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
 		class Operator
 	>
-	RC outer( Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & A,
+	RC outer( 
+		Matrix< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, reference > & A,
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & u,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & v,
 		const Operator & mul = Operator(),
-		const typename std::enable_if< alp::is_operator< Operator >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< OutputType >::value,
-			void >::type * const = NULL ) {
+		const std::enable_if_t< 
+			alp::is_operator< Operator >::value && ! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< OutputType >::value
+		> * const = NULL 
+	) {
 		// static checks
 		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "alp::outerProduct",
 			"called with a prefactor vector that does not match the first domain "
@@ -1451,10 +1468,11 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > &x,
 		const Vector< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > &y,
 		const Operator &mul = Operator(),
-		const typename std::enable_if< alp::is_operator< Operator >::value &&
+		const std::enable_if_t< 
+			alp::is_operator< Operator >::value &&
 			! alp::is_object< InputType1 >::value &&
-			! alp::is_object< InputType2 >::value,
-			void >::type * const = nullptr
+			! alp::is_object< InputType2 >::value
+		> * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "alp::outerProduct",
@@ -1519,9 +1537,10 @@ namespace alp {
 	outer(
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, reference > &x,
 		const Operator &mul = Operator(),
-		const typename std::enable_if< alp::is_operator< Operator >::value &&
-			! alp::is_object< InputType >::value,
-			void >::type * const = nullptr
+		const std::enable_if_t< 
+			alp::is_operator< Operator >::value &&
+			! alp::is_object< InputType >::value
+		> * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType >::value ), "alp::outerProduct",

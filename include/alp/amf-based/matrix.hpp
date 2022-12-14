@@ -100,7 +100,7 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s = 0, const size_t P = 1 );
 
@@ -156,7 +156,7 @@ namespace alp {
 
 				template<
 					typename MatrixType,
-					std::enable_if< is_matrix< MatrixType >::value > *
+					std::enable_if_t< is_matrix< MatrixType >::value > *
 				>
 				friend typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P );
 
@@ -772,7 +772,7 @@ namespace alp {
 	template<
 		typename TargetStructure,
 		typename SourceMatrix,
-		std::enable_if< is_matrix< SourceMatrix >::value > * = nullptr
+		std::enable_if_t< is_matrix< SourceMatrix >::value > * = nullptr
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::original >::type
@@ -812,8 +812,19 @@ namespace alp {
 			//}
 			// No static check as the compatibility depends on IMF, which is a runtime level parameter
 			//if( ! (TargetStructure::template isInstantiableFrom< Structure >( static_cast< TargetImfR & >( imf_r ), static_cast< TargetImfR & >( imf_c ) ) ) ) {
-			if( ! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) ) ) {
-				throw std::runtime_error("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions.");
+			if(
+				( imf_r.n != 0  &&  imf_c.n != 0 ) &&
+				! (structures::isInstantiable< typename SourceMatrix::structure, TargetStructure >::check( imf_r, imf_c ) )
+			  ) {
+				std::string message("Cannot gather into specified TargetStructure from provided SourceStructure and Index Mapping Functions. ");
+#ifdef DEBUG
+				message = message + " (Target) ";
+				message = message + typeid( TargetStructure ).name();
+				message = message + " and (Source)";
+				message = message + typeid( typename SourceMatrix::structure ).name();
+				message = message + "\n";
+#endif
+				throw std::runtime_error( message );
 			}
 
 			using target_t = typename internal::new_container_type_from<
@@ -1139,7 +1150,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );

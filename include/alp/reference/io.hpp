@@ -442,10 +442,10 @@ namespace alp {
 	RC set(
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
 		const Scalar< T, ValStructure, reference > val,
-		const typename std::enable_if<
+		const std::enable_if_t<
 			!alp::is_object< DataType >::value &&
-			!alp::is_object< T >::value,
-		void >::type * const = NULL
+			!alp::is_object< T >::value
+		> * const = NULL
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, unmasked)",
@@ -523,7 +523,7 @@ namespace alp {
 		Vector< DataType, DataStructure, Density::Dense, View, ImfR, ImfC, reference > &x,
 		const Scalar< T, ValStructure, reference > val,
 		const size_t i,
-		const typename std::enable_if< !alp::is_object< DataType >::value && !alp::is_object< T >::value, void >::type * const = NULL
+		const std::enable_if_t< !alp::is_object< DataType >::value && !alp::is_object< T >::value > * const = NULL
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same< DataType, T >::value ), "alp::set (Vector, at index)",
