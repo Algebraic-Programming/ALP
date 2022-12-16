@@ -27,28 +27,51 @@
 //#include "klapack.h"
 
 typedef double ScalarType;
-constexpr ScalarType tol = 1.e-10;
+constexpr ScalarType tol = 1.e-9;
 constexpr size_t RNDSEED = 1;
 
 struct inpdata {
-	size_t N=0;
-  	size_t repeat=1;
+	size_t N = 0;
+  	size_t repeat = 1;
 };
 
-void print(const char * name, const double* matrix, int N)
-{
-  printf("\nMatrix %s size %d :\n", name, N);
-  printf(" %s = array ( [", name);
-  for (int i = 0; i < N; i++){
-  printf("\n  [");
-    for (int j = 0; j < N; j++){
-      printf("%.10f, ", matrix[j*N + i]);
-    }
-    printf(" ],");
-  }
-  printf("\n])\n");
+void print( const char * name, const double* matrix, int N ) {
+	printf( "\nMatrix %s size %d :\n", name, N );
+	printf( " %s = array ( [", name );
+	for( int i = 0; i < N; i++ ) {
+		printf( "\n  [" );
+		for( int j = 0; j < N; j++ ) {
+			printf("%.10f, ", matrix[j*N + i]);
+		}
+		printf(" ],");
+	}
+	printf("\n])\n");
 }
 
+#ifdef _ALP_WITH_DISPATCH
+alp::RC check_solution( const double* matrixH, const double* matrixL, size_t N ) {
+	alp::RC rc = alp::SUCCESS;
+	double fnorm1 = 0;
+	double fnorm2 = 0;
+	for( size_t i = 0; i < N; i++ ){
+		for( size_t j = 0; j < N; j++ ){
+			double val_mxm = 0;
+			for( size_t k = 0; k <= std::min( i, j ); k++ ) {
+				val_mxm += matrixL[ k * N + i ] * matrixL[ k * N + j ] ;
+			}
+			fnorm1 += std::abs( matrixH[ i * N + j] - val_mxm );
+			fnorm2 += std::abs( matrixH[ i * N + j] );
+		}
+	}
+	if( std::abs( fnorm1 ) / std::abs( fnorm2 ) > tol ) {
+	  std::cout << " fnorm1 = " << std::abs( fnorm1 ) << "\n";
+	  std::cout << " fnorm2 = " << std::abs( fnorm2 ) << "\n";
+	  std::cout << " fnorm1 / fnorm1 = " << std::abs( fnorm1 ) / std::abs( fnorm2 ) << "\n";
+	  rc = alp::FAILED;
+	} 
+	return rc;
+}
+#endif
 
 //** gnerate upper/lower triangular part of a SPD matrix */
 template< typename T >
@@ -79,7 +102,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 
   rc = alp::SUCCESS;
 
-	int N = unit.N;
+	size_t N = unit.N;
 	grb::utils::Timer timer;
 	timer.reset();
 	double times;
@@ -108,13 +131,22 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	  timer.reset();
 	  rc = rc ? rc : alp::algorithms::cholesky_uptr_blk( LL, bs, ring );
 	  times += timer.time();
+	  if (rc != alp::SUCCESS) {
+	    std::cout << "cholesky_uptr_blk retured error\n";
+	    return;
+	  } 
 	}
-
 
 	std::cout << " time (ms, total) = " << times << "\n";
 	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
-
-	//print("matrix_data", &(matrix_data[0]), N);
+#ifdef _ALP_WITH_DISPATCH
+	//print("matrix_data", &( matrix_data[ 0 ] ), N );
+	auto LL_original_data = alp::internal::getRawPointerToFirstElement( LL_original );
+	//print("LL_original_data", LL_original_data, N );
+	auto LL_output_data = alp::internal::getRawPointerToFirstElement( LL );
+	//print("LL_output_data", LL_output_data, N );
+	rc = rc ? rc : check_solution(LL_original_data, LL_output_data, N);
+#endif
 
 }
 
