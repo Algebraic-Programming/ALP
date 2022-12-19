@@ -126,7 +126,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				$runner ${TEST_BIN_DIR}/knn_${BACKEND} 4 ${INPUT_DIR}/facebook_combined.txt direct 1 1 &> ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				head -1 ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				if grep -q "Test OK" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log; then
-					(grep -q "Neighbourhood size is 499" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n")
+					(grep -q "Neighbourhood size is 421" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n")
 				else
 					printf "Test FAILED\n"
 				fi
