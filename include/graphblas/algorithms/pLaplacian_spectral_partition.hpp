@@ -126,7 +126,7 @@ namespace grb
                     spec_part_utils::ratio_cheeger_cut(r_cheeg, par, A, m, n, integers_ring);
 
                     if (r_cheeg <= r_cheeg_min /*ratio Cheeger cut better than before*/
-                        && std::fabs(2 * p_norm(par, (bool)1, integers_ring.getAdditiveMonoid()) / static_cast<IOType>(n) - 1) < b_max)
+                      && std::fabs(2 * p_norm(par, (bool)1, integers_ring.getAdditiveMonoid()) / static_cast<IOType>(n) - 1) < b_max)
                     {                          //load balance constraint
                         grb::set(x_min, x);    //save best solution
                         r_cheeg_min = r_cheeg; //save best cheeger const so far
@@ -200,7 +200,7 @@ namespace grb
         RC pLaplacian_multi(
             Vector<size_t> &x,       //vectors corresponding to the final clusters
             const Matrix<double> &W, // adjacency matrix
-            // arma::Mat<double> &V,         // eigenvecs arma matrix (Debug only)
+            arma::Mat<double> &V,         // eigenvecs arma matrix (Debug only)
             const size_t k,                      // number of clusters
             const double final_p = 1.1,          //Final value of p
             const double factor = 0.9,           //Factor for the reduction of p
@@ -231,39 +231,45 @@ namespace grb
             ROPTLIB::Stiefel Domain(n, k);
 
             //ARMA eigenvecs for initial guess (debug only)
-            // double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
-            // std::cout << "-------------" << std::endl;
-            // std::cout << "|The ARMA eigenvecs|" << std::endl;
-            // V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
-            // std::cout << "-------------" << std::endl;
-            // ROPTLIB::Variable GrassInit(n, k);
-            // double *temp = GrassInit.ObtainWriteEntireData();
-            // for (int i = 0; i < n * k; i++)
-            // {
-            //     temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
-            // }
+            double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
+            std::cout << "-------------" << std::endl;
+            std::cout << "|The ARMA eigenvecs|" << std::endl;
+            V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
+            std::cout << "-------------" << std::endl;
+            ROPTLIB::Variable GrassInit(n, k);
+            double *temp = GrassInit.ObtainWriteEntireData();
+            for (int i = 0; i < n * k; i++)
+            {
+                temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
+            }
             // std::cout << "ARMA Initial Guess" << std::endl;
             // std::cout << "-------------" << std::endl;
-            // //std::cout << GrassInit << std::endl;
-            // std::cin.get();
+            //std::cout << GrassInit << std::endl;
+            //std::cin.get();
 
-            // //generate sparse matrix
-            // sp_mat A = sprandu<sp_mat>(1024, 1024, 0.1);
-            // sp_mat B = A.t()*A;
+             //generate sparse matrix
+            // sp_mat A = sp_mat(V);//sprandu<sp_mat>(1024, 1024, 0.1);
+            // //  sp_mat B = A.t()*A;
 
-            // B.brief_print("input matrix A");
+            // // B.brief_print("input matrix A");
             // vec eigval;
             // mat eigvec;
 
             // eigs_opts opts;
-            // opts.maxiter = 1000;
+            // opts.maxiter = 10000;
             // opts.tol     = 1e-5;
-
             // // find the k smallest eigvals/eigvecs
-            // eigs_sym(eigval, eigvec, B, k, "sm", opts);
+            // bool a = eigs_sym(eigval, eigvec, A, k, "sm", opts);
+            // std::cout << "A: " << a << std::endl; 
             // eigval.brief_print("Eigvals");
             // eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
             // std::cout << eigval << std::endl;
+            // for (int i = 0; i < n * k; i++)
+            // {
+            //     temp[i] = eigvec[i]; // Use the input at p = 2 as initial guess
+            // }
+            
+            //std::cin.get();
 
             // Random initial guess for the eigenvectors on the Grassmann manifold
 #ifndef DETERMINISTIC
@@ -271,11 +277,11 @@ namespace grb
 #else
             genrandseed(1234);
 #endif
-            ROPTLIB::Variable GrassInit = Domain.RandominManifold(); // Random initial guess for the
-            std::cout << "----------------------" << std::endl;
-            std::cout << "Random Initial Guess on Manifold" << std::endl;
-            //std::cout << GrassInit << std::endl;
-            std::cout << "----------------------" << std::endl;
+            //GrassInit = Domain.RandominManifold(); // Random initial guess for the
+            // std::cout << "----------------------" << std::endl;
+            // std::cout << "Random Initial Guess on Manifold" << std::endl;
+            // std::cout << GrassInit << std::endl;
+            // std::cout << "----------------------" << std::endl;
             //std::cin.get();
 
             // ROPTLIB variable for the solution vector
@@ -287,7 +293,7 @@ namespace grb
             grb::utils::Timer timer;
             double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0;
 
-            p = p / factor;
+            //p = p / factor;
             do
             {
                 p = std::max(factor * p, final_p);
@@ -319,7 +325,6 @@ namespace grb
 
                 // custom stopping criterion
                 //RNewtonSolver->StopPtr = &StoppingCriterion;
-
                 RNewtonSolver->Verbose = ROPTLIB::ITERRESULT;
                 RNewtonSolver->LineSearch_LS = ROPTLIB::LSSM_ARMIJO;
                 RNewtonSolver->OutputGap = 10;
@@ -370,11 +375,11 @@ namespace grb
 
             // place the optimiser into the rows of a graphblas matrix for kmeans classification
             const double *OptPtr = Optimizer.ObtainReadData();
-            std::cout << "-------------" << std::endl;
-            std::cout << "The final solution" << std::endl;
-            std::cout << "-------------" << std::endl;
-            //std::cout << Optimizer << std::endl;
-            std::cout << "-------------" << std::endl;
+            // std::cout << "-------------" << std::endl;
+            // std::cout << "The final solution" << std::endl;
+            // std::cout << "-------------" << std::endl;
+            // std::cout << Optimizer << std::endl;
+            // std::cout << "-------------" << std::endl;
             //std::cin.get();
 
             // Print the first 10 pointer values (Debug only)
@@ -416,9 +421,9 @@ namespace grb
             size_t *I = new size_t[n * k];
             size_t *J = new size_t[n * k];
 
-            // #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-            // #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-            // #endif
+            #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+            #pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
+            #endif
             for (size_t i = 0; i < n * k; ++i)
             {
                 I[i] = i / n;
@@ -426,6 +431,7 @@ namespace grb
             }
 
             grb::buildMatrixUnique(X, I, J, OptPtr, n * k, SEQUENTIAL);
+
             io_time += timer.time();
 
             timer.reset();
@@ -463,6 +469,7 @@ namespace grb
                     grb::set(x, x_temp);
                 }
             }
+           // clusters = fin_cluster;
             kmeans_time += timer.time();
 
             std::vector<size_t> cluster_sizes(k);
@@ -470,6 +477,7 @@ namespace grb
             {
                 ++cluster_sizes[pair.second];
             }
+
             std::cout << "===========" << std::endl;
             std::cout << "Statistics" << std::endl;
             std::cout << "===========" << std::endl;
@@ -486,6 +494,7 @@ namespace grb
             std::cout << "grb+roptlib time (msec) = " << grbropt_time << std::endl;
             std::cout << "kmeans time (msec) = " << kmeans_time << std::endl;
             std::cout << "total time (msec) = " << grbropt_time + kmeans_time << std::endl;
+
 
             return SUCCESS;
         } //end RC pLaplacian_bisection

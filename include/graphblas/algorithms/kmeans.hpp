@@ -190,9 +190,9 @@ namespace grb {
 						return std::make_pair( ind, val );
 					}
 				);
-				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), SEQUENTIAL );
 			}
-
+			grb::clear(K);
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, RESIZE );
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
 
@@ -356,6 +356,9 @@ namespace grb {
 
 				ret = ret ? ret : grb::clear( selected_innerprods );
 
+				selected_index.first = 0;
+				selected_index.second = IOType();
+
 				// add last selected index i to selected_indices 
 				ret = ret ? ret : grb::setElement( selected_indices, i, l );
 
@@ -373,6 +376,7 @@ namespace grb {
 
 				// update maximum inner products of all points to the already selected ones
 				ret = ret ? ret : grb::foldl( max_innerprods, selected_innerprods, max_monoid );
+
 
 				// find the minimum entry of max_innerprods and select the next index
 				ret = ret ? ret : grb::dot(
@@ -395,8 +399,8 @@ namespace grb {
 					return std::make_pair( ind, val );
 				} );
 
-			ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
-			
+			ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), SEQUENTIAL );
+			grb::clear(K);
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum, RESIZE );
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X, pattern_sum );
 			
@@ -506,8 +510,11 @@ namespace grb {
 
 				ret = ret ? ret : grb::set( clusters_and_distances_prev, clusters_and_distances );
 
+				grb::clear(Dist);
 				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op, RESIZE );
 				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op );
+				
+				grb::clear(clusters_and_distances);
 
 				ret = ret ? ret : vxm(
 					clusters_and_distances, labels, Dist, argmin_monoid,
@@ -520,15 +527,21 @@ namespace grb {
 					return std::make_pair( pair.first, ind );
 				} );
 
-				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(), converter.end(), SEQUENTIAL );
+				
+				grb::clear(K_aux);
 
 				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum, RESIZE );
 				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X, pattern_sum );
+				
+				grb::clear(sizes);
 
 				ret = ret ? ret : grb::mxv( sizes, M, n_ones, pattern_count );
 
 				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >(), RESIZE );
 				ret = ret ? ret : grb::outer( V_aux, sizes, m_ones, operators::left_assign_if< IOType, bool, IOType >() );
+				
+				grb::clear(K);
 
 				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >(), RESIZE );
 				ret = ret ? ret : eWiseApply( K, V_aux, K_aux, operators::divide_reverse< size_t, IOType, IOType >() );

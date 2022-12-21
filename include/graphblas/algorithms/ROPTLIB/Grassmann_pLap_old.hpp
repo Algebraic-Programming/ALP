@@ -205,7 +205,7 @@ namespace ROPTLIB
             }
             grb_time += timer.time();
 
-            std::cout << " F(U)= "<< result << "\n";
+            //std::cout << " F(U)= "<< result << "\n";
             // for (size_t l = 0; l < k; ++l)
             // {
             //     std::cout << "F" << l << " : ";
@@ -232,7 +232,7 @@ namespace ROPTLIB
             const ROPTLIB::Variable &x,
             ROPTLIB::Element *result) const
         {
-  			std::cout << "EucGrad CALLED " << result << "\n"; 
+  			//std::cout << "EucGrad CALLED " << result << "\n"; 
 
             // convert to k Graphblas vectors
             timer.reset();
