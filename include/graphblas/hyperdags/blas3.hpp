@@ -274,7 +274,8 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 3 > sourcesC{
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getMatrix(A) ),
 			getID( internal::getVector(x) ),
 			getID( internal::getVector(y) ),
 			getID( internal::getVector(z) )
@@ -310,7 +311,8 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 2 > sourcesC{
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
 			getID( internal::getVector(x) ),
 			getID( internal::getVector(y) )
 		};
