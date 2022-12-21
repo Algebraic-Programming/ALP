@@ -38,15 +38,14 @@
 #include <assert.h>
 
 
-
 /**
  * Attempts to read in a value from a given file into a given memory
  * location.
  * 
- * @tparam T 		The datatype of the value
+ * @tparam T The datatype of the value
  *
- * @param[in]  in  	The input file
- * @param[out] out 	Where to store the read value.
+ * @param[in]  in  The input file
+ * @param[out] out Where to store the read value.
  *
  * @returns 0 on success and 1 on failure.
  *
@@ -55,7 +54,7 @@
  * \internal This is the overload for reading T data.
  */
 template< typename T >
-int data_fscanf( std::ifstream& in, T * const out ) {
+int data_fscanf( std::ifstream &in, T * const out ) {
 	return !(in >> *out);
 };
 
@@ -63,7 +62,7 @@ int data_fscanf( std::ifstream& in, T * const out ) {
  * Attempts to read in a complex value from a given file into a given memory
  * location.
  * 
- * @tparam T	The data type to be used in the complex value
+ * @tparam T The data type to be used in the complex value
  *
  * @param[in]  in  The input file
  * @param[out] out Where to store the read value.
@@ -75,12 +74,12 @@ int data_fscanf( std::ifstream& in, T * const out ) {
  * \internal This is the overload for reading complex data.
  */
 template< typename T >
-int data_fscanf( std::ifstream& in, std::complex< T > * const out ) {
+int data_fscanf( std::ifstream &in, std::complex< T > * const out ) {
 	T x, y;
-	if(in >> x >> y){
+	if( in >> x >> y ) {
 		*out = std::complex< T >( x, y );
 		return 0;
-	}else{
+	} else {
 		return 1;
 	}
 };
@@ -122,12 +121,13 @@ int data_fscanf( std::ifstream& in, std::complex< T > * const out ) {
  *
  * \note Please note that error codes 0, 1, 2, 4, 8, and 16
  *       correspond to individual errors this function can detect. Errors can be
- * 		 detected simultaneously, which leads to the other error codes that are
- * 		 not all exhaustively enumerated in the above. The mixed error codes are systematic by
- *       power-of-two offsets.
+ *       detected simultaneously, which leads to the other error codes that are
+ *       not all exhaustively enumerated in the above. The mixed error codes are
+ *       systematic by power-of-two offsets.
  *
  * @throws  runtime_error if the ground truth file could not be opened
- * @throws  bad_alloc on memory allocation errors while reading the ground truth file
+ * @throws  bad_alloc on memory allocation errors while reading the ground truth
+ *          file
  * @throws  runtime_error on I/O errors on the ground truth file
  * @throws  bad_alloc on memory allocation errors for verification buffers
  */
