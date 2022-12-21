@@ -204,6 +204,10 @@ add_grb_executables( zip zip.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
 
+add_grb_executables( copyVoidMatrices copyVoidMatrices.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+)
+
 add_grb_executables( masked_muladd masked_muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags
 )
