@@ -228,6 +228,13 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
+				echo "                                 of size 1003."
+				$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [x]       Testing grb::foldl and grb::foldr reducing dense"
 				echo "                                 vectors into scalars using operators and monoids."
 				$runner ${TEST_BIN_DIR}/fold_to_scalar_${MODE}_${BACKEND} ${P} &> ${TEST_OUT_DIR}/fold_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
