@@ -25,21 +25,43 @@
 using namespace grb;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
-	grb::Matrix< double > diag( n, n );
-	grb::Vector< double > vector( n );
-	rc = grb::set< grb::descriptors::use_index >( vector, 0 );
-	if( rc == SUCCESS ) {
-		auto converter = grb::utils::makeVectorToMatrixConverter< double >(
-			vector,
-			[]( const size_t &ind, const double &val ) {
-				return std::make_pair( std::make_pair( ind, ind ), val );
-			}
-		);
-		auto start = converter.begin();
-		auto end = converter.end();
-		rc = grb::buildMatrixUnique( diag, start, end, PARALLEL );
+	grb::Matrix< void > A( n, n, n );
+
+	try {
+		grb::Matrix< void > C( A );
+	} catch( ... ) {
+		std::cerr << " Copying from empty void matrix failed!\n";
+		rc = FAILED;
+		return;
 	}
-	if( rc != SUCCESS || grb::nnz( diag ) != n ) {
+
+	{
+		grb::Matrix< double > B( n, n, n );
+		grb::Vector< double > vector( n );
+		rc = grb::set< grb::descriptors::use_index >( vector, 0 );
+		if( rc == SUCCESS ) {
+			auto converter = grb::utils::makeVectorToMatrixConverter< double >(
+				vector,
+				[]( const size_t &ind, const double &val ) {
+					return std::make_pair( std::make_pair( ind, ind ), val );
+				}
+			);
+			auto start = converter.begin();
+			auto end = converter.end();
+			rc = grb::buildMatrixUnique( B, start, end, PARALLEL );
+		}
+		if( rc == SUCCESS ) {
+			rc = grb::set( A, B );
+		}
+		grb::Matrix< void > C( n, n, 0 );
+		if( rc == SUCCESS ) {
+			rc = grb::set( C, A, RESIZE );
+		}
+		if( rc == SUCCESS ) {
+			rc = grb::set( C, A );
+		}
+	}
+	if( rc != SUCCESS || grb::nnz( A ) != n ) {
 		std::cerr << "\t initialisation FAILED\n";
 		if( rc == SUCCESS ) {
 			rc = FAILED;
@@ -47,16 +69,32 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
-	rc = grb::clear( diag );
+	try {
+		grb::Matrix< void > C( A );
+	} catch( ... ) {
+		std::cerr << " Copying from non-empty void matrix failed!\n";
+		rc = FAILED;
+		return;
+	}
+
+	rc = grb::clear( A );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t clear matrix FAILED\n";
 		return;
 	}
 
-	if( grb::nnz( diag ) != 0 ) {
+	if( grb::nnz( A ) != 0 ) {
 		std::cerr << "\t unexpected number of nonzeroes in matrix "
-			<< "( " << grb::nnz( diag ) << " ), expected 0\n";
+			<< "( " << grb::nnz( A ) << " ), expected 0\n";
 		rc = FAILED;
+	}
+
+	try {
+		grb::Matrix< void > C( A );
+	} catch( ... ) {
+		std::cerr << " Copying from cleared void matrix failed!\n";
+		rc = FAILED;
+		return;
 	}
 
 	// done
@@ -81,9 +119,6 @@ int main( int argc, char ** argv ) {
 		} else if( ! ss.eof() ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
-			printUsage = true;
 		} else {
 			// all OK
 			in = read;
@@ -91,8 +126,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, "
-			<< "the test size.\n";
+		std::cerr << "  -n (optional, default is 100): an integer test size.\n";
 		return 1;
 	}
 

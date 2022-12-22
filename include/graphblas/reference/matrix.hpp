@@ -1360,9 +1360,9 @@ namespace grb {
 					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
 					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
 					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
+					CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
+					CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 					if( cap_in > 0 ) {
-						CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
-						CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 						CRS.getAllocSize( &(sizes[ 8 ]), cap_in );
 						CCS.getAllocSize( &(sizes[ 10 ]), cap_in );
 					} else {
@@ -1576,7 +1576,7 @@ namespace grb {
 				char * alloc[ 4 ] = { nullptr, nullptr, nullptr, nullptr };
 				size_t sizes[ 4 ];
 				// cache old allocation data
-				size_t old_sizes[ 4 ];
+				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
 				size_t freed = 0;
 				if( cap > 0 ) {
 					CRS.getAllocSize( &( old_sizes[ 0 ] ), cap );
@@ -1631,7 +1631,6 @@ namespace grb {
 				// done, return error code
 				return SUCCESS;
 			}
-
 
 			/**
 			 * @see Matrix::buildMatrixUnique.
