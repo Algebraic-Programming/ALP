@@ -49,7 +49,7 @@ using namespace algorithms;
 class input {
 public:
 	bool generate_random = true;
-	size_t test_repetitions = grb::config::BENCHMARKING::inner();
+	size_t rep = grb::config::BENCHMARKING::inner();
 	size_t max_iterations = 1;
 	size_t n = 0;
 	size_t nz_per_row = 10;
@@ -59,7 +59,7 @@ public:
 	bool rhs = false;
 	bool no_preconditioning = false;
 	bool direct = true;
-	size_t rep = 0;
+	size_t rep_outer = grb::config::BENCHMARKING::outer();
 	BaseScalarType tol = TOL;
 	BaseScalarType max_residual_norm = TOL;
 	size_t gmres_restart = 10;
@@ -68,12 +68,15 @@ public:
 struct output {
 	int rc;
 	size_t rep;
+	size_t iterations;
 	size_t iterations_arnoldi;
 	size_t iterations_gmres;
 	double residual;
 	double residual_relative;
+	grb::utils::TimerResults times;
 	double time_gmres;
 	double time_x_update;
+	double time_preamble;
 	double time_io;
 	double time_residual;
 	PinnedVector< ScalarType > pinnedVector;
@@ -289,11 +292,13 @@ void hessolve(
 void grbProgram( const struct input &data_in, struct output &out ) {
 	out.rc = 1;
 	out.time_gmres = 0;
-	out.time_x_update  = 0;
-	out.time_io  = 0;
+	out.time_x_update = 0;
+	out.time_preamble = 0;
+	out.time_io = 0;
 	out.time_residual = 0;
 	out.iterations_gmres = 0;
 	out.iterations_arnoldi = 0;
+	out.iterations = 0;
 
 	grb::utils::Timer timer;
 	timer.reset();
@@ -405,6 +410,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	}
 
+	out.time_io += timer.time();
+	timer.reset();
 
 	// read RHS vector
 	if( data_in.rhs ) {
@@ -428,13 +435,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				std::cout << "RHS vector: buildVector failed!\n ";
 			}
 		}
+		out.time_io += timer.time();
+		timer.reset();
 
 	} else {
 		grb::set( x, one );
 		grb::set( b, zero );
 		rc = rc ? rc : grb::mxv( b, A, x, ring );
 		grb::set( x, zero );
+		out.time_preamble += timer.time();
+		timer.reset();
 	}
+
 	// get RHS vector norm
 	ScalarType bnorm = zero;
 	rc = grb::set( temp, b );
@@ -470,14 +482,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 
 
-	out.time_io += timer.time();
- 	timer.reset();
+	out.time_preamble += timer.time();
+	timer.reset();
 
 	// todo: this loop shoud be moved into gmres() after
 	// hessolve is used from ALP
-	
+
 	// inner iterations
-	for( size_t i_inner = 0; i_inner < data_in.test_repetitions; ++i_inner ) {
+	for( size_t i_inner = 0; i_inner < data_in.rep; ++i_inner ) {
 		out.residual = std::abs( bnorm );
 		out.residual_relative = std::norm( one );
 		grb::set( x, zero );
@@ -494,6 +506,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 		// gmres iterations
 		for( size_t gmres_iter = 0; gmres_iter < data_in.max_iterations; ++gmres_iter ) {
+			++out.iterations;
 			timer.reset();
 			++out.iterations_gmres;
 			kspspacesize = 0;
@@ -603,12 +616,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 		} // gmres iterations
 
+		out.pinnedVector = PinnedVector< ScalarType >( x, SEQUENTIAL );
+
 		timer.reset();
 
 		out.time_io += timer.time();
 		timer.reset();
 
-		if( i_inner + 1 >   data_in.test_repetitions ) {
+		out.times.io += out.time_io;
+		out.times.useful += out.time_x_update + out.time_gmres;
+		out.times.postamble += out.time_residual;
+		out.times.preamble += out.time_preamble;
+
+		if( i_inner + 1 >   data_in.rep ) {
 			std::cout << "Residual norm = " << out.residual << " \n";
 			std::cout << "Residual norm (relative) = " << out.residual_relative << " \n";
 			std::cout << "X update time = " << out.time_x_update << "\n";
@@ -634,7 +654,8 @@ void printhelp( char *progname ) {
 	std::cout << "                              cannot be used with --matA-fname\n";
 	std::cout << "     --nz-per-row INT         numer of nz per row in a random generated matrix, defaiult  10\n";
 	std::cout << "                              can only be used when --n is present\n";
-	std::cout << "     --test-rep  INT          consecutive test repetitions, default 1\n";
+	std::cout << "     --test-rep  INT          consecutive test inner algorithm repetitions, default 1\n";
+	std::cout << "     --test-outer-rep  INT    consecutive test outer (including IO) algorithm repetitions, default 1\n";
 	std::cout << "     --gmres-restart INT      gmres restart (max size of KSP space), default 10\n";
 	std::cout << "     --max-gmres-iter INT     maximum number of GMRES iterations, default 1\n";
 	std::cout << "     --matA-fname STR         matrix A filename in matrix market format\n";
@@ -683,11 +704,22 @@ bool parse_arguments(
 #endif
 		} else if( std::string( argv[ i ] ) == std::string( "--test-rep" ) ) {
 			std::stringstream s( argv[ ++i ] );
-			if( !( s >> in.test_repetitions ) ){
+			if( !( s >> in.rep ) ){
 				std::cerr << "error parsing: " << argv[ i ] << "\n";
 				return false;
 			}
-			std::cout << " set: test_repetitions = " << in.test_repetitions << "\n";
+#ifdef DEBUG
+			std::cout << " set: rep = " << in.rep << "\n";
+#endif
+		} else if( std::string( argv[ i ] ) == std::string( "--test-outer-rep" ) ) {
+			std::stringstream s( argv[ ++i ] );
+			if( !( s >> in.rep_outer ) ){
+				std::cerr << "error parsing: " << argv[ i ] << "\n";
+				return false;
+			}
+#ifdef DEBUG
+			std::cout << " set: rep_outer = " << in.rep_outer << "\n";
+#endif
 		} else if( std::string( argv[ i ] ) == std::string( "--gmres-restart" ) ) {
 			std::stringstream s( argv[ ++i ] );
 			if( !( s >> in.gmres_restart ) ){
@@ -788,6 +820,7 @@ bool parse_arguments(
 
 int main( int argc, char **argv ) {
 
+	grb::RC rc = grb::SUCCESS;
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
 	input  in;
@@ -799,16 +832,61 @@ int main( int argc, char **argv ) {
 		return 1;
 	};
 
-	grbProgram( in, out );
-	if( out.rc == 0 ) {
-		std::cout << "Test OK\n";
-		return 0;
-	} else {
-		std::cout << "Test FAILED\n";
-		return 1;
+	std::cout << "Executable called with parameters " << in.filename << ", "
+		  << "inner repititions = " << in.rep << ", "
+		  << "and outer reptitions = " << in.rep_outer << std::endl;
+
+	// launch estimator (if requested)
+	if( in.rep == 0 ) {
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &grbProgram, in, out, true );
+		if( rc == SUCCESS ) {
+			in.rep = out.rep;
+		}
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec returns with non-SUCCESS error code "
+				<< (int)rc << std::endl;
+			return 6;
+		}
 	}
 
-	return 0;
+	// launch benchmark
+	if( rc == SUCCESS ) {
+		grb::Benchmarker< AUTOMATIC > benchmarker;
+		rc = benchmarker.exec( &grbProgram, in, out, 1, in.rep_outer, true );
+	}
+	if( rc != SUCCESS ) {
+		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
+			<< grb::toString( rc ) << std::endl;
+		return 8;
+	} else if( out.rc == 0 ) {
+		std::cout << "Benchmark completed successfully and took "
+			<< out.iterations << " iterations to converge "
+			<< "with residual " << out.residual << ".\n";
+	}
+
+	const size_t n = out.pinnedVector.size();
+	std::cout << "Error code is " << out.rc << ".\n";
+	std::cout << "Size of pr is " << n << ".\n";
+	if( out.rc == 0 && n > 0 ) {
+		std::cout << "First 10 nonzeroes of pr are: ( ";
+		for( size_t k = 0; k < out.pinnedVector.nonzeroes() && k < 10; ++k ) {
+			const auto &value = out.pinnedVector.getNonzeroValue( k );
+			std::cout << value << " ";
+		}
+		std::cout << ")" << std::endl;
+	}
+
+	if( out.rc != 0 ) {
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n";
+	} else {
+		std::cout << "Test OK\n";
+	}
+	std::cout << std::endl;
+
+	// done
+	return out.rc;
 }
 
 
