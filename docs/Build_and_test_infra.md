@@ -408,7 +408,7 @@ assumed to run and on relevant options: hence, you should place your test
 invocation in the relevant section.
 
 Furthermore, you can achieve more control over the test target generation, i.e.,
-the building of tests, by using the function `add_grb_executable_custom`, also
+the building of tests, by using the function `add_grb_tests_with_category`, also
 defined in [cmake/AddGRBTests.cmake](../cmake/AddGRBTests.cmake), which requires
 to specify dependencies manually (thus, building against multiple backends needs
 correspondingly multiple calls of the same function) and is therefore used only

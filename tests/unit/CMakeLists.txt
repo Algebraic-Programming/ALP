@@ -16,7 +16,7 @@
 
 
 # write here the name of the category
-# add_grb_executables and add_grb_executable_custom need this information
+# add_grb_executables and add_grb_tests_with_category need this information
 set( TEST_CATEGORY "unit" )
 
 # list tests, without the CATEROR[IES,Y] keyword (it's now passed via TEST_CATEGORY)
@@ -112,9 +112,9 @@ add_grb_executables( fork_launcher fork_launcher.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
 
-add_grb_executable_custom( hpparser ${ALP_UTILS_SRC_PATH}/hpparser.c
-	LINK_LIBRARIES backend_headers_nodefs OpenMP::OpenMP_C
-	COMPILE_DEFINITIONS TEST_HPPARSER _GNU_SOURCE _DEBUG
+add_grb_executables_with_category( hpparser "" "" ${ALP_UTILS_SRC_PATH}/hpparser.c
+	"backend_headers_nodefs;OpenMP::OpenMP_C"
+	"TEST_HPPARSER;_GNU_SOURCE;_DEBUG"
 )
 
 add_grb_executables( masked_mxv masked_mxv.cpp

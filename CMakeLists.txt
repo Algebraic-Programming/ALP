@@ -331,7 +331,7 @@ add_subdirectory( src )
 # specify test categories and the directory where ALL tests are stored
 set( TESTS_EXE_OUTPUT_DIR "${PROJECT_BINARY_DIR}/tests" )
 
-include( AddGRBTests )
+include( AddGRBExecutables )
 
 add_subdirectory( tests )
 

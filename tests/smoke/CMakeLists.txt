@@ -16,7 +16,7 @@
 
 
 # write here the name of the category
-# add_grb_executables and add_grb_executable_custom need this information
+# add_grb_executables and add_grb_tests_with_category need this information
 set( TEST_CATEGORY "smoke" )
 
 

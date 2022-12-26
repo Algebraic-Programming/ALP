@@ -190,7 +190,7 @@ foreach( b ${AVAILABLE_TEST_BACKENDS} )
 	)
 endforeach()
 
-# a test may not belong to a backend (because of add_grb_executable_custom)
+# a test may not belong to a backend
 # but it must belong to a category: hence, get all tests from there
 foreach( cat ${TEST_CATEGORIES} )
 	get_property( ct GLOBAL PROPERTY tests_category_${cat} )

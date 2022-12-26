@@ -19,10 +19,7 @@
 #
 
 # protection against double inclusion
-if( DEFINED __ADDGRBTESTS_CMAKE_ )
-	message( FATAL_ERROR "Please, include this file only once in a project!" )
-	set( __ADDGRBTESTS_CMAKE_ TRUE CACHE INTERNAL "once-only inclusion file checker" FORCE )
-endif()
+include_guard( GLOBAL )
 
 assert_valid_variables( ALL_BACKENDS AVAILABLE_TEST_BACKENDS TEST_CATEGORIES
 	#TESTS_EXE_OUTPUT_DIR
@@ -52,6 +49,16 @@ macro( append_test_to_backend backend test )
 	set_property( GLOBAL APPEND PROPERTY tests_backend_${backend} "${test}" )
 endmacro()
 
+macro( make_test_names target_out_var filename_out_var test_name backend mode  )
+	set( ${filename_out_var} "${test_name}${MODES_${mode}_suffix}" )
+	set( ${target_out_var} "test_${${filename_out_var}}" )
+	set( __back "${backend}" )
+	if( __back )
+		string( APPEND ${filename_out_var} "_" "${__back}" )
+		string( APPEND ${target_out_var} "_" "${__back}" )
+	endif()
+endmacro( make_test_names )
+
 
 #
 # [internal!] creates a test target from passed information, also querying the mode(s)
@@ -71,7 +78,7 @@ endmacro()
 # where _<mode> and _<suffix> may be skipped if the respective strings are empty.
 # Similarly, the compiled file name is called as the target, without test_ at the beginning
 #
-macro( __add_test_with_category test_prefix backend_name suffix sources libs defs )
+macro( add_grb_executables_with_category test_prefix backend_name suffix sources libs defs )
 
 	if( NOT TEST_CATEGORY )
 		message( FATAL_ERROR "variable TEST_CATEGORY not specified" )
@@ -83,18 +90,20 @@ macro( __add_test_with_category test_prefix backend_name suffix sources libs def
 
 	foreach( mode ${MODES_${category}} )
 
-		set( __file_name "${test_prefix}${MODES_${mode}_suffix}" )
-		set( __target_name "test_${__file_name}" )
-		#set( __target_name "test_${test_prefix}_${category}${MODES_${mode}_suffix}" )
-		set( _suffix "${suffix}" )
-		if( _suffix )
-			string( APPEND __file_name "_" "${_suffix}" )
-			string( APPEND __target_name "_" "${_suffix}" )
-		endif()
+		# set( __file_name "${test_prefix}${MODES_${mode}_suffix}" )
+		# set( __target_name "test_${__file_name}" )
+		# #set( __target_name "test_${test_prefix}_${category}${MODES_${mode}_suffix}" )
+		# if( suffix )
+		# 	string( APPEND __file_name "_" "${suffix}" )
+		# 	string( APPEND __target_name "_" "${suffix}" )
+		# endif()
+		# message( AUTHOR_WARNING "invoking
+		make_test_names( __target_name __file_name "${test_prefix}" "${suffix}" "${mode}" )
 
 		if( TARGET "${__target_name}" )
 			message( FATAL_ERROR "Target \"${__target_name}\" already exists!")
 		endif()
+		# message( AUTHOR_WARNING "gor target name ${__target_name}" )
 		add_executable( "${__target_name}" EXCLUDE_FROM_ALL "${sources}" )
 
 		set_target_properties( "${__target_name}" PROPERTIES
@@ -110,57 +119,7 @@ macro( __add_test_with_category test_prefix backend_name suffix sources libs def
 			append_test_to_backend( "${__b}" "${__target_name}" )
 		endif()
 	endforeach()
-endmacro( __add_test_with_category )
-
-
-#
-# add a test target whose name is test_${testName}, with the basic details
-#
-# Syntax:
-# add_custom_test_executable( testName source1 [sources1 ...]
-#   COMPILE_DEFINITIONS def1 [def2...]
-#   LINK_LIBRARIES lib1 [lib2...]
-#   CATEGORIES cat1 [cat2...]
-# )
-#
-# COMPILE_DEFINITIONS: compile definitions
-# LINK_LIBRARIES: libraries to link to each target
-# CATEGORY: test category (mandatory)
-#
-# The generated test name is also added to the list of per-category
-# tests, namely tests_category_<category>
-#
-function( add_grb_executable_custom testName )
-	if( NOT testName )
-		message( FATAL_ERROR "no test name specified")
-	endif()
-
-	set( options "" )
-	set( oneValueArgs "CATEGORY" )
-	set( multiValueArgs
-		"SOURCES"
-		"COMPILE_DEFINITIONS"
-		"LINK_LIBRARIES"
-	)
-
-	cmake_parse_arguments(parsed "${options}"
-	"${oneValueArgs}" "${multiValueArgs}" "SOURCES;${ARGN}"
-	)
-
-	if( NOT parsed_SOURCES )
-		message( FATAL_ERROR "no sources specified")
-	endif()
-	if( DEFINED parsed_CATEGORY )
-		message( AUTHOR_WARNING "the flag CATEGORY is deprecated and will be removed very soon; \
-specify the category of all tests in the file via the TEST_CATEGORY variable" )
-	endif()
-
-	set_valid( libs "${parsed_LINK_LIBRARIES}" "" )
-	set_valid( defs "${parsed_COMPILE_DEFINITIONS}" "" )
-	__add_test_with_category( "${testName}" "" ""
-		"${parsed_SOURCES}" "${libs}" "${defs}"
-	)
-endfunction( add_grb_executable_custom )
+endmacro( add_grb_executables_with_category )
 
 #
 # add a GraphBLAS test to be compiled against one or more backends: for each backend,
@@ -231,7 +190,7 @@ function( add_grb_executables testName )
 			set( suffix "${back}" )
 		endif()
 
-		__add_test_with_category( "${testName}" "${back}" "${suffix}"
+		add_grb_executables_with_category( "${testName}" "${back}" "${suffix}"
 			"${parsed_SOURCES}" "${libs}" "${defs}"
 		)
 	endforeach()
