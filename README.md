@@ -104,9 +104,9 @@ In more detail, the steps to follow are:
 2. Create an empty directory for building ALP/GraphBLAS and move into it:
    `mkdir build && cd build`.
 
-3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
-   `<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
-   current directory:
+3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root
+   directory `<ALP/GraphBLAS root>` to generate the build infrastructure via
+   CMake inside the current directory:
 
    `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
 
@@ -148,8 +148,8 @@ In more detail, the steps to follow are:
 9. Issue `make -j install` to install ALP/GraphBLAS into your
 install directory configured during step 1.
 
-10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
-`grbcxx` and `grbrun` compiler wrapper and runner.
+10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make
+available the `grbcxx` and `grbrun` compiler wrapper and runner.
 
 Congratulations, you are now ready for developing and integrating ALP/GraphBLAS
 algorithms! Any feedback, question, problem reports are most welcome at
@@ -161,10 +161,12 @@ algorithms! Any feedback, question, problem reports are most welcome at
 
 # Additional Contents
 
-The remainder of this file summarises other build system targets, how to
-integrate ALP algorithms into applications, debugging, development, and,
-finally, acknowledges contributors and lists technical papers.
+The remainder of this file summarises configuration options, additional build
+system targets, how to integrate ALP programs into applications, debugging, and
+contribute to ALP development. Finally, this README acknowledges contributors
+and lists technical papers.
 
+- [Configuration](#configuration)
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
 - [Automated performance testing](#automated-performance-testing)
 - [Integrating ALP with applications](#integrating-alp-with-applications)
@@ -182,6 +184,96 @@ finally, acknowledges contributors and lists technical papers.
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
 - [Citing ALP and ALP/GraphBLAS](#citing-alp-and-alpgraphblas)
+
+
+# Configuration
+
+ALP employs configuration headers that contain `constexpr` settings that take
+effect every time ALP programs are compiled. Multiple object files that were
+compiled using ALP must all been compiled using the same configuration
+settings-- linking objects that have been compiled with a mixture of
+configurations are likely to incur undefined behaviour. The recommendation is
+to set a configuration before building and installing ALP, and to keep the
+installation directories read-only so that configurations remain static.
+
+There exists one main configuration file that affects all ALP backends, while
+other configuration files only affect a specfic backend or only affect specific
+classes of backends. The main configuration file is found in
+`<root>/include/graphblas/base/config.hpp`, which allows one to set the
+
+1. cache line size, in bytes, within the `CACHE_LINE_SIZE` class;
+2. SIMD width, in bytes, within the `SIMD_SIZE` class;
+3. default number of experiment repetitions during benchmarking, within the
+   `BENCHMARKING` class;
+4. L1 data cache size, in bytes, within `MEMORY::big_memory` class;
+5. from which size onwards memory allocations will be reported, in log-2
+   bytes, within `MEMORY::big_memory`;
+6. index type used for row coordinates, as the `RowIndexType` typedef;
+7. index type used for column coordinates, as the `ColIndexType` typedef;
+8. type used for indexing nonzeroes, as the `NonzeroIndexType` typedef;
+9. index type used for vector coordinates, as the `VectorIndexType` typedef.
+
+Other configuration values in this file are automatically inferred, are fixed
+non-configurable settings, or are presently not used by any ALP backend.
+
+## Reference and reference_omp backends
+
+The file `include/graphblas/reference/config.hpp` contain defaults that pertain
+to the auto-vectorising and sequential `reference` backend, but also to the
+shared-memory auto-parallelising `reference_omp` backend. It allows one to set
+
+1. whether prefetching is enabled in `PREFETCHING::enabled`;
+2. the prefetch distance in `PREFETCHING::distance`;
+3. the default memory allocation strategy for thread-local data in
+   `IMPLEMENTATION::defaultAllocMode()`;
+4. same, but for shared data amongst threads in
+   `IMPLEMENTATION::sharedAllocMode()`;
+
+Modifying any of the above should be done with utmost care as it typically
+affects the defaults across an ALP installation, and *all* programs compiled
+using it. Configuration elements not mentioned here should not be touched by
+users, and rather should concern ALP developers only.
+
+## OpenMP backends
+
+The file `include/graphblas/omp/config.hpp` contains some basic configuration
+parameters that affect any OpenMP-based backend. However, the configuration
+file does not contain any other user-modifiable setings, but rather contains
+a) some utilities that OpenMP-based backends may rely on, and b) default
+that are derived from other settings described in the above. These settings
+should only be overridden with compelling and expert knowledge.
+
+## LPF backends
+
+The file `include/graphblas/bsp/config.hpp` contains some basic configuration
+parameters that affect any LPF-based backend. It includes:
+
+1. an initial maximum of LPF memory slot registrations in `LPF::regs()`;
+2. an initial maximum of LPF messages in `LPF::maxh()`.
+
+These defaults, if insufficient, will be automatically resized during execution.
+Setting these large enough will therefore chiefly prevent buffer resizes at run-
+time. Modifying these should normally not lead to significant performance
+differences.
+
+## Utilities
+
+The file `include/graphblas/utils/config.hpp` details configurations of various
+utility functions, including:
+
+1. a buffer size used during reading input files, in `PARSER::bsize()`;
+2. the block size of individual reads in `PARSER::read_bsize()`.
+
+These defaults are usually fine except when reading from SSDs, which would
+benefit of a larger `read_bsize`.
+
+## Others
+
+While there are various other configuration files (find `config.hpp`), the above
+should list all user-modifiable configuration settings of interest. The
+remainder pertain to configurations that are automatically deduced from the
+aforementioned settings, or pertain to settings that describe how to safely
+compose backends and thus only are of interest to ALP developers.
 
 
 # Overview of the main Makefile targets
@@ -494,8 +586,12 @@ following papers, as appropriate:
    by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
    Pre-print.
    [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
- - [Nonblocking execution in GraphBLAS](http://albert-jan.yzelman.net/PDFs/mastoras22-pp.pdf)
-   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman (2022).
-   Pre-print.
+ - [Nonblocking execution in GraphBLAS](https://ieeexplore.ieee.org/document/9835271)
+   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
+   in IEEE International Parallel and Distributed Processing Symposium Workshops, 2022.
    [Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
+ - [Design and implementation for nonblocking execution in GraphBLAS: tradeoffs and performance](https://dl.acm.org/doi/10.1145/3561652)
+   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
+   in ACM Transactions on Architecture and Code Optimization 20(1), 2023.
+   [Bitex](http://albert-jan.yzelman.net/BIBs/mastoras22a.bib).
 

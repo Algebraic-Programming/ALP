@@ -20,7 +20,7 @@
  * @date 5th of July, 2017
  */
 
-#if ! defined _H_GRB_REFERENCE_COORDINATES || defined _H_GRB_REFERENCE_OMP_COORDINATES
+#if !defined _H_GRB_REFERENCE_COORDINATES || defined _H_GRB_REFERENCE_OMP_COORDINATES
 #define _H_GRB_REFERENCE_COORDINATES
 
 #include <stddef.h> //size_t
@@ -1644,6 +1644,65 @@ namespace grb {
 				inline bool assigned( const size_t i ) const noexcept {
 					assert( i < _cap );
 					return _n == _cap || _assigned[ i ];
+				}
+
+				/**
+				 * Prefetches the result of a call to #assigned with the same argument \a a.
+				 *
+				 * @param[in] i The index to prefetch.
+				 *
+				 * This is equivalent to a prefetch hint -- a call to this function may or
+				 * not translate to a no-op.
+				 *
+				 * \warning Debug-mode assertion allows for out-of-range \a i within the
+				 *          configured prefetch distance.
+				 */
+				inline void prefetch_assigned( const size_t i ) const noexcept {
+					assert( i < _cap + config::PREFETCHING< reference >::distance() );
+					__builtin_prefetch( _assigned + i );
+				}
+
+				/**
+				 * Prefetches a nonzero value at a given offset \a i.
+				 *
+				 * @param[in] i The index to prefetch.
+				 * @param[in] x The nonzero value array.
+				 *
+				 * This is equivalent to a prefetch hint -- a call to this function may or
+				 * not translate to a no-op.
+				 *
+				 * For sparse vectors to be used in conjunction with #prefetch_assigned.
+				 *
+				 * For <tt>void</tt> nonzero types, translates into a no-op.
+				 *
+				 * \warning Debug-mode assertion allows for out-of-range \a i within the
+				 *          configured prefetch distance.
+				 */
+				template< typename T >
+				inline void prefetch_value(
+					const size_t i,
+					const T *__restrict__ const x
+				) const noexcept {
+					assert( i < _cap + config::PREFETCHING< reference >::distance() );
+					__builtin_prefetch( x + i );
+				}
+
+				/**
+				 * Specialisation for void nonzero element types.
+				 *
+				 * Translates to a no-op.
+				 *
+				 * \warning Debug-mode assertion allows for out-of-range \a i within the
+				 *          configured prefetch distance.
+				 */
+				inline void prefetch_value(
+					const size_t i,
+					const void *__restrict__ const
+				) const noexcept {
+					assert( i < _cap + config::PREFETCHING< reference >::distance() );
+#ifdef NDEBUG
+					(void) i;
+#endif
 				}
 
 				/**

@@ -24,20 +24,29 @@
 #define _H_GRB_UTILS_CONFIG
 
 namespace grb {
+
 	namespace config {
+
 		/** Parser defaults. */
 		class PARSER {
-		public:
-			/** The default buffer size. */
-			static constexpr size_t bsize() {
-				return ( 1ul << 20 );
-			} // 1MB
-			/** The read block size. */
-			static constexpr size_t read_bsize() {
-				return ( 1ul << 17 );
-			} // 128kB (SSDs should set this higher(!))
+
+			public:
+
+				/** The default buffer size. */
+				static constexpr size_t bsize() {
+					return ( 1ul << 20 );
+				} // 1MB
+
+				/** The read block size. */
+				static constexpr size_t read_bsize() {
+					return ( 1ul << 17 );
+				} // 128kB (SSDs should set this higher(!))
+
 		};
+
 	} // namespace config
+
 } // namespace grb
 
 #endif
+

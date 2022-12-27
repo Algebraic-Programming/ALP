@@ -27,30 +27,38 @@
 
 #include <cstddef>
 
+
 namespace grb {
+
 	namespace config {
 
 		/**
 		 * Lightweight Parallel Foundations defaults.
 		 */
 		class LPF {
-		public:
-			/**
-			 * Return the default number of memory registrations used by GraphBLAS.
-			 */
-			static constexpr size_t regs() {
-				return 500;
-			}
 
-			/**
-			 * Return the default maximum h relation expressed in the number of messages
-			 * (instead of bytes) used by GraphBLAS.
-			 */
-			static constexpr size_t maxh() {
-				return 200;
-			}
+			public:
+
+				/**
+				 * Return the default number of memory registrations used by GraphBLAS.
+				 */
+				static constexpr size_t regs() {
+					return 500;
+				}
+
+				/**
+				 * Return the default maximum h relation expressed in the number of messages
+				 * (instead of bytes) used by GraphBLAS.
+				 */
+				static constexpr size_t maxh() {
+					return 200;
+				}
+
 		};
+
 	} // namespace config
+
 } // namespace grb
 
 #endif
+
