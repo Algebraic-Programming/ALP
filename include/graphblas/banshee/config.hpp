@@ -29,6 +29,7 @@
 
 #include <graphblas/config.hpp>
 
+
 namespace grb {
 
 	/**
@@ -46,3 +47,4 @@ namespace grb {
 } // namespace grb
 
 #endif // end ``_H_GRB_BANSHEE_CONFIG''
+

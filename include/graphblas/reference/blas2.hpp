@@ -304,8 +304,9 @@ namespace grb {
 			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType >
-				&matrix,
+			const internal::Compressed_Storage<
+					InputType2, RowColType, NonzeroType
+				> &matrix,
 			const size_t &nz,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,

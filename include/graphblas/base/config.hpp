@@ -41,6 +41,7 @@
  #define _GRB_BACKEND reference
 #endif
 
+
 /**
  * The main GraphBLAS namespace.
  *
@@ -148,7 +149,7 @@ namespace grb {
 					return sysconf( _SC_NPROCESSORS_ONLN );
 				}
 
-			};
+		};
 
 		/** Benchmarking defaults. */
 		class BENCHMARKING {
