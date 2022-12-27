@@ -586,8 +586,12 @@ following papers, as appropriate:
    by A. N. Yzelman, D. Di Nardo, J. M. Nash, and W. J. Suijlen (2020).
    Pre-print.
    [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
- - [Nonblocking execution in GraphBLAS](http://albert-jan.yzelman.net/PDFs/mastoras22-pp.pdf)
-   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman (2022).
-   Pre-print.
+ - [Nonblocking execution in GraphBLAS](https://ieeexplore.ieee.org/document/9835271)
+   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
+   in IEEE International Parallel and Distributed Processing Symposium Workshops, 2022.
    [Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
+ - [Design and implementation for nonblocking execution in GraphBLAS: tradeoffs and performance](https://dl.acm.org/doi/10.1145/3561652)
+   by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
+   in ACM Transactions on Architecture and Code Optimization 20(1), 2023.
+   [Bitex](http://albert-jan.yzelman.net/BIBs/mastoras22a.bib).
 
