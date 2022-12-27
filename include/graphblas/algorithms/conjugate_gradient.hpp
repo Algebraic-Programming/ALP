@@ -85,7 +85,7 @@ namespace grb {
 		 * Additional outputs (besides \a x):
 		 *
 		 * @param[out]    iterations     The number of iterations the algorithm has
-		 *                               performed.
+		 *                               started.
 		 * @param[out]    residual       The residual corresponding to output \a x.
 		 *
 		 * The CG algorithm requires three workspace buffers with capacity \f$ n \f$:
@@ -117,6 +117,17 @@ namespace grb {
 		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
 		 *                         output as well as the state of ALP/GraphBLAS is
 		 *                         undefined.
+		 *
+		 * On output, the contents of the workspace \a r, \a u, and \a temp are
+		 * always undefined. For non-#grb::SUCCESS error codes, additional containers
+		 * or states may be left undefined:
+		 * -# when #grb::PANIC is returned, the entire program state, including the
+		 *    contents of all containers, become undefined;
+		 * -# when #grb::ILLEGAL or #grb::MISMATCH are returned and \a iterations
+		 *    equals zero, then all outputs are left unmodified compared to their
+		 *    contents at function entry;
+		 * -# when #grb::ILLEGAL or #grb::MISMATCH are returned and \a iterations is
+		 *    nonzero, then the contents of \a x are undefined.
 		 *
 		 * \par Performance semantics
 		 *
@@ -234,6 +245,15 @@ namespace grb {
 				}
 			}
 
+			// set pure output fields to neutral defaults
+			iterations = 0;
+			residual = std::numeric_limits< double >::infinity();
+
+			// trivial shortcuts
+			if( max_iterations == 0 ) {
+				return FAILED;
+			}
+
 			// make x and b structurally dense (if not already) so that the remainder
 			// algorithm can safely use the dense descriptor for faster operations
 			{
@@ -306,6 +326,9 @@ namespace grb {
 			size_t iter = 0;
 
 			do {
+				assert( iter < max_iterations );
+				(void) ++iter;
+
 				// temp = 0
 				ret = ret ? ret : grb::set( temp, 0 );
 				assert( ret == SUCCESS );
@@ -363,7 +386,7 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				if( ret == SUCCESS ) {
-					if( sqrt( residual ) < tol ) {
+					if( sqrt( residual ) < tol || iter >= max_iterations ) {
 						break;
 					}
 				}
@@ -383,17 +406,19 @@ namespace grb {
 				std::swap( u, temp );
 
 				sigma = beta;
+			} while( ret == SUCCESS );
 
-			} while( ++iter < max_iterations && ret == SUCCESS );
-
-			// output
+			// output that is independent of error code
 			iterations = iter;
 
-			if( ret != SUCCESS ) {
-				return FAILED;
-			} else {
-				return SUCCESS;
+			// return correct error code
+			if( ret == SUCCESS ) {
+				if( sqrt( residual ) >= tol ) {
+					// did not converge within iterations
+					return FAILED;
+				}
 			}
+			return ret;
 		}
 
 	} // namespace algorithms
