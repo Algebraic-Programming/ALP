@@ -178,6 +178,7 @@ finally, acknowledges contributors and lists technical papers.
 		- [Implementation](#implementation-1)
 		- [Running](#running-1)
 	- [Integrating ALP within your coding project](#integrating-alp-within-your-coding-project)
+- [Configuration](#configuration)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
@@ -440,6 +441,96 @@ original processes.
 
 Please see [this article](docs/Use_ALPGraphBLAS_in_your_own_project.md) on how
 to add ALP and ALP/GraphBLAS as a dependence to your project.
+
+
+# Configuration
+
+ALP employs configuration headers that contain `constexpr` settings that take
+effect every time ALP programs are compiled. Multiple object files that were
+compiled using ALP must all been compiled using the same configuration
+settings-- linking objects that have been compiled with a mixture of
+configurations are likely to incur undefined behaviour. The recommendation is
+to set a configuration before building and installing ALP, and to keep the
+installation directories read-only so that configurations remain static.
+
+There exists one main configuration file that affects all ALP backends, while
+some configurations only affect a specfic backend. The main configuration file
+is found in `<root>/include/graphblas/base/config.hpp`, which allows one to set
+the
+
+1. cache line size, in bytes, within the `CACHE_LINE_SIZE` class;
+2. SIMD width, in bytes, within the `SIMD_SIZE` class;
+3. default number of experiment repetitions during benchmarking, within the
+   `BENCHMARKING` class;
+4. L1 data cache size, in bytes, within `MEMORY::big_memory` class;
+5. from which size onwards memory allocations will be reported, in log-2
+   bytes, within `MEMORY::big_memory`;
+6. index type used for row coordinates, as the `RowIndexType` typedef;
+7. index type used for column coordinates, as the `ColIndexType` typedef;
+8. type used for indexing nonzeroes, as the `NonzeroIndexType` typedef;
+9. index type used for vector coordinates, as the `VectorIndexType` typedef.
+
+Other main configuration values are automatically inferred, fixed
+non-configurable settings, or are presently not used by any ALP backend.
+
+## Reference and reference_omp backends
+
+The file `include/graphblas/reference/config.hpp` contain defaults that pertain
+to the auto-vectorising and sequential `reference` backend, but also to the
+shared-memory auto-parallelising `reference_omp` backend. It allows one to set
+
+1. whether prefetching is enabled in `PREFETCHING::enabled`;
+2. the prefetch distance in `PREFETCHING::distance`;
+3. the default memory allocation strategy for thread-local data in
+   `IMPLEMENTATION::defaultAllocMode()`;
+4. same, but for shared data amongst threads in
+   `IMPLEMENTATION::sharedAllocMode()`;
+
+Configuration elements not mentioned here are fixed non-user-configurable
+settings. Modifying any of the above should be done with utmost care as it
+typically affects the defaults across an ALP installation, and *all* programs
+compiled using it.
+
+## OpenMP backends
+
+The file `include/graphblas/omp/config.hpp` contains some basic configuration
+parameters that affect any OpenMP-based backend. However, the configuration
+file does not contain any other user-modifiable setings, but rather contains
+a) some utilities that OpenMP-based backends may rely on, and b) default
+that are derived from other settings described in the above. These settings
+should only be overridden with compelling and expert knowledge.
+
+## LPF backends
+
+The file `include/graphblas/bsp/config.hpp` contains some basic configuration
+parameters that affect any LPF-based backend. It includes:
+
+1. an initial maximum of LPF memory slot registrations in `LPF::regs()`;
+2. an initial maximum of LPF messages in `LPF::maxh()`.
+
+These defaults, if insufficient, will be automatically resized during execution.
+Setting these large enough will therefore chiefly prevent buffer resizes at run-
+time. Modifying these should normally not lead to significant performance
+differences.
+
+## Utilities
+
+The file `include/graphblas/utils/config.hpp` details configurations of various
+utility functions, including:
+
+1. a buffer size used during reading input files, in `PARSER::bsize()`;
+2. the block size of individual reads in `PARSER::read_bsize()`.
+
+These defaults are usually fine except when reading from SSDs, which would
+benefit of a larger `read_bsize`.
+
+## Others
+
+While there are various other configuration files (find `config.hpp`), the above
+should list all user-modifiable configuration settings of interest. The
+remainder pertain to configurations that are automatically deduced from the
+aforementioned settings, or pertain to settings that describe how to safely
+compose backends and only of interest to developers.
 
 
 # Debugging
