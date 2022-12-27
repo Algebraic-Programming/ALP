@@ -30,6 +30,7 @@
 
 #include <graphblas/base/config.hpp>
 
+
 namespace grb {
 
 	/**
@@ -62,7 +63,19 @@ namespace grb {
 		/**
 		 * Default prefetching settings for reference and reference_omp backends.
 		 *
-		 * The defaults may be overridden by specialisation.
+		 * \note By default, prefetching is turned OFF as we found no setting that
+		 *       will never result in a performance degradation across the dataset,
+		 *       workloads, and architectures in our standard test set.
+		 *
+		 * \note The defaults may be overridden by specialisation, which additionally
+		 *       makes it possible to choose different distances for different
+		 *       backends.
+		 *
+		 * Prefetching presently only is implemented and evaluated for the SpMV and
+		 * the SpMSpV multiplication kernels. Furthermore, it is only implemented for
+		 * the gathering variant of either kernel. If you wish further support or
+		 * evaluation, please feel free to create an issue or to contribute a merge
+		 * request.
 		 *
 		 * \warning This class should only be used by the reference or reference_omp
 		 *          backends.
@@ -70,6 +83,7 @@ namespace grb {
 		template< Backend backend >
 		class PREFETCHING {
 
+			// guard against unintended use
 			static_assert( backend == reference || backend == reference_omp,
 				"Instantiating for non-reference backend" );
 
