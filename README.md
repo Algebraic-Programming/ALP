@@ -104,9 +104,9 @@ In more detail, the steps to follow are:
 2. Create an empty directory for building ALP/GraphBLAS and move into it:
    `mkdir build && cd build`.
 
-3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root directory
-   `<ALP/GraphBLAS root>` to generate the build infrastructure via CMake inside the
-   current directory:
+3. Invoke the `bootstrap.sh` script located inside the ALP/GraphBLAS root
+   directory `<ALP/GraphBLAS root>` to generate the build infrastructure via
+   CMake inside the current directory:
 
    `<ALP/GraphBLAS root>/bootstrap.sh --prefix=</path/to/install/dir>`
 
@@ -148,8 +148,8 @@ In more detail, the steps to follow are:
 9. Issue `make -j install` to install ALP/GraphBLAS into your
 install directory configured during step 1.
 
-10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make available the
-`grbcxx` and `grbrun` compiler wrapper and runner.
+10. (*Optional*) Issue `source </path/to/install/dir>/bin/setenv` to make
+available the `grbcxx` and `grbrun` compiler wrapper and runner.
 
 Congratulations, you are now ready for developing and integrating ALP/GraphBLAS
 algorithms! Any feedback, question, problem reports are most welcome at
@@ -161,9 +161,10 @@ algorithms! Any feedback, question, problem reports are most welcome at
 
 # Additional Contents
 
-The remainder of this file summarises other build system targets, how to
-integrate ALP algorithms into applications, debugging, development, and,
-finally, acknowledges contributors and lists technical papers.
+The remainder of this file summarises configuration options, additional build
+system targets, how to integrate ALP programs into applications, debugging, and
+contribute to ALP development. Finally, this README acknowledges contributors
+and lists technical papers.
 
 - [Configuration](#configuration)
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
