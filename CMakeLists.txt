@@ -238,5 +238,14 @@ add_custom_command( OUTPUT "${DOCS_DIR}"
 )
 add_custom_target( docs DEPENDS "${DOCS_DIR}" )
 
+set( PUBLIC_DOCS_DIR "#{PROJECT_SOURCE_DIR}/docs/public" )
+add_custom_command( OUTPUT "${PUBLIC_DOCS_DIR}"
+	COMMAND bash -c "if [[ ! -d docs/public ]]; then doxygen docs/public.conf &> doxygen-public.log; fi"
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+	DEPENDS "${PROJECT_SOURCE_DIR}/docs/public.conf"
+	COMMENT "producing public code documentation in ${PUBLIC_DOCS_DIR}"
+	VERBATIM
+)
+
 message( "Compiling with the following backends: ${AVAILABLE_BACKENDS}\n" )
 
