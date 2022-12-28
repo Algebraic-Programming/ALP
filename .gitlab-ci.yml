@@ -30,7 +30,7 @@ stages:
 #    exclude:
 #      - build/**/*.o
 #      - build/**/*.o.d
-#    expire_in: 30 minutes
+#    expire_in: 80 minutes
 
 
 #build_debug_centos_8:
@@ -131,7 +131,7 @@ build_test:
       - build/**/*.o.d
       - build/**/CMakeFiles
       - build/**/*.dir
-    expire_in: 30 minutes
+    expire_in: 80 minutes
 
 
 build_debug2_tests:
@@ -225,7 +225,7 @@ build_debug:
     exclude:
       - build/**/*.o
       - build/**/*.o.d
-    expire_in: 30 minutes
+    expire_in: 43 minutes
 
 
 test_smoke_debug:
