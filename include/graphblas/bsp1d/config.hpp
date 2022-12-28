@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Implements the various grb::config items for the grb::BSP1D backend.
+ * Contains the configuration parameters for the BSP1D backend
  *
  * @author A. N. Yzelman
  * @date 5th of May, 2017
@@ -42,10 +42,10 @@
 namespace grb {
 
 	/**
-	 * \defgroup bsp1d The BSP1D backend implementation
+	 * \defgroup bsp1d BSP1D backend configuration
 	 *
-	 * Groups all definitions and documentations corresponding to the #BSP1D
-	 * backend.
+	 * All configuration parameters for the #BSP1D and #hybrid backends.
+	 *
 	 * @{
 	 */
 
@@ -53,6 +53,8 @@ namespace grb {
 
 		/**
 		 * Defaults for the BSP1D implementation
+		 *
+		 * \ingroup bsp1d
 		 */
 		template<>
 		class IMPLEMENTATION< grb::Backend::BSP1D > {
@@ -60,45 +62,69 @@ namespace grb {
 			private:
 
 				/**
+				 * \internal
 				 * \a true if and only if \a mode was set. By default, value is \a false.
+				 * \endinternal
 				 */
 				static bool set;
 
 				/**
+				 * \internal
 				 * The selected mode. Only set if \a set is \a true.
+				 * \endinternal
 				 */
 				static grb::config::ALLOC_MODE mode;
 
-				/** Attempts to automatically deduce the best value for \a mode. */
+				/**
+				 * \internal
+				 * Attempts to automatically deduce the best value for \a mode.
+				 * \endinternal
+				 */
 				static void deduce() noexcept;
 
 
 			public:
 
 				/**
-				 * For private memory segments, which is the default, simply choose aligned
-				 * allocations.
+				 * @returns The default allocation strategy for private memory segments.
 				 */
 				static constexpr ALLOC_MODE defaultAllocMode() {
 					return grb::config::ALLOC_MODE::ALIGNED;
 				}
 
 				/**
+				 * \internal
 				 * Whether the backend has vector capacities always fixed to their
 				 * defaults.
+				 * \endinternal
 				 */
 				static constexpr bool fixedVectorCapacities() {
 					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::fixedVectorCapacities();
 				}
 
 				/**
-				 * For the BSP1D backend, a shared memory-segment should use interleaved
-				 * alloc only if is running one process per compute node.
+				 * @returns The default allocation strategy for shared memory regions.
+				 *
+				 * By default, for the BSP1D backend, a shared memory-segment should use
+				 * interleaved alloc only if is running one process per compute node. This
+				 * implies a run-time component to this function, which is why for this
+				 * backend this function is \em not <tt>constexpr</tt>.
+				 *
+				 * \warning This function does assume that the number of processes does not
+				 *          change over the life time of a single application.
+				 *
+				 * \note While the above may seem a reasonably safe assumption, the use of
+				 *       the launcher in #MANUAL mode may, in fact, make this a realistic
+				 *       issue that could be encountered. In such cases the deduction should
+				 *       be re-initiated. If you encounter this problem, please report it so
+				 *       that such a fix can be implemented.
 				 */
 				static grb::config::ALLOC_MODE sharedAllocMode() noexcept;
 
 				/**
+				 * \internal
 				 * Select the coordinates backend of the selected process-local backend.
+				 * \endinternal
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::coordinatesBackend();
