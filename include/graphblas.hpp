@@ -334,5 +334,15 @@
  #include <graphblas/bsp/spmd.hpp>
 #endif
 
+#ifdef __DOXYGEN__
+/**
+ * The ALP/GraphBLAS namespace.
+ *
+ * All GraphBLAS primitives, container types, algebraic structures, and type
+ * traits are defined within.
+ */
+namespace grb {}
+#endif
+
 #endif // end ``_H_GRAPHBLAS''
 
