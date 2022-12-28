@@ -65,7 +65,7 @@
  * Containers with fewer values than their size are considered \em sparse, while
  * those with as many values as their size are considered \em dense. Scalars
  * correspond to the standard C++ plain-old-data types, and, as such, have size,
- * capacity, and number of values equal to one-- scalars are always dense. 
+ * capacity, and number of values equal to one-- scalars are always dense.
  *
  * For matrices, their size can be derived from #grb::nrows and #grb::ncols,
  * while for vectors their size may be immediately retrieved via #grb::size.

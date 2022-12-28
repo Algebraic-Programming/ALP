@@ -338,7 +338,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	const bool halfLengthIsOdd = (n/2) % 2 == 1;
 	if( halfLengthIsOdd ) {
-		if( nnz( out ) != 0 ) { 
+		if( nnz( out ) != 0 ) {
 			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
 				<< "expected 0\n";
 			rc = FAILED;
@@ -423,7 +423,7 @@ void grb_program( const size_t &n, RC &rc ) {
 			rc = FAILED;
 		}
 	} else {
-		if( nnz( out ) != 0 ) { 
+		if( nnz( out ) != 0 ) {
 			std::cerr << "primitive returns " << nnz( out ) << " nonzeroes, "
 				<< "expected 0\n";
 			rc = FAILED;

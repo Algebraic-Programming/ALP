@@ -30,10 +30,10 @@
 #include <limits>
 #include <cmath>
 #include <complex>
-#include <string>  
-#include <iostream> 
-#include <fstream> 
-#include <sstream> 
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 
 #include <assert.h>
 
@@ -41,7 +41,7 @@
 /**
  * Attempts to read in a value from a given file into a given memory
  * location.
- * 
+ *
  * @tparam T The datatype of the value
  *
  * @param[in]  in  The input file
@@ -61,7 +61,7 @@ int data_fscanf( std::ifstream &in, T * const out ) {
 /**
  * Attempts to read in a complex value from a given file into a given memory
  * location.
- * 
+ *
  * @tparam T The data type to be used in the complex value
  *
  * @param[in]  in  The input file
