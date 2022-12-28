@@ -1,10 +1,10 @@
 
-name: release-smoke-tests
+name: debug-smoke-tests
 
 on: [push]
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       run: sudo apt-get install -y libnuma-dev
 
     - name: Configure
-      run: mkdir build && cd build && ../bootstrap.sh --prefix=../install
+      run: mkdir build && cd build && ../bootstrap.sh --prefix=../install --debug-build
 
     - name: Build
       working-directory: ${{github.workspace}}/build
