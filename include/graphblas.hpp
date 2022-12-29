@@ -212,7 +212,7 @@
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
  * @}
  *
- * \defgroup Backends ALP backends
+ * \defgroup backends ALP Back-ends
  * @{
  *
  * ALP code is compiled using a compiler wrapper, which optionally takes a
@@ -246,6 +246,8 @@
  *      RISC-V hardware simulator making use of indirection stream semantic
  *      registers (ISSR). Written by Dan Iorga in collaboration with ETHZ. This
  *      backend is outdated, but, last tested, remained functional.
+ *
+ * The #grb::Backend enum lists all backends known to ALP.
  *
  * @author A. N. Yzelman, Huawei Technologies France (2016-2020)
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
