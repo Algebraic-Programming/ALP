@@ -16,7 +16,13 @@
  */
 
 /**
+ * @file
+ *
+ * This file defines a vertex-centric programming API called ALP/Pregel, which
+ * automatically translates to standard ALP/GraphBLAS primitives.
+ *
  * @author A. N. Yzelman
+ * @date 2022
  */
 
 #ifndef _H_GRB_INTERFACES_PREGEL
@@ -25,13 +31,17 @@
 #include <graphblas.hpp>
 #include <graphblas/utils/parser.hpp>
 
-#include <stdexcept>   // std::runtime_error
+#include <stdexcept> // std::runtime_error
 
 
 namespace grb {
 
 	namespace interfaces {
 
+		/**
+		 * Namespace that contains configurations for programming models that are
+		 * simulated on top of ALP/GraphBLAS.
+		 */
 		namespace config {
 
 			/**
@@ -62,7 +72,8 @@ namespace grb {
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
-				 * \todo This variant has never been tested for \a out_sparsify.
+				 * \todo This variant has never been exhaustively tested for
+				 *       \a out_sparsify.
 				 */
 				WHEN_REDUCED,
 
@@ -74,7 +85,8 @@ namespace grb {
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
-				 * \todo This variant has never been tested for \a out_sparsify.
+				 * \todo This variant has never been exhaustively tested for
+				 *       \a out_sparsify.
 				 */
 				WHEN_HALVED
 
@@ -92,7 +104,7 @@ namespace grb {
 		} // end namespace grb::interfaces::config
 
 		/**
-		 * The state of the vertex-center Pregel program that the user  may interface
+		 * The state of the vertex-center Pregel program that the user may interface
 		 * with.
 		 *
 		 * The state includes global data as well as vertex-centric state. The global

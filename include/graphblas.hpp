@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-/*
- * @author: A. N. Yzelman.
- * @date: 8th of August, 2016.
+/**
+ * @file
+ *
+ * The main header to include in order to use the ALP/GraphBLAS API.
+ *
+ * @author A. N. Yzelman.
+ * @date 8th of August, 2016.
  */
 
 /** \mainpage
@@ -255,40 +259,81 @@
  */
 
 #ifdef __DOXYGEN__
+
 /**
- * Define this macro to disable libnuma use.
+ * Define this macro to disable the dependence on libnuma.
+ *
+ * \warning Defining this macro is discouraged and not tested thoroughly.
+ *
+ * \note The CMake bootstrap treats libnuma as a non-optional dependence.
  */
 #define _GRB_NO_LIBNUMA
 
 /**
+ * \internal
  * Define this macro to disable thread pinning.
+ * \todo Make sure this macro is taken into account for backends that perform
+ *       automatic pinning.
+ * \endinternal
  */
 #define _GRB_NO_PINNING
 
 /**
- * Defie this macro to compile with PlatformBSP support.
+ * Define this macro to compile with LPF support.
+ *
+ * \note The CMake bootstrap automatically defines this flag when a valid LPF
+ *       installation is found. This flag is also defined by the ALP/GraphBLAS
+ *       compiler wrapper whenever an LPF-enabled backend is selected.
  */
 #define _GRB_WITH_LPF
 
 /**
- * Which GraphBLAS backend should be default.
+ * \internal
+ * Which ALP/GraphBLAS backend should be the default.
  *
- * Known single user-process options:
- *  -# reference
- *  -# reference_omp
- *
- * Known multiple user-process options:
- *  -# BSP1D
+ * This flag is overridden by the compiler wrapper, and it is set by the base
+ * config.hpp header.
+ * \endinternal
  */
 #define _GRB_BACKEND reference
 
 /**
- * Which GraphBLAS backend the BSP1D backend should use within a single user
- * process. For possible values, see the single user process options for
- * #_GRB_BACKEND.
+ * Which ALP/GraphBLAS backend the BSP1D backend should use for computations
+ * within a single user process. The ALP/GraphBLAS compiler wrapper sets this
+ * value automatically depending on the choice of backend-- compare, e.g., the
+ * #grb::BSP1D backend versus the #grb::hybrid backend.
  */
 #define _GRB_BSP1D_BACKEND
-#endif
+
+/**
+ * The ALP/GraphBLAS namespace.
+ *
+ * All ALP/GraphBLAS primitives, container types, algebraic structures, and type
+ * traits are defined within.
+ */
+namespace grb {
+
+	/**
+	 * The namespace for ALP/GraphBLAS algorithms.
+	 */
+	namespace algorithms {
+
+		/**
+		 * The namespace for ALP/Pregel algorithms.
+		 */
+		namespace pregel {}
+
+	}
+
+	/**
+	 * The namespace for programming APIs that automatically translate to
+	 * ALP/GraphBLAS.
+	 */
+	namespace interfaces {}
+
+}
+
+#endif // end ``#ifdef __DOXYGEN__''
 
 #ifndef _H_GRAPHBLAS
 #define _H_GRAPHBLAS
@@ -334,16 +379,6 @@
 #ifdef _GRB_WITH_LPF
  // collects various BSP utilities
  #include <graphblas/bsp/spmd.hpp>
-#endif
-
-#ifdef __DOXYGEN__
-/**
- * The ALP/GraphBLAS namespace.
- *
- * All GraphBLAS primitives, container types, algebraic structures, and type
- * traits are defined within.
- */
-namespace grb {}
 #endif
 
 #endif // end ``_H_GRAPHBLAS''
