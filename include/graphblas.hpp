@@ -279,6 +279,35 @@
 #define _GRB_NO_PINNING
 
 /**
+ * Define this macro to turn off standard input/output support.
+ *
+ * \warning This macro has only been fully supported within the #grb::banshee
+ *          backend, where neither standard <tt>iostream</tt> nor
+ *          <tt>stdio.h</tt> were available. If support through the full ALP
+ *          implementation would be useful, please raise an issue through
+ *          GitHub or Gitee so that we may consider and plan for supporting
+ *          this macro more fully.
+ */
+#define _GRB_NO_STDIO
+
+/**
+ * Define this macro to turn off reliance on standard C++ exceptions.
+ *
+ * \deprecated Support for this macro is being phased out.
+ *
+ * \note Its intended use is to support ALP/GraphBLAS deployments on platforms
+ *       that do not support C++ exceptions, such as some older Android SDK
+ *       applications.
+ *
+ * \warning The safe usage of ALP/GraphBLAS while exceptions are disabled
+ *          relies, at present, on the inspection of internal states and the
+ *          usage of internal functions. We have no standardised exception-free
+ *          way of using ALP/GraphBLAS at present and have no plans to
+ *          (continue and/or extend) support for it.
+ */
+#define _GRB_NO_EXCEPTIONS
+
+/**
  * Define this macro to compile with LPF support.
  *
  * \note The CMake bootstrap automatically defines this flag when a valid LPF

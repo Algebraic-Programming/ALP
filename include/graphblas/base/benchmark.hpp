@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * This file contains a variant on the #grb::Launcher specialised for
+ * benchmarks.
+ *
  * @author J. W. Nash & A. N. Yzelman
  * @date 17th of April, 2017
  */
@@ -39,14 +44,15 @@
 #include "exec.hpp"
 
 #ifndef _GRB_NO_STDIO
-#include <iostream>
+ #include <iostream>
 #endif
 
 #ifndef _GRB_NO_EXCEPTIONS
-#include <stdexcept>
+ #include <stdexcept>
 #endif
 
 #include <math.h>
+
 
 namespace grb {
 
@@ -54,144 +60,169 @@ namespace grb {
 
 		class BenchmarkerBase {
 
-		protected:
-#ifndef _GRB_NO_STDIO
-			/** \todo TODO add documentation. */
-			static void printTimeSinceEpoch( const bool printHeader = true ) {
-				const auto now = std::chrono::system_clock::now();
-				const auto since = now.time_since_epoch();
-				if( printHeader ) {
-					std::cout << "Time since epoch (in ms.): ";
-				}
-				std::cout << std::chrono::duration_cast< std::chrono::milliseconds >( since ).count() << "\n";
-			}
-#endif
-
-			// calculate inner loop performance stats
-			static void benchmark_calc_inner( const size_t loop,
-				const size_t total,
-				grb::utils::TimerResults & inner_times,
-				grb::utils::TimerResults & total_times,
-				grb::utils::TimerResults & min_times,
-				grb::utils::TimerResults & max_times,
-				grb::utils::TimerResults * sdev_times ) {
-				inner_times.normalize( total );
-				total_times.accum( inner_times );
-				min_times.min( inner_times );
-				max_times.max( inner_times );
-				sdev_times[ loop ] = inner_times;
-			}
-
-			// calculate outer loop performance stats
-			static void benchmark_calc_outer( const size_t total,
-				grb::utils::TimerResults & total_times,
-				grb::utils::TimerResults & min_times,
-				grb::utils::TimerResults & max_times,
-				grb::utils::TimerResults * sdev_times,
-				const size_t pid ) {
-				total_times.normalize( total );
-				grb::utils::TimerResults sdev;
-				// compute standard dev of average times, leaving sqrt calculation until the output of the values
-				sdev.set( 0 );
-				for( size_t i = 0; i < total; i++ ) {
-					double diff = sdev_times[ i ].io - total_times.io;
-					sdev.io += diff * diff;
-					diff = sdev_times[ i ].preamble - total_times.preamble;
-					sdev.preamble += diff * diff;
-					diff = sdev_times[ i ].useful - total_times.useful;
-					sdev.useful += diff * diff;
-					diff = sdev_times[ i ].postamble - total_times.postamble;
-					sdev.postamble += diff * diff;
-				}
-				// unbiased normalisation of the standard deviation
-				sdev.normalize( total - 1 );
+			protected:
 
 #ifndef _GRB_NO_STDIO
-				// output results
-				if( pid == 0 ) {
-					std::cout << "Overall timings (io, preamble, useful, "
-								 "postamble):\n"
-							  << std::scientific;
-					std::cout << "Avg: " << total_times.io << ", " << total_times.preamble << ", " << total_times.useful << ", " << total_times.postamble << "\n";
-					std::cout << "Min: " << min_times.io << ", " << min_times.preamble << ", " << min_times.useful << ", " << min_times.postamble << "\n";
-					std::cout << "Max: " << max_times.io << ", " << max_times.preamble << ", " << max_times.useful << ", " << max_times.postamble << "\n";
-					std::cout << "Std: " << sqrt( sdev.io ) << ", " << sqrt( sdev.preamble ) << ", " << sqrt( sdev.useful ) << ", " << sqrt( sdev.postamble ) << "\n";
-#if __GNUC__ > 4
-					std::cout << std::defaultfloat;
-#endif
-					printTimeSinceEpoch();
+				/**
+				 * A helper function that prints the time elapsed sinc epoch.
+				 *
+				 * @param[in] printHeader An optional Boolean parameter with default value
+				 *                        <tt>true</tt>. If set, this function will append
+				 *                        a human-readable header before outputting the
+				 *                        time-since-epoch.
+				 */
+				static void printTimeSinceEpoch( const bool printHeader = true ) {
+					const auto now = std::chrono::system_clock::now();
+					const auto since = now.time_since_epoch();
+					if( printHeader ) {
+						std::cout << "Time since epoch (in ms.): ";
+					}
+					std::cout << std::chrono::duration_cast<
+							std::chrono::milliseconds
+						>( since ).count() << "\n";
 				}
+#endif
+
+				// calculate inner loop performance stats
+				static void benchmark_calc_inner(
+					const size_t loop,
+					const size_t total,
+					grb::utils::TimerResults &inner_times,
+					grb::utils::TimerResults &total_times,
+					grb::utils::TimerResults &min_times,
+					grb::utils::TimerResults &max_times,
+					grb::utils::TimerResults * sdev_times
+				) {
+					inner_times.normalize( total );
+					total_times.accum( inner_times );
+					min_times.min( inner_times );
+					max_times.max( inner_times );
+					sdev_times[ loop ] = inner_times;
+				}
+
+				// calculate outer loop performance stats
+				static void benchmark_calc_outer(
+					const size_t total,
+					grb::utils::TimerResults &total_times,
+					grb::utils::TimerResults &min_times,
+					grb::utils::TimerResults &max_times,
+					grb::utils::TimerResults * sdev_times,
+					const size_t pid
+				) {
+					total_times.normalize( total );
+					grb::utils::TimerResults sdev;
+					// compute standard dev of average times, leaving sqrt calculation until
+					// the output of the values
+					sdev.set( 0 );
+					for( size_t i = 0; i < total; i++ ) {
+						double diff = sdev_times[ i ].io - total_times.io;
+						sdev.io += diff * diff;
+						diff = sdev_times[ i ].preamble - total_times.preamble;
+						sdev.preamble += diff * diff;
+						diff = sdev_times[ i ].useful - total_times.useful;
+						sdev.useful += diff * diff;
+						diff = sdev_times[ i ].postamble - total_times.postamble;
+						sdev.postamble += diff * diff;
+					}
+					// unbiased normalisation of the standard deviation
+					sdev.normalize( total - 1 );
+
+#ifndef _GRB_NO_STDIO
+					// output results
+					if( pid == 0 ) {
+						std::cout << "Overall timings (io, preamble, useful, postamble):\n"
+							<< std::scientific;
+						std::cout << "Avg: " << total_times.io << ", " << total_times.preamble
+							<< ", " << total_times.useful << ", " << total_times.postamble << "\n";
+						std::cout << "Min: " << min_times.io << ", " << min_times.preamble << ", "
+							<< min_times.useful << ", " << min_times.postamble << "\n";
+						std::cout << "Max: " << max_times.io << ", " << max_times.preamble << ", "
+							<< max_times.useful << ", " << max_times.postamble << "\n";
+						std::cout << "Std: " << sqrt( sdev.io ) << ", " << sqrt( sdev.preamble )
+							<< ", " << sqrt( sdev.useful ) << ", " << sqrt( sdev.postamble ) << "\n";
+ #if __GNUC__ > 4
+						std::cout << std::defaultfloat;
+ #endif
+						printTimeSinceEpoch();
+					}
 #else
-				// write to file(?)
-				(void)min_times;
-				(void)max_times;
-				(void)pid;
+					// we ran the benchmark, but may not have a way to output it in this case
+					// this currently only is touched by the #grb::banshee backend, which
+					// provides other timing mechanisms.
+					(void) min_times;
+					(void) max_times;
+					(void) pid;
 #endif
-			}
+				}
 
-			template< typename U, enum Backend implementation = config::default_backend >
-			static RC benchmark( void ( *grb_program )( const void *,
-									 const size_t,
-									 U & ), // user GraphBLAS program
-				const void * data_in,
-				const size_t in_size,
-				U & data_out, // input & output data
-				const size_t inner,
-				const size_t outer,
-				const size_t pid ) {
-				const double inf = std::numeric_limits< double >::infinity();
-				grb::utils::TimerResults total_times, min_times, max_times;
-				grb::utils::TimerResults * sdev_times = new grb::utils::TimerResults[ outer ];
-				total_times.set( 0 );
-				min_times.set( inf );
-				max_times.set( 0 );
+				// TODO review doc and code style from here
 
-				// outer loop
-				for( size_t out = 0; out < outer; out++ ) {
-					grb::utils::TimerResults inner_times;
-					inner_times.set( 0 );
+				template<
+					typename U,
+					enum Backend implementation = config::default_backend
+				>
+				static RC benchmark(
+					void ( *grb_program )( const void *, const size_t, U & ), // user GraphBLAS program
+					const void * data_in,
+					const size_t in_size,
+					U &data_out, // input & output data
+					const size_t inner,
+					const size_t outer,
+					const size_t pid
+				) {
+					const double inf = std::numeric_limits< double >::infinity();
+					grb::utils::TimerResults total_times, min_times, max_times;
+					grb::utils::TimerResults * sdev_times = new grb::utils::TimerResults[ outer ];
+					total_times.set( 0 );
+					min_times.set( inf );
+					max_times.set( 0 );
 
-					// inner loop
-					for( size_t in = 0; in < inner; in++ ) {
-						data_out.times.set( 0 );
-						( *grb_program )( data_in, in_size, data_out );
-						grb::collectives< implementation >::reduce( data_out.times.io, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.preamble, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.useful, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.postamble, 0, grb::operators::max< double >() );
-						inner_times.accum( data_out.times );
+					// outer loop
+					for( size_t out = 0; out < outer; ++out ) {
+						grb::utils::TimerResults inner_times;
+						inner_times.set( 0 );
+
+						// inner loop
+						for( size_t in = 0; in < inner; in++ ) {
+							data_out.times.set( 0 );
+							( *grb_program )( data_in, in_size, data_out );
+							grb::collectives< implementation >::reduce( data_out.times.io, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.preamble, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.useful, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.postamble, 0, grb::operators::max< double >() );
+							inner_times.accum( data_out.times );
+						}
+
+						// calculate performance stats
+						benchmark_calc_inner( out, inner, inner_times, total_times, min_times, max_times, sdev_times );
+
+#ifndef _GRB_NO_STDIO
+						// give experiment output line
+						if( pid == 0 ) {
+							std::cout << "Outer iteration #" << out
+								  << " timings (io, preamble, useful, "
+									 "postamble, time since epoch): ";
+							std::cout << inner_times.io << ", " << inner_times.preamble << ", " << inner_times.useful << ", " << inner_times.postamble << ", ";
+							printTimeSinceEpoch( false );
+						}
+#endif
+
+						// pause for next outer loop
+						if( sleep( 1 ) != 0 ) {
+#ifndef _GRB_NO_STDIO
+							std::cerr << "Sleep interrupted, assume benchmark is "
+										 "unreliable and exiting.\n";
+#endif
+							abort();
+						}
 					}
 
 					// calculate performance stats
-					benchmark_calc_inner( out, inner, inner_times, total_times, min_times, max_times, sdev_times );
+					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times, pid );
+					delete[] sdev_times;
 
-#ifndef _GRB_NO_STDIO
-					// give experiment output line
-					if( pid == 0 ) {
-						std::cout << "Outer iteration #" << out
-								  << " timings (io, preamble, useful, "
-									 "postamble, time since epoch): ";
-						std::cout << inner_times.io << ", " << inner_times.preamble << ", " << inner_times.useful << ", " << inner_times.postamble << ", ";
-						printTimeSinceEpoch( false );
-					}
-#endif
-
-					// pause for next outer loop
-					if( sleep( 1 ) != 0 ) {
-#ifndef _GRB_NO_STDIO
-						std::cerr << "Sleep interrupted, assume benchmark is "
-									 "unreliable and exiting.\n";
-#endif
-						abort();
-					}
+					return SUCCESS;
 				}
-
-				// calculate performance stats
-				benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times, pid );
-				delete[] sdev_times;
-
-				return SUCCESS;
-			}
 
 			template< typename T, typename U, enum Backend implementation = config::default_backend >
 			static RC benchmark( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
