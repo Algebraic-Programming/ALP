@@ -39,7 +39,14 @@
 
 namespace grb {
 
-	/** \todo documentation */
+	/**
+	 * For backends that support multiple user processes this class defines some
+	 * basic primitives to support SPMD programming.
+	 *
+	 * All backends must implement this interface, including backends that do not
+	 * support multiple user processes. The interface herein defined hence ensures
+	 * to allow for trivial implementations for single user process backends.
+	 */
 	template< Backend implementation >
 	class spmd {
 
