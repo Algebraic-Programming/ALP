@@ -57,82 +57,90 @@ namespace grb {
 					"Argmin operator may only be constructed using integral index "
 					"types." );
 
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef std::pair< IType, VType > left_type;
+				public:
 
-				/** Alias to the right-hand input data type. */
-				typedef std::pair< IType, VType > right_type;
+					/** Alias to the left-hand input data type. */
+					typedef std::pair< IType, VType > left_type;
 
-				/** Alias to the output data type. */
-				typedef std::pair< IType, VType > result_type;
+					/** Alias to the right-hand input data type. */
+					typedef std::pair< IType, VType > right_type;
 
-				/** Whether this operator has an inplace foldl. */
-				static constexpr bool has_foldl = true;
+					/** Alias to the output data type. */
+					typedef std::pair< IType, VType > result_type;
 
-				/** Whether this operator has an inplace foldr. */
-				static constexpr bool has_foldr = true;
+					/** Whether this operator has an inplace foldl. */
+					static constexpr bool has_foldl = true;
 
-				/**
-				 * Whether this operator is \em mathematically associative; that is,
-				 * associative when assuming equivalent data types for \a IN1, \a IN2,
-				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
-				 */
-				static constexpr bool is_associative = true;
+					/** Whether this operator has an inplace foldr. */
+					static constexpr bool has_foldr = true;
 
-				/**
-				 * Whether this operator is \em mathematically commutative; that is,
-				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
-				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
-				 */
-				static constexpr bool is_commutative = true;
+					/**
+					 * Whether this operator is \em mathematically associative; that is,
+					 * associative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_associative = true;
 
-				/**
-				 * Out-of-place application of the operator.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 * @param[out] c The output. Must be pre-allocated.
-				 */
-				static void apply(
-					const left_type * __restrict__ const a,
-					const right_type * __restrict__ const b,
-					result_type * __restrict__ const c
-				) {
-					if( a->second < b->second ) {
-						*c = *a;
-					} else {
-						*c = *b;
+					/**
+					 * Whether this operator is \em mathematically commutative; that is,
+					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_commutative = true;
+
+					/**
+					 * Out-of-place application of the operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 */
+					static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c
+					) {
+						if( a->second < b->second ) {
+							*c = *a;
+						} else {
+							*c = *b;
+						}
 					}
-				}
 
-				/**
-				 * In-place left-to-right folding.
-				 *
-				 * @param[in]     a Pointer to the left-hand side input data.
-				 * @param[in,out] c Pointer to the right-hand side input data. This also
-				 *                  dubs as the output memory area.
-				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
-					if( a->second < c->second ) {
-						c->first = a->first;
-						c->second = a->second;
+					/**
+					 * In-place left-to-right folding.
+					 *
+					 * @param[in]     a Pointer to the left-hand side input data.
+					 * @param[in,out] c Pointer to the right-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 */
+					static void foldr(
+						const left_type * __restrict__ const a,
+						result_type * __restrict__ const c
+					) {
+						if( a->second < c->second ) {
+							c->first = a->first;
+							c->second = a->second;
+						}
 					}
-				}
 
-				/**
-				 * In-place right-to-left folding.
-				 *
-				 * @param[in,out] c Pointer to the left-hand side input data. This also
-				 *                  dubs as the output memory area.
-				 * @param[in]     b Pointer to the right-hand side input data.
-				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
-					if( b->second <= c->second ) {
-						c->first = b->first;
-						c->second = b->second;
+					/**
+					 * In-place right-to-left folding.
+					 *
+					 * @param[in,out] c Pointer to the left-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 * @param[in]     b Pointer to the right-hand side input data.
+					 */
+					static void foldl(
+						result_type * __restrict__ const c,
+						const right_type * __restrict__ const b
+					) {
+						if( b->second <= c->second ) {
+							c->first = b->first;
+							c->second = b->second;
+						}
 					}
-				}
+
 			};
 
 			/**
@@ -1346,83 +1354,99 @@ namespace grb {
 			};
 
 			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class any_or {
-			public:
-				/** Alias to the left-hand input data type. */
-				typedef IN1 left_type;
 
-				/** Alias to the right-hand input data type. */
-				typedef IN2 right_type;
+				public:
 
-				/** Alias to the output data type. */
-				typedef OUT result_type;
+					/** Alias to the left-hand input data type. */
+					typedef IN1 left_type;
 
-				/** Whether this operator has an in-place foldl. */
-				static constexpr bool has_foldl = true;
+					/** Alias to the right-hand input data type. */
+					typedef IN2 right_type;
 
-				/** Whether this operator has an in-place foldr. */
-				static constexpr bool has_foldr = true;
+					/** Alias to the output data type. */
+					typedef OUT result_type;
 
-				/**
-				 * Whether this operator is \em mathematically associative; that is,
-				 * associative when assuming equivalent data types for \a IN1, \a IN2,
-				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
-				 */
-				static constexpr bool is_associative = true;
+					/** Whether this operator has an in-place foldl. */
+					static constexpr bool has_foldl = true;
 
-				/**
-				 * Whether this operator is \em mathematically commutative; that is,
-				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
-				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
-				 */
-				static constexpr bool is_commutative = true;
+					/** Whether this operator has an in-place foldr. */
+					static constexpr bool has_foldr = true;
 
-				/**
-				 * Out-of-place application of this operator.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 * @param[out] c The output. Must be pre-allocated.
-				 *
-				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
-				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					if( *a ) {
-						*c = static_cast< OUT >( *a );
-					} else if( *b ) {
-						*c = static_cast< OUT >( *b );
-					} else {
-						assert( ! ( *a ) );
-						*c = static_cast< OUT >( *a );
+					/**
+					 * Whether this operator is \em mathematically associative; that is,
+					 * associative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_associative = true;
+
+					/**
+					 * Whether this operator is \em mathematically commutative; that is,
+					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_commutative = true;
+
+					/**
+					 * Out-of-place application of this operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 *
+					 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
+					 */
+					static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c
+					) {
+						if( *a ) {
+							*c = static_cast< OUT >( *a );
+						} else if( *b ) {
+							*c = static_cast< OUT >( *b );
+						} else {
+							assert( !( *a ) );
+							*c = static_cast< OUT >( *a );
+						}
 					}
-				}
 
-				/**
-				 * In-place left-to-right folding.
-				 *
-				 * @param[in]     a Pointer to the left-hand side input data.
-				 * @param[in,out] c Pointer to the right-hand side input data. This also
-				 *                  dubs as the output memory area.
-				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
-					if( *a ) {
-						*c = static_cast< result_type >( *a );
+					/**
+					 * In-place left-to-right folding.
+					 *
+					 * @param[in]     a Pointer to the left-hand side input data.
+					 * @param[in,out] c Pointer to the right-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 */
+					static void foldr(
+						const left_type * __restrict__ const a,
+						result_type * __restrict__ const c
+					) {
+						if( *a ) {
+							*c = static_cast< result_type >( *a );
+						}
 					}
-				}
 
-				/**
-				 * In-place right-to-left folding.
-				 *
-				 * @param[in,out] c Pointer to the left-hand side input data. This also
-				 *                  dubs as the output memory area.
-				 * @param[in]     b Pointer to the right-hand side input data.
-				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
-					if( *b ) {
-						*c = static_cast< result_type >( *b );
+					/**
+					 * In-place right-to-left folding.
+					 *
+					 * @param[in,out] c Pointer to the left-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 * @param[in]     b Pointer to the right-hand side input data.
+					 */
+					static void foldl(
+						result_type * __restrict__ const c,
+						const right_type * __restrict__ const b
+					) {
+						if( *b ) {
+							*c = static_cast< result_type >( *b );
+						}
 					}
-				}
+
 			};
 
 			/** \todo add documentation */
@@ -1803,38 +1827,46 @@ namespace grb {
 			};
 
 			/**
-			 * compares the first argument of a pair
+			 * Compares the first argument of a pair
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class equal_first {
-			public:
-				typedef IN1 left_type;
 
-				typedef IN2 right_type;
+				public:
 
-				typedef OUT result_type;
+					typedef IN1 left_type;
+					typedef IN2 right_type;
+					typedef OUT result_type;
 
-				static constexpr bool has_foldl = false;
-				static constexpr bool has_foldr = false;
-				static constexpr bool is_associative = false;
-				static constexpr bool is_commutative = false;
+					static constexpr bool has_foldl = false;
+					static constexpr bool has_foldr = false;
+					static constexpr bool is_associative = false;
+					static constexpr bool is_commutative = false;
 
-				/**
-				 * Out-of-place application of this operator.
-				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
-				 * @param[out] c The output. Must be pre-allocated.
-				 *
-				 * At the end of the operation, \f$ c = a->first == b->first \f$.
-				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					if( a->first == b->first ) {
-						*c = static_cast< OUT >( true );
-					} else {
-						*c = static_cast< OUT >( false );
+					/**
+					 * Out-of-place application of this operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 *
+					 * At the end of the operation, \f$ c = a->first == b->first \f$.
+					 */
+					static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c
+					) {
+						if( a->first == b->first ) {
+							*c = static_cast< OUT >( true );
+						} else {
+							*c = static_cast< OUT >( false );
+						}
 					}
-				}
+
 			};
 
 			/**
