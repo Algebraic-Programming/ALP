@@ -53,12 +53,13 @@ namespace grb {
 		 */
 
 		/**
-		 * Defaults for the BSP1D implementation
+		 * This class collects configuration parameters that are specific to the
+		 * #grb::BSP1D and #grb::hybrid backends
 		 *
 		 * \ingroup bsp1d
 		 */
 		template<>
-		class IMPLEMENTATION< grb::Backend::BSP1D > {
+		class IMPLEMENTATION< BSP1D > {
 
 			private:
 
