@@ -60,7 +60,7 @@ namespace grb {
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-				(void broadcast; // value doesn't matter for a single user process
+				(void) broadcast; // value doesn't matter for a single user process
 				// catch illegal argument
 				if( in_size > 0 && data_in == nullptr ) {
 					return ILLEGAL;
