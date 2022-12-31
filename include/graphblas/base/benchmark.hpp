@@ -54,10 +54,40 @@
 #include <math.h>
 
 
+/**
+ * \defgroup benchmarking Benchmarking
+ *
+ * ALP has a specialised class for benchmarking ALP programs, grb::Benchmarker,
+ * which is a variant on the #grb::Launcher. It codes a particular benchmarking
+ * strategy of any given ALP program as described below.
+ *
+ * The program is called \a inner times \a outer times. Between every
+ * \a inner repetitions there is a one-second sleep that ensures machine
+ * variability is taken into account. Several statistics are measured
+ * across the \a outer repetitions: the minimum, maximum, average, and the
+ * (unbiased) sample standard deviation. By contrast, for the \a inner
+ * repetitions, only an average is computed -- the function of \a inner
+ * repetitions is solely to avoid timing programs that execute in too short
+ * a time frame, meaning a time frame that is of a similar order as the time
+ * it takes to actually call the system timer functionalities.
+ *
+ * \note As a result, \a inner should always equal \em one when benchmarking
+ *       any non-trivial ALP program, while for benchmarking ALP kernels on
+ *       small data \a inner may be taken (much) larger.
+ *
+ * \note In published experiments, \a inner is chosen such that a single
+ *       outer repetition takes 10 to 100 milliseconds.
+ */
+
 namespace grb {
 
 	namespace internal {
 
+		/**
+		 * The common functionalities used by all #grb::Benchmarker classes.
+		 *
+		 * \ingroup benchmarking
+		 */
 		class BenchmarkerBase {
 
 			protected:
@@ -83,7 +113,9 @@ namespace grb {
 				}
 #endif
 
-				// calculate inner loop performance stats
+				/**
+				 * Calculate inner loop performance stats
+				 */
 				static void benchmark_calc_inner(
 					const size_t loop,
 					const size_t total,
@@ -100,7 +132,9 @@ namespace grb {
 					sdev_times[ loop ] = inner_times;
 				}
 
-				// calculate outer loop performance stats
+				/**
+				 * Calculate outer loop performance stats
+				 */
 				static void benchmark_calc_outer(
 					const size_t total,
 					grb::utils::TimerResults &total_times,
@@ -155,24 +189,44 @@ namespace grb {
 #endif
 				}
 
-				// TODO review doc and code style from here
-
+				/**
+				 * Benchmarks a given ALP program.
+				 *
+				 * This variant applies to input data as a byte blob and output data as a
+				 * user-defined POD struct.
+				 *
+				 * @tparam U       Output type of the given user program.
+				 * @tparam backend Which backend the program is using.
+				 *
+				 * @param[in]  alp_program The use rogram to be benchmarked
+				 * @param[in]  data_in     Input data as a raw data blob
+				 * @param[in]  in_size     The size, in bytes, of the input data
+				 * @param[out] out_data    Output data
+				 * @param[in]  inner       The number of inner repetitions of the benchmark
+				 * @param[in]  outer       The number of outer repetitions of the benchmark
+				 * @param[in]  pid         Unique ID of the calling user process
+				 *
+				 * @see benchmarking
+				 *
+				 * @ingroup benchmarking
+				 */
 				template<
 					typename U,
 					enum Backend implementation = config::default_backend
 				>
 				static RC benchmark(
-					void ( *grb_program )( const void *, const size_t, U & ), // user GraphBLAS program
+					void ( *alp_program )( const void *, const size_t, U & ),
 					const void * data_in,
 					const size_t in_size,
-					U &data_out, // input & output data
+					U &data_out,
 					const size_t inner,
 					const size_t outer,
 					const size_t pid
 				) {
 					const double inf = std::numeric_limits< double >::infinity();
 					grb::utils::TimerResults total_times, min_times, max_times;
-					grb::utils::TimerResults * sdev_times = new grb::utils::TimerResults[ outer ];
+					grb::utils::TimerResults * sdev_times =
+						new grb::utils::TimerResults[ outer ];
 					total_times.set( 0 );
 					min_times.set( inf );
 					max_times.set( 0 );
@@ -185,24 +239,29 @@ namespace grb {
 						// inner loop
 						for( size_t in = 0; in < inner; in++ ) {
 							data_out.times.set( 0 );
-							( *grb_program )( data_in, in_size, data_out );
-							grb::collectives< implementation >::reduce( data_out.times.io, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.preamble, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.useful, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.postamble, 0, grb::operators::max< double >() );
+							( *alp_program )( data_in, in_size, data_out );
+							grb::collectives< implementation >::reduce(
+								data_out.times.io, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce(
+								data_out.times.preamble, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce(
+								data_out.times.useful, 0, grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce(
+								data_out.times.postamble, 0, grb::operators::max< double >() );
 							inner_times.accum( data_out.times );
 						}
 
 						// calculate performance stats
-						benchmark_calc_inner( out, inner, inner_times, total_times, min_times, max_times, sdev_times );
+						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
+							max_times, sdev_times );
 
 #ifndef _GRB_NO_STDIO
 						// give experiment output line
 						if( pid == 0 ) {
-							std::cout << "Outer iteration #" << out
-								  << " timings (io, preamble, useful, "
-									 "postamble, time since epoch): ";
-							std::cout << inner_times.io << ", " << inner_times.preamble << ", " << inner_times.useful << ", " << inner_times.postamble << ", ";
+							std::cout << "Outer iteration #" << out << " timings (io, preamble, "
+								<< "useful, postamble, time since epoch): ";
+							std::cout << inner_times.io << ", " << inner_times.preamble << ", "
+								<< inner_times.useful << ", " << inner_times.postamble << ", ";
 							printTimeSinceEpoch( false );
 						}
 #endif
@@ -210,158 +269,332 @@ namespace grb {
 						// pause for next outer loop
 						if( sleep( 1 ) != 0 ) {
 #ifndef _GRB_NO_STDIO
-							std::cerr << "Sleep interrupted, assume benchmark is "
-										 "unreliable and exiting.\n";
+							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
+								<< "exiting.\n";
 #endif
 							abort();
 						}
 					}
 
 					// calculate performance stats
-					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times, pid );
+					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
+						pid );
+					delete [] sdev_times;
+
+					return SUCCESS;
+				}
+
+				/**
+				 * Benchmarks a given ALP program.
+				 *
+				 * This variant applies to input data as a user-defined POD struct and
+				 * output data as a user-defined POD struct.
+				 *
+				 * @tparam T Input type of the given user program.
+				 * @tparam U Output type of the given user program.
+				 *
+				 * @param[in]  alp_program The use rogram to be benchmarked
+				 * @param[in]  data_in     Input data as a raw data blob
+				 * @param[in]  in_size     The size, in bytes, of the input data
+				 * @param[out] out_data    Output data
+				 * @param[in]  inner       The number of inner repetitions of the benchmark
+				 * @param[in]  outer       The number of outer repetitions of the benchmark
+				 * @param[in]  pid         Unique ID of the calling user process
+				 *
+				 * @see benchmarking
+				 *
+				 * @ingroup benchmarking
+				 */
+				template<
+					typename T, typename U,
+					enum Backend implementation = config::default_backend
+				>
+				static RC benchmark(
+					void ( *alp_program )( const T &, U & ),
+					const T &data_in,
+					U &data_out,
+					const size_t inner,
+					const size_t outer,
+					const size_t pid
+				) {
+					const double inf = std::numeric_limits< double >::infinity();
+					grb::utils::TimerResults total_times, min_times, max_times;
+					grb::utils::TimerResults * sdev_times =
+						new grb::utils::TimerResults[ outer ];
+					total_times.set( 0 );
+					min_times.set( inf );
+					max_times.set( 0 );
+
+					// outer loop
+					for( size_t out = 0; out < outer; ++out ) {
+						grb::utils::TimerResults inner_times;
+						inner_times.set( 0 );
+
+						// inner loop
+						for( size_t in = 0; in < inner; ++in ) {
+							data_out.times.set( 0 );
+
+							( *alp_program )( data_in, data_out );
+							grb::collectives< implementation >::reduce( data_out.times.io, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.preamble, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.useful, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( data_out.times.postamble, 0,
+								grb::operators::max< double >() );
+							inner_times.accum( data_out.times );
+						}
+
+						// calculate performance stats
+						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
+							max_times, sdev_times );
+
+#ifndef _GRB_NO_STDIO
+						// give experiment output line
+						if( pid == 0 ) {
+							std::cout << "Outer iteration #" << out << " timings "
+								<< "(io, preamble, useful, postamble, time since epoch): " << std::fixed
+								<< inner_times.io << ", " << inner_times.preamble << ", "
+								<< inner_times.useful << ", " << inner_times.postamble << ", ";
+								printTimeSinceEpoch( false );
+							std::cout << std::scientific;
+						}
+#endif
+
+						// pause for next outer loop
+						if( sleep( 1 ) != 0 ) {
+#ifndef _GRB_NO_STDIO
+							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
+								<< "exiting.\n";
+#endif
+							abort();
+						}
+					}
+
+					// calculate performance stats
+					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
+						pid );
 					delete[] sdev_times;
 
 					return SUCCESS;
 				}
 
-			template< typename T, typename U, enum Backend implementation = config::default_backend >
-			static RC benchmark( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T & data_in,
-				U & data_out, // input & output data
-				const size_t inner,
-				const size_t outer,
-				const size_t pid ) {
-				const double inf = std::numeric_limits< double >::infinity();
-				grb::utils::TimerResults total_times, min_times, max_times;
-				grb::utils::TimerResults * sdev_times = new grb::utils::TimerResults[ outer ];
-				total_times.set( 0 );
-				min_times.set( inf );
-				max_times.set( 0 );
 
-				// outer loop
-				for( size_t out = 0; out < outer; out++ ) {
-					grb::utils::TimerResults inner_times;
-					inner_times.set( 0 );
+			public:
 
-					// inner loop
-					for( size_t in = 0; in < inner; in++ ) {
-						data_out.times.set( 0 );
-
-						( *grb_program )( data_in, data_out );
-						grb::collectives< implementation >::reduce( data_out.times.io, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.preamble, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.useful, 0, grb::operators::max< double >() );
-						grb::collectives< implementation >::reduce( data_out.times.postamble, 0, grb::operators::max< double >() );
-						inner_times.accum( data_out.times );
-					}
-
-					// calculate performance stats
-					benchmark_calc_inner( out, inner, inner_times, total_times, min_times, max_times, sdev_times );
-
+				BenchmarkerBase() {
 #ifndef _GRB_NO_STDIO
-					// give experiment output line
-					if( pid == 0 ) {
-						std::cout << "Outer iteration #" << out
-								  << " timings (io, preamble, useful, "
-									 "postamble, time since epoch): "
-								  << std::fixed;
-						std::cout << inner_times.io << ", " << inner_times.preamble << ", " << inner_times.useful << ", " << inner_times.postamble << ", ";
-						printTimeSinceEpoch( false );
-						std::cout << std::scientific;
-					}
+					printTimeSinceEpoch();
 #endif
-
-					// pause for next outer loop
-					if( sleep( 1 ) != 0 ) {
-#ifndef _GRB_NO_STDIO
-						std::cerr << "Sleep interrupted, assume benchmark is "
-									 "unreliable and exiting.\n";
-#endif
-						abort();
-					}
 				}
 
-				// calculate performance stats
-				benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times, pid );
-				delete[] sdev_times;
-
-				return SUCCESS;
-			}
-
-		public:
-			BenchmarkerBase() {
-#ifndef _GRB_NO_STDIO
-				printTimeSinceEpoch();
-#endif
-			}
 		};
 
 	} // namespace internal
 
 	/**
-	 * Benchmarking function, called from an exec function.
-	 * Takes the grbProgram and its input and output data and accumultes times
-	 * given in the output structure.
+	 * A class that follows the API of the #grb::Launcher, but instead of launching
+	 * the given ALP program once, it launches it multiple times while benchmarking
+	 * its execution times.
+	 *
+	 * @ingroup benchmarking
+	 * @see benchmarking
 	 */
 	template< enum EXEC_MODE mode, enum Backend implementation >
 	class Benchmarker {
 
 		public :
 
-			Benchmarker( size_t process_id = 0,     // user process ID
-				size_t nprocs = 1,                  // total number of user processes
-				std::string hostname = "localhost", // one of the user process hostnames
-				std::string port = "0"              // a free port at hostname
-			) { (void)process_id; (void)nprocs; (void)hostname; (void)port;
+			/**
+			 * Constructs an instance of the benchmarker class.
+			 *
+			 * @param[in] process_id A unique ID for the calling user process.
+			 * @param[in] nprocs     The total number of user processes participating in
+			 *                       the benchmark. The given \a process_id must be
+			 *                       strictly smaller than this given value.
+			 * @param[in] hostname   The hostname where one of the user processes
+			 *                       participating in the benchmark resides.
+			 * @param[in] port       A free TCP/IP port at the host corresponding to
+			 *                       the given \a hostname.
+			 *
+			 * The \a hostname and \a port arguments are unused if \a nprocs equals one.
+			 *
+			 * All arguments are optional-- their defaults are:
+			 *  - 0 for \a process_id,
+			 *  - 1 for \a nprocs,
+			 *  - \em localhost for \a hostname, and
+			 *  - 0 for \a port.
+			 *
+			 * This constructor may throw the same errors as #grb::Launcher.
+			 *
+			 * @see #grb::Launcher
+			 * @see benchmarking
+			 *
+			 * \internal This is the base class which should be overridden by given
+			 *           backend implementations.
+			 */
+			Benchmarker(
+				const size_t process_id = 0,
+				size_t nprocs = 1,
+				std::string hostname = "localhost",
+				std::string port = "0"
+			) {
+				(void)process_id; (void)nprocs; (void)hostname; (void)port;
 #ifndef _GRB_NO_EXCEPTIONS
-				throw std::logic_error( "Benchmarker class called with unsupported "
-										"mode or implementation" );
+				throw std::logic_error( "Benchmarker class called with unsupported mode or "
+					"implementation" );
 #endif
 			}
 
-	template< typename T, typename U >
-	RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-		const T & data_in,
-		U & data_out, // input & output data
-		const size_t inner,
-		const size_t outer,
-		const bool broadcast = false ) const {
-		(void)grb_program;
-		(void)data_in;
-		(void)data_out;
-		(void)inner;
-		(void)outer;
-		(void)broadcast;
-		// stub implementation, should be overridden by specialised implementation,
-		// so return error code
-		return PANIC;
-	}
+			/**
+			 * Benchmarks a given ALP program.
+			 *
+			 * This variant applies to input data as a user-defined POD struct and
+			 * output data as a user-defined POD struct.
+			 *
+			 * @tparam T Input type of the given user program.
+			 * @tparam U Output type of the given user program.
+			 *
+			 * @param[in]  alp_program The ALP program to be benchmarked
+			 * @param[in]  data_in     Input data as a raw data blob
+			 * @param[out] out_data    Output data
+			 * @param[in]  inner       The number of inner repetitions of the benchmark
+			 * @param[in]  outer       The number of outer repetitions of the benchmark
+			 * @param[in]  broadcast   An optional argument that dictates whether the
+			 *                         \a data_in argument should be broadcast across all
+			 *                         user processes participating in the benchmark,
+			 *                         prior to \em each invocation of \a alp_program.
+			 *
+			 * The default value of \a broadcast is <tt>false</tt>.
+			 *
+			 * @returns #grb::SUCCESS The benchmarking has completed successfully.
+			 * @returns #grb::FAILED  An error during benchmarking has occurred. The
+			 *                        benchmark attempt could be retried, and an error
+			 *                        for the failure is reported to the standard error
+			 *                        stream.
+			 * @returns #grb::PANIC   If an unrecoverable error was encountered while
+			 *                        starting the benchmark, while benchmarking, or
+			 *                        while aggregating the final results.
+			 *
+			 * @see benchmarking
+			 *
+			 * \internal This is the base implementation that should be specialised by
+			 *           each backend separately.
+			 */
+			template< typename T, typename U >
+			RC exec(
+				void ( *alp_program )( const T &, U & ),
+				const T &data_in,
+				U &data_out,
+				const size_t inner,
+				const size_t outer,
+				const bool broadcast = false
+			) const {
+				(void) alp_program;
+				(void) data_in;
+				(void) data_out;
+				(void) inner;
+				(void) outer;
+				(void) broadcast;
 
-	template< typename U >
-	RC exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const size_t inner, const size_t outer, const bool broadcast = false )
-		const {
-		(void)grb_program;
-		(void)data_in;
-		(void)in_size;
-		(void)data_out;
-		(void)inner;
-		(void)outer;
-		(void)broadcast;
-		return PANIC;
-	}
+				// stub implementation, should be overridden by specialised implementation.
+				// furthermore, it should be impossible to call this function without
+				// triggering an exception during construction of this stub class, so we
+				// just return PANIC here
+				return PANIC;
+			}
 
-	/**
-	 * Releases all GraphBLAS resources. After a call to this function, no
-	 * GraphBLAS library functions may be called any longer.
-	 *
-	 * @return SUCCESS A call to this function may never fail.
-	 */
-	static RC finalize() {
-		return Launcher< mode, implementation >::finalize();
-	}
+			/**
+			 * Benchmarks a given ALP program.
+			 *
+			 * This variant applies to input data as a byte blob and output data as a
+			 * user-defined POD struct.
+			 *
+			 * @tparam U Output type of the given user program.
+			 *
+			 * @param[in]  alp_program The use rogram to be benchmarked
+			 * @param[in]  data_in     Input data as a raw data blob
+			 * @param[in]  in_size     The size, in bytes, of the input data
+			 * @param[out] out_data    Output data
+			 * @param[in]  inner       The number of inner repetitions of the benchmark
+			 * @param[in]  outer       The number of outer repetitions of the benchmark
+			 * @param[in]  broadcast   An optional argument that dictates whether the
+			 *                         \a data_in argument should be broadcast across all
+			 *                         user processes participating in the benchmark,
+			 *                         prior to \em each invocation of \a alp_program.
+			 *
+			 * The default value of \a broadcast is <tt>false</tt>.
+			 *
+			 * @returns #grb::SUCCESS The benchmarking has completed successfully.
+			 * @returns #grb::ILLEGAL  If \a in_size is nonzero but \a data_in compares
+			 *                        equal to <tt>nullptr</tt>.
+			 * @returns #grb::FAILED  An error during benchmarking has occurred. The
+			 *                        benchmark attempt could be retried, and an error
+			 *                        for the failure is reported to the standard error
+			 *                        stream.
+			 * @returns #grb::PANIC   If an unrecoverable error was encountered while
+			 *                        starting the benchmark, while benchmarking, or
+			 *                        while aggregating the final results.
+			 *
+			 * @see benchmarking
+			 *
+			 * \internal This is the base implementation that should be specialised by
+			 *           each backend separately.
+			 */
+			template< typename U >
+			RC exec(
+				void ( *alp_program )( const void *, const size_t, U & ),
+				const void * data_in, const size_t in_size,
+				U &data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
+			) const {
+				(void) alp_program;
+				(void) data_in;
+				(void) in_size;
+				(void) data_out;
+				(void) inner;
+				(void) outer;
+				(void) broadcast;
 
-}; // namespace grb
+				// stub implementation, should be overridden by specialised implementation.
+				// furthermore, it should be impossible to call this function without
+				// triggering an exception during construction of this stub class, so we
+				// just return PANIC here
+				return PANIC;
+			}
+
+			/**
+			 * Releases all ALP resources.
+			 *
+			 * Calling this function is equivalent to calling #grb::Launcher::finalize.
+			 *
+			 * After a call to this function, no further ALP programs may be benchmarked
+			 * nor launched-- i.e., both the #grb::Launcher and #grb::Benchmarker
+			 * functionalities many no longer be used.
+			 *
+			 * A well-behaving program calls this function, or #grb::Launcher::finalize,
+			 * exactly once and just before exiting (or just before the guaranteed last
+			 * invocation of an ALP program).
+			 *
+			 * @return #grb::SUCCESS The resources have successfully and permanently been
+			 *                       released.
+			 * @return #grb::PANIC   An unrecoverable error has been encountered and the
+			 *                       user program is encouraged to exit as quickly as
+			 *                       possible. The state of the ALP library has become
+			 *                       undefined and should no longer be used.
+			 *
+			 * \internal This is the base implementation that should be specialised by
+			 *           each backend separately.
+			 */
+			static RC finalize() {
+				return Launcher< mode, implementation >::finalize();
+			}
+
+	};
 
 } // end namespace ``grb''
 
 #endif // end _H_GRB_BENCH_BASE
+
