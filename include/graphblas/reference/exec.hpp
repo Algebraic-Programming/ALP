@@ -75,13 +75,18 @@ namespace grb {
 
 			/** No implementation notes. */
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
 			) const {
 				// value doesn't matter for a single user process
 				(void) broadcast;
+				// check input arguments
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
 				// intialise GraphBLAS
 				RC ret = grb::init();
 				// call graphBLAS algo

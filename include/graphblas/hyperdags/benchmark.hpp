@@ -32,6 +32,7 @@
 
 namespace grb {
 
+	/** \internal Simply wraps around the underlying Benchmarker implementation. */
 	template< enum EXEC_MODE mode >
 	class Benchmarker< mode, hyperdags > :
 		protected Launcher< mode, hyperdags >, protected internal::BenchmarkerBase
@@ -46,6 +47,7 @@ namespace grb {
 
 		public:
 
+			/** \internal Simple delegation. */
 			Benchmarker(
 				const size_t process_id = 0,
 				const size_t nprocs = 1,
@@ -55,6 +57,7 @@ namespace grb {
 				benchmarker( process_id, nprocs, hostname, port )
 			{}
 
+			/** \internal Simple delegation. */
 			template< typename U >
 			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
 				const void * const data_in, const size_t in_size,
@@ -71,7 +74,7 @@ namespace grb {
 				);
 			}
 
-			/** No implementation notes. */
+			/** \internal Simple delegation. */
 			template< typename T, typename U >
 			RC exec(
 				void ( *grb_program )( const T &, U & ),
