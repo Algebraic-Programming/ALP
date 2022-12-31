@@ -41,7 +41,8 @@
 namespace grb {
 
 	/**
-	 * \defgroup IO ALP Data Ingestion and Extraction
+	 * \defgroup IO Data Ingestion and Extraction
+	 * \ingroup GraphBLAS
 	 *
 	 * Provides functions for putting user data into opaque ALP/GraphBLAS
 	 * containers, provides functions for extracting data from such containers,

@@ -56,7 +56,12 @@ namespace grb {
 	namespace config {
 
 		/**
-		 * \defgroup config Overall configuration parameters
+		 * \defgroup config ALP Configuration
+		 */
+
+		/**
+		 * \defgroup commonConfig Common configuration settings
+		 * \ingroup config
 		 *
 		 * Configuration elements contained in this group affect all backends.
 		 *

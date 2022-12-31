@@ -38,7 +38,8 @@
 namespace grb {
 
 	/**
-	 * \defgroup BLAS1 The Level-1 ALP/GraphBLAS routines
+	 * \defgroup BLAS1 Level-1 Primitives
+	 * \ingroup GraphBLAS
 	 *
 	 * A collection of functions that allow ALP/GraphBLAS operators, monoids, and
 	 * semirings work on a mix of zero-dimensional and one-dimensional containers;

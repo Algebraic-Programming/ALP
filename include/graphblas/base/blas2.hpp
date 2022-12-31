@@ -43,7 +43,8 @@
 namespace grb {
 
 	/**
-	 * \defgroup BLAS2 The Level-2 Basic Linear Algebra Subroutines (BLAS)
+	 * \defgroup BLAS2 Level-2 Primitives
+	 * \ingroup GraphBLAS
 	 *
 	 * A collection of functions that allow GraphBLAS operators, monoids, and
 	 * semirings work on a mix of zero-dimensional, one-dimensional, and

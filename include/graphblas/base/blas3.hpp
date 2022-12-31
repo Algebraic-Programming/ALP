@@ -32,7 +32,8 @@
 namespace grb {
 
 	/**
-	 * \defgroup BLAS3 The Level-3 Basic Linear Algebra Subroutines (BLAS)
+	 * \defgroup BLAS3 Level-3 Primitives
+	 * \ingroup GraphBLAS
 	 *
 	 * A collection of functions that allow GraphBLAS semirings to work on
 	 * one or more two-dimensional sparse containers (i.e, sparse matrices).

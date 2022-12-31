@@ -33,16 +33,17 @@
 
 namespace grb {
 
-	/**
-	 * \defgroup reference Reference and reference_omp backend configuration
-	 *
-	 * All configuration parameters for the #reference and the #reference_omp
-	 * backends.
-	 *
-	 * @{
-	 */
-
 	namespace config {
+
+		/**
+		 * \defgroup referenceConfig Reference and reference_omp backend configuration
+		 * \ingroup config
+		 *
+		 * All configuration parameters for the #reference and the #reference_omp
+		 * backends.
+		 *
+		 * @{
+		 */
 
 		/**
 		 * The memory allocation modes implemented in the #reference and the
@@ -314,9 +315,9 @@ namespace grb {
 
 		};
 
-	} // namespace config
+		/** @} */
 
-	/** @} */
+	} // namespace config
 
 } // namespace grb
 

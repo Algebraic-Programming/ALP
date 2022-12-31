@@ -55,10 +55,12 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+
 namespace grb {
 
 	/**
-	 * \defgroup BLAS0 The Level-0 Basic Linear Algebra Subroutines (BLAS)
+	 * \defgroup BLAS0 Level-0 Primitives
+	 * \ingroup GraphBLAS
 	 *
 	 * A collection of functions that let GraphBLAS operators work on
 	 * zero-dimensional containers, i.e., on scalars.

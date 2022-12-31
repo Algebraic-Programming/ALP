@@ -41,15 +41,16 @@
 
 namespace grb {
 
-	/**
-	 * \defgroup bsp1d BSP1D backend configuration
-	 *
-	 * All configuration parameters for the #BSP1D and #hybrid backends.
-	 *
-	 * @{
-	 */
-
 	namespace config {
+
+		/**
+		 * \defgroup bsp1dConfig BSP1D backend configuration
+		 * \ingroup config
+		 *
+		 * All configuration parameters for the #BSP1D and #hybrid backends.
+		 *
+		 * @{
+		 */
 
 		/**
 		 * Defaults for the BSP1D implementation
@@ -132,9 +133,9 @@ namespace grb {
 
 		};
 
-	} // namespace config
+		/** @} */
 
-	/** @} */
+	} // namespace config
 
 } // namespace grb
 
