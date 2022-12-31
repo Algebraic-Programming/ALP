@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the ALP/GraphBLAS vector container.
+ *
  * @author A. N. Yzelman
  * @date 10th of August, 2016
  */

@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides a set of standard binary operators.
+ *
  * @author A. N. Yzelman
  * @date 8th of August, 2016
  */

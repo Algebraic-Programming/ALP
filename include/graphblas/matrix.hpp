@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-/*
+/**
  * @author A. N. Yzelman
- * @date 10 of August
+ * @date 10 of August, 2016
  */
 
 #ifndef _H_GRB_MATRIX
@@ -40,6 +40,7 @@
  #include <graphblas/banshee/matrix.hpp>
 #endif
 
+
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND
 namespace grb {
@@ -54,3 +55,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_MATRIX''
+

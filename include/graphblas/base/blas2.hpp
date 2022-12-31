@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Defines the GraphBLAS level 2 API.
+ * Defines the ALP/GraphBLAS level-2 API
  *
  * @author A. N. Yzelman
  * @date 30th of March 2017

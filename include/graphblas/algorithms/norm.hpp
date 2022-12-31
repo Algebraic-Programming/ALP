@@ -15,14 +15,20 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the 2-norm.
+ *
  * @author A. N. Yzelman
  * @date 17th of March 2022
  *
+ * \internal
  * Factored out of graphblas/blas1.hpp, promoted to a (simple) algorithm since
  * semiring structures are insufficient to capture <tt>sqrt</tt>.
  *
  * \todo Provide implementations of other norms.
+ * \endinternal
  */
 
 #ifndef _H_GRB_ALGORITHMS_NORM

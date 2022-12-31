@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the ALP/GraphBLAS level-1 API
+ *
  * @author A. N. Yzelman
  * @date 5th of December 2016
  */

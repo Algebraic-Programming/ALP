@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the matrix powers kernel \f$ y=A^kx \f$ over arbitrary semirings.
+ *
  * @author A. N. Yzelman
  * @date 30th of March 2017
  */

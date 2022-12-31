@@ -28,17 +28,18 @@
 
 // include template specialisations
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/collectives.hpp>
+ #include <graphblas/reference/collectives.hpp>
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
-#include <graphblas/hyperdags/collectives.hpp>
+ #include <graphblas/hyperdags/collectives.hpp>
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp/collectives.hpp>
+ #include <graphblas/bsp/collectives.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/collectives.hpp>
+ #include <graphblas/banshee/collectives.hpp>
 #endif
+
 
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND
@@ -49,3 +50,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_COLL''
+

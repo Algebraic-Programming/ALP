@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the ALP/GraphBLAS matrix container.
+ *
  * @author A. N. Yzelman
- * @date 10th of August
+ * @date 10th of August, 2016
  */
 
 #ifndef _H_GRB_MATRIX_BASE

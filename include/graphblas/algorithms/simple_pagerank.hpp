@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the canonical PageRank algorithm by Brin and Page.
+ *
  * @author A. N. Yzelman
  * @date: 21st of March, 2017
  */
@@ -28,6 +32,7 @@
 #ifndef _GRB_NO_STDIO
 #include <iostream>
 #endif
+
 
 namespace grb {
 

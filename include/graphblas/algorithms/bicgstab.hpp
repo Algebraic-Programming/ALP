@@ -15,11 +15,17 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the BiCGstab algorithm.
+ *
  * @author A. N. Yzelman
  * @date 15th of February, 2022
  *
- * Implementation time, to be taken with a pinch of salt:
+ * \par Implementation time
+ *
+ * To be taken with a pinch of salt, as it is highly subjective:
  *  - 50 minutes, excluding error handling, documentation, and testing.
  *  - 10 minutes to get it to compile, once the smoke test was generated.
  *  - 15 minutes to incorporate proper error handling plus printing of warnings

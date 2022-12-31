@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements some utilities that may be useful outside of the ALP context also.
+ *
  * @author A. N. Yzelman
  * @date 8th of August, 2016
  */

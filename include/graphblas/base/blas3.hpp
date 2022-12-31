@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the ALP/GraphBLAS level-3 API
+ *
  * @author A. N. Yzelman
  */
 

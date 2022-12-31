@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements k-means
+ *
  * @author Verner Vlacic
  */
 

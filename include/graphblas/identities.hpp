@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides a set of standard identities for use with ALP.
+ *
  * @author A. N. Yzelman
  * @date 11th of August, 2016
  */
@@ -24,6 +28,7 @@
 #define _H_GRB_IDENTITIES
 
 #include <limits>
+
 
 namespace grb {
 

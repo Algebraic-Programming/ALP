@@ -16,6 +16,11 @@
  */
 
 /**
+ * @file
+ *
+ * Implements the (strongly) connected components algorithm over undirected
+ * graphs using the ALP/Pregel interface.
+ *
  * @author: A. N. Yzelman.
  */
 

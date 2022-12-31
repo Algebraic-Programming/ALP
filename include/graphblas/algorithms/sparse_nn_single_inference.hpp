@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements (non-batched) sparse neural network inference.
+ *
  * @author Aristeidis Mastoras
  */
 
@@ -24,6 +28,7 @@
 
 #include <limits>
 #include <graphblas.hpp>
+
 
 namespace grb {
 

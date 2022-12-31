@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies all I/O primitives for use with ALP/GraphBLAS containers.
+ *
  * @author A. N. Yzelman
  * @date 21st of February, 2017
  */

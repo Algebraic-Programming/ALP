@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the CG algorithm
+ *
  * @author Aristeidis Mastoras
  */
 

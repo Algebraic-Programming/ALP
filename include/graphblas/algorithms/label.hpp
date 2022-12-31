@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements label propagation.
+ *
  * @author J. M. Nash
  * @date 21st of March, 2017
  */

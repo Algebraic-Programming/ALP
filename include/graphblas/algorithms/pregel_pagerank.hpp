@@ -16,6 +16,11 @@
  */
 
 /**
+ * @file
+ *
+ * Implements a traditional vertex-centric page ranking algorithm using
+ * ALP/Pregel.
+ *
  * @author A. N. Yzelman
  */
 

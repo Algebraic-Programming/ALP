@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the ALP algebraic type traits
+ *
  * @author A. N. Yzelman
  * @date 25th of March, 2019
  */

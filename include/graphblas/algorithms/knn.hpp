@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the \f$ k \f$-hop nearest neighbours from a given source vertex.
+ *
  * @author A. N. Yzelman
  * @date: 27th of April, 2017
  */
@@ -26,6 +30,7 @@
 #include "graphblas/algorithms/mpv.hpp"
 
 #include <graphblas.hpp>
+
 
 namespace grb {
 

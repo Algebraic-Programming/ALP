@@ -15,12 +15,17 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the various phases an ALP/GraphBLAS primitive may be executed with.
+ *
  * @author A. N. Yzelman
  */
 
 #ifndef _H_GRB_PHASE
 #define _H_GRB_PHASE
+
 
 namespace grb {
 
