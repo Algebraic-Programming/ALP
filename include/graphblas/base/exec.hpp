@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the #grb::Launcher functionalities.
+ *
  * @author A. N. Yzelman
  * @date 17th of April, 2017
  */
@@ -28,9 +32,11 @@
 
 #include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
+
 #ifndef _GRB_NO_STDIO
-#include <iostream>
+ #include <iostream>
 #endif
+
 
 namespace grb {
 
@@ -214,18 +220,34 @@ RC exec( void ( *grb_program )( const void *, const size_t, U & ), const void * 
 	return PANIC;
 }
 
-/**
- * Releases all GraphBLAS resources. After a call to this function, no
- * GraphBLAS library functions may be called any longer.
- *
- * @return SUCCESS A call to this function may never fail.
- */
-static RC finalize() {
-	return PANIC;
-}
-}
-; // end class `Launcher'
+			/**
+			 * Releases all ALP resources.
+			 *
+			 * After a call to this function, no further ALP programs may be benchmarked
+			 * nor launched-- i.e., both the #grb::Launcher and #grb::Benchmarker
+			 * functionalities many no longer be used.
+			 *
+			 * A well-behaving program calls this function, or #grb::Launcher::finalize,
+			 * exactly once and just before exiting (or just before the guaranteed last
+			 * invocation of an ALP program).
+			 *
+			 * @return SUCCESS The resources have successfully and permanently been
+			 *                 released.
+			 * @return PANIC   An unrecoverable error has been encountered and the user
+			 *                 program is encouraged to exit as quickly as possible. The
+			 *                 state of the ALP library has become undefined and should
+			 *                 no longer be used.
+			 *
+			 * \internal This is the base implementation that should be specialised by
+			 *           each backend separately.
+			 */
+			static RC finalize() {
+				return PANIC;
+			}
+
+	}; // end class `Launcher'
 
 } // end namespace ``grb''
 
 #endif // end _H_GRB_EXEC_BASE
+
