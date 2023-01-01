@@ -81,7 +81,7 @@ namespace grb {
 			typename D1, typename D2 = D1, typename D3 = D2,
 			enum Backend implementation = config::default_backend
 		>
-		class left_assign_if :s
+		class left_assign_if :
 			 public internal::Operator<
 					internal::left_assign_if< D1, D2, D3, implementation >
 			>
