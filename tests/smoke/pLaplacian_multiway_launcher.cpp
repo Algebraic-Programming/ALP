@@ -138,12 +138,12 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	const double print_eigen = 0; // print eigenvectors and input matrices
 
 	// Load the arma-eigenvecs from a txt file (Debug file)
-	std::ifstream file(data_in.eigfile);
-	arma::Mat<double> V = load_mat<double>(file, "");
-	file.close(); 
-	V.load(data_in.eigfile, csv_ascii);
-	std::cout << data_in.eigfile << std::endl;
-	V.brief_print("EigVecs: ");
+	// std::ifstream file(data_in.eigfile);
+	// arma::Mat<double> V = load_mat<double>(file, "");
+	// file.close(); 
+	// V.load(data_in.eigfile, csv_ascii);
+	// std::cout << data_in.eigfile << std::endl;
+	// V.brief_print("EigVecs: ");
 
 	/* Read the adjacency from an .mtx file. Diagonal has to be full */
 	// std::cout << data_in.filename << endl;
@@ -180,7 +180,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	/* 2. Normal Call: Random Initial guess, and computation of the eigenvecs at p = 2 with grb+ROPTLIB */
 	// rc = grb::algorithms::pLaplacian_multi(x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters);
 	/* 3. Arma initial guess Call: Arma Initial guess, and computation of the eigenvecs at p < 2 with grb+ROPTLIB */
-	rc = grb::algorithms::pLaplacian_multi( x, W, V, data_in.num_clusters, final_p, factor_reduce, kmeans_iters, kmeans_iters );
+	rc = grb::algorithms::pLaplacian_multi( x, W, data_in.num_clusters, final_p, factor_reduce, kmeans_iters, kmeans_iters );
 
 	double single_time = timer.time();
 
@@ -270,14 +270,14 @@ int main( int argc, char ** argv ) {
 	(void)strncpy( out.filename, argv[ 4 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
-	(void)strncpy( in.eigfile, argv[ 5 ], 1023 );
-	in.eigfile[ 1023 ] = '\0';
+	// (void)strncpy( in.eigfile, argv[ 5 ], 1023 );
+	// in.eigfile[ 1023 ] = '\0';
 
 	char * end = NULL;
-	if( argc >= 6 ) {
-		in.num_clusters = strtoumax( argv[ 6 ], &end, 10 );
-		if( argv[ 6 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 6 ] << " for number of clusters." << std::endl;
+	if( argc >= 5 ) {
+		in.num_clusters = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " for number of clusters." << std::endl;
 			return 102;
 		}
 	}

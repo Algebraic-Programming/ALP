@@ -200,7 +200,7 @@ namespace grb
         RC pLaplacian_multi(
             Vector<size_t> &x,       //vectors corresponding to the final clusters
             const Matrix<double> &W, // adjacency matrix
-            arma::Mat<double> &V,         // eigenvecs arma matrix (Debug only)
+           // arma::Mat<double> &V,         // eigenvecs arma matrix (Debug only)
             const size_t k,                      // number of clusters
             const double final_p = 1.1,          //Final value of p
             const double factor = 0.9,           //Factor for the reduction of p
@@ -231,16 +231,13 @@ namespace grb
             ROPTLIB::Stiefel Domain(n, k);
 
             //ARMA eigenvecs for initial guess (debug only)
-            double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
-            std::cout << "-------------" << std::endl;
-            std::cout << "|The ARMA eigenvecs|" << std::endl;
-            V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
-            std::cout << "-------------" << std::endl;
+           // double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
+
             ROPTLIB::Variable GrassInit(n, k);
             double *temp = GrassInit.ObtainWriteEntireData();
             for (int i = 0; i < n * k; i++)
             {
-                temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
+               // temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
             }
             // std::cout << "ARMA Initial Guess" << std::endl;
             // std::cout << "-------------" << std::endl;
@@ -248,26 +245,34 @@ namespace grb
             //std::cin.get();
 
              //generate sparse matrix
-            // sp_mat A = sp_mat(V);//sprandu<sp_mat>(1024, 1024, 0.1);
-            // //  sp_mat B = A.t()*A;
+            sp_mat A = sp_mat(n, n);
+            //sp_mat A = B.t()*B;
+            std::cout << "-------------" << std::endl;
+            std::cout << "|The ARMA eigenvecs|" << std::endl;
+            //V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
+            std::cout << "-------------" << std::endl;
 
-            // // B.brief_print("input matrix A");
-            // vec eigval;
-            // mat eigvec;
+            // B.brief_print("input matrix A");
+            vec eigval;
+            mat eigvec;
 
-            // eigs_opts opts;
-            // opts.maxiter = 10000;
-            // opts.tol     = 1e-5;
-            // // find the k smallest eigvals/eigvecs
-            // bool a = eigs_sym(eigval, eigvec, A, k, "sm", opts);
-            // std::cout << "A: " << a << std::endl; 
-            // eigval.brief_print("Eigvals");
-            // eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
-            // std::cout << eigval << std::endl;
-            // for (int i = 0; i < n * k; i++)
-            // {
-            //     temp[i] = eigvec[i]; // Use the input at p = 2 as initial guess
-            // }
+          	for( const auto &triplet : W ) {
+                A(triplet.first.first, triplet.first.second) = -triplet.second;
+                A(triplet.first.second, triplet.first.second) += triplet.second;
+            }
+
+            eigs_opts opts;
+            opts.maxiter = 10000;
+            opts.tol     = 1e-5;
+            // find the k smallest eigvals/eigvecs
+            bool a = eigs_sym(eigval, eigvec, A, k, "sm", opts);
+            std::cout << "A: " << a << std::endl; 
+            eigval.brief_print("Eigvals");
+            eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
+            for (int i = 0; i < n * k; i++)
+            {
+                temp[i] = eigvec[i]; // Use the input at p = 2 as initial guess
+            }
             
             //std::cin.get();
 
