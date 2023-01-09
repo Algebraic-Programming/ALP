@@ -293,7 +293,7 @@ endforeach()
 set( alp_smoke_tests_list ${ALP_TEST_BACKENDS})
 list(APPEND S_minus_T ${ALP_TEST_BACKENDS})
 list(REMOVE_ITEM S_minus_T ${smoke_tests_list})
-list(REMOVE_ITEM alp_smoke_tests_list ${S_minus_T} )
+list(REMOVE_ITEM alp_smoke_tests_list "${S_minus_T}" )
 
 add_custom_target( smoketests_alp
 	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/smoketests.sh
