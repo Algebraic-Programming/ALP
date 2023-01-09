@@ -243,7 +243,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			    echo " "
 			fi
 
-			NTEST=256
+			NTEST=50000
 			if [ -f "${TEST_BIN_DIR}/gmres_complex_${BACKEND}" ]
 			then
 			    echo ">>>      [x]           [ ]       Testing the GMRES complex algorithm for the random generated"

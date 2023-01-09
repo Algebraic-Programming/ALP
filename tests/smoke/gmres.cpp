@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *   Copyright 2023 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,22 +47,22 @@ using namespace grb;
 using namespace algorithms;
 
 class input {
-public:
-	bool generate_random = true;
-	size_t rep = grb::config::BENCHMARKING::inner();
-	size_t max_iterations = 1;
-	size_t n = 0;
-	size_t nz_per_row = 10;
-	std::string filename = "";
-	std::string precond_filename = "";
-	std::string rhs_filename = "";
-	bool rhs = false;
-	bool no_preconditioning = false;
-	bool direct = true;
-	size_t rep_outer = grb::config::BENCHMARKING::outer();
-	BaseScalarType tol = TOL;
-	BaseScalarType max_residual_norm = TOL;
-	size_t gmres_restart = 10;
+	public:
+		bool generate_random = true;
+		size_t rep = grb::config::BENCHMARKING::inner();
+		size_t max_iterations = 1;
+		size_t n = 0;
+		size_t nz_per_row = 10;
+		std::string filename = "";
+		std::string precond_filename = "";
+		std::string rhs_filename = "";
+		bool rhs = false;
+		bool no_preconditioning = false;
+		bool direct = true;
+		size_t rep_outer = grb::config::BENCHMARKING::outer();
+		BaseScalarType tol = TOL;
+		BaseScalarType max_residual_norm = TOL;
+		size_t gmres_restart = 10;
 };
 
 struct output {
@@ -131,7 +131,7 @@ void generate_random_data(
 		for(
 			DimensionType j = i - std::min( nz_per_row / 2, i );
 			j < std::min( i + nz_per_row / 2, n );
-			++j
+			(void) ++j
 		) {
 			NonzeroType tmp = random_value< NonzeroType >();
 			NonzeroType tmp2 = random_value< NonzeroType >();
@@ -143,13 +143,13 @@ void generate_random_data(
 			MatAveci[ acout ] = i;
 			MatAvecj[ acout ] = j;
 			MatAvecv[ acout ] = tmp;
-			++acout;
+			(void) ++acout;
 			if( i == j ) {
 				MatPveci[ pcout ] = i;
 				MatPvecj[ pcout ] = j;
 				grb::foldr( one, tmp2, divide );
 				MatPvecv[ pcout ] = tmp2;
-				++pcout;
+				(void) ++pcout;
 			}
 		}
 	}
@@ -190,7 +190,6 @@ RC make_matrices(
 		rc = rc ? rc : buildMatrixUnique( A, MatAveci.begin(), MatAvecj.begin(), MatAvecv.begin(), MatAveci.size(), SEQUENTIAL );
 		rc = rc ? rc : buildMatrixUnique( P, MatPveci.begin(), MatPvecj.begin(), MatPvecv.begin(), MatPveci.size(), SEQUENTIAL );
 	}
-
 	return rc;
 }
 
@@ -198,9 +197,8 @@ RC make_matrices(
  * Solves the  least linear square problem defined by vector H[1:n] x =  H[ 0 ],
  * using Givens rotations and backsubstitution. The results is stored in H[ 0 ],
  * which is sused to update GMRES solution, vector x.
+ * \todo: Replace by ALP/Dense calls once available.
  */
-// todo: this is a temp implementations and
-// should be replace by the equivalent ALP function.
 template<
 	typename NonzeroType,
 	typename DimensionType
@@ -257,9 +255,7 @@ void hessolve(
 		// rhs[i+1]  =  -conjugate(s) * tmp3 + c * rhs[i+1]
 		rhs[ i + 1 ]  =  - grb::utils::is_complex< NonzeroType >::conjugate( s )
 			* tmp3 + c * rhs[ i + 1 ];
-
 	}
-
 
 #ifdef _DEBUG
 	std::cout << "hessolve rhs vector before inversion, vector = ";
@@ -286,8 +282,6 @@ void hessolve(
 
 	H[ 0 ] = rhs;
 }
-
-
 
 void grbProgram( const struct input &data_in, struct output &out ) {
 	out.rc = 1;
@@ -407,7 +401,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 #endif
 		}
-
 	}
 
 	out.time_io += timer.time();
@@ -437,7 +430,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.time_io += timer.time();
 		timer.reset();
-
 	} else {
 		grb::set( x, one );
 		grb::set( b, zero );
@@ -480,13 +472,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 	std::cout << "\n";
 #endif
-
-
 	out.time_preamble += timer.time();
 	timer.reset();
 
-	// todo: this loop shoud be moved into gmres() after
-	// hessolve is used from ALP
+	// todo: this loop (GMRES iterations with x vector update) shoud be moved into gmres() call
+	// after hessolve is implemented (and used) in ALP
 
 	// inner iterations
 	for( size_t i_inner = 0; i_inner < data_in.rep; ++i_inner ) {
@@ -506,9 +496,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 		// gmres iterations
 		for( size_t gmres_iter = 0; gmres_iter < data_in.max_iterations; ++gmres_iter ) {
-			++out.iterations;
+			(void) ++out.iterations;
 			timer.reset();
-			++out.iterations_gmres;
+			(void) ++out.iterations_gmres;
 			kspspacesize = 0;
 			if( data_in.no_preconditioning ) {
 #ifdef DEBUG
@@ -628,7 +618,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.times.postamble += out.time_residual;
 		out.times.preamble += out.time_preamble;
 
-		if( i_inner + 1 >   data_in.rep ) {
+		if( i_inner + 1 > data_in.rep ) {
 			std::cout << "Residual norm = " << out.residual << " \n";
 			std::cout << "Residual norm (relative) = " << out.residual_relative << " \n";
 			std::cout << "X update time = " << out.time_x_update << "\n";
@@ -646,7 +636,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.rc = 0;
 	}
 }
-
 
 void printhelp( char *progname ) {
 	std::cout << " Use: \n";
@@ -819,7 +808,6 @@ bool parse_arguments(
 }
 
 int main( int argc, char **argv ) {
-
 	grb::RC rc = grb::SUCCESS;
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
@@ -888,6 +876,4 @@ int main( int argc, char **argv ) {
 	// done
 	return out.rc;
 }
-
-
 

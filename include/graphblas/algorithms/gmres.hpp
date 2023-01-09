@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2022 Huawei Technologies Co., Ltd.
+ *   Copyright 2023 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,22 +28,24 @@
 #include <graphblas.hpp>
 #include <graphblas/utils/iscomplex.hpp>
 
+
 namespace grb {
 
 	namespace algorithms {
 
 		/**
 		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown
-		 * by the gmres method on general fields.
+		 * by the GMRES method on general fields.
 		 *
-		 * Preconditioning is possible by using matrix M.
+		 * Preconditioning is possible by providing
+		 * an initialised matrix \f$ M \f$ of matching size.
 		 *
 		 * @tparam descr        The user descriptor
 		 * @tparam IOType       The input/output vector nonzero type
 		 * @tparam ResidualType The type of the residual
 		 * @tparam NonzeroType  The matrix nonzero type
 		 * @tparam InputType    The right-hand side vector nonzero type
-		 * @tparam Ring         The semiring under which to perform GGMRES
+		 * @tparam Ring         The semiring under which to perform GMRES
 		 * @tparam Minus        The minus operator corresponding to the inverse of the
 		 *                      additive operator of the given \a Ring.
 		 * @tparam Divide       The division operator corresponding to the inverse of
@@ -62,8 +64,7 @@ namespace grb {
 		 *       that demands on domain types are met.
 		 *
 		 *
-		 * @param[in,out] x              On input: an initial guess to the solution.
-		 *                               On output: the last computed approximation.
+		 * @param[in]     x              On input: an initial guess to the solution.
 		 * @param[in]     A              The (square) positive semi-definite system
 		 *                               matrix.
 		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
@@ -77,6 +78,14 @@ namespace grb {
 		 * @param[in]     max_iterations The maximum number of GMRES iterations.
 		 * @param[in]     n_restart      The number of GMRES restart iterations.
 		 * @param[in]     tol            The requested relative tolerance.
+		 * @param[out]    HMatrix        Upper-Hessenberg matrix of size \a n_restart x
+		 *                               \a n_restart with row-major orientation.
+		 *                               On output only fist \a iterations
+		 *                               columns and \a iterations rows have meaning.
+		 * @param[out]    Q              std::vector of length \a n_restart + 1.
+		 *                               Each element of Q is grb::Vector of size
+		 *                               \f$ n \f$. On output only fist \a n_restart
+		 *                               vectors have meaning.
 		 *
 		 * Additional outputs (besides \a x):
 		 *
@@ -131,17 +140,15 @@ namespace grb {
 			typename ResidualType,
 			typename NonzeroType,
 			typename InputType,
-			// typename PrecondmatrixType = nullptr_t,
 			class Ring = Semiring<
 				grb::operators::add< IOType >, grb::operators::mul< IOType >,
 				grb::identities::zero, grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
 			class Divide = operators::divide< IOType >
-
 		>
 		grb::RC gmres(
-			grb::Vector< IOType > &x,
+			const grb::Vector< IOType > &x,
 			const grb::Matrix< NonzeroType > &A,
 			const grb::Vector< InputType > &b,
 			std::vector< std::vector< NonzeroType > > &Hmatrix,
@@ -250,21 +257,6 @@ namespace grb {
 				}
 			}
 
-			// make x and b structurally dense (if not already) so that the remainder
-			// algorithm can safely use the dense descriptor for faster operations
-			{
-				RC rc = SUCCESS;
-				if( nnz( x ) != n ) {
-					rc = set< descriptors::invert_mask | descriptors::structural >(
-						x, x, zero
-					);
-				}
-				if( rc != SUCCESS ) {
-					return rc;
-				}
-				assert( nnz( x ) == n );
-			}
-
 			ResidualType rho, tau;
 			NonzeroType alpha;
 
@@ -359,21 +351,17 @@ namespace grb {
 
 				for( size_t j = 0; j < std::min( k, n_restart ); j++ ) {
 					//H[j,k]=Q[:,j].dot(Q[:,k])
+					Hmatrix[ k ][ j ] = zero;
 					if( grb::utils::is_complex< IOType >::value ) {
 						ret = ret ? ret : grb::eWiseLambda( [&,Q]( const size_t i ) {
 							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( Q[ j ] [ i ] );
 						},
 							temp
 						);
-						NonzeroType dotQkQj = zero;
-						ret = ret ? ret : grb::dot< descr_dense >( dotQkQj, Q[ k ], temp, ring );
-						Hmatrix[ k ][ j ] = dotQkQj;
+						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k ][ j ], Q[ k ], temp, ring );
 					}
 					else {
-						NonzeroType dotQkQj = zero;
-						ret = ret ? ret : grb::dot< descr_dense >( dotQkQj, Q[ k ], Q[ j ], ring );
-						Hmatrix[ k ][ j ] = dotQkQj;
-
+						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k ][ j ], Q[ k ], Q[ j ], ring );
 					}
 					assert( ret == SUCCESS );
 
