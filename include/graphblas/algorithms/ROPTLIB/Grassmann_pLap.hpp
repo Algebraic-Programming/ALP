@@ -29,15 +29,14 @@ namespace ROPTLIB
         grb::Vector<double> ones;
         const size_t n, k;
         const double p;
-        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res, Prev, Diag;
+        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res, Diag;
 		mutable std::vector< grb::Matrix< double > * > UiUj;
 		mutable std::vector< grb::Matrix< double > * > Hess;
 
         mutable grb::Matrix<double> Wuu, BUF;
         mutable grb::Vector<double> vec, vec2, vec_aux;
-
-        mutable std::vector<double> sums, pows, facs;
-        mutable std::vector<bool> mats;
+            
+        mutable std::vector<double> facs;
 
         mutable bool updated;
             
@@ -66,10 +65,6 @@ namespace ROPTLIB
 
             const double *xPtr = x.ObtainReadData();
 
-            // does this parallel for make sense together with distributed memory backends?
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-#endif
             for (size_t i = 0; i < k; ++i)
             {
                 grb::set(*(grb_x[i]), 0);
@@ -78,34 +73,9 @@ namespace ROPTLIB
                     std::cout << "Result: " << grb::toString(rc)<<std::endl;
                     std::cin.get();
                 }
-                //Check if same
-                if(!updated && grb_x == Columns){
-                    //std::cout << "Columns\n";
-                    if(grb::nnz(*(grb_x[i])) != grb::nnz(*(Prev[i]))){
-                        clear();
-                        updated = true;
-                      //  std::cout << "Diff input: "  << std::endl;
-
-                    } else {
-                        for (size_t j = 0; j < n; j++)
-                        {
-                            if((*(grb_x[i]))[j] != (*(Prev[i]))[j]){
-                                updated = true;
-                                clear();
-                                break;
-                            }
-                            if(isnan((*(grb_x[i]))[j])){
-                               std::cout << "num = " << (*(grb_x[i]))[j] << " den = " << j << ", l = " << i << "\n";
-                                std::cin.get();
-                            }
-                        }
-
-                    }
-                    grb::set(*(Prev[i]), *(grb_x[i]));
-                }
 
             }
-            updated = false;
+
             ropttgrb += timer.time();
         }
 
@@ -117,9 +87,7 @@ namespace ROPTLIB
             timer.reset();
             double *resPtr = result->ObtainWriteEntireData();
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-#endif
+
             for (size_t i = 0; i < k; ++i)
             {
                 // once we have random-access Vector iterators can parallelise this
@@ -132,9 +100,6 @@ namespace ROPTLIB
         }
 
         void setDerivativeMatrices(const size_t l) const{
-            if(mats[l]){
-               return;
-            }
 
             grb::Vector<double> u = *(this->Columns[l]);
 
@@ -145,29 +110,20 @@ namespace ROPTLIB
 					v =  u[ i ] - u[ j ];
 				},
 				*(this->UiUj[l]) );	
-
-            mats[l] = true;
         }
 
         double summandEvalNum(const size_t l) const
         {
-
-            if(sums[l] != 0){
-               return sums[l];
-            }
-
             double s = 0;
-
 
             powMat(l, BUF, this->p);	
             
             grb::set( vec_aux, 0 );
 
-            //grb::eWiseApply(Wuu, Wuu, BUF, reals_ring.getMultiplicativeOperator());
+            //grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
             grb::vxm(vec_aux, ones, BUF, reals_ring);
             grb::dot(s, vec_aux, ones, reals_ring);
 
-            sums[l] = s;
             return s;
         }
 
@@ -188,10 +144,6 @@ namespace ROPTLIB
             //working with orthonormal columns
             if (p == 2.0)
                 return 1.0;
-
-            if(pows[l] != 0){
-                return pows[l];
-            }
             
             double s = 0;
             grb::set( vec_aux, *Columns[l] );
@@ -200,22 +152,12 @@ namespace ROPTLIB
                           vec_aux);
             grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() );
 
-            pows[l] = s;
             return s;
         }
 
         double phi_p(const double &u) const
         {
             return u > 0 ? std::pow(u, p - 1) : -std::pow(-u, p - 1);
-        }
-        void clear() const{
-            for (size_t l = 0; l < k; l++)
-            {
-               sums[l] = 0;
-               pows[l] = 0;
-               mats[l] = false;
-            }
-
         }
 
     public:
@@ -238,28 +180,20 @@ namespace ROPTLIB
             Columns.resize(k);
             Etax.resize(k);
             Res.resize(k);
-            Prev.resize(k);
             Diag.resize(k);
     		UiUj.resize( k );
     		Hess.resize( k );
-            pows = std::vector<double>(k, 0);
-            sums = std::vector<double>(k, 0);
-            mats = std::vector<bool>(k, false);
+
             facs = std::vector<double>(k, 1.0);
 
             grb::resize(Wuu, grb::nnz(W));
    			grb::resize( BUF, grb::nnz( W ) );
 
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for schedule(static, config::CACHE_LINE_SIZE::value())
-#endif
             for (size_t i = 0; i < k; ++i)
             {
                 Columns[i] = new grb::Vector<double>(n);
                 Etax[i] = new grb::Vector<double>(n);
                 Res[i] = new grb::Vector<double>(n);
-                Prev[i] = new grb::Vector<double>(n);
                 Diag[i] = new grb::Vector<double>(n);
    				UiUj[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
    				Hess[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
@@ -286,9 +220,6 @@ namespace ROPTLIB
             for (size_t l = 0; l < k; ++l)
             {
                 double s = summandEvalNum(l) / (2 * pPowSum(l));
-                // if(isnan(s)){
-                //     std::cout << "num = " << summandEvalNum( l ) << " den = " << 2*pPowSum( l ) << ", l = " << l << "\n";
-                // }
                 result += s;
                 // Print result. This is the
                 // function evaluation. It is a double
@@ -321,23 +252,21 @@ namespace ROPTLIB
         }
 
 
-        void internalHessian(const size_t l) const {
+        void calculateHessian(const size_t l) const {
 
             grb::Matrix<double>* H = (Hess[l]); 
+            //Make sure UiUj is updated
             setDerivativeMatrices(l);
+    
             powMat(l, *H, p-2, Hess_approx_thresh);
-
             grb::eWiseApply(*H, *H, W, reals_ring.getMultiplicativeOperator());
             set(Wuu, *H);
-            //grb::eWiseApply<grb::descriptors::transpose_right>(*H, *H, Wuu, reals_ring.getAdditiveOperator());
-            
+
+            //Save factor to reuse later 
             facs[l] = (this->p) * (this->p - 1) / pPowSum(l);
 
             grb::set(*(Diag[l]), 0);
             grb::vxm(*(Diag[l]), ones, *H, reals_ring);
-            //grb::eWiseApply(*(Diag[l]), *(Diag[l]), 1e-5, reals_ring.getAdditiveOperator());
-
-
         };
 
         virtual ROPTLIB::Element &EucGrad(
@@ -358,7 +287,7 @@ namespace ROPTLIB
             //             std::cerr << "in eucgrad";
             //         }
             //         assert(!isnan(pair.second));
-            //         std::cout << pair.second << " ";
+            //         std::cout << pair.second << " ";sudo sshfs -o allow_other,default_permissions,IdentityFile=/home/anderhan/.ssh/id_rsa ahansson@login.huaweirc.ch:/home/ahansson/ /mnt/slurm/ -p 2222
             //     }
             // }
             io_time += timer.time();
@@ -395,7 +324,9 @@ namespace ROPTLIB
 					v = phi_p(v);
 				},
 				BUF );
-                
+
+                //grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
+
 
                 //Print the entries of the resulting matrix Wphiu
                 // for ( size_t i=0; i<n; ++i) {
@@ -430,9 +361,10 @@ namespace ROPTLIB
                                          (vec[i] - factor * phi_p((*(this->Columns[l]))[i]));
                                  },
                                  vec);
-                double s;
+                //double s;
                 //grb::foldl(s, *(Res[l]), reals_ring.getAdditiveMonoid());
                 //grb::eWiseAdd(*(Res[l]), *(Res[l]), s/-n, reals_ring);
+
                 // std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
                 // This is a printout of the euclidean gradient vector
                 // std::cout << "factor " << factor << std::endl;
@@ -444,15 +376,16 @@ namespace ROPTLIB
                 //     }
                 // }
                 // std::cin.get();
-                internalHessian(l);
+
+                //Update and save Hessian for later 
+                calculateHessian(l);
             }
             grb_time += timer.time();
             gradT += timer.time();
 
-            // write data back to ROPTLIB format
             timer.reset();
 
-
+            // write data back to ROPTLIB format
             GRBtoROPTLIB(Res, result);
 
             //  ++++ This is a print out of the full nxk matrix for the gradient in ROPTLIB +++
@@ -575,6 +508,8 @@ namespace ROPTLIB
                 // // // std::cin.get();
                 grb::set(vec, 0);
                 grb::set(vec2, 0);
+                 
+                // Res = (D - H) * etax * factor
                 grb::vxm(vec, *(Etax[l]), *(Hess[l]), reals_ring);
                 grb::eWiseApply(vec2, *(Diag[l]), *(Etax[l]), reals_ring.getMultiplicativeOperator());
                 grb::eWiseApply(*(Res[l]), vec2, vec, grb::operators::subtract<double>());
