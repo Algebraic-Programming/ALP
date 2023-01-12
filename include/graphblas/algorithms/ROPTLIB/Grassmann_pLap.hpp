@@ -29,7 +29,7 @@ namespace ROPTLIB
         grb::Vector<double> ones;
         const size_t n, k;
         const double p;
-        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res, Diag;
+        mutable std::vector<grb::Vector<double> *> Columns, Etax, Res, Prev, Diag;
 		mutable std::vector< grb::Matrix< double > * > UiUj;
 		mutable std::vector< grb::Matrix< double > * > Hess;
 
@@ -37,6 +37,8 @@ namespace ROPTLIB
         mutable grb::Vector<double> vec, vec2, vec_aux;
             
         mutable std::vector<double> facs;
+        mutable std::vector<bool> mats;
+
 
         mutable bool updated;
             
@@ -73,6 +75,23 @@ namespace ROPTLIB
                     std::cout << "Result: " << grb::toString(rc)<<std::endl;
                     std::cin.get();
                 }
+                                //Check if same
+                if(!updated && grb_x == Columns){
+                    if(grb::nnz(*(grb_x[i])) != grb::nnz(*(Prev[i]))){
+                        mats[i] = false;
+                    } else {
+                        for (size_t j = 0; j < n; j++)
+                        {
+                            if((*(grb_x[i]))[j] != (*(Prev[i]))[j]){
+                                mats[i] = false;
+                                break;
+                            }
+
+                        }
+
+                    }
+                    grb::set(*(Prev[i]), *(grb_x[i]));
+                }
 
             }
 
@@ -100,6 +119,7 @@ namespace ROPTLIB
         }
 
         void setDerivativeMatrices(const size_t l) const{
+            if(mats[l]) return;
 
             grb::Vector<double> u = *(this->Columns[l]);
 
@@ -109,7 +129,9 @@ namespace ROPTLIB
 				[ this, &u ]( const size_t i, const size_t j, double & v ) {
 					v =  u[ i ] - u[ j ];
 				},
-				*(this->UiUj[l]) );	
+				*(this->UiUj[l]) );
+
+            mats[l] = true;
         }
 
         double summandEvalNum(const size_t l) const
@@ -183,8 +205,10 @@ namespace ROPTLIB
             Diag.resize(k);
     		UiUj.resize( k );
     		Hess.resize( k );
+            Diag.resize(k);
 
             facs = std::vector<double>(k, 1.0);
+            mats = std::vector<bool>(k, false);
 
             grb::resize(Wuu, grb::nnz(W));
    			grb::resize( BUF, grb::nnz( W ) );

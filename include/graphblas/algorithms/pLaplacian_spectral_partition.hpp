@@ -228,7 +228,7 @@ namespace grb
             Vector<std::pair<size_t, double>> clusters_and_distances(n);
 
             // Define the Grassmann manifold
-            ROPTLIB::Stiefel Domain(n, k);
+            ROPTLIB::Grassmann Domain(n, k);
 
             //ARMA eigenvecs for initial guess (debug only)
            // double *V_mem = V.memptr(); // get the pointer to memory for the eigenvectors
@@ -256,6 +256,7 @@ namespace grb
             vec eigval;
             mat eigvec;
 
+            //D -W
           	for( const auto &triplet : W ) {
                 A(triplet.first.first, triplet.first.second) = -triplet.second;
                 A(triplet.first.second, triplet.first.second) += triplet.second;
@@ -265,7 +266,7 @@ namespace grb
             opts.maxiter = 10000;
             opts.tol     = 1e-5;
             // find the k smallest eigvals/eigvecs
-            bool a = eigs_sym(eigval, eigvec, A, k, "sm", opts);
+            bool a = arma::eigs_sym(eigval, eigvec, A, k, "sm", opts);
             std::cout << "A: " << a << std::endl; 
             eigval.brief_print("Eigvals");
             eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
@@ -296,7 +297,7 @@ namespace grb
 
             // Initialize timers
             grb::utils::Timer timer;
-            double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0;
+            double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0, prob_time = 0, exec_time = 0;
 
             //p = p / factor;
             do
@@ -310,12 +311,16 @@ namespace grb
 
                 timer.reset();
 
+                
                 // Define the p-spectral clustering problem
                 ROPTLIB::Grass_pLap Prob(W, n, k, p);
 
                 // Set the domain of the problem to be the Grassmann manifold
                 Prob.SetDomain(&Domain);
 
+                prob_time += timer.time();
+                timer.reset();
+                
                 // output the parameters of the manifold of domain
                 Domain.CheckParams();
 
@@ -345,13 +350,19 @@ namespace grb
                 RNewtonSolver->Max_Inner_Iter = 1000;
                 RNewtonSolver->Tolerance = 1e-6;
                 // RNewtonSolver->Stop_Criterion = 1;
-                RNewtonSolver->CheckParams();
+                //RNewtonSolver->CheckParams();
+                grbropt_time =+ timer.time();
+                timer.reset();
+                
                 RNewtonSolver->Run();
+
+                exec_time += timer.time();
+                timer.reset();
 
                 // ROPTLIB variable for the solution vector
                 Optimizer = RNewtonSolver->GetXopt();
                 // Check the actions of gradient and Hessian
-                Prob.CheckGradHessian(Optimizer);
+                //Prob.CheckGradHessian(Optimizer);
 
                 delete RNewtonSolver;
 
@@ -494,11 +505,14 @@ namespace grb
                 std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << std::endl;
             }
 
-            std::cout << "io time (msec) = " << io_time << std::endl;
+            std::cout << "conversion time (msec) = " << io_time << std::endl;
             std::cout << "grb time (msec) = " << grb_time << std::endl;
-            std::cout << "grb+roptlib time (msec) = " << grbropt_time << std::endl;
+            std::cout << "misc time (msec) = " << grbropt_time << std::endl;
+            std::cout << "Problem time (msec) = " << prob_time << std::endl;
+            std::cout << "execution time Newton (msec) = " << exec_time << std::endl;
             std::cout << "kmeans time (msec) = " << kmeans_time << std::endl;
-            std::cout << "total time (msec) = " << grbropt_time + kmeans_time << std::endl;
+            std::cout << "Exclusive Newon (msec) = " << exec_time - io_time - grb_time << std::endl;
+            std::cout << "total time (msec) = " << grbropt_time + kmeans_time + exec_time + prob_time  << std::endl;
 
 
             return SUCCESS;
