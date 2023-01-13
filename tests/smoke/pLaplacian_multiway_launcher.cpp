@@ -26,7 +26,7 @@ struct input {
 	bool direct;
 	bool unweighted;
 	size_t num_clusters;
-	// size_t rep;
+	bool p_eq2 = false;
 };
 
 struct output {
@@ -136,6 +136,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	float final_p = 1.1;          // final value of p
 	float factor_reduce = 0.9;    // reduction factor for the value of p
 	const double print_eigen = 0; // print eigenvectors and input matrices
+	if(data_in.p_eq2) final_p = 2;
 
 	// Load the arma-eigenvecs from a txt file (Debug file)
 	// std::ifstream file(data_in.eigfile);
@@ -226,7 +227,7 @@ int main( int argc, char ** argv ) {
 	std::cout << "@@@@  ================================ @@@ " << std::endl << std::endl;
 
 	// sanity check
-	if( argc < 6 || argc > 7 ) {
+	if( argc < 6 || argc > 8 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> <weighted/unweighted> <out_filename> <eigen_filename> <num_clusters> " << std::endl;
 		std::cout << " -------------------------------------------------------------------------------- " << std::endl;
 		// std::cout << "Usage: " << argv[0] << " <dataset> <direct/indirect> (inner iterations) (outer iterations)\n";
@@ -282,6 +283,13 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
+	if( argc > 6 ) {
+		if( strcmp(argv[ 6 ], "-p") == 0 ) {
+			in.p_eq2 = true;
+		}else{
+			std::cerr << "Could not parse argument " << argv[ 6 ] << " for p=2 option." << std::endl;
+		}
+	}
 	/*
 	//get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();

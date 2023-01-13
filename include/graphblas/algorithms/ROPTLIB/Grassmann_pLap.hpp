@@ -137,7 +137,7 @@ namespace ROPTLIB
             
             grb::set( vec_aux, 0 );
 
-            //grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
+            grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
             grb::vxm(vec_aux, ones, BUF, reals_ring);
             grb::dot(s, vec_aux, ones, reals_ring);
 
@@ -468,7 +468,7 @@ namespace ROPTLIB
 			
             // convert to k Graphblas vectors
             timer.reset();
-            ROPTLIBtoGRB(x, Columns);
+            //ROPTLIBtoGRB(x, Columns);
             // for (size_t l = 0; l < k; ++l)
             // {
             //     for (const auto &pair : *Columns[l])

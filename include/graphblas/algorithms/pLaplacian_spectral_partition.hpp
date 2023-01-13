@@ -235,24 +235,15 @@ namespace grb
 
             ROPTLIB::Variable GrassInit(n, k);
             double *temp = GrassInit.ObtainWriteEntireData();
-            for (int i = 0; i < n * k; i++)
-            {
-               // temp[i] = V_mem[i]; // Use the input at p = 2 as initial guess
-            }
-            // std::cout << "ARMA Initial Guess" << std::endl;
-            // std::cout << "-------------" << std::endl;
-            //std::cout << GrassInit << std::endl;
-            //std::cin.get();
+
+            std::cout << "---------------------" << std::endl;
+            std::cout << "Calculating eigenvecs" << std::endl;
+            std::cout << "---------------------" << std::endl << std::endl;
 
              //generate sparse matrix
             sp_mat A = sp_mat(n, n);
-            //sp_mat A = B.t()*B;
-            std::cout << "-------------" << std::endl;
-            std::cout << "|The ARMA eigenvecs|" << std::endl;
-            //V.brief_print("Eigenvectors of the graph Laplacian"); // arma print
-            std::cout << "-------------" << std::endl;
 
-            // B.brief_print("input matrix A");
+
             vec eigval;
             mat eigvec;
 
@@ -266,8 +257,10 @@ namespace grb
             opts.maxiter = 10000;
             opts.tol     = 1e-5;
             // find the k smallest eigvals/eigvecs
-            bool a = arma::eigs_sym(eigval, eigvec, A, k, "sm", opts);
-            std::cout << "A: " << a << std::endl; 
+            arma::eigs_sym(eigval, eigvec, A, k, "sm", opts);
+            std::cout << "-------------" << std::endl;
+            std::cout << "|The ARMA eigenvecs|" << std::endl;
+            std::cout << "-------------" << std::endl;            
             eigval.brief_print("Eigvals");
             eigvec.brief_print("Eigenvectors of the graph Laplacian"); // arma print
             for (int i = 0; i < n * k; i++)
@@ -302,6 +295,10 @@ namespace grb
             //p = p / factor;
             do
             {
+                if(final_p == 2){
+                    Optimizer = GrassInit;
+                    break;
+                }
                 p = std::max(factor * p, final_p);
                 ++iter;
 
@@ -370,11 +367,6 @@ namespace grb
                 grb_time += Prob.getGRBtime();
                 grbropt_time += timer.time();
 
-                //const double * OPtr = Optimizer.ObtainReadData();
-                //for ( size_t i = 0; i < n*k; ++i ) {
-                //    if ( i%n == 0 ) std::cout << std::endl;
-                //    std::cout << OPtr[ i ] << " ";
-                //}
 
                 // std::cout << "----------------------" << std::endl;
                 // std::cout << "solution at p:" << p << std::endl;
@@ -387,7 +379,7 @@ namespace grb
 
             } while (p > final_p);
 
-            timer.reset();
+            //timer.reset();
 
             // place the optimiser into the rows of a graphblas matrix for kmeans classification
             const double *OptPtr = Optimizer.ObtainReadData();
@@ -448,7 +440,7 @@ namespace grb
 
             grb::buildMatrixUnique(X, I, J, OptPtr, n * k, SEQUENTIAL);
 
-            io_time += timer.time();
+            //io_time += timer.time();
 
             timer.reset();
 
@@ -508,10 +500,10 @@ namespace grb
             std::cout << "conversion time (msec) = " << io_time << std::endl;
             std::cout << "grb time (msec) = " << grb_time << std::endl;
             std::cout << "misc time (msec) = " << grbropt_time << std::endl;
-            std::cout << "Problem time (msec) = " << prob_time << std::endl;
+            std::cout << "problem time (msec) = " << prob_time << std::endl;
             std::cout << "execution time Newton (msec) = " << exec_time << std::endl;
             std::cout << "kmeans time (msec) = " << kmeans_time << std::endl;
-            std::cout << "Exclusive Newon (msec) = " << exec_time - io_time - grb_time << std::endl;
+            std::cout << "exclusive Newon time (msec) = " << exec_time - io_time - grb_time << std::endl;
             std::cout << "total time (msec) = " << grbropt_time + kmeans_time + exec_time + prob_time  << std::endl;
 
 
