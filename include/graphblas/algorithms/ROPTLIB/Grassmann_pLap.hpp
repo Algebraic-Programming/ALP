@@ -76,19 +76,14 @@ namespace ROPTLIB
                     std::cin.get();
                 }
                                 //Check if same
-                if(!updated && grb_x == Columns){
-                    if(grb::nnz(*(grb_x[i])) != grb::nnz(*(Prev[i]))){
-                        mats[i] = false;
-                    } else {
-                        for (size_t j = 0; j < n; j++)
-                        {
-                            if((*(grb_x[i]))[j] != (*(Prev[i]))[j]){
-                                mats[i] = false;
-                                break;
-                            }
+                if(grb_x == Columns){
 
+                    for (size_t j = 0; j < n; j++)
+                    {
+                        if((*(grb_x[i]))[j] != (*(Prev[i]))[j]){
+                            mats[i] = false;
+                            break;
                         }
-
                     }
                     grb::set(*(Prev[i]), *(grb_x[i]));
                 }
@@ -202,6 +197,7 @@ namespace ROPTLIB
             Columns.resize(k);
             Etax.resize(k);
             Res.resize(k);
+            Prev.resize(k);
             Diag.resize(k);
     		UiUj.resize( k );
     		Hess.resize( k );
@@ -218,6 +214,7 @@ namespace ROPTLIB
                 Columns[i] = new grb::Vector<double>(n);
                 Etax[i] = new grb::Vector<double>(n);
                 Res[i] = new grb::Vector<double>(n);
+                Prev[i] = new grb::Vector<double>(n);
                 Diag[i] = new grb::Vector<double>(n);
    				UiUj[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
    				Hess[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
