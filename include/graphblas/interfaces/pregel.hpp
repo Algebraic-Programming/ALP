@@ -39,21 +39,22 @@
  * vertex to the destination vertex only. Each vertex program sends the same
  * message to all of its neighbours -- i.e., it broadcasts a single given
  * message. In ALP/Pregel, incoming messages are furthermore \em accumulated
- * using a #grb::Monoid. The accumulated incoming messages may be used in the
- * next round the program executes.
+ * using a #grb::Monoid. The accumulation of incoming messages is typically used
+ * by the vertex-centric program during the next round it executes.
  *
  * Pregel programs thus execute on a given graph, and hence constructing a
  * #grb::interfaces::Pregel instance requires passing input iterators
- * corresponding to the graph on which ALP/Pregel programs are executed, when
- * using the constructed instance. The Pregel instance allows changing the type
- * of edge weights, provided that the nonzero value types of the input iterators
- * can be cast to the provided edge weight type.
+ * corresponding to the graph on which ALP/Pregel programs are executed. Such an
+ * instance logically corresponds to an execution engine of vertex-centric
+ * programs <em>for a specific graph</em>. Multiple #grb::interfaces::Pregel
+ * instances, each potentially built using a different input graph, may exist
+ * simultaneously.
  *
  * ALP/Pregel programs then are executed using #grb::interfaces::Pregel::execute.
- * The first \em template argument to this function is the binary operator of the
+ * The first template argument to this function is the binary operator of the
  * monoid to be used for accumalating incoming messages, while the second
- * template argument corresponds to its identities-- see #grb::operators and
- * #grb::identities for examle operator and identities. The remainder template
+ * template argument corresponds to its identity-- see #grb::operators and
+ * #grb::identities for example operator and identities. The remainder template
  * arguments to #grb::interfaces::Pregel::execute are automatically inferred.
  *
  * The first non-template argument is the vertex-centric program, for example,
@@ -71,9 +72,14 @@
  * of an ALP/Pregel algorithm that has non-trivial algorithm parameters is
  * #grb::algorithms::pregel::PageRank: #grb::algorithms::pregel::PageRank::Data.
  * 
- * The type of the 5th argument to #grb::interfaces::Pregel::execute is
- * #grb::interfaces::PregelState-- some of the ALP/Pregel state fields are
- * read-only (e.g., the current round number), while others are read-write.
+ * The type of the 5th argument to #grb::interfaces::Pregel::execute is an
+ * instance of #grb::interfaces::PregelState. Some of the ALP/Pregel state
+ * fields are read-only, such as the current round number
+ * #grb::interfaces::PregelState::round, while others are read-write.
+ * Please see the corresponding documentation for what read-only states may be
+ * inspected during program execution. Some fields are global (such as again the
+ * current round number), while others are specific to the vertex a program is
+ * running on (such as #grb::interfaces::PregelState::indegree).
  *
  * Read-write ALP/Pregel state is used for determining termination conditions.
  * There are two associated flags:
@@ -81,21 +87,19 @@
  *  2. #grb::interfaces::PregelState::voteToHalt.
  *
  * Each vertex has its own state of these two flags, with the defaults being
- * <tt>true</tt> for the former flag, and <tt>false</tt> for the latter flag.
+ * <tt>true</tt> for the former and <tt>false</tt> for the latter.
  *
- * If, within any round, a vertex sets its former flag to <tt>false</tt>, that
- * vertex will not participate in any future rounds. For any neighbouring
- * vertices it shall be as though the inactive vertex keeps broadcasting the
- * identity of the given accumulation monoid.
+ * If, by the end of any round, a vertex sets its <tt>active</tt> flag to
+ * <tt>false</tt>, that vertex will not participate in any future rounds. For
+ * any neighbouring vertices it shall be as though the inactive vertex keeps
+ * broadcasting the identity of the given accumulation monoid.
  *
  * If at the end of any round all vertices are inactive, the program terminates.
- * Similarly, if during a round all vertices have the latter flag set to
- * <tt>true</tt>, the Pregel program terminates as well.
+ * Similarly, if by the end of a round \em all vertices have the
+ * <tt>voteToHalt</tt> flag set to <tt>true</tt>, then that Pregel program
+ * terminates as well.
  *
- * These termination controls are the only read-write fields in
- * #grb::interfaces::PregelState fields -- all other fields are read-only.
- * Please see the corresponding documentation for what states may be inspected
- * during program execution.
+ * \par Using vertex-centric algorithms
  *
  * By convention, ALP/Pregel algorithms allow for a simplified way of executing
  * them that does not require the Pregel algorithm user to pass the right monoid
@@ -112,6 +116,25 @@
  *
  * All pre-defined ALP/Pregel algorithms reside in the #grb::algorithms::pregel
  * namespace.
+ *
+ * \par Configuration settings
+ *
+ * The ALP/Pregel run-time system manages state for every vertex in the
+ * underlying graph. The execution time of a single round is always proportional
+ * to the number of active vertices. Since inactive vertices stay inactive in
+ * subsequent rounds, their state could be erased. This has two \em potential
+ * benefits:
+ *  1. it \em may (depending on the used backend's performance semantics) reduce
+ *     memory use; and/or
+ *  2. it \em may result in faster execution (depending on the used backend's
+ *     performance semantics).
+ *
+ * We may opt to always attempt to <i>sparsify</i> state, use some heuristic to
+ * determine when to sparsify, or just simply never attempt such sparsification.
+ *
+ * This choice is configurable via #grb::interfaces::config::out_sparsify; see
+ * #grb::interfaces::config::SparsificationStrategy for options and more
+ * details.
  *
  * @}
  */
@@ -143,43 +166,63 @@ namespace grb {
 			 */
 			enum SparsificationStrategy {
 
-				/** No sparsification. */
+				/**
+				 * No sparsification of internal and user-defined vertex states, beyond that
+				 * which is necessary to bound the run-time by the number of active
+				 * vertices.
+				 */
 				NONE = 0,
 
 				/**
-				 * Always applies the sparsification procedure.
+				 * Always applies the sparsification procedure on both internal and user-
+				 * defined vertex states.
 				 *
 				 * Does not consider whether the resulting operation would reduce the number
-				 * of vertex entries. This variant was tested against #NONE for
-				 * #out_sparsify, and found to be slower always.
+				 * of vertex entries.
 				 *
-				 * This strategy necessarily always applied on the Pregel::ActiveVertices
-				 * vector.
+				 * This variant was tested against #NONE for #out_sparsify, and found to be
+				 * slower always.
+				 *
+				 * \internal This strategy necessarily always applied on the
+				 *           #Pregel::ActiveVertices vector.
 				 */
 				ALWAYS,
 
 				/**
 				 * Sparsify only when the resulting vector would indeed be sparser.
 				 *
+				 * While this sounds like it should be a minimal condition to check for
+				 * before applying sparsification, this check itself comes at non-trivial
+				 * overhead for any backend. The performance of this strategy versus
+				 * #ALWAYS hence is a trade-off, one that varies with underlying graphs
+				 * as well as with the vertex-centric program chosen.
+				 *
+				 * \internal
 				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
 				 * \todo This variant has never been exhaustively tested for
 				 *       \a out_sparsify.
+				 * \endinternal
 				 */
 				WHEN_REDUCED,
 
 				/**
 				 * Sparsify only when the resulting vector would have half (or less) its
-				 * current number of nonzeroes.
+				 * current number of nonzeroes. This is a simple heuristic that balances
+				 * the trade-off of \em applying sparsification by amortising its overhead.
+				 * The overhead described at #WHEN_REDUCED corresponding to determining the
+				 * gain of sparsification, however, remains the same.
 				 *
+				 * \internal
 				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
 				 * \todo This variant has never been exhaustively tested for
 				 *       \a out_sparsify.
+				 * \endinternal
 				 */
 				WHEN_HALVED
 
@@ -189,8 +232,10 @@ namespace grb {
 			 * What sparsification strategy should be applied to the outgoing
 			 * messages.
 			 *
+			 * \internal
 			 * Only #NONE and #ALWAYS have been tested, with #NONE being faster on all
 			 * test cases.
+			 * \endinternal
 			 *
 			 * \ingroup Pregel
 			 */
