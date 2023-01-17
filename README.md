@@ -124,12 +124,15 @@ In more detail, the steps to follow are:
 
     b. the option to automatically download them.
 
-6. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make docs`. This
-   generates both
+6. (*Optional*) To make the ALP/GraphBLAS documentation, issue `make userdocs`.
+   This generates both
 
-    a. a PDF in `<ALP/GraphBLAS build dir>/docs/code/latex/refman.pdf`, and
+    a. LaTeX in `<ALP/GraphBLAS build dir>/docs/user/latex/refman.tex`, and
 
-    b. HTML in `<ALP/GraphBLAS build dir>/docs/code/html/index.html`.
+    b. HTML in `<ALP/GraphBLAS build dir>/docs/user/html/index.html`.
+
+   To build a PDF from the LaTeX sources, cd into the directory mentioned, and
+   issue `make`.
 
 7. (*Optional*) Issue `make -j smoketests` to run a quick set of functional
    tests. Please scan the output for any failed tests.
@@ -290,7 +293,12 @@ The following table lists the main build targets of interest:
 | `perftests`           | builds and runs all available performance tests   |
 | `tests`               | builds and runs all available unit, smoke, and    |
 |                       | performance tests                                 |
-| `docs`                | builds HTML and LaTeX code and API documentation  |
+| `userdocs`            | builds HTML and LaTeX documentation corresponding |
+|                       | to the public ALP API                             |
+| `devdocs`             | builds HTML and LaTeX code documentation for      |
+|                       | developers of the ALP internals                   |
+| `docs`                | build both the user and developer code            |
+|                       | documentation                                     |
 
 For more information about the testing harness, please refer to the
 [related documentation](tests/Tests.md).
