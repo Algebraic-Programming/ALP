@@ -108,8 +108,8 @@
  * generating values in a third output vector (\f$ z = x \odot y \f$,
  * #grb::eWiseApply), or may be as rich as multiplying two matrices together
  * whose result is to be added in-place to a third matrix
- * (\f$ C \into C + AB \f$, #grb::mxm). The latter is typically deemed richer
- * since it requires a semiring structure rather than a more basic binary
+ * (\f$ C \leftarrow C + AB \f$, #grb::mxm). The latter is typically deemed
+ * richer since it requires a semiring structure rather than a more basic binary
  * operator.
  *
  * Primitives are grouped according to their classical BLAS levels:
