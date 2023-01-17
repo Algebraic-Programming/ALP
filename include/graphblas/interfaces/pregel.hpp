@@ -23,6 +23,97 @@
  *
  * @author A. N. Yzelman
  * @date 2022
+ *
+ * \defgroup Pregel ALP/Pregel
+ * @{
+ *
+ * @brief ALP/Pregel enables vertex-centric programming.
+ *
+ * \par API introduction
+ *
+ * With vertex-centric programming, graph algorithms are written from the
+ * perspective of a vertex within an input graph. Each vertex executes a program
+ * on a round-by-round basis, while between rounds all vertex programs pass
+ * messages to neighbour vertices using the edges of the input graph. Edges may
+ * be directed or undirected; in the former, messages travel from the source
+ * vertex to the destination vertex only. Each vertex program sends the same
+ * message to all of its neighbours -- i.e., it broadcasts a single given
+ * message. In ALP/Pregel, incoming messages are furthermore \em accumulated
+ * using a #grb::Monoid. The accumulated incoming messages may be used in the
+ * next round the program executes.
+ *
+ * Pregel programs thus execute on a given graph, and hence constructing a
+ * #grb::interfaces::Pregel instance requires passing input iterators
+ * corresponding to the graph on which ALP/Pregel programs are executed, when
+ * using the constructed instance. The Pregel instance allows changing the type
+ * of edge weights, provided that the nonzero value types of the input iterators
+ * can be cast to the provided edge weight type.
+ *
+ * ALP/Pregel programs then are executed using #grb::interfaces::Pregel::execute.
+ * The first \em template argument to this function is the binary operator of the
+ * monoid to be used for accumalating incoming messages, while the second
+ * template argument corresponds to its identities-- see #grb::operators and
+ * #grb::identities for examle operator and identities. The remainder template
+ * arguments to #grb::interfaces::Pregel::execute are automatically inferred.
+ *
+ * The first non-template argument is the vertex-centric program, for example,
+ * #grb::algorithms::pregel::ConnectedComponents-- a vertex-centric program in
+ * ALP/GraphBLAS hence is a class where the program is given as a public static
+ * function named \em program. This function takes five arguments:
+ *  1. the current state of the vertex (read-write),
+ *  2. the incoming message (after accumulation, read only),
+ *  3. the outgoing message (read-write),
+ *  4. the global program parameters (read only), and
+ *  5. the Pregel interface state (read only and read-write).
+ *
+ * The types of arguments 1-4 are defined by the program, but must be plain old
+ * data (POD) types-- similar to the requirements of an ALP operator. An example
+ * of an ALP/Pregel algorithm that has non-trivial algorithm parameters is
+ * #grb::algorithms::pregel::PageRank: #grb::algorithms::pregel::PageRank::Data.
+ * 
+ * The type of the 5th argument to #grb::interfaces::Pregel::execute is
+ * #grb::interfaces::PregelState-- some of the ALP/Pregel state fields are
+ * read-only (e.g., the current round number), while others are read-write.
+ *
+ * Read-write ALP/Pregel state is used for determining termination conditions.
+ * There are two associated flags:
+ *  1. #grb::interfaces::PregelState::active, and
+ *  2. #grb::interfaces::PregelState::voteToHalt.
+ *
+ * Each vertex has its own state of these two flags, with the defaults being
+ * <tt>true</tt> for the former flag, and <tt>false</tt> for the latter flag.
+ *
+ * If, within any round, a vertex sets its former flag to <tt>false</tt>, that
+ * vertex will not participate in any future rounds. For any neighbouring
+ * vertices it shall be as though the inactive vertex keeps broadcasting the
+ * identity of the given accumulation monoid.
+ *
+ * If at the end of any round all vertices are inactive, the program terminates.
+ * Similarly, if during a round all vertices have the latter flag set to
+ * <tt>true</tt>, the Pregel program terminates as well.
+ *
+ * These termination controls are the only read-write fields in
+ * #grb::interfaces::PregelState fields -- all other fields are read-only.
+ * Please see the corresponding documentation for what states may be inspected
+ * during program execution.
+ *
+ * By convention, ALP/Pregel algorithms allow for a simplified way of executing
+ * them that does not require the Pregel algorithm user to pass the right monoid
+ * to #grb::interfaces::Pregel::execute each time they call one, such as, for
+ * example,
+ *  - #grb::algorithms::pregel::ConnectedComponents::execute, or
+ *  - #grb::algorithms::pregel::PageRank::execute.
+ *
+ * These functions only take the Pregel instance that is to execute the Pregel
+ * program, as well as a vector of initial states as mandatory input. As usual,
+ * optional parameters indicate the maximum number of rounds allotted to the
+ * program (zero for unbounded), and where to write back the number of rounds
+ * after which the program has terminated (<tt>NULL</tt> for no write back).
+ *
+ * All pre-defined ALP/Pregel algorithms reside in the #grb::algorithms::pregel
+ * namespace.
+ *
+ * @}
  */
 
 #ifndef _H_GRB_INTERFACES_PREGEL
@@ -39,14 +130,16 @@ namespace grb {
 	namespace interfaces {
 
 		/**
-		 * Namespace that contains configurations for programming models that are
-		 * simulated on top of ALP/GraphBLAS.
+		 * Contains configurations for programming models that are simulated on top of
+		 * ALP/GraphBLAS.
 		 */
 		namespace config {
 
 			/**
 			 * The set of sparsification strategies supported by the ALP/Pregel
 			 * interface.
+			 *
+			 * \ingroup Pregel
 			 */
 			enum SparsificationStrategy {
 
@@ -98,6 +191,8 @@ namespace grb {
 			 *
 			 * Only #NONE and #ALWAYS have been tested, with #NONE being faster on all
 			 * test cases.
+			 *
+			 * \ingroup Pregel
 			 */
 			constexpr const SparsificationStrategy out_sparsify = NONE;
 
@@ -118,6 +213,8 @@ namespace grb {
 		 *    #PregelState::outdegree, and #PregelState::vertexID.
 		 *  - modifiable vertex-centric state: #PregelState::voteToHalt, and
 		 *    #PregelState::active.
+		 *
+		 * \ingroup Pregel
 		 */
 		struct PregelState {
 
@@ -187,6 +284,8 @@ namespace grb {
 		 * Pregel wraps around graph data and executes computations on said graph. A
 		 * runtime thus is constructed from graph, and enables running any Pregel
 		 * algorithm on said graph.
+		 *
+		 * \ingroup Pregel
 		 */
 		template<
 			typename MatrixEntryType

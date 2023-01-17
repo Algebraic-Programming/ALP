@@ -36,7 +36,7 @@
  *
  * ALP presently exposes the following interfaces:
  *  -# generalised sparse linear algebra, \ref GraphBLAS;
- *  -# vertex-centric programming, ALP/Pregel.
+ *  -# vertex-centric programming, \ref Pregel.
  *
  * Several other programming interfaces are under design at present.
  *

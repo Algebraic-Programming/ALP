@@ -47,6 +47,8 @@ namespace grb {
 			 * @tparam localConverge Whether vertices become inactive once their local
 			 *                       scores have converged, or whether to terminate only
 			 *                       when all vertices have converged.
+			 *
+			 * \ingroup Pregel
 			 */
 			template< typename IOType, bool localConverge >
 			struct PageRank {

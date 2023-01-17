@@ -41,6 +41,8 @@ namespace grb {
 			 *
 			 * @tparam VertexIDType A type large enough to assign an ID to each vertex
 			 *                      in the graph the algorithm is to run on.
+			 *
+			 * \ingroup Pregel
 			 */
 			template< typename VertexIDType >
 			struct ConnectedComponents {
