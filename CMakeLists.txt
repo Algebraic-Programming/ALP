@@ -236,7 +236,7 @@ add_custom_command( OUTPUT "${DOCS_DIR}"
 	VERBATIM
 	#USES_TERMINAL
 )
-add_custom_target( docs DEPENDS "${DOCS_DIR}" )
+add_custom_target( devdocs DEPENDS "${DOCS_DIR}" )
 
 set( PUBLIC_DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/user" )
 add_custom_command( OUTPUT "${PUBLIC_DOCS_DIR}"
@@ -246,6 +246,9 @@ add_custom_command( OUTPUT "${PUBLIC_DOCS_DIR}"
 	COMMENT "producing public code documentation in ${PUBLIC_DOCS_DIR}"
 	VERBATIM
 )
+add_custom_target( userdocs DEPENDS "${PUBLIC_DOCS_DIR}" )
+add_custom_target( docs )
+add_dependencies( docs userdocs devdocs )
 
 message( "Compiling with the following backends: ${AVAILABLE_BACKENDS}\n" )
 
