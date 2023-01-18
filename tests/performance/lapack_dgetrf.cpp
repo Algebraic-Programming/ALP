@@ -89,30 +89,20 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	double times;
 
 
-	std::cout << "Testing dgesvd_  ( " << M << " x " << N << " )\n";
+	std::cout << "Testing dgetrf_ ( " << M << " x " << N << " )\n";
 	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
-	char jobu = 'A';
-	char jobvt = 'A';
 	std::vector< ScalarType > mat_a( M * N );
 	generate_vec_or_spd_matrix_full( M * N, mat_a );
-	std::vector< ScalarType > vec_s( std::min( M, N ) );
-	std::vector< ScalarType > mat_u( M * M );
-	std::vector< ScalarType > mat_vt( N * N );
-	ScalarType wopt;
-	int lwork = -1;
+	std::vector< int > vec_ipiv( std::min( M, N ) );
 	int info;
-	
-	dgesvd_(&jobu, &jobvt, &M, &N, &( mat_a[0] ), &M, &( vec_s[0] ), &( mat_u[0] ), &M, &( mat_vt[0] ), &N, &wopt, &lwork, &info);
-	lwork = (int)wopt;
-	std::vector< ScalarType > work( lwork );
-	
+
 	times = 0;
 
 	for( size_t j = 0; j < unit.repeat; ++j ) {
 	  std::vector< ScalarType > mat_a_work( mat_a );
 	  timer.reset();
-	  dgesvd_(&jobu, &jobvt, &M, &N, &( mat_a_work[0] ), &M, &( vec_s[0] ), &( mat_u[0] ), &M, &( mat_vt[0] ), &N, &( work[0] ), &lwork, &info);
+	  dgetrf_( &M, &N, &( mat_a_work[0] ),  &M, &( vec_ipiv[0] ), &info );
 	  times += timer.time();
 	  if( info != 0 ) {
 	    std::cout << " info = " << info << "\n";
