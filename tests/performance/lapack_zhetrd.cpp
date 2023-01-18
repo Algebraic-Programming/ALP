@@ -86,8 +86,8 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	int lwork = -1;
 	int info;
 	
-	zhetrd_(&uplo, &N, &( static_cast< lapack_complex_double >( mat_a[0] ) ), &N, 
-		&( vec_d[0] ), &( vec_e[0] ), &( static_cast< lapack_complex_double >( vec_tau[0] ) ), &( static_cast< lapack_complex_double >( wopt ) ), &lwork, &info);
+	zhetrd_(&uplo, &N, ( lapack_complex_double * )( &( mat_a[0] ) ), &N, 
+		&( vec_d[0] ), &( vec_e[0] ), ( lapack_complex_double * )( &( vec_tau[0] ) ), ( lapack_complex_double * )( &( wopt ) ), &lwork, &info);
 	lwork = (int)( wopt.real() );
 	std::vector< ScalarType > work( lwork );
 	
@@ -96,7 +96,8 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	for( size_t j = 0; j < unit.repeat; ++j ) {
 	  std::vector< ScalarType > mat_a_work( mat_a );
 	  timer.reset();
-	//   zhetrd_(&uplo, &N, &( mat_a_work[0] ), &N, &( vec_d[0] ), &( vec_e[0] ), &( vec_tau[0] ), &( work[0] ), &lwork, &info);
+	  zhetrd_(&uplo, &N, ( lapack_complex_double * )( &( mat_a_work[0] ) ), &N, 
+	  	&( vec_d[0] ), &( vec_e[0] ), ( lapack_complex_double * )( &( vec_tau[0] ) ), ( lapack_complex_double * )( &( work[0] ) ), &lwork, &info);
 	  times += timer.time();
 	  if( info != 0 ) {
 	    std::cout << " info = " << info << "\n";
