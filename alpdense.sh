@@ -65,16 +65,16 @@ SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 # To compile and run the LAPACK-based tests (not ALP code).
 # Here you can use gcc flags, i.e. "-L/path/tolapack/ -llapack" (or simply " -llapack" to use system installed lapack library).
 KBLAS_LIB=$BLAS_ROOT/lib/kblas/locking
-USECASES=(dstedc dsyevd)
+USECASES=("dstedc" "dsyevd")
 
-for USECASE in ${USECASES[@]}
+for USECASE in "${USECASES[@]}"
 do
-    install/bin/grbcxx -o $USECASE_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_$USECASE.cpp $LAPACK_LIB/liblapack.a $KBLAS_LIB/libkblas.so -Wl,-rpath $KBLAS_LIB -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
+    install/bin/grbcxx -o ${USECASE}_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_${USECASE}.cpp $LAPACK_LIB/liblapack.a $KBLAS_LIB/libkblas.so -Wl,-rpath $KBLAS_LIB -I$LAPACK_INCLUDE -lgfortran || ( echo "Compiling ${USECASE} failed" &&  exit 1 )
 done
 
-for USECASE in ${USECASES[@]}
+for USECASE in "${USECASES[@]}"
 do
-    ./$USECASE_lapack_reference.exe -n 100 -repeat 10 || ( echo "test failed" &&  exit 1 )
+    ./${USECASE}_lapack_reference.exe -n 100 -repeat 10 || ( echo "test ${USECASE} failed" &&  exit 1 )
 done
 
 ####################

@@ -113,7 +113,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	  std::vector< ScalarType > mat_a_work( mat_a );
 	  std::vector< ScalarType > vec_w_work( vec_w );
 	  timer.reset();
-	  dsyevd_(&jobz, &uplo, &N, &( mat_a[0] ), &N, &( vec_w[0] ), &wopt, &lwork, &iwopt, &liwork, &info);
+	  dsyevd_(&jobz, &uplo, &N, &( mat_a_work[0] ), &N, &( vec_w_work[0] ), &( work[0] ), &lwork, &( iwork[0] ), &liwork, &info);
 	  times += timer.time();
 	  if( info != 0 ) {
 	    std::cout << " info = " << info << "\n";
