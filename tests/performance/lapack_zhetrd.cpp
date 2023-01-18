@@ -87,7 +87,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	int info;
 	
 	zhetrd_(&uplo, &N, &( mat_a[0] ), &N, &( vec_d[0] ), &( vec_e[0] ), &( vec_tau[0] ), &wopt, &lwork, &info);
-	lwork = (int)(wopt.real);
+	lwork = (int)( wopt.real() );
 	std::vector< ScalarType > work( lwork );
 	
 	times = 0;
