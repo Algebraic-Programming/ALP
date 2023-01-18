@@ -58,6 +58,7 @@ All tests discussed below are collected in the `$ALP_SOURCE/tests/smoke` and `$A
 # Dependencies 
 
 For all tests below, the standard ALP dependencies are required:
+- gfortran: -lgfortran
 - LibNUMA: -lnuma
 - Standard math library: -lm
 - POSIX threads: -lpthread
@@ -85,6 +86,7 @@ From `$ALP_SOURCE/build` run:
 
 ```
 cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 ```
 
@@ -104,6 +106,23 @@ Timing of blocked inplace version with bs = 64.
  time (ms, per repeat) = 3.60873
 Test OK
 
+```
+
+To compare with LAPACK+KunpengBLAS (not ALP code) you may run the following:
+
+```
+KBLAS_LIB=$BLAS_ROOT/lib/kblas/locking
+USECASES=("dstedc" "dsyevd" "dsytrd" "zhetrd" "dgeqrf" "dgesvd" "dgetrf" "dpotri")
+
+for USECASE in "${USECASES[@]}"
+do
+    install/bin/grbcxx -o ${USECASE}_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_${USECASE}.cpp $LAPACK_LIB/liblapack.a $KBLAS_LIB/libkblas.so -Wl,-rpath $KBLAS_LIB -I$LAPACK_INCLUDE -lgfortran || ( echo "Compiling ${USECASE} failed" &&  exit 1 )
+done
+
+for USECASE in "${USECASES[@]}"
+do
+    ./${USECASE}_lapack_reference.exe -n 100 -repeat 20 || ( echo "test ${USECASE} failed" &&  exit 1 )
+done
 ```
 
 # Sequential Cholesky Decomposition Tests (optimized)
