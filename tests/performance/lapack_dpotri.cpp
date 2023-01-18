@@ -88,7 +88,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	double times;
 
 
-	std::cout << "Testing dgetrf_ ( " << N << " x " << N << " )\n";
+	std::cout << "Testing dpotri_ ( " << N << " x " << N << " )\n";
 	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
 	char uplo = 'U';
