@@ -87,32 +87,29 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	double times;
 
 
-	std::cout << "Testing dsyevd_  ( " << N << " x " << N << " )\n";
+	std::cout << "Testing dsytrd_  ( " << N << " x " << N << " )\n";
 	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
-	char jobz = 'V';
 	char uplo = 'U';
 	std::vector< ScalarType > mat_a( N * N );
 	generate_vec_or_spd_matrix_full( N, mat_a );
-	std::vector< ScalarType > vec_w( N );
+	std::vector< ScalarType > vec_d( N );
+	std::vector< ScalarType > vec_e( N - 1 );
+	std::vector< ScalarType > vec_tau( N - 1 );
 	ScalarType wopt;
 	int lwork = -1;
-	int iwopt;
-	int liwork = -1;
 	int info;
 	
-	dsyevd_(&jobz, &uplo, &N, &( mat_a[0] ), &N, &( vec_w[0] ), &wopt, &lwork, &iwopt, &liwork, &info);
+	dsytrd_(&uplo, &N, &( mat_a[0] ), &N, &( vec_d[0] ), &( vec_e[0] ), &( vec_tau[0] ), &wopt, &lwork, &info);
 	lwork = (int)wopt;
 	std::vector< ScalarType > work( lwork );
-	liwork = iwopt;
-	std::vector< int > iwork( liwork );
 	
 	times = 0;
 
 	for( size_t j = 0; j < unit.repeat; ++j ) {
 	  std::vector< ScalarType > mat_a_work( mat_a );
 	  timer.reset();
-	  dsyevd_(&jobz, &uplo, &N, &( mat_a_work[0] ), &N, &( vec_w[0] ), &( work[0] ), &lwork, &( iwork[0] ), &liwork, &info);
+	  dsytrd_(&uplo, &N, &( mat_a_work[0] ), &N, &( vec_d[0] ), &( vec_e[0] ), &( vec_tau[0] ), &( work[0] ), &lwork, &info);
 	  times += timer.time();
 	  if( info != 0 ) {
 	    std::cout << " info = " << info << "\n";
