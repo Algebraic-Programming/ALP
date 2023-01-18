@@ -89,7 +89,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	std::cout << "Testing dpotrf_ for U^T * U = S, with S SPD of size ( " << N << " x " << N << " )\n";
 	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
-	char uplo='L';
+	char uplo='U';
 	int info;
 
 	times = 0;
