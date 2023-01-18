@@ -65,7 +65,7 @@ SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 # To compile and run the LAPACK-based tests (not ALP code).
 # Here you can use gcc flags, i.e. "-L/path/tolapack/ -llapack" (or simply " -llapack" to use system installed lapack library).
 KBLAS_LIB=$BLAS_ROOT/lib/kblas/locking
-USECASES=("dstedc" "dsyevd" "dsytrd" "zhetrd" "dgeqrf")
+USECASES=("dstedc" "dsyevd" "dsytrd" "zhetrd" "dgeqrf", "dgesvd")
 
 for USECASE in "${USECASES[@]}"
 do
