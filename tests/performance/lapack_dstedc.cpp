@@ -47,7 +47,7 @@ void print(const char * name, const double* matrix, int N)
 }
 
 
-//** gnerate upper/lower triangular part of a SPD matrix */
+//** generate vector or upper/lower triangular part of an SPD matrix */
 template< typename T >
 void generate_vec_or_spd_matrix_full( size_t N, std::vector<T> &data ) {
 	if( data.size() == N ) {
@@ -87,7 +87,7 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	double times;
 
 
-	std::cout << "Testing dpotrf_ for U^T * U = S, with S SPD of size ( " << N << " x " << N << " )\n";
+	std::cout << "Testing dstedc_  ( " << N << " x " << N << " )\n";
 	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
 	char compz='I';
