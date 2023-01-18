@@ -4,6 +4,7 @@
 #    Running performance tests of the ALP/Dense shared memory backend with dispatch to BLAS (aka alp_omp).
 
 # For all tests below standard ALP dependencies are required:
+#    gfortran: -lgfortran
 #    LibNUMA: -lnuma
 #    Standard math library: -lm
 #    POSIX threads: -lpthread
@@ -58,7 +59,23 @@ fi
 # This tests are collected and run as ALP smoketests as follows:
 
 cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
+
+# To compile and run the LAPACK-based tests (not ALP code).
+# Here you can use gcc flags, i.e. "-L/path/tolapack/ -llapack" (or simply " -llapack" to use system installed lapack library).
+KBLAS_LIB=$BLAS_ROOT/lib/kblas/locking
+USECASES=(dstedc dsyevd)
+
+for USECASE in ${USECASES[@]}
+do
+    install/bin/grbcxx -o $USECASE_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_$USECASE.cpp $LAPACK_LIB/liblapack.a $KBLAS_LIB/libkblas.so -Wl,-rpath $KBLAS_LIB -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
+done
+
+for USECASE in ${USECASES[@]}
+do
+    ./$USECASE_lapack_reference.exe -n 100 -repeat 10 || ( echo "test failed" &&  exit 1 )
+done
 
 ####################
 ####################
