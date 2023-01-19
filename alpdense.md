@@ -37,7 +37,8 @@ fi
 
 In particular, we assume the availability of the C/C++ LAPACKE interface and, for all tests below, we assume no system libraries are available. 
 
-Assuming this branch is cloned in the `ALP_SOURCE` folder, all instructions provided below should be run from a `$ALP_SOURCE/build` folder.
+
+<mark style="background-color: #FFD700">Assuming this branch is cloned in the `ALP_SOURCE` folder, all instructions provided below should be run from a `$ALP_SOURCE/build` folder.</mark>
 
 An analogous [script-like](alpdense.sh) version of this page is available in the ALP root directory of this branch. You may decide to run it directly (**note:** always making sure to customize the export commands above to your environment first) as follows:
 
