@@ -119,7 +119,7 @@ LOGFILE=$LOGDIR/lapack_doptrf_seq.log
 echo "#####################################################################"
 echo " Testing potrf: LAPACK + KunpengBLAS (seq)" | tee -a $LOGFILE
 echo "#####################################################################"
-for MSIZE in {400..500..100}
+for MSIZE in {400..4000..100}
 do 
     ( ./cholesky_lapack_reference.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 ) )
 done | tee -a $LOGFILE
@@ -136,7 +136,7 @@ LOGFILE=$LOGDIR/alp_dpotrf_seq.log
 echo "#####################################################################"
 echo " Testing potrf: ALP + KunpengBLAS (seq)" | tee -a $LOGFILE
 echo "#####################################################################"
-for MSIZE in {400..500..100}
+for MSIZE in {400..4000..100}
 do 
     ( tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 ) )
 done | tee -a $LOGFILE
@@ -169,7 +169,7 @@ do
     echo "#####################################################################" 
     echo " Testing potrf: LAPACK + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
     echo "#####################################################################" 
-    for MSIZE in {400..500..100}
+    for MSIZE in {400..4000..100}
     do 
         OMP_NUM_THREADS=${NT} ./cholesky_lapack_omp.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
     done
@@ -189,7 +189,7 @@ do
     echo "##########################################################################"
     echo "Testing potrf: Testing ALP + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
     echo "##########################################################################"
-    for MSIZE in {400..500..100}
+    for MSIZE in {400..4000..100}
     do 
         OMP_NUM_THREADS=${NT} tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
     done
@@ -222,7 +222,7 @@ LOGFILE=$LOGDIR/kblas_mxm_omp.log
 echo "##########################################################################"
 echo "Testing mxm: Testing KunpengBLAS (omp) with OMP_NUM_THREADS=64" | tee -a $LOGFILE
 echo "##########################################################################"
-for MSIZE in {1024..2048..1024}
+for MSIZE in {1024..10240..1024}
 do 
     OMP_NUM_THREADS=64 ./blas_mxm.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
 done | tee -a $LOGFILE
@@ -248,7 +248,7 @@ echo "##########################################################################
 echo "Testing mxm: Testing KunpengBLAS (omp) with:" | tee -a $LOGFILE
 echo " OMP_NUM_THREADS=64 GOMP_CPU_AFFINITY=\"0-15 24-39 48-63 72-87\"" | tee -a $LOGFILE
 echo "##########################################################################"
-for MSIZE in {1024..2048..1024}
+for MSIZE in {1024..10240..1024}
 do 
     GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
 done | tee -a $LOGFILE

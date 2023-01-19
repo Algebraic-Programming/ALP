@@ -216,7 +216,7 @@ do
     echo "#####################################################################"
     echo " Testing potrf: LAPACK + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
     echo "#####################################################################"
-    for MSIZE in {400..500..100}
+    for MSIZE in {400..4000..100}
     do 
         OMP_NUM_THREADS=${NT} ./cholesky_lapack_omp.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
     done
@@ -230,7 +230,7 @@ do
     echo "##########################################################################"
     echo "Testing potrf: Testing ALP + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
     echo "##########################################################################"
-    for MSIZE in {400..500..100}
+    for MSIZE in {400..4000..100}
     do 
         OMP_NUM_THREADS=${NT} tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
     done
