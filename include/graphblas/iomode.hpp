@@ -92,8 +92,6 @@ namespace grb {
 		PARALLEL
 	};
 
-	/** @} */
-
 } // namespace grb
 
 #endif // end ``_H_GRB_IOMODE''

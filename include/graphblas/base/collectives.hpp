@@ -229,25 +229,15 @@ namespace grb {
 			 *                 undefined state.
 			 *
 			 * \parblock
-			 * \par Performance semantics: serial
-			 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
-			 * -# local work: \f$ 0 \f$ ;
-			 * -# transferred bytes: \f$ NP \f$ ;
-			 * -# BSP cost: \f$ NPg + l \f$;
-			 * \endparblock
+			 * \par Performance semantics
+			 * Backends should define performance semantics in terms of work and data
+			 * movement, the latter both within and between user processes. Also the
+			 * number of synchronisations between user processes must be quantified.
 			 *
-			 * \par Performance semantics: two phase
-			 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
-			 * -# local work: \f$ 0 \f$ ;
-			 * -# transferred bytes: \f$ 2N \f$ ;
-			 * -# BSP cost: \f$ 2(Ng + l) \f$;
-			 * \endparblock
-			 *
-			 * \par Performance semantics: two level tree
-			 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
-			 * -# local work: \f$ 0 \f$ ;
-			 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;
-			 * -# BSP cost: \f$ 2(\sqrt{P}Ng + l) \f$;
+			 * Backends furthermore must indicate whether system calls may occur during a
+			 * call to this primitive, indicate whether additional dynamic may be
+			 * allocated (and if so, when it is freed), and quantify the required work
+			 * space.
 			 * \endparblock
 			 */
 			template< typename IOType >

@@ -405,6 +405,7 @@ namespace grb {
 	 * A call to this function shall always succeed and shall never throw
 	 * exceptions.
 	 *
+	 * \parblock
 	 * \par Performance semantics.
 	 * A call to this function:
 	 *    -# completes in \f$ \Theta(1) \f$ work.

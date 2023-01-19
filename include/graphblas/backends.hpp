@@ -37,8 +37,9 @@ namespace grb {
 	 * configured during the bootstrapping of this ALP installation, some of these
 	 * backends may be disabled.
 	 *
-	 * \internal The collection includes backend identifiers that are for internal
-	 *           use only.
+	 * \internal
+	 * The collection includes backend identifiers that are for internal use only.
+	 * \endinternal
 	 *
 	 * \ingroup backends
 	 */
