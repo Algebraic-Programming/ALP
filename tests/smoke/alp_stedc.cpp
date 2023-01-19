@@ -284,7 +284,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		// the algorithm should return correct eigenvalues
 		// but for larger matrices (n>20) a more stable calculations
 		// of eigenvectors is needed
-		// therefore we disable numerical correctness check in this version
 
 		rc = check_overlap( Q );
 		if( rc != SUCCESS ) {

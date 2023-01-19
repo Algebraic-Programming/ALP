@@ -284,14 +284,12 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : set( Q, zero );
 
 		timer.reset();
-
 		rc = rc ? rc : algorithms::householder_tridiag( Q1, T, H, ring );
 
 		// rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q2, d, ring );
 		rc = rc ? rc : algorithms::qr_eigensolver( T, Q2, d, ring );
 
 		rc = rc ? rc : alp::mxm( Q, Q1, Q2, ring );
-
 		times += timer.time();
 
 #ifdef DEBUG
@@ -304,7 +302,6 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		// the algorithm should return correct eigenvalues
 		// but for larger matrices (n>20) a more stable calculations
 		// of eigenvectors is needed
-		// therefore we disable numerical correctness check in this version
 
 		rc = check_overlap( Q );
 		if( rc != SUCCESS ) {
