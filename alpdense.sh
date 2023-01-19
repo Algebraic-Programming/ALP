@@ -58,7 +58,7 @@ fi
 
 # This tests are collected and run as ALP smoketests as follows:
 
-LOGDIR = $ALP_BUILD/logs
+LOGDIR=$ALP_BUILD/logs
 mkdir -p $LOGDIR
 
 cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
