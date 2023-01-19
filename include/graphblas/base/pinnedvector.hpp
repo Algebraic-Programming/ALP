@@ -50,15 +50,15 @@ namespace grb {
 	 * The original container may not be modified or any derived instance of
 	 * \a PinnedVector shall become invalid.
 	 *
-	 * \note It would be strange if a GraphBLAS container a pinned vector is
+	 * \note It would be strange if an ALP/GraphBLAS container a pinned vector is
 	 *       derived from persists-- pinned vectors are designed to be used
 	 *       precisely when the original container no longer is in scope.
 	 *       Therefore this last remark on invalidation should not matter.
 	 *
 	 * The PinnedVector abstracts a container over nonzeroes. A nonzero is a pair
 	 * of indices and values. One may query for the number of nonzeroes and use
-	 *   1. #getNonzeroValue to retrieve a nonzero value, or
-	 *   2. #getNonzeroIndex to retrieve a nonzero index.
+	 *   1. #PinnedVector::getNonzeroValue to retrieve a nonzero value, or
+	 *   2. #PinnedVector::getNonzeroIndex to retrieve a nonzero index.
 	 *
 	 * An instance of the PinnedVector cannot modify the underlying nonzero
 	 * structure nor its values.
@@ -67,7 +67,7 @@ namespace grb {
 	 *       data, but provides a mechanism to access the underlying GraphBLAS
 	 *       memory whenever it is possible to do so. This memory should remain
 	 *       valid even after a call to grb::finalize() is made, and for as long
-	 *       as the \a PinnedVector instance remains valid.
+	 *       as the PinnedVector instance remains valid.
 	 *
 	 * \note Some implementations may not retain a raw vector. In this case, a
 	 *       copy is unavoidable.

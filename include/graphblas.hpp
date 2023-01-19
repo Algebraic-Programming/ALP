@@ -133,7 +133,7 @@
  *
  * Binary operators are parametrised in two input domains and one output domain,
  * \f$ D_1 \times D_2 \to D_3 \f$. The \f$ D_i \f$ are given as template
- * arguments to the operator. A #grb::monoid is composed from a binary operator
+ * arguments to the operator. A #grb::Monoid is composed from a binary operator
  * coupled with an identity. For example, the additive monoid is defined as
  * \code
  *  grb::Monoid<

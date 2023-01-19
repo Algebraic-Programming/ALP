@@ -53,7 +53,7 @@ namespace grb {
 	 *       phases.
 	 *    2. especially for level-1 and level-2 primitives, it may also be that
 	 *       single-phase approaches are feasible. Hence ALP/GraphBLAS defines that
-	 *       the execute phase, #grb::Phase::EXECUTE, is the default when calling
+	 *       the execute phase, #grb::EXECUTE, is the default when calling
 	 *       an ALP/GraphBLAS primitive without an explicit phase argument.
 	 *    3. sometimes speculative execution is warranted; these apply to
 	 *       situations where
@@ -63,11 +63,11 @@ namespace grb {
 	 *
 	 * To cater to a wide range of approaches and use cases, we support the
 	 * following three phases:
-	 *    1. #grb::Phase::RESIZE, which resizes capacities based on the requested
+	 *    1. #grb::RESIZE, which resizes capacities based on the requested
 	 *       operation;
-	 *    2. #grb::Phase::EXECUTE, which attempts to execute the computation
+	 *    2. #grb::EXECUTE, which attempts to execute the computation
 	 *       assuming the capacity is sufficient;
-	 *    3. #grb::Phase::TRY, which attempts to execute the computation, and
+	 *    3. #grb::TRY, which attempts to execute the computation, and
 	 *       does not mind if the capacity turns out to be insufficient.
 	 *
 	 * Backends must give precise performance semantics to primitives executing in
@@ -123,8 +123,7 @@ namespace grb {
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
 	 * if( f( A, ..., EXECUTE ) == FAILED ) {
-	 *     f( B, ..., INSPECT );
-	 *     f( B, ..., EXECUTE );
+	 *     f( B, ..., RESIZE );
 	 *     std::swap( A, B );
 	 * }
 	 * \endcode
@@ -132,7 +131,7 @@ namespace grb {
 	 * \code
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
-	 * while( f, A, ..., EXECUTE ) == FAILED ) {
+	 * while( f( A, ..., EXECUTE ) == FAILED ) {
 	 *     resize( A, capacity( A ) + 1 );
 	 *     set( A, B );
 	 * }
@@ -141,13 +140,13 @@ namespace grb {
 	 * \note If the matrix \a A is empty on entry, then the latter two code
 	 *       snippets do not require the use \a B as a temporary buffer.
 	 *
-	 * \note Since #grb::Phase::EXECUTE is the default phase, any occurrance of
+	 * \note Since #grb::EXECUTE is the default phase, any occurrance of
 	 *       <code>f( A, ..., EXECUTE )</code> may be replaced with
 	 *       <code>f( A, ... )</code>.
 	 *
 	 * The above code snippets do not include try phases since whenever output
 	 * containers do not have enough capacity, primitives executed using
-	 * #grb::Phase::TRY will \em not generate equivalent results.
+	 * #grb::TRY will \em not generate equivalent results.
 	 *
 	 */
 	enum Phase {
@@ -159,7 +158,7 @@ namespace grb {
 		 * attempts to both estimate and resize the output container(s).
 		 *
 		 * A successful call using this phase guarantees that a subsequent and
-		 * equivalent call using the #grb::Phase::EXECUTE phase shall be successful.
+		 * equivalent call using the #grb::EXECUTE phase shall be successful.
 		 *
 		 * Here, an <em>equivalent call</em> means that the operation must be called
 		 * with exactly the same arguments, except for the #grb::Phase argument.
@@ -212,7 +211,7 @@ namespace grb {
 		 *          words, this mechanism does not allow for the partial computation
 		 *          to complete the remainder computation using less effort than the
 		 *          full computation would have required. This is the main difference
-		 *          with the #grb::Phase::EXECUTE phase.
+		 *          with the #grb::EXECUTE phase.
 		 *
 		 * \note This phase is particularly useful if partial output is still usable
 		 *       and recomputation to generate the full output is not required.
@@ -240,7 +239,7 @@ namespace grb {
 		 *
 		 * \note That on failure a primitive called using the execute phase may
 		 *       destroy any pre-existing contents of output containers is a critical
-		 *       difference with the #grb::Phase::TRY phase.
+		 *       difference with the #grb::TRY phase.
 		 *
 		 * \warning When calling ALP/GraphBLAS primitives without specifying a phase
 		 *          explicitly, this execute phase will be assumed by default.

@@ -89,9 +89,9 @@ namespace grb {
 			 *                      reduced. On output: the reduced value.
 			 * @param[in]      op   The associative operator to reduce by.
 			 *
-			 * \note If \op is commutative, the implementation free to employ a different
-			 *       allreduce algorithm, as long as it is documented well enough so that
-			 *       its cost can be quantified.
+			 * \note If \a op is commutative, the implementation free to employ a
+			 *       different allreduce algorithm, as long as it is documented well
+			 *       enough so that its cost can be quantified.
 			 *
 			 * @returns grb::SUCCESS When the operation succeeds as planned.
 			 * @returns grb::PANIC   When the communication layer unexpectedly fails. When

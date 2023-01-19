@@ -84,7 +84,8 @@ void spblas_dcsrgemv(
  *                      Either 'L' or 'U', in the case of 'T' (triangular)
  *                      Either 'N' or 'U' for the diagonal type
  *                      Either 'F' or 'C' (one or zero based indexing)
- * @param[in] indx      The column index of the matrix \f$ A \f$.
+ *                      The values of the nonzeroes in \f$ A \f$.
+ * @param[in] indx      The column index of the nonzeroes in \f$ A \f$.
  * @param[in] pntrb     The Compressed Row Storage (CRS) row start array.
  * @param[in] pntre     The array \a pntrb shifted by one.
  * @param[in] b         Pointer to the values of \f$ B \f$.

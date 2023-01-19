@@ -174,10 +174,10 @@ namespace grb {
 	 * non-GraphBLAS objects can also be written to, not just read from. The
 	 * captured variable is, however, completely local to the calling user process
 	 * only-- it will not be synchronised between user processes.
-	 * As a rule of thumb, data-centric GraphBLAS implementations \em cannot
+	 * As a rule of thumb, data-centric ALP/GraphBLAS implementations \em cannot
 	 * support this and will thus have grb::Properties::writableCaptured evaluate
-	 * to false. A portable GraphBLAS algorithm should provide a different code
-	 * path to handle this case.
+	 * to false. A portable ALP/GraphBLAS algorithm should provide a different code
+	 * path to handle this case (or not rely on #grb::eWiseLambda).
 	 * When it is legal to write to captured scalar, this function can, e.g., be
 	 * used to perform reduction-like operations on any number of equally sized
 	 * input vectors.  This would be preferable to a chained number of calls to
@@ -194,9 +194,13 @@ namespace grb {
 	 *          global ones, for instance, by a subsequent call to
 	 *          grb::collectives<>::allreduce.
 	 *
-	 * \note This is an addition to the GraphBLAS. It is alike user-defined
-	 *       operators, monoids, and semirings, except it allows execution on
-	 *       arbitrarily many inputs and arbitrarily many outputs.
+	 * \note This is an addition to the GraphBLAS C specification. It is alike
+	 *       user-defined operators, monoids, and semirings, except it allows
+	 *       execution on arbitrarily many inputs and arbitrarily many outputs.
+	 *       It is intended for programmers to take control over what is fused
+	 *       when and how. The #grb::nonblocking backend attempts to automate the
+	 *       application of such fusion opportunities without the user's explicit
+	 *       involvement.
 	 *
 	 * @tparam Func the user-defined lambda function type.
 	 * @tparam DataType the type of the user-supplied vector example.
@@ -205,46 +209,42 @@ namespace grb {
 	 * @param[in] f The user-supplied lambda. This lambda should only capture
 	 *              and reference vectors of the same length as \a x. The lambda
 	 *              function should prescribe the operations required to execute
-	 *              at a given index \a i. Captured GraphBLAS vectors can access
-	 *              that element via the operator[]. It is illegal to access any
-	 *              element not at position \a i. The lambda takes only the single
-	 *              parameter \a i of type <code>const size_t</code>. Captured
-	 *              scalars will not be globally updated-- the user must program
-	 *              this explicitly. Scalars and other non-GraphBLAS containers
-	 *              are always local to their user process.
+	 *              at a given index \a i. Captured ALP/GraphBLAS vectors can
+	 *              access that element via the operator[]. It is illegal to access
+	 *              any element not at position \a i. The lambda takes only the
+	 *              single parameter \a i of type <code>const size_t</code>.
+	 *              Captured scalars will not be globally updated-- the user must
+	 *              program this explicitly. Scalars and other non-GraphBLAS
+	 *              containers are always local to their user process.
 	 * @param[in] x The vector the lambda will be executed on. This argument
 	 *              determines which indices \a i will be accessed during the
 	 *              elementwise operation-- elements with indices \a i that
 	 *              do not appear in \a x will be skipped during evaluation of
 	 *              \a f.
-	 * @param[in] args All vectors the lambda is to access elements of. Must be of
-	 *                 the same length as \a x. If this constraint is violated,
-	 *                 grb::MISMATCH shall be returned. <em>This is a variadic
-	 *                 argument and can contain any number of containers of type
-	 *                 grb::Vector, passed as though they were separate
-	 *                 arguments.</em>
 	 *
-	 * \note In future GraphBLAS implementations, \a args, apart from doing
-	 *       dimension checking, should also facilitate any data distribution
-	 *       necessary to successfully execute the element-wise operation. Current
-	 *       implementations do not require this since they use the same static
-	 *       distribution for all containers.
+	 * The remaining arguments must collect all vectors the lambda is to access
+	 * elements of. Such vectors must be of the same length as \a x. If this
+	 * constraint is violated, #grb::MISMATCH shall be returned.
 	 *
-	 * \warning Using a grb::Vector inside a lambda passed to this function while
-	 *          not passing that same vector into \a args, will result in undefined
-	 *          behaviour.
+	 * \note These are passed using variadic arguments and so can contain any
+	 *       number of containers of type #grb::Vector.
 	 *
-	 * \note It would be natural to have \a x equal to one of the captured
-	 *       GraphBLAS vectors in \a f.
+	 * \note In future ALP/GraphBLAS implementations, apart from performing
+	 *       dimension checking, may also require data redistribution in case
+	 *       different vectors may be distributed differently.
+	 *
+	 * \warning Using a #grb::Vector inside a lambda passed to this function while
+	 *          not passing that same vector into its variadic argument list, will
+	 *          result in undefined behaviour.
 	 *
 	 * \warning Due to the constraints on \a f described above, it is illegal to
 	 *          capture some vector \a y and have the following line in the body
 	 *          of \a f: <code>x[i] += x[i+1]</code>. Vectors can only be
 	 *          dereferenced at position \a i and \a i alone.
 	 *
-	 * @return grb::SUCCESS  When the lambda is successfully executed.
-	 * @return grb::MISMATCH When two or more vectors passed to \a args are not of
-	 *                       equal length.
+	 * @return #grb::SUCCESS  When the lambda is successfully executed.
+	 * @return #grb::MISMATCH When two or more vectors passed to \a args are not of
+	 *                        equal length.
 	 *
 	 * \parblock
 	 * \par Example.
@@ -311,8 +311,6 @@ namespace grb {
 	 *          Only a Vector::lambda_reference to position exactly equal to \a i
 	 *          may be used within this function.
 	 *
-	 * \warning There is no similar concept in the official GraphBLAS specs.
-	 *
 	 * \warning Captured scalars will be local to the user process executing the
 	 *          lambda. To retrieve the global dot product, an allreduce must
 	 *          explicitly be called.
@@ -338,8 +336,8 @@ namespace grb {
 		const bool should_not_call_base_vector_ewiselambda = false;
 		assert( should_not_call_base_vector_ewiselambda );
 #endif
-		(void)f;
-		(void)x;
+		(void) f;
+		(void) x;
 		return UNSUPPORTED;
 	}
 

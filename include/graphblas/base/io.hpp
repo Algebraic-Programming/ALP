@@ -832,9 +832,9 @@ namespace grb {
 	 *                  to the size of \a x.
 	 * @param[in]   val The value to set each element of \a x to.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
-	 *                  the default is #grb::Phase::EXECUTE.
+	 *                  the default is #grb::EXECUTE.
 	 *
-	 * In #grb::Phase::RESIZE mode:
+	 * In #grb::RESIZE mode:
 	 *
 	 * @returns #grb::OUTOFMEM When \a x could not be resized to hold the
 	 *                         requested output, and the current capacity was
@@ -842,17 +842,17 @@ namespace grb {
 	 * @returns #grb::SUCCESS  When the capacity of \a x was resized to guarantee
 	 *                         the output of this operation can be contained.
 	 *
-	 * In #grb::Phase::EXECUTE mode:
+	 * In #grb::EXECUTE mode:
 	 *
 	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
-	 * In #grb::Phase::TRY mode (experimental and may not be supported):
+	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
 	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
-	 *                        described for #grb::Phase::TRY.
+	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
@@ -914,14 +914,14 @@ namespace grb {
 	 *                  evaluated depends on the given \a desc.
 	 * @param[in]   val The value to set elements of \a x to.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
-	 *                  the default is #grb::Phase::EXECUTE.
+	 *                  the default is #grb::EXECUTE.
 	 *
 	 * \warning An empty \a mask, meaning #grb::size( \a mask ) is zero, shall
 	 *          be interpreted as though no mask argument was given. In particular,
 	 *          any descriptors pertaining to the interpretation of \a mask shall
 	 *          be ignored.
 	 *
-	 * In #grb::Phase::RESIZE mode:
+	 * In #grb::RESIZE mode:
 	 *
 	 * @returns #grb::OUTOFMEM When \a x could not be resized to hold the
 	 *                         requested output, and the current capacity was
@@ -929,17 +929,17 @@ namespace grb {
 	 * @returns #grb::SUCCESS  When the capacity of \a x was resized to guarantee
 	 *                         the output of this operation can be contained.
 	 *
-	 * In #grb::Phase::EXECUTE mode:
+	 * In #grb::EXECUTE mode:
 	 *
 	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
-	 * In #grb::Phase::TRY mode (experimental and may not be supported):
+	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
 	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
-	 *                        described for #grb::Phase::TRY.
+	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
@@ -1296,8 +1296,15 @@ namespace grb {
 	 *
 	 * Invalidates any prior existing content. Disallows different nonzeroes
 	 * to have the same row and column coordinates; input must consist out of
-	 * unique triples. See #buildMatrix for an alternate function that does
-	 * not have these restrictions-- at the cost of lower performance.
+	 * unique triples.
+	 *
+	 * \internal
+	 * See #buildMatrix for an alternate function that does not have these
+	 * restrictions-- at the cost of lower performance.
+	 *
+	 * \todo Re-enable the above for public documentation once the non-unique
+	 *       buildMatrix variant has been implemented.
+	 * \endinternal
 	 *
 	 * \warning Calling this function with duplicate input coordinates will
 	 *          lead to undefined behaviour.
@@ -1316,7 +1323,17 @@ namespace grb {
 	 * @param[in] I  A forward iterator to \a cap row indices.
 	 * @param[in] J  A forward iterator to \a cap column indices.
 	 * @param[in] V  A forward iterator to \a cap nonzero values.
-	 * @param[in] nz The number of items pointed to by \a I, \a J, \em and \a V.
+	 *
+	 * @param[in] I_end A forward iterator in end position relative to \a I.
+	 * @param[in] J_end A forward iterator in end position relative to \a J.
+	 * @param[in] V_end A forward iterator in end position relative to \a V.
+	 *
+	 * @param[in] mode Whether the input should happen in #grb::SEQUENTIAL or in
+	 *                 the #grb::PARALLEL mode.
+	 *
+	 * In the below, let \a nz denote the number of items pointed to by the
+	 * iterator pair \a I, \a I_end. This number should match the number of
+	 * elements in \a J, \a J_end \em and \a V, \a V_end.
 	 *
 	 * @return grb::MISMATCH -# when an element from \a I dereferences to a value
 	 *                          larger than the row dimension of this matrix, or
@@ -1339,23 +1356,15 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 *        -# This function contains
-	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ amount of work.
-	 *        -# This function may dynamically allocate
-	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ bytes of memory.
-	 *        -# A call to this function will use \f$ \mathcal{O}(m+n) \f$ bytes
-	 *           of memory beyond the memory in use at the function call entry.
-	 *        -# This function will copy each input forward iterator at most
-	 *           \em once; the three input iterators \a I, \a J, and \a V thus
-	 *           may have exactly one copyeach, meaning that all input may be
-	 *           traversed only once.
-	 *        -# Each of the at most three iterator copies will be incremented
-	 *           at most \f$ \mathit{nz} \f$ times.
-	 *        -# Each position of the each of the at most three iterator copies
-	 *           will be dereferenced exactly once.
-	 *        -# This function moves
-	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ bytes of data.
-	 *        -# This function will likely make system calls.
+	 *
+	 * A backend must define performance semantics in terms of the amount of work,
+	 * amount of dynamic memory allocated, how many times iterators may be copied,
+	 * dereferenced, and incremented, how much data is moved within the calling
+	 * user processes as well as between user processes, and how many times user
+	 * processes may synchronise during a call to this primitive. Backends should
+	 * also specify whether system calls may be made during a call to this
+	 * primitive, which almost surely, for this primitive, will be affirmative.
+	 *
 	 * \endparblock
 	 *
 	 * \warning This is an expensive function. Use sparingly and only when
@@ -1489,6 +1498,8 @@ namespace grb {
 	 *                   \a end.
 	 * @param[in]  start Iterator pointing to the first nonzero to be added.
 	 * @param[in]   end  Iterator pointing past the last nonzero to be added.
+	 * @param[in]  mode  Whether the input should happen in #grb::SEQUENTIAL or in
+	 *                   the #grb::PARALLEL mode.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,

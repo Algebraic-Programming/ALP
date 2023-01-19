@@ -41,12 +41,12 @@
 namespace grb {
 
 	/**
-	 * The various ways in which the #Launcher can be used
-	 * to execute a GraphBLAS program.
+	 * The various ways in which the #grb::Launcher can be used to execute an
+	 * ALP/GraphBLAS program.
 	 *
 	 * \warning An implementation may require different linker commands
 	 *          when using different modes. This is OK, since a call to
-	 *          the #Launcher is required to be quite different
+	 *          the #grb::Launcher is required to be quite different
 	 *          depending on which mode is used. The portability is in
 	 *          the GraphBLAS program being launched-- that one should
 	 *          never change depending on whichever mode it is used.
@@ -54,7 +54,7 @@ namespace grb {
 	enum EXEC_MODE {
 
 		/**
-		 * Automatic mode. The #Launcher can spawn user processes
+		 * Automatic mode. The #grb::Launcher can spawn user processes
 		 * which will execute a given program.
 		 */
 		AUTOMATIC = 0,
@@ -62,7 +62,7 @@ namespace grb {
 		/**
 		 * Manual mode. The user controls \a nprocs user processes
 		 * which together should execute a given program, by, for
-		 * example, using the #Launcher.
+		 * example, using the #grb::Launcher.
 		 */
 		MANUAL,
 

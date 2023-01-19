@@ -60,19 +60,23 @@ namespace grb {
 	 *
 	 * @returns SUCCESS If the computation completed as intended.
 	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  #grb::resize( C, A, B ); \em and the current capacity of
-	 *                  \a C was insufficient to store the multiplication of \a A
-	 *                  and \a B. The contents of \a C shall be undefined (which
-	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
-	 *                  error has side effects).
+	 *                  grb::mxm( C, A, B, grb::RESIZE ); \em and the capacity of
+	 *                  \a C was insufficient to store the output of multiplying
+	 *                  \a A and \a B. In this case, the matrix \a C is cleared
+	 *                  after the call to this primitive that returned #grb::FAILED.
+	 *
+	 * \note This specification does not account for #grb::TRY as that phase is
+	 *       still experimental. See its documentation for details.
 	 *
 	 * @param[out] C The output matrix \f$ C = AB \f$ when the function returns
-	 *               #SUCCESS.
+	 *               #grb::SUCCESS.
 	 * @param[in]  A The left-hand side input matrix \f$ A \f$.
 	 * @param[in]  B The left-hand side input matrix \f$ B \f$.
 	 *
-	 * @param[in] ring (Optional.) The semiring under which the computation should
-	 *                             proceed.
+	 * @param[in] ring  The semiring under which the computation should
+	 *                  proceed.
+	 * @param[in] phase The #grb::Phase the primitive should be executed with. This
+	 *                  argument is optional; its default is #grb::EXECUTE.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -122,6 +126,9 @@ namespace grb {
 	 * @param[in]  x A vector of row indices.
 	 * @param[in]  y A vector of column indices.
 	 * @param[in]  z A vector of nonzero values.
+	 *
+	 * @param[in] phase The #grb::Phase in which the primitive is to proceed.
+	 *                  Optional; the default is #grb::EXECUTE.
 	 *
 	 * If x, y, and z are sparse, they must have the exact same sparsity
 	 * structure.

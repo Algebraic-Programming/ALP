@@ -39,15 +39,15 @@ namespace grb {
 		 * \defgroup referenceConfig Reference and reference_omp backend configuration
 		 * \ingroup config
 		 *
-		 * All configuration parameters for the #reference and the #reference_omp
-		 * backends.
+		 * All configuration parameters for the #grb::reference and the
+		 * #grb::reference_omp backends.
 		 *
 		 * @{
 		 */
 
 		/**
-		 * The memory allocation modes implemented in the #reference and the
-		 * #reference_omp backends.
+		 * The memory allocation modes implemented in the #grb::reference and the
+		 * #grb::reference_omp backends.
 		 *
 		 * \ingroup reference
 		 */
@@ -62,7 +62,7 @@ namespace grb {
 		};
 
 		/**
-		 * Converts instances of #grb::config::MEMORY::ALLOC_MODE to a descriptive
+		 * Converts instances of #grb::config::ALLOC_MODE to a descriptive
 		 * lower-case string.
 		 *
 		 * \ingroup reference
@@ -112,7 +112,7 @@ namespace grb {
 				/**
 				 * The prefetch distance used during level-2 and level-3 operations.
 				 *
-				 * This value will be ignored if #prefetchingEnables() returns
+				 * This value will be ignored if #prefetchingEnabled() returns
 				 * <tt>false</tt>.
 				 */
 				static constexpr size_t distance() {
