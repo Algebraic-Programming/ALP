@@ -98,7 +98,6 @@ done
 # which are testing our ALP Cholesky implementation, based on the alp_dispatch backend, against the potrf LAPACK functionality.
 ####################
 
-# Assuming that you are currently in the ALP cloned directory, create a "build" directory and call the following commands from there.
 # If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
 # If you are using locally installed kblas, make sure to set proper BLAS_ROOT path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
 
@@ -111,13 +110,66 @@ make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
 ./cholesky_lapack_reference.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 
-# Run the Cholesky ALP dispatch test. 
+# Run the Cholesky ALP dispatch sequential test. 
 # Some facts about the test:
 #    The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
 #    It recursively requires an unblocked version of the same algorithm (of size BSxBS) which does not dispatch to LAPACK.
 #    All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
 make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
 tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
+
+####################
+# Compilation and execution of the shared-memory Cholesky decomposition tests
+# which are testing our ALP Cholesky implementation, based on the alp_dispatch backend, against the potrf LAPACK functionality.
+# Differently from the sequential test we link against the shared-memory KBLAS library.
+####################
+
+# Assuming that you are currently in the "build" directory of the ALP cloned repository.
+# If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
+# If you are using locally installed kblas, make sure to set proper BLAS_ROOT path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
+
+CWD=$(pwd)
+ompbuild="build_potrf_with_omp_blas"
+rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_OMP_BACKEND=ON -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
+
+# To compile and run the LAPACK Cholesky test (not ALP code).
+# Here you can use gcc flags, i.e. "-L/path/toib/ -llapack" (or simply " -llapack" to use system installed lapack library).
+# A consistent test should use the same BLAS in LAPACK as in the ALP-based tests.
+install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_omp.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
+for NT in 1 64 96
+do
+    echo "#####################################################################"
+    echo " Testing potrf: LAPACK + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
+    echo "#####################################################################"
+    for MSIZE in {400..500..100}
+    do 
+        OMP_NUM_THREADS=${NT} ./cholesky_lapack_omp.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+    done
+    echo " Tests completed."
+    echo "#####################################################################"
+done
+
+# Run the Cholesky ALP dispatch sequential test. 
+# Some facts about the test:
+#    The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
+#    It recursively requires an unblocked version of the same algorithm (of size BSxBS) which does not dispatch to LAPACK.
+#    All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
+make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
+for NT in 1 64 96
+do
+    echo "##########################################################################"
+    echo "Testing potrf: Testing ALP + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
+    echo "##########################################################################"
+    for MSIZE in {400..500..100}
+    do 
+        OMP_NUM_THREADS=${NT} tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+    done
+    echo " Tests completed."
+    echo "##########################################################################"
+done
+cd $CWD
 
 ####################
 # Compilation and execution of shared memory parallel mxm tests
@@ -139,7 +191,15 @@ make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # Compile and run gemm-based BLAS test.
 install/bin/grbcxx -b alp_dispatch -o blas_mxm.exe $ALP_SOURCE/tests/performance/blas_mxm.cpp -lgfortran || ( echo "test failed" &&  exit 1 )
-OMP_NUM_THREADS=64 ./blas_mxm.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
+echo "##########################################################################"
+echo "Testing mxm: Testing KunpengBLAS (omp) with OMP_NUM_THREADS=64"
+echo "##########################################################################"
+for MSIZE in {1024..2048..1024}
+do 
+    OMP_NUM_THREADS=64 ./blas_mxm.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+done
+echo " Tests completed."
+echo "##########################################################################"
 cd $CWD
 
 # Run mxm omp test.
@@ -151,5 +211,14 @@ cd $CWD
 
 cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DWITH_ALP_OMP_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
-GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
+echo "##########################################################################"
+echo "Testing mxm: Testing KunpengBLAS (omp) with:"
+echo " OMP_NUM_THREADS=64 GOMP_CPU_AFFINITY=\"0-15 24-39 48-63 72-87\""
+echo "##########################################################################"
+for MSIZE in {1024..2048..1024}
+do 
+    GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+done
+echo " Tests completed."
+echo "##########################################################################"
 
