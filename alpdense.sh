@@ -4,6 +4,7 @@
 #    Running performance tests of the ALP/Dense shared memory backend with dispatch to BLAS (aka alp_omp).
 
 # For all tests below standard ALP dependencies are required:
+#    gfortran: -lgfortran
 #    LibNUMA: -lnuma
 #    Standard math library: -lm
 #    POSIX threads: -lpthread
@@ -57,8 +58,31 @@ fi
 
 # This tests are collected and run as ALP smoketests as follows:
 
+LOGDIR=$ALP_BUILD/logs
+mkdir -p $LOGDIR
+
 cmake -DWITH_ALP_REFERENCE_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
-SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
+SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc) | tee $LOGDIR/alp_smoketests.log
+
+# To compile and run the LAPACK-based tests (not ALP code).
+# Here you can use gcc flags, i.e. "-L/path/tolapack/ -llapack" (or simply " -llapack" to use system installed lapack library).
+KBLAS_LIB=$BLAS_ROOT/lib/kblas/locking
+USECASES=("dstedc" "dsyevd" "dsytrd" "zhetrd" "dgeqrf" "dgesvd" "dgetrf" "dpotri")
+
+for USECASE in "${USECASES[@]}"
+do
+    install/bin/grbcxx -o ${USECASE}_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_${USECASE}.cpp $LAPACK_LIB/liblapack.a $KBLAS_LIB/libkblas.so -Wl,-rpath $KBLAS_LIB -I$LAPACK_INCLUDE -lgfortran || ( echo "Compiling ${USECASE} failed" &&  exit 1 )
+done
+
+LOGFILE=$LOGDIR/lapack_smoketests.log
+echo "#####################################################################"
+echo " LAPACK smoketests (seq)"  | tee -a $LOGFILE
+echo "#####################################################################"
+for USECASE in "${USECASES[@]}"
+do
+    ( ./${USECASE}_lapack_reference.exe -n 100 -repeat 20 || ( echo "test ${USECASE} failed" &&  exit 1 ) )
+done | tee -a $LOGFILE
 
 ####################
 ####################
@@ -81,10 +105,8 @@ SMOKE_PRINT_TIME=ON make smoketests_alp -j$(nproc)
 # which are testing our ALP Cholesky implementation, based on the alp_dispatch backend, against the potrf LAPACK functionality.
 ####################
 
-# Assuming that you are currently in the ALP cloned directory, create a "build" directory and call the following commands from there.
 # If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
 # If you are using locally installed kblas, make sure to set proper BLAS_ROOT path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
-
 cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
@@ -92,15 +114,89 @@ make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
 # Here you can use gcc flags, i.e. "-L/path/toib/ -llapack" (or simply " -llapack" to use system installed lapack library).
 # A consistent test should use the same BLAS in LAPACK as in the ALP-based tests.
 install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_reference.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
-./cholesky_lapack_reference.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 
-# Run the Cholesky ALP dispatch test. 
+LOGFILE=$LOGDIR/lapack_doptrf_seq.log
+echo "#####################################################################"
+echo " Testing potrf: LAPACK + KunpengBLAS (seq)" | tee -a $LOGFILE
+echo "#####################################################################"
+for MSIZE in {400..4000..100}
+do 
+    ( ./cholesky_lapack_reference.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 ) )
+done | tee -a $LOGFILE
+echo " Tests completed."
+echo "#####################################################################"
+
+# Run the Cholesky ALP dispatch sequential test. 
 # Some facts about the test:
 #    The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
 #    It recursively requires an unblocked version of the same algorithm (of size BSxBS) which does not dispatch to LAPACK.
 #    All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
 make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
-tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
+LOGFILE=$LOGDIR/alp_dpotrf_seq.log
+echo "#####################################################################"
+echo " Testing potrf: ALP + KunpengBLAS (seq)" | tee -a $LOGFILE
+echo "#####################################################################"
+for MSIZE in {400..4000..100}
+do 
+    ( tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 ) )
+done | tee -a $LOGFILE
+echo " Tests completed."
+echo "#####################################################################"
+
+####################
+# Compilation and execution of the shared-memory Cholesky decomposition tests
+# which are testing our ALP Cholesky implementation, based on the alp_dispatch backend, against the potrf LAPACK functionality.
+# Differently from the sequential test we link against the shared-memory KBLAS library.
+####################
+
+# Assuming that you are currently in the "build" directory of the ALP cloned repository.
+# If no LAPACK library can be found by the compiler in system directories, LAPACK_LIB and LAPACK_INCLUDE have to be properly set and explicitly provided when calling cmake.
+# If you are using locally installed kblas, make sure to set proper BLAS_ROOT path to "kml" directory, i.e. extracted boostkit-kml-1.6.0-1.aarch64.rpm.
+
+subbuild="build_potrf_with_omp_blas"
+rm -rf $subbuild && mkdir $subbuild && cd $subbuild
+cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_OMP_BACKEND=ON -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
+make install -j$(nproc) || ( echo "test failed" &&  exit 1 )
+
+# To compile and run the LAPACK Cholesky test (not ALP code).
+# Here you can use gcc flags, i.e. "-L/path/toib/ -llapack" (or simply " -llapack" to use system installed lapack library).
+# A consistent test should use the same BLAS in LAPACK as in the ALP-based tests.
+install/bin/grbcxx  -b alp_dispatch -o cholesky_lapack_omp.exe $ALP_SOURCE/tests/performance/lapack_cholesky.cpp $LAPACK_LIB/liblapack.a -I$LAPACK_INCLUDE -lgfortran || ( echo "test failed" &&  exit 1 )
+
+LOGFILE=$LOGDIR/lapack_dpotrf_omp.log
+for NT in 1 64 96
+do
+    echo "#####################################################################" 
+    echo " Testing potrf: LAPACK + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
+    echo "#####################################################################" 
+    for MSIZE in {400..4000..100}
+    do 
+        OMP_NUM_THREADS=${NT} ./cholesky_lapack_omp.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+    done
+    echo " Tests completed."
+    echo "#####################################################################"
+done | tee -a $LOGFILE
+
+# Run the Cholesky ALP dispatch sequential test. 
+# Some facts about the test:
+#    The algorithm is a blocked variant of Cholesky with block size BS = 64 (as done in LAPACK).
+#    It recursively requires an unblocked version of the same algorithm (of size BSxBS) which does not dispatch to LAPACK.
+#    All BLAS functions needed by the algorithm are dispatched to the external BLAS library.
+make test_alp_cholesky_perf_alp_dispatch -j$(nproc) || ( echo "test failed" &&  exit 1 )
+LOGFILE=$LOGDIR/alp_dpotrf_omp.log
+for NT in 1 64 96
+do
+    echo "##########################################################################"
+    echo "Testing potrf: Testing ALP + KunpengBLAS (omp) with OMP_NUM_THREADS=${NT}"
+    echo "##########################################################################"
+    for MSIZE in {400..4000..100}
+    do 
+        OMP_NUM_THREADS=${NT} tests/performance/alp_cholesky_perf_alp_dispatch -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+    done
+    echo " Tests completed."
+    echo "##########################################################################"
+done | tee -a $LOGFILE
+cd $ALP_BUILD
 
 ####################
 # Compilation and execution of shared memory parallel mxm tests
@@ -114,16 +210,26 @@ tests/performance/alp_cholesky_perf_alp_dispatch -n 1024 -repeat 10 || ( echo "t
 #
 # You can compile with omp version of kblas library by additionally providing " -DKBLAS_IMPL=omp"  flag when calling cmake.
 # However, this should be compiled in a different directory from the other blas calls, as follows:
-CWD=$(pwd)
-ompbuild="build_with_omp_blas"
-rm -rf $ompbuild && mkdir $ompbuild && cd $ompbuild
+subbuild="build_mxm_with_omp_blas"
+rm -rf $subbuild && mkdir $subbuild && cd $subbuild
 cmake -DKBLAS_ROOT="$BLAS_ROOT" -DKBLAS_IMPL=omp -DWITH_ALP_OMP_BACKEND=ON -DWITH_ALP_DISPATCH_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make install  -j$(nproc) || ( echo "test failed" &&  exit 1 )
 
 # Compile and run gemm-based BLAS test.
 install/bin/grbcxx -b alp_dispatch -o blas_mxm.exe $ALP_SOURCE/tests/performance/blas_mxm.cpp -lgfortran || ( echo "test failed" &&  exit 1 )
-OMP_NUM_THREADS=64 ./blas_mxm.exe -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
-cd $CWD
+
+LOGFILE=$LOGDIR/kblas_mxm_omp.log
+echo "##########################################################################"
+echo "Testing mxm: Testing KunpengBLAS (omp) with OMP_NUM_THREADS=64" | tee -a $LOGFILE
+echo "##########################################################################"
+for MSIZE in {1024..10240..1024}
+do 
+    OMP_NUM_THREADS=64 ./blas_mxm.exe -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+done | tee -a $LOGFILE
+echo " Tests completed."
+echo "##########################################################################"
+
+cd $ALP_BUILD
 
 # Run mxm omp test.
 # Some facts about the ALP test:
@@ -132,7 +238,21 @@ cd $CWD
 #    We set OMP_NUM_THREADS=64 threads and fix GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" to reflect the NUMA domains in the node;
 #    The algorithm is allocating memory using a 2D block-cyclic layout with blocks of size 128x128.
 
+subbuild="build_mxm_with_alp_omp"
+rm -rf $subbuild && mkdir $subbuild && cd $subbuild
 cmake -DKBLAS_ROOT="$BLAS_ROOT" -DWITH_ALP_DISPATCH_BACKEND=ON -DWITH_ALP_OMP_BACKEND=ON -DCMAKE_INSTALL_PREFIX=./install $ALP_SOURCE || ( echo "test failed" &&  exit 1 )
 make test_alp_mxm_perf_alp_omp -j$(nproc) || ( echo "test failed" &&  exit 1 )
-GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n 1024 -repeat 10 || ( echo "test failed" &&  exit 1 )
 
+LOGFILE=$LOGDIR/alp_mxm_omp.log
+echo "##########################################################################"
+echo "Testing mxm: Testing KunpengBLAS (omp) with:" | tee -a $LOGFILE
+echo " OMP_NUM_THREADS=64 GOMP_CPU_AFFINITY=\"0-15 24-39 48-63 72-87\"" | tee -a $LOGFILE
+echo "##########################################################################"
+for MSIZE in {1024..10240..1024}
+do 
+    GOMP_CPU_AFFINITY="0-15 24-39 48-63 72-87" OMP_NUM_THREADS=64 tests/performance/alp_mxm_perf_alp_omp -n ${MSIZE} -repeat 10 || ( echo "test failed" &&  exit 1 )
+done | tee -a $LOGFILE
+echo " Tests completed."
+echo "##########################################################################"
+
+cd $ALP_BUILD
