@@ -1002,6 +1002,9 @@ namespace grb {
 	 *
 	 * The vector \a x may not be the same as \a y.
 	 *
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
 	 *
@@ -1067,6 +1070,8 @@ namespace grb {
 	 * @param[in,out] x The vector to be set.
 	 * @param[in]  mask The output mask.
 	 * @param[in]     y The source vector.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
 	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
@@ -1128,6 +1133,8 @@ namespace grb {
 	 * @param[in,out] x The vector to be modified.
 	 * @param[in]   val The value \f$ x_i \f$ should read after function exit.
 	 * @param[in]     i The index of the element of \a x to set.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
 	 *
 	 * @return grb::SUCCESS   Upon successful execution of this operation.
 	 * @return grb::MISMATCH  If \a i is greater or equal than the dimension of
@@ -1319,7 +1326,7 @@ namespace grb {
 	 * @tparam fwd_iterator3 The type of the nonzero value iterator.
 	 * @tparam length_type   The type of the number of elements in each iterator.
 	 *
-	 * The iterators will only be used to read from, never to assign to.
+	 * @param[out] A Where to store the given nonzeroes.
 	 *
 	 * @param[in] I  A forward iterator to \a cap row indices.
 	 * @param[in] J  A forward iterator to \a cap column indices.
@@ -1328,6 +1335,8 @@ namespace grb {
 	 * @param[in] I_end A forward iterator in end position relative to \a I.
 	 * @param[in] J_end A forward iterator in end position relative to \a J.
 	 * @param[in] V_end A forward iterator in end position relative to \a V.
+	 *
+	 * The iterators will only be used to read from, never to assign to.
 	 *
 	 * @param[in] mode Whether the input should happen in #grb::SEQUENTIAL or in
 	 *                 the #grb::PARALLEL mode.

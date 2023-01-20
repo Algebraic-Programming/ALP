@@ -458,7 +458,7 @@ namespace grb {
 			 *
 			 * @param[in]  alp_program The ALP program to be benchmarked
 			 * @param[in]  data_in     Input data as a raw data blob
-			 * @param[out] out_data    Output data
+			 * @param[out] data_out    Output data
 			 * @param[in]  inner       The number of inner repetitions of the benchmark
 			 * @param[in]  outer       The number of outer repetitions of the benchmark
 			 * @param[in]  broadcast   An optional argument that dictates whether the
@@ -516,7 +516,7 @@ namespace grb {
 			 * @param[in]  alp_program The use rogram to be benchmarked
 			 * @param[in]  data_in     Input data as a raw data blob
 			 * @param[in]  in_size     The size, in bytes, of the input data
-			 * @param[out] out_data    Output data
+			 * @param[out] data_out    Output data
 			 * @param[in]  inner       The number of inner repetitions of the benchmark
 			 * @param[in]  outer       The number of outer repetitions of the benchmark
 			 * @param[in]  broadcast   An optional argument that dictates whether the

@@ -171,9 +171,9 @@ namespace grb {
 			 *                 Upon returning this error, the GraphBLAS enters an
 			 *                 undefined state.
 			 *
-			 * \note If \op is commutative, the implementation free to employ a different
-			 *       allreduce algorithm, as long as it is documented well enough so that
-			 *       its cost can be quantified.
+			 * \note If \a op is commutative, the implementation free to employ a
+			 *       different allreduce algorithm, as long as the performance semantics
+			 *       are documented so that its cost can be quantified.
 			 *
 			 * \parblock
 			 * \par Performance semantics:

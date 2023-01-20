@@ -873,15 +873,27 @@ namespace grb {
 			}
 
 			/**
-			 * Returns a lambda reference to an element of this vector. The user
-			 * ensures that the requested reference only corresponds to a pre-existing
-			 * nonzero in this vector, <em>or undefined behaviour will occur</em>.
+			 * Returns a lambda reference to an element of this vector.
+			 *
+			 * \warning This functionality may only be used within the body of a lambda
+			 *          function that is passed into #grb::eWiseLambda.
+			 *
+			 * The user must ensure that the requested reference only corresponds to a
+			 * pre-existing nonzero in this vector.
+			 *
+			 * \warning Requesting a nonzero entry at a coordinate where no nonzero
+			 *          exists results in undefined behaviour.
 			 *
 			 * A lambda reference to an element of this vector is only valid when used
 			 * inside a lambda function evaluated via grb::eWiseLambda. The lambda
-			 * function is called for specific indices only-- that is, the GraphBLAS
-			 * implementation decides at which elements to dereference this container.
-			 * Outside this scope the returned reference incurs undefined behaviour.
+			 * function is called for specific indices only-- that is, ALP/GraphBLAS
+			 * decides at which elements to dereference this container.
+			 *
+			 * If such a lambda function dereferences multiple vectors, then the sparsity
+			 * structure of the first vector passed as an argument to #grb::eWiseLambda
+			 * after the lambda function defines at which indices the vectors will be
+			 * referenced. The user must ensure that all vectors dereferenced indeed have
+			 * nonzeroes at every location this "leading vector" has a nonzero.
 			 *
 			 * \warning In particular, for the given index \a i by the lambda function,
 			 *          it shall be \em illegal to refer to indices relative to that
@@ -889,57 +901,28 @@ namespace grb {
 			 *          cetera.
 			 *
 			 * \note    As a consequence, this function cannot be used to perform stencil
-			 *          or halo based operations.
+			 *          or halo type operations.
 			 *
-			 * If a previously non-existing entry of the vector is requested, undefined
-			 * behaviour will occur. Functions that are defined to work with references
-			 * of this kind, such as grb::eWiseLambda, define exactly which elements are
-			 * dereferenced.
+			 * \note    For I/O purposes, use the iterator retrieved via cbegin()
+			 *          instead of relying on a lambda_reference.
 			 *
-			 * \warning In parallel contexts the use of a returned lambda reference
-			 *          outside the context of an eWiseLambda will incur at least one of
-			 *          the following ill effects: it may
-			 *            -# fail outright,
-			 *            -# work on stale data,
-			 *            -# work on incorrect data, or
-			 *            -# incur high communication costs to guarantee correctness.
-			 *          In short, such usage causes undefined behaviour. Implementers are
-			 *          \em not advised to provide GAS-like functionality through this
-			 *          interface, as it invites bad programming practices and bad
-			 *          algorithm design decisions. This operator is instead intended to
-			 *          provide for generic BLAS1-type operations only.
-			 *
-			 * \note    For I/O, use the iterator retrieved via cbegin() instead of
-			 *          relying on a lambda_reference.
-			 *
-			 * @param[in] i    Which element to return a lambda reference of.
-			 * @param[in] ring Under which generalised semiring to interpret the
-			 *                 requested \f$ i \f$th element of this vector.
-			 *
-			 * \note The \a ring is required to be able to interpret a sparse vector. A
-			 *       user who is sure this vector is dense, or otherwise is able to
-			 *       ensure that the a lambda_reference will only be requested at
-			 *       elements where nonzeroes already exists, may refer to
-			 *       Vector::operator[],
+			 * @param[in] i Which element to return a lambda reference of.
 			 *
 			 * @return A lambda reference to the element \a i of this vector.
 			 *
 			 * \par Example.
-			 * See grb::eWiseLambda() for a practical and useful example.
-			 *
-			 * \warning There is no similar concept in the official GraphBLAS specs.
+			 * See #grb::eWiseLambda for a practical and useful example.
 			 *
 			 * @see lambda_reference For more details on the returned reference type.
-			 * @see grb::eWiseLambda For one legal way in which to use the returned
-			 *      #lambda_reference.
+			 * @see #grb::eWiseLambda For one way to use the returned #lambda_reference.
 			 */
 			lambda_reference operator[]( const size_t i ) {
 				(void) i;
-			#ifndef _GRB_NO_EXCEPTIONS
+ #ifndef _GRB_NO_EXCEPTIONS
 				throw std::runtime_error(
 					"Requesting lambda reference of unimplemented Vector backend."
 				);
-			#endif
+ #endif
 			}
 	};
 

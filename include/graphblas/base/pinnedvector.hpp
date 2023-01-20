@@ -57,8 +57,8 @@ namespace grb {
 	 *
 	 * The PinnedVector abstracts a container over nonzeroes. A nonzero is a pair
 	 * of indices and values. One may query for the number of nonzeroes and use
-	 *   1. #PinnedVector::getNonzeroValue to retrieve a nonzero value, or
-	 *   2. #PinnedVector::getNonzeroIndex to retrieve a nonzero index.
+	 *   1. getNonzeroValue to retrieve a nonzero value, or
+	 *   2. getNonzeroIndex to retrieve a nonzero index.
 	 *
 	 * An instance of the PinnedVector cannot modify the underlying nonzero
 	 * structure nor its values.
@@ -281,7 +281,7 @@ namespace grb {
 			inline size_t getNonzeroIndex(
 				const size_t k
 			) const noexcept {
-				(void)k;
+				(void) k;
 				assert( function_was_not_implemented_in_the_selected_backend );
 				return std::numeric_limits< size_t >::max();
 			}

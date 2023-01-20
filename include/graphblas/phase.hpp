@@ -86,7 +86,7 @@ namespace grb {
 	 *      following call to f( A, ..., EXECUTE ) is successful;
 	 *   3. a call to f( A, ..., TRY ), which may or may not succeed. If the call
 	 *      does not succeed, then \a A, after function exit:
-	 *        -# contains exactly #grb::capacity( A ) nonzeroes;
+	 *        -# contains exactly #grb::capacity (of \a A) nonzeroes;
 	 *        -# has nonzeroes at the coordinates where \a A on entry had
 	 *           nonzeroes;
 	 *        -# has nonzeroes with values equal to those that would have been
@@ -197,7 +197,7 @@ namespace grb {
 		 * computation is incomplete and the primitive shall return #grb::FAILED.
 		 * Regarding each output container \a A, the following are guaranteed:
 		 *    -# the capacity of \a A remains unchanged;
-		 *    -# contains #grb::capacity( A ) nonzeroes;
+		 *    -# contains #grb::capacity (of \a A) nonzeroes;
 		 *    -# has nonzeroes at the coordinates where \a A on entry had nonzeroes;
 		 *    -# has nonzeroes with values equal to those that would have been
 		 *       computed at its coordinates were the call successul; and
