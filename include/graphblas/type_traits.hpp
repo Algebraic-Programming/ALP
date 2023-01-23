@@ -88,10 +88,10 @@ namespace grb {
 	 * An ALP/GraphBLAS object is either an ALP/GraphBLAS container or an ALP
 	 * semiring, monoid, or operator.
 	 *
-	 * @see #is_monoid
-	 * @see #is_semiring
-	 * @see #is_operator
-	 * @see #is_container
+	 * @see #grb::is_monoid
+	 * @see #grb::is_semiring
+	 * @see #grb::is_operator
+	 * @see #grb::is_container
 	 */
 	template< typename T >
 	struct is_object {
