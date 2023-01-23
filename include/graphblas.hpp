@@ -216,7 +216,7 @@
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
  * @}
  *
- * \defgroup backends ALP Back-ends
+ * \defgroup backends Backends
  * @{
  *
  * ALP code is compiled using a compiler wrapper, which optionally takes a
@@ -253,7 +253,14 @@
  *
  * The #grb::Backend enum lists all backends known to ALP.
  *
- * @author A. N. Yzelman, Huawei Technologies France (2016-2020)
+ * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
+ * @}
+ *
+ * \defgroup perfSemantics Performance Semantics
+ * @{
+ *
+ * TODO
+ *
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
  * @}
  */
