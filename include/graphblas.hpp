@@ -330,10 +330,18 @@
  * demand that ALP libraries must clearly document the work complexity of the
  * primitives it defines, ALP furthermore demands such analyses for the
  * following quantities:
+ *  - how many times operator(s) may be applied,
  *  - intra-process data movement from main memory to processing units,
  *  - new dynamic memory allocations and/or releases of previously allocated
  *     memory, and
  *  - whether system calls may occur during a call to the given primitive.
+ *
+ * \note Typically (but not always) the amount of work is proportional to the
+ *       number of operator applications.
+ *
+ * \note Typically (but not necessarily always) if primitives are allowed to
+ *       allocate or free dynamic memory, then it may also thus make system
+ *       calls.
  *
  * For backends that allow for more than one user process, the following
  * additional performance semantics must be defined:
