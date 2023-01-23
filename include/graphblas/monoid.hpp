@@ -64,6 +64,7 @@ namespace grb {
 			"one of its input domains" );
 
 	public:
+
 		/** The left-hand side input domain. */
 		typedef typename _OP::D1 D1;
 
@@ -80,7 +81,9 @@ namespace grb {
 		template< typename IdentityType >
 		using Identity = _ID< IdentityType >;
 
+
 	private:
+
 		/**
 		 * The underlying binary operator.
 		 *
