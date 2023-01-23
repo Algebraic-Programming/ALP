@@ -185,8 +185,8 @@ namespace grb {
 	template< typename T, typename = void >
 	struct is_associative {
 
-		static_assert( false, "The template argument to grb::is_associative must be "
-			"an (ALP) binary operator or monoid" );
+		static_assert( is_operator< T >::value || is_monoid< T >::value,
+			"Template argument should be an ALP binary operator or monoid." );
 
 		/** Whether \a T is associative. */
 		static const constexpr bool value = false;
@@ -201,9 +201,9 @@ namespace grb {
 	template< typename Monoid >
 	struct is_associative<
 		Monoid,
-		std::enable_if< is_monoid< Monoid >::true, void >::type
+		typename std::enable_if< is_monoid< Monoid >::value, void >::type
 	> {
-		static_assert( is_associative< Monoid::Operator >::value,
+		static_assert( is_associative< typename Monoid::Operator >::value,
 			"Malformed ALP monoid encountered" );
 		static const constexpr bool value = true;
 	};
@@ -219,8 +219,8 @@ namespace grb {
 	template< typename T, typename = void >
 	struct is_commutative {
 
-		static_assert( false, "The template argument to grb::is_commutative must be "
-			"an (ALP) algebraic relation" );
+		static_assert( is_operator< T >::value || is_monoid< T >::value,
+			"Template argument should be an ALP binary operator or monoid." );
 
 		/** Whether \a T is commutative. */
 		static const constexpr bool value = false;
@@ -235,7 +235,7 @@ namespace grb {
 	template< typename Monoid >
 	struct is_commutative<
 		Monoid,
-		std::enable_if< is_monoid< Monoid >::true, void >::type
+		typename std::enable_if< is_monoid< Monoid >::value, void >::type
 	> {
 		/** \internal Simply inherit from underlying operator */
 		static const constexpr bool value =

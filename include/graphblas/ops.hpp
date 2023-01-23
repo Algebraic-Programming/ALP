@@ -848,7 +848,7 @@ namespace grb {
 	template< typename OP >
 	struct is_associative<
 		OP,
-		std::enable_if< is_operator< OP >::value, void >::type
+		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
 		static constexpr const bool value = OP::is_associative();
 	};
@@ -856,7 +856,7 @@ namespace grb {
 	template< typename OP >
 	struct is_commutative<
 		OP,
-		std::enable_if< is_operator< OP >::value, void >::type
+		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
 		static constexpr const bool value = OP::is_commutative();
 	};
