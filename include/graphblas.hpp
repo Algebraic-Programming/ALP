@@ -55,6 +55,7 @@
  *
  * @brief ALP/GraphBLAS enables sparse linear algebraic programming.
  *
+ * \parblock
  * \par API introduction
  *
  * ALP/GraphBLAS is an ANSI C++11 variant of the C GraphBLAS standard with a few
@@ -126,6 +127,19 @@
  * output containers. The operator used for addition is derived from the
  * algebraic structure that the primitive is called with.
  *
+ * ALP requires that every primitive is \em parallelisable. Every backend that
+ * implements primitive for a specific system furthermore must specify
+ * <em>performance semantics</em>. Contrary to functional semantics that this
+ * reference specifies, performance semantics guarantee certain observable
+ * behaviours when it comes to the amount of work, data movement,
+ * synchronisation across parallel systems, and/or memory use.
+ *
+ * @see perfSemantics
+ * \endparblock
+ *
+ * \parblock
+ * \par Algebraic Structures
+ *
  * ALP/GraphBLAS defines three types of algebra structures, namely, a
  *  -# binary operator such as #grb::operators::add (numerical addition),
  *  -# #grb::Monoid, and
@@ -162,12 +176,16 @@
  * multiplicative monoids. Errors are reported <em>at compile time</em>, through
  * the use of <em>algebraic type traits</em> such as #grb::is_associative.
  *
+ * @see typeTraits
+ *
  * Standard operators and identities are found in their respective namespaces,
  * #grb::operators and #grb::identities, respectively. The ALP monoids and
  * semirings are generalised from their standard mathematical definitions in
  * that they hold multiple domains. The description of #grb::Semiring details
  * the underlying mathematical structure that nevertheless can be identified.
+ * \endparblock
  *
+ * \parblock
  * \par ALP/GraphBLAS by example
  *
  * An example is provided within examples/sp.cpp. It demonstrates usage of this
@@ -211,9 +229,43 @@
  * Full example use case:
  *
  * \snippet sp.cpp Example shortest-paths with semiring adapted to find the most reliable route instead
+ * \endparblock
  *
  * @author A. N. Yzelman, Huawei Technologies France (2016-2020)
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
+ * @}
+ *
+ * \defgroup typeTraits Algebraic Type Traits
+ * @{
+ *
+ * Algebraic type traits allows compile-time reasoning on algebraic structures.
+ *
+ * Under <em>algebraic type traits</em>, ALP defines two classes of type traits:
+ *  1. classical type traits, akin to, e.g., <tt>std::is_integral</tt>, defined
+ *     over the ALP-specific algebraic objects such as #grb::Semiring, and
+ *  2. algebraic type traits that allow for the compile-time introspection of
+ *     algebraic structures.
+ *
+ * Under the first class, the following type traits are defined by ALP:
+ *  - #grb::is_operator, #grb::is_monoid, and #grb::is_semiring, but also
+ *  - #grb::is_container and #grb::is_object.
+ *
+ * Under the second class, the following type traits are defined by ALP:
+ *  - #grb::is_associative, #grb::is_commutative, #grb::is_idempotent, and
+ *    #grb::has_immutable_nonzeroes.
+ *
+ * Algebraic type traits are a central concept to ALP; depending on algebraic
+ * properties, ALP applies different optimisations. Properties such as
+ * associativity furthermore often define whether primitives may be
+ * automatically parallelised. Therefore, some primitives only allow algebraic
+ * structures with certain properties.
+ *
+ * Since algebraic type traits are compile-time, the composition of invalid
+ * structures (e.g., composing a monoid out of a non-associative binary
+ * operator), or the calling of a primitive using an incompatible algebraic
+ * structure, results in an <em>compile-time</em> error. Such errors are
+ * furthermore accompanied by clear messages and suggestions.
+ *
  * @}
  *
  * \defgroup backends Backends
@@ -259,7 +311,47 @@
  * \defgroup perfSemantics Performance Semantics
  * @{
  *
- * TODO
+ * Each ALP primitive, every constructor, and every destructor come with
+ * <em>performance semantics</em>, in addition to functional semantics.
+ *
+ * Performance semantics may differ for different backends-- ALP stringently
+ * mandates that backends defines them, thus imposing a significant degree of
+ * predictability on implementations of ALP, but does not significantly limit
+ * possible implementation choices.
+ *
+ * \warning Performance semantics should not be mistaken for performance
+ *          \em guarantees. The vast majority of computing platforms exhibit
+ *          performance variabilities that preclude defining stringent such
+ *          guarantees.
+ *
+ * Performance semantics includes classical asymptotic work analysis in the
+ * style of Cormen et alii, as commonly taught as part of basic computer science
+ * courses. Aside from making the reasonable (although arguably too uncommon)
+ * demand that ALP libraries must clearly document the work complexity of the
+ * primitives it defines, ALP furthermore demands such analyses for the
+ * following quantities:
+ *  - intra-process data movement from main memory to processing units,
+ *  - new dynamic memory allocations and/or releases of previously allocated
+ *     memory, and
+ *  - whether system calls may occur during a call to the given primitive.
+ *
+ * For backends that allow for more than one user process, the following
+ * additional performance semantics must be defined:
+ *  - inter-process data movement, and
+ *  - how many synchronisation steps a primitive requires to complete.
+ *
+ * Defining such performance semantics are crucial to
+ *  1. allow algorithm designers to design the best possible algorithms even if
+ *     the target platforms and target use cases vary,
+ *  2. allow users to determine scalability under increasing problem sizes, and
+ *  3. allow system architects to determine the qualitative effect of scaling up
+ *     system resources in an a-priori fashion.
+ *
+ * These advantages furthermore do not require expensive experimentation on the
+ * part of algorithm designers, users, or system architects. However, it puts a
+ * significant demand on the implementers and maintainers of ALP.
+ *
+ * @see backends
  *
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
  * @}

@@ -40,6 +40,8 @@ namespace grb {
 	 * There are only two ALP/GraphBLAS containers:
 	 *  -# grb::Vector, and
 	 *  -# grb::Matrix.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct is_container {
@@ -57,6 +59,8 @@ namespace grb {
 	 * Used to inspect whether a given type is an ALP semiring.
 	 *
 	 * @tparam T The type to inspect.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct is_semiring {
@@ -74,6 +78,8 @@ namespace grb {
 	 * Used to inspect whether a given type is an ALP monoid.
 	 *
 	 * @tparam T The type to inspect.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct is_monoid {
@@ -91,6 +97,8 @@ namespace grb {
 	 * Used to inspect whether a given type is an ALP operator.
 	 *
 	 * @tparam T The type to inspect.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct is_operator {
@@ -115,6 +123,8 @@ namespace grb {
 	 * @see #grb::is_semiring
 	 * @see #grb::is_operator
 	 * @see #grb::is_container
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct is_object {
@@ -144,6 +154,8 @@ namespace grb {
 	 *       embed an idempotent trait. This should hence be re-written to use the
 	 *       same mechanism as for #grb::is_associative and #grb::is_idempotent.
 	 * \endinternal
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T, typename = void >
 	struct is_idempotent {
@@ -160,6 +172,8 @@ namespace grb {
 	 * \internal
 	 * Specialisation for ALP monoids.
 	 * \endinternal
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename Monoid >
 	struct is_idempotent<
@@ -181,6 +195,8 @@ namespace grb {
 	 *
 	 * An example of an associative operator is the logical or,
 	 * #grb::operators::logical_or.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T, typename = void >
 	struct is_associative {
@@ -197,6 +213,8 @@ namespace grb {
 	 * \internal
 	 * Specialisation for ALP monoids.
 	 * \endinternal
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename Monoid >
 	struct is_associative<
@@ -215,6 +233,8 @@ namespace grb {
 	 *
 	 * An example of a commutative operator is numerical addition,
 	 * #grb::operators::add.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T, typename = void >
 	struct is_commutative {
@@ -231,6 +251,8 @@ namespace grb {
 	 * \internal
 	 * Specialisation for ALP monoids.
 	 * \endinternal
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename Monoid >
 	struct is_commutative<
@@ -250,6 +272,8 @@ namespace grb {
 	 *
 	 * An example of a monoid with an immutable identity is the logical OR,
 	 * #grb::operators::logical_or.
+	 *
+	 * \ingroup typeTraits
 	 */
 	template< typename T >
 	struct has_immutable_nonzeroes {
@@ -274,6 +298,8 @@ namespace grb {
 		 * An example of an operator that non-trivially may result in a
 		 * no-op is grb::operators::left_assign_if. Such operators must
 		 * overload this internal type trait.
+		 *
+		 * \ingroup typeTraits
 		 */
 		template< typename OP >
 		struct maybe_noop {
