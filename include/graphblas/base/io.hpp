@@ -63,7 +63,7 @@ namespace grb {
 	 * Sometimes it is desired to have direct access to ALP/GraphBLAS memory
 	 * area, and to have that memory available even after the ALP/GraphBLAS context
 	 * has been destroyed. This functionality is provided by the concept of
-	 * <em>pinned containers</em> such as provided by #PinnedVector.
+	 * <em>pinned containers</em> such as provided by #grb::PinnedVector.
 	 *
 	 * Containers may be instantiated with default or given requested capacities.
 	 * Implementations may reserve a higher capacity, but must allocate at least
