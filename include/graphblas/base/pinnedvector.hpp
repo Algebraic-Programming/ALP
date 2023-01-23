@@ -155,6 +155,8 @@ namespace grb {
 			}
 
 			/**
+			 * Destroys a #grb::PinnedVector instance.
+			 *
 			 * Destroying a pinned vector will only remove the underlying vector data if
 			 * and only if:
 			 *   1) the original grb::Vector has been destroyed;
