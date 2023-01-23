@@ -3954,48 +3954,7 @@ namespace grb {
 
 	/**
 	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = x .* \beta \f$, using the given operator. The input and
-	 * output vectors must be of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ x_i \odot \beta \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, such identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd (neutral),
-	 *            -# eWiseMul (annihilating), and
-	 *            -# eWiseApply using monoids (neutral).
-	 *          An eWiseAdd with some semiring and an eWiseApply using its additive
-	 *          monoid are totally equivalent.
-	 *
-	 * @tparam descr      The descriptor to be used. Equal to
-	 *                    descriptors::no_operation if left unspecified.
-	 * @tparam OP         The operator to use.
-	 * @tparam InputType1 The value type of the left-hand vector.
-	 * @tparam InputType2 The value type of the right-hand scalar.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]   x   The left-hand input vector.
-	 * @param[in]  beta The right-hand input scalar.
-	 * @param[out]  z   The pre-allocated output vector.
-	 * @param[in]   op  The operator to use.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x and \a z do not
-	 *                       match. All input data containers are left untouched
-	 *                       if this exit code is returned; it will be as though
-	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * vector, \f$ z = x .* \beta \f$, using the given operator.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4085,9 +4044,9 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place.
 	 *
-	 * Specialisation for \a x and \a y scalar, operator version.
+	 * \todo Performance semantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class OP,
@@ -4130,7 +4089,8 @@ namespace grb {
 	 * Specialisation for \a x and \a y scalar, monoid version.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
