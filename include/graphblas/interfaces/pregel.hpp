@@ -71,7 +71,7 @@
  * data (POD) types-- similar to the requirements of an ALP operator. An example
  * of an ALP/Pregel algorithm that has non-trivial algorithm parameters is
  * #grb::algorithms::pregel::PageRank: #grb::algorithms::pregel::PageRank::Data.
- * 
+ *
  * The type of the 5th argument to #grb::interfaces::Pregel::execute is an
  * instance of #grb::interfaces::PregelState. Some of the ALP/Pregel state
  * fields are read-only, such as the current round number
