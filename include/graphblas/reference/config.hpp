@@ -112,8 +112,7 @@ namespace grb {
 				/**
 				 * The prefetch distance used during level-2 and level-3 operations.
 				 *
-				 * This value will be ignored if #prefetchingEnabled() returns
-				 * <tt>false</tt>.
+				 * This value will be ignored if #enabled() returns <tt>false</tt>.
 				 */
 				static constexpr size_t distance() {
 					return 128;

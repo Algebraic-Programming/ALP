@@ -249,15 +249,17 @@ namespace grb {
 		 *
 		 * The state includes global data as well as vertex-centric state. The global
 		 * state is umodifiable and includes:
-		 *  - #PregelState::num_vertices,
-		 *  - #PregelState::num_edges, and
-		 *  - #PregelState::round.
+		 *  - #grb::interfaces::PregelState::num_vertices,
+		 *  - #grb::interfaces::PregelState::num_edges, and
+		 *  - #grb::interfaces::PregelState::round.
 		 *
 		 * Vertex-centric state can be either constant or modiable:
-		 *  - static vertex-centric state: #PregelState::indegree,
-		 *    #PregelState::outdegree, and #PregelState::vertexID.
-		 *  - modifiable vertex-centric state: #PregelState::voteToHalt, and
-		 *    #PregelState::active.
+		 *  - static vertex-centric state: #grb::interfaces::PregelState::indegree,
+		 *    #grb::interfaces::PregelState::outdegree, and
+		 *    #grb::interfaces::PregelState::vertexID.
+		 *  - modifiable vertex-centric state:
+		 *    #grb::interfaces::PregelState::voteToHalt, and
+		 *    #grb::interfacesPregelState::active.
 		 *
 		 * \ingroup Pregel
 		 */
@@ -568,7 +570,7 @@ namespace grb {
 				 * Vertex-centric programs have both vertex-local and global state:
 				 *
 				 * @param[in] vertex_state A vector that contains the state of each vertex.
-				 * @param[in] global_data  Global read-only state for the given \a program.
+				 * @param[in] data         Global read-only state for the given \a program.
 				 *
 				 * The capacity, size, and number of nonzeroes of \a vertex_state must equal
 				 * the maximum vertex ID.
@@ -613,9 +615,9 @@ namespace grb {
 				 *
 				 * @param[in] out_buffer An optional buffer area that should only be set
 				 *                       whenever the #config::out_sparsify configuration
-				 *                       parameter is not set to #NONE. If that is the case,
-				 *                       then \a out_buffer should have size and capacity
-				 *                       equal to the maximum vertex ID.
+				 *                       parameter is not set to #config::NONE. If that is
+				 *                       the case, then \a out_buffer should have size and
+				 *                       capacity equal to the maximum vertex ID.
 				 *
 				 * @param[in] max_rounds The maximum number of rounds the \a program may
 				 *                       execute. Once reached and not terminated, the

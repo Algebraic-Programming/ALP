@@ -53,7 +53,6 @@ namespace grb {
 		 * This algorithm requires the following workspace:
 		 *
 		 * @param[in,out] buf1 A buffer vector. Must match the size of \a A.
-		 * @param[in,out] buf2 A buffer vector. Must match the size of \a A.
 		 *
 		 * For \f$ n \times n \f$ matrices \a A, the capacity of \a u, \a buf1, and
 		 * \a buf2 must equal \f$ n \f$.
