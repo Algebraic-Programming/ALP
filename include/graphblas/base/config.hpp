@@ -56,7 +56,7 @@ namespace grb {
 	namespace config {
 
 		/**
-		 * \defgroup config ALP Configuration
+		 * \defgroup config Configuration
 		 *
 		 * This module collects all configuration settings.
 		 */
