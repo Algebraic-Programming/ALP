@@ -517,8 +517,9 @@ static void parse_arguments(
 	parser.parse( argc, argv );
 
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
-		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS << " instead of " << sim_in.max_coarsening_levels << std::endl;
-		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
+		std::cerr << "ERROR: max coarsening level is " << sim_in.max_coarsening_levels <<
+			"; at most " << MAX_COARSENING_LEVELS << " is allowed" << std::endl;
+		std::exit( -1 );
 	}
 	if( sim_in.inner_test_repetitions == 0 ) {
 		std::cerr << "ERROR no test runs selected: set \"--test-rep >0\"" << std::endl;
@@ -530,16 +531,13 @@ static void parse_arguments(
 	}
 
 	const size_t max_system_divider = 1 << sim_in.max_coarsening_levels;
-	std::cout << "max_system_divider " << max_system_divider << std::endl;
 	for( size_t s : { sim_in.nx, sim_in.ny, sim_in.nz } ) {
-		std::cout << "trying " << s << std::endl;
 		std::lldiv_t div_res = std::div( static_cast< long long >( s ), static_cast< long long >( max_system_divider ) );
 		if ( div_res.rem != 0) {
 			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
 				<< sim_in.max_coarsening_levels << " times because it is not exactly divisible" << std::endl;
 			std::exit( -1 );
 		}
-		std::cout << "div_res.quot " << div_res.quot << std::endl;
 		if ( div_res.quot < static_cast< long long >( PHYS_SYSTEM_SIZE_MIN ) ) {
 			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
 				<< sim_in.max_coarsening_levels << " times because it is too small" << std::endl;
