@@ -259,7 +259,7 @@ namespace grb {
 		 *    #grb::interfaces::PregelState::vertexID.
 		 *  - modifiable vertex-centric state:
 		 *    #grb::interfaces::PregelState::voteToHalt, and
-		 *    #grb::interfacesPregelState::active.
+		 *    #grb::interfaces::PregelState::active.
 		 *
 		 * \ingroup Pregel
 		 */
