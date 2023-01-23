@@ -288,7 +288,7 @@ namespace grb {
 		 * \note This is the inverse to #grb::operators::add.
 		 *
 		 * \warning This operator expects numerical types for \a D1, \a D2, and
-		 *          \a D3, or types that have the appropriate operator- overloads 
+		 *          \a D3, or types that have the appropriate operator- overloads
 		 *          available.
 		 */
 		template<
