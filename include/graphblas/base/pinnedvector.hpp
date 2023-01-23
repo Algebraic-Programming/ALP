@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Contains the API for the PinnedVector class.
+ * Contains the specification for #grb::PinnedVector.
  *
  * @author A. N. Yzelman
  */
@@ -36,14 +36,13 @@
 
 namespace grb {
 
-	/** \addtogroup IO
+	/**
+	 * Provides a mechanism to access ALP containers from outside of an ALP
+	 * context.
 	 *
-	 * Provides a mechanism to access GraphBLAS containers from outside of any
-	 * GraphBLAS context.
-	 *
-	 * An instance of \a PinnedVector caches a container's data and returns it
+	 * An instance of #grb::PinnedVector caches a container's data and returns it
 	 * to the user. The user can refer to the returned data until such time the
-	 * \a PinnedVector's instance is destroyed, regardless of whether a call to
+	 * instance of #grb::PinnedVector is destroyed, regardless of whether a call to
 	 * #grb::finalize occurs, and regardless whether the ALP/GraphBLAS program
 	 * executed through the #grb::Launcher had already returned.
 	 *
@@ -55,22 +54,22 @@ namespace grb {
 	 *       precisely when the original container no longer is in scope.
 	 *       Therefore this last remark on invalidation should not matter.
 	 *
-	 * The PinnedVector abstracts a container over nonzeroes. A nonzero is a pair
-	 * of indices and values. One may query for the number of nonzeroes and use
+	 * The #grb::PinnedVector abstracts a read-only container of nonzeroes. A
+	 * nonzero is a pair of indices and values. One may query for the number of
+	 * nonzeroes and use
 	 *   1. getNonzeroValue to retrieve a nonzero value, or
 	 *   2. getNonzeroIndex to retrieve a nonzero index.
 	 *
-	 * An instance of the PinnedVector cannot modify the underlying nonzero
-	 * structure nor its values.
+	 * An instance of #grb::PinnedVector cannot modify the underlying nonzero
+	 * structure nor can it modify its values.
 	 *
 	 * \note A performant implementation in fact does \em not copy the container
-	 *       data, but provides a mechanism to access the underlying GraphBLAS
-	 *       memory whenever it is possible to do so. This memory should remain
-	 *       valid even after a call to grb::finalize() is made, and for as long
-	 *       as the PinnedVector instance remains valid.
+	 *       data, but provides a mechanism to access the underlying ALP memory
+	 *       whenever it is possible to do so. This memory should remain valid
+	 *       even after a call to #grb::Launcher::exec has completed, and for as
+	 *       long as the #grb::PinnedVector instance remains valid.
 	 *
-	 * \note Some implementations may not retain a raw vector. In this case, a
-	 *       copy is unavoidable.
+	 * \ingroup IO
 	 */
 	template< typename IOType, enum Backend implementation >
 	class PinnedVector {
@@ -78,8 +77,7 @@ namespace grb {
 		private :
 
 			/**
-			 * \internal Dummy false bool with a descriptive name for assertion
-			 * failures.
+			 * Dummy false bool with a descriptive name for assertion failures.
 			 */
 			static const constexpr bool
 				function_was_not_implemented_in_the_selected_backend = false;
@@ -88,25 +86,27 @@ namespace grb {
 		public :
 
 			/**
-			 * Pins a given \a vector to a single memory pointer. The pointer
-			 * shall remain valid as long as the lifetime of this instance.
-			 * The given \a vector must be in unpinned state or an exception
-			 * will be thrown.
-			 * Pinning may or may not require a memory copy, depending on the
-			 * GraphBLAS implementation. If it does not, then destroying this
-			 * instance or calling #free on this vector may or may not result
-			 * in memory deallocation, depending on whether the underlying
-			 * vector still exists or not.
+			 * Pins the contents of a given \a vector.
 			 *
-			 * If one user process calls this constructor, \em all user
-			 * processes must do so-- this is a collective call. All member
-			 * functions as well as the default destructor are \em not
-			 * collective.
+			 * A successfully constructed #grb::PinnedVector shall remain valid until it
+			 * is destroyed, regardless of whether the ALP context in which the original
+			 * \a vector appears has been destroyed.
+			 *
+			 * Pinning may or may not require a memory copy, depending on the ALP
+			 * implementation and backend. If it does not, then destroying this
+			 * instance \em may result in memory deallocation. It only \em must result
+			 * in deallocation if the pinned vector that did not require a memory copy
+			 * happens to be the last remaining reference to the original \a vector.
+			 *
+			 * If one user process calls this constructor, \em all user processes must do
+			 * so and with the same arguments-- this is a collective call.
+			 *
+			 * All member functions of this class are \em not collective.
 			 *
 			 * @param[in] vector The vector to pin the memory of.
-			 * @param[in]  mode  The grb::IOMode.
+			 * @param[in]  mode  The #grb::IOMode.
 			 *
-			 * The \a mode argument is \em optional; its default is PARALLEL.
+			 * The \a mode argument is \em optional. The default is #grb::PARALLEL.
 			 *
 			 * \parblock
 			 * \par Performance semantics (#IOMode::SEQUENTIAL):
@@ -135,8 +135,8 @@ namespace grb {
 				const Vector< IOType, implementation, Coord > &vector,
 				const IOMode mode
 			) {
-				(void)vector;
-				(void)mode;
+				(void) vector;
+				(void) mode;
 				assert( function_was_not_implemented_in_the_selected_backend );
 			}
 
@@ -216,7 +216,7 @@ namespace grb {
 			 * optional.
 			 *
 			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
-			 * #nonzeroes() nonzeroes. Therefore, \a k must be less than #nonzeroes().
+			 * #nonzeroes nonzeroes. Therefore, \a k must be less than #nonzeroes.
 			 *
 			 * @return The requested value.
 			 *
@@ -231,7 +231,7 @@ namespace grb {
 			inline OutputType getNonzeroValue(
 				const size_t k, const OutputType one = OutputType()
 			) const noexcept {
-				(void)k;
+				(void) k;
 				assert( function_was_not_implemented_in_the_selected_backend );
 				return one;
 			}
@@ -249,14 +249,13 @@ namespace grb {
 			 * specification of #getNonzeroValue.
 			 *
 			 * \note By providing this variant, implementations may avoid the
-			 *       requirement thatensure that that \a IOType must be default-
-			 *       constructable.
+			 *       requirement that \a IOType must be default-constructable.
 			 */
 			inline IOType getNonzeroValue(
 				const size_t k
 			) const noexcept {
 				IOType ret;
-				(void)k;
+				(void) k;
 				assert( function_was_not_implemented_in_the_selected_backend );
 				return ret;
 			}
@@ -267,7 +266,7 @@ namespace grb {
 			 * @param[in] k The nonzero ID to return the index of.
 			 *
 			 * A nonzero is a tuple of an index and nonzero value. A pinned vector holds
-			 * #nonzeroes() nonzeroes. Therefore, \a k must be less than #nonzeroes().
+			 * #nonzeroes nonzeroes. Therefore, \a k must be less than #nonzeroes.
 			 *
 			 * @return The requested index.
 			 *
