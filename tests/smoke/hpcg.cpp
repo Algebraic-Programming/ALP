@@ -182,21 +182,14 @@ template< typename T > void print_norm( const grb::Vector< T > & r, const char *
 
 
 /**
- * Returns the closest power of 2 bigger or equal to \p n .
+ * Allocates the data structure input to the various simulation steps (CG, multi-grid, coarsening, smoothing)
+ * for each level of the multi-grid. The input is the vector of system sizes \p mg_sizes, with sizes in
+ * monotonically \b decreasing order (finest system first).
+ *
+ * This routine is algorithm-agnositc, as long as the constructors of the data types meet the requirements
+ * explained in \ref multigrid_allocate_data().
  */
-template< typename T >
-T static next_pow_2( T n ) {
-	static_assert( std::is_integral< T >::value, "Integral required." );
-	--n;
-	n |= ( n >> 1 );
-	for( unsigned i = 1; i <= sizeof( T ) * 4; i *= 2 ) {
-		const unsigned shift = static_cast< T >( 1U ) << i;
-		n |= ( n >> shift );
-	}
-	return n + 1;
-}
-
-static void allocate_system(
+static void allocate_system_structures(
 	const std::vector< size_t > &mg_sizes,
 	std::vector< std::unique_ptr< mg_data_t > > &system_levels,
 	std::vector< std::unique_ptr< coarsening_data_t > > &coarsener_levels,
@@ -264,7 +257,7 @@ static void build_3d_system(
 	// exclude main system
 	std::transform( mg_generators.cbegin(), mg_generators.cend(), std::back_inserter( mg_sizes  ),
 		[] ( const builder_t &b ) { return b.system_size(); } );
-	allocate_system( mg_sizes, system_levels, coarsener_levels, smoother_levels, holder );
+	allocate_system_structures( mg_sizes, system_levels, coarsener_levels, smoother_levels, holder );
 	assert( mg_generators.size() == system_levels.size() );
 	assert( mg_generators.size() == smoother_levels.size() );
 	assert( mg_generators.size() - 1 == coarsener_levels.size() );
@@ -488,7 +481,13 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, size_t & outer_iterations, double & max_diff_norm, int argc, char ** argv ) {
+static void parse_arguments(
+	simulation_input & sim_in,
+	size_t & outer_iterations,
+	double & max_diff_norm,
+	int argc,
+	char ** argv
+) {
 
 	argument_parser parser;
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
@@ -517,22 +516,6 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 
 	parser.parse( argc, argv );
 
-	// check for valid values
-	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
-	if( ssize != sim_in.nx ) {
-		std::cout << "Setting system size x to " << ssize << " instead of " << sim_in.nx << std::endl;
-		sim_in.nx = ssize;
-	}
-	ssize = std::max( next_pow_2( sim_in.ny ), PHYS_SYSTEM_SIZE_MIN );
-	if( ssize != sim_in.ny ) {
-		std::cout << "Setting system size y to " << ssize << " instead of " << sim_in.ny << std::endl;
-		sim_in.ny = ssize;
-	}
-	ssize = std::max( next_pow_2( sim_in.nz ), PHYS_SYSTEM_SIZE_MIN );
-	if( ssize != sim_in.nz ) {
-		std::cout << "Setting system size z to " << ssize << " instead of " << sim_in.nz << std::endl;
-		sim_in.nz = ssize;
-	}
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
 		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS << " instead of " << sim_in.max_coarsening_levels << std::endl;
 		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
@@ -542,7 +525,29 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 		std::exit( -1 );
 	}
 	if( sim_in.max_iterations == 0 ) {
-		std::cout << "Setting number of iterations to 1" << std::endl;
-		sim_in.max_iterations = 1;
+		std::cerr << "ERROR no CG iterations selected: set \"--max-cg-iterations > 0\"" << std::endl;
+		std::exit( -1 );
+	}
+
+	const size_t max_system_divider = 1 << sim_in.max_coarsening_levels;
+	std::cout << "max_system_divider " << max_system_divider << std::endl;
+	for( size_t s : { sim_in.nx, sim_in.ny, sim_in.nz } ) {
+		std::cout << "trying " << s << std::endl;
+		std::lldiv_t div_res = std::div( static_cast< long long >( s ), static_cast< long long >( max_system_divider ) );
+		if ( div_res.rem != 0) {
+			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
+				<< sim_in.max_coarsening_levels << " times because it is not exactly divisible" << std::endl;
+			std::exit( -1 );
+		}
+		std::cout << "div_res.quot " << div_res.quot << std::endl;
+		if ( div_res.quot < static_cast< long long >( PHYS_SYSTEM_SIZE_MIN ) ) {
+			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
+				<< sim_in.max_coarsening_levels << " times because it is too small" << std::endl;
+			std::exit( -1 );
+		}
+		if ( div_res.quot % 2 != 0 ) {
+			std::cerr << "ERROR: the coarsest size " << div_res.rem << " is not a multiple of 2" << std::endl;
+			std::exit( -1 );
+		}
 	}
 }
