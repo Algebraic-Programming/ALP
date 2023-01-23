@@ -796,63 +796,69 @@ namespace grb {
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::min< D1, D2, D3 > > {
+	struct is_idempotent< operators::min< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::max< D1, D2, D3 > > {
+	struct is_idempotent< operators::max< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::any_or< D1, D2, D3 > > {
+	struct is_idempotent< operators::any_or< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::logical_or< D1, D2, D3 > > {
+	struct is_idempotent< operators::logical_or< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::logical_and< D1, D2, D3 > > {
+	struct is_idempotent< operators::logical_and< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::relu< D1, D2, D3 > > {
+	struct is_idempotent< operators::relu< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::left_assign_if< D1, D2, D3 > > {
+	struct is_idempotent< operators::left_assign_if< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_idempotent< operators::right_assign_if< D1, D2, D3 > > {
+	struct is_idempotent< operators::right_assign_if< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
-	struct is_idempotent< operators::argmin< IType, VType > > {
+	struct is_idempotent< operators::argmin< IType, VType >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
-	struct is_idempotent< operators::argmax< IType, VType > > {
+	struct is_idempotent< operators::argmax< IType, VType >, void > {
 		static const constexpr bool value = true;
 	};
 
 	template< typename OP >
-	struct is_associative {
-		static constexpr const bool value = is_operator< OP >::value && OP::is_associative();
+	struct is_associative<
+		OP,
+		std::enable_if< is_operator< OP >::value, void >::type
+	> {
+		static constexpr const bool value = OP::is_associative();
 	};
 
 	template< typename OP >
-	struct is_commutative {
-		static constexpr const bool value = is_operator< OP >::value && OP::is_commutative();
+	struct is_commutative<
+		OP,
+		std::enable_if< is_operator< OP >::value, void >::type
+	> {
+		static constexpr const bool value = OP::is_commutative();
 	};
 
 	// internal type traits follow

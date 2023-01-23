@@ -43,8 +43,14 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_container {
-		/** Base case: an arbitrary type is not an ALP/GraphBLAS object. */
+
+		/**
+		 * Whether \a T is an ALP/GraphBLAS container.
+		 *
+		 * \internal Base case: an arbitrary type is not an ALP/GraphBLAS object.
+		 */
 		static const constexpr bool value = false;
+
 	};
 
 	/**
@@ -54,8 +60,14 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_semiring {
-		/** Base case: an arbitrary type is not a semiring. */
+
+		/**
+		 * Whether \a T is an ALP semiring.
+		 *
+		 * \internal Base case: an arbitrary type is not a semiring.
+		 */
 		static const constexpr bool value = false;
+
 	};
 
 	/**
@@ -65,8 +77,14 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_monoid {
-		/** Base case: an arbitrary type is not a monoid. */
+
+		/**
+		 * Whether \a T is an ALP monoid.
+		 *
+		 * \internal Base case: an arbitrary type is not an ALP monoid.
+		 */
 		static const constexpr bool value = false;
+
 	};
 
 	/**
@@ -76,7 +94,12 @@ namespace grb {
 	 */
 	template< typename T >
 	struct is_operator {
-		/** Base case: an arbitrary type is not an operator. */
+
+		/**
+		 * Whether \a T is an ALP operator.
+		 *
+		 * \internal Base case: an arbitrary type is not an ALP operator.
+		 */
 		static const constexpr bool value = false;
 	};
 
@@ -106,18 +129,117 @@ namespace grb {
 	};
 
 	/**
-	 * Used to inspect whether a given operator is idempotent.
+	 * Used to inspect whether a given operator or monoid is idempotent.
 	 *
-	 * @tparam T The operator to inspect.
+	 * @tparam T The operator or monoid to inspect.
 	 *
 	 * An example of an idempotent operator is the logical OR,
 	 * #grb::operators::logical_or.
+	 *
+	 * \internal
+	 * Since there are relatively few idempotent operators we rely on explicitly
+	 * overriding the default <tt>false</tt> type trait.
+	 *
+	 * \todo This has the disadvantage that user-defined operators do not easily
+	 *       embed an idempotent trait. This should hence be re-written to use the
+	 *       same mechanism as for #grb::is_associative and #grb::is_idempotent.
+	 * \endinternal
 	 */
-	template< typename T >
+	template< typename T, typename = void >
 	struct is_idempotent {
-		static_assert( is_operator< T >::value,
-			"Template argument to grb::is_idempotent must be an operator!" );
+
+		static_assert( is_operator< T >::value || is_monoid< T >::value,
+			"Template argument to grb::is_idempotent must be an operator or a monoid!" );
+
+		/** Wheter \a T is idempotent. */
 		static const constexpr bool value = false;
+
+	};
+
+	/**
+	 * \internal
+	 * Specialisation for ALP monoids.
+	 * \endinternal
+	 */
+	template< typename Monoid >
+	struct is_idempotent<
+		Monoid,
+		typename std::enable_if< is_monoid< Monoid >::value, void >::type
+	> {
+		static const constexpr bool value =
+			is_idempotent< typename Monoid::Operator >::value;
+	};
+
+	/**
+	 * Used to inspect whether a given operator or monoid is associative.
+	 *
+	 * \note Monoids are associative by definition, but this type traits is
+	 *       nonetheless defined for them so as to preserve symmetry in the API;
+	 *       see, e.g., #grb::is_commutative or #grb::is_idempotent.
+	 *
+	 * @tparam T The operator or monoid to inspect.
+	 *
+	 * An example of an associative operator is the logical or,
+	 * #grb::operators::logical_or.
+	 */
+	template< typename T, typename = void >
+	struct is_associative {
+
+		static_assert( false, "The template argument to grb::is_associative must be "
+			"an (ALP) binary operator or monoid" );
+
+		/** Whether \a T is associative. */
+		static const constexpr bool value = false;
+
+	};
+
+	/**
+	 * \internal
+	 * Specialisation for ALP monoids.
+	 * \endinternal
+	 */
+	template< typename Monoid >
+	struct is_associative<
+		Monoid,
+		std::enable_if< is_monoid< Monoid >::true, void >::type
+	> {
+		static_assert( is_associative< Monoid::Operator >::value,
+			"Malformed ALP monoid encountered" );
+		static const constexpr bool value = true;
+	};
+
+	/**
+	 * Used to inspect whether a given operator or monoid is commutative.
+	 *
+	 * @tparam T The operator or monoid to inspect.
+	 *
+	 * An example of a commutative operator is numerical addition,
+	 * #grb::operators::add.
+	 */
+	template< typename T, typename = void >
+	struct is_commutative {
+
+		static_assert( false, "The template argument to grb::is_commutative must be "
+			"an (ALP) algebraic relation" );
+
+		/** Whether \a T is commutative. */
+		static const constexpr bool value = false;
+
+	};
+
+	/**
+	 * \internal
+	 * Specialisation for ALP monoids.
+	 * \endinternal
+	 */
+	template< typename Monoid >
+	struct is_commutative<
+		Monoid,
+		std::enable_if< is_monoid< Monoid >::true, void >::type
+	> {
+		/** \internal Simply inherit from underlying operator */
+		static const constexpr bool value =
+			is_commutative< typename Monoid::Operator >::value;
 	};
 
 	/**
@@ -131,10 +253,14 @@ namespace grb {
 	 */
 	template< typename T >
 	struct has_immutable_nonzeroes {
+
 		static_assert( is_semiring< T >::value,
 			"Template argument to grb::has_immutable_nonzeroes must be a "
 			"semiring!" );
+
+		/** Whether \a T a semiring where nonzeroes are immutable. */
 		static const constexpr bool value = false;
+
 	};
 
 	namespace internal {
