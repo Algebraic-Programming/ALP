@@ -223,7 +223,7 @@ namespace grb {
 		const bool should_not_call_eWiseApplyOpASS_base = false;
 		assert( should_not_call_eWiseApplyOpASS_base );
 #endif
-		(void) x;
+		(void) z;
 		(void) alpha;
 		(void) beta;
 		(void) op;
