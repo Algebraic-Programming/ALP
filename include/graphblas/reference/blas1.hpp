@@ -3953,8 +3953,7 @@ namespace grb {
 	} // end namespace ``grb::internal''
 
 	/**
-	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = x .* \beta \f$, using the given operator.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, operator variant.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4044,12 +4043,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = \alpha \odot \beta \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, operator version.
 	 *
 	 * \todo Performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4084,9 +4084,9 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
 	 *
-	 * Specialisation for \a x and \a y scalar, monoid version.
+	 * \todo Add performance semantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -4115,12 +4115,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked operator variant.
 	 *
-	 * Specialisation for scalar \a y, masked operator version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4206,12 +4207,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, monoid variant.
 	 *
-	 * Monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4280,12 +4282,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, monoid version.
 	 *
-	 * Specialisation for scalar \a x. Monoid version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4344,9 +4347,9 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, monoid variant.
 	 *
-	 * Specialisation for scalar \a y. Monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -4408,12 +4411,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, masked monoid variant.
 	 *
-	 * Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4526,12 +4530,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked monoid variant.
 	 *
-	 * Specialisation for scalar \a x. Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4605,12 +4610,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked monoid variant.
 	 *
-	 * Specialisation for scalar \a y. Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4680,47 +4686,7 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = \alpha .* y \f$, using the given operator. The input and
-	 * output vectors must be of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ \alpha \odot y_i \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd,
-	 *            -# eWiseMul, and
-	 *            -# eWiseMulAdd.
-	 *
-	 * @tparam descr The descriptor to be used. Equal to descriptors::no_operation
-	 *               if left unspecified.
-	 * @tparam OP    The operator to use.
-	 * @tparam InputType1 The value type of the left-hand scalar.
-	 * @tparam InputType2 The value type of the right-hand side vector.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]  alpha The left-hand scalar.
-	 * @param[in]   y    The right-hand input vector.
-	 * @param[out]  z    The pre-allocated output vector.
-	 * @param[in]   op   The operator to use.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a y and \a z do not
-	 *                       match. All input data containers are left untouched
-	 *                       if this exit code is returned; it will be as though
-	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, operator version.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4745,7 +4711,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4815,12 +4782,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked operator version.
 	 *
-	 * Specialisation for scalar \a x. Masked operator version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4901,48 +4869,7 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise operation on elements of two vectors,
-	 * \f$ z = x .* y \f$, using the given operator. The vectors must be
-	 * of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ x_i \odot y_i \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd,
-	 *            -# eWiseMul, and
-	 *            -# eWiseMulAdd.
-	 *
-	 * @tparam descr The descriptor to be used (descriptors::no_operation if left
-	 *               unspecified).
-	 * @tparam OP    The operator to use.
-	 * @tparam InputType1 The value type of the left-hand side vector.
-	 * @tparam InputType2 The value type of the right-hand side vector.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]  x  The left-hand input vector. May not equal \a y.
-	 * @param[in]  y  The right-hand input vector. May not equal \a x.
-	 * @param[out] z  The pre-allocated output vector.
-	 * @param[in]  op The operator to use.
-	 *
-	 * @return grb::ILLEGAL  When \a x equals \a y.
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z
-	 *                       do not match. All input data containers are left
-	 *                       untouched if this exit code is returned; it will
-	 *                       be as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * Computes \f$ z = x \odot y \f$, out of place, operator variant.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4969,7 +4896,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -5078,12 +5006,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, masked operator variant.
 	 *
-	 * Masked operator version.
+	 * \todo Specify performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords

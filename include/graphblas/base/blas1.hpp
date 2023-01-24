@@ -154,7 +154,7 @@ namespace grb {
 	#define NO_MASK Vector< bool >( 0 )
 
 	/**
-	 * Computes \f$ z = \alpha \odot \beta \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, operator version.
 	 *
 	 * @tparam descr      The descriptor to be used. Equal to
 	 *                    descriptors::no_operation if left unspecified.
@@ -167,6 +167,8 @@ namespace grb {
 	 * @param[in] alpha The left-hand input scalar.
 	 * @param[in]  beta The right-hand input scalar.
 	 * @param[in]   op  The operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
 	 *
 	 * Specialisation scalar inputs, operator version. A call to this function
 	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
@@ -186,6 +188,9 @@ namespace grb {
 	 *                        out-of-memory exception. The call to this function
 	 *                        shall have no other effects beyond returning this
 	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
 	 *
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
@@ -194,12 +199,12 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class OP,
+		class OP, enum Backend backend,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
 	RC eWiseApply(
-		Vector< OutputType, reference, Coords > &z,
+		Vector< OutputType, backend, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const OP &op = OP(),
@@ -227,11 +232,11 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = \alpha \odot \beta \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
 	 *
 	 * @tparam descr      The descriptor to be used. Equal to
 	 *                    descriptors::no_operation if left unspecified.
-	 * @tparam OP         The operator to use.
+	 * @tparam Monoid     The monoid to use.
 	 * @tparam InputType1 The value type of the left-hand vector.
 	 * @tparam InputType2 The value type of the right-hand scalar.
 	 * @tparam OutputType The value type of the ouput vector.
@@ -240,6 +245,8 @@ namespace grb {
 	 * @param[in]  alpha The left-hand input scalar.
 	 * @param[in]   beta The right-hand input scalar.
 	 * @param[in] monoid The monoid with underlying operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
 	 *
 	 * Specialisation scalar inputs, monoid version. A call to this function
 	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
@@ -259,6 +266,9 @@ namespace grb {
 	 *                        out-of-memory exception. The call to this function
 	 *                        shall have no other effects beyond returning this
 	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
 	 *
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
@@ -267,12 +277,12 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
+		class Monoid, enum Backend backend,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
 	RC eWiseApply(
-		Vector< OutputType, reference, Coords > &z,
+		Vector< OutputType, backend, Coords > &z,
 		const InputType1 alpha,
 		const InputType2 beta,
 		const Monoid &monoid = Monoid(),
@@ -300,33 +310,488 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot \beta \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, operator version.
 	 *
 	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = x .* \beta \f$, using the given operator. The input and
+	 * vector, \f$ z = \alpha \odot y \f$, using the given operator. The input and
 	 * output vectors must be of equal length.
 	 *
-	 * The vectors \a x or \a y may not be sparse. If either is sparse, please
-	 * see the variant that uses a monoid algebraic structure. Without such an
-	 * algebraic structure, there is no concept for correctly interpreting any
-	 * missing vector elements during the requested computation.
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ \alpha \odot y_i \f$. Any old entries of \a z
+	 * are removed. Entries \a i for which \a y has no nonzero will be skipped.
 	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
-	 * to this function completes equals \f$ x_i \odot \beta \f$. Any old entries
-	 * of \a z are removed.
+	 * After a successful call to this primitive, the sparsity structure of \a z
+	 * shall match that of \a y.
 	 *
 	 * \note When applying element-wise operators on sparse vectors using
 	 *       semirings, there is a difference between interpreting missing values
 	 *       as an annihilating identity or as a neutral identity-- intuitively,
 	 *       such identities are known as `zero' or `one', respectively. As a
-	 *       consequence, there are three different variants for element-wise
+	 *       consequence, there are two different variants for element-wise
 	 *       operations whose names correspond to their intuitive meanings:
-	 *        - #grb::eWiseAdd (neutral),
-	 *        - #grb::eWiseMul (annihilating), and
-	 *        - #grb::eWiseApply using monoids (neutral).
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
 	 *
 	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
-	 *       additive monoid equivalent.
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 *
+	 * @param[out]  z   The output vector.
+	 * @param[in] alpha The left-hand input scalar.
+	 * @param[in]   y   The right-hand input vector.
+	 * @param[in]  op   The operator \f$ \odot \f$.
+	 * @param[in] phase The #grb::Phase the call should execute. Optional; the
+	 *                  default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const InputType1 alpha,
+		const Vector< InputType2, backend, Coords > &y,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator, base\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpASA_base = false;
+		assert( should_not_call_eWiseApplyOpASA_base );
+#endif
+		(void) z;
+		(void) alpha;
+		(void) y;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked operator version.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = \alpha \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ \alpha \odot y_i \f$. Any old entries of \a z
+	 * are removed. Entries \a i for which \a y has no nonzero will be skipped, as
+	 * will entries \a i for which \a mask evaluates <tt>false</tt>.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the mask vector.
+	 *
+	 * @param[out]  z   The output vector.
+	 * @param[in]  mask The output mask.
+	 * @param[in] alpha The left-hand input scalar.
+	 * @param[in]   y   The right-hand input vector.
+	 * @param[in]  op   The operator \f$ \odot \f$.
+	 * @param[in] phase The #grb::Phase the call should execute. Optional; the
+	 *                  default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const InputType1 alpha,
+		const Vector< InputType2, backend, Coords > &y,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], operator, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAMSA_base = false;
+		assert( should_not_call_eWiseApplyOpAMSA_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) alpha;
+		(void) y;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, monoid version.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = \alpha \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ \alpha \odot y_i \f$. Any old entries of \a z
+	 * are removed.
+	 *
+	 * After a successful call to this primitive, \a z shall be dense.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in] alpha  The left-hand input scalar.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in] monoid The monoid that provides the operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const InputType1 alpha,
+		const Vector< InputType2, backend, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], monoid, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonoidASA_base = false;
+		assert( should_not_call_eWiseApplyMonoidASA_base );
+#endif
+		(void) z;
+		(void) alpha;
+		(void) y;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = \alpha \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ \alpha \odot y_i \f$. Any old entries of \a z
+	 * are removed. Entries \a i for which \a mask evaluates <tt>false</tt> will be
+	 * skipped.
+	 *
+	 * After a successful call to this primitive, the sparsity structure of \a z
+	 * shall match that of \a mask (after interpretation).
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the output mask vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[out] mask  The output mask.
+	 * @param[in] alpha  The left-hand input scalar.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in] monoid The monoid that provides the operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a mask, a y and \a z do
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const InputType1 alpha,
+		const Vector< InputType2, backend, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonoidAMSA_base = false;
+		assert( should_not_call_eWiseApplyMonoidAMSA_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) alpha;
+		(void) y;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot \beta \f$, out of place, operator variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x .* \beta \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot \beta \f$. Any old entries
+	 * of \a z are removed.
+	 *
+	 * Entries \a i for which no nonzero exists in \a x are skipped. Therefore,
+	 * after a successful call to this primitive, the nonzero structure of \a z
+	 * will match that of \a x.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
 	 *
 	 * @tparam descr      The descriptor to be used. Equal to
 	 *                    descriptors::no_operation if left unspecified.
@@ -355,6 +820,9 @@ namespace grb {
 	 *                        out-of-memory exception. The call to this function
 	 *                        shall have no other effects beyond returning this
 	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
 	 *
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
@@ -362,13 +830,14 @@ namespace grb {
 	 * @see perfSemantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
 	RC eWiseApply(
-		Vector< OutputType, reference, Coords > &z,
-		const Vector< InputType1, reference, Coords > &x,
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< InputType1, backend, Coords > &x,
 		const InputType2 beta,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
@@ -390,6 +859,791 @@ namespace grb {
 		(void) x;
 		(void) beta;
 		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked operator variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x .* \beta \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot \beta \f$. Any old entries
+	 * of \a z are removed.
+	 *
+	 * Entries \a i for which no nonzero exists in \a x are skipped. Entries \a i
+	 * for which the mask evaluates <tt>false</tt> are skipped as well.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the output vector.
+	 * @tparam MaskType   The value type of the output mask vector.
+	 *
+	 * @param[out]  z   The output vector.
+	 * @param[in]  mask The output mask.
+	 * @param[in]   x   The left-hand input vector.
+	 * @param[in]  beta The right-hand input scalar.
+	 * @param[in]   op  The operator \f$ \odot \f$.
+	 * @param[in] phase The #grb::Phase the call should execute. Optional; the
+	 *                  default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a mask, \a x, and \a z do
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &x,
+		const InputType2 beta,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, operator, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAMAS_base = false;
+		assert( should_not_call_eWiseApplyOpAMAS_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) x;
+		(void) beta;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot \beta \f$, out of place, monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot \beta \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ x_i \odot \beta \f$. Any old entries of \a z
+	 * are removed.
+	 *
+	 * After a successful call to this primitive, \a z shall be dense.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]  beta  The right-hand input scalar.
+	 * @param[in] monoid The monoid that provides the operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< InputType1, backend, Coords > &x,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_monoid< Monoid >::value,
+			void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-T3, monoid, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonoidAAS_base = false;
+		assert( should_not_call_eWiseApplyMonoidAAS_base );
+#endif
+		(void) z;
+		(void) x;
+		(void) beta;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot \beta \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all indices \a i of \a z, its element \f$ z_i \f$ after the call to this
+	 * function completes equals \f$ x_i \odot \beta \f$. Any old entries of \a z
+	 * are removed. Entries \a i for which \a mask evaluates <tt>false</tt> will be
+	 * skipped.
+	 *
+	 * After a successful call to this primitive, the sparsity structure of \a z
+	 * matches that of \a mask (after interpretation).
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the mask vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[out] mask  The output mask.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]  beta  The right-hand input scalar.
+	 * @param[in] monoid The monoid that provides the operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a mask, \a x and \a z do
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &x,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, monoid, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonoidAMAS_base = false;
+		assert( should_not_call_eWiseApplyMonoidAMAS_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) x;
+		(void) beta;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot y \f$, out of place, operator variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot y_i \f$. Any old entries
+	 * of \a z are removed. Entries \a i which have no nonzero in either \a x or
+	 * \a y are skipped.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a z
+	 * will match that of the intersection of \a x and \a y.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in]  op    The operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAAA_base = false;
+		assert( should_not_call_eWiseApplyOpAAA_base );
+#endif
+		(void) z;
+		(void) x;
+		(void) y;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot y \f$, out of place, masked operator variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot y_i \f$. Any old entries
+	 * of \a z are removed. Entries \a i which have no nonzero in either \a x or
+	 * \a y are skipped, as will entries \a i for which \a mask evaluates
+	 * <tt>false</tt>.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a z
+	 * will match that of the intersection of \a x and \a y.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the output mask vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]  mask  The output mask.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in]  op    The operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a mask, \a x, \a y, and
+	 *                        \a z do not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], operator, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAMAA_base = false;
+		assert( should_not_call_eWiseApplyOpAMAA_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) x;
+		(void) y;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot y \f$, out of place, monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot y_i \f$. Any old entries
+	 * of \a z are removed.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a z
+	 * will match that of the union of \a x and \a y. An implementing backend may
+	 * skip processing indices \a i that are not in the union of the nonzero
+	 * structure of \a x and \a y.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in] monoid The monoid structure that \f$ \odot \f$ corresponds to.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-[T3], monoid, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAMAA_base = false;
+		assert( should_not_call_eWiseApplyOpAMAA_base );
+#endif
+		(void) z;
+		(void) x;
+		(void) y;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = x \odot y \f$, out of place, masked monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * vector, \f$ z = x \odot y \f$, using the given operator. The input and
+	 * output vectors must be of equal length.
+	 *
+	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after the call
+	 * to this function completes equals \f$ x_i \odot y_i \f$. Any old entries
+	 * of \a z are removed. Entries \a i for which \a mask evaluates <tt>false</tt>
+	 * will be skipped.
+	 *
+	 * \note When applying element-wise operators on sparse vectors using
+	 *       semirings, there is a difference between interpreting missing values
+	 *       as an annihilating identity or as a neutral identity-- intuitively,
+	 *       such identities are known as `zero' or `one', respectively. As a
+	 *       consequence, there are two different variants for element-wise
+	 *       operations whose names correspond to their intuitive meanings:
+	 *        - #grb::eWiseAdd (neutral), and
+	 *        - #grb::eWiseMul (annihilating).
+	 *       The above two primitives require a semiring. The same functionality is
+	 *       provided by #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * \note However, #grb::eWiseAdd and #grb::eWiseMul provide in-place semantics,
+	 *       while #grb::eWiseApply does not.
+	 *
+	 * \note An #grb::eWiseAdd with some semiring and a #grb::eWiseApply using its
+	 *       additive monoid thus are equivalent if operating when operating on
+	 *       empty outputs.
+	 *
+	 * \note An #grb::eWiseMul with some semiring and a #grb::eWiseApply using its
+	 *       multiplicative operator thus are equivalent when operating on empty
+	 *       outputs.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the mask vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]  mask  The output mask.
+	 * @param[in]   x    The left-hand input vector.
+	 * @param[in]   y    The right-hand input vector.
+	 * @param[in] monoid The monoid structure that \f$ \odot \f$ corresponds to.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do not
+	 *                        match. All input data containers are left untouched
+	 *                        if this exit code is returned; it will be as though
+	 *                        this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], monoid, base)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonoidAMAA_base = false;
+		assert( should_not_call_eWiseApplyMonoidAMAA_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) x;
+		(void) y;
+		(void) monoid;
 		(void) phase;
 		return UNSUPPORTED;
 	}
@@ -619,9 +1873,9 @@ namespace grb {
 	 * @tparam Monoid    The monoid to use for reduction.
 	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
 	 *                   vector \a y.
+	 * @tparam IOType    The type of the output scalar \a x.
 	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                   vector \a mask.
-	 * @tparam IOType    The type of the output scalar \a x.
 	 *
 	 * @param[out]   x   The result of the reduction.
 	 * @param[in]    y   Any ALP/GraphBLAS vector. This vector may be sparse.
