@@ -1663,9 +1663,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -1770,9 +1770,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -1872,9 +1872,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -1974,9 +1974,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -2072,9 +2072,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -2188,9 +2188,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -2300,9 +2300,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
@@ -2412,9 +2412,9 @@ namespace grb {
 	 *       possible.
 	 *
 	 * \note We may consider providing this function as an algorithm in the
-	 *       #grb::algorithms namespace, similar to #grb::mpv. Please let the
-	 *       maintainers know if you would prefer such a solution over outright
-	 *       removal and replacement with two folds.
+	 *       #grb::algorithms namespace, similar to #grb::algorithms::mpv. Please
+	 *       let the maintainers know if you would prefer such a solution over
+	 *       outright removal and replacement with two folds.
 	 *
 	 * @tparam descr      The descriptor to be used. Optional; default is
 	 *                    #grb::descriptors::no_operation.
