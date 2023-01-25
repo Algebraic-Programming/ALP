@@ -8225,20 +8225,8 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise multiplication of two vectors,
-	 *     \f$ z = z + x .* y \f$,
+	 * In-place element-wise multiplication of two vectors, \f$ z += x .* y \f$,
 	 * under a given semiring.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to perform the element-wise multiply
-	 *                    on.
-	 * @tparam InputType1 The left-hand side input type to the multiplicative
-	 *                    operator of the \a ring.
-	 * @tparam InputType2 The right-hand side input type to the multiplicative
-	 *                    operator of the \a ring.
-	 * @tparam OutputType The the result type of the multiplicative operator of
-	 *                    the \a ring.
 	 *
 	 * @param[out]  z  The output vector of type \a OutputType.
 	 * @param[in]   x  The left-hand input vector of type \a InputType1.
@@ -8251,19 +8239,6 @@ namespace grb {
 	 *                       untouched if this exit code is returned; it will be
 	 *                       as though this call was never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
-	 * \a ring must match \a InputType1, 2) the second domain of \a ring must match
-	 * \a InputType2, 3) the third domain of \a ring must match \a OutputType. If
-	 * one of these is not true, the code shall not compile.
-	 *
-	 * \endparblock
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -8286,15 +8261,10 @@ namespace grb {
 	 *         operator in-place, whenever the input domains, the output domain,
 	 *         and the operator used allow for this.
 	 * \endparblock
-	 *
-	 * \warning When given sparse vectors, the zero now annihilates instead of
-	 *       acting as an identity. Thus the eWiseMul cannot simply map to an
-	 *       eWiseApply of the multiplicative operator.
-	 *
-	 * @see This is a specialised form of eWiseMulAdd.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8302,7 +8272,7 @@ namespace grb {
 		Vector< OutputType, reference, Coords > &z,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -8361,12 +8331,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a scalar and vector,
+	 * \f$ z += \alpha .* y \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a x.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8427,12 +8399,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a vector and scalar,
+	 * \f$ z += x .* \beta \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a y.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8497,12 +8471,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of two scalars,
+	 * \f$ z += \alpha .* \beta \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a y and scalar \a x.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8568,11 +8544,10 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise multiplication of two vectors,
-	 *     \f$ z = z + x .* y \f$,
-	 * under a given semiring.
+	 * In-place element-wise multiplication of two vectors, \f$ z += x .* y \f$,
+	 * under a given semiring, masked variant.
 	 *
-	 * Masked verison.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -8662,9 +8637,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a scalar and vector,
+	 * \f$ z += \alpha .* y \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x, masked version.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -8751,9 +8727,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a vector and scalar,
+	 * \f$ z += x .* \beta \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, masked version.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -8841,9 +8818,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of two scalars,
+	 * \f$ z += \alpha .* \beta \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, scalar \a x, masked version.
+	 * \todo Add performance semantics.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
