@@ -1721,6 +1721,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -1823,6 +1828,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -1925,6 +1935,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -2023,6 +2038,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -2136,6 +2156,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -2248,6 +2273,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -2360,6 +2390,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -2468,6 +2503,11 @@ namespace grb {
 	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
 	 * one of these is not true, the code shall not compile.
 	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
