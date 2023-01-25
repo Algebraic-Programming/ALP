@@ -210,20 +210,10 @@ namespace grb {
 	 *     a very specific structure of \a A and \a v, or via an intelligently
 	 *     constructed \a u_mask, for example.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * Backends must specify performance semantics in the amount of work, intra-
-	 * process data movement, inter-process data movement, and the number of
-	 * user process synchronisations required. They should also specify whether
-	 * any system calls may be made, in particularly those related to dynamic
-	 * memory management. If new memory may be allocated, they must specify how
-	 * much.
-	 * \endparblock
-	 *
-	 * @returns grb::SUCCESS  If the computation completed successfully.
-	 * @returns grb::MISMATCH If there is at least one mismatch between vector
-	 *                        dimensions or between vectors and the given matrix.
-	 * @returns grb::OVERLAP  If two or more provided vectors refer to the same
+	 * @returns #grb::SUCCESS  If the computation completed successfully.
+	 * @returns #grb::MISMATCH If there is at least one mismatch between vector
+	 *                         dimensions or between vectors and the given matrix.
+	 * @returns #grb::OVERLAP  If two or more provided vectors refer to the same
 	 *                        container while this was not allowed.
 	 *
 	 * When any of the above non-SUCCESS error code is returned, it shall be as
@@ -236,6 +226,11 @@ namespace grb {
 	 * \note Should this error code be returned, the only sensible thing to do is
 	 *       exit the application as soon as possible, while refraining from using
 	 *       any other ALP pritimives.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
