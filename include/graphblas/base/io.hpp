@@ -552,21 +552,8 @@ namespace grb {
 	 *
 	 * @return grb::SUCCESS This function cannot fail.
 	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 * The backend must:
-	 *    -# define cost in terms of work
-	 *    -# define intra-process data movement costs
-	 *    -# define inter-process data movement costs
-	 *    -# define inter-process synchronisation requirements
-	 *    -# define memory storage requirements and may define
-	 *       this in terms of \a new_nz.
-	 *    -# define whether system calls may be made and in particular whether
-	 *       dynamic memory management may occor.
-	 * \endparblock
-	 *
-	 * \warning Calling clear shall not clear any dynamically allocated
-	 *          memory associated with \a x.
+	 * \warning Calling clear may not free any dynamically allocated memory
+	 *          associated with \a x. None of the present backends in fact do so.
 	 *
 	 * \note Even #grb::resize may or may not free dynamically allocated memory
 	 *       associated with \a x-- depending on the memory usage semantics defined
@@ -574,6 +561,14 @@ namespace grb {
 	 *
 	 * \note Only the destruction of \a x would ensure all corresponding memory is
 	 *       freed, for all backends.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 *
 	 */
 	template< typename DataType, Backend backend, typename Coords >
 	RC clear( Vector< DataType, backend, Coords > &x ) noexcept {
@@ -601,20 +596,7 @@ namespace grb {
 	 * dimensions (i.e., row and column sizes) as well as the nonzero capacity
 	 * remains unchanged.
 	 *
-	 * @return grb::SUCCESS This function cannot fail.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 * The backend must:
-	 *    -# define cost in terms of work
-	 *    -# define intra-process data movement costs
-	 *    -# define inter-process data movement costs
-	 *    -# define inter-process synchronisation requirements
-	 *    -# define memory storage requirements and may define
-	 *       this in terms of \a new_nz.
-	 *    -# define whether system calls may be made and in particular whether
-	 *       dynamic memory management may occor.
-	 * \endparblock
+	 * @return #grb::SUCCESS This function cannot fail.
 	 *
 	 * \warning Calling clear may not clear any dynamically allocated
 	 *          memory associated with \a A.
@@ -625,6 +607,13 @@ namespace grb {
 	 *
 	 * \note Only the destruction of \a A would ensure all corresponding memory is
 	 *       freed, for all backends.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
 	 */
 	template<
 		typename InputType, Backend backend,
@@ -697,27 +686,24 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 * The backend must:
-	 *    -# define cost in terms of work
-	 *    -# define intra-process data movement costs
-	 *    -# define inter-process data movement costs
-	 *    -# define inter-process synchronisation requirements
-	 *    -# define memory storage requirements and may define
-	 *       this in terms of \a new_nz.
-	 *    -# define whether system calls may be made and in particular whether
-	 *       dynamic memory management may occor.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 * \endparblock
 	 *
-	 * \warning For most implementations, this function will indeed imply system
-	 *          calls, as well as \f$ \Theta( \mathit{new\_nz} ) \f$ work and data
-	 *          movement costs. It is thus to be considered an expensive function,
-	 *          and should be used sparingly and only when absolutely necessary.
+	 * \warning For most implementations, this function will imply system calls, as
+	 *          well as \f$ \Theta( \mathit{new\_nz} ) \f$ work and data movement
+	 *          costs. It is thus to be considered an expensive function, and
+	 *          should be used sparingly and only when absolutely necessary.
 	 */
 	template<
 		typename InputType,
 		Backend backend, typename Coords
 	>
-	RC resize( Vector< InputType, backend, Coords > &x, const size_t new_nz ) noexcept {
+	RC resize(
+		Vector< InputType, backend, Coords > &x,
+		const size_t new_nz
+	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_vector_resize = false;
 #endif
@@ -783,12 +769,9 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 *    -# the backend must define cost in terms of work
-	 *    -# the backend must define intra-process data movement costs
-	 *    -# the backend must define inter-process data movement costs
-	 *    -# the backend must define memory storage requirements and may define
-	 *       this in terms of \a new_nz.
-	 *    -# the backend must define whether system calls may be made.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 * \endparblock
 	 *
 	 * \warning For useful backends, this function will indeed imply system calls
@@ -861,12 +844,9 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * A backend must define, for each phase:
-	 *    -# cost in terms of work
-	 *    -# intra-process data movement costs
-	 *    -# inter-process data movement costs
-	 *    -# memory storage requirements and may define this in terms of \a new_nz.
-	 *    -# whether system calls may be made.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 * \endparblock
 	 */
 	template<
@@ -948,13 +928,9 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * A backend must define, for each phase:
-	 *    -# cost in terms of work;
-	 *    -# intra-process data movement costs;
-	 *    -# inter-process data movement costs;
-	 *    -# inter-process synchronisation costs;
-	 *    -# memory storage requirements and may define this in terms of \a new_nz;
-	 *    -# whether system calls may be made.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 * \endparblock
 	 */
 	template<
@@ -962,7 +938,8 @@ namespace grb {
 		typename DataType, typename MaskType, typename T,
 		Backend backend, typename Coords
 	>
-	RC set( Vector< DataType, reference, Coords > &x,
+	RC set(
+		Vector< DataType, reference, Coords > &x,
 		const Vector< MaskType, backend, Coords > &mask,
 		const T val,
 		const Phase &phase = EXECUTE,
@@ -985,14 +962,6 @@ namespace grb {
 	 * Sets the content of a given vector \a x to be equal to that of another given
 	 * vector \a y.
 	 *
-	 * Unmasked variant.
-	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
-	 * \endparblock
-	 *
 	 * @tparam descr The descriptor of the operation.
 	 * @tparam OutputType The type of each element in the output vector.
 	 * @tparam InputType  The type of each element in the input vector.
@@ -1005,34 +974,29 @@ namespace grb {
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
 	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *
 	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
+	 * \endparblock
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(n) \f$ work;
-	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 * \endparblock
-	 *
-	 * @see grb::foldl.
-	 * @see grb::foldr.
-	 * @see grb::operators::left_assign.
-	 * @see grb::operators::right_assign.
-	 * @see grb::setElement.
-	 *
-	 * \todo Revise specification regarding recent changes on phases, performance
-	 *       semantics, and capacities.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
 		Backend backend, typename Coords
 	>
-	RC set( Vector<
-		OutputType, backend, Coords > &x,
+	RC set(
+		Vector< OutputType, backend, Coords > &x,
 		const Vector< InputType, backend, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
@@ -1050,52 +1014,50 @@ namespace grb {
 	 * Sets the content of a given vector \a x to be equal to that of
 	 * another given vector \a y.
 	 *
-	 * Masked variant.
+	 * If an entry with index \a i has that the corresponding \a mask entry
+	 * evaluates <tt>false</tt>, then that entry shall not be copied into \a x.
 	 *
 	 * The vector \a x may not equal \a y.
 	 *
-	 * @tparam descr The descriptor of the operation.
+	 * @tparam descr      The descriptor of the operation. Optional; default
+	 *                    value is #grb::descriptors::no_operation.
 	 * @tparam OutputType The type of each element in the output vector.
 	 * @tparam MaskType   The type of each element in the mask vector.
 	 * @tparam InputType  The type of each element in the input vector.
 	 *
-	 * \parblock
-	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
-	 *   -# grb::descriptors::invert_mask
-	 *   -# grb::descriptors::structural_mask
-	 * \endparblock
-	 *
 	 * @param[in,out] x The vector to be set.
 	 * @param[in]  mask The output mask.
-	 * @param[in]     y The source vector.
+	 * @param[in]     y The source vector. May not equal \a y.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a InputType
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   - #grb::descriptors::no_operation,
+	 *   - #grb::descriptors::no_casting,
+	 *   - #grb::descriptors::dense,
+	 *   - #grb::descriptors::invert_mask,
+	 *   - #grb::descriptors::structural, and
+	 *   - #grb::descriptors::structural_complement.
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting and if \a InputType
 	 * does not match \a OutputType, the code shall not compile.
+	 * \endparblock
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
-	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
-	 * above shall be considered equal to \f$ nnz( y ) \f$.
-	 * \endparblock
+	 * Each backend must define performance semantics for this primitive.
 	 *
-	 * \todo Revise specification regarding recent changes on phases, performance
-	 *       semantics, and capacities.
+	 * @see perfSemantics
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
 		Backend backend, typename Coords
 	>
-	RC set( Vector< OutputType, backend, Coords > &x,
+	RC set(
+		Vector< OutputType, backend, Coords > &x,
 		const Vector< MaskType, backend, Coords > &mask,
 		const Vector< InputType, backend, Coords > &y,
 		const Phase &phase = EXECUTE,
@@ -1126,7 +1088,8 @@ namespace grb {
 	 * The parameter \a i may not be greater or equal than the size of \a x.
 	 *
 	 * @tparam descr    The descriptor to be used during evaluation of this
-	 *                  function.
+	 *                  function. Optional; the default descriptor is
+	 *                  #grb::descriptors::no_operation.
 	 * @tparam DataType The type of the elements of \a x.
 	 * @tparam T        The type of the value to be set.
 	 *
@@ -1136,30 +1099,26 @@ namespace grb {
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
 	 *
-	 * @return grb::SUCCESS   Upon successful execution of this operation.
-	 * @return grb::MISMATCH  If \a i is greater or equal than the dimension of
-	 *                        \a x.
+	 * @return #grb::SUCCESS   Upon successful execution of this operation.
+	 * @return #grb::MISMATCH  If \a i is greater or equal than the dimension of
+	 *                         \a x.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
+	 *   - #grb::descriptors::no_operation,
+	 *   - #grb::descriptors::no_casting,
+	 *   - #grb::descriptors::dense.
 	 * \endparblock
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * When \a descr includes #grb::descriptors::no_casting and if \a T does not
 	 * match \a DataType, the code shall not compile.
 	 *
 	 * \parblock
 	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(1) \f$ work;
-	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
+	 * Each backend must define performance semantics for this primitive.
 	 *
-	 * \todo Revise specification regarding recent changes on phases, performance
-	 *       semantics, and capacities.
+	 * @see perfSemantics
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -1247,56 +1206,36 @@ namespace grb {
 	 * of elements. Any pre-existing nonzeroes that do not overlap with any nonzero
 	 * between \a ind_start and \a ind_end will remain unchanged.
 	 *
-	 * \parblock
-	 * \par Performance semantics:
-	 * A call to this function
-	 *   -# comprises \f$ \mathcal{O}( n ) \f$ work where \a n is the number of
-	 *      elements pointed to by the given iterator pairs. This work may be
-	 *      distributed over multiple user processes.
-	 *   -# results in at most \f$   n \mathit{sizeof}( T ) +
-	 *                               n \mathit{sizeof}( U ) +
-	 *                               n \mathit{sizeof}( \mathit{InputType} ) +
-	 *                             2 n \mathit{sizeof}( \mathit{bool} ) \f$
-	 *      bytes of data movement, where \a T and \a U are the underlying data
-	 *      types of the input iterators. These costs may be distributed over
-	 *      multiple user processes.
-	 *   -# inter-process communication costs are \f$ \mathcal{O}(n) g + l \f$.
-	 *   -# if the capacity of this vector is not large enough to hold \a n
-	 *      elements, a call to this function may allocate
-	 *         \f$ \mathcal{O}( n ) \f$
-	 *      new bytes of memory which \em may be distributed over multiple user
-	 *      processes.
-	 *   -# if the capacity of this vector is not large enough to hold \a n
-	 *      elements, a call to this function may result in system calls at any of
-	 *      the user processes.
-	 *   -# If the IOMode is sequential, then the work and data movement costs are
-	 *      incurred <em>per user process</em> and will not be distributed. In this
-	 *      case the inter-process communication costs will, however, be zero.
-	 *   -# if the IOMode is parallel, then a good implementation under a uniformly
-	 *      randomly distributed input incurs an inter-process communication cost
-	 *      of expected value \f$ n/p g + l \f$. The best-case inter-process cost
-	 *      is \f$ (p-1)g + l \f$.
-	 * \endparblock
+	 * @return #grb::SUCCESS When ingestion has completed successfully.
+	 * @return #grb::ILLEGAL When a nonzero has an index larger than #grb::size.
+	 * @return #grb::PANIC   If an unmitigable error has occured during ingestion.
 	 *
-	 * @returns grb::SUCCESS When ingestion has completed successfully.
-	 * @returns grb::ILLEGAL When a nonzero has an index larger than grb::size(x).
-	 * @returns grb::PANIC   If an unmitigable error has occured during ingestion.
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		class Merger = operators::right_assign< InputType >,
 		typename fwd_iterator1, typename fwd_iterator2,
 		Backend backend, typename Coords
 	>
-	RC buildVectorUnique( Vector< InputType, backend, Coords > &x,
+	RC buildVectorUnique(
+		Vector< InputType, backend, Coords > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode
 	) {
-		return buildVector< descr | descriptors::no_duplicates >( x,
+		return buildVector< descr | descriptors::no_duplicates >(
+			x,
 			ind_start, ind_end,
 			val_start, val_end,
-			mode );
+			mode
+		);
 	}
 
 	/**
@@ -1345,43 +1284,30 @@ namespace grb {
 	 * iterator pair \a I, \a I_end. This number should match the number of
 	 * elements in \a J, \a J_end \em and \a V, \a V_end.
 	 *
-	 * @return grb::MISMATCH -# when an element from \a I dereferences to a value
-	 *                          larger than the row dimension of this matrix, or
-	 *                       -# when an element from \a J dereferences to a value
-	 *                          larger than the column dimension of this matrix.
-	 *                       When this error code is returned the state of this
-	 *                       container will be as though this function was never
-	 *                       called; however, the given forward iterators may
-	 *                       have been copied and the copied iterators may have
-	 *                       incurred multiple increments and dereferences.
-	 * @return grb::OVERFLW  When the internal data type used for storing the
-	 *                       number of nonzeroes is not large enough to store
-	 *                       the number of nonzeroes the user wants to assign.
-	 *                       When this error code is returned the state of this
-	 *                       container will be as though this function was never
-	 *                       called; however, the given forward iterators may
-	 *                       have been copied and the copied iterators may have
-	 *                       incurred multiple increments and dereferences.
-	 * @return grb::SUCCESS  When the function completes successfully.
-	 *
-	 * \parblock
-	 * \par Performance semantics.
-	 *
-	 * A backend must define performance semantics in terms of the amount of work,
-	 * amount of dynamic memory allocated, how many times iterators may be copied,
-	 * dereferenced, and incremented, how much data is moved within the calling
-	 * user processes as well as between user processes, and how many times user
-	 * processes may synchronise during a call to this primitive. Backends should
-	 * also specify whether system calls may be made during a call to this
-	 * primitive, which almost surely, for this primitive, will be affirmative.
-	 *
-	 * \endparblock
+	 * @return #grb::SUCCESS  When the function completes successfully.
+	 * @return #grb::MISMATCH When an element from \a I dereferences to a value
+	 *                        larger than the row dimension of this matrix, or
+	 *                        when an element from \a J dereferences to a value
+	 *                        larger than the column dimension of this matrix.
+	 *                        When this error code is returned the state of this
+	 *                        container will be as though this function was never
+	 *                        called; however, the given forward iterators may
+	 *                        have been copied and the copied iterators may have
+	 *                        incurred multiple increments and dereferences.
+	 * @return #grb::OVERFLW  When the internal data type used for storing the
+	 *                        number of nonzeroes is not large enough to store
+	 *                        the number of nonzeroes the user wants to assign.
+	 *                        When this error code is returned the state of this
+	 *                        container will be as though this function was never
+	 *                        called; however, the given forward iterators may
+	 *                        have been copied and the copied iterators may have
+	 *                        incurred multiple increments and dereferences.
 	 *
 	 * \warning This is an expensive function. Use sparingly and only when
 	 *          absolutely necessary.
 	 *
 	 * \note Streaming input can be implemented by supplying buffered
-	 *       iterators to this GraphBLAS implementation.
+	 *       iterators to ALP.
 	 *
 	 * \note The functionality herein described is exactly that of buildMatrix,
 	 *       though with stricter input requirements. These requirements allow
@@ -1390,6 +1316,13 @@ namespace grb {
 	 * \note No masked version of this variant is provided. The use of masks in
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
