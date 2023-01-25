@@ -5103,47 +5103,8 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under this semiring.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to perform the element-wise addition
-	 *                    on.
-	 * @tparam InputType1 The left-hand side input type to the additive operator
-	 *                    of the \a ring.
-	 * @tparam InputType2 The right-hand side input type to the additive operator
-	 *                    of the \a ring.
-	 * @tparam OutputType The the result type of the additive operator of the
-	 *                    \a ring.
-	 *
-	 * @param[out]  z  The output vector of type \a OutputType. This may be a
-	 *                 sparse vector.
-	 * @param[in]   x  The left-hand input vector of type \a InputType1. This may
-	 *                 be a sparse vector.
-	 * @param[in]   y  The right-hand input vector of type \a InputType2. This may
-	 *                 be a sparse vector.
-	 * @param[in] ring The generalized semiring under which to perform this
-	 *                 element-wise multiplication.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
-	 *                       not match. All input data containers are left
-	 *                       untouched; it will be as though this call was never
-	 *                       made.
-	 * @return grb::SUCCESS  On successful completion of this call.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense.
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the third domain of
-	 * \a ring must match \a InputType1, 2) the fourth domain of \a ring must match
-	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
-	 * one of these is not true, the code shall not compile.
-	 * \endparblock
+	 * Calculates the element-wise addition of two vectors, \f$ z += x .+ y \f$,
+	 * under a given semiring.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -5171,17 +5132,10 @@ namespace grb {
 	 *         the input domains, the output domain, and the operator used allow
 	 *         for this.
 	 * \endparblock
-	 *
-	 * @see This is a specialised form of eWiseMulAdd.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -5220,16 +5174,10 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ y \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a x.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -5271,19 +5219,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += x .+ \beta \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a y.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -5322,19 +5265,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ \beta \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a x and \a y.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -5373,19 +5311,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition of two vectors, \f$ z += x .+ y \f$,
+	 * under a given semiring, masked variant.
 	 *
-	 * Masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -5431,19 +5364,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ y \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x, masked version
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -5489,19 +5417,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += x .+ \beta \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -5548,19 +5471,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ \beta \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x and \a y, masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
