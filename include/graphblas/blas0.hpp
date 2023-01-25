@@ -171,11 +171,13 @@ namespace grb {
 	 * @see grb::operators::internal::Operator for a discussion on when foldr and
 	 *      foldl successfully generate in-place code.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class OP,
 		typename InputType1, typename InputType2, typename OutputType
 	>
-	static enum RC apply( OutputType &out,
+	static enum RC apply(
+		OutputType &out,
 		const InputType1 &x,
 		const InputType2 &y,
 		const OP &op = OP(),
@@ -184,7 +186,7 @@ namespace grb {
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< OutputType >::value,
-		void >::type * = NULL
+		void >::type * = nullptr
 	) {
 		// static sanity check
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || (
@@ -278,15 +280,26 @@ namespace grb {
 	 * @see grb::operators::internal Operator for a discussion on fold-right
 	 *      capable operators and on stateful operators.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename InputType, typename IOType >
-	static RC foldr( const InputType & x,
-		IOType & y,
-		const OP & op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, typename InputType, typename IOType
+	>
+	static RC foldr(
+		const InputType &x,
+		IOType &y,
+		const OP &op = OP(),
+		const typename std::enable_if<
+			grb::is_operator< OP >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< IOType >::value, void
+		>::type * = nullptr
+	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) ||
-							( std::is_same< InputType, typename OP::D1 >::value && std::is_same< IOType, typename OP::D2 >::value && std::is_same< IOType, typename OP::D3 >::value ) ),
-			"grb::foldr (BLAS level 0)",
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) || (
+				std::is_same< InputType, typename OP::D1 >::value &&
+				std::is_same< IOType, typename OP::D2 >::value &&
+				std::is_same< IOType, typename OP::D3 >::value
+			) ), "grb::foldr (BLAS level 0)",
 			"Argument value types do not match operator domains while no_casting "
 			"descriptor was set" );
 
@@ -370,8 +383,13 @@ namespace grb {
 	 * @see grb::operators::internal Operator for a discussion on fold-right
 	 *      capable operators and on stateful operators.
 	 */
-	template< Descriptor descr = descriptors::no_operation, class OP, typename InputType, typename IOType >
-	static RC foldl( IOType &x,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP,
+		typename InputType, typename IOType
+	>
+	static RC foldl(
+		IOType &x,
 		const InputType &y,
 		const OP &op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value &&
@@ -416,46 +434,88 @@ namespace grb {
 		 * @tparam Enabled    Controls, through SFINAE, whether the use of the
 		 *                    #use_index descriptor is allowed at all.
 		 */
-		template< grb::Descriptor descr, typename OutputType, typename D, typename Enabled = void >
+		template<
+			grb::Descriptor descr,
+			typename OutputType, typename D,
+			typename Enabled = void
+		>
 		class ValueOrIndex;
 
 		/* Version where use_index is allowed. */
 		template< grb::Descriptor descr, typename OutputType, typename D >
-		class ValueOrIndex< descr, OutputType, D, typename std::enable_if< std::is_arithmetic< OutputType >::value && ! std::is_same< D, void >::value >::type > {
-		private:
-			static constexpr const bool use_index = descr & grb::descriptors::use_index;
-			static_assert( use_index || std::is_convertible< D, OutputType >::value, "Cannot convert to the requested output type" );
+		class ValueOrIndex<
+			descr,
+			OutputType, D,
+			typename std::enable_if<
+				std::is_arithmetic< OutputType >::value &&
+				!std::is_same< D, void >::value
+			>::type
+		> {
 
-		public:
-			static OutputType getFromArray( const D * __restrict__ const x, const std::function< size_t( size_t ) > & src_local_to_global, const size_t index ) noexcept {
-				if( use_index ) {
-					return static_cast< OutputType >( src_local_to_global( index ) );
-				} else {
-					return static_cast< OutputType >( x[ index ] );
+			static_assert( use_index || std::is_convertible< D, OutputType >::value,
+				"Cannot convert to the requested output type" );
+
+			private:
+
+				static constexpr const bool use_index = descr & grb::descriptors::use_index;
+
+			public:
+
+				static OutputType getFromArray(
+					const D * __restrict__ const x,
+					const std::function< size_t( size_t ) > &src_local_to_global,
+					const size_t index
+				) noexcept {
+					if( use_index ) {
+						return static_cast< OutputType >( src_local_to_global( index ) );
+					} else {
+						return static_cast< OutputType >( x[ index ] );
+					}
 				}
-			}
-			static OutputType getFromScalar( const D &x, const size_t index ) noexcept {
-				if( use_index ) {
-					return static_cast< OutputType >( index );
-				} else {
-					return static_cast< OutputType >( x );
+
+				static OutputType getFromScalar( const D &x, const size_t index ) noexcept {
+					if( use_index ) {
+						return static_cast< OutputType >( index );
+					} else {
+						return static_cast< OutputType >( x );
+					}
 				}
-			}
+
 		};
 
 		/* Version where use_index is not allowed. */
 		template< grb::Descriptor descr, typename OutputType, typename D >
-		class ValueOrIndex< descr, OutputType, D, typename std::enable_if< ! std::is_arithmetic< OutputType >::value && ! std::is_same< OutputType, void >::value >::type > {
-			static_assert( ! ( descr & descriptors::use_index ), "use_index descriptor given while output type is not numeric" );
-			static_assert( std::is_convertible< D, OutputType >::value, "Cannot convert input to the given output type" );
+		class ValueOrIndex<
+			descr,
+			OutputType, D,
+			typename std::enable_if<
+				!std::is_arithmetic< OutputType >::value &&
+				!std::is_same< OutputType, void >::value
+			>::type
+		> {
 
-		public:
-			static OutputType getFromArray( const D * __restrict__ const x, const std::function< size_t( size_t ) > &, const size_t index ) noexcept {
-				return static_cast< OutputType >( x[ index ] );
-			}
-			static OutputType getFromScalar( const D &x, const size_t ) noexcept {
-				return static_cast< OutputType >( x );
-			}
+			static_assert( !(descr & descriptors::use_index),
+				"use_index descriptor given while output type is not numeric" );
+
+			static_assert( std::is_convertible< D, OutputType >::value,
+				"Cannot convert input to the given output type" );
+
+			public:
+
+				static OutputType getFromArray(
+					const D * __restrict__ const x,
+					const std::function< size_t( size_t ) > &,
+					const size_t index
+				) noexcept {
+					return static_cast< OutputType >( x[ index ] );
+				}
+
+				static OutputType getFromScalar(
+					const D &x, const size_t
+				) noexcept {
+					return static_cast< OutputType >( x );
+				}
+
 		};
 
 		/**
@@ -478,32 +538,69 @@ namespace grb {
 		 *                    operator version is used instead.
 		 */
 
-		template< bool identity_left, typename OutputType, typename InputType, template< typename > class Identity, typename Enabled = void >
+		template<
+			bool identity_left,
+			typename OutputType, typename InputType,
+			template< typename > class Identity,
+			typename Enabled = void
+		>
 		class CopyOrApplyWithIdentity;
 
 		/* The cast-and-assign version */
-		template< bool identity_left, typename OutputType, typename InputType, template< typename > class Identity >
-		class CopyOrApplyWithIdentity< identity_left, OutputType, InputType, Identity, typename std::enable_if< std::is_convertible< InputType, OutputType >::value >::type > {
-		public:
-			template< typename Operator >
-			static void set( OutputType & out, const InputType & in, const Operator & ) {
-				out = static_cast< OutputType >( in );
-			}
+		template<
+			bool identity_left,
+			typename OutputType, typename InputType,
+			template< typename > class Identity
+		>
+		class CopyOrApplyWithIdentity<
+			identity_left,
+			OutputType, InputType,
+			Identity,
+			typename std::enable_if<
+				std::is_convertible< InputType, OutputType >::value
+			>::type
+		> {
+
+			public:
+
+				template< typename Operator >
+				static void set( OutputType &out, const InputType &in, const Operator & ) {
+					out = static_cast< OutputType >( in );
+				}
+
 		};
 
 		/* The operator with identity version */
-		template< bool identity_left, typename OutputType, typename InputType, template< typename > class Identity >
-		class CopyOrApplyWithIdentity< identity_left, OutputType, InputType, Identity, typename std::enable_if< ! std::is_convertible< InputType, OutputType >::value >::type > {
-		public:
-			template< typename Operator >
-			static void set( OutputType & out, const InputType & in, const Operator & op ) {
-				const auto identity = identity_left ? Identity< typename Operator::D1 >::value() : Identity< typename Operator::D2 >::value();
-				if( identity_left ) {
-					(void)grb::apply( out, identity, in, op );
-				} else {
-					(void)grb::apply( out, in, identity, op );
+		template<
+			bool identity_left,
+			typename OutputType, typename InputType,
+			template< typename > class Identity
+		>
+		class CopyOrApplyWithIdentity<
+			identity_left,
+			OutputType, InputType,
+			Identity,
+			typename std::enable_if<
+				!std::is_convertible< InputType, OutputType >::value
+			>::type
+		> {
+
+			public:
+
+				template< typename Operator >
+				static void set(
+					OutputType &out, const InputType &in, const Operator &op
+				) {
+					const auto identity = identity_left ?
+						Identity< typename Operator::D1 >::value() :
+						Identity< typename Operator::D2 >::value();
+					if( identity_left ) {
+						(void) grb::apply( out, identity, in, op );
+					} else {
+						(void) grb::apply( out, in, identity, op );
+					}
 				}
-			}
+
 		};
 
 	} // namespace internal
@@ -513,3 +610,4 @@ namespace grb {
 #undef NO_CAST_ASSERT
 
 #endif // end ``_H_GRB_BLAS0''
+
