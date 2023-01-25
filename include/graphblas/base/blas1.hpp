@@ -3586,6 +3586,9 @@ namespace grb {
 	 * @return grb::ILLEGAL  If the provided input vector \a y was not dense, while
 	 *                       #grb::descriptors::dense was given.
 	 *
+	 * @see grb::foldr provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 *
 	 * \parblock
 	 * \par Valid descriptors
 	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
@@ -3601,18 +3604,10 @@ namespace grb {
 	 * shall not compile.
 	 * \endparblock
 	 *
-	 * \parblock
 	 * \par Performance semantics
-	 * Backends must specify performance semantics in the amount of work, intra-
-	 * process data movement, inter-process data movement, and the number of
-	 * user process synchronisations required. They should also specify whether
-	 * any system calls may be made, in particularly those related to dynamic
-	 * memory management. If new memory may be allocated, they must specify how
-	 * much.
-	 * \endparblock
+	 * Each backend must define performance semantics for this primitive.
 	 *
-	 * @see grb::foldr provides similar in-place functionality.
-	 * @see grb::eWiseApply provides out-of-place semantics.
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -3676,7 +3671,7 @@ namespace grb {
 	/**
 	 * Folds a vector into a scalar, left-to-right.
 	 *
-	 * Unmasked operator variant.
+	 * Unmasked operator variant. See masked variant for the full documentation.
 	 *
 	 * \deprecated This signature is deprecated. It was implemented for reference
 	 *             (and reference_omp), but could not be implemented for BSP1D and
@@ -3777,18 +3772,147 @@ namespace grb {
 	}
 
 	/**
-	 * Dot product over a given semiring.
+	 * Calculates the dot product, \f$ z += (x,y) \f$, under a given additive
+	 * monoid and multiplicative operator.
 	 *
-	 * \todo Write specification.
+	 * @tparam descr      The descriptor to be used. Optional; the default
+	 *                    descriptors is #grb::descriptors::no_operation.
+	 * @tparam AddMonoid  The monoid used for addition during the computation of
+	 *                    \f$ (x,y) \f$. The same monoid is used for accumulating
+	 *                    the result into a given scalar.
+	 * @tparam AnyOp      A binary operator that acts as the multiplication during
+	 *                    \f$ (x,y) \f$.
+	 * @tparam OutputType The output type.
+	 * @tparam InputType1 The input element type of the left-hand input vector.
+	 * @tparam InputType2 The input element type of the right-hand input vector.
+	 *
+	 * @param[in,out]  z    Where to fold \f$ (x,y) \f$ into.
+	 * @param[in]      x    The left-hand input vector.
+	 * @param[in]      y    The right-hand input vector.
+	 * @param[in] addMonoid The additive monoid under which the reduction of the
+	 *                      results of element-wise multiplications of \a x and
+	 *                      \a y are performed.
+	 * @param[in]   anyOp   The multiplicative operator using which element-wise
+	 *                      multiplications of \a x and \a y are performed. This
+	 *                      may be any binary operator.
+	 * @param[in]   phase   The #grb::Phase the call should execute. Optional; the
+	 *                      default parameter is #grb::EXECUTE.
+	 *
+	 * \note By this primitive by which a dot-product operates under any additive
+	 *       monoid and any binary operator, it follows that a dot product under
+	 *       any semiring can be reduced to a call to this primitive instead.
+	 *
+	 * @return #grb::MISMATCH When the dimensions of \a x and \a y do not match.
+	 *                        All input data containers are left untouched if this
+	 *                        exit code is returned; it will be as though this call
+	 *                        was never made.
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 *   -# grb::descriptors::dense
+	 *
+	 * If the dense descriptor is set, this implementation returns grb::ILLEGAL if
+	 * it was detected that either \a x or \a y was sparse. In this case, it shall
+	 * otherwise be as though the call to this function had not occurred (no side
+	 * effects).
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class AddMonoid, class AnyOp,
+		typename OutputType, typename InputType1, typename InputType2,
+		enum Backend backend, typename Coords
+	>
+	RC dot(
+		OutputType &z,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
+		const AddMonoid &addMonoid = AddMonoid(),
+		const AnyOp &anyOp = AnyOp(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< AddMonoid >::value &&
+			grb::is_operator< AnyOp >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "Should not call base grb::dot (monoid-operator version)\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_base_dot_monOp = false;
+		assert( should_not_call_base_dot_monOp );
+#endif
+		(void) x;
+		(void) left;
+		(void) right;
+		(void) addMonoid;
+		(void) anyOp;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Calculates the dot product, \f$ z += (x,y) \f$, under a given semiring.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; default descriptor
+	 *                    is #grb::descriptors::no_operation.
+	 * @tparam Ring       The semiring type to use.
+	 * @tparam OutputType The output type.
+	 * @tparam InputType1 The input element type of the left-hand input vector.
+	 * @tparam InputType2 The input element type of the right-hand input vector.
+	 *
+	 * @param[in,out] z The output element \f$ z += (x,y) \f$.
+	 * @param[in]     x The left-hand input vector \a x.
+	 * @param[in]     y The right-hand input vector \a y.
+	 * @param[in]  ring The semiring under which to compute the dot product
+	 *                  \f$ (x,y) \f$. The additive monoid is used to accumulate
+	 *                  the dot product result into \a z.
+	 * @param[in] phase The #grb::Phase the call should execute. Optional; the
+	 *                  default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH If the dimensions of \a x and \a y do not match. All
+	 *                        input data containers are left untouched if this exit
+	 *                        code is returned; it will be as though this call was
+	 *                        never made.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 *   - grb::descriptors::no_operation
+	 *   - grb::descriptors::no_casting
+	 *   - grb::descriptors::dense
+	 *
+	 * If the dense descriptor is set, this implementation returns #grb::ILLEGAL if
+	 * it was detected that either \a x or \a y was sparse. In this case, it shall
+	 * otherwise be as though the call to this function had not occurred (no side
+	 * effects).
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
 		Backend backend, typename Coords
 	>
-	RC dot( IOType &x,
-		const Vector< InputType1, backend, Coords > &left,
-		const Vector< InputType2, backend, Coords > &right,
+	RC dot(
+		IOType &z,
+		const Vector< InputType1, backend, Coords > &x,
+		const Vector< InputType2, backend, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -3805,9 +3929,9 @@ namespace grb {
 		const bool should_not_call_base_dot_semiring = false;
 		assert( should_not_call_base_dot_semiring );
 #endif
+		(void) z;
 		(void) x;
-		(void) left;
-		(void) right;
+		(void) y;
 		(void) ring;
 		(void) phase;
 		return UNSUPPORTED;

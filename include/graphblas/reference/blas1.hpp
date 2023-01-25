@@ -9134,35 +9134,8 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * Calculates the dot product, \f$ \alpha = (x,y) \f$, under a given additive
+	 * Calculates the dot product, \f$ z += (x,y) \f$, under a given additive
 	 * monoid and multiplicative operator.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to use.
-	 * @tparam OutputType The output type.
-	 * @tparam InputType1 The input element type of the left-hand input vector.
-	 * @tparam InputType2 The input element type of the right-hand input vector.
-	 *
-	 * @param[in,out]  z    The output element \f$ z + \alpha \f$.
-	 * @param[in]      x    The left-hand input vector.
-	 * @param[in]      y    The right-hand input vector.
-	 * @param[in] addMonoid The additive monoid under which the reduction of the
-	 *                      results of element-wise multiplications of \a x and
-	 *                      \a y are performed.
-	 * @param[in]   anyop   The multiplicative operator under which element-wise
-	 *                      multiplications of \a x and \a y are performed. This can
-	 *                      be any binary operator.
-	 *
-	 * By the definition that a dot-product operates under any additive monoid and
-	 * any binary operator, it follows that a dot-product under any semiring can be
-	 * trivially reduced to a call to this version instead.
-	 *
-	 * @return grb::MISMATCH When the dimensions of \a x and \a y do not match. All
-	 *                       input data containers are left untouched if this exit
-	 *                       code is returned; it will be as though this call was
-	 *                       never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -9198,15 +9171,6 @@ namespace grb {
 	 *   -# grb::descriptors::no_casting
 	 *   -# grb::descriptors::dense
 	 * \endparblock
-	 *
-	 * If the dense descriptor is set, this implementation returns grb::ILLEGAL if
-	 * it was detected that either \a x or \a y was sparse. In this case, it shall
-	 * otherwise be as though the call to this function had not occurred (no side
-	 * effects).
-	 *
-	 * \note The standard, in contrast, only specifies undefined behaviour would
-	 *       occur. This implementation goes beyond the standard by actually
-	 *       specifying what will happen.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -9336,6 +9300,10 @@ namespace grb {
 	}
 
 	/**
+	 * Calculates the dot product, \f$ \alpha = (x,y) \f$, under a given semiring.
+	 *
+	 * \todo Add performance semantics.
+	 *
 	 * \internal
 	 * Provides a generic implementation of the dot computation on semirings by
 	 * translating it into a dot computation on an additive commutative monoid
@@ -9343,7 +9311,8 @@ namespace grb {
 	 * \endinternal
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords
 	>
