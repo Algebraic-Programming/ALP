@@ -49,6 +49,7 @@ namespace grb {
 	 * Unmaked sparse matrix--sparse matrix multiplication (SpMSpM).
 	 *
 	 * @tparam descr      The descriptors under which to perform the computation.
+	 *                    Optional; default is #grb::descriptors::no_operation.
 	 * @tparam OutputType The type of elements in the output matrix.
 	 * @tparam InputType1 The type of elements in the left-hand side input
 	 *                    matrix.
@@ -56,27 +57,31 @@ namespace grb {
 	 *                    matrix.
 	 * @tparam Semiring   The semiring under which to perform the
 	 *                    multiplication.
-	 * @tparam Backend    The backend that should perform the computation.
 	 *
-	 * @returns SUCCESS If the computation completed as intended.
-	 * @returns FAILED  If the call was not not preceded by one to
-	 *                  grb::mxm( C, A, B, grb::RESIZE ); \em and the capacity of
-	 *                  \a C was insufficient to store the output of multiplying
-	 *                  \a A and \a B. In this case, the matrix \a C is cleared
-	 *                  after the call to this primitive that returned #grb::FAILED.
-	 *
-	 * \note This specification does not account for #grb::TRY as that phase is
-	 *       still experimental. See its documentation for details.
-	 *
-	 * @param[out] C The output matrix \f$ C = AB \f$ when the function returns
-	 *               #grb::SUCCESS.
-	 * @param[in]  A The left-hand side input matrix \f$ A \f$.
-	 * @param[in]  B The left-hand side input matrix \f$ B \f$.
+	 * @param[in,out] C The matrix into which the multiplication \f$ AB \f$ is
+	 *                  accumulated.
+	 * @param[in]   A   The left-hand side input matrix \f$ A \f$.
+	 * @param[in]   B   The left-hand side input matrix \f$ B \f$.
 	 *
 	 * @param[in] ring  The semiring under which the computation should
 	 *                  proceed.
 	 * @param[in] phase The #grb::Phase the primitive should be executed with. This
 	 *                  argument is optional; its default is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  If the computation completed as intended.
+	 * @return #grb::FAILED   If the capacity of \a C was insufficient to store the
+	 *                        output of multiplying \a A and \a B. If this code is
+	 *                        returned, \a C on output appears cleared.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE and an out-of-error
+	 *                        condition arose while resizing \a C.
+	 *
+	 * \note This specification does not account for #grb::TRY as that phase is
+	 *       still experimental. See its documentation for details.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
