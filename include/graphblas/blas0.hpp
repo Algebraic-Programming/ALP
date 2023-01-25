@@ -452,12 +452,13 @@ namespace grb {
 			>::type
 		> {
 
-			static_assert( use_index || std::is_convertible< D, OutputType >::value,
-				"Cannot convert to the requested output type" );
-
 			private:
 
 				static constexpr const bool use_index = descr & grb::descriptors::use_index;
+
+				static_assert( use_index || std::is_convertible< D, OutputType >::value,
+					"Cannot convert to the requested output type" );
+
 
 			public:
 

@@ -3852,9 +3852,9 @@ namespace grb {
 		const bool should_not_call_base_dot_monOp = false;
 		assert( should_not_call_base_dot_monOp );
 #endif
+		(void) z;
 		(void) x;
-		(void) left;
-		(void) right;
+		(void) y;
 		(void) addMonoid;
 		(void) anyOp;
 		(void) phase;
