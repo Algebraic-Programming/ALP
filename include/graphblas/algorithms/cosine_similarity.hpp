@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements cosine simularity
+ *
  * @author: A. N. Yzelman.
  * @date: 13th of December, 2017.
  */

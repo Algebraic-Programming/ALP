@@ -1488,6 +1488,29 @@ namespace grb {
 	/**
 	 * Calls the other #buildMatrixUnique variant.
 	 * @see grb::buildMatrixUnique for the user-level specification.
+	 *
+	 * \parblock
+	 * \par Performance semantics.
+	 *
+	 *        -# This function contains
+	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ amount of work.
+	 *        -# This function may dynamically allocate
+	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ bytes of memory.
+	 *        -# A call to this function will use \f$ \mathcal{O}(m+n) \f$ bytes
+	 *           of memory beyond the memory in use at the function call entry.
+	 *        -# This function will copy each input forward iterator at most
+	 *           \em once; the three input iterators \a I, \a J, and \a V thus
+	 *           may have exactly one copyeach, meaning that all input may be
+	 *           traversed only once.
+	 *        -# Each of the at most three iterator copies will be incremented
+	 *           at most \f$ \mathit{nz} \f$ times.
+	 *        -# Each position of the each of the at most three iterator copies
+	 *           will be dereferenced exactly once.
+	 *        -# This function moves
+	 *           \f$ \Theta(\mathit{nz})+\mathcal{O}(m+n)) \f$ bytes of data.
+	 *        -# This function will likely make system calls.
+	 *
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,

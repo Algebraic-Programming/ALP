@@ -227,16 +227,28 @@ add_subdirectory( examples )
 
 ### DOXYGEN DOCUMENTATION GENERATION
 
-set( DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/code" )
+set( DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/developer" )
 add_custom_command( OUTPUT "${DOCS_DIR}"
-	COMMAND bash -c "if [[ ! -d docs/code ]]; then doxygen docs/doxy.conf &> doxygen.log; fi"
+	COMMAND bash -c "doxygen docs/doxy.conf &> doxygen-developer.log;"
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	DEPENDS "${PROJECT_SOURCE_DIR}/docs/doxy.conf"
 	COMMENT "producing code documentation in ${DOCS_DIR}"
 	VERBATIM
 	#USES_TERMINAL
 )
-add_custom_target( docs DEPENDS "${DOCS_DIR}" )
+add_custom_target( devdocs DEPENDS "${DOCS_DIR}" )
+
+set( PUBLIC_DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/user" )
+add_custom_command( OUTPUT "${PUBLIC_DOCS_DIR}"
+	COMMAND bash -c "doxygen docs/user.conf &> doxygen-user.log;"
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+	DEPENDS "${PROJECT_SOURCE_DIR}/docs/user.conf"
+	COMMENT "producing public code documentation in ${PUBLIC_DOCS_DIR}"
+	VERBATIM
+)
+add_custom_target( userdocs DEPENDS "${PUBLIC_DOCS_DIR}" )
+add_custom_target( docs )
+add_dependencies( docs userdocs devdocs )
 
 message( "Compiling with the following backends: ${AVAILABLE_BACKENDS}\n" )
 

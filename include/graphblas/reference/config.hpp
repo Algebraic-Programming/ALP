@@ -33,17 +33,24 @@
 
 namespace grb {
 
-	/**
-	 * \defgroup reference The reference backend implementation
-	 *
-	 * Groups all definitions and documentations corresponding to the #reference
-	 * and #reference_omp implementations.
-	 * @{
-	 */
-
 	namespace config {
 
-		/** The memory allocation modes implemented here. */
+		/**
+		 * \defgroup referenceConfig Reference and reference_omp backend configuration
+		 * \ingroup config
+		 *
+		 * All configuration parameters for the #grb::reference and the
+		 * #grb::reference_omp backends.
+		 *
+		 * @{
+		 */
+
+		/**
+		 * The memory allocation modes implemented in the #grb::reference and the
+		 * #grb::reference_omp backends.
+		 *
+		 * \ingroup reference
+		 */
 		enum ALLOC_MODE {
 
 			/** Allocation via <tt>posix_memalign</tt>. */
@@ -55,8 +62,10 @@ namespace grb {
 		};
 
 		/**
-		 * Converts instances of #grb::config::MEMORY::ALLOC_MODE to a descriptive
+		 * Converts instances of #grb::config::ALLOC_MODE to a descriptive
 		 * lower-case string.
+		 *
+		 * \ingroup reference
 		 */
 		std::string toString( const ALLOC_MODE mode );
 
@@ -77,8 +86,12 @@ namespace grb {
 		 * evaluation, please feel free to create an issue or to contribute a merge
 		 * request.
 		 *
+		 * \internal
 		 * \warning This class should only be used by the reference or reference_omp
 		 *          backends.
+		 * \endinternal
+		 *
+		 * \ingroup reference
 		 */
 		template< Backend backend >
 		class PREFETCHING {
@@ -99,8 +112,7 @@ namespace grb {
 				/**
 				 * The prefetch distance used during level-2 and level-3 operations.
 				 *
-				 * This value will be ignored if #prefetchingEnables() returns
-				 * <tt>false</tt>.
+				 * This value will be ignored if #enabled() returns <tt>false</tt>.
 				 */
 				static constexpr size_t distance() {
 					return 128;
@@ -109,9 +121,12 @@ namespace grb {
 		};
 
 		/**
-		 * Configuration parameters that may depend on the implementation.
+		 * This class collects configuration parameters that are specific to the
+		 * #grb::reference backend. It details both configurations that could
+		 * be modified by end users, as well as configurations that are sensible
+		 * only to ALP developers.
 		 *
-		 * \todo Internal issue #98.
+		 * \ingroup reference
 		 */
 		template<>
 		class IMPLEMENTATION< reference > {
@@ -129,25 +144,31 @@ namespace grb {
 				}
 
 				/**
+				 * \internal
 				 * Whether the backend has vector capacities always fixed to their
 				 * defaults.
+				 * \endinternal
 				 */
 				static constexpr bool fixedVectorCapacities() {
 					return true;
 				}
 
 				/**
+				 * \internal
 				 * The buffer size for allowing parallel updates to the sparsity of a
 				 * vector of a given length. In the sequential reference implementation
 				 * such a buffer is not required, hence this function will always return
 				 * 0.
+				 * \endinternal
 				 */
 				static constexpr size_t vectorBufferSize( const size_t, const size_t ) {
 					return 0;
 				}
 
 				/**
+				 * \internal
 				 * By default, use the coordinates of the selected backend.
+				 * \endinternal
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return reference;
@@ -156,10 +177,12 @@ namespace grb {
 		};
 
 		/**
-		 * Implementation-dependent configuration parameters for the \a reference_omp
-		 * backend. Note that for the reference backend, the defaults suffice.
+		 * This class collects configuration parameters that are specific to the
+		 * #grb::reference_omp backend. It details both configurations that could
+		 * be modified by end users, as well as configurations that are sensible
+		 * only to ALP developers.
 		 *
-		 * @see grb::config::IMPLEMENTATION
+		 * \ingroup reference
 		 */
 		template<>
 		class IMPLEMENTATION< reference_omp > {
@@ -167,14 +190,17 @@ namespace grb {
 			private:
 
 				/**
+				 * \internal
 				 * If \a N independent concurrent chunks are supported for parallel sparsity
 				 * updates, then each chunk will have the returned minimum size (in bytes).
+				 * \endinternal
 				 */
 				static constexpr size_t minVectorBufferChunksize() {
 					return CACHE_LINE_SIZE::value();
 				}
 
 				/**
+				 * \internal
 				 * Vector-local buffer size for parallel sparsity updates (to vectors).
 				 *
 				 * The given buffer size is in the number of elements.
@@ -185,12 +211,14 @@ namespace grb {
 				 *
 				 * Either this or relVectorBufferSize() must be set to a different value
 				 * from 0.
+				 * \endinternal
 				 */
 				static constexpr size_t absVectorBufferSize() {
 					return 0;
 				}
 
 				/**
+				 * \internal
 				 * Vector-local buffer size for parallel sparsity updates (to vectors).
 				 *
 				 * The given buffer size is relative to the vector length.
@@ -203,6 +231,7 @@ namespace grb {
 				 *
 				 * Either this or absVectorBufferSize() must be set to a different value
 				 * from 0.
+				 * \endinternal
 				 */
 				static constexpr double relVectorBufferSize() {
 					return 1;
@@ -229,21 +258,26 @@ namespace grb {
 				}
 
 				/**
+				 * \internal
 				 * By default, use the coordinates of the selected backend.
+				 * \endinternal
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return reference_omp;
 				}
 
 				/**
+				 *\internal
 				 * Whether the backend has vector capacities always fixed to their
 				 * defaults.
+				 * \endinternal
 				 */
 				static constexpr bool fixedVectorCapacities() {
 					return true;
 				}
 
 				/**
+				 * \internal
 				 * Helper function that computes the effective buffer size for a vector
 				 * of \a n elements using #absVectorBufferSize and #relVectorBufferSize
 				 * and adds \a T elements to maintain local stack sizes.
@@ -256,6 +290,7 @@ namespace grb {
 				 *
 				 * @returns The buffer size given the vector size, maximum number of
 				 *          threads, and the requested configuration.
+				 * \endinternal
 				 */
 				static inline size_t vectorBufferSize( const size_t n, const size_t T ) {
 					size_t ret;
@@ -279,9 +314,9 @@ namespace grb {
 
 		};
 
-	} // namespace config
+		/** @} */
 
-	/** @} */
+	} // namespace config
 
 } // namespace grb
 

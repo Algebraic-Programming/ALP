@@ -16,7 +16,127 @@
  */
 
 /**
+ * @file
+ *
+ * This file defines a vertex-centric programming API called ALP/Pregel, which
+ * automatically translates to standard ALP/GraphBLAS primitives.
+ *
  * @author A. N. Yzelman
+ * @date 2022
+ *
+ * \defgroup Pregel ALP/Pregel
+ * @{
+ *
+ * @brief ALP/Pregel enables vertex-centric programming.
+ *
+ * \par API introduction
+ *
+ * With vertex-centric programming, graph algorithms are written from the
+ * perspective of a vertex within an input graph. Each vertex executes a program
+ * on a round-by-round basis, while between rounds all vertex programs pass
+ * messages to neighbour vertices using the edges of the input graph. Edges may
+ * be directed or undirected; in the former, messages travel from the source
+ * vertex to the destination vertex only. Each vertex program sends the same
+ * message to all of its neighbours -- i.e., it broadcasts a single given
+ * message. In ALP/Pregel, incoming messages are furthermore \em accumulated
+ * using a #grb::Monoid. The accumulation of incoming messages is typically used
+ * by the vertex-centric program during the next round it executes.
+ *
+ * Pregel programs thus execute on a given graph, and hence constructing a
+ * #grb::interfaces::Pregel instance requires passing input iterators
+ * corresponding to the graph on which ALP/Pregel programs are executed. Such an
+ * instance logically corresponds to an execution engine of vertex-centric
+ * programs <em>for a specific graph</em>. Multiple #grb::interfaces::Pregel
+ * instances, each potentially built using a different input graph, may exist
+ * simultaneously.
+ *
+ * ALP/Pregel programs then are executed using #grb::interfaces::Pregel::execute.
+ * The first template argument to this function is the binary operator of the
+ * monoid to be used for accumalating incoming messages, while the second
+ * template argument corresponds to its identity-- see #grb::operators and
+ * #grb::identities for example operator and identities. The remainder template
+ * arguments to #grb::interfaces::Pregel::execute are automatically inferred.
+ *
+ * The first non-template argument is the vertex-centric program, for example,
+ * #grb::algorithms::pregel::ConnectedComponents-- a vertex-centric program in
+ * ALP/GraphBLAS hence is a class where the program is given as a public static
+ * function named \em program. This function takes five arguments:
+ *  1. the current state of the vertex (read-write),
+ *  2. the incoming message (after accumulation, read only),
+ *  3. the outgoing message (read-write),
+ *  4. the global program parameters (read only), and
+ *  5. the Pregel interface state (read only and read-write).
+ *
+ * The types of arguments 1-4 are defined by the program, but must be plain old
+ * data (POD) types-- similar to the requirements of an ALP operator. An example
+ * of an ALP/Pregel algorithm that has non-trivial algorithm parameters is
+ * #grb::algorithms::pregel::PageRank: #grb::algorithms::pregel::PageRank::Data.
+ *
+ * The type of the 5th argument to #grb::interfaces::Pregel::execute is an
+ * instance of #grb::interfaces::PregelState. Some of the ALP/Pregel state
+ * fields are read-only, such as the current round number
+ * #grb::interfaces::PregelState::round, while others are read-write.
+ * Please see the corresponding documentation for what read-only states may be
+ * inspected during program execution. Some fields are global (such as again the
+ * current round number), while others are specific to the vertex a program is
+ * running on (such as #grb::interfaces::PregelState::indegree).
+ *
+ * Read-write ALP/Pregel state is used for determining termination conditions.
+ * There are two associated flags:
+ *  1. #grb::interfaces::PregelState::active, and
+ *  2. #grb::interfaces::PregelState::voteToHalt.
+ *
+ * Each vertex has its own state of these two flags, with the defaults being
+ * <tt>true</tt> for the former and <tt>false</tt> for the latter.
+ *
+ * If, by the end of any round, a vertex sets its <tt>active</tt> flag to
+ * <tt>false</tt>, that vertex will not participate in any future rounds. For
+ * any neighbouring vertices it shall be as though the inactive vertex keeps
+ * broadcasting the identity of the given accumulation monoid.
+ *
+ * If at the end of any round all vertices are inactive, the program terminates.
+ * Similarly, if by the end of a round \em all vertices have the
+ * <tt>voteToHalt</tt> flag set to <tt>true</tt>, then that Pregel program
+ * terminates as well.
+ *
+ * \par Using vertex-centric algorithms
+ *
+ * By convention, ALP/Pregel algorithms allow for a simplified way of executing
+ * them that does not require the Pregel algorithm user to pass the right monoid
+ * to #grb::interfaces::Pregel::execute each time they call one, such as, for
+ * example,
+ *  - #grb::algorithms::pregel::ConnectedComponents::execute, or
+ *  - #grb::algorithms::pregel::PageRank::execute.
+ *
+ * These functions only take the Pregel instance that is to execute the Pregel
+ * program, as well as a vector of initial states as mandatory input. As usual,
+ * optional parameters indicate the maximum number of rounds allotted to the
+ * program (zero for unbounded), and where to write back the number of rounds
+ * after which the program has terminated (<tt>NULL</tt> for no write back).
+ *
+ * All pre-defined ALP/Pregel algorithms reside in the #grb::algorithms::pregel
+ * namespace.
+ *
+ * \par Configuration settings
+ *
+ * The ALP/Pregel run-time system manages state for every vertex in the
+ * underlying graph. The execution time of a single round is always proportional
+ * to the number of active vertices. Since inactive vertices stay inactive in
+ * subsequent rounds, their state could be erased. This has two \em potential
+ * benefits:
+ *  1. it \em may (depending on the used backend's performance semantics) reduce
+ *     memory use; and/or
+ *  2. it \em may result in faster execution (depending on the used backend's
+ *     performance semantics).
+ *
+ * We may opt to always attempt to <i>sparsify</i> state, use some heuristic to
+ * determine when to sparsify, or just simply never attempt such sparsification.
+ *
+ * This choice is configurable via #grb::interfaces::config::out_sparsify; see
+ * #grb::interfaces::config::SparsificationStrategy for options and more
+ * details.
+ *
+ * @}
  */
 
 #ifndef _H_GRB_INTERFACES_PREGEL
@@ -25,56 +145,84 @@
 #include <graphblas.hpp>
 #include <graphblas/utils/parser.hpp>
 
-#include <stdexcept>   // std::runtime_error
+#include <stdexcept> // std::runtime_error
 
 
 namespace grb {
 
 	namespace interfaces {
 
+		/**
+		 * Contains configurations for programming models that are simulated on top of
+		 * ALP/GraphBLAS.
+		 */
 		namespace config {
 
 			/**
 			 * The set of sparsification strategies supported by the ALP/Pregel
 			 * interface.
+			 *
+			 * \ingroup Pregel
 			 */
 			enum SparsificationStrategy {
 
-				/** No sparsification. */
+				/**
+				 * No sparsification of internal and user-defined vertex states, beyond that
+				 * which is necessary to bound the run-time by the number of active
+				 * vertices.
+				 */
 				NONE = 0,
 
 				/**
-				 * Always applies the sparsification procedure.
+				 * Always applies the sparsification procedure on both internal and user-
+				 * defined vertex states.
 				 *
 				 * Does not consider whether the resulting operation would reduce the number
-				 * of vertex entries. This variant was tested against #NONE for
-				 * #out_sparsify, and found to be slower always.
+				 * of vertex entries.
 				 *
-				 * This strategy necessarily always applied on the Pregel::ActiveVertices
-				 * vector.
+				 * This variant was tested against #NONE for #out_sparsify, and found to be
+				 * slower always.
+				 *
+				 * \internal This strategy necessarily always applied on the
+				 *           #Pregel::ActiveVertices vector.
 				 */
 				ALWAYS,
 
 				/**
 				 * Sparsify only when the resulting vector would indeed be sparser.
 				 *
+				 * While this sounds like it should be a minimal condition to check for
+				 * before applying sparsification, this check itself comes at non-trivial
+				 * overhead for any backend. The performance of this strategy versus
+				 * #ALWAYS hence is a trade-off, one that varies with underlying graphs
+				 * as well as with the vertex-centric program chosen.
+				 *
+				 * \internal
 				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
-				 * \todo This variant has never been tested for \a out_sparsify.
+				 * \todo This variant has never been exhaustively tested for
+				 *       \a out_sparsify.
+				 * \endinternal
 				 */
 				WHEN_REDUCED,
 
 				/**
 				 * Sparsify only when the resulting vector would have half (or less) its
-				 * current number of nonzeroes.
+				 * current number of nonzeroes. This is a simple heuristic that balances
+				 * the trade-off of \em applying sparsification by amortising its overhead.
+				 * The overhead described at #WHEN_REDUCED corresponding to determining the
+				 * gain of sparsification, however, remains the same.
 				 *
+				 * \internal
 				 * \note This strategy should \em not be applied to #Pregel::ActiveVertices
 				 *       since doing so requires computing the number of active vertices,
 				 *       which has the same complexity as actually sparsifying that vector.
 				 *
-				 * \todo This variant has never been tested for \a out_sparsify.
+				 * \todo This variant has never been exhaustively tested for
+				 *       \a out_sparsify.
+				 * \endinternal
 				 */
 				WHEN_HALVED
 
@@ -84,28 +232,36 @@ namespace grb {
 			 * What sparsification strategy should be applied to the outgoing
 			 * messages.
 			 *
+			 * \internal
 			 * Only #NONE and #ALWAYS have been tested, with #NONE being faster on all
 			 * test cases.
+			 * \endinternal
+			 *
+			 * \ingroup Pregel
 			 */
 			constexpr const SparsificationStrategy out_sparsify = NONE;
 
 		} // end namespace grb::interfaces::config
 
 		/**
-		 * The state of the vertex-center Pregel program that the user  may interface
+		 * The state of the vertex-center Pregel program that the user may interface
 		 * with.
 		 *
 		 * The state includes global data as well as vertex-centric state. The global
 		 * state is umodifiable and includes:
-		 *  - #PregelState::num_vertices,
-		 *  - #PregelState::num_edges, and
-		 *  - #PregelState::round.
+		 *  - #grb::interfaces::PregelState::num_vertices,
+		 *  - #grb::interfaces::PregelState::num_edges, and
+		 *  - #grb::interfaces::PregelState::round.
 		 *
 		 * Vertex-centric state can be either constant or modiable:
-		 *  - static vertex-centric state: #PregelState::indegree,
-		 *    #PregelState::outdegree, and #PregelState::vertexID.
-		 *  - modifiable vertex-centric state: #PregelState::voteToHalt, and
-		 *    #PregelState::active.
+		 *  - static vertex-centric state: #grb::interfaces::PregelState::indegree,
+		 *    #grb::interfaces::PregelState::outdegree, and
+		 *    #grb::interfaces::PregelState::vertexID.
+		 *  - modifiable vertex-centric state:
+		 *    #grb::interfaces::PregelState::voteToHalt, and
+		 *    #grb::interfaces::PregelState::active.
+		 *
+		 * \ingroup Pregel
 		 */
 		struct PregelState {
 
@@ -175,6 +331,8 @@ namespace grb {
 		 * Pregel wraps around graph data and executes computations on said graph. A
 		 * runtime thus is constructed from graph, and enables running any Pregel
 		 * algorithm on said graph.
+		 *
+		 * \ingroup Pregel
 		 */
 		template<
 			typename MatrixEntryType
@@ -412,7 +570,7 @@ namespace grb {
 				 * Vertex-centric programs have both vertex-local and global state:
 				 *
 				 * @param[in] vertex_state A vector that contains the state of each vertex.
-				 * @param[in] global_data  Global read-only state for the given \a program.
+				 * @param[in] data         Global read-only state for the given \a program.
 				 *
 				 * The capacity, size, and number of nonzeroes of \a vertex_state must equal
 				 * the maximum vertex ID.
@@ -457,9 +615,9 @@ namespace grb {
 				 *
 				 * @param[in] out_buffer An optional buffer area that should only be set
 				 *                       whenever the #config::out_sparsify configuration
-				 *                       parameter is not set to #NONE. If that is the case,
-				 *                       then \a out_buffer should have size and capacity
-				 *                       equal to the maximum vertex ID.
+				 *                       parameter is not set to #config::NONE. If that is
+				 *                       the case, then \a out_buffer should have size and
+				 *                       capacity equal to the maximum vertex ID.
 				 *
 				 * @param[in] max_rounds The maximum number of rounds the \a program may
 				 *                       execute. Once reached and not terminated, the

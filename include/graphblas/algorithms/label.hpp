@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements label propagation.
+ *
  * @author J. M. Nash
  * @date 21st of March, 2017
  */
@@ -120,7 +124,7 @@ namespace grb {
 			Vector< IOType > &out,
 			const Vector< IOType > &y, const Matrix< IOType > &W,
 			const size_t n, const size_t l,
-			const size_t MaxIterations = 1000
+			const size_t maxIterations = 1000
 		) {
 			// label propagation vectors and matrices operate over the real domain
 			Semiring<
@@ -199,7 +203,7 @@ namespace grb {
 			// compute f as P*f
 			// main loop completes when function f is stable
 			size_t iter = 1;
-			while( ret == SUCCESS && different && iter < MaxIterations ) {
+			while( ret == SUCCESS && different && iter < maxIterations ) {
 
 #ifdef _DEBUG
 				if( n < MaxAnyPrinting ) {

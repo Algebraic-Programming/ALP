@@ -31,6 +31,7 @@
 
 #include "exec.hpp"
 
+
 namespace grb {
 
 	namespace internal {
@@ -332,15 +333,23 @@ namespace grb {
 
 		public:
 
-			Benchmarker( const MPI_Comm comm = MPI_COMM_WORLD ) : Launcher< FROM_MPI, BSP1D >( comm ) {}
+			Benchmarker( const MPI_Comm comm = MPI_COMM_WORLD ) :
+				Launcher< FROM_MPI, BSP1D >( comm )
+			{}
 
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
+				// check arguments
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
+
 				// prepare packed input
 				struct internal::packedBenchmarkerInput input;
 				input.blob = data_in;
@@ -354,7 +363,8 @@ namespace grb {
 				lpf_args_t args;
 				fargs[ 0 ] = reinterpret_cast< lpf_func_t >( benchmark< U > );
 				fargs[ 1 ] = reinterpret_cast< lpf_func_t >( grb_program );
-				args = { &input, sizeof( struct internal::packedBenchmarkerInput ),
+				args = {
+					&input, sizeof( struct internal::packedBenchmarkerInput ),
 					&data_out, sizeof( U ),
 					fargs, 2
 				};
@@ -373,8 +383,9 @@ namespace grb {
 			}
 
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T & data_in, U &data_out,           // input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ), // user program
+				const T &data_in, U &data_out,           // input & output data
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) {
@@ -420,7 +431,8 @@ namespace grb {
 
 		public:
 
-			Benchmarker( const size_t process_id = 0,         // user process ID
+			Benchmarker(
+				const size_t process_id = 0,              // user process ID
 				const size_t nprocs = 1,                  // total number of user processes
 				const std::string hostname = "localhost", // one of the process' hostnames
 				const std::string port = "0",             // a free port at hostname
@@ -430,12 +442,18 @@ namespace grb {
 			) {}
 
 			template< typename U >
-			enum RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			enum RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
+				// check input arguments
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
+
 				// prepare packed input
 				struct internal::packedBenchmarkerInput input;
 				input.blob = data_in;

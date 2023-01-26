@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Defines the GraphBLAS various descriptors.
+ * Defines all ALP/GraphBLAS descriptors.
  *
  * @author A. N. Yzelman
  * @date 15 March, 2016

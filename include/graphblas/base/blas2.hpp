@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Defines the GraphBLAS level 2 API.
+ * Defines the ALP/GraphBLAS level-2 API
  *
  * @author A. N. Yzelman
  * @date 30th of March 2017
@@ -43,7 +43,8 @@
 namespace grb {
 
 	/**
-	 * \defgroup BLAS2 The Level-2 Basic Linear Algebra Subroutines (BLAS)
+	 * \defgroup BLAS2 Level-2 Primitives
+	 * \ingroup GraphBLAS
 	 *
 	 * A collection of functions that allow GraphBLAS operators, monoids, and
 	 * semirings work on a mix of zero-dimensional, one-dimensional, and
@@ -62,8 +63,8 @@ namespace grb {
 	 * multiplication, \f$ u = u + Av \f$.
 	 *
 	 * Aliases to this function exist that do not include masks:
-	 *  - #grb::mxv( u, u_mask, A, v, semiring );
-	 *  - #grb::mxv( u, A, v, semiring );
+	 *  - grb::mxv( u, u_mask, A, v, semiring );
+	 *  - grb::mxv( u, A, v, semiring );
 	 * When masks are omitted, the semantics shall be the same as though a dense
 	 * Boolean vector of the appropriate size with all elements set to
 	 * <tt>true</tt> was given as a mask. We thus describe the semantics of the
@@ -209,20 +210,10 @@ namespace grb {
 	 *     a very specific structure of \a A and \a v, or via an intelligently
 	 *     constructed \a u_mask, for example.
 	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * Backends must specify performance semantics in the amount of work, intra-
-	 * process data movement, inter-process data movement, and the number of
-	 * user process synchronisations required. They should also specify whether
-	 * any system calls may be made, in particularly those related to dynamic
-	 * memory management. If new memory may be allocated, they must specify how
-	 * much.
-	 * \endparblock
-	 *
-	 * @returns grb::SUCCESS  If the computation completed successfully.
-	 * @returns grb::MISMATCH If there is at least one mismatch between vector
-	 *                        dimensions or between vectors and the given matrix.
-	 * @returns grb::OVERLAP  If two or more provided vectors refer to the same
+	 * @returns #grb::SUCCESS  If the computation completed successfully.
+	 * @returns #grb::MISMATCH If there is at least one mismatch between vector
+	 *                         dimensions or between vectors and the given matrix.
+	 * @returns #grb::OVERLAP  If two or more provided vectors refer to the same
 	 *                        container while this was not allowed.
 	 *
 	 * When any of the above non-SUCCESS error code is returned, it shall be as
@@ -235,6 +226,11 @@ namespace grb {
 	 * \note Should this error code be returned, the only sensible thing to do is
 	 *       exit the application as soon as possible, while refraining from using
 	 *       any other ALP pritimives.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -283,16 +279,22 @@ namespace grb {
 	 * multiplication, \f$ u = u + vA \f$.
 	 *
 	 * A call to this function is exactly equivalent to calling
-	 *   - #grb::vxm( u, u_mask, A, v, v_mask, semiring, phase )
+	 *   - grb::vxm( u, u_mask, A, v, v_mask, semiring, phase )
 	 * with the #descriptors::transpose_matrix flipped.
 	 *
 	 * See the documentation of #grb::mxv for the full semantics of this function.
 	 * Like with #grb::mxv, aliases to this function exist that do not include
 	 * masks:
-	 *  - #grb::vxm( u, u_mask, v, A, semiring, phase );
-	 *  - #grb::vxm( u, v, A, semiring, phase );
+	 *  - grb::vxm( u, u_mask, v, A, semiring, phase );
+	 *  - grb::vxm( u, v, A, semiring, phase );
+	 *
 	 * Similarly, aliases to this function exist that take an additive commutative
 	 * monoid and a multiplicative binary operator instead of a semiring.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -392,20 +394,22 @@ namespace grb {
 	 *              dereferenced, and thus also decides the values \a i and \a j the
 	 *              user function is evaluated on.
 	 * @param[in] A The matrix the lambda is to access the elements of.
-	 * @param[in] args All vectors the lambda is to access elements of. Must be of
-	 *                 the same length as \a nrows(A) or \a ncols(A). If this
-	 *                 constraint is violated, grb::MISMATCH shall be returned. If
-	 *                 the vector length equals \a nrows(A), the vector shall be
-	 *                 synchronized for access on \a i. If the vector length equals
-	 *                 \a ncols(A), the vector shall be synchronized for access on
-	 *                 \a j. If \a A is square, the vectors will be synchronised for
-	 *                 access on both \a x and \a y. <em>This is a variadic argument
-	 *                 and can contain any number of containers of type grb::Vector,
-	 *                 passed as though they were separate arguments.</em>
 	 *
-	 * \warning Using a grb::Vector inside a lambda passed to this function while
-	 *          not passing that same vector into \a args, will result in undefined
-	 *          behaviour.
+	 * The remainder arguments should enumerate all vectors the lambda is to access
+	 * elements of. Each such vector must be of the same length as \a nrows(A) or
+	 * \a ncols(A). If this constraint is violated, #grb::MISMATCH shall be returned.
+	 * If a given vector length equals \a nrows(A), the vector shall be synchronized
+	 * for access on \a i. If the vector length equals \a ncols(A), the vector shall
+	 * be synchronized for access on \a j. If \a A is square, the vectors will be
+	 * synchronised for access on both \a i \em and \a j.
+	 *
+	 * \note These vectors are passed using a variadic argument list and so may
+	 *       contain any number of containers of type #grb::Vector, potentially with
+	 *       differing nonzero types, as separate arguments.
+	 *
+	 * \warning Using a #grb::Vector inside a lambda passed to this function while
+	 *          not passing that same vector into the variadic argument list will
+	 *          result in undefined behaviour.
 	 *
 	 * \warning Due to the constraints on \a f described above, it is illegal to
 	 *          capture some vector \a y and have the following line in the body
@@ -415,16 +419,17 @@ namespace grb {
 	 *          code in the body is accepted, however: <code>x[i] += x[j]</code>.
 	 *
 	 * @return grb::SUCCESS  When the lambda is successfully executed.
-	 * @return grb::MISMATCH When two or more vectors passed to \a args are not of
-	 *                       appropriate length.
+	 * @return grb::MISMATCH When two or more vectors passed into the variadic
+	 *                       argument list are not of appropriate length.
 	 *
 	 * \warning Captured scalars will be local to the user process executing the
 	 *          lambda. To retrieve the global dot product, an allreduce must
 	 *          explicitly be called.
 	 *
-	 * @see Vector::operator[]()
-	 * @see Vector::operator()()
-	 * @see Vector::lambda_reference
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		typename Func, typename DataType,
@@ -435,7 +440,7 @@ namespace grb {
 	RC eWiseLambda(
 		const Func f,
 		const Matrix< DataType, implementation, RIT, CIT, NIT > &A,
-		Args... /*args*/
+		Args...
 	) {
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement grb::eWiseLambda (matrices)\n";
@@ -451,6 +456,18 @@ namespace grb {
 
 	 // default (non-)implementations follow:
 
+	/**
+	 * Right-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -486,7 +503,20 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
-	template< Descriptor descr = descriptors::no_operation,
+	/**
+	 * Right-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords, typename RIT, typename CIT, typename NIT,
@@ -515,6 +545,18 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -550,6 +592,18 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -581,6 +635,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place doubly-masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -626,6 +693,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place doubly-masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -671,6 +751,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -714,6 +807,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -753,6 +859,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -794,6 +913,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,

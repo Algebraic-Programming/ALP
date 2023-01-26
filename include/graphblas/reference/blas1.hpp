@@ -3953,49 +3953,7 @@ namespace grb {
 	} // end namespace ``grb::internal''
 
 	/**
-	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = x .* \beta \f$, using the given operator. The input and
-	 * output vectors must be of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ x_i \odot \beta \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, such identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd (neutral),
-	 *            -# eWiseMul (annihilating), and
-	 *            -# eWiseApply using monoids (neutral).
-	 *          An eWiseAdd with some semiring and an eWiseApply using its additive
-	 *          monoid are totally equivalent.
-	 *
-	 * @tparam descr      The descriptor to be used. Equal to
-	 *                    descriptors::no_operation if left unspecified.
-	 * @tparam OP         The operator to use.
-	 * @tparam InputType1 The value type of the left-hand vector.
-	 * @tparam InputType2 The value type of the right-hand scalar.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]   x   The left-hand input vector.
-	 * @param[in]  beta The right-hand input scalar.
-	 * @param[out]  z   The pre-allocated output vector.
-	 * @param[in]   op  The operator to use.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x and \a z do not
-	 *                       match. All input data containers are left untouched
-	 *                       if this exit code is returned; it will be as though
-	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, operator variant.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4085,12 +4043,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, operator version.
 	 *
-	 * Specialisation for \a x and \a y scalar, operator version.
+	 * \todo Performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4125,12 +4084,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
 	 *
-	 * Specialisation for \a x and \a y scalar, monoid version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4155,12 +4115,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked operator variant.
 	 *
-	 * Specialisation for scalar \a y, masked operator version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4246,12 +4207,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, monoid variant.
 	 *
-	 * Monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4320,12 +4282,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, monoid version.
 	 *
-	 * Specialisation for scalar \a x. Monoid version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4384,9 +4347,9 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, monoid variant.
 	 *
-	 * Specialisation for scalar \a y. Monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -4448,12 +4411,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, masked monoid variant.
 	 *
-	 * Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4566,12 +4530,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked monoid variant.
 	 *
-	 * Specialisation for scalar \a x. Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4645,12 +4610,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot \beta \f$, out of place, masked monoid variant.
 	 *
-	 * Specialisation for scalar \a y. Masked monoid version.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4720,47 +4686,7 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise operation on one scalar to elements of one
-	 * vector, \f$ z = \alpha .* y \f$, using the given operator. The input and
-	 * output vectors must be of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ \alpha \odot y_i \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd,
-	 *            -# eWiseMul, and
-	 *            -# eWiseMulAdd.
-	 *
-	 * @tparam descr The descriptor to be used. Equal to descriptors::no_operation
-	 *               if left unspecified.
-	 * @tparam OP    The operator to use.
-	 * @tparam InputType1 The value type of the left-hand scalar.
-	 * @tparam InputType2 The value type of the right-hand side vector.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]  alpha The left-hand scalar.
-	 * @param[in]   y    The right-hand input vector.
-	 * @param[out]  z    The pre-allocated output vector.
-	 * @param[in]   op   The operator to use.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a y and \a z do not
-	 *                       match. All input data containers are left untouched
-	 *                       if this exit code is returned; it will be as though
-	 *                       this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, operator version.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -4785,7 +4711,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -4855,12 +4782,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = \alpha \odot y \f$, out of place, masked operator version.
 	 *
-	 * Specialisation for scalar \a x. Masked operator version.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -4941,48 +4869,7 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise operation on elements of two vectors,
-	 * \f$ z = x .* y \f$, using the given operator. The vectors must be
-	 * of equal length.
-	 *
-	 * The vectors \a x or \a y may not be sparse.
-	 *
-	 * For all valid indices \a i of \a z, its element \f$ z_i \f$ after
-	 * the call to this function completes equals \f$ x_i \odot y_i \f$.
-	 *
-	 * \warning Use of sparse vectors is only supported in full generality
-	 *          when applied via a monoid or semiring; otherwise, there is
-	 *          no concept for correctly interpreting any missing vector
-	 *          elements during the requested computation.
-	 * \note    When applying element-wise operators on sparse vectors
-	 *          using semirings, there is a difference between interpreting missing
-	 *          values as an annihilating identity or as a neutral identity--
-	 *          intuitively, identities are known as `zero' or `one',
-	 *          respectively. As a consequence, there are three different variants
-	 *          for element-wise operations whose names correspond to their
-	 *          intuitive meanings w.r.t. those identities:
-	 *            -# eWiseAdd,
-	 *            -# eWiseMul, and
-	 *            -# eWiseMulAdd.
-	 *
-	 * @tparam descr The descriptor to be used (descriptors::no_operation if left
-	 *               unspecified).
-	 * @tparam OP    The operator to use.
-	 * @tparam InputType1 The value type of the left-hand side vector.
-	 * @tparam InputType2 The value type of the right-hand side vector.
-	 * @tparam OutputType The value type of the ouput vector.
-	 *
-	 * @param[in]  x  The left-hand input vector. May not equal \a y.
-	 * @param[in]  y  The right-hand input vector. May not equal \a x.
-	 * @param[out] z  The pre-allocated output vector.
-	 * @param[in]  op The operator to use.
-	 *
-	 * @return grb::ILLEGAL  When \a x equals \a y.
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z
-	 *                       do not match. All input data containers are left
-	 *                       untouched if this exit code is returned; it will
-	 *                       be as though this call was never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
+	 * Computes \f$ z = x \odot y \f$, out of place, operator variant.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -5009,7 +4896,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -5118,12 +5006,13 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = x \odot y \f$, out of place.
+	 * Computes \f$ z = x \odot y \f$, out of place, masked operator variant.
 	 *
-	 * Masked operator version.
+	 * \todo Specify performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -5214,47 +5103,8 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under this semiring.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to perform the element-wise addition
-	 *                    on.
-	 * @tparam InputType1 The left-hand side input type to the additive operator
-	 *                    of the \a ring.
-	 * @tparam InputType2 The right-hand side input type to the additive operator
-	 *                    of the \a ring.
-	 * @tparam OutputType The the result type of the additive operator of the
-	 *                    \a ring.
-	 *
-	 * @param[out]  z  The output vector of type \a OutputType. This may be a
-	 *                 sparse vector.
-	 * @param[in]   x  The left-hand input vector of type \a InputType1. This may
-	 *                 be a sparse vector.
-	 * @param[in]   y  The right-hand input vector of type \a InputType2. This may
-	 *                 be a sparse vector.
-	 * @param[in] ring The generalized semiring under which to perform this
-	 *                 element-wise multiplication.
-	 *
-	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
-	 *                       not match. All input data containers are left
-	 *                       untouched; it will be as though this call was never
-	 *                       made.
-	 * @return grb::SUCCESS  On successful completion of this call.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense.
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the third domain of
-	 * \a ring must match \a InputType1, 2) the fourth domain of \a ring must match
-	 * \a InputType2, 3) the fourth domain of \a ring must match \a OutputType. If
-	 * one of these is not true, the code shall not compile.
-	 * \endparblock
+	 * Calculates the element-wise addition of two vectors, \f$ z += x .+ y \f$,
+	 * under a given semiring.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -5282,17 +5132,10 @@ namespace grb {
 	 *         the input domains, the output domain, and the operator used allow
 	 *         for this.
 	 * \endparblock
-	 *
-	 * @see This is a specialised form of eWiseMulAdd.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -5331,16 +5174,10 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ y \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a x.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
@@ -5382,19 +5219,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += x .+ \beta \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a y.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -5433,19 +5265,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ \beta \f$, under a
+	 * given semiring.
 	 *
-	 * Specialisation for scalar \a x and \a y.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -5484,19 +5311,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition of two vectors, \f$ z += x .+ y \f$,
+	 * under a given semiring, masked variant.
 	 *
-	 * Masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -5542,19 +5364,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ y \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x, masked version
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -5600,19 +5417,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += x .+ \beta \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -5659,19 +5471,14 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise addition of two vectors, \f$ z = x .+ y \f$,
-	 * under the given semiring.
+	 * Calculates the element-wise addition, \f$ z += \alpha .+ \beta \f$, under a
+	 * given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x and \a y, masked version.
-	 *
-	 * \warning This primitive has been deprecated since version 0.5. Please update
-	 *          any use of this operation to an equivalent one using a sequence of
-	 *          folds using the additive monoid if \a z is used in-place, or in the
-	 *          case of out-of-place use of \a z by a call to grb::eWiseApply using
-	 *          the additive monoid.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -8418,20 +8225,8 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise multiplication of two vectors,
-	 *     \f$ z = z + x .* y \f$,
+	 * In-place element-wise multiplication of two vectors, \f$ z += x .* y \f$,
 	 * under a given semiring.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to perform the element-wise multiply
-	 *                    on.
-	 * @tparam InputType1 The left-hand side input type to the multiplicative
-	 *                    operator of the \a ring.
-	 * @tparam InputType2 The right-hand side input type to the multiplicative
-	 *                    operator of the \a ring.
-	 * @tparam OutputType The the result type of the multiplicative operator of
-	 *                    the \a ring.
 	 *
 	 * @param[out]  z  The output vector of type \a OutputType.
 	 * @param[in]   x  The left-hand input vector of type \a InputType1.
@@ -8444,19 +8239,6 @@ namespace grb {
 	 *                       untouched if this exit code is returned; it will be
 	 *                       as though this call was never made.
 	 * @return grb::SUCCESS  On successful completion of this call.
-	 *
-	 * \parblock
-	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting.
-	 *
-	 * \note Invalid descriptors will be ignored.
-	 *
-	 * If grb::descriptors::no_casting is specified, then 1) the first domain of
-	 * \a ring must match \a InputType1, 2) the second domain of \a ring must match
-	 * \a InputType2, 3) the third domain of \a ring must match \a OutputType. If
-	 * one of these is not true, the code shall not compile.
-	 *
-	 * \endparblock
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -8479,15 +8261,10 @@ namespace grb {
 	 *         operator in-place, whenever the input domains, the output domain,
 	 *         and the operator used allow for this.
 	 * \endparblock
-	 *
-	 * \warning When given sparse vectors, the zero now annihilates instead of
-	 *       acting as an identity. Thus the eWiseMul cannot simply map to an
-	 *       eWiseApply of the multiplicative operator.
-	 *
-	 * @see This is a specialised form of eWiseMulAdd.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8495,7 +8272,7 @@ namespace grb {
 		Vector< OutputType, reference, Coords > &z,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
-		const Ring & ring = Ring(),
+		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
@@ -8554,12 +8331,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a scalar and vector,
+	 * \f$ z += \alpha .* y \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a x.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8620,12 +8399,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a vector and scalar,
+	 * \f$ z += x .* \beta \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a y.
+	 * \todo Add performance semantics
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8690,12 +8471,14 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of two scalars,
+	 * \f$ z += \alpha .* \beta \f$, under a given semiring.
 	 *
-	 * Specialisation for scalar \a y and scalar \a x.
+	 * \todo Add performance semantics.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -8761,11 +8544,10 @@ namespace grb {
 	}
 
 	/**
-	 * Calculates the element-wise multiplication of two vectors,
-	 *     \f$ z = z + x .* y \f$,
-	 * under a given semiring.
+	 * In-place element-wise multiplication of two vectors, \f$ z += x .* y \f$,
+	 * under a given semiring, masked variant.
 	 *
-	 * Masked verison.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -8855,9 +8637,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a scalar and vector,
+	 * \f$ z += \alpha .* y \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a x, masked version.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -8944,9 +8727,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of a vector and scalar,
+	 * \f$ z += x .* \beta \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, masked version.
+	 * \todo Add performance semantics.
 	 *
 	 * \internal Dispatches to eWiseMulAdd with zero additive scalar.
 	 */
@@ -9034,9 +8818,10 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ z = z + x * y \f$.
+	 * In-place element-wise multiplication of two scalars,
+	 * \f$ z += \alpha .* \beta \f$, under a given semiring, masked variant.
 	 *
-	 * Specialisation for scalar \a y, scalar \a x, masked version.
+	 * \todo Add performance semantics.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -9349,35 +9134,8 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * Calculates the dot product, \f$ \alpha = (x,y) \f$, under a given additive
+	 * Calculates the dot product, \f$ z += (x,y) \f$, under a given additive
 	 * monoid and multiplicative operator.
-	 *
-	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 *                    if left unspecified).
-	 * @tparam Ring       The semiring type to use.
-	 * @tparam OutputType The output type.
-	 * @tparam InputType1 The input element type of the left-hand input vector.
-	 * @tparam InputType2 The input element type of the right-hand input vector.
-	 *
-	 * @param[in,out]  z    The output element \f$ z + \alpha \f$.
-	 * @param[in]      x    The left-hand input vector.
-	 * @param[in]      y    The right-hand input vector.
-	 * @param[in] addMonoid The additive monoid under which the reduction of the
-	 *                      results of element-wise multiplications of \a x and
-	 *                      \a y are performed.
-	 * @param[in]   anyop   The multiplicative operator under which element-wise
-	 *                      multiplications of \a x and \a y are performed. This can
-	 *                      be any binary operator.
-	 *
-	 * By the definition that a dot-product operates under any additive monoid and
-	 * any binary operator, it follows that a dot-product under any semiring can be
-	 * trivially reduced to a call to this version instead.
-	 *
-	 * @return grb::MISMATCH When the dimensions of \a x and \a y do not match. All
-	 *                       input data containers are left untouched if this exit
-	 *                       code is returned; it will be as though this call was
-	 *                       never made.
-	 * @return grb::SUCCESS  On successful completion of this call.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -9413,15 +9171,6 @@ namespace grb {
 	 *   -# grb::descriptors::no_casting
 	 *   -# grb::descriptors::dense
 	 * \endparblock
-	 *
-	 * If the dense descriptor is set, this implementation returns grb::ILLEGAL if
-	 * it was detected that either \a x or \a y was sparse. In this case, it shall
-	 * otherwise be as though the call to this function had not occurred (no side
-	 * effects).
-	 *
-	 * \note The standard, in contrast, only specifies undefined behaviour would
-	 *       occur. This implementation goes beyond the standard by actually
-	 *       specifying what will happen.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -9551,6 +9300,10 @@ namespace grb {
 	}
 
 	/**
+	 * Calculates the dot product, \f$ \alpha = (x,y) \f$, under a given semiring.
+	 *
+	 * \todo Add performance semantics.
+	 *
 	 * \internal
 	 * Provides a generic implementation of the dot computation on semirings by
 	 * translating it into a dot computation on an additive commutative monoid
@@ -9558,7 +9311,8 @@ namespace grb {
 	 * \endinternal
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords
 	>

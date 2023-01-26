@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-/*
+/**
  * @author A. N. Yzelman
  * @date 10th of August, 2016
  */
@@ -40,6 +40,7 @@
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/vector.hpp>
 #endif
+
 
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND

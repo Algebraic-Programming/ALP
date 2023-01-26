@@ -16,6 +16,11 @@
  */
 
 /**
+ * @file
+ *
+ * Implements a traditional vertex-centric page ranking algorithm using
+ * ALP/Pregel.
+ *
  * @author A. N. Yzelman
  */
 
@@ -42,6 +47,8 @@ namespace grb {
 			 * @tparam localConverge Whether vertices become inactive once their local
 			 *                       scores have converged, or whether to terminate only
 			 *                       when all vertices have converged.
+			 *
+			 * \ingroup Pregel
 			 */
 			template< typename IOType, bool localConverge >
 			struct PageRank {

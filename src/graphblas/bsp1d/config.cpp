@@ -22,59 +22,63 @@
 
 #include <graphblas/bsp1d/config.hpp>
 
+
 using namespace grb;
 
 // whether mode is initialised-- false, on program start
 bool config::IMPLEMENTATION< Backend::BSP1D >::set = false;
 
-// keep unitialised, the below function performs initialisation
+// keep uninitialised, the below function performs initialisation
 config::ALLOC_MODE config::IMPLEMENTATION< Backend::BSP1D >::mode;
 
 // sets the mode
 void config::IMPLEMENTATION< BSP1D >::deduce() noexcept {
-	if( ! set ) {
-		// by default, select the one our backend is using
-		mode = config::IMPLEMENTATION< _GRB_BSP1D_BACKEND >::sharedAllocMode();
-		// get number of hardware threads
-		const int maxthreads = sysconf( _SC_NPROCESSORS_ONLN );
-		// try to get process mask
-		cpu_set_t cpuset;
-		if( sched_getaffinity( 0, sizeof( cpu_set_t ), &cpuset ) != 0 ) {
-			std::cerr << "Info: could not get process mask. Will fall back to " << toString( mode ) << " mode for shared memory segment allocations.";
-		} else {
-			// check if we have all-1 mask
-			bool allOne = true;
-			for( int i = 0; i < maxthreads; ++i ) {
-				if( CPU_ISSET( i, &cpuset ) == 0 ) {
-					// we have a zero, therefore assume we are with multiple processes on a single node
-					allOne = false;
-					// we shall now assume a default allocation is more appropriate.
-					mode = config::IMPLEMENTATION< _GRB_BSP1D_BACKEND >::defaultAllocMode();
-					std::cerr << "Info: process mask is zero at HW thread " << i
-							  << ", we therefore assume multiple GraphBLAS "
-								 "processes are present on this node and thus "
-								 "fall back to "
-							  << toString( mode )
-							  << " mode for shared-memory segment "
-								 "allocations.\n";
-					break;
-				}
-			}
-			if( allOne ) {
-				// we are running one process on this node. We shall therefore use the default allocation scheme.
-				std::cerr << "Info: process mask is all-one, we therefore "
-							 "assume a single GraphBLAS process is present on "
-							 "this node and thus shall use "
-						  << toString( mode ) << " mode for shared-memory segment allocations.\n";
+	assert( !set );
+	// by default, select the one our backend is using
+	mode = config::IMPLEMENTATION< _GRB_BSP1D_BACKEND >::sharedAllocMode();
+	// get number of hardware threads
+	const int maxthreads = sysconf( _SC_NPROCESSORS_ONLN );
+	// try to get process mask
+	cpu_set_t cpuset;
+	if( sched_getaffinity( 0, sizeof( cpu_set_t ), &cpuset ) != 0 ) {
+		std::cerr << "Info: could not get process mask. Will fall back to "
+			<< toString( mode ) << " mode for shared memory segment allocations.";
+	} else {
+		// check if we have all-1 mask
+		bool allOne = true;
+		for( int i = 0; i < maxthreads; ++i ) {
+			if( CPU_ISSET( i, &cpuset ) == 0 ) {
+				// we have a zero, therefore assume we are with multiple processes on a
+				// single node
+				allOne = false;
+				// we shall now assume a default allocation is more appropriate
+				mode = config::IMPLEMENTATION< _GRB_BSP1D_BACKEND >::defaultAllocMode();
+				std::cerr << "Info: process mask is zero at HW thread " << i << ", "
+					<< ", therefore ALP assumes multiple user processes are present on this "
+					<< "node and thus fall back to " << toString( mode ) << " mode for "
+					<< "memory allocations that are potentially touched by multiple "
+					<< "threads.\n";
+				break;
 			}
 		}
-		// done
-		set = true;
+		if( allOne ) {
+			// we are running one process on this node. We shall therefore use the
+			// default allocation scheme.
+			std::cerr << "Info: process mask is all-one, we therefore assume a single "
+				<< "user process is present on this node and thus shall use "
+				<< toString( mode ) << " mode for memory allocations that are potentially "
+				<< "touched by multiple threads.\n";
+		}
 	}
+	// done
+	set = true;
 }
 
 config::ALLOC_MODE config::IMPLEMENTATION< BSP1D >::sharedAllocMode() noexcept {
-	deduce();
+	if( !set ) {
+		deduce();
+	}
 	assert( set );
 	return mode;
 }
+

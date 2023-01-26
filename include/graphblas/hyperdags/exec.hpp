@@ -67,7 +67,8 @@ namespace grb {
 			 * Simply calls underlying launcher.
 			 */
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in,
 				const size_t in_size,
 				U &data_out,
@@ -82,7 +83,8 @@ namespace grb {
 			 * Simply calls underlying launcher.
 			 */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ),
+			RC exec(
+				void ( *grb_program )( const T &, U & ),
 				const T &data_in,
 				U &data_out,
 				const bool broadcast = false

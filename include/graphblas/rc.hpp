@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Defines all possible GraphBLAS error codes.
+ * Defines the ALP error codes.
  *
  * @author A. N. Yzelman
  * @date 9--11 August, 2016
@@ -29,46 +29,46 @@
 
 #include <string>
 
+
 namespace grb {
 
 	/**
-	 * Return codes of public functions.
+	 * Return codes of ALP primitives.
+	 *
+	 * All primitives that are not \em getters return one of the codes defined
+	 * here. All primitives may return #SUCCESS, and all primitives may return
+	 * #PANIC. All other error codes are optional-- please see the description of
+	 * each primitive which other error codes may be valid.
+	 *
+	 * For core ALP primitives, any non-SUCCESS and non-PANIC error code shall have
+	 * no side effects; if a call fails, it shall be as though the call was never
+	 * made.
 	 */
 	enum RC {
 
 		/**
-		 * Default success code.
+		 * Indicates the primitive has executed successfully.
 		 *
-		 * All GraphBLAS functions may return this error code even if not explicitly
-		 * documented. Any non-SUCCESS error code shall have no side effects; if a
-		 * call fails, it shall be as though the call was never made. The only
-		 * exception is #grb::PANIC.
+		 * All primitives may return this error code.
 		 */
 		SUCCESS = 0,
 
 		/**
-		 * Generic fatal error code.
+		 * Generic fatal error code. Signals that ALP has entered an undefined state.
 		 *
-		 * Signals an illegal state of all GraphBLAS objects connected to the call
-		 * returning this error. Users can only exit gracefully when encoutering
-		 * errors of this type-- after a GraphBLAS function returns this error
-		 * code, the state of the library becomes undefined.
+		 * Users can only do their best to exit their application gracefully once
+		 * PANIC has been encountered.
 		 *
-		 * An implementation is encouraged to write clear error messages to stderr
-		 * prior to returning this error code.
+		 * An implementation (backend) is encouraged to write clear error messages to
+		 * stderr prior to returning this error code.
 		 *
-		 * Rationale: instead of using <tt>assert</tt> within GraphBLAS
-		 * implementations which would crash the entire application, implementations
-		 * should instead simply return #grb::PANIC and let the GraphBLAS user shut
-		 * down his or her application as gracefully as possible.
-		 *
-		 * All GraphBLAS functions may return this error code even if not explicitly
+		 * All primitives may return this error code even if not explicitly
 		 * documented.
 		 */
 		PANIC,
 
 		/**
-		 * Out of memory error code.
+		 * Signals an out-of-memory error while executing the requested primitive.
 		 *
 		 * User can mitigate by freeing memory and retrying the call or by reducing
 		 * the amount of memory required by this call.
@@ -78,12 +78,12 @@ namespace grb {
 		OUTOFMEM,
 
 		/**
-		 * One or more of the GraphBLAS objects corresponding to the call returning
-		 * this error have mismatching dimensions.
+		 * One or more of the ALP/GraphBLAS objects passed to the primitive that
+		 * returned this error have mismatching dimensions.
 		 *
 		 * User can mitigate by reissuing with correct parameters. It is usually not
-		 * possible to mitigate at run-time; usually this signals a logic programming
-		 * error.
+		 * possible to mitigate at run-time; more often than not, this error signals
+		 * a logical programming error.
 		 *
 		 * This error code may only be returned when explicitly documented as such.
 		 */
@@ -91,52 +91,65 @@ namespace grb {
 
 		/**
 		 * One or more of the GraphBLAS objects corresponding to the call returning
-		 * this error refer to the same object while this is forbidden.
+		 * this error refer to the same object while this explicitly is forbidden.
+		 *
+		 * \deprecated This error code will be replaced with #ILLEGAL.
 		 *
 		 * User can mitigate by reissuing with correct parameters. It is usually not
-		 * possible to mitigate at run-time; usually this signals a logic programming
-		 * error. Implementations are not required to return this error code and may
-		 * incur undefined behaviour instead.
+		 * possible to mitigate at run-time; more often than not, this error signals
+		 * a logical programming error.
 		 *
-		 * This error code may only be returned when explicitly documented as such.
+		 * This error code may only be returned when explicitly documented as such,
+		 * but note the deprecation message-- any uses of #OVERLAP will be replaced
+		 * with #ILLEGAL before v1.0 is released.
 		 */
 		OVERLAP,
 
 		/**
-		 * One or more output parameters would overflow on this function call.
+		 * Indicates that execution of the requested primitive with the given
+		 * arguments would result in overflow.
 		 *
-		 * Users can mitigate by supplying a larger integral types.
+		 * Users can mitigate by modifying the offending call. It is usually not
+		 * possible to mitigate at run-time; more often than not, this error signals
+		 * the underlying problem is too large to handle with whatever current
+		 * resources have been assigned to ALP.
 		 *
 		 * This error code may only be returned when explicitly documented as such.
 		 */
 		OVERFLW,
 
 		/**
-		 * A bsp::init() assuming multiple user processes while this is not supported
-		 * by the chosen implementation backend will reduce this error code.
+		 * Indicates that the execution of the requested primitive with the given
+		 * arguments is not supported by the selected backend.
 		 *
-		 * @see config::default_backend for a description of how the current backend
-		 *                              is selected (if not explicitly).
+		 * This error code should never be returned by a fully compliant backend.
 		 *
-		 * This error code may only be returned when explicitly documented as such.
+		 * If encountered, the end-user may mitigate by selecting a different backend.
 		 */
 		UNSUPPORTED,
 
 		/**
-		 * A call to a GraphBLAS function with an illegal parameter value might
-		 * return this error code. When returned, no undefined behaviour will occur
-		 * as a result of having passed the illegal argument.
+		 * A call to a primitive has determined that one of its arguments was
+		 * illegal as per the specification of the primitive.
 		 *
-		 * This error code may only be returned when explicitly documented as such.
+		 * User can mitigate by reissuing with correct parameters. It is usually not
+		 * possible to mitigate at run-time; more often than not, this error signals
+		 * a logical programming error.
+		 *
+		 * This error code may only be returned when explicitly documented as such;
+		 * in other words, the specification precisely determines which (combinations
+		 * of) inputs are illegal.
 		 */
 		ILLEGAL,
 
 		/**
-		 * Indicates when one of the grb::algorithms has failed to achieve its
+		 * Indicates when one of the #grb::algorithms has failed to achieve its
 		 * intended result, for instance, when an iterative method failed to
 		 * converged within its alloted resources.
 		 *
-		 * This error code may only be returned when explicitly documented as such.
+		 * This error code may only be returned when explicitly documented as such,
+		 * and may never be returned by core ALP primitives-- it is reserved for
+		 * use by algorithms only.
 		 */
 		FAILED
 
@@ -148,3 +161,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+

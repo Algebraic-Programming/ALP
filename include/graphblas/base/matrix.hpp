@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the ALP/GraphBLAS matrix container.
+ *
  * @author A. N. Yzelman
- * @date 10th of August
+ * @date 10th of August, 2016
  */
 
 #ifndef _H_GRB_MATRIX_BASE
@@ -190,15 +194,9 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * Implementations must define cost semantics across the following
-			 * dimensions:
-			 *   -# work;
-			 *   -# intra-process data movement;
-			 *   -# inter-process data movement;
-			 *   -# inter-process synchronisations;
-			 *   -# memory usage; and
-			 *   -# whether system calls, in particular dynamic memory management calls,
-			 *      could occur.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 *
 			 * \warning Avoid the use of this constructor within performance critical
@@ -251,25 +249,21 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * Implementations must define cost semantics across the following
-			 * dimensions:
-			 *   -# work;
-			 *   -# intra-process data movement;
-			 *   -# inter-process data movement;
-			 *   -# inter-process synchronisations;
-			 *   -# memory usage; and
-			 *   -# whether system calls, in particular dynamic memory management calls,
-			 *      could occur.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 *
 			 * \warning Avoid the use of this constructor within performance critical
 			 *          code sections.
 			 */
-			Matrix( const Matrix<
-				D, implementation,
-				RowIndexType, ColIndexType, NonzeroIndexType > &other
+			Matrix(
+				const Matrix<
+					D, implementation,
+					RowIndexType, ColIndexType, NonzeroIndexType
+				> &other
 			) {
-				(void)other;
+				(void) other;
 			}
 
 			/**
@@ -281,18 +275,13 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * This constructor:
-			 *        -# entails \f$ \Theta(1) \f$ amount of work;
-			 *        -# moves \f$ \Theta(1) \f$ bytes of data within its user process;
-			 *        -# moves \f$ 0 \f$ bytes of data between user processes;
-			 *        -# shall \em not require synchronisations between user processes;
-			 *        -# inherit the memory usage of \a other;
-			 *        -# will \em not make system calls and in particular will not free
-			 *           nor allocate dynamic memory.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 */
 			Matrix( self_type &&other ) {
-				(void)other;
+				(void) other;
 			}
 
 			/**
@@ -306,16 +295,9 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * This constructor:
-			 *        -# entails \f$ \Theta(1) \f$ amount of work;
-			 *        -# moves \f$ \Theta(1) \f$ bytes of data within its user process;
-			 *        -# moves \f$ 0 \f$ bytes of data between user processes;
-			 *        -# shall \em not require synchronisations between user processes;
-			 *        -# inherit the memory usage of \a other;
-			 *        -# will \em not make system calls and in particular will not free
-			 *           nor allocate dynamic memory.
+			 * Each backend must define performance semantics for this primitive.
 			 *
-			 * Additionally, the backend-specific cost of the matrix destructor apply.
+			 * @see perfSemantics
 			 * \endparblock
 			 */
 			self_type& operator=( self_type &&other ) noexcept {
@@ -328,15 +310,9 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * Beckends must define cost semantics across the following
-			 * dimensions:
-			 *   -# work;
-			 *   -# intra-process data movement;
-			 *   -# inter-process data movement;
-			 *   -# inter-process synchronisations;
-			 *   -# memory usage; and
-			 *   -# whether system calls, in particular dynamic memory management calls,
-			 *      could occur.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 *
 			 * \warning Avoid calling destructors from within performance critical
@@ -358,15 +334,9 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * Beckends must define cost semantics across the following
-			 * dimensions:
-			 *   -# work;
-			 *   -# intra-process data movement;
-			 *   -# inter-process data movement;
-			 *   -# inter-process synchronisations;
-			 *   -# memory usage; and
-			 *   -# whether system calls, in particular dynamic memory management calls,
-			 *      could occur.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 *
 			 * \note This function may make use of a const_iterator that is buffered,
@@ -394,15 +364,9 @@ namespace grb {
 			 *
 			 * \parblock
 			 * \par Performance semantics.
-			 * Beckends must define cost semantics across the following
-			 * dimensions:
-			 *   -# work;
-			 *   -# intra-process data movement;
-			 *   -# inter-process data movement;
-			 *   -# inter-process synchronisations;
-			 *   -# memory usage; and
-			 *   -# whether system calls, in particular dynamic memory management calls,
-			 *      could occur.
+			 * Each backend must define performance semantics for this primitive.
+			 *
+			 * @see perfSemantics
 			 * \endparblock
 			 *
 			 * \note Even if cbegin() returns a buffered const_iterator that may require

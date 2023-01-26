@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Specifies the #grb::Launcher functionalities.
+ *
  * @author A. N. Yzelman
  * @date 17th of April, 2017
  */
@@ -28,27 +32,31 @@
 
 #include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
+
 #ifndef _GRB_NO_STDIO
-#include <iostream>
+ #include <iostream>
 #endif
+
 
 namespace grb {
 
 	/**
-	 * The various ways in which the #Launcher can be used
-	 * to execute a GraphBLAS program.
+	 * The various ways in which the #grb::Launcher can be used to execute an
+	 * ALP program.
 	 *
 	 * \warning An implementation may require different linker commands
-	 *          when using different modes. This is OK, since a call to
-	 *          the #Launcher is required to be quite different
-	 *          depending on which mode is used. The portability is in
-	 *          the GraphBLAS program being launched-- that one should
-	 *          never change depending on whichever mode it is used.
+	 *          when using different modes.
+	 *
+	 * \warning Depending on the mode given to #grb::Launcher, the parameters
+	 *          required for the exec function may differ.
+	 *
+	 * \note However, the ALP program is unaware of which mode is the launcher
+	 *       employs and will not have to change.
 	 */
 	enum EXEC_MODE {
 
 		/**
-		 * Automatic mode. The #Launcher can spawn user processes
+		 * Automatic mode. The #grb::Launcher can spawn user processes
 		 * which will execute a given program.
 		 */
 		AUTOMATIC = 0,
@@ -56,176 +64,268 @@ namespace grb {
 		/**
 		 * Manual mode. The user controls \a nprocs user processes
 		 * which together should execute a given program, by, for
-		 * example, using the #Launcher.
+		 * example, using the #grb::Launcher.
 		 */
 		MANUAL,
 
 		/**
 		 * When running from an MPI program. The user controls
 		 * \a nprocs MPI programs, which, together, should execute
-		 * a given GraphBLAS program.
+		 * a given ALP program.
 		 */
 		FROM_MPI
 
 	};
 
 	/**
-	 * Allows an auxiliary program to run any GraphBLAS program. Input data may be
-	 * passed through a user-defined type. Output data will be retrieved via the
-	 * same type. For implementations that support multiple user processes, the
-	 * caller may explicitly set the process ID and total number of user processes.
+	 * A group of user processes that together execute ALP programs.
 	 *
-	 * The intended use is to `just call' grb::exec which should, in its most
-	 * trivial form, compile regardless of which backend is selected.
+	 * Allows an application to run any ALP program. Input data may be passed
+	 * through a user-defined type. Output data will be retrieved via the same
+	 * type.
 	 *
-	 * @tparam mode           Which #EXEC_MODE the Launcher should adhere to.
-	 * @tparam implementation Which GraphBLAS implementation is to be used.
+	 * For backends that support multiple user processes, the caller may
+	 * explicitly set the process ID and total number of user processes.
+	 *
+	 * The intended use is to `just call' the exec function, which should be
+	 * accepted by any backend.
+	 *
+	 * @tparam mode    Which #EXEC_MODE the Launcher should adhere to.
+	 * @tparam backend Which backend is to be used.
 	 */
-	template< enum EXEC_MODE mode, enum Backend implementation >
+	template< enum EXEC_MODE mode, enum Backend backend >
 	class Launcher {
 
 		public :
 
 			/**
-		     * Constructs a new Launcher. This constructor is a collective
-		     * call; all \a nprocs processes that form a single Launcher
-		     * group must make a call to this constructor at roughly the
-		     * same time. There is an implementation-defined time-out for
-		     * the creation of a Launcher group.
-		     *
-		     * @param[in]  process_id  The user process ID of the calling process.
-		     *                         The value must be larger or equal to 0. This
-		     *                         value must be strictly smaller than \a nprocs.
-		     *                         This value must be unique to the calling
-		     *                         process within this collective call across
-		     *                         \em all \a nprocs user processes. This number
-		     *                         \em must be strictly smaller than \a nprocs.
-		     *                         Optional: the default is 0.
-		     * @param[in]  nprocs      The total number of user processes making a
-		     *                         collective call to this function. Optional: the
-		     *                         default is 1.
-		     * @param[in]  hostname    The hostname of one of the user processes.
-		     *                         Optional: the default is `localhost'.
-		     * @param[in]  port        A free port number at \a hostname. This port
-		     *                         will be used for TCP connections to \a hostname
-		     *                         if and only if \a nprocs is larger than one.
-		     *                         Optional: the default value is `0'.
-		     *
-		     * @throws invalid_argument If #nprocs is zero.
-		     * @throws invalid_argument If #process_id is greater than or
-		     *                          equal to \a nprocs.
-		     *
-		     * \note An implementation may define further constraints on
-		     *       the input arguments, such as, obviously, on \a hostname
-		     *       and \a port, but also on \a nprocs and, as a result, on
-		     *       \a process_id.
-		     */
-			Launcher( const size_t process_id = 0,        // user process ID
-				const size_t nprocs = 1,                  // total number of user processes
-				const std::string hostname = "localhost", // one of the user process hostnames
-				const std::string port = "0"              // a free port at hostname
-			) {                                           // standard does not specify any constrants on hostname and port
-		                                                  // so accept (and ignore) anything
-				(void)hostname; (void)port;
+			 * Constructs a new #grb::Launcher. This constructor is a collective call;
+			 * all \a nprocs processes that form a single launcher group must make a
+			 * simultaneous call to this constructor.
+			 *
+			 * There is an implementation-defined time-out for the creation of a launcher
+			 * group.
+			 *
+			 * @param[in]  process_id  The user process ID of the calling process.
+			 *                         The value must be larger or equal to 0. This
+			 *                         value must be strictly smaller than \a nprocs.
+			 *                         This value must be unique to the calling
+			 *                         process within this collective call across
+			 *                         \em all \a nprocs user processes. This number
+			 *                         \em must be strictly smaller than \a nprocs.
+			 *                         Optional: the default is 0.
+			 * @param[in]  nprocs      The total number of user processes making a
+			 *                         collective call to this function. Optional: the
+			 *                         default is 1.
+			 * @param[in]  hostname    The hostname of one of the user processes.
+			 *                         Optional: the default is `localhost'.
+			 * @param[in]  port        A free port number at \a hostname. This port
+			 *                         will be used for TCP connections to \a hostname
+			 *                         if and only if \a nprocs is larger than one.
+			 *                         Optional: the default value is `0'.
+			 *
+			 * @throws invalid_argument If \a nprocs is zero.
+			 * @throws invalid_argument If \a process_id is greater than or equal to
+			 *                          \a nprocs.
+			 *
+			 * \note An implementation or backend may define further constraints on the
+			 *       input arguments, such as, obviously, on \a hostname and \a port, but
+			 *       also on \a nprocs and, as a result, on \a process_id.
+
+			 * \note The most obvious is that backends supporting only one user process
+			 *       must not accept \a nprocs larger than 1.
+			 *
+			 * All aforementioned default values shall always be legal.
+			 */
+			Launcher(
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
+			) {
+				// spec does not specify any constrants on hostname and port
+				// so accept (and ignore) anything
+				(void) hostname; (void) port;
 
 #ifndef _GRB_NO_EXCEPTIONS
 				// sanity checks on process_id and nprocs
-				if( nprocs == 0 ) { throw std::invalid_argument( "Total number of user "
-																 "processes must be "
-																 "strictly larger than "
-																 "zero." ); }
-	if( process_id >= nprocs ) {
-		throw std::invalid_argument( "Process ID must be strictly smaller than "
-									 "total number of user processes." );
-	}
+				if( nprocs == 0 ) {
+					throw std::invalid_argument( "Total number of user processes must be "
+						"strictly larger than zero." );
+				}
+				if( process_id >= nprocs ) {
+					throw std::invalid_argument( "Process ID must be strictly smaller than "
+						"total number of user processes." );
+				}
 #endif
-} // namespace grb
+			}
 
-/**
- * Executes the given GraphBLAS program. This function, depending on whether
- * GraphBLAS is compiled in automatic or in manual mode, will either
- * \em spawn the maximum number of available user processes or will connect
- * exactly \a nprocs existing processes, respectively, to execute the given
- * \a grb_program.
- *
- * This is a collective function call.
- *
- * @tparam T The type of the data to pass to the GraphBLAS program.
- * @tparam U The type of the output data to pass back to the user.
- *
- * @param[in]  grb_program User GraphBLAS program to be executed.
- * @param[in]  data_in     Input data of user-defined type \a T.
- *                         When in automatic mode, the data will only be
- *                         available at user process 0 only. When in
- *                         manual mode, the data will be available to
- *                         this user process (with the below given
- *                         \a process_id) only.
- * @param[out] data_out    Output data of user-defined type \a U. The output
- *                         data should be available at user process with ID
- *                         zero.
- * @param[in]  broadcast   Whether the input should be broadcast from user
- *                         process 0 to all other user processes. Optional;
- *                         the default value is \a false.
- *
- * @return SUCCESS If the execution proceeded as intended.
- * @return PANIC   If an unrecoverable error was encountered while trying to
- *                 execute the given GraphBLAS program.
- *
- * \warning An implementation can define further constraints on the validity
- *          of input arguments. The most obvious is that implementations
- *          supporting only one user process will not accept \a nprocs larger
- *          than 1.
- *
- * All aforementioned default values shall always be legal.
- */
-template< typename T, typename U >
-RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-	const T & data_in,
-	U & data_out, // input & output data
-	const bool broadcast = false ) const {
-	(void)grb_program;
-	(void)data_in;
-	(void)data_out;
-	(void)broadcast;
-	// stub implementation, should be overridden by specialised implementation,
-	// so return error code
-	return PANIC;
-}
+			/**
+			 * Executes a given ALP program using the user processes encapsulated by this
+			 * launcher group.
+			 *
+			 * Calling this function, depending on whether the automatic or manual/MPI
+			 * mode was selected, will either \em spawn the maximum number of available
+			 * user processes and \em then execute the given program, \em or it will
+			 * employ the given processes that are managed by the user application and
+			 * used to construct this launcher instance to execute the given
+			 * \a alp_program.
+			 *
+			 * This is a collective function call-- all processes in the launcher group
+			 * must make a simultaneous call to this function and must do so using
+			 * consistent arguments.
+			 *
+			 * @tparam T The type of the data to pass to the ALP program as input.
+			 * @tparam U The type of the output data to pass back to the caller.
+			 *
+			 * @param[in]  alp_program The user program to be executed.
+			 * @param[in]  data_in     Input data of user-defined type \a T.
+			 *
+			 * When in automatic mode and \a broadcast is <tt>false</tt>, the data will
+			 * only be available at user process with ID 0. When in automatic mode and
+			 * \a broadcast is <tt>true</tt>, the data will be available at all user
+			 * processes. When in manual mode, the data will be available to this user
+			 * process only, with "this process" corresponding to the process that calls
+			 * this function.
+			 *
+			 * @param[out] data_out  Output data of user-defined type \a U. The output
+			 *                       data should be available at user process with ID
+			 *                       zero.
+			 * @param[in]  broadcast Whether the input should be broadcast from user
+			 *                       process 0 to all other user processes. Optional;
+			 *                       the default value is \a false.
+			 *
+			 * @return #grb::SUCCESS If the execution proceeded as intended.
+			 * @return #grb::PANIC   If an unrecoverable error was encountered while
+			 *                       attempting to execute, attempting to terminate, or
+			 *                       while executing, the given program.
+			 *
+			 * \warning Even if #grb::SUCCESS is returned, an algorithm may fail to
+			 *          achieve its intended result-- for example, an iterative solver
+			 *          may fail to converge. A good programming pattern has that \a U
+			 *          either a) is an error code for the algorithm used (e.g.,
+			 *          #grb::RC), or b) that \a U contains such an error code.
+			 */
+			template< typename T, typename U >
+			RC exec(
+				void ( *alp_program )( const T &, U & ),
+				const T &data_in,
+				U &data_out,
+				const bool broadcast = false
+			) const {
+				(void) alp_program;
+				(void) data_in;
+				(void) data_out;
+				(void) broadcast;
+				// stub implementation, should be overridden by specialised backend,
+				// so return error code
+				return PANIC;
+			}
 
-/**
- * Variable size version of the above function.
- *
- * @param[in]  broadcast   Whether the input should be broadcast from user
- *                         process 0 to all other user processes. Optional;
- *                         the default value is \a false. This will let user
- *                         processes with ID larger than zero allocate
- *                         \a in_size bytes of memory into which the data at
- *                         process 0 will be copied.
- *
- * \todo more documentation
- */
-template< typename U >
-RC exec( void ( *grb_program )( const void *, const size_t, U & ), const void * data_in, const size_t in_size, U & data_out, const bool broadcast = false ) const {
-	(void)grb_program;
-	(void)data_in;
-	(void)in_size;
-	(void)data_out;
-	(void)broadcast;
-	return PANIC;
-}
+			/**
+			 * Executes a given ALP program using the user processes encapsulated by this
+			 * launcher group.
+			 *
+			 * This variant of exec has that \a data_in is of a variable byte size,
+			 * instead of a fixed POD type. If \a broadcast is <tt>true</tt> and the
+			 * launcher is instantiated using the #grb::AUTOMATIC mode, all bytes are
+			 * broadcast to all user processes.
+			 *
+			 * @param[in]  alp_program The user program to be executed.
+			 * @param[in]  data_in     Pointer to raw input byte data.
+			 * @param[in]  in_size     The number of bytes the input data consists of.
+			 * @param[out] data_out  Output data of user-defined type \a U. The output
+			 *                       data should be available at user process with ID
+			 *                       zero.
+			 * @param[in]  broadcast Whether the input should be broadcast from user
+			 *                       process 0 to all other user processes. Optional;
+			 *                       the default value is \a false.
+			 *
+			 * @return #grb::SUCCESS If the execution proceeded as intended.
+			 * @return #grb::PANIC   If an unrecoverable error was encountered while
+			 *                       attempting to execute, attempting to terminate, or
+			 *                       while executing, the given program.
+			 *
+			 * For more details, see the other version of this function.
+			 */
+			template< typename U >
+			RC exec(
+				void ( *alp_program )( const void *, const size_t, U & ),
+				const void * data_in,
+				const size_t in_size,
+				U &data_out,
+				const bool broadcast = false
+			) const {
+				(void) alp_program;
+				(void) data_in;
+				(void) in_size;
+				(void) data_out;
+				(void) broadcast;
+				return PANIC;
+			}
 
-/**
- * Releases all GraphBLAS resources. After a call to this function, no
- * GraphBLAS library functions may be called any longer.
- *
- * @return SUCCESS A call to this function may never fail.
- */
-static RC finalize() {
-	return PANIC;
-}
-}
-; // end class `Launcher'
+			/**
+			 * Releases all ALP resources.
+			 *
+			 * After a call to this function, no further ALP programs may launched using
+			 * the #grb::Launcher and #grb::Benchmarker. Also the use of #grb::init and
+			 * #grb::finalize will no longer be accepted.
+			 *
+			 * \warning #grb::init and #grb::finalize are deprecated.
+			 *
+			 * \internal
+			 * \todo Remove the above comments once #grb::init and #grb::finalize are
+			 *       moved to an internal namespace.
+			 * \endinternal
+			 *
+			 * After a call to this function, the only way to once again run ALP programs
+			 * is to use the #grb::Launcher from a new process.
+			 *
+			 * \warning Therefore, use this function with care and preferably only just
+			 *          before exiting the process.
+
+			 * A well-behaving program calls this function, or
+			 * #grb::Benchmarker::finalize, exactly once before its process terminates,
+			 * or just after the guaranteed last invocation of an ALP program.
+			 *
+			 * @return #grb::SUCCESS The resources have successfully and permanently been
+			 *                       released.
+			 * @return #grb::PANIC   An unrecoverable error has been encountered and the
+			 *                       user program is encouraged to exit as quickly as
+			 *                       possible. The state of the ALP library has become
+			 *                       undefined and should no longer be used.
+			 *
+			 * \note In the terminology of the Message Passing Interface (MPI), this
+			 *       function is the ALP equivalent of the <tt>MPI_Finalize()</tt>.
+			 *
+			 * \note In #grb::AUTOMATIC mode when using a parallel backend that uses MPI
+			 *       to auto-parallelise the ALP computations, MPI is never explicitly
+			 *       exposed to the user application. This use case necessitates the
+			 *       specification of this function.
+			 *
+			 * \note Thus, and in particular, an ALP program launched in #grb::AUTOMATIC
+			 *       mode while using the #grb::BSP1D or the #grb::hybrid backends with
+			 *       ALP compiled using LPF that in turn is configured to use an
+			 *       MPI-based engine, should make sure to call this function before
+			 *       program exit.
+			 *
+			 * \note An application that launches ALP programs in #grb::FROM_MPI mode
+			 *       must still call this function, even though a proper such application
+			 *       makes its own call to <tt>MPI_Finalize()</tt>. This does \em not
+			 *       induce improper behaviour since calling this function using a
+			 *       launcher instance in #grb::FROM_MPI mode translates, from an MPI
+			 *       perspective, to a no-op.
+			 *
+			 * \internal This is the base implementation that should be specialised by
+			 *           each backend separately.
+			 */
+			static RC finalize() {
+				return PANIC;
+			}
+
+	}; // end class `Launcher'
 
 } // end namespace ``grb''
 
 #endif // end _H_GRB_EXEC_BASE
+

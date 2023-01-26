@@ -15,11 +15,17 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the BiCGstab algorithm.
+ *
  * @author A. N. Yzelman
  * @date 15th of February, 2022
  *
- * Implementation time, to be taken with a pinch of salt:
+ * \par Implementation time
+ *
+ * To be taken with a pinch of salt, as it is highly subjective:
  *  - 50 minutes, excluding error handling, documentation, and testing.
  *  - 10 minutes to get it to compile, once the smoke test was generated.
  *  - 15 minutes to incorporate proper error handling plus printing of warnings
@@ -87,18 +93,30 @@ namespace grb {
 		 *
 		 * Additional outputs of this algorithm:
 		 *
-		 * @param[out]    iterations When #grb::SUCCESS is returned, the number of
-		 *                           iterations that were required to obtain an
-		 *                           acceptable approximate solution.
-		 * @param[out]    residual   When #grb::SUCCESS is returned, the square of the
-		 *                           2-norm of the residual; i.e., \f$ (r,r) \f$,
-		 *                           where \f$ r = b - Ax \f$.
+		 * @param[out] iterations When #grb::SUCCESS is returned, the number of
+		 *                        iterations that were required to obtain an
+		 *                        acceptable approximate solution.
+		 * @param[out] residual   When #grb::SUCCESS is returned, the square of the
+		 *                        2-norm of the residual; i.e., \f$ (r,r) \f$,
+		 *                        where \f$ r = b - Ax \f$.
 		 *
 		 * To operate, this algorithm requires a workspace consisting of six vectors
 		 * of length and capacity \f$ n \f$. If vectors with less capacity are passed
 		 * as arguments, #grb::ILLEGAL will be returned.
 		 *
 		 * @param[in] r, rhat, p, v, s, t Workspace vectors required for BiCGstab.
+		 *
+		 * The BiCGstab operates over a field defined by the following algebraic
+		 * structures:
+		 *
+		 * @param[in] semiring Defines the domains as well as the additive and the
+		 *                     multicative monoid.
+		 * @param[in] minus    The inverse of the additive operator.
+		 * @param[in] divide   The inverse of the multiplicative operator.
+		 *
+		 * \note When compiling with the <tt>_DEBUG</tt> macro defined, the print-out
+		 *       statements require <tt>sqrt</tt> as an additional algebraic concept.
+		 *       This concept presently lives "outside" of ALP.
 		 *
 		 * Valid descriptors to this algorithm are:
 		 *   -# descriptors::no_casting
@@ -120,6 +138,7 @@ namespace grb {
 		 *                         output as well as the state of ALP/GraphBLAS is
 		 *                         undefined.
 		 *
+		 * \parblock
 		 * \par Performance semantics
 		 *
 		 *   -# This function does not allocate nor free dynamic memory, nor shall it
@@ -130,8 +149,10 @@ namespace grb {
 		 * the specification of the ALP primitives this function relies on. These
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
+		 * \endparblock
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType, typename NonzeroType, typename InputType,
 			typename ResidualType,
 			class Semiring = Semiring<
@@ -142,7 +163,8 @@ namespace grb {
 			class Minus = operators::subtract< ResidualType >,
 			class Divide = operators::divide< ResidualType >
 		>
-		RC bicgstab( grb::Vector< IOType > &x,
+		RC bicgstab(
+			grb::Vector< IOType > &x,
 			const grb::Matrix< NonzeroType > &A,
 			const grb::Vector< InputType > &b,
 			const size_t max_iterations,
@@ -371,9 +393,10 @@ namespace grb {
 				// check residual
 				residual = zero;
 				ret = ret ? ret : dot< dense_descr >( residual, s, s, semiring );
-				assert( residual > zero ); // we just assert this one rather than checking for it
+				assert( residual > zero );
 #ifdef _DEBUG
-				std::cout << "\t\t running residual, pre-stabilisation: " << sqrt(residual) << "\n";
+				std::cout << "\t\t running residual, pre-stabilisation: " << sqrt(residual)
+					<< "\n";
 #endif
 				if( ret == SUCCESS && residual < tol ) {
 					// update result (x += alpha * p) and exit
@@ -400,7 +423,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\t\t (t, t) = " << omega << "\n";
 #endif
-				assert( omega > zero ); // we just assert this one rather than checking for it
+				assert( omega > zero );
 				ret = ret ? ret : foldr( temp, omega, divide );
 #ifdef _DEBUG
 				std::cout << "\t\t omega = " << omega << "\n";
@@ -421,9 +444,10 @@ namespace grb {
 				// check residual
 				residual = zero;
 				ret = ret ? ret : dot< dense_descr >( residual, r, r, semiring );
-				assert( residual > zero ); // we just assert this one rather than checking for it
+				assert( residual > zero );
 #ifdef _DEBUG
-				std::cout << "\t\t running residual, post-stabilisation: " << sqrt(residual) << ". "
+				std::cout << "\t\t running residual, post-stabilisation: "
+					<< sqrt(residual) << ". "
 					<< "Residual squared: " << residual << ".\n";
 #endif
 				if( ret == SUCCESS ) {

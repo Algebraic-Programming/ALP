@@ -303,6 +303,17 @@ namespace grb {
 		 *                      On output at non-root processes: the value at root.
 		 *
 		 * \parblock
+		 * \par Performance semantics: common
+		 * Whether system calls will happen depends on the LPF engine compiled with,
+		 * as does whether buffer space is proportional to the payload size is
+		 * required. In principle, when using a fabric like Inifiband and when using
+		 * the LPF ibverbs engine, the intended IB zero-copy behaviour is attained.
+		 *
+		 * All below variants in any backend shall not result in dynamic memory
+		 * allocations.
+		 * \endparblock
+		 *
+		 * \parblock
 		 * \par Performance semantics: serial
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
@@ -310,20 +321,21 @@ namespace grb {
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
-		 * \par Performance semantics: two hase
+		 * \parblock
+		 * \par Performance semantics: two phase
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2N \f$ ;
 		 * -# BSP cost: \f$ 2(Ng + l) \f$;
 		 * \endparblock
 		 *
+		 * \parblock
 		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;
 		 * -# BSP cost: \f$ 2(\sqrt{P}Ng + l) \f$;
 		 * \endparblock
-		 *
 		 */
 		template< typename IOType >
 		static RC broadcast( IOType & inout, const lpf_pid_t root = 0 ) {

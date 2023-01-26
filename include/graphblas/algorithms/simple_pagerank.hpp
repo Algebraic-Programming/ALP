@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the canonical PageRank algorithm by Brin and Page.
+ *
  * @author A. N. Yzelman
  * @date: 21st of March, 2017
  */
@@ -28,6 +32,7 @@
 #ifndef _GRB_NO_STDIO
 #include <iostream>
 #endif
+
 
 namespace grb {
 
@@ -86,7 +91,7 @@ namespace grb {
 		 * @param[out] iterations If not <tt>nullptr</tt>, the number of iterations
 		 *                        the call to this algorithm took will be written to
 		 *                        the location pointed to.
-		 * @param[out] quality    If not <tt>nullptr,/tt>, the last computed residual
+		 * @param[out] quality    If not <tt>nullptr</tt>, the last computed residual
 		 *                        will be written to the location pointed to.
 		 *
 		 * @returns #grb::SUCCESS  If the computation converged within \a max

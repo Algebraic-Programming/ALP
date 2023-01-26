@@ -15,6 +15,13 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ *
+ * Implements a simple matrix spy algorithm.
+ *
+ * @author A. N. Yzelman
+ */
 
 #ifndef _H_GRB_ALGORITHMS_SPY
 #define _H_GRB_ALGORITHMS_SPY

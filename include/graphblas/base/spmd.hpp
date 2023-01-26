@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Exposes facilities for direct SPMD programming
+ *
  * @author A. N. Yzelman
  * @date 28th of April, 2017
  */
@@ -32,52 +36,67 @@
 
 #include "config.hpp"
 
+
 namespace grb {
 
-	/** \todo documentation */
+	/**
+	 * For backends that support multiple user processes this class defines some
+	 * basic primitives to support SPMD programming.
+	 *
+	 * All backends must implement this interface, including backends that do not
+	 * support multiple user processes. The interface herein defined hence ensures
+	 * to allow for trivial implementations for single user process backends.
+	 */
 	template< Backend implementation >
 	class spmd {
 
-	public:
+		public:
 
-		/** @return The number of user processes in this GraphBLAS run. */
-		static inline size_t nprocs() noexcept {
-			return 0;
-		}
+			/** @return The number of user processes in this ALP run. */
+			static inline size_t nprocs() noexcept {
+				return 0;
+			}
 
-		/** @return The user process ID. */
-		static inline size_t pid() noexcept {
-			return SIZE_MAX;
-		}
+			/** @return The ID of this user process. */
+			static inline size_t pid() noexcept {
+				return SIZE_MAX;
+			}
 
-		/**
-		 * Calls a PlatformBSP \a bsp_sync.
-		 *
-		 * @param[in] msgs_in  The maximum number of messages to be received across
-		 *                     \em all user processes. Default is zero.
-		 * @param[in] msgs_out The maximum number of messages to be sent across
-		 *                     \em all user processes. Default is zero.
-		 *
-		 * If both \a msgs_in and \a msgs_out are zero, the values will be
-		 * automatically inferred. This requires a second call to the PlatformBSP
-		 * \a bsp_sync primitive, thus increasing the latency by at least \f$ l \f$.
-		 *
-		 * If the values for \a msgs_in or \a msgs_out are underestimated, undefined
-		 * behaviour will occur. If this is not the case but one or more are instead
-		 * \a over estimated, this call will succeed as normal.
-		 *
-		 * @return grb::SUCCESS When all queued communication is executed succesfully.
-		 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
-		 *                      returned, the library enters an undefined state.
-		 */
-		static enum RC sync( const size_t msgs_in = 0, const size_t msgs_out = 0 ) noexcept {
-			(void)msgs_in;
-			(void)msgs_out;
-			return PANIC;
-		}
+			/**
+			 * \internal
+			 * Provides functionalities similar to the LPF primitive \a lpf_sync,
+			 * enhanced with zero-cost synchronisation semantics.
+			 *
+			 * @param[in] msgs_in  The maximum number of messages to be received across
+			 *                     \em all user processes. Default is zero.
+			 * @param[in] msgs_out The maximum number of messages to be sent across
+			 *                     \em all user processes. Default is zero.
+			 *
+			 * If both \a msgs_in and \a msgs_out are zero, the values will be
+			 * automatically inferred. This requires a second call to the PlatformBSP
+			 * \a bsp_sync primitive, thus increasing the latency by at least \f$ l \f$.
+			 *
+			 * If the values for \a msgs_in or \a msgs_out are underestimated, undefined
+			 * behaviour will occur. If this is not the case but one or more are instead
+			 * \a over estimated, this call will succeed as normal.
+			 *
+			 * @return grb::SUCCESS When all queued communication is executed succesfully.
+			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+			 *                      returned, the library enters an undefined state.
+			 *
+			 * \todo If exposing this API, there should also be exposed a mechanism for
+			 *       initiating messages.
+			 * \endinternal
+			 */
+			static enum RC sync( const size_t msgs_in = 0, const size_t msgs_out = 0 ) noexcept {
+				(void) msgs_in;
+				(void) msgs_out;
+				return PANIC;
+			}
 
 	}; // end class ``spmd''
 
 } // namespace grb
 
 #endif // end _H_GRB_BASE_SPMD
+

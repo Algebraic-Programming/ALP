@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the matrix powers kernel \f$ y=A^kx \f$ over arbitrary semirings.
+ *
  * @author A. N. Yzelman
  * @date 30th of March 2017
  */
@@ -46,6 +50,7 @@ namespace grb {
 		 *                  supplied vector must match the row dimension size of \a A.
 		 * @param[in]  A    The square input matrix A. The supplied matrix must match
 		 *                  the dimensions of \a u and \a v.
+		 * @param[in]  k    How many matrix--vector multiplications are requested.
 		 * @param[in]  v    The input vector v. The supplied vector must match the
 		 *                  column dimension size of \a A. It may not be the same
 		 *                  vector as \a u.

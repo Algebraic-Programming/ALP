@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the various I/O modes a user could employ with ALP data ingestion
+ * or extraction.
+ *
  * @author A. N. Yzelman
  * @date 21st of February, 2017
  */
@@ -86,8 +91,6 @@ namespace grb {
 		 */
 		PARALLEL
 	};
-
-	/** @} */
 
 } // namespace grb
 
