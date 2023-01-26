@@ -287,8 +287,14 @@ namespace grb {
 	 * masks:
 	 *  - grb::vxm( u, u_mask, v, A, semiring, phase );
 	 *  - grb::vxm( u, v, A, semiring, phase );
+	 *
 	 * Similarly, aliases to this function exist that take an additive commutative
 	 * monoid and a multiplicative binary operator instead of a semiring.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -420,9 +426,10 @@ namespace grb {
 	 *          lambda. To retrieve the global dot product, an allreduce must
 	 *          explicitly be called.
 	 *
-	 * @see Vector::operator[]()
-	 * @see Vector::operator()()
-	 * @see Vector::lambda_reference
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		typename Func, typename DataType,
@@ -449,6 +456,18 @@ namespace grb {
 
 	 // default (non-)implementations follow:
 
+	/**
+	 * Right-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -484,7 +503,20 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
-	template< Descriptor descr = descriptors::no_operation,
+	/**
+	 * Right-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class Ring,
 		typename IOType, typename InputType1, typename InputType2,
 		typename Coords, typename RIT, typename CIT, typename NIT,
@@ -513,6 +545,18 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -548,6 +592,18 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given semiring.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
@@ -579,6 +635,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place doubly-masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -624,6 +693,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place doubly-masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -669,6 +751,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::mxv for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -712,6 +807,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -751,6 +859,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Left-handed in-place masked sparse matrix--vector multiplication,
+	 * \f$ u = u + vA \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
@@ -792,6 +913,19 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/**
+	 * Right-handed in-place sparse matrix--vector multiplication,
+	 * \f$ u = u + Av \f$, over a given commutative additive monoid and any
+	 * binary operator acting as multiplication.
+	 *
+	 * See the documentation of #grb::vxm for the full specification of this
+	 * function.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid, class MultiplicativeOperator,
