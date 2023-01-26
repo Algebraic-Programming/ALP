@@ -46,7 +46,8 @@ namespace grb {
 	 */
 
 	/**
-	 * Unmaked sparse matrix--sparse matrix multiplication (SpMSpM).
+	 * Unmasked and in-place sparse matrix--sparse matrix multiplication (SpMSpM),
+	 * \f$ C += A+B \f$.
 	 *
 	 * @tparam descr      The descriptors under which to perform the computation.
 	 *                    Optional; default is #grb::descriptors::no_operation.
@@ -115,42 +116,61 @@ namespace grb {
 	}
 
 	/**
-	 * Interprets three vectors x, y, and z as a series of row coordinates,
-	 * column coordinates, and nonzeroes, respectively, and stores the thus
-	 * defined nonzeroes in a given output matrix A.
+	 * The #grb::zip merges three vectors into a matrix.
 	 *
-	 * If this function does not return SUCCESS, A will have been cleared.
+	 * Interprets three input vectors \a x, \a y, and \a z as a series of row
+	 * coordinates, column coordinates, and nonzeroes, respectively. The
+	 * thus-defined nonzeroes of a matrix are then stored in a given output
+	 * matrix \a A.
 	 *
-	 * A must have been pre-allocated to store the nonzero pattern the three
-	 * given vectors x, y, and z encode, or ILLEGAL shall be returned.
+	 * The vectors \a x, \a y, and \a z must have equal length, as well as the same
+	 * number of nonzeroes. If the vectors are sparse, all vectors must have the
+	 * same sparsity structure.
 	 *
-	 * \note A call to this function hence must be preceded by a successful
-	 *       call to grb::resize( matrix, nnz );
+	 * \note A variant of this function only takes \a x and \a y, and has that the
+	 *       output matrix \a A has <tt>void</tt> element types.
 	 *
-	 * @param[out] A The output matrix
-	 * @param[in]  x A vector of row indices.
-	 * @param[in]  y A vector of column indices.
-	 * @param[in]  z A vector of nonzero values.
+	 * If this function does not return #grb::SUCCESS, the output \ a A will have
+	 * no contents on function exit.
 	 *
+	 * The matrix \a A must have been pre-allocated to store the nonzero pattern
+	 * that the three given vectors \a x, \a y, and \a z encode, or otherwise this
+	 * function returns #grb::ILLEGAL.
+	 *
+	 * \note To ensure that the capacity of \a A is sufficient, a succesful call to
+	 *       #grb::resize with #grb::nnz of \a x suffices. Alternatively, and with
+	 *       the same effect, a succesful call to this function with \a phase equal
+	 *       to #grb::RESIZE instead of #grb::SUCCESS suffices also.
+	 *
+	 * @param[out]  A   The output matrix.
+	 * @param[in]   x   A vector of row indices.
+	 * @param[in]   y   A vector of column indices.
+	 * @param[in]   z   A vector of nonzero values.
 	 * @param[in] phase The #grb::Phase in which the primitive is to proceed.
 	 *                  Optional; the default is #grb::EXECUTE.
 	 *
-	 * If x, y, and z are sparse, they must have the exact same sparsity
-	 * structure.
+	 * @return #grb::SUCCESS  If \a A was constructed successfully.
+	 * @return #grb::MISMATCH If \a y or \a z does not match the size of \a x.
+	 * @return #grb::ILLEGAL  If \a y or \a z do not have the same number of
+	 *                        nonzeroes as \a x.
+	 * @return #grb::ILLEGAL  If \a y or \a z has a different sparsity pattern from
+	 *                        \a x.
+	 * @return #grb::FAILED   If the capacity of \a A was insufficient to store the
+	 *                        given sparsity pattern and \a phase is #grb::EXECUTE.
+	 * @return #grb::OUTOFMEM If the \a phase is #grb::RESIZE and \a A could not be
+	 *                        resized to have sufficient capacity to complete this
+	 *                        function due to out-of-memory conditions.
 	 *
+	 * \parblock
 	 * \par Descriptors
 	 *
 	 * None allowed.
+	 * \endparblock
 	 *
-	 * @returns SUCCESS  If A was constructed successfully.
-	 * @returns MISMATCH If y or z does not match the size of x.
-	 * @returns ILLEGAL  If y or z do not have the same number of nonzeroes
-	 *                   as x.
-	 * @returns ILLEGAL  If y or z has a different sparsity pattern from x.
-	 * @returns ILLEGAL  If the capacity of A was insufficient to store the
-	 *                   given sparsity pattern.
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
 	 *
-	 * @see grb::resize
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -183,7 +203,16 @@ namespace grb {
 	}
 
 	/**
-	 * Specialisation of grb::zip for void output matrices.
+	 * Merges two vectors into a <tt>void</tt> matrix.
+	 *
+	 * This is a specialisation of #grb::zip for pattern matrices. The two input
+	 * vectors \a x and \a y represent coordinates of nonzeroes to be stored in
+	 * \a A.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
