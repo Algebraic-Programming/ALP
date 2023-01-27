@@ -164,7 +164,7 @@ namespace grb {
 								flag = true;
 								#pragma omp critical
 								{
-									// Add node index to update neighbouts
+									// Add node index to update neighbours
 									setElement( temp, 1, i );
 								}
 							}
