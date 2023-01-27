@@ -46,7 +46,7 @@ namespace grb {
 	class collectives {
 
 		private:
-	
+
 			/** Disallow creating an instance. */
 			collectives() {}
 

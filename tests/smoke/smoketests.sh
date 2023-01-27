@@ -228,7 +228,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi
 			echo " "
-			
+
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"

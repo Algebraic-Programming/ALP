@@ -232,7 +232,7 @@ namespace grb {
 		 * @param log_all_differences whether to print all differences
 		 *
 		 * @return true if all nonzeroes are equal, i.e. have the same number of
-		 * 	elements, in the same order and with equal values
+		 *              elements, in the same order and with equal values
 		 * @return false if any of the above conditions is not met
 		 */
 		template<

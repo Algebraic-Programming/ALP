@@ -490,7 +490,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			# initialise parameters
 			DATASET=${MULTIPLICATION_DATASETS[i]}
 			PARSE_MODE=direct
-			
+
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
 				echo ">>>      [ ]           [x]       Test multiplication kernels using ${DATASET} dataset,"
