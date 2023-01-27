@@ -32,28 +32,30 @@ namespace grb {
 		 * @param[out] k    The number of coreness lever that was found in the
 		 *                  graph.
 		 *
-		 *  To operate, this algorithm requires a workspace of four vectors. The
-		 *  size \em and capacities of these must equal \f$ n \f$. The contents on
-		 *  input are ignored, and the contents on output are undefined. The work space
-		 *  consists of the buffer vectors \a distances, \a temp, \a update, and
-		 *  \a status.
+		 * To operate, this algorithm requires a workspace of four vectors. The size
+		 * \em and capacities of these must equal \f$ n \f$. The contents on input are
+		 * ignored, and the contents on output are undefined. The work space consists
+		 * of the buffer vectors \a distances, \a temp, \a update, and \a status.
 		 *
 		 * @param[in,out] distances Distance buffer
 		 * @param[in,out] temp      First node update buffer
 		 * @param[in,out] update    Second node update buffer
 		 * @param[in,out] status    Finished/unfinished buffer
 		 *
-		 * @returns #grb::SUCCESS       If the coreness for all nodes are found.
-		 * @returns #grb::ILLEGAL       If \a A is not square. All outputs are left
-		 *                              untouched.
-		 * @returns #grb::MISMATCH      If the dimensions of \a core or any of the buffer
-		 *                              vectors does not match \a A. All outputs are left
-		 *                              untouched.
-		 * @returns #grb::ILLEGAL       If the capacity of one or more of \a core and the buffer
-		 *                              vectors is less than \f$ n \f$.
-		 * @returns #grb::PANIC         If an unrecoverable error has been encountered. The
-		 *                              output as well as the state of ALP/GraphBLAS is
-		 *                              undefined.
+		 * @returns #grb::SUCCESS  If the coreness for all nodes are found.
+		 * @returns #grb::ILLEGAL  If \a A is not square. All outputs are left
+		 *                         untouched.
+		 * @returns #grb::MISMATCH If the dimensions of \a core or any of the buffer
+		 *                         vectors does not match \a A. All outputs are left
+		 *                         untouched.
+		 * @returns #grb::ILLEGAL  If the capacity of one or more of \a core and the
+		 *                         buffer vectors is less than \f$ n \f$.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
+		 *
+		 * If any non #grb::SUCCESS error code is returned, then the contents of
+		 * \a core are undefined, while \a k will be untouched by the algorithm.
 		 *
 		 * \note For undirected, unweighted graphs, use pattern matrix for \a A;
 		 *       i.e., use \a NZtype <tt>void</tt>
@@ -120,10 +122,10 @@ namespace grb {
 					return ILLEGAL;
 				}
 			}
-	
+
 			// Initialise
 			size_t current_k = 0; // current coreness level
-			
+
 			// Set initial values
 			RC ret = grb::SUCCESS;
 			ret = ret ? ret : set( temp, static_cast< IOType >( 1 ) );
@@ -132,28 +134,28 @@ namespace grb {
 			ret = ret ? ret : set( status, true );
 			ret = ret ? ret : clear( update );
 			assert( ret == SUCCESS );
-	
+
 			ret = ret ? ret : grb::mxv< descr | descriptors::dense >(
 				distances, A, temp, ring );
 			assert( ret == SUCCESS );
-	
+
 			if( SUCCESS != ret ) {
 				std::cerr << " Initialization of k-core decomposition failed with error "
-					<< grb::toString(ret) << "\n";
+					<< grb::toString( ret ) << "\n";
 				return ret;
 			}
-	
+
 			size_t count = 0;
 			while( count < n && SUCCESS == ret ) {
 				bool flag = true;
-	
+
 				// Update filter to exclude completed nodes
 				ret = ret ? ret : set( update, status, status );
-	
+
 				while( flag ) {
 					flag = false;
 					ret = ret ? ret : clear( temp );
-	
+
 					// Update nodes in parallel
 					ret = ret ? ret : eWiseLambda( [ &, current_k ]( const size_t i ) {
 							if( status[ i ] && distances[ i ] <= current_k ) {
@@ -175,16 +177,16 @@ namespace grb {
 						temp
 					);
 					assert( ret == SUCCESS );
-	
+
 					if( flag ) {
 						ret = ret ? ret : clear( update );
 						// Increase number of nodes completed
 						count += nnz( temp );
-	
+
 						// Get the neighbours of the updated nodes
 						ret = ret ? ret : grb::mxv< descr >( update, A, temp, ring );
 						assert( ret == SUCCESS );
-	
+
 						// Decrease distances of the neighbours
 						ret = ret ? ret : grb::eWiseApply( distances, distances, update,
 							operators::subtract<IOType>() );
@@ -193,14 +195,14 @@ namespace grb {
 				}
 				(void) ++current_k;
 			}
-			
+
 			if( SUCCESS != ret ){
 				std::cerr << " Excecution of k-core decomposition failed with error "
 					<< grb::toString(ret) << "\n";
+			} else {
+				k = current_k;
 			}
-	
-			k = current_k;
-	
+
 			return ret;
 		}
 
