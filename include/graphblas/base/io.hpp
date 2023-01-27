@@ -1125,7 +1125,8 @@ namespace grb {
 		typename DataType, typename T,
 		Backend backend, typename Coords
 	>
-	RC setElement( Vector< DataType, backend, Coords > &x,
+	RC setElement(
+		Vector< DataType, backend, Coords > &x,
 		const T val,
 		const size_t i,
 		const Phase &phase = EXECUTE,
