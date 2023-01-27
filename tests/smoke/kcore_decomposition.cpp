@@ -27,6 +27,7 @@
 #include <graphblas/utils/parser.hpp>
 #include <utils/output_verification.hpp>
 
+
 using namespace grb;
 using namespace algorithms;
 
@@ -122,7 +123,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = kcore_decomposition(L, core, d, t, u, st, &k);
+		rc = kcore_decomposition( L, core, d, t, u, st, k );
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -152,7 +153,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
-				rc = kcore_decomposition(L, core, d, t, u, st, &k);
+				rc = kcore_decomposition( L, core, d, t, u, st, k );
 			}
 		}
 		time_taken = timer.time();
@@ -170,7 +171,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 	}
 
-		// start postamble
+	// start postamble
 	timer.reset();
 
 	// set error code

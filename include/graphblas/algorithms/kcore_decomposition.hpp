@@ -27,8 +27,7 @@ namespace grb {
 		 *                  \f$ j \f$.
 		 * @param[out] core Empty vector of size and capacity \f$ n \f$. On
 		 *                  output, if #grb::SUCCESS is returned, stores the
-		 *                  result of each nodes coreness level. Coreness level
-		 *                  of node \f$ i \f$ is \f$ core[i] \f$.
+		 *                  coreness level for each node.
 		 * @param[out] k    The number of coreness lever that was found in the
 		 *                  graph.
 		 *
@@ -64,6 +63,15 @@ namespace grb {
 		 *       The value of any IOType element will be no more than the maximum
 		 *       degree found in the graph \a A.
 		 *
+		 * @tparam criticalSection The original MR had an eWiseLambda-based
+		 *                         implementation that contains a critical section.
+		 *                         This may or may not be faster than a pure
+		 *                         ALP/GraphBLAS implementation, depending also on
+		 *                         which backend is selected. Setting this template
+		 *                         argument <tt>true</tt> selects the original
+		 *                         eWiseLambda-based implementation, while otherwise
+		 *                         a pure ALP/GraphBLAS implementation takes effect.
+		 *
 		 * \parblock
 		 * \par Performance semantics
 		 *
@@ -79,22 +87,27 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
+			bool criticalSection = true,
 			typename IOType, typename NZType
 		>
 		RC kcore_decomposition(
-			grb::Matrix< NZType > &A,
-			grb::Vector< IOType > &core,
-			grb::Vector< IOType > &distances,
-			grb::Vector< IOType > &temp,
-			grb::Vector< IOType > &update,
-			grb::Vector< bool >   &status,
+			const Matrix< NZType > &A,
+			Vector< IOType > &core,
+			Vector< IOType > &distances,
+			Vector< IOType > &temp,
+			Vector< IOType > &update,
+			Vector< bool >   &status,
 			IOType &k
 		) {
 			// Add constants/expressions
-			grb::Semiring<
-				grb::operators::add< IOType >, grb::operators::mul< IOType >,
-				grb::identities::zero, grb::identities::one
+			Semiring<
+				operators::add< IOType >, operators::mul< IOType >,
+				identities::zero, identities::one
 			> ring;
+			Monoid<
+				operators::logical_or< bool >,
+				identities::logical_false
+			> lorMonoid;
 
 			// Runtime sanity checks
 			const size_t n = nrows(A);
@@ -124,7 +137,7 @@ namespace grb {
 			}
 
 			// Initialise
-			size_t current_k = 0; // current coreness level
+			IOType current_k = 0; // current coreness level
 
 			// Set initial values
 			RC ret = grb::SUCCESS;
@@ -154,32 +167,45 @@ namespace grb {
 
 				while( flag ) {
 					flag = false;
-					ret = ret ? ret : clear( temp );
 
 					// Update nodes in parallel
-					ret = ret ? ret : eWiseLambda( [ &, current_k ]( const size_t i ) {
-							if( status[ i ] && distances[ i ] <= current_k ) {
-								core[i] = current_k;
-								// Remove node from checking
-								status[ i ] = false;
-								// Set update
-								flag = true;
-								#pragma omp critical
-								{
-									// Add node index to update neighbours
-									setElement( temp, 1, i );
+					if( criticalSection ) {
+						ret = ret ? ret : clear( temp );
+						ret = ret ? ret : eWiseLambda( [ &, current_k ]( const size_t i ) {
+								if( status[ i ] && distances[ i ] <= current_k ) {
+									core[ i ] = current_k;
+									// Remove node from checking
+									status[ i ] = false;
+									// Set update
+									flag = true;
+									#pragma omp critical
+									{
+										// Add node index to update neighbours
+										setElement( temp, 1, i );
+									}
 								}
-							}
-						}, update,
-						status,
-						distances,
-						core,
-						temp
-					);
+							}, update,
+							status, distances, core, temp
+						);
+					} else {
+						ret = ret ? ret : eWiseApply( temp, status, distances, current_k,
+							operators::leq< IOType >() );
+						ret = ret ? ret : foldl( core, temp, current_k,
+							operators::right_assign< IOType >() );
+						ret = ret ? ret : foldl( status, temp, false,
+							operators::right_assign< bool >() );
+						ret = ret ? ret : foldl( flag, temp, lorMonoid );
+						ret = ret ? ret : set( update, temp, 1 );
+						if( ret == SUCCESS ) {
+							std::swap( update, temp );
+						}
+					}
 					assert( ret == SUCCESS );
 
-					if( flag ) {
-						ret = ret ? ret : clear( update );
+					if( ret == SUCCESS && flag ) {
+						ret = clear( update );
+						assert( ret == SUCCESS );
+
 						// Increase number of nodes completed
 						count += nnz( temp );
 
@@ -189,7 +215,7 @@ namespace grb {
 
 						// Decrease distances of the neighbours
 						ret = ret ? ret : grb::eWiseApply( distances, distances, update,
-							operators::subtract<IOType>() );
+							operators::subtract< IOType >() );
 						assert( ret == SUCCESS );
 					}
 				}
