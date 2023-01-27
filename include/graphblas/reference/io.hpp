@@ -631,12 +631,16 @@ namespace grb {
 			"use_index descriptor cannot be set if output vector is void" );
 
 		// check contract
-		if( size( x ) != size( y ) ) {
+		const size_t n = size( x );
+		if( n != size( y ) ) {
 			return MISMATCH;
 		}
-		if( size( x ) == 0 ) {
+		// check trivial op
+		// note: the below check cannot move after the check that uses getID
+		if( n == 0 ) {
 			return SUCCESS;
 		}
+		// continue contract checks
 		if( getID( x ) == getID( y ) ) {
 			return ILLEGAL;
 		}
@@ -659,15 +663,27 @@ namespace grb {
 		const InputType * __restrict__ const src = internal::getRaw( y );
 
 		// get #nonzeroes
-		const size_t nz = internal::getCoordinates( y ).nonzeroes();
+		const size_t nz = nnz( y );
 #ifdef _DEBUG
 		std::cout << "grb::set called with source vector containing "
 			<< nz << " nonzeroes." << std::endl;
 #endif
 
+#ifndef NDEBUG
+		if( src == nullptr ) {
+			assert( dst == nullptr );
+		}
+#endif
 		// first copy contents
 		if( src == nullptr && dst == nullptr ) {
-			// then source is a pattern vector, just copy its pattern
+			// if both source and destination are dense void vectors, this is a no-op
+			if( (descr & descriptors::dense) || (
+					nnz( x ) == size( x ) && nz == size( y )
+				)
+			) {
+				return SUCCESS;
+			}
+			// otherwise, copy source nonzero pattern to destination:
 #ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel
 			{
@@ -685,11 +701,11 @@ namespace grb {
 			}
 #endif
 		} else {
-#ifndef NDEBUG
-			if( src == nullptr ) {
-				assert( dst == nullptr );
+			// if the output is a void vector that is furthermore dense, then this is
+			// actually also a no-op:
+			if( (descr & descriptors::dense) && out_is_void ) {
+				return SUCCESS;
 			}
-#endif
 			// otherwise, the regular copy variant:
 #ifdef _H_GRB_REFERENCE_OMP_IO
 			#pragma omp parallel
@@ -701,8 +717,13 @@ namespace grb {
 				const size_t end = nz;
 #endif
 				for( size_t i = start; i < end; ++i ) {
-					const auto index = internal::getCoordinates( x ).asyncCopy(
-						internal::getCoordinates( y ), i );
+					size_t index;
+					if( !(descr & descriptors::dense) ) {
+						index = internal::getCoordinates( x ).asyncCopy(
+							internal::getCoordinates( y ), i );
+					} else {
+						index = start;
+					}
 					if( !out_is_void && !in_is_void ) {
 						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
 							index, src[ index ] );
@@ -714,7 +735,9 @@ namespace grb {
 		}
 
 		// set number of nonzeroes
-		internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
+		if( !(descr & descriptors::dense) ) {
+			internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
+		}
 
 		// done
 		return SUCCESS;
