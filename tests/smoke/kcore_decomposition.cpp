@@ -47,7 +47,7 @@ struct output {
 
 void grbProgram( const struct input &data_in, struct output &out ) {
 
-		// get user process ID
+	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
 
@@ -62,15 +62,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		return;
 	}
 
-		// assume successful run
+	// assume successful run
 	out.error_code = 0;
 
-    grb::utils::MatrixFileReader< void,
-		std::conditional<
-			(
+	grb::utils::MatrixFileReader< void,
+		std::conditional< (
 				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
-			),
-			grb::config::RowIndexType,
+			), grb::config::RowIndexType,
 			grb::config::ColIndexType
 		>::type
 	> parser( data_in.filename, data_in.direct );
@@ -82,7 +80,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// load into GraphBLAS
 	grb::Matrix< void > L( n, n );
 	{
-		const grb::RC rc = buildMatrixUnique( L,
+		const grb::RC rc = buildMatrixUnique(
+			L,
 			parser.begin( grb::SEQUENTIAL ), parser.end( grb::SEQUENTIAL ),
 			grb::SEQUENTIAL
 		);
@@ -90,7 +89,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 10;
-			return;		}
+			return;
+		}
 	}
 
 	// check number of nonzeroes
@@ -110,13 +110,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			<< nnz( L ) << " nonzeroes.\n";
 	}
 
-	grb::Vector<bool> st(n); 
-	grb::Vector<int> d(n), t(n), u(n);
-    grb::Vector<int> core(n);
+	grb::Vector< bool > st( n );
+	grb::Vector< int > d( n ), t( n ), u( n );
+	grb::Vector< int > core( n );
 	int k = 0;
 
 	out.times.preamble = timer.time();
-	
+
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 
@@ -218,7 +218,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
@@ -230,7 +230,7 @@ int main( int argc, char ** argv ) {
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-	char * end = NULL;
+	char * end = nullptr;
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
@@ -258,7 +258,7 @@ int main( int argc, char ** argv ) {
 		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
 			verification = true;
 			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+				(void) strncpy( truth_filename, argv[ 6 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
