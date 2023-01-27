@@ -78,12 +78,16 @@ namespace grb {
 		 *   -# This function does not allocate nor free dynamic memory, nor shall it
 		 *      make any system calls.
 		 *
-		 * For additional performance semantics regarding work, inter-process data movement,
-		 * intra-process data movement, synchronisations, and memory use, please see
-		 * the specification of the ALP primitives this function relies on. These
-		 * performance semantics, with the exception of getters such as #grb::nnz, are
-		 * specific to the backend selected during compilation.
+		 * For additional performance semantics regarding work, inter-process data
+		 * movement, intra-process data movement, synchronisations, and memory use,
+		 * please see the specification of the ALP primitives this function relies on.
+		 * These performance semantics, with the exception of getters such as
+		 * #grb::nnz, are specific to the backend selected during compilation.
 		 * \endparblock
+		 *
+		 * This algorithm is modelled after Li et al., "The K-Core Decomposition
+		 * Algorithm Under the Framework of GraphBLAS", 2021 IEEE High Performance
+		 * Extreme Computing Conference (HPEC), doi: 10.1109/HPEC49654.2021.9622845.
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
